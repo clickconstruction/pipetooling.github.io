@@ -77,7 +77,7 @@ vi.mock('./PinsMapCanvas', () => ({
   ),
 }))
 
-const VECCHIO = '1160 Lago Vista Dr, San Marcos, TX 78666'
+const VELLANO = '1160 Lago Vista Dr, San Marcos, TX 78666'
 const NOW = new Date('2026-09-22T16:45:00Z').getTime()
 
 function s(p: Partial<ClockSessionRow> & { id: string; user_id: string }): ClockSessionRow {
@@ -109,8 +109,8 @@ function s(p: Partial<ClockSessionRow> & { id: string; user_id: string }): Clock
     ...p,
   }
 }
-const vecchio = (id: string, who: string, at = '2026-09-22T13:00:00Z') =>
-  s({ id, user_id: who, job_ledger_id: 'j1', clocked_in_at: at, jobs_ledger: { hcp_number: '1021', click_number: null, job_name: 'Vecchio Pinpoint', job_address: VECCHIO } })
+const vellano = (id: string, who: string, at = '2026-09-22T13:00:00Z') =>
+  s({ id, user_id: who, job_ledger_id: 'j1', clocked_in_at: at, jobs_ledger: { hcp_number: '1021', click_number: null, job_name: 'Vellano Pinpoint', job_address: VELLANO } })
 const echols = s({ id: 'e', user_id: 'Malachi', job_ledger_id: 'j2', jobs_ledger: { hcp_number: '1039', click_number: null, job_name: 'Echols', job_address: '1 Echols Rd, Kingsbury, TX' } })
 const office = s({ id: 'o', user_id: 'Grace', job_ledger_id: 'office-job', notes: 'New bid', jobs_ledger: { hcp_number: '000', click_number: null, job_name: 'Office', job_address: null } })
 const isiah = s({ id: 'i', user_id: 'Isiah', notes: 'Working with micheal' })
@@ -142,13 +142,13 @@ afterEach(() => {
 
 describe('ClockedInMapModal', () => {
   it('lists the stops most people first with counts, the office and the not-on-a-job people; the placed stop is a badged pin; the cold one is in the unmapped line', async () => {
-    mount([vecchio('a', 'Abraham'), echols, vecchio('p', 'Paige', '2026-09-22T12:18:00Z'), office, isiah])
+    mount([vellano('a', 'Abraham'), echols, vellano('p', 'Paige', '2026-09-22T12:18:00Z'), office, isiah])
     const dialog = screen.getByRole('dialog', { name: 'Where everyone is' })
     expect(dialog).toBeTruthy()
     // a computer's window keeps its 1rem and adds an iPad's status bar (v2.4444)
     expect(dialog.style.padding).toBe('calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem')
-    const rows = screen.getAllByRole('button', { pressed: false }).filter((b) => /Vecchio|Echols/.test(b.textContent ?? ''))
-    expect(rows.map((r) => r.textContent?.slice(0, 22))).toEqual(['2J1021 · Vecchio Pinpo', '1J1039 · Echols1 Echol'])
+    const rows = screen.getAllByRole('button', { pressed: false }).filter((b) => /Vellano|Echols/.test(b.textContent ?? ''))
+    expect(rows.map((r) => r.textContent?.slice(0, 22))).toEqual(['2J1021 · Vellano Pinpo', '1J1039 · Echols1 Echol'])
     expect(rows[0]?.textContent).toContain('Paige 4h 27m · Abraham 3h 45m')
     expect(screen.getByText('Office').parentElement?.textContent).toContain('Grace 3h 45m')
     expect(screen.getByText('Not on a job').parentElement?.textContent).toContain('Isiah 3h 45m · Working with micheal')
@@ -156,7 +156,7 @@ describe('ClockedInMapModal', () => {
     expect(screen.getByText('2 stops · 5 people')).toBeTruthy()
     expect(screen.getByText(/Sep 22 · .* · live/)).toBeTruthy()
 
-    const pin = await screen.findByRole('button', { name: 'pin J1021 · Vecchio Pinpoint · 2' })
+    const pin = await screen.findByRole('button', { name: 'pin J1021 · Vellano Pinpoint · 2' })
     expect(pin.getAttribute('data-label')).toBe('2')
     expect(pin.getAttribute('data-color')).toBe('#3b82f6')
     expect(screen.getByTestId('canvas').getAttribute('data-anchor')).toBe('Office:25')
@@ -169,9 +169,9 @@ describe('ClockedInMapModal', () => {
   })
 
   it('a stop row selects its pin (the popup shows the people with since · elapsed); Open job goes through the strip opener and closes; Directions opens Google Maps', async () => {
-    mount([vecchio('a', 'Abraham'), vecchio('p', 'Paige', '2026-09-22T12:18:00Z')])
-    await screen.findByRole('button', { name: 'pin J1021 · Vecchio Pinpoint · 2' })
-    fireEvent.click(screen.getByRole('button', { name: /J1021 · Vecchio Pinpoint.*Paige/ }))
+    mount([vellano('a', 'Abraham'), vellano('p', 'Paige', '2026-09-22T12:18:00Z')])
+    await screen.findByRole('button', { name: 'pin J1021 · Vellano Pinpoint · 2' })
+    fireEvent.click(screen.getByRole('button', { name: /J1021 · Vellano Pinpoint.*Paige/ }))
     expect(screen.getByTestId('canvas').getAttribute('data-selected')).toBe('job:j1')
     const popup = screen.getByTestId('popup')
     expect(popup.textContent).toContain('Paige')
@@ -180,14 +180,14 @@ describe('ClockedInMapModal', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Directions' })[0]!)
     expect(openExternal).toHaveBeenCalledWith(expect.stringContaining('google.com/maps/search/?api=1&query=1160%20Lago%20Vista'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Open job' })[0]!)
-    expect(onOpenJob).toHaveBeenCalledWith('j1', expect.objectContaining({ job_name: 'Vecchio Pinpoint' }))
+    expect(onOpenJob).toHaveBeenCalledWith('j1', expect.objectContaining({ job_name: 'Vellano Pinpoint' }))
     expect(onClose).toHaveBeenCalled()
   })
 
   it('a pin click selects its row; Esc and × close; the Fit all button shows with a pin and the anchor', async () => {
-    mount([vecchio('a', 'Abraham')])
-    fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vecchio Pinpoint · 1' }))
-    expect(screen.getByRole('button', { name: /J1021 · Vecchio Pinpoint.*Abraham/ }).getAttribute('aria-pressed')).toBe('true')
+    mount([vellano('a', 'Abraham')])
+    fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vellano Pinpoint · 1' }))
+    expect(screen.getByRole('button', { name: /J1021 · Vellano Pinpoint.*Abraham/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'Fit all' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -197,15 +197,15 @@ describe('ClockedInMapModal', () => {
 
   it('on a phone: the summary line, the selected stop as a bar under the map with two big buttons, the rest listed beneath', async () => {
     mobile = true
-    mount([vecchio('a', 'Abraham'), echols, isiah])
+    mount([vellano('a', 'Abraham'), echols, isiah])
     // a phone's sheet is the full height: it starts below the status bar (v2.4444)
     expect(screen.getByRole('dialog', { name: 'Where everyone is' }).style.padding).toBe('var(--app-top-chrome, 0px) 0 0')
     expect(screen.getByText('3 in · 2 stops · 1 not on a job')).toBeTruthy()
-    fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vecchio Pinpoint · 1' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vellano Pinpoint · 1' }))
     const openJob = screen.getByRole('button', { name: 'Open job' })
     expect(openJob.style.minHeight).toBe('44px')
     // The selected stop left the list below — it is the bar now.
-    expect(screen.queryByRole('button', { name: /J1021 · Vecchio Pinpoint.*Abraham/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /J1021 · Vellano Pinpoint.*Abraham/ })).toBeNull()
     expect(screen.getAllByRole('button', { name: /J1039 · Echols/ }).some((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true)
     expect(screen.queryByRole('button', { name: 'Fit all' })).toBeNull()
   })
@@ -232,7 +232,7 @@ describe('ClockedInMapModal', () => {
       expect(body.destination).toEqual({ lat: 29.653, lng: -97.797 })
       return body.origin.lat === 29.7 ? { data: { ok: false, error: 'no_route' }, error: null } : { data: { ok: true, meters: 32186, seconds: 1920 }, error: null }
     })
-    mount([vecchio('a', 'Abraham'), echols])
+    mount([vellano('a', 'Abraham'), echols])
     await screen.findByRole('button', { name: 'pin J1039 · Echols · 1' })
     const button = screen.getByRole('button', { name: 'Travel times' })
     expect(button.hasAttribute('disabled')).toBe(false)
@@ -240,13 +240,13 @@ describe('ClockedInMapModal', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Travel times ✓' }).hasAttribute('disabled')).toBe(true))
     const routedCalls = invokeMock.mock.calls.filter((c) => c[0] === 'driving-distance')
     expect(routedCalls).toHaveLength(2)
-    const vecchioRow = screen.getByRole('button', { name: /J1021 · Vecchio Pinpoint.*Abraham/ })
-    expect(vecchioRow.textContent).toContain('20 mi · 32 min to the office')
+    const vellanoRow = screen.getByRole('button', { name: /J1021 · Vellano Pinpoint.*Abraham/ })
+    expect(vellanoRow.textContent).toContain('20 mi · 32 min to the office')
     const echolsRow = screen.getAllByRole('button', { name: /J1039 · Echols/ }).find((b) => b.getAttribute('aria-pressed') === 'false')
     expect(echolsRow?.textContent).toMatch(/≈ \d+ mi · ≈ \d+ min to the office/)
     expect(screen.getByText('Drive times: 1 routed · 1 estimated (≈ straight line × 1.3 at 35 mph)')).toBeTruthy()
     // The popup reads the same line.
-    fireEvent.click(vecchioRow)
+    fireEvent.click(vellanoRow)
     expect(screen.getByTestId('popup').textContent).toContain('20 mi · 32 min to the office')
   })
 
@@ -262,10 +262,10 @@ describe('ClockedInMapModal', () => {
 
 describe('ClockedInMapModal — Open the full map follows the Map route (v2.4897)', () => {
   it('shows the link for a role the map opens for, and hides it for one the route bounces', () => {
-    const { unmount } = mount([vecchio('v1', 'Abraham')], true)
+    const { unmount } = mount([vellano('v1', 'Abraham')], true)
     expect(screen.getByText('Open the full map ›')).toBeTruthy()
     unmount()
-    mount([vecchio('v1', 'Abraham')], false)
+    mount([vellano('v1', 'Abraham')], false)
     expect(screen.queryByText('Open the full map ›')).toBeNull()
   })
 })

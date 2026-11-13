@@ -14,20 +14,20 @@ import type { BridgeCall } from '../../lib/bridge/calls'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
-  customers: { rmc: { medianDays: 35, samples: 4 } },
+  customers: { rlc: { medianDays: 35, samples: 4 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rmc: 'commercial', southern: 'commercial' },
+  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial' },
   receipts: {},
   quality: null,
 }
 const bill = (key: string, payerId: string, payerName: string, billedYmd: string, usd: number, over: Partial<CollectBill> = {}): CollectBill => ({ key, jobId: `j-${key}`, payerId, payerName, billedYmd, usd, ...over })
 const bills = [
-  bill('spacex', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
-  bill('rmc', 'rmc', 'RMC- Dudley Mason', '2026-08-20', 55_151),
-  bill('sp', 'southern', 'Southern Post Construction', '2026-09-16', 38_625, { sentFromHere: false }),
+  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  bill('rlc', 'rlc', 'RLC- Dunmere Mallin', '2026-08-20', 55_151),
+  bill('sp', 'southern', 'Southern Pine Construction', '2026-09-16', 38_625, { sentFromHere: false }),
   bill('coll', 'old', 'An old GC', '2026-02-01', 19_522, { inCollections: true }),
 ]
-const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(['j-spacex']), gcPayerIds: new Set(['rmc', 'southern']), todayYmd: '2026-10-25' })
+const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(['j-skylab']), gcPayerIds: new Set(['rlc', 'southern']), todayYmd: '2026-10-25' })
 const cut = buildCollectPayers(pile)
 const md = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
@@ -62,18 +62,18 @@ describe('BridgeCollectDesk (v2.5853)', () => {
     expect(screen.getByText(/Say: the \$38\.6k promised for Oct 16 has not landed/)).toBeTruthy()
     expect(screen.getByTestId('bridge-collect-decisions').textContent).toContain('Is Structura, Inc. – Austin the GC on this job?')
     expect(screen.getByText(/If half of the/)).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Owner and day for Southern Post Construction'), { target: { value: 'Taunya · Mon' } })
+    fireEvent.change(screen.getByLabelText('Owner and day for Southern Pine Construction'), { target: { value: 'Taunya · Mon' } })
     fireEvent.click(screen.getByTestId('bridge-collect-record-plan'))
     expect(onRecordPlan).toHaveBeenCalledTimes(1)
     const recorded = onRecordPlan.mock.calls[0]![0] as Array<{ title: string; who: string; then: number | null }>
     expect(recorded).toHaveLength(3)
-    expect(recorded.find((m) => m.title.startsWith('Southern Post'))).toMatchObject({ title: 'Southern Post Construction: Call: the Oct 16 promise', who: 'Taunya · Mon', then: 38_625 })
+    expect(recorded.find((m) => m.title.startsWith('Southern Pine'))).toMatchObject({ title: 'Southern Pine Construction: Call: the Oct 16 promise', who: 'Taunya · Mon', then: 38_625 })
   })
 
   it('draws Friday’s card once a plan is recorded: landed, dated calls, the notices, Monday carries (v2.5858)', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
     const call: BridgeCall = { id: 'c1', weekStart: '2026-10-25', calledOn: '2026-10-26', calledByName: 'Robert', link: 'collect', moves: sheet.rows.map((r) => ({ key: 'chase' as const, title: `${r.payer.payerName}: ${r.move.title}`, who: 'Taunya', then: r.move.askUsd })), measures: { linkWeeks: 10.2, stageWeeks: {}, keys: {} }, note: null, outcome: null, outcomeAt: null, outcomeNote: null }
-    const scorecard = collectScorecard({ call, sheet, touches: [], payments: [{ payerId: 'rmc', payerName: 'RMC- Dudley Mason', usd: 10_000, paidOn: '2026-10-28' }], notices: { drafted: 2, signed: 2, mailed: 0, affidavitsFiled: 0 }, todayYmd: '2026-10-30' })
+    const scorecard = collectScorecard({ call, sheet, touches: [], payments: [{ payerId: 'rlc', payerName: 'RLC- Dunmere Mallin', usd: 10_000, paidOn: '2026-10-28' }], notices: { drafted: 2, signed: 2, mailed: 0, affidavitsFiled: 0 }, todayYmd: '2026-10-30' })
     renderWithProviders(<BridgeCollectDesk pile={pile} cut={cut} pace={{ paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }} weeks={6.8} segments={{ commercial: 12, residential: 2, company: 7 }} todayYmd="2026-10-30" readStamp="Fri, Oct 30" dayLabel={md} chipsByJob={null} arDoor={{ to: '/jobs?tab=billing', label: 'Open Billing' }} onClose={() => {}} sheet={sheet} thisWeekCall={call} scorecard={scorecard} />)
     const cardEl = screen.getByTestId('bridge-collect-scorecard')
     expect(cardEl.textContent).toContain('Since the plan, recorded Oct 26')

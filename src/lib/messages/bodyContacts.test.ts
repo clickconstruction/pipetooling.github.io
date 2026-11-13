@@ -12,15 +12,15 @@ import {
 } from './bodyContacts'
 import { plainWordsFailures } from '../plainWords'
 
-/** Glenn Geling's signature as the bids@ reader kept it (2026-10-22), the tracking links and all. */
+/** Glenn Gelwin's signature as the bids@ reader kept it (2026-10-22), the tracking links and all. */
 const SIGNATURE = `Thank you, and we look forward to reviewing your proposal.
 [image: signoff-logo]
 [image: headshot]
-Glenn Geling
+Glenn Gelwin
 Estimator I
-Maxx Builders
+Marrex Builders
 [image: phone] (832) 871-4166 ext. 121
-[image: email] glenn@maxxbuilders.com <https://server.utags.co/gLCOFBOU>
+[image: email] glenn@marrexbuilders.example <https://server.utags.co/gLCOFBOU>
 [image: website] www.maxxbuilders.com/ <https://server.utags.co/ejwGNauh>
 [image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477
 [image: company-logo]
@@ -32,7 +32,7 @@ Maxx Builders
 
 const BODY = `Wendi,
 
-We at *Maxx Builders* are currently working on a project called *Northeast
+We at *Marrex Builders* are currently working on a project called *Northeast
 Bible Church Elementary Building* located at *19185 FM 2252 Northeast Bible
 Church, Garden Ridge, TX 78266*
 
@@ -46,7 +46,7 @@ describe('bodyContacts: the contact points in an email’s words (v2.6513)', () 
   it('reads the signature: the number with its extension, the address, the street address, and nothing else', () => {
     expect(bodyContactPoints(SIGNATURE)).toEqual([
       { kind: 'phone', number: '(832) 871-4166', ext: '121', words: '(832) 871-4166 ext. 121' },
-      { kind: 'email', address: 'glenn@maxxbuilders.com', words: 'glenn@maxxbuilders.com' },
+      { kind: 'email', address: 'glenn@marrexbuilders.example', words: 'glenn@marrexbuilders.example' },
       { kind: 'address', words: '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477' },
     ])
   })
@@ -103,7 +103,7 @@ describe('bodyContacts: the contact points in an email’s words (v2.6513)', () 
   })
 
   it('reads the same point once, and a marker on a line with nothing pressable stays as it came', () => {
-    expect(bodyContactPoints('glenn@maxxbuilders.com, again glenn@maxxbuilders.com')).toHaveLength(1)
+    expect(bodyContactPoints('glenn@marrexbuilders.example, again glenn@marrexbuilders.example')).toHaveLength(1)
     const pieces = bodyContactPieces('[image: headshot]\nGlenn')
     expect(pieces).toEqual([{ kind: 'text', text: '[image: headshot]\nGlenn', bold: false }])
   })
@@ -140,15 +140,15 @@ describe('bodyContacts: the line a press leaves on the thread', () => {
     const call = contactPressBody('Grace', 'call', '(832) 871-4166 ext. 121', glenn)
     expect(call).toBe("Grace pressed Call on (832) 871-4166 ext. 121 from Glenn's email of Oct 22.")
     expect(contactPressOf(call)).toEqual({ who: 'Grace', press: 'call', value: '(832) 871-4166 ext. 121' })
-    const thread = contactPressBody('Grace', 'thread', 'glenn@maxxbuilders.com', glenn)
-    expect(thread).toBe("Grace opened a thread for glenn@maxxbuilders.com from Glenn's email of Oct 22.")
-    expect(contactPressOf(thread)).toEqual({ who: 'Grace', press: 'thread', value: 'glenn@maxxbuilders.com' })
+    const thread = contactPressBody('Grace', 'thread', 'glenn@marrexbuilders.example', glenn)
+    expect(thread).toBe("Grace opened a thread for glenn@marrexbuilders.example from Glenn's email of Oct 22.")
+    expect(contactPressOf(thread)).toEqual({ who: 'Grace', press: 'thread', value: 'glenn@marrexbuilders.example' })
     expect(contactPressOf(contactPressBody('Grace', 'map', '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477', glenn))).toEqual({
       who: 'Grace',
       press: 'map',
       value: '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477',
     })
-    expect(contactPressOf(contactPressBody('Grace', 'email', 'glenn@maxxbuilders.com', glenn))?.press).toBe('email')
+    expect(contactPressOf(contactPressBody('Grace', 'email', 'glenn@marrexbuilders.example', glenn))?.press).toBe('email')
     expect(contactPressOf(contactPressBody('Grace', 'text', '512-555-0142', glenn))?.press).toBe('text')
     expect(contactPressOf('Robert took Greg Paulk.')).toBeNull()
     expect(contactPressOf('Robert heard back by phone on Nov 4.')).toBeNull()
@@ -165,9 +165,9 @@ describe('bodyContacts: the line a press leaves on the thread', () => {
   it('every word a person reads passes the plain-words rules', () => {
     for (const words of [
       contactPressBody('Grace', 'call', '(832) 871-4166 ext. 121', glenn),
-      contactPressBody('Grace', 'thread', 'glenn@maxxbuilders.com', glenn),
+      contactPressBody('Grace', 'thread', 'glenn@marrexbuilders.example', glenn),
       PRESS_WORDS_UI.toast('call', '(832) 871-4166 ext. 121'),
-      PRESS_WORDS_UI.toast('thread', 'glenn@maxxbuilders.com'),
+      PRESS_WORDS_UI.toast('thread', 'glenn@marrexbuilders.example'),
       PRESS_WORDS_UI.toast('map', '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477'),
       PRESS_WORDS_UI.undone,
       ...Object.values(PRESS_WORDS_UI.tips),

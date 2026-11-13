@@ -29,7 +29,7 @@ describe('get_matter_document (a matter\'s text document a piece at a time, v2.6
     expect(matterDocReadInput({ matter_id: MATTER.toUpperCase(), doc_id: DOC, section: 3 })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: '3' })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC, section: ' Held with counsel ' })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: 'Held with counsel' })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: null })
-    expect(matterDocReadInput({ matter_id: 'burd', doc_id: DOC })).toMatchObject({ ok: false, refused: expect.stringContaining('matter_id') })
+    expect(matterDocReadInput({ matter_id: 'brund', doc_id: DOC })).toMatchObject({ ok: false, refused: expect.stringContaining('matter_id') })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: 'memo' })).toMatchObject({ ok: false, refused: expect.stringContaining('doc_id') })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC, section: 'x'.repeat(201) })).toMatchObject({ ok: false })
   })

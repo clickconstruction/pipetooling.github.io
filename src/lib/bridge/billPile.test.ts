@@ -6,17 +6,17 @@ const job = (over: Partial<BillPileJob> & { id: string }): BillPileJob => ({ sta
 
 describe('buildBillPile (v2.5834)', () => {
   it('reads a working job as the percent done times the contract, less what is billed', () => {
-    // SpaceX on 2026-10-24: $249,716 at 50 %, $103,386 marked billed by hand → $21,471 finished and not billed, not $146k.
-    const pile = buildBillPile({ jobs: [job({ id: 'spacex', revenueUsd: 249_715.66, pctComplete: 50, billedUsd: 103_386.4 })] })
+    // SkyLab on 2026-10-24: $249,716 at 50 %, $103,386 marked billed by hand → $21,471 finished and not billed, not $146k.
+    const pile = buildBillPile({ jobs: [job({ id: 'skylab', revenueUsd: 249_715.66, pctComplete: 50, billedUsd: 103_386.4 })] })
     expect(Math.round(pile.knownUsd)).toBe(21_471)
     expect(pile.knownJobs).toBe(1)
     expect(pile.guessJobs).toBe(0)
-    expect(pile.items[0]).toMatchObject({ id: 'spacex', pct: 50, source: 'hand' })
+    expect(pile.items[0]).toMatchObject({ id: 'skylab', pct: 50, source: 'hand' })
   })
 
   it('never reads below zero when the office billed ahead of the percent', () => {
-    // Megan Connell: 30 % on the row, 75 % billed.
-    const pile = buildBillPile({ jobs: [job({ id: 'connell', revenueUsd: 37_745, pctComplete: 30, billedUsd: 28_309 })] })
+    // Megan Corbray: 30 % on the row, 75 % billed.
+    const pile = buildBillPile({ jobs: [job({ id: 'corbray', revenueUsd: 37_745, pctComplete: 30, billedUsd: 28_309 })] })
     expect(pile.knownUsd).toBe(0)
     expect(pile.knownJobs).toBe(1)
   })
@@ -29,9 +29,9 @@ describe('buildBillPile (v2.5834)', () => {
   })
 
   it('reads a working job with no percent as half done and keeps it apart as the guess', () => {
-    // Dudley Mason: no %, $21,950, $17,560 billed → half the contract is already billed, the guess is $0 but the job is still grey.
-    // NexGen: no %, $16,700, $13,360 billed → $0 too. Cano Camera: $350, nothing billed → $175.
-    const pile = buildBillPile({ jobs: [job({ id: 'dudley', revenueUsd: 21_950, billedUsd: 17_560 }), job({ id: 'nexgen', revenueUsd: 16_700, billedUsd: 13_360 }), job({ id: 'cano', revenueUsd: 350 })] })
+    // Dunmere Mallin: no %, $21,950, $17,560 billed → half the contract is already billed, the guess is $0 but the job is still grey.
+    // NexGen: no %, $16,700, $13,360 billed → $0 too. Carrow Camera: $350, nothing billed → $175.
+    const pile = buildBillPile({ jobs: [job({ id: 'dunmere', revenueUsd: 21_950, billedUsd: 17_560 }), job({ id: 'nexgen', revenueUsd: 16_700, billedUsd: 13_360 }), job({ id: 'carrow', revenueUsd: 350 })] })
     expect(BILL_GUESS_PCT).toBe(50)
     expect(pile.guessUsd).toBe(175)
     expect(pile.guessJobs).toBe(3)

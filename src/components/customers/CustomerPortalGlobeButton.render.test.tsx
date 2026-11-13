@@ -59,9 +59,9 @@ describe('CustomerPortalGlobeButton', () => {
     linkRowsMock.rows = []
     slugRowMock.row = null
     rpcMock.mockClear()
-    renderWithProviders(<CustomerPortalGlobeButton customerId="c1" customerName="Knight Contracting" />)
+    renderWithProviders(<CustomerPortalGlobeButton customerId="c1" customerName="Kestrin Contracting" />)
     await settle()
-    fireEvent.click(screen.getByLabelText("Open Knight Contracting's customer portal link"))
+    fireEvent.click(screen.getByLabelText("Open Kestrin Contracting's customer portal link"))
     // Journey-map #14(b) / J21-F7: the modal opens into the unminted state and
     // no RPC has run — "just looking" creates nothing.
     await waitFor(() => expect(screen.getByText('No portal link yet.')).toBeTruthy())
@@ -80,13 +80,13 @@ describe('CustomerPortalGlobeButton', () => {
     // Hero: editable custom address, prefilled from the customer name.
     const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
     // B18 / J21-F6: the default address is the name PLUS a random tail — the bare name is the edit.
-    expect(addressInput.value).toMatch(/^knight-contracting-[a-km-np-z2-9]{4}$/)
+    expect(addressInput.value).toMatch(/^kestrin-contracting-[a-km-np-z2-9]{4}$/)
     expect(screen.getByText('Editable until first shared')).toBeTruthy()
     expect(screen.getByText('✓ hard to guess — random tail')).toBeTruthy()
     expect(screen.getByLabelText('New random tail')).toBeTruthy()
     expect(screen.getByText('Copy link')).toBeTruthy()
     expect(screen.getByText('Preview as customer')).toBeTruthy()
-    expect(screen.getByTitle('Portal preview — Knight Contracting')).toBeTruthy()
+    expect(screen.getByTitle('Portal preview — Kestrin Contracting')).toBeTruthy()
     // Gear rows are hidden until the gear opens.
     expect(screen.queryByText('Rotate')).toBeNull()
     expect(screen.queryByText('Direct link')).toBeNull()
@@ -155,11 +155,11 @@ describe('CustomerPortalGlobeButton', () => {
     linkRowsMock.rows = [
       { customer_id: 'c3', audience: 'all', token: 'tokLLL1234567890abc', created_at: '2026-08-01T00:00:00Z', revoked_at: null, created_by: null },
     ]
-    slugRowMock.row = { slug: 'knight-contracting', locked_at: '2026-08-21T00:00:00Z' }
+    slugRowMock.row = { slug: 'kestrin-contracting', locked_at: '2026-08-21T00:00:00Z' }
     rpcMock.mockClear()
-    renderWithProviders(<CustomerPortalGlobeButton customerId="c3" customerName="Knight Contracting" />)
+    renderWithProviders(<CustomerPortalGlobeButton customerId="c3" customerName="Kestrin Contracting" />)
     await settle()
-    fireEvent.click(screen.getByLabelText("Open Knight Contracting's customer portal link"))
+    fireEvent.click(screen.getByLabelText("Open Kestrin Contracting's customer portal link"))
     await waitFor(() => expect(screen.getByText('Copy link')).toBeTruthy())
     expect(screen.queryByLabelText('Portal address')).toBeNull() // static text, no input
     expect(screen.queryByText('Editable until first shared')).toBeNull()

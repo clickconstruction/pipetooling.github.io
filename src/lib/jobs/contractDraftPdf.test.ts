@@ -18,7 +18,7 @@ describe('fetchContractDraftPdf (v2.3527)', () => {
 
   it('renders from the pane\'s own fields for a job with no row, writing nothing', async () => {
     invoke.mockResolvedValue({ data: { ok: true, filename: 'Agreement-J804-to-sign.pdf', pdf_base64: btoa('%PDF') }, error: null })
-    const draft = { fields: { scope_lines: ['Rough-in'], amount_cents: 120000 }, body_html: 'Terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: 'Auto Zone' }
+    const draft = { fields: { scope_lines: ['Rough-in'], amount_cents: 120000 }, body_html: 'Terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: 'Tire Barn' }
     await fetchContractDraftPdf({ jobId: 'j-804', draft })
     expect(invoke).toHaveBeenCalledWith('share-job-contract', { body: { mode: 'draft_pdf', job_id: 'j-804', draft } })
   })

@@ -16,12 +16,12 @@ export const TEST_REPORT_SAMPLE_LABELS: Record<TestReportSampleId, string> = {
 
 export const TEST_REPORT_SAMPLE_JOB: TestReportJobInfo = {
   jobNumber: '1014',
-  jobName: 'Johnson Pretest',
-  jobAddress: '112 Seidel St, Marion, TX 78124',
-  customerName: 'Anna & Jeffrey Johnson',
-  customerEmail: 'johnson@example.com',
+  jobName: 'Jarrow Pretest',
+  jobAddress: '112 Sedlow St, Marion, TX 78124',
+  customerName: 'Anna & Jeffrey Jarrow',
+  customerEmail: 'jarrow@example.com',
   customerPhone: '(830) 555-0142',
-  customerCompany: 'Done Right Foundation Repair',
+  customerCompany: 'Dead Level Foundation Repair',
 }
 
 export function testReportSample(id: TestReportSampleId, testDateYmd: string): TestReportData {

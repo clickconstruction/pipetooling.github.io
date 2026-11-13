@@ -25,9 +25,9 @@ vi.mock('../../lib/jobs/lienNoticeByHandIo', () => ({
 
 afterEach(() => cleanup())
 
-const job = makeJob({ id: 'job-650', hcp_number: '650', job_name: 'ATI Schertz — As per plans', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 15722.49, payments_made: 0 })
+const job = makeJob({ id: 'job-650', hcp_number: '650', job_name: 'AXO Schertz — As per plans', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 15722.49, payments_made: 0 })
 // Every gate of the affidavit clears: an owner with a mailing address, the county, the legal description, not a homestead.
-const address = { id: 'addr-1', county: 'Guadalupe', legal_description: 'LOT 1 BLK 2 ATI SUBD', owner_name: 'ATI Holdings LLC', owner_company: '', owner_mailing_address: '1 Owner Way, Schertz, TX 78154', owner_mode: 'company', homestead: false, property_kind: 'non_residential' }
+const address = { id: 'addr-1', county: 'Guadalupe', legal_description: 'LOT 1 BLK 2 AXO SUBD', owner_name: 'AXO Holdings LLC', owner_company: '', owner_mailing_address: '1 Owner Way, Schertz, TX 78154', owner_mode: 'company', homestead: false, property_kind: 'non_residential' }
 
 type Props = Parameters<typeof LienFilingTabs>[0]
 function props(over: Partial<Props>): Props {
@@ -42,7 +42,7 @@ function props(over: Partial<Props>): Props {
     filings: [],
     clock: { workMonth: '2026-07', noticeDeadline: '2026-10-15', filingDeadline: '2026-11-16' },
     isSub: true,
-    originalContractorName: 'RMC- Dudley Mason',
+    originalContractorName: 'RLC- Dunmere Mallin',
     ownerEmail: '',
     originalContractorEmail: '',
     onChanged: () => {},
@@ -79,7 +79,7 @@ describe('LienFilingTabs · record steps', () => {
       expect(sheet()!.getAttribute('data-lien-record-sheet')).toBe('notice_sends')
       expect(document.querySelector('[data-lien-record-box]')).toBeNull()
       expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('§ 53.056 notice · $15,722.49')
-      expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('ATI Schertz — As per plans · 650')
+      expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('AXO Schertz — As per plans · 650')
       for (const who of ['Owner', 'Original contractor']) {
         expect((screen.getByLabelText(`${who} send method`) as HTMLSelectElement).value).toBe('certified_mail')
         expect((screen.getByLabelText(`${who} tracking number`) as HTMLInputElement).style.fontSize).toBe('1rem')
@@ -193,7 +193,7 @@ describe('LienFilingTabs · record steps', () => {
       renderWithProviders(<LienFilingTabs {...props({ onClose })} />)
       fireEvent.click(screen.getByRole('button', { name: 'Already sent — record it…' }))
       expect(sheet()!.getAttribute('data-lien-record-sheet')).toBe('notice_by_hand')
-      expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('650 · ATI Schertz — As per plans')
+      expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('650 · AXO Schertz — As per plans')
       expect((screen.getByLabelText('Claim as printed') as HTMLInputElement).value).toBe('15722.49')
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -251,7 +251,7 @@ describe('LienFilingTabs · the kind of work is the trade (v2.6118)', () => {
   it('a job with no trade on its row reads plumbing, as before', () => {
     renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, affidavitForm: 'long' })} />)
     expect(paper()).toContain('was: Plumbing labor and materials.')
-    expect(paper()).not.toContain('was: ATI Schertz')
+    expect(paper()).not.toContain('was: AXO Schertz')
   })
 })
 

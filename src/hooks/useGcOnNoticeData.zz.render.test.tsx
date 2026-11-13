@@ -20,9 +20,9 @@ const TABLES: Record<string, unknown[]> = {
     { id: 'iA', job_id: 'A', amount: 500, status: 'billed', sequence_order: 1 },
     { id: 'iZ', job_id: 'Z', amount: 500, status: 'billed', sequence_order: 1 },
   ],
-  customers: [{ id: 'gc-1', name: 'Knight Builders', address: '', contact_info: null, lien_notice_policy: null, lien_notice_policy_note: null, payment_terms: null, payment_terms_note: null }],
+  customers: [{ id: 'gc-1', name: 'Kestrin Builders', address: '', contact_info: null, lien_notice_policy: null, lien_notice_policy_note: null, payment_terms: null, payment_terms_note: null }],
 }
-let gcName = 'Knight Builders'
+let gcName = 'Kestrin Builders'
 const tablesRead: string[] = []
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -48,7 +48,7 @@ vi.mock('../utils/errorHandling', () => ({
 const { useGcOnNoticeData } = await import('./useGcOnNoticeData')
 
 beforeEach(() => {
-  gcName = 'Knight Builders'
+  gcName = 'Kestrin Builders'
   tablesRead.length = 0
 })
 

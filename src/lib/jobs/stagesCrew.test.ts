@@ -3,7 +3,7 @@ import { buildStagesCrewModel, splitStagesCrew, stagesCrewArchivedTail, stagesCr
 
 const m = (id: string, name: string, archived_at: string | null = null, role: string | null = 'helpers'): StagesCrewMember => ({ user_id: id, users: { name, archived_at, role } })
 
-// Mission Hills (J523) on 2026-09-12: five live accounts, five archived.
+// Mission Flats (J523) on 2026-09-12: five live accounts, five archived.
 const mission: StagesCrewMember[] = [
   m('juan', 'Juan', '2026-05-15T00:00:00Z', 'subcontractor'),
   m('mario', 'Mario', '2026-07-12T00:00:00Z'),

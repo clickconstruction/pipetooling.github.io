@@ -16,12 +16,12 @@ const TODAY = '2026-08-20'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
-  customers: { knight: { medianDays: 35, samples: 12 } },
+  customers: { kestrin: { medianDays: 35, samples: 12 } },
   segments: {
     residential: { medianDays: 14, samples: 96 },
     commercial: { medianDays: 38, samples: 131 },
   },
-  customerTypes: { knight: 'commercial' },
+  customerTypes: { kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
@@ -31,9 +31,9 @@ function job(over: Partial<JobWithDetails>): JobWithDetails {
     id: 'j1',
     hcp_number: '964',
     click_number: null,
-    job_name: 'Pondhill demo',
-    customer_name: 'Knight Contracting',
-    customer_id: 'knight',
+    job_name: 'Penmoor demo',
+    customer_name: 'Kestrin Contracting',
+    customer_id: 'kestrin',
     revenue: 3013,
     payments_made: 0,
     payments: [],
@@ -90,7 +90,7 @@ describe('forecastWeekStart / bucketKeyForExpected', () => {
 
 describe('buildBilledPaymentForecast', () => {
   it('buckets rows by expected date, sums open dollars, and sorts by date', () => {
-    // knight pays in ~35d: billed Aug 4 → expected Sep 8 (following bucket).
+    // kestrin pays in ~35d: billed Aug 4 → expected Sep 8 (following bucket).
     const following = invRow({ id: 'a', amount: 3013, billed_at: '2026-08-04T15:00:00Z' })
     // billed Jun 30 → expected Aug 4 → past.
     const past = invRow({ id: 'b', amount: 900, billed_at: '2026-06-30T15:00:00Z', job: job({ id: 'j2' }) })
@@ -107,11 +107,11 @@ describe('buildBilledPaymentForecast', () => {
   })
 
   it('a first-job GC’s row buckets by the GC pace here when the forecast is given the facts (v2.6034), by its segment without them', () => {
-    // A GC with no history, typed commercial; Knight is the one GC by record with history, so the GC pace here is 35 over 1 payer.
+    // A GC with no history, typed commercial; Kestrin is the one GC by record with history, so the GC pace here is 35 over 1 payer.
     const typed: PaySpeedData = { ...speeds, customerTypes: { ...speeds.customerTypes, newgc: 'commercial' } }
     const row = invRow({ id: 'g', amount: 5000, billed_at: '2026-08-01T15:00:00Z', job: job({ id: 'j9', customer_id: 'newgc', customer_name: 'New GC' }) })
-    const facts = { gcPayerIds: new Set(['knight']), payAppJobIds: new Set(['j9']) }
-    const ctx = paceContextFor({ facts, paySpeeds: typed, payerIds: ['knight', 'newgc'] })
+    const facts = { gcPayerIds: new Set(['kestrin']), payAppJobIds: new Set(['j9']) }
+    const ctx = paceContextFor({ facts, paySpeeds: typed, payerIds: ['kestrin', 'newgc'] })
     const withFacts = buildBilledPaymentForecast([row, invRow({ id: 'k', billed_at: '2026-08-04T15:00:00Z' })], typed, TODAY, null, null, ctx)
     const g = withFacts.buckets.flatMap((b) => b.rows).find((r) => r.invoiceId === 'g')!
     // Aug 1 + 35 = Sep 5, in the following bucket; the words name the GC pace.
@@ -157,7 +157,7 @@ describe('buildBilledPaymentForecast', () => {
   })
 
   it('a promised date overrides the estimate and buckets by the promise', () => {
-    // knight would estimate Sep 8 (following); the promise says Aug 21 (this week).
+    // kestrin would estimate Sep 8 (following); the promise says Aug 21 (this week).
     const r = invRow({ id: 'a', amount: 3013, billed_at: '2026-08-04T15:00:00Z' })
     const f = buildBilledPaymentForecast([r], speeds, TODAY, {
       j1: { promisedYmd: '2026-08-21', markedByName: 'Malachi' },
@@ -178,14 +178,14 @@ describe('buildBilledPaymentForecast', () => {
 
 describe('usual slip (Their Word PR 3)', () => {
   it('buckets a promised row by the promise plus the customer’s usual slip, and says so on the row', () => {
-    // Promised Fri Aug 21 (this week); Knight usually lands 5 days late → Wed Aug 26 = next week's bucket.
+    // Promised Fri Aug 21 (this week); Kestrin usually lands 5 days late → Wed Aug 26 = next week's bucket.
     const rows = [invRow({ billed_at: '2026-07-20T12:00:00Z' })]
     const promises = { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }
     const plain = buildBilledPaymentForecast(rows, speeds, TODAY, promises)
     expect(plain.buckets.find((b) => b.key === 'thisWeek')!.rows).toHaveLength(1)
     expect(plain.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!.slipDays).toBeNull()
 
-    const slipped = buildBilledPaymentForecast(rows, speeds, TODAY, promises, { knight: 5 })
+    const slipped = buildBilledPaymentForecast(rows, speeds, TODAY, promises, { kestrin: 5 })
     const row = slipped.buckets.find((b) => b.key === 'nextWeek')!.rows[0]!
     expect(row).toBeDefined()
     expect(row.slipDays).toBe(5)
@@ -195,10 +195,10 @@ describe('usual slip (Their Word PR 3)', () => {
   })
   it('ignores the slip for unpromised rows and slips under a day', () => {
     const rows = [invRow({ billed_at: '2026-07-20T12:00:00Z' })]
-    const noPromise = buildBilledPaymentForecast(rows, speeds, TODAY, null, { knight: 9 })
+    const noPromise = buildBilledPaymentForecast(rows, speeds, TODAY, null, { kestrin: 9 })
     expect(noPromise.rowCount).toBe(1)
     expect(noPromise.buckets.flatMap((b) => b.rows)[0]!.slipDays).toBeNull()
-    const tiny = buildBilledPaymentForecast(rows, speeds, TODAY, { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }, { knight: 0.4 })
+    const tiny = buildBilledPaymentForecast(rows, speeds, TODAY, { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }, { kestrin: 0.4 })
     expect(tiny.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!.slipDays).toBeNull()
   })
 })

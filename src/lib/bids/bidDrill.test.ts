@@ -11,7 +11,7 @@ const row = (o: Partial<PursuitRow> & { outcome: PursuitRow['outcome']; dateYmd:
 })
 // December 2025 in miniature: 2 won, 4 lost (Malachi 2, nobody 2; Summit 2, Structura 1), nothing open; January: 1 stale open.
 const rows = forecastRows([
-  row({ outcome: 'won', dateYmd: '2025-12-05', bidValue: 100_000, estimatorName: 'Malachi', gcName: 'Knight' }),
+  row({ outcome: 'won', dateYmd: '2025-12-05', bidValue: 100_000, estimatorName: 'Malachi', gcName: 'Kestrin' }),
   row({ outcome: 'won', dateYmd: '2025-12-06', bidValue: 46_000 }),
   row({ outcome: 'lost', dateYmd: '2025-12-09', bidValue: 303_200, gcName: 'R.C. Page' }),
   row({ outcome: 'lost', dateYmd: '2025-12-03', bidValue: 187_300, estimatorName: 'Malachi', gcName: 'Structura' }),

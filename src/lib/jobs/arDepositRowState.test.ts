@@ -14,9 +14,9 @@ const dep = (id: string, remaining: number, over: Partial<{ returned: boolean; c
 })
 
 const targets = [
-  { key: 'inv-992', customerName: 'Done Right Foundation', gcName: '', remaining: 250 },
-  { key: 'inv-868', customerName: 'Done Right Foundation', gcName: '', remaining: 2650 },
-  { key: 'inv-40', customerName: 'Weiss Services LLC', gcName: '', remaining: 1625 },
+  { key: 'inv-992', customerName: 'Dead Level Foundation', gcName: '', remaining: 250 },
+  { key: 'inv-868', customerName: 'Dead Level Foundation', gcName: '', remaining: 2650 },
+  { key: 'inv-40', customerName: 'Welby Services LLC', gcName: '', remaining: 1625 },
 ]
 
 const noSweep: ArExactMatchSweep = { pairs: [], skipped: [], totalCents: 0 }
@@ -24,18 +24,18 @@ const noSweep: ArExactMatchSweep = { pairs: [], skipped: [], totalCents: 0 }
 describe('arDepositRowStates', () => {
   it('names one state per row from the sweep, the recorded payments, the payer read and the balance', () => {
     const sweep: ArExactMatchSweep = {
-      pairs: [{ depositId: 'd-weiss', targetKey: 'inv-40', amountCents: 162500 }],
+      pairs: [{ depositId: 'd-welby', targetKey: 'inv-40', amountCents: 162500 }],
       skipped: [{ amountCents: 25000, depositCount: 2, targetCount: 3 }],
       totalCents: 162500,
     }
     const states = arDepositRowStates({
       deposits: [
-        dep('d-weiss', 1625, { counterparty_name: 'WEISS SERVICES LLC' }),
-        dep('d-drf', 250, { counterparty_name: 'DRF' }),
-        dep('d-elaine', 1855.7, { counterparty_name: 'Elaine Giesber' }),
+        dep('d-welby', 1625, { counterparty_name: 'WELBY SERVICES LLC' }),
+        dep('d-dlf', 250, { counterparty_name: 'DLF' }),
+        dep('d-elaine', 1855.7, { counterparty_name: 'Elaine Gilbrow' }),
         dep('d-done', 0, { counterparty_name: 'Anyone' }),
         dep('d-back', 400, { returned: true }),
-        dep('d-payer', 900, { external_memo: 'Done Right Foundation repair' }),
+        dep('d-payer', 900, { external_memo: 'Dead Level Foundation repair' }),
         dep('d-hand', 77.5, { counterparty_name: 'Unknown Check' }),
       ],
       sweep,
@@ -43,8 +43,8 @@ describe('arDepositRowStates', () => {
       recordedPayments: [{ amount: 1855.7 }],
     })
     expect(Object.fromEntries(states)).toEqual({
-      'd-weiss': 'exact',
-      'd-drf': 'ambiguous',
+      'd-welby': 'exact',
+      'd-dlf': 'ambiguous',
       'd-elaine': 'recorded',
       'd-done': 'applied',
       'd-back': 'returned',
@@ -66,7 +66,7 @@ describe('arDepositRowStates', () => {
   })
 
   it('with no billed lines loaded, a live deposit is simply by hand', () => {
-    const states = arDepositRowStates({ deposits: [dep('d1', 10, { counterparty_name: 'DRF' })], sweep: noSweep, targets: [], recordedPayments: [] })
+    const states = arDepositRowStates({ deposits: [dep('d1', 10, { counterparty_name: 'DLF' })], sweep: noSweep, targets: [], recordedPayments: [] })
     expect(states.get('d1')).toBe('hand')
   })
 })
@@ -110,7 +110,7 @@ describe('closed-out deposits (v2.3529)', () => {
 describe('a deposit the bank returned (v2.3795)', () => {
   it('reads as returned without anyone marking it, wears the bank’s reason, and leaves the header count', () => {
     const states = arDepositRowStates({
-      deposits: [dep('d-bounced', 13680, { bankReturn: { reason: 'Insufficient funds' } }), dep('d-good', 250, { counterparty_name: 'DRF' })],
+      deposits: [dep('d-bounced', 13680, { bankReturn: { reason: 'Insufficient funds' } }), dep('d-good', 250, { counterparty_name: 'DLF' })],
       sweep: noSweep,
       targets,
       recordedPayments: [],

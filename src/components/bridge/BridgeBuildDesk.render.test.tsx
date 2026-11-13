@@ -39,7 +39,7 @@ const pt = (jobId: string, atYmd: string, pct: number, source: PctPoint['source'
 const sess = (jobId: string, workDate: string, hours: number, userId = 'u1'): VectorSession => ({ userId, workDate, hours, jobId, onBid: false, officeJob: false, approved: true, pending: false })
 
 const input: BuildDeskInput = {
-  openJobs: [job('977', 'Springtown', 71_000, 45), job('1017', 'Terrell', null, null), job('878', 'Take 5- Seguin', 124_000, 62), job('1007', 'SPACEX BA-02N Architectural', 170_000, 60), job('1081', 'Adams Pretest', 32_000, 100)],
+  openJobs: [job('977', 'Stonewick', 71_000, 45), job('1017', 'Tarrow', null, null), job('878', 'Tune 5- Seguin', 124_000, 62), job('1007', 'SKYLAB BA-02N Architectural', 170_000, 60), job('1081', 'Adams Pretest', 32_000, 100)],
   points: [pt('977', '2026-09-28', 45), pt('878', '2026-09-01', 62), pt('1007', '2026-09-30', 48), pt('1007', '2026-10-20', 60, 'report'), pt('1081', '2026-10-01', 90), pt('1081', '2026-10-22', 100, 'report')],
   sessions: [sess('977', '2026-10-14', 22), sess('1017', '2026-10-15', 31, 'u2'), sess('878', '2026-10-07', 8), sess('1007', '2026-10-13', 82, 'u3'), sess('1081', '2026-10-21', 14, 'u4')],
   todayYmd: '2026-10-26',
@@ -59,7 +59,7 @@ describe('BridgeBuildDesk (v2.5929)', () => {
     const tiles = screen.getAllByTestId('bridge-build-tile')
     expect(tiles.map((t) => t.textContent)).toEqual(['Moved$23.6k on 2 jobsThe hours and the % agree. The pace lives here.', 'Ate hours, moved nothing53h on 2 jobsA stale % or work going nowhere. One look each says which.', 'Stalled$47.1k, nobody on it1 job with no field hours in 14 days.'])
     const rows = screen.getAllByTestId('bridge-build-row')
-    expect(rows.map((r) => r.textContent?.slice(0, 20))).toEqual(['J1017 · Terrellno co', 'J977 · Springtown$39', 'J878 · Take 5- Segui', 'J1007 · SPACEX BA-02', 'J1081 · Adams Pretes'])
+    expect(rows.map((r) => r.textContent?.slice(0, 20))).toEqual(['J1017 · Tarrowno con', 'J977 · Stonewick$39k', 'J878 · Tune 5- Segui', 'J1007 · SKYLAB BA-02', 'J1081 · Adams Pretes'])
     expect(screen.queryByTestId('bridge-build-row-detail')).toBeNull()
     const stalledHead = rows[2]!.querySelector('button[aria-expanded]')!
     fireEvent.click(stalledHead)
@@ -87,10 +87,10 @@ describe('BridgeBuildDesk (v2.5929)', () => {
     expect(screen.queryByTestId('bridge-build-set-pct')).toBeNull()
     fireEvent.click(rows[1]!.querySelector('button[aria-expanded]')!)
     fireEvent.click(screen.getByTestId('bridge-build-set-pct'))
-    expect(screen.getByRole('dialog', { name: 'Update % done for J977 · Springtown' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Update % done for J977 · Stonewick' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
     fireEvent.click(screen.getByText('Not now'))
-    expect(screen.queryByRole('dialog', { name: 'Update % done for J977 · Springtown' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Update % done for J977 · Stonewick' })).toBeNull()
     expect(onSavePct).not.toHaveBeenCalled()
   })
 

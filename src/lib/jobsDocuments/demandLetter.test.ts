@@ -39,12 +39,12 @@ const FIELDS: DemandLetterFields = {
   businessAddress: '5501 Balcones Dr Ste A141\nAustin, TX 78731',
   businessPhone: '+1 512 360 0599',
   businessEmail: 'office@clickplumbing.com',
-  recipientName: 'Knight Contracting',
-  recipientEmail: 'ap@knight.example',
+  recipientName: 'Kestrin Contracting',
+  recipientEmail: 'ap@kestrin.example',
   recipientAddress: '2904 Corporate CR Ste 114, Flower Mound, TX 75028',
   invoiceNumber: '915',
   invoiceDate: '2026-07-15',
-  serviceDescription: 'Reliant Health — plumbing',
+  serviceDescription: 'Relwyn Health — plumbing',
   invoiceTotal: '3850',
   paymentsReceived: '1138.50',
   outstanding: '2711.50',
@@ -150,7 +150,7 @@ describe('prefill', () => {
   const job = {
     id: 'j1',
     hcp_number: '915',
-    job_name: 'Reliant Health',
+    job_name: 'Relwyn Health',
     last_work_date: '2026-06-28',
     payments: [{ invoice_id: 'a', amount: 1138.5 }],
     invoices: [],
@@ -163,7 +163,7 @@ describe('prefill', () => {
       issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
       senderName: 'Malachi',
       senderEmailFallback: 'office@x.com',
-      recipient: { name: 'Knight Contracting', email: 'ap@k.com', address: 'Flower Mound' },
+      recipient: { name: 'Kestrin Contracting', email: 'ap@k.com', address: 'Flower Mound' },
       priorNotices: [{ date: '2026-07-15', label: 'Invoice sent' }],
       propertyKind: 'non_residential',
       todayYmd: '2026-09-02',
@@ -183,7 +183,7 @@ describe('prefill', () => {
       issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
       senderName: 'Malachi',
       senderEmailFallback: 'office@x.com',
-      recipient: { name: 'Knight Contracting', email: 'ap@k.com', address: 'Flower Mound' },
+      recipient: { name: 'Kestrin Contracting', email: 'ap@k.com', address: 'Flower Mound' },
       priorNotices: [],
       propertyKind: 'non_residential',
       todayYmd: '2026-12-20',
@@ -207,7 +207,7 @@ const STMT_867: DemandStatementInvoice = {
   invoiceNumber: '#867-2608180928',
   sentYmd: '2026-08-18',
   dueYmd: '2026-09-05',
-  lines: [{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', qty: '', amount: '1710.00' }],
+  lines: [{ description: 'Service Visit (HCP #867) Additional gas install and second line under the porch.', qty: '', amount: '1710.00' }],
   total: '1710.00',
   paid: '0.00',
   balance: '1710.00',
@@ -216,10 +216,10 @@ const STMT_867: DemandStatementInvoice = {
 describe('statement of account (v2.3425)', () => {
   const withStatement: DemandLetterFields = {
     ...FIELDS,
-    recipientName: 'RMC- Dudley Mason',
+    recipientName: 'RLC- Dunmere Mallin',
     debtorParty: 'gc',
     statement: [STMT_867],
-    serviceAddress: '628 Terrell Rd, San Antonio, TX 78209',
+    serviceAddress: '628 Tarrow Rd, San Antonio, TX 78209',
     invoiceTotal: '1710.00',
     paymentsReceived: '0.00',
     outstanding: '1710.00',
@@ -228,10 +228,10 @@ describe('statement of account (v2.3425)', () => {
   it('the Re line carries the number the customer saw and the balance; the body reads the bill', () => {
     const text = buildDemandLetterText(withStatement, '2026-09-14')
     expect(text).toContain('Re: Final Demand for Payment — Invoice #867-2608180928 · $1,710.00')
-    expect(text).toContain('You were billed $1,710.00 on August 18, 2026 for the work below at 628 Terrell Rd, San Antonio, TX 78209. The bill was due September 5, 2026.')
+    expect(text).toContain('You were billed $1,710.00 on August 18, 2026 for the work below at 628 Tarrow Rd, San Antonio, TX 78209. The bill was due September 5, 2026.')
     expect(text).toContain('Nothing has been paid.')
     expect(text).toContain('Statement of account')
-    expect(text).toContain('Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.')
+    expect(text).toContain('Service Visit (HCP #867) Additional gas install and second line under the porch.')
     expect(text).toContain('All payments and credits have been allowed.')
     expect(text).not.toContain('Details of Debt')
     expect(text).not.toContain('Service provided:')
@@ -253,7 +253,7 @@ describe('statement of account (v2.3425)', () => {
   it('a snapshot recorded before the statement still renders the four-line debt block', () => {
     const text = buildDemandLetterText({ ...FIELDS, statement: undefined }, '2026-09-02')
     expect(text).toContain('Details of Debt')
-    expect(text).toContain('Service provided: Reliant Health — plumbing')
+    expect(text).toContain('Service provided: Relwyn Health — plumbing')
     expect(text).toContain('Re: Final Demand for Payment — Invoice #915')
   })
 
@@ -261,7 +261,7 @@ describe('statement of account (v2.3425)', () => {
     const second: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#867-2609010800', sentYmd: '2026-09-01', dueYmd: '2026-09-15', lines: [{ description: 'Trim set', qty: '2', amount: '400.00' }], total: '400.00', paid: '100.00', balance: '300.00' }
     const rows = statementRows({ invoices: [STMT_867, second], balance: '2010.00' })
     expect(rows.map((r) => r.kind)).toEqual(['invoice', 'line', 'paid', 'balance', 'invoice', 'line', 'paid', 'balance', 'total'])
-    expect(rows[1]).toEqual({ kind: 'line', left: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', right: '$1,710.00' })
+    expect(rows[1]).toEqual({ kind: 'line', left: 'Service Visit (HCP #867) Additional gas install and second line under the porch.', right: '$1,710.00' })
     expect(rows[5]?.left).toBe('Trim set · Qty 2')
     expect(rows[6]?.right).toBe('−$100.00')
     expect(rows[7]).toEqual({ kind: 'balance', left: 'Balance on this invoice', right: '$300.00' })
@@ -292,7 +292,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
       created_at: '2026-08-18T14:27:00Z',
       estimated_bill_date: '2026-09-05',
       stripe_invoice_id: 'in_1',
-      stripe_invoice_memo: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',
+      stripe_invoice_memo: 'Service Visit (HCP #867) Additional gas install and second line under the porch.',
       bill_to_party: null,
       bill_to_email: null,
       ...over,
@@ -300,10 +300,10 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
   const job = {
     id: 'j867',
     hcp_number: '867',
-    job_name: 'Service Visit — 628 Terrell Rd (HCP 867)',
-    job_address: '628 Terrell Rd, San Antonio, TX 78209',
-    customer_id: 'cust-rizvi',
-    gc_customer_id: 'cust-rmc',
+    job_name: 'Service Visit — 628 Tarrow Rd (HCP 867)',
+    job_address: '628 Tarrow Rd, San Antonio, TX 78209',
+    customer_id: 'cust-rilvo',
+    gc_customer_id: 'cust-rlc',
     bill_to_party: 'gc',
     payments: [{ invoice_id: 'inv-1', amount: 0 }],
     invoices: [],
@@ -312,7 +312,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     ({
       layout: 'simple',
       invoiceNumberDisplay: '#1',
-      lineDescription: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',
+      lineDescription: 'Service Visit (HCP #867) Additional gas install and second line under the porch.',
       serviceLines: [],
       materialLines: [],
       ...over,
@@ -320,7 +320,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
 
   it('prefers what Stripe rendered: the number the customer saw and the lines as they saw them', () => {
     const [st] = buildDemandStatement(job, [
-      { inv: inv({}), doc: doc({}), stripe: { invoiceNumber: '867-2608180928', lines: [{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', quantity: 1, amount: 171000 }] } },
+      { inv: inv({}), doc: doc({}), stripe: { invoiceNumber: '867-2608180928', lines: [{ description: 'Service Visit (HCP #867) Additional gas install and second line under the porch.', quantity: 1, amount: 171000 }] } },
     ])
     expect(st).toMatchObject(STMT_867)
     // v2.4849: the row keeps the bill's id and whether Stripe holds a page for it, for the pay codes.
@@ -343,7 +343,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     ])
     const [bare] = buildDemandStatement(job, [{ inv: inv({ stripe_invoice_id: null, sequence_order: 3 }), doc: null, stripe: null }])
     expect(bare?.invoiceNumber).toBe('#3')
-    expect(bare?.lines).toEqual([{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', qty: '', amount: '1710.00' }])
+    expect(bare?.lines).toEqual([{ description: 'Service Visit (HCP #867) Additional gas install and second line under the porch.', qty: '', amount: '1710.00' }])
     expect(bare?.invoiceNumber).not.toMatch(/^[0-9a-f]{8}$/)
   })
 
@@ -392,7 +392,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
       issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
       senderName: 'Malachi',
       senderEmailFallback: 'office@x.com',
-      recipient: { name: 'RMC- Dudley Mason', email: 'ap@rmc.com', address: '' },
+      recipient: { name: 'RLC- Dunmere Mallin', email: 'ap@rlc.com', address: '' },
       priorNotices: [],
       propertyKind: '',
       todayYmd: '2026-09-14',
@@ -400,7 +400,7 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     expect(f.statement?.[0]?.invoiceNumber).toBe('#867-2608180928')
     expect(f.invoiceNumber).toBe('#867-2608180928')
     expect(f.debtorParty).toBe('gc')
-    expect(f.serviceAddress).toBe('628 Terrell Rd, San Antonio, TX 78209')
+    expect(f.serviceAddress).toBe('628 Tarrow Rd, San Antonio, TX 78209')
     expect(f.outstanding).toBe('1710.00')
   })
 })
@@ -594,7 +594,7 @@ describe('prefill reads the same rule (v2.3515)', () => {
   it('job 258: a multi-bill job still claims the covered bill in full when its own payments are nil', () => {
     const s1 = inv('s1', 8000, '2026-05-20T10:00:00Z', 'paid')
     const s2 = inv('s2', 9800, '2026-08-20T15:58:00Z')
-    const job = { id: 'j258', hcp_number: '258', job_name: 'Dudley Mason', last_work_date: '2026-08-11', payments: [{ invoice_id: 's1', amount: 8000 }], invoices: [inv('s0', 8900, '2026-04-01T10:00:00Z', 'paid'), s1, s2] } as unknown as JobWithDetails
+    const job = { id: 'j258', hcp_number: '258', job_name: 'Dunmere Mallin', last_work_date: '2026-08-11', payments: [{ invoice_id: 's1', amount: 8000 }], invoices: [inv('s0', 8900, '2026-04-01T10:00:00Z', 'paid'), s1, s2] } as unknown as JobWithDetails
     const f = buildDemandLetterPrefill(ctx(job, [s2]))
     expect(f.paymentsReceived).toBe('0.00')
     expect(f.outstanding).toBe('9800.00')
@@ -614,12 +614,12 @@ describe('the letter as a page (v2.4577)', () => {
     paid: '0.00',
     balance: '625.00',
   }
-  const fields: DemandLetterFields = { ...FIELDS, statement: [STMT_867, second], outstanding: '2335.00', serviceAddress: '380 TX-123, Seguin, TX 78155', recipientAddress: '2209 N. 23rd St., McAllen, TX 78501' }
+  const fields: DemandLetterFields = { ...FIELDS, statement: [STMT_867, second], outstanding: '2335.00', serviceAddress: '410 TX-123, Seguin, TX 78155', recipientAddress: '2209 N. 23rd St., McAllen, TX 78501' }
 
   it('opens with the addressee, the subject and the boxed amount, and ends demand → notice history → signature → enclosures', () => {
     const model = buildDemandLetterModel({ ...fields, enclosures: [{ label: 'A-1', kind: 'invoice', title: 'Invoice #1', pages: 1 }] }, '2026-09-14')
     expect(model.slice(0, 4).map((b) => b.kind)).toEqual(['senderBlock', 'addressBlock', 'subject', 'amountBox'])
-    expect(model.find((b) => b.kind === 'subject')).toMatchObject({ kicker: 'Final demand for payment', text: '380 TX-123, Seguin, TX 78155', detail: 'Two unpaid invoices' })
+    expect(model.find((b) => b.kind === 'subject')).toMatchObject({ kicker: 'Final demand for payment', text: '410 TX-123, Seguin, TX 78155', detail: 'Two unpaid invoices' })
     expect(model.find((b) => b.kind === 'amountBox')).toEqual({ kind: 'amountBox', balance: '$2,335.00', deadline: demandDate(fields.deadlineDate) })
     const headings = model.filter((b) => b.kind === 'heading').map((b) => (b.kind === 'heading' ? b.text : ''))
     expect(headings).toEqual(['Statement of account', 'Demand', 'Notice history'])
@@ -631,7 +631,7 @@ describe('the letter as a page (v2.4577)', () => {
   })
 
   it('the addressee reads as an envelope does', () => {
-    expect(recipientLines('Southern Post Construction', '2209 N. 23rd St., McAllen, TX 78501')).toEqual(['Southern Post Construction', '2209 N. 23rd St.', 'McAllen, TX 78501'])
+    expect(recipientLines('Southern Pine Construction', '2209 N. 23rd St., McAllen, TX 78501')).toEqual(['Southern Pine Construction', '2209 N. 23rd St.', 'McAllen, TX 78501'])
     expect(recipientLines('A', '1 Main St\nSuite 2\nAustin, TX 78701')).toEqual(['A', '1 Main St', 'Suite 2', 'Austin, TX 78701'])
     expect(recipientLines('', '')).toEqual(['—'])
     expect(demandSubject([STMT_867], '')).toEqual({ text: 'Invoice #867-2608180928', detail: '' })
@@ -641,7 +641,7 @@ describe('the letter as a page (v2.4577)', () => {
     const t = statementTable({ invoices: [STMT_867, second], balance: '2335.00' })
     expect(t.hasPaid).toBe(false)
     expect(t.rows.map((r) => r.invoice)).toEqual(['#867-2608180928', '#867-2609010101'])
-    expect(t.rows[0]).toMatchObject({ lines: [{ text: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', amount: '' }], sent: 'Aug 18, 2026', due: 'Sep 5, 2026', balance: '$1,710.00' })
+    expect(t.rows[0]).toMatchObject({ lines: [{ text: 'Service Visit (HCP #867) Additional gas install and second line under the porch.', amount: '' }], sent: 'Aug 18, 2026', due: 'Sep 5, 2026', balance: '$1,710.00' })
     expect(t.rows[1]!.lines).toEqual([{ text: 'Change order: irrigation piping', amount: '$307.50' }, { text: 'Change order: drainage pipe · Qty 2', amount: '$317.50' }])
     expect(t.total).toBe('$2,335.00')
     const paid = statementTable({ invoices: [{ ...STMT_867, paid: '500.00', balance: '1210.00' }, second], balance: '1835.00' })

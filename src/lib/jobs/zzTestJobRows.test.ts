@@ -38,7 +38,7 @@ beforeEach(() => {
     row('Z', 'ZZ TEST working', 'Ann Lee'),
     row('S', '  zz test with spaces', 'Ann Lee'),
     row('Y', 'Hill Street remodel', 'ZZ Test Customer'),
-    row('P', 'Marcos Pizza', 'Jazz Hall'),
+    row('P', 'Marcos Bakery', 'Jazz Hall'),
   ]
   invalidateZzTestJobRows()
 })

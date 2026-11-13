@@ -20,7 +20,7 @@ const row = (over: Partial<PaymentRow> = {}): PaymentRow =>
   ({ id: 'p1', amount: 6200, paid_on: '2025-10-28', sent_on: null, note: null, payment_type: 'Check', reference_number: '1042', invoice_id: 'inv-s', mercury_transaction_id: null, ...over })
 const heldBill = { id: 'inv-s', status: 'paid', amount: 6200, stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'paid' } as unknown as JobsLedgerInvoiceRow
 const plainBill = { id: 'inv-p', status: 'billed', amount: 6200, sent_to_customer_at: null, stripe_invoice_id: null } as unknown as JobsLedgerInvoiceRow
-const job = (invoices: JobsLedgerInvoiceRow[]) => ({ id: 'j186', hcp_number: '186', click_number: null, job_name: 'Dudley Mason', revenue: 6200, payments: [], invoices }) as unknown as JobWithDetails
+const job = (invoices: JobsLedgerInvoiceRow[]) => ({ id: 'j186', hcp_number: '186', click_number: null, job_name: 'Dunmere Mallin', revenue: 6200, payments: [], invoices }) as unknown as JobWithDetails
 
 describe('JobPaymentMoveModal', () => {
   it('a check Stripe holds: the window names the four steps before the press', () => {

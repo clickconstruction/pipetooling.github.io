@@ -5,7 +5,7 @@ const matter = (over: Partial<LegalMatterRow>): LegalMatterRow => ({
   id: 'm1',
   payer_key: 'c:tle',
   customer_id: 'tle',
-  payer_name: 'The Learning Experience',
+  payer_name: 'The Reading Corner',
   firm_id: null,
   stage: 'review',
   ready_marked_by: null,
@@ -97,9 +97,9 @@ describe('feeModelOf / indexMatters / releaseRecipients', () => {
 
 describe('buildLegalReview', () => {
   const accounts = [
-    { key: 'c:tle', name: 'The Learning Experience', reviewDays: 69, balance: 15781 },
+    { key: 'c:tle', name: 'The Reading Corner', reviewDays: 69, balance: 15781 },
     { key: 'c:sam', name: 'Sam Coyle', reviewDays: 69, balance: 5355 },
-    { key: 'n:bryan herber', name: 'Bryan Herber', reviewDays: 21, balance: 1239 },
+    { key: 'n:bryan helbrow', name: 'Bryan Helbrow', reviewDays: 21, balance: 1239 },
     { key: 'c:hill', name: 'Hilltop', reviewDays: 30, balance: 6200 },
   ]
   it('a review asked for in a Central evening counts from that evening\'s day', () => {
@@ -125,14 +125,14 @@ describe('buildLegalReview', () => {
     expect(r.balanceUnderReview).toBe(15781 + 5355 + 1239)
   })
   it('with no request, opens on the oldest; closed matters drop out', () => {
-    const r = buildLegalReview(accounts, [matter({ payer_key: 'n:bryan herber', stage: 'written_down' })], '2026-09-11')
+    const r = buildLegalReview(accounts, [matter({ payer_key: 'n:bryan helbrow', stage: 'written_down' })], '2026-09-11')
     expect(r.underReview).toBe(3)
     expect(r.firstKey).toBe('c:tle')
   })
 })
 
 describe('buildFirmActivity', () => {
-  const m1 = matter({ id: 'm1', payer_key: 'c:tle', payer_name: 'The Learning Experience', stage: 'referred' })
+  const m1 = matter({ id: 'm1', payer_key: 'c:tle', payer_name: 'The Reading Corner', stage: 'referred' })
   const m2 = matter({ id: 'm2', payer_key: 'c:sam', payer_name: 'Sam Coyle', stage: 'demand' })
   const e = (id: string, matter_id: string, kind: string, amount: number | null, created_at: string, ack = false) => ({ id, matter_id, kind, amount, body: '', occurred_on: '2026-09-11', meta: {}, via_portal: true, created_by: null, acknowledged_at: ack ? '2026-09-11T00:00:00Z' : null, created_at })
   it('counts only unacknowledged portal entries and opens on a payment first', () => {
@@ -143,7 +143,7 @@ describe('buildFirmActivity', () => {
       e('4', 'm1', 'step', null, '2026-09-11T12:00:00Z', true),
       { ...e('5', 'm2', 'cost', 80, '2026-09-11T08:00:00Z'), via_portal: false },
     ], [m1, m2])
-    expect(a).toEqual(expect.objectContaining({ count: 3, fees: 1, feeTotal: 450, questions: 1, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }))
+    expect(a).toEqual(expect.objectContaining({ count: 3, fees: 1, feeTotal: 450, questions: 1, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Reading Corner', latestAt: '2026-09-11T11:00:00Z' }))
   })
   it('counts the firm’s answers and the sign-offs among them (#41 PR 3)', () => {
     const a = buildFirmActivity([

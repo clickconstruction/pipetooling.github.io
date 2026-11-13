@@ -51,9 +51,9 @@ vi.mock('../../lib/gcStatementRoundIo', async (original) => ({
 }))
 
 const WEEK = gcReviewWeekStartYmd()
-const KNIGHT = { id: 'gc-knight', name: 'Knight Contracting' }
-const LOBERG = { id: 'gc-loberg', name: 'Loberg Contracting' }
-const HARPER = { id: 'gc-harper', name: 'TF Harper' }
+const KESTRIN = { id: 'gc-kestrin', name: 'Kestrin Contracting' }
+const LOWBECK = { id: 'gc-lowbeck', name: 'Lowbeck Contracting' }
+const HALDEN = { id: 'gc-halden', name: 'TF Halden' }
 const OLDCO = { id: 'gc-oldco', name: 'Oldco Builders' }
 
 function job(over: Partial<JobWithDetails> & Pick<JobWithDetails, 'id'>): JobWithDetails {
@@ -79,11 +79,11 @@ function invRow(id: string, j: JobWithDetails, amount: number): StageRow {
   return { kind: 'invoice', job: j, inv: { id, job_id: j.id, amount, status: 'billed', sequence_order: 0, billed_at: '2026-07-01T00:00:00Z', estimated_bill_date: null } as never }
 }
 
-/** Knight $26,000 (checked), Loberg $22,000 (checked and sent), TF Harper $30,000 (nothing yet); Oldco owes only in Collections. */
+/** Kestrin $26,000 (checked), Lowbeck $22,000 (checked and sent), TF Halden $30,000 (nothing yet); Oldco owes only in Collections. */
 const billedActiveRows: StageRow[] = [
-  invRow('i-knight', job({ id: 'j-knight', gcCustomer: KNIGHT, hcp_number: '651', job_name: 'Palomino Trail' }), 26000),
-  invRow('i-loberg', job({ id: 'j-loberg', gcCustomer: LOBERG, hcp_number: '186', job_name: 'Quarry Bend' }), 22000),
-  invRow('i-harper', job({ id: 'j-harper', gcCustomer: HARPER, hcp_number: '790', job_name: 'Terrell Rd' }), 30000),
+  invRow('i-kestrin', job({ id: 'j-kestrin', gcCustomer: KESTRIN, hcp_number: '651', job_name: 'Palomino Trail' }), 26000),
+  invRow('i-lowbeck', job({ id: 'j-lowbeck', gcCustomer: LOWBECK, hcp_number: '186', job_name: 'Quarry Bend' }), 22000),
+  invRow('i-halden', job({ id: 'j-halden', gcCustomer: HALDEN, hcp_number: '790', job_name: 'Tarrow Rd' }), 30000),
 ]
 const collectionsRows: StageRow[] = [invRow('i-oldco', job({ id: 'j-oldco', gcCustomer: OLDCO, hcp_number: '412', job_name: 'Heron Ct' }), 5000)]
 
@@ -107,7 +107,7 @@ const props = (over: Partial<ComponentProps<typeof JobsGcReviewModal>> = {}): Co
   ...over,
 })
 
-/** Past the week's load: Knight's row reads Checked once the certifications are in. */
+/** Past the week's load: Kestrin's row reads Checked once the certifications are in. */
 const open = (over: Partial<ComponentProps<typeof JobsGcReviewModal>> = {}) =>
   renderSettled(<JobsGcReviewModal {...props(over)} />, { loaded: () => screen.findByRole('button', { name: 'Check: 1 to check, 2 of 3 done — you are here' }) })
 
@@ -115,8 +115,8 @@ const rows = () => screen.getAllByTestId('gc-worklist-row')
 const rowFor = (name: string) => rows().find((el) => within(el).queryByText(name))!
 
 beforeEach(() => {
-  certs.rows = [cert(KNIGHT.id, 26000), cert(LOBERG.id, 22000)]
-  marks.rows = [sentMark(LOBERG.id)]
+  certs.rows = [cert(KESTRIN.id, 26000), cert(LOWBECK.id, 22000)]
+  marks.rows = [sentMark(LOWBECK.id)]
   senders.map = new Map()
 })
 
@@ -128,28 +128,28 @@ describe('JobsGcReviewModal', () => {
     expect(screen.getByRole('button', { name: 'Done: 0 of 3' })).toBeTruthy()
     expect(rows()).toHaveLength(3)
     // Each GC once; its bills stay folded until asked for.
-    expect(screen.getAllByText('Knight Contracting')).toHaveLength(1)
+    expect(screen.getAllByText('Kestrin Contracting')).toHaveLength(1)
     expect(screen.queryByRole('table')).toBeNull()
     expect(screen.getByText('Total outstanding').textContent).toContain('$83,000.00')
   })
 
   it('a row opens onto its statement: the chips, Share and the bills', async () => {
     await open()
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-    const knight = within(rowFor('Knight Contracting'))
-    expect(knight.getByRole('table')).toBeTruthy()
-    expect(knight.getByText(/651 · Palomino Trail/)).toBeTruthy()
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+    const kestrin = within(rowFor('Kestrin Contracting'))
+    expect(kestrin.getByRole('table')).toBeTruthy()
+    expect(kestrin.getByText(/651 · Palomino Trail/)).toBeTruthy()
     // The bill's two lien waivers (v2.4280): nothing started on an open bill. Calm since v2.4317, like the Bill tab:
     // grey until a waiver is under way, so amber means a step is owed on one you started.
-    expect(knight.getByText('Lien waivers')).toBeTruthy()
-    const waivers = knight.getByTestId('gc-review-waivers')
+    expect(kestrin.getByText('Lien waivers')).toBeTruthy()
+    const waivers = kestrin.getByTestId('gc-review-waivers')
     expect(waivers.textContent).toContain('Conditional · not added')
     expect(waivers.textContent).toContain('Unconditional · when paid')
     expect(waivers.textContent).not.toContain('send it')
-    expect(knight.getByText(/✓ Certified · Taunya/)).toBeTruthy()
-    expect(knight.getByRole('button', { name: 'Share statement for Knight Contracting' })).toBeTruthy()
+    expect(kestrin.getByText(/✓ Certified · Taunya/)).toBeTruthy()
+    expect(kestrin.getByRole('button', { name: 'Share statement for Kestrin Contracting' })).toBeTruthy()
     expect(screen.getAllByRole('table')).toHaveLength(1)
-    fireEvent.click(knight.getByRole('button', { name: 'Hide Knight Contracting’s bills' }))
+    fireEvent.click(kestrin.getByRole('button', { name: 'Hide Kestrin Contracting’s bills' }))
     expect(screen.queryByRole('table')).toBeNull()
   })
 
@@ -168,12 +168,12 @@ describe('JobsGcReviewModal', () => {
     try {
       const onOpenJob = vi.fn()
       await open({ onOpenJob })
-      fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-      const knight = within(rowFor('Knight Contracting'))
-      expect(knight.queryByRole('table')).toBeNull()
-      const card = knight.getByTestId('gc-review-bills')
+      fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+      const kestrin = within(rowFor('Kestrin Contracting'))
+      expect(kestrin.queryByRole('table')).toBeNull()
+      const card = kestrin.getByTestId('gc-review-bills')
       fireEvent.click(within(card).getByRole('button', { name: '651 · Palomino Trail' }))
-      expect(onOpenJob).toHaveBeenCalledWith('j-knight')
+      expect(onOpenJob).toHaveBeenCalledWith('j-kestrin')
       expect(card.textContent).toContain('$26,000.00 open')
       // "Cust" is not in the job's name, so the line under the address leads with it.
       expect(card.querySelector('.when')?.textContent).toMatch(/^Cust · billed \w{3} \d{1,2}, 2026 · \d+ d$/)
@@ -189,7 +189,7 @@ describe('JobsGcReviewModal', () => {
     const view = await open()
     fireEvent.click(screen.getByRole('button', { name: /^Send:/ }))
     expect(rows()).toHaveLength(1)
-    expect(rowFor('Knight Contracting')).toBeTruthy()
+    expect(rowFor('Kestrin Contracting')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('1 of 3 GCs — checked and waiting to go out · $26,000.00')
     // The GC the week asks nothing of is not "waiting to go out" either.
     expect(screen.queryByText('Oldco Builders')).toBeNull()
@@ -203,31 +203,31 @@ describe('JobsGcReviewModal', () => {
 
   it('the next step opens the window that does it', async () => {
     await open()
-    fireEvent.click(within(rowFor('TF Harper')).getByRole('button', { name: 'Check bills' }))
-    expect(await screen.findByRole('dialog', { name: /TF Harper/ })).toBeTruthy()
+    fireEvent.click(within(rowFor('TF Halden')).getByRole('button', { name: 'Check bills' }))
+    expect(await screen.findByRole('dialog', { name: /TF Halden/ })).toBeTruthy()
   })
 
   it('Preview shows the statement over the dialog, and Back returns to what was typed', async () => {
     const windowOpen = vi.spyOn(window, 'open')
     await open()
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
-    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Kestrin Contracting' }))
     // The header (v2.4262): no GC address on file, so To starts empty and a typed address is picked from the menu.
     fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
-    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
-    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
-    expect(dialog.getByTestId('rcp-readback').textContent).toBe('Goes to ap@knight.example. Their reply comes to you.')
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@kestrin.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@kestrin\.example/ }))
+    expect(dialog.getByTestId('rcp-readback').textContent).toBe('Goes to ap@kestrin.example. Their reply comes to you.')
     fireEvent.click(dialog.getByRole('button', { name: 'Preview' }))
-    const preview = await screen.findByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })
+    const preview = await screen.findByRole('dialog', { name: 'Preview: Statement to Kestrin Contracting' })
     expect(within(preview).getByText('Preview. Nothing has been sent.')).toBeTruthy()
-    const frame = within(preview).getByTitle('Preview: Statement to Knight Contracting') as HTMLIFrameElement
+    const frame = within(preview).getByTitle('Preview: Statement to Kestrin Contracting') as HTMLIFrameElement
     expect(frame.getAttribute('srcdoc')).toContain('Palomino Trail')
     expect(frame.getAttribute('srcdoc')).toContain('<base target="_blank">')
     expect(windowOpen).not.toHaveBeenCalled()
     // Escape closes the preview alone; the dialog and its address are still there.
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Remove ap@knight.example from To' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Preview: Statement to Kestrin Contracting' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Remove ap@kestrin.example from To' })).toBeTruthy()
     windowOpen.mockRestore()
   })
 
@@ -272,30 +272,30 @@ describe('JobsGcReviewModal', () => {
     await open({ onOpenJobDetail })
     fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
     const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
-    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
-    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-    expect(knight.getByText('1 bill — what Knight Contracting owes').nextElementSibling?.textContent).toBe('$26,000.00')
-    fireEvent.click(knight.getByRole('button', { name: '651 · Palomino Trail' }))
-    expect(onOpenJobDetail).toHaveBeenCalledWith('j-knight')
+    const kestrin = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Kestrin Contracting'))!)
+    fireEvent.click(kestrin.getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+    expect(kestrin.getByText('1 bill — what Kestrin Contracting owes').nextElementSibling?.textContent).toBe('$26,000.00')
+    fireEvent.click(kestrin.getByRole('button', { name: '651 · Palomino Trail' }))
+    expect(onOpenJobDetail).toHaveBeenCalledWith('j-kestrin')
     expect(sheet.getAllByTestId('gc-call-sheet-row')).toHaveLength(3)
   })
 
   it('a GC’s Collections bills are on its call sheet, outside its total', async () => {
-    const knightInCollections = invRow('i-knight-old', job({ id: 'j-knight-old', gcCustomer: KNIGHT, hcp_number: '412', job_name: 'Heron Ct' }), 1500)
-    await open({ collectionsRows: [...collectionsRows, knightInCollections] })
+    const kestrinInCollections = invRow('i-kestrin-old', job({ id: 'j-kestrin-old', gcCustomer: KESTRIN, hcp_number: '412', job_name: 'Heron Ct' }), 1500)
+    await open({ collectionsRows: [...collectionsRows, kestrinInCollections] })
     fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
     const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
-    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
-    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-    expect(knight.getAllByTestId('gc-bill-line')).toHaveLength(2)
-    expect(knight.getByText(/not in the \$26,000\.00 above: \$1,500\.00/)).toBeTruthy()
+    const kestrin = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Kestrin Contracting'))!)
+    fireEvent.click(kestrin.getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+    expect(kestrin.getAllByTestId('gc-bill-line')).toHaveLength(2)
+    expect(kestrin.getByText(/not in the \$26,000\.00 above: \$1,500\.00/)).toBeTruthy()
   })
 
   it('By Development lists each development once, with its bills inside and no track', async () => {
     const SAGE = { id: 'dev-sage', name: 'Sage Meadows' }
     const rowsWithDevelopment = [
-      invRow('i-knight', job({ id: 'j-knight', gcCustomer: KNIGHT, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000),
-      invRow('i-loberg', job({ id: 'j-loberg', gcCustomer: LOBERG, hcp_number: '186', job_name: 'Quarry Bend' }), 22000),
+      invRow('i-kestrin', job({ id: 'j-kestrin', gcCustomer: KESTRIN, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000),
+      invRow('i-lowbeck', job({ id: 'j-lowbeck', gcCustomer: LOWBECK, hcp_number: '186', job_name: 'Quarry Bend' }), 22000),
     ]
     await renderSettled(<JobsGcReviewModal {...props({ billedActiveRows: rowsWithDevelopment, collectionsRows: [] })} />, { loaded: () => screen.findByRole('button', { name: /^Send: 1 to send/ }) })
     fireEvent.click(screen.getByRole('button', { name: 'By Development' }))
@@ -332,8 +332,8 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     const onCopyForEmail = vi.fn()
     const onPrint = vi.fn()
     await open({ onCopyForEmail, onPrint })
-    expect(within(rowFor('TF Harper')).getByTitle(GC_STATEMENT_UNCHECKED_WORDS).getAttribute('data-state')).toBe('locked')
-    const menu = openShare('TF Harper', () => rowFor('TF Harper'))
+    expect(within(rowFor('TF Halden')).getByTitle(GC_STATEMENT_UNCHECKED_WORDS).getAttribute('data-state')).toBe('locked')
+    const menu = openShare('TF Halden', () => rowFor('TF Halden'))
     expect(menu.getByTestId('gc-statement-held').textContent).toBe(GC_STATEMENT_UNCHECKED_WORDS)
     for (const name of ['Draft Message', 'Copy', 'Print']) {
       expect(door(menu, name).disabled).toBe(true)
@@ -341,7 +341,7 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     }
     expect(onCopyForEmail).not.toHaveBeenCalled()
     expect(onPrint).not.toHaveBeenCalled()
-    expect(screen.queryByRole('dialog', { name: 'Email statement to TF Harper' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Email statement to TF Halden' })).toBeNull()
     // Only the statement waits: finding a check is not sending one.
     expect(door(menu, 'Find a check…').disabled).toBe(false)
   })
@@ -350,26 +350,26 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     const onCopyForEmail = vi.fn()
     const onPrint = vi.fn()
     await open({ onCopyForEmail, onPrint })
-    const knight = () => rowFor('Knight Contracting')
-    let menu = openShare('Knight Contracting', knight)
+    const kestrin = () => rowFor('Kestrin Contracting')
+    let menu = openShare('Kestrin Contracting', kestrin)
     expect(menu.queryByTestId('gc-statement-held')).toBeNull()
     fireEvent.click(door(menu, 'Copy'))
     expect(onCopyForEmail).toHaveBeenCalledTimes(1)
-    expect(onCopyForEmail.mock.calls[0]![0]).toMatchObject({ gcId: KNIGHT.id })
-    fireEvent.click(within(knight()).getByRole('button', { name: 'Share statement for Knight Contracting' }))
-    menu = within(within(knight()).getByRole('menu'))
+    expect(onCopyForEmail.mock.calls[0]![0]).toMatchObject({ gcId: KESTRIN.id })
+    fireEvent.click(within(kestrin()).getByRole('button', { name: 'Share statement for Kestrin Contracting' }))
+    menu = within(within(kestrin()).getByRole('menu'))
     fireEvent.click(door(menu, 'Print'))
     expect(onPrint).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(knight()).getByRole('button', { name: 'Share statement for Knight Contracting' }))
-    menu = within(within(knight()).getByRole('menu'))
+    fireEvent.click(within(kestrin()).getByRole('button', { name: 'Share statement for Kestrin Contracting' }))
+    menu = within(within(kestrin()).getByRole('menu'))
     fireEvent.click(door(menu, 'Draft Message'))
-    expect(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Email statement to Kestrin Contracting' })).toBeTruthy()
   })
 
   it('checked, then a bill landed: the doors wait for the re-check', async () => {
-    certs.rows = [cert(KNIGHT.id, 25000), cert(LOBERG.id, 22000)]
+    certs.rows = [cert(KESTRIN.id, 25000), cert(LOWBECK.id, 22000)]
     await renderSettled(<JobsGcReviewModal {...props()} />, { loaded: () => screen.findByRole('button', { name: /^Check: 2 to check/ }) })
-    const menu = openShare('Knight Contracting', () => rowFor('Knight Contracting'))
+    const menu = openShare('Kestrin Contracting', () => rowFor('Kestrin Contracting'))
     expect(menu.getByTestId('gc-statement-held').textContent).toBe(GC_STATEMENT_UNCHECKED_WORDS)
     expect(door(menu, 'Copy').disabled).toBe(true)
   })
@@ -387,7 +387,7 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     vi.mocked(listGcReviewCertifications).mockRejectedValueOnce(new Error('offline'))
     await renderSettled(<JobsGcReviewModal {...props()} />, { loaded: () => screen.findByRole('button', { name: /^Check: 2 to check/ }) })
     await settle()
-    const menu = openShare('Knight Contracting', () => rowFor('Knight Contracting'))
+    const menu = openShare('Kestrin Contracting', () => rowFor('Kestrin Contracting'))
     expect(menu.getByTestId('gc-statement-held').textContent).toBe('This week’s checks could not be read. Close GC Review and open it again.')
     expect(door(menu, 'Draft Message').disabled).toBe(true)
   })
@@ -397,7 +397,7 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     await open({ onPrint })
     fireEvent.click(screen.getByRole('button', { name: 'Print all' }))
     expect(onPrint).toHaveBeenCalledTimes(1)
-    expect((onPrint.mock.calls[0]![0] as Array<{ gcName: string }>).map((g) => g.gcName)).toEqual(['Knight Contracting', 'Loberg Contracting', 'Oldco Builders'])
+    expect((onPrint.mock.calls[0]![0] as Array<{ gcName: string }>).map((g) => g.gcName)).toEqual(['Kestrin Contracting', 'Lowbeck Contracting', 'Oldco Builders'])
     expect(await screen.findByText('3 printed · 1 held: not checked this week')).toBeTruthy()
   })
 
@@ -406,16 +406,16 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     await open({ onSendStatement })
     fireEvent.click(screen.getByRole('button', { name: 'Share the whole GC Review report' }))
     const dialog = within(await screen.findByRole('dialog', { name: 'Share the whole GC Review report' }))
-    expect(dialog.getByTestId('gc-report-held').textContent).toContain('Held, not checked this week: TF Harper')
+    expect(dialog.getByTestId('gc-report-held').textContent).toContain('Held, not checked this week: TF Halden')
     expect(dialog.getByText(/^3 GC sections/)).toBeTruthy()
     fireEvent.change(dialog.getByPlaceholderText('name@example.com'), { target: { value: 'office@example.com' } })
     fireEvent.click(dialog.getByRole('button', { name: 'Send report' }))
     await waitFor(() => expect(onSendStatement).toHaveBeenCalledTimes(1))
     const sent = onSendStatement.mock.calls[0]![0]
     expect(sent.groupBy).toBe('all')
-    expect(sent.emailHtml).toContain('Held, not checked this week: TF Harper')
+    expect(sent.emailHtml).toContain('Held, not checked this week: TF Halden')
     expect(sent.emailHtml).toContain('Palomino Trail')
-    expect(sent.emailHtml).not.toContain('Terrell Rd')
+    expect(sent.emailHtml).not.toContain('Tarrow Rd')
     expect(sent.total).toBe(26000 + 22000 + 5000)
     expect(await screen.findByText('3 sent · 1 held: not checked this week')).toBeTruthy()
   })
@@ -423,7 +423,7 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
   it('By Development, Print all prints every section: development statements are not held', async () => {
     const onPrint = vi.fn()
     const SAGE = { id: 'dev-sage', name: 'Sage Meadows' }
-    const withDevelopment = [invRow('i-knight', job({ id: 'j-knight', gcCustomer: KNIGHT, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000), ...billedActiveRows.slice(1)]
+    const withDevelopment = [invRow('i-kestrin', job({ id: 'j-kestrin', gcCustomer: KESTRIN, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000), ...billedActiveRows.slice(1)]
     await open({ billedActiveRows: withDevelopment, onPrint })
     fireEvent.click(screen.getByRole('button', { name: 'By Development' }))
     fireEvent.click(screen.getByRole('button', { name: 'Print all' }))
@@ -435,11 +435,11 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
   it('a send the server holds shows its words in the dialog', async () => {
     const onSendStatement = vi.fn(async () => ({ ok: false, error: GC_STATEMENT_UNCHECKED_WORDS }))
     await open({ onSendStatement })
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
-    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Kestrin Contracting' }))
     fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
-    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
-    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@kestrin.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@kestrin\.example/ }))
     fireEvent.click(dialog.getByRole('button', { name: 'Send statement' }))
     expect(await dialog.findByText(GC_STATEMENT_UNCHECKED_WORDS)).toBeTruthy()
     expect(onSendStatement).toHaveBeenCalledTimes(1)
@@ -463,51 +463,51 @@ describe('JobsGcReviewModal — each write reads the round again through useGcSt
 
   it('Save mark writes the mark, then the week’s marks are read again and the GC counts as sent', async () => {
     await open()
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'or mark sent' }))
-    const dialog = within(await screen.findByRole('dialog', { name: 'Mark Knight Contracting statement sent' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'or mark sent' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Mark Kestrin Contracting statement sent' }))
     const before = reads(listGcStatementRoundMarks)
-    marks.rows = [sentMark(LOBERG.id), sentMark(KNIGHT.id)]
+    marks.rows = [sentMark(LOWBECK.id), sentMark(KESTRIN.id)]
     fireEvent.click(dialog.getByRole('button', { name: 'Save mark' }))
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mark Knight Contracting statement sent' })).toBeNull())
-    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KNIGHT.id, action: 'sent', week_start: WEEK }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mark Kestrin Contracting statement sent' })).toBeNull())
+    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KESTRIN.id, action: 'sent', week_start: WEEK }))
     expect(reads(listGcStatementRoundMarks)).toBe(before + 1)
     expect(await screen.findByRole('button', { name: /^Send: .*2 of 3 done/ })).toBeTruthy()
   })
 
   it('undo clears the week’s mark, then the marks are read again and the GC waits to be sent', async () => {
     await open()
-    fireEvent.click(within(rowFor('Loberg Contracting')).getByRole('button', { name: 'Show Loberg Contracting’s bills' }))
+    fireEvent.click(within(rowFor('Lowbeck Contracting')).getByRole('button', { name: 'Show Lowbeck Contracting’s bills' }))
     const before = reads(listGcStatementRoundMarks)
     marks.rows = []
-    fireEvent.click(within(rowFor('Loberg Contracting')).getByRole('button', { name: 'undo' }))
+    fireEvent.click(within(rowFor('Lowbeck Contracting')).getByRole('button', { name: 'undo' }))
     await waitFor(() => expect(reads(listGcStatementRoundMarks)).toBe(before + 1))
-    expect(vi.mocked(deleteGcStatementRoundMark)).toHaveBeenCalledWith(WEEK, LOBERG.id)
+    expect(vi.mocked(deleteGcStatementRoundMark)).toHaveBeenCalledWith(WEEK, LOWBECK.id)
     expect(await screen.findByRole('button', { name: /^Send: 2 to send, 0 of 3 done/ })).toBeTruthy()
   })
 
   it('picking an account man saves it, then the senders are read again and the row names him', async () => {
     await open()
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'pick an account man' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'pick an account man' }))
     const before = reads(listGcStatementSenders)
-    senders.map = new Map([[KNIGHT.id, 'u-taunya']])
-    fireEvent.change(screen.getByRole('combobox', { name: 'Account man for Knight Contracting' }), { target: { value: 'u-taunya' } })
+    senders.map = new Map([[KESTRIN.id, 'u-taunya']])
+    fireEvent.change(screen.getByRole('combobox', { name: 'Account man for Kestrin Contracting' }), { target: { value: 'u-taunya' } })
     await waitFor(() => expect(reads(listGcStatementSenders)).toBe(before + 1))
-    expect(vi.mocked(setGcStatementSender)).toHaveBeenCalledWith(KNIGHT.id, 'u-taunya')
-    expect(await within(rowFor('Knight Contracting')).findByText(/account man: Taunya/)).toBeTruthy()
+    expect(vi.mocked(setGcStatementSender)).toHaveBeenCalledWith(KESTRIN.id, 'u-taunya')
+    expect(await within(rowFor('Kestrin Contracting')).findByText(/account man: Taunya/)).toBeTruthy()
   })
 
   it('checking a GC’s bills saves the check, then the week’s checks are read again and the GC counts as checked', async () => {
     await open()
-    fireEvent.click(within(rowFor('TF Harper')).getByRole('button', { name: 'Check bills' }))
-    const dialog = within(await screen.findByRole('dialog', { name: /TF Harper/ }))
-    fireEvent.click(dialog.getByRole('checkbox', { name: 'Reviewed 790 Terrell Rd' }))
+    fireEvent.click(within(rowFor('TF Halden')).getByRole('button', { name: 'Check bills' }))
+    const dialog = within(await screen.findByRole('dialog', { name: /TF Halden/ }))
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'Reviewed 790 Tarrow Rd' }))
     const before = reads(listGcReviewCertifications)
-    certs.rows = [cert(KNIGHT.id, 26000), cert(LOBERG.id, 22000), cert(HARPER.id, 30000)]
+    certs.rows = [cert(KESTRIN.id, 26000), cert(LOWBECK.id, 22000), cert(HALDEN.id, 30000)]
     fireEvent.click(dialog.getByRole('button', { name: 'Check only' }))
     await waitFor(() => expect(reads(listGcReviewCertifications)).toBe(before + 1))
-    expect(vi.mocked(insertGcReviewCertification)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: HARPER.id, week_start: WEEK, total: 30000 }))
+    expect(vi.mocked(insertGcReviewCertification)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: HALDEN.id, week_start: WEEK, total: 30000 }))
     expect(await screen.findByRole('button', { name: /^Check: .*3 of 3 done/ })).toBeTruthy()
   })
 
@@ -515,13 +515,13 @@ describe('JobsGcReviewModal — each write reads the round again through useGcSt
     await open()
     fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
     const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
-    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
-    fireEvent.click(knight.getByRole('radio', { name: 'Cool' }))
-    fireEvent.change(knight.getByLabelText('What was said about Knight Contracting'), { target: { value: 'Says the check goes out Friday.' } })
+    const kestrin = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Kestrin Contracting'))!)
+    fireEvent.click(kestrin.getByRole('radio', { name: 'Cool' }))
+    fireEvent.change(kestrin.getByLabelText('What was said about Kestrin Contracting'), { target: { value: 'Says the check goes out Friday.' } })
     const before = reads(listGcStatementRoundMarks)
     fireEvent.click(sheet.getByRole('button', { name: 'Save 1 answer' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Call sheet/ })).toBeNull())
-    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KNIGHT.id, action: 'contacted', temperature: 'cool' }))
+    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KESTRIN.id, action: 'contacted', temperature: 'cool' }))
     expect(reads(listGcStatementRoundMarks)).toBe(before + 1)
   })
 })

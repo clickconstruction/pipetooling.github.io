@@ -27,12 +27,12 @@ const row = (over: Partial<OwnerToConfirmRow> = {}): OwnerToConfirmRow => ({
   jobId: 'j1',
   hcpNumber: '650',
   clickNumber: '',
-  jobAddress: '5498 Cibolo Valley Dr 200, Schertz, TX 78108',
+  jobAddress: '5498 Cinder Valley Dr 200, Schertz, TX 78108',
   status: 'billed',
-  customerId: 'c-ati',
-  customerName: 'ATI Schertz',
-  gcCustomerId: 'c-loberg',
-  gcName: 'Loberg Contracting',
+  customerId: 'c-axo',
+  customerName: 'AXO Schertz',
+  gcCustomerId: 'c-lowbeck',
+  gcName: 'Lowbeck Contracting',
   customerAddressId: null,
   hasOwner: false,
   ownerConfirmed: false,
@@ -45,10 +45,10 @@ const row = (over: Partial<OwnerToConfirmRow> = {}): OwnerToConfirmRow => ({
 
 const parcel = (over: Partial<ParcelRecord> = {}): ParcelRecord => ({
   propId: '12345',
-  ownerName: 'SCHERTZ STATION LTD',
+  ownerName: 'SAMPLE STATION LTD',
   nameCare: '',
   legalDescription: 'LOT 1 BLK 2',
-  situsAddress: '5498 CIBOLO VALLEY DR, SCHERTZ, TX 78108',
+  situsAddress: '5498 CINDER VALLEY DR, SCHERTZ, TX 78108',
   mailingAddress: '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209',
   county: 'Guadalupe',
   source: 'Guadalupe Appraisal District',
@@ -63,27 +63,27 @@ describe('ownerKind', () => {
     }
   })
   it('companies via ownerLooksLikeCompany; the rest are people; "USA Properties LLC" is a company', () => {
-    expect(ownerKind('SCHERTZ STATION LTD')).toBe('company')
+    expect(ownerKind('SAMPLE STATION LTD')).toBe('company')
     expect(ownerKind('TC/JP SEGUIN 2019 LLC')).toBe('company')
     expect(ownerKind('USA PROPERTIES LLC')).toBe('company')
-    expect(ownerKind('KHAN UMAR & BANGASH SHAZMEENA')).toBe('individual')
+    expect(ownerKind('KARROW ULRIC & BARROWBY SHELMINA')).toBe('individual')
     expect(ownerKind('')).toBe('individual')
   })
 })
 
 describe('isLandlord', () => {
   it('true when a customer row (not the builder) does not match the roll owner', () => {
-    expect(isLandlord({ ownerName: 'SCHERTZ STATION LTD', customerName: 'ATI Schertz', gcName: 'Loberg Contracting' })).toBe(true)
+    expect(isLandlord({ ownerName: 'SAMPLE STATION LTD', customerName: 'AXO Schertz', gcName: 'Lowbeck Contracting' })).toBe(true)
   })
   it('false when the customer is the owner (normalized), with no customer row, or when the customer is the builder', () => {
-    expect(isLandlord({ ownerName: 'ATI SCHERTZ, LLC', customerName: 'ATI Schertz', gcName: 'Loberg Contracting' })).toBe(false)
-    expect(isLandlord({ ownerName: 'SCHERTZ STATION LTD', customerName: '', gcName: 'Loberg Contracting' })).toBe(false)
-    expect(isLandlord({ ownerName: 'SCHERTZ STATION LTD', customerName: 'Southern Post Construction', gcName: '' })).toBe(false)
-    expect(isLandlord({ ownerName: 'SCHERTZ STATION LTD', customerName: 'Loberg Contracting', gcName: 'Loberg Contracting' })).toBe(false)
+    expect(isLandlord({ ownerName: 'AXO SCHERTZ, LLC', customerName: 'AXO Schertz', gcName: 'Lowbeck Contracting' })).toBe(false)
+    expect(isLandlord({ ownerName: 'SAMPLE STATION LTD', customerName: '', gcName: 'Lowbeck Contracting' })).toBe(false)
+    expect(isLandlord({ ownerName: 'SAMPLE STATION LTD', customerName: 'Southern Pine Construction', gcName: '' })).toBe(false)
+    expect(isLandlord({ ownerName: 'SAMPLE STATION LTD', customerName: 'Lowbeck Contracting', gcName: 'Lowbeck Contracting' })).toBe(false)
   })
   it('normalizeOwnerName drops punctuation and entity suffixes', () => {
-    expect(normalizeOwnerName('ATI Schertz, LLC')).toBe('ati schertz')
-    expect(normalizeOwnerName('The Loberg Contracting Co.')).toBe('loberg contracting')
+    expect(normalizeOwnerName('AXO Schertz, LLC')).toBe('axo schertz')
+    expect(normalizeOwnerName('The Lowbeck Contracting Co.')).toBe('lowbeck contracting')
   })
 })
 
@@ -91,7 +91,7 @@ describe('readsAs', () => {
   it('a landlord: the owner is not the tenant customer; on a commercial job mail elsewhere is not a reading (v2.3688)', () => {
     const chips = readsAs(row(), parcel())
     expect(chips.map((c) => [c.key, c.tone])).toEqual([['landlord', 'amber']])
-    expect(chips[0]!.label).toBe('landlord · ATI Schertz is the tenant')
+    expect(chips[0]!.label).toBe('landlord · AXO Schertz is the tenant')
     expect(eligibleForUseAll(chips)).toBe(true)
     expect(readsAs(row({ propertyKind: 'non_residential' }), parcel()).map((c) => c.key)).toEqual(['landlord'])
   })
@@ -104,15 +104,15 @@ describe('readsAs', () => {
     expect(chips[1]!.label).toBe('mail elsewhere — the roll may be stale')
   })
   it('a public owner reads red and is not Use-all eligible; no landlord chip stacks on it', () => {
-    const chips = readsAs(row({ customerName: 'Knight Contracting', gcName: 'Knight Contracting', jobAddress: '1200 Kenney Fort Blvd, Round Rock' }), parcel({ ownerName: 'CITY OF ROUND ROCK', mailingAddress: '221 E MAIN ST, ROUND ROCK, TX 78664' }))
+    const chips = readsAs(row({ customerName: 'Kestrin Contracting', gcName: 'Kestrin Contracting', jobAddress: '1200 Kelby Fort Blvd, Round Rock' }), parcel({ ownerName: 'CITY OF ROUND ROCK', mailingAddress: '221 E MAIN ST, ROUND ROCK, TX 78664' }))
     expect(chips.map((c) => c.key)).toEqual(['public'])
     expect(chips[0]!.label).toBe('public owner — bond claim, not a lien')
     expect(eligibleForUseAll(chips)).toBe(false)
   })
   it('an individual who gets mail at the property is a likely homestead (red), with no mail-elsewhere chip', () => {
     const chips = readsAs(
-      row({ jobAddress: '102 Jacob Roberts, Blanco, TX 78606', customerName: 'Michael Palmer', gcCustomerId: null, gcName: '' }),
-      parcel({ ownerName: 'LAGAN JOEL C & SHANNON', mailingAddress: '102 JACOB ROBERTS, BLANCO, TX 78606' }),
+      row({ jobAddress: '102 Jared Robson, Blanco, TX 78606', customerName: 'Michael Palvern', gcCustomerId: null, gcName: '' }),
+      parcel({ ownerName: 'LARROW JOEL C & SHANNON', mailingAddress: '102 JARED ROBSON, BLANCO, TX 78606' }),
     )
     expect(chips.map((c) => c.key)).toEqual(['homestead'])
     expect(chips[0]!.label).toBe('likely homestead')
@@ -132,7 +132,7 @@ describe('groupByProperty', () => {
       row({ jobId: 'd', hcpNumber: '900', jobAddress: '1 Nowhere Ln', firstWorkMonth: '', firstDeadline: null }),
     ]
     const props = groupByProperty(rows, '2026-09-14')
-    expect(props.map((p) => p.key)).toEqual(['2100 independence', '5498 cibolo', '1 nowhere'])
+    expect(props.map((p) => p.key)).toEqual(['2100 independence', '5498 cinder', '1 nowhere'])
     expect(props[0]!.jobs.map((j) => j.hcpNumber)).toEqual(['523', '883'])
     expect(props[0]!.firstDeadline).toBe('2026-06-15')
     expect(props[0]!.windowClosed).toBe(true)
@@ -149,20 +149,20 @@ describe('groupByProperty', () => {
 describe('parseOwnerToConfirmRows · builderName · fixupCount · shortDay', () => {
   it('folds the RPC payload and drops junk', () => {
     const rows = parseOwnerToConfirmRows([
-      { job_id: 'j1', hcp_number: '650', click_number: '', job_address: ' 5498 Cibolo Valley Dr ', status: 'billed', customer_id: 'c1', customer_name: 'ATI Schertz', gc_customer_id: 'g1', gc_name: 'Loberg', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-06', first_deadline: '2026-09-15' },
+      { job_id: 'j1', hcp_number: '650', click_number: '', job_address: ' 5498 Cinder Valley Dr ', status: 'billed', customer_id: 'c1', customer_name: 'AXO Schertz', gc_customer_id: 'g1', gc_name: 'Lowbeck', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-06', first_deadline: '2026-09-15' },
       { job_id: '' },
       null,
       'x',
     ])
     expect(rows).toHaveLength(1)
-    expect(rows[0]!.jobAddress).toBe('5498 Cibolo Valley Dr')
+    expect(rows[0]!.jobAddress).toBe('5498 Cinder Valley Dr')
     expect(rows[0]!.customerAddressId).toBeNull()
     expect(rows[0]!.firstDeadline).toBe('2026-09-15')
     expect(parseOwnerToConfirmRows(null)).toEqual([])
   })
   it('the builder is the GC, or the customer when the builder sits in the customer row', () => {
-    expect(builderName(row())).toBe('Loberg Contracting')
-    expect(builderName(row({ gcCustomerId: null, gcName: '', customerName: 'Southern Post Construction' }))).toBe('Southern Post Construction')
+    expect(builderName(row())).toBe('Lowbeck Contracting')
+    expect(builderName(row({ gcCustomerId: null, gcName: '', customerName: 'Southern Pine Construction' }))).toBe('Southern Pine Construction')
   })
   it('the chip counts jobs; shortDay reads the calendar string', () => {
     expect(fixupCount([row(), row({ jobId: 'j2' })])).toBe(2)
@@ -180,13 +180,13 @@ describe('the job form (PR 2)', () => {
   })
 
   it('isBuilderCustomer: a customer that is the GC on other jobs', () => {
-    expect(isBuilderCustomer('c-sp', ['c-loberg', 'c-sp'])).toBe(true)
-    expect(isBuilderCustomer('c-ati', new Set(['c-loberg']))).toBe(false)
-    expect(isBuilderCustomer(null, ['c-loberg'])).toBe(false)
+    expect(isBuilderCustomer('c-sp', ['c-lowbeck', 'c-sp'])).toBe(true)
+    expect(isBuilderCustomer('c-axo', new Set(['c-lowbeck']))).toBe(false)
+    expect(isBuilderCustomer(null, ['c-lowbeck'])).toBe(false)
   })
 
   it('jobFormOwnerLookupApplies: GC and builder jobs with an address and no confirmed owner; never a direct job', () => {
-    const base = { gcCustomerId: 'gc1', customerId: null, customerIsBuilder: false, jobAddress: '9703 Lenox Hl, San Antonio, TX', hasLinkedRow: false, linkedOwnerConfirmed: false }
+    const base = { gcCustomerId: 'gc1', customerId: null, customerIsBuilder: false, jobAddress: '9703 Linmor Hl, San Antonio, TX', hasLinkedRow: false, linkedOwnerConfirmed: false }
     expect(jobFormOwnerLookupApplies(base)).toBe(true)
     // A builder in the customer row with no GC counts as a GC job.
     expect(jobFormOwnerLookupApplies({ ...base, gcCustomerId: null, customerId: 'c-sp', customerIsBuilder: true })).toBe(true)
@@ -209,8 +209,8 @@ describe('the job form (PR 2)', () => {
 })
 
 describe('Bill Customer owner line and the unconfirmed reader (v2.3450)', () => {
-  const typed = { owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way', owner_confirmed_at: '2026-09-14T00:00:00Z', parcel_source: '' }
-  const fromRoll = { owner_name: '', owner_company: 'SCHERTZ STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District' }
+  const typed = { owner_name: '', owner_company: 'Elwick Holdings LLC', owner_mailing_address: '4 Example Way', owner_confirmed_at: '2026-09-14T00:00:00Z', parcel_source: '' }
+  const fromRoll = { owner_name: '', owner_company: 'SAMPLE STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District' }
   it('reads "from the roll · unconfirmed" only when provenance is on the row and nobody stamped it', () => {
     expect(ownerFromRollUnconfirmed(fromRoll)).toBe(true)
     expect(ownerFromRollUnconfirmed({ ...fromRoll, owner_confirmed_at: '2026-09-15T00:00:00Z' })).toBe(false)
@@ -239,9 +239,9 @@ describe('Bill Customer owner line and the unconfirmed reader (v2.3450)', () => 
 
 describe('careOfLine (the c/o beside the owner)', () => {
   it('drops a c/o that only echoes the owner, keeps one that adds a name', () => {
-    expect(careOfLine({ ownerName: 'KHAN UMAR & BANGASH SHAZMEENA', nameCare: 'KHAN UMAR & BANGASH SHAZMEENA' })).toBe('')
-    expect(careOfLine({ ownerName: 'Khan Umar & Bangash Shazmeena', nameCare: 'KHAN UMAR AND BANGASH SHAZMEENA' })).toBe('KHAN UMAR AND BANGASH SHAZMEENA')
-    expect(careOfLine({ ownerName: 'SABRA TEXAS HOLDINGS LP', nameCare: '% SABRA HEALTH CARE REIT INC' })).toBe('% SABRA HEALTH CARE REIT INC')
+    expect(careOfLine({ ownerName: 'KARROW ULRIC & BARROWBY SHELMINA', nameCare: 'KARROW ULRIC & BARROWBY SHELMINA' })).toBe('')
+    expect(careOfLine({ ownerName: 'Karrow Ulric & Barrowby Shelmina', nameCare: 'KARROW ULRIC AND BARROWBY SHELMINA' })).toBe('KARROW ULRIC AND BARROWBY SHELMINA')
+    expect(careOfLine({ ownerName: 'SABLOW TEXAS HOLDINGS LP', nameCare: '% SABLOW HEALTH CARE REIT INC' })).toBe('% SABLOW HEALTH CARE REIT INC')
     expect(careOfLine({ ownerName: 'X', nameCare: '' })).toBe('')
     expect(careOfLine(null)).toBe('')
   })
@@ -250,8 +250,8 @@ describe('careOfLine (the c/o beside the owner)', () => {
 describe('a job with no clock hours is dated from its creation month (v2.3747)', () => {
   it('parses month_source and words the property line without promising later months', () => {
     const parsed = parseOwnerToConfirmRows([
-      { job_id: 'j858', hcp_number: '858', click_number: '', job_address: '9703 Lenox Hl', status: 'billed', customer_id: 'c1', customer_name: 'RMC- Dudley Mason', gc_customer_id: 'g1', gc_name: 'RMC- Dudley Mason', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-08', first_deadline: '2026-10-15', month_source: 'job_created' },
-      { job_id: 'j273', hcp_number: '273', click_number: '', job_address: '1 Elsewhere Rd', status: 'billed', customer_id: 'c1', customer_name: 'RMC- Dudley Mason', gc_customer_id: 'g1', gc_name: 'RMC- Dudley Mason', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-04', first_deadline: '2026-07-15', month_source: 'hours' },
+      { job_id: 'j858', hcp_number: '858', click_number: '', job_address: '9703 Linmor Hl', status: 'billed', customer_id: 'c1', customer_name: 'RLC- Dunmere Mallin', gc_customer_id: 'g1', gc_name: 'RLC- Dunmere Mallin', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-08', first_deadline: '2026-10-15', month_source: 'job_created' },
+      { job_id: 'j273', hcp_number: '273', click_number: '', job_address: '1 Elsewhere Rd', status: 'billed', customer_id: 'c1', customer_name: 'RLC- Dunmere Mallin', gc_customer_id: 'g1', gc_name: 'RLC- Dunmere Mallin', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-04', first_deadline: '2026-07-15', month_source: 'hours' },
     ])
     expect(parsed.map((r) => r.firstMonthFromCreation)).toEqual([true, false])
     const props = groupByProperty(parsed, '2026-09-23')

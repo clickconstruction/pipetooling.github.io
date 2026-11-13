@@ -85,12 +85,12 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
     ] as NeedsReplyRow[]
     const contacts = [
       { id: 'c-dana', kind: 'customer', name: 'Dana Whitfield', state: 'waiting', hasUserId: 'u-rosa', hasSince: null, hasHow: null },
-      { id: 'c-kim', kind: 'customer', name: '', company: 'Coe Builders', state: 'waiting', hasUserId: null, hasSince: null, hasHow: null },
+      { id: 'c-kim', kind: 'customer', name: '', company: 'Corl Builders', state: 'waiting', hasUserId: null, hasSince: null, hasHow: null },
     ] as unknown as FollowUpContact[]
     const waits = waitsFromQueue(rows, contacts, (id) => (id === 'u-rosa' ? 'Rosa' : null))
     expect(waits).toEqual([
       { contactId: 'c-dana', name: 'Dana Whitfield', has: 'Rosa', waitingSinceMs: at('2026-10-19T11:00:00Z'), landOnId: 'm1' },
-      { contactId: 'c-kim', name: 'Coe Builders', has: null, waitingSinceMs: at('2026-10-21T14:25:00Z'), landOnId: 'm2' },
+      { contactId: 'c-kim', name: 'Corl Builders', has: null, waitingSinceMs: at('2026-10-21T14:25:00Z'), landOnId: 'm2' },
     ])
     expect(longestWaitNow(waits, NOW)).toEqual({ contactId: 'c-dana', name: 'Dana Whitfield', has: 'Rosa', words: '2 d 4 h', landOnId: 'm1' })
     expect(longestWaitNow([waits[1]!], NOW)?.words).toBe('35 min')

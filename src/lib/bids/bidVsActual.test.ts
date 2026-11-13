@@ -6,13 +6,13 @@ const job = (o: Partial<BidVsActualJobInput> & { id: string; bid_id: string }): 
 const budget = (o: Partial<BidVsActualBudgetInput> & { job_id: string }): BidVsActualBudgetInput => ({ bid_id: 'b', labor_hours: 0, labor_usd: 0, materials_usd: 0, subs_usd: 0, total_direct_usd: 0, completeness: { usable: false }, ...o })
 
 const jobs = [
-  job({ id: 'j523', hcp_number: '523', job_name: 'Mission Hills', revenue: '123600', pct_complete: 90, bid_id: 'b66' }),
-  job({ id: 'j650', hcp_number: 'J 650', job_name: 'ATI Schertz', revenue: 33500, status: 'billed', pct_complete: 100, bid_id: 'b34' }),
-  job({ id: 'jsx', hcp_number: null, job_name: 'SPACEX BA-02N', revenue: 249715.66, bid_id: 'b375' }),
-  job({ id: 'j843', hcp_number: '843', job_name: 'Palmer · Jacob Roberts', revenue: 11920, bid_id: 'b75' }),
+  job({ id: 'j523', hcp_number: '523', job_name: 'Mission Flats', revenue: '123600', pct_complete: 90, bid_id: 'b66' }),
+  job({ id: 'j650', hcp_number: 'J 650', job_name: 'AXO Schertz', revenue: 33500, status: 'billed', pct_complete: 100, bid_id: 'b34' }),
+  job({ id: 'jsx', hcp_number: null, job_name: 'SKYLAB BA-02N', revenue: 249715.66, bid_id: 'b375' }),
+  job({ id: 'j843', hcp_number: '843', job_name: 'Palvern · Jared Robson', revenue: 11920, bid_id: 'b75' }),
   job({ id: 'j775', hcp_number: '775', job_name: 'NexGen Custom Homes', revenue: 16700, bid_id: 'b211' }),
-  job({ id: 'j892', hcp_number: '892', job_name: 'Megan Connell', revenue: 37745, bid_id: 'b118' }),
-  job({ id: 'j879', hcp_number: '879', job_name: 'Palmer · Moses Hughes', revenue: 41550, status: 'waiting', pct_complete: 50, bid_id: 'b76' }),
+  job({ id: 'j892', hcp_number: '892', job_name: 'Megan Corbray', revenue: 37745, bid_id: 'b118' }),
+  job({ id: 'j879', hcp_number: '879', job_name: 'Palvern · Milo Hollin', revenue: 41550, status: 'waiting', pct_complete: 50, bid_id: 'b76' }),
   job({ id: 'unlinked', hcp_number: '1', job_name: 'No bid', revenue: 5, bid_id: '' }),
 ]
 const budgets = [
@@ -24,12 +24,12 @@ const budgets = [
   budget({ job_id: 'j879', labor_hours: 36, total_direct_usd: 689.22, completeness: { usable: true } }),
 ]
 const bids = new Map([
-  ['b66', { id: 'b66', bid_number: '66', project_name: 'Mission Hill Park', estimatorName: 'Juan' }],
-  ['b34', { id: 'b34', bid_number: '34', project_name: 'ATI Schertz, TX', estimatorName: 'Malachi' }],
-  ['b375', { id: 'b375', bid_number: '375', project_name: 'SPACEX BA-02N Architectural', estimatorName: 'Wendi' }],
-  ['b75', { id: 'b75', bid_number: '75', project_name: 'Lagan Casita', estimatorName: 'Malachi' }],
+  ['b66', { id: 'b66', bid_number: '66', project_name: 'Mission Flat Park', estimatorName: 'Juan' }],
+  ['b34', { id: 'b34', bid_number: '34', project_name: 'AXO Schertz, TX', estimatorName: 'Malachi' }],
+  ['b375', { id: 'b375', bid_number: '375', project_name: 'SKYLAB BA-02N Architectural', estimatorName: 'Wendi' }],
+  ['b75', { id: 'b75', bid_number: '75', project_name: 'Larrow Casita', estimatorName: 'Malachi' }],
   ['b211', { id: 'b211', bid_number: '211', project_name: 'Wadelyn Unit Arch Ray #169', estimatorName: 'William' }],
-  ['b118', { id: 'b118', bid_number: '118', project_name: 'Connell House - Curvatura', estimatorName: 'Wendi' }],
+  ['b118', { id: 'b118', bid_number: '118', project_name: 'Corbray House - Curvatura', estimatorName: 'Wendi' }],
 ])
 const hoursByJob = new Map([['j523', 959], ['j650', 341], ['jsx', 43], ['j843', 26], ['j775', 18], ['j892', 17], ['j879', 6]])
 const pursuitByBid = new Map([['b34', { usd: 6.04, hours: 0.23 }], ['b375', { usd: 141.78, hours: 2.45 }]])
@@ -37,11 +37,11 @@ const rows = buildBidVsActualRows({ jobs, budgets, bids, hoursByJob, pursuitByBi
 
 describe('buildBidVsActualRows', () => {
   it('one row per linked job, largest price first, labels from both sides', () => {
-    expect(rows.map((r) => r.jobLabel)).toEqual(['J SPACEX BA-02N', 'J523 Mission Hills', 'J879 Palmer · Moses Hughes', 'J892 Megan Connell', 'J650 ATI Schertz', 'J775 NexGen Custom Homes', 'J843 Palmer · Jacob Roberts'].map((s) => s.replace('J SPACEX', 'SPACEX')))
+    expect(rows.map((r) => r.jobLabel)).toEqual(['J SKYLAB BA-02N', 'J523 Mission Flats', 'J879 Palvern · Milo Hollin', 'J892 Megan Corbray', 'J650 AXO Schertz', 'J775 NexGen Custom Homes', 'J843 Palvern · Jared Robson'].map((s) => s.replace('J SKYLAB', 'SKYLAB')))
     const sx = rows[0]!
-    expect(sx).toMatchObject({ bidLabel: 'B375 SPACEX BA-02N Architectural', estimatorName: 'Wendi', pursuitUsd: 141.78, predictedHours: null, predictedDirectUsd: 64167.61, materialsOnly: true, read: 'hours-missing', words: 'hours missing', recordedHours: 43, pctDone: null })
-    const ati = rows.find((r) => r.jobId === 'j650')!
-    expect(ati).toMatchObject({ jobLabel: 'J650 ATI Schertz', pctDone: 100, read: 'not-costed', detail: '341 h recorded, nothing to hold it against', pursuitUsd: 6.04 })
+    expect(sx).toMatchObject({ bidLabel: 'B375 SKYLAB BA-02N Architectural', estimatorName: 'Wendi', pursuitUsd: 141.78, predictedHours: null, predictedDirectUsd: 64167.61, materialsOnly: true, read: 'hours-missing', words: 'hours missing', recordedHours: 43, pctDone: null })
+    const axo = rows.find((r) => r.jobId === 'j650')!
+    expect(axo).toMatchObject({ jobLabel: 'J650 AXO Schertz', pctDone: 100, read: 'not-costed', detail: '341 h recorded, nothing to hold it against', pursuitUsd: 6.04 })
     expect(rows.find((r) => r.jobId === 'j523')).toMatchObject({ read: 'not-costed', estimatorName: 'Juan', pctDone: 90, revenue: 123600 })
     expect(rows.find((r) => r.jobId === 'unlinked')).toBeUndefined()
   })

@@ -27,7 +27,7 @@ const jobs: Record<string, unknown>[] = [
 const sourceJob = { id: SOURCE, hcp_number: '583', click_number: '', job_name: 'Diamondback', job_address: '1 Catch-all Rd', service_type_id: null }
 
 const bank: CostMoveBankRow = { source: 'bank', allocationId: 'a1', txId: TX, postedYmd: '2026-09-10', counterparty: 'Shell', cardId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', cardNickname: 'Truck 2', category: 'Fuel', txAmount: -84.1, allocationAmount: -84.1, note: null }
-const supply: CostMoveSupplyRow = { source: 'supply', invoiceId: INV, supplyHouse: 'Reece', invoiceNumber: '4471', invoiceYmd: '2026-10-08', amount: 507.8, pct: 100, isPaid: false, purchaseOrder: 'Gun Dog' }
+const supply: CostMoveSupplyRow = { source: 'supply', invoiceId: INV, supplyHouse: 'Reece', invoiceNumber: '4471', invoiceYmd: '2026-10-08', amount: 507.8, pct: 100, isPaid: false, purchaseOrder: 'Gray Fox' }
 const clock: CostMoveClockRow = { source: 'clock', sessionId: SESSION, userId: 'u1', personName: 'Malachi', workYmd: '2026-10-26', minutes: 570, approved: true, rejected: false, bidId: null }
 
 const rpcCalls: { name: string; args: unknown }[] = []

@@ -14,8 +14,8 @@ import {
 import type { LaborJob, LaborJobPaymentEvent } from '../../types/laborJob'
 
 const sheet = (p: Partial<LaborJob> & { id: string }): LaborJob => ({
-  assigned_to_name: 'Airfordable Heating & Air Conditioning',
-  address: '150 E Sonterra Blvd',
+  assigned_to_name: 'Airlowe Heating & Air Conditioning',
+  address: '150 E Sonmere Blvd',
   job_number: '880',
   job_ledger_id: 'j880',
   labor_rate: 100,
@@ -25,7 +25,7 @@ const sheet = (p: Partial<LaborJob> & { id: string }): LaborJob => ({
   payments: [],
   ...p,
 })
-const names = { j880: 'Reliant Health-HVAC', j922: 'Michael Palmer', j1001: 'Prospect Park Ph 2' }
+const names = { j880: 'Relwyn Health-HVAC', j922: 'Michael Palvern', j1001: 'Prospect Park Ph 2' }
 const pay = (id: string, amount: number, memo: string | null = null) => ({ id, amount, memo, created_at: '2026-09-17T15:00:00Z', payment_date: '2026-09-17' })
 
 const s880 = sheet({ id: 's880', payments: [pay('p1', 2000, 'ck#0401')] })
@@ -50,7 +50,7 @@ describe('sheetMoney / sheetLabel', () => {
     expect(sheetMoney(sheet({ id: 'x', items: [], payments: [pay('a', 500), pay('b', -50)] }))).toEqual({ totalCost: 550, paid: 500, backcharges: 50, balance: 0 })
   })
   it('labels a sheet by number and job name, else address', () => {
-    expect(sheetLabel(s880, names)).toBe('880 Reliant Health-HVAC')
+    expect(sheetLabel(s880, names)).toBe('880 Relwyn Health-HVAC')
     expect(sheetLabel(behar, names)).toBe('901 9 Oak Ln')
     expect(sheetLabel(sheet({ id: 'y', job_number: null, job_ledger_id: null, address: '1 Elm' }), names)).toBe('1 Elm')
   })
@@ -59,8 +59,8 @@ describe('sheetMoney / sheetLabel', () => {
 describe('planSubPaymentMove', () => {
   it('reads both sheets before and after, and flags a destination paid in full', () => {
     const plan = planSubPaymentMove(s880.payments![0]!, s880, s922, names)
-    expect(plan.from).toEqual({ label: '880 Reliant Health-HVAC', paidBefore: 2000, paidAfter: 0, owedBefore: 2200, owedAfter: 4200 })
-    expect(plan.to).toEqual({ label: '922 Michael Palmer', paidBefore: 0, paidAfter: 2000, owedBefore: 2000, owedAfter: 0 })
+    expect(plan.from).toEqual({ label: '880 Relwyn Health-HVAC', paidBefore: 2000, paidAfter: 0, owedBefore: 2200, owedAfter: 4200 })
+    expect(plan.to).toEqual({ label: '922 Michael Palvern', paidBefore: 0, paidAfter: 2000, owedBefore: 2000, owedAfter: 0 })
     expect(plan.toPaidInFull).toBe(true)
     expect(plan.isBackcharge).toBe(false)
   })
@@ -90,7 +90,7 @@ describe('rankSubPaymentMoveDestinations', () => {
   it('a search opens every sheet, same sub still first, never the current one', () => {
     const out = rankSubPaymentMoveDestinations(sheets, 's880', assignees, names, 'oak')
     expect(out.map((d) => [d.sheet.id, d.sameSub])).toEqual([['sB', false]])
-    const byName = rankSubPaymentMoveDestinations(sheets, 's880', assignees, names, 'palmer')
+    const byName = rankSubPaymentMoveDestinations(sheets, 's880', assignees, names, 'palvern')
     expect(byName.map((d) => d.sheet.id)).toEqual(['s922'])
     expect(rankSubPaymentMoveDestinations(sheets, 's880', assignees, names, '880')).toEqual([])
   })
@@ -139,11 +139,11 @@ describe('subPaymentTraceLines', () => {
     ]
     const on880 = subPaymentTraceLines(events, 's880', sheetsById, names, '2026-09-18T00:00:00Z')
     expect(on880.map((l) => [l.kind, l.text, l.undoable])).toEqual([
-      ['moved_out', 'Moved → 922 Michael Palmer · Taunya · wrong job', false],
+      ['moved_out', 'Moved → 922 Michael Palvern · Taunya · wrong job', false],
       ['removed', 'Removed · Taunya · Duplicate entry', true],
     ])
     const on922 = subPaymentTraceLines(events, 's922', sheetsById, names, '2026-09-18T00:00:00Z')
-    expect(on922.map((l) => [l.kind, l.text, l.otherSheetId])).toEqual([['moved_in', 'Moved here from 880 Reliant Health-HVAC · Taunya · wrong job', 's880']])
+    expect(on922.map((l) => [l.kind, l.text, l.otherSheetId])).toEqual([['moved_in', 'Moved here from 880 Relwyn Health-HVAC · Taunya · wrong job', 's880']])
   })
   it('dates a line by the company calendar day, not the UTC day; same-day lines stay newest first', () => {
     // 8:50 PM Central on Sep 19 is already Sep 20 in UTC.

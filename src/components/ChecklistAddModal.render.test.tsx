@@ -210,7 +210,7 @@ const JOB_PRESET = {
     name: 'Mission faucet',
     trade: { tag: 'PLUM', color: '#e17235' },
     address: '15638 Mission Crest, San Antonio, TX',
-    customer: 'Johnny Ingram',
+    customer: 'Johnny Inglow',
     path: '/jobs?jobDetail=job-1',
     url: JOB_URL,
   },
@@ -248,7 +248,7 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     const bar = screen.getByTestId('checklist-add-job-bar')
     expect(bar.textContent).toContain('1016 PLUM')
     expect(bar.textContent).toContain('Mission faucet')
-    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Ingram')
+    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Inglow')
     // The raw grammar never reaches the box; the header Send waits for typed text.
     expect(screen.queryByDisplayValue(/\{\{1:/)).toBeNull()
     expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)

@@ -21,7 +21,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
   return {
     key: 'gc-1',
     gcId: 'gc-1',
-    gcName: 'Knight Contracting',
+    gcName: 'Kestrin Contracting',
     isNoGc: false,
     rows: [
       {
@@ -30,7 +30,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
         hcp: '916',
         jobName: 'SVP Manor',
         jobAddress: '11915 Ring Dr, Manor TX',
-        customerName: 'Knight Contracting',
+        customerName: 'Kestrin Contracting',
         referenceDateDisplay: 'Jul 21, 2026',
         referenceYmd: '2026-07-21',
         ageDays: 10,
@@ -52,7 +52,7 @@ describe('gcStatementEmail', () => {
 
   it('HTML leads with what is owed, then the property, the bill, the day it was sent and the amount', () => {
     const html = buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026' })
-    expect(html).toContain('Statement for Knight Contracting · Jul 31, 2026')
+    expect(html).toContain('Statement for Kestrin Contracting · Jul 31, 2026')
     expect(html).toContain('Owed now')
     expect(html).toContain('1 open bill at 1 property.')
     expect(html).toContain('<strong>11915 Ring Dr</strong>')
@@ -82,7 +82,7 @@ describe('gcStatementEmail', () => {
 
   it('plain-text variant carries the same facts', () => {
     const text = buildGcStatementEmailText(group(), { dateStr: 'Jul 31, 2026' })
-    expect(text).toContain('Statement for Knight Contracting · Jul 31, 2026')
+    expect(text).toContain('Statement for Kestrin Contracting · Jul 31, 2026')
     expect(text).toContain('11915 Ring Dr, Manor — $450.00')
     expect(text).toContain('- Job 916 · SVP Manor — sent Jul 21 — $450.00')
     expect(text).toContain('Total owed: $450.00')
@@ -125,7 +125,7 @@ describe('gcReviewShareAllEmail', () => {
   const second = group({
     key: 'gc-2',
     gcId: 'gc-2',
-    gcName: 'H & I Construction',
+    gcName: 'B & D Construction',
     rows: [
       {
         ...group().rows[0]!,
@@ -153,8 +153,8 @@ describe('gcReviewShareAllEmail', () => {
   it('HTML renders every group as its own section plus one grand total', () => {
     const html = buildGcReviewShareAllEmailHtml(report, { dateStr: 'Aug 6, 2026' })
     expect(html).toContain('Open balances by GC · Aug 6, 2026')
-    expect(html).toContain('Knight Contracting')
-    expect(html).toContain('H &amp; I Construction')
+    expect(html).toContain('Kestrin Contracting')
+    expect(html).toContain('B &amp; D Construction')
     expect(html).toContain('11915 Ring Dr, Manor TX')
     expect(html).toContain('12803 El Dorado, Universal City TX')
     expect(html).toContain('$450.00')
@@ -174,8 +174,8 @@ describe('gcReviewShareAllEmail', () => {
   it('plain-text variant lists each section and the grand total', () => {
     const text = buildGcReviewShareAllEmailText(report, { dateStr: 'Aug 6, 2026' })
     expect(text).toContain('Open balances by GC · Aug 6, 2026')
-    expect(text).toContain('Knight Contracting · 1 job · $450.00')
-    expect(text).toContain('H & I Construction · 1 job · $1,200.00')
+    expect(text).toContain('Kestrin Contracting · 1 job · $450.00')
+    expect(text).toContain('B & D Construction · 1 job · $1,200.00')
     expect(text).toContain('Total owed: $1,650.00')
   })
 })
@@ -197,7 +197,7 @@ describe('buildGcStatementEmailPreviewHtml', () => {
   })
 
   it('draws the QR code itself — a browser cannot load the cid a real send carries', () => {
-    const portalUrl = 'https://my.clickplumbing.com/rmc-dudley-mason'
+    const portalUrl = 'https://my.clickplumbing.com/rlc-dunmere-mallin'
     const dataUrl = gcStatementQrDataUrl(portalUrl)
     expect(dataUrl).toMatch(/^data:image\/png;base64,/)
     const html = buildGcStatementEmailPreviewHtml(group(), 'Subject', { dateStr: 'Aug 21, 2026', portalUrl })
@@ -229,11 +229,11 @@ describe('account card (v2.2151; the shared card since v2.4255)', () => {
     const mod = await import('./gcStatementEmail')
     const without = mod.buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026' })
     expect(without).not.toContain('Your account, any time')
-    const html = mod.buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026', portalUrl: 'https://my.clickplumbing.com/rmc-dudley-mason' })
+    const html = mod.buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026', portalUrl: 'https://my.clickplumbing.com/rlc-dunmere-mallin' })
     expect(html).toContain('Your account, any time')
     // Journey-map #46: the card says how to pay, and the link carries the statement's attribution tag.
-    expect(html).toContain('<a href="https://my.clickplumbing.com/rmc-dudley-mason?src=gc-statement"')
-    expect(html).toContain('>my.clickplumbing.com/rmc-dudley-mason</a>')
+    expect(html).toContain('<a href="https://my.clickplumbing.com/rlc-dunmere-mallin?src=gc-statement"')
+    expect(html).toContain('>my.clickplumbing.com/rlc-dunmere-mallin</a>')
     expect(html).toContain('Pay online and see every open bill and payment, with no login.')
     expect(mod.gcStatementPayLineText('https://x/y')).toBe('Pay online any time at https://x/y?src=gc-statement — this statement stays current there.')
     expect(mod.gcStatementPayLineText(null)).toBeNull()

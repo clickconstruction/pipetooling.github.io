@@ -21,19 +21,19 @@ const input: BillDeskInput = {
   jobs: [
     job('j1024', '1024 · Lawver install', 'working', 4_100, { id: 'j1024', usd: 4_100, pct: 100, source: 'hand' }, { pct100SinceYmd: '2026-09-19', newestPctYmd: '2026-09-19' }),
     job('j1051', '1051 · Patel repipe', 'working', 8_800, { id: 'j1051', usd: 3_600, pct: 100, source: 'hand' }, { billedUsd: 5_200, newestPctYmd: '2026-10-05', newestBillYmd: '2026-10-02' }),
-    job('j1017', '1017 · Terrell', 'working', null, { id: 'j1017', usd: 0, pct: null, source: 'no-price' }, { hoursInWindow: 38 }),
+    job('j1017', '1017 · Tarrow', 'working', null, { id: 'j1017', usd: 0, pct: null, source: 'no-price' }, { hoursInWindow: 38 }),
     job('j1081', '1081 · Adams Pretest', 'ready_to_bill', 9_600, { id: 'j1081', usd: 9_600, pct: null, source: 'ready' }, { readyYmd: '2026-10-20' }),
-    job('j977', '977 · Springtown', 'ready_to_bill', 9_500, { id: 'j977', usd: 5_400, pct: null, source: 'ready' }, { billedUsd: 4_100, readyYmd: '2026-10-23' }),
-    job('j1044', '1044 · H & I Creekside', 'ready_to_bill', 9_700, { id: 'j1044', usd: 3_600, pct: null, source: 'ready' }, { paymentsUsd: 6_100, readyYmd: '2026-10-24' }),
+    job('j977', '977 · Stonewick', 'ready_to_bill', 9_500, { id: 'j977', usd: 5_400, pct: null, source: 'ready' }, { billedUsd: 4_100, readyYmd: '2026-10-23' }),
+    job('j1044', '1044 · B & D Creekside', 'ready_to_bill', 9_700, { id: 'j1044', usd: 3_600, pct: null, source: 'ready' }, { paymentsUsd: 6_100, readyYmd: '2026-10-24' }),
   ],
   bills: [
-    bill('i473', 'j473', '473 · Mike Holub', 1_500, '2026-10-12', null, { sentFromHere: false, sentByName: null }),
+    bill('i473', 'j473', '473 · Mike Holmby', 1_500, '2026-10-12', null, { sentFromHere: false, sentByName: null }),
     bill('i1087', 'j1087', '1087 · Edwards Ranch', 645, '2026-10-21', '2026-10-21'),
     bill('i1046', 'j1046', '1046 · Pretest', 1_350, '2026-10-23', '2026-10-17'),
     bill('i1048', 'j1048', '1048 · Tison per plans', 4_800, '2026-10-16', '2026-10-16', { sentByName: 'Dana' }),
-    bill('i1007', 'j1007', '1007 · SPACEX pay app 3', 11_800, '2026-10-14', '2026-10-10'),
-    bill('i1075', 'j1075', '1075 · DRF Line Repair', 2_210, '2026-10-09', '2026-10-09', { sentByName: 'Dana' }),
-    bill('i804', 'j804', '804 · Summit Auto Zone', 3_100, '2026-10-06', '2026-10-06'),
+    bill('i1007', 'j1007', '1007 · SKYLAB pay app 3', 11_800, '2026-10-14', '2026-10-10'),
+    bill('i1075', 'j1075', '1075 · DLF Line Repair', 2_210, '2026-10-09', '2026-10-09', { sentByName: 'Dana' }),
+    bill('i804', 'j804', '804 · Selwick Tire Barn', 3_100, '2026-10-06', '2026-10-06'),
   ],
   dayLabel: md,
 }
@@ -53,7 +53,7 @@ describe('BridgeBillDesk (v2.5930)', () => {
     expect(rows[2]!.textContent).toContain('No price, so no number ever rings.')
     const hand = screen.getAllByTestId('bridge-bill-hand')
     expect(hand).toHaveLength(1)
-    expect(hand[0]!.textContent).toContain('473 Mike Holub was marked billed Oct 12 with no send on file.')
+    expect(hand[0]!.textContent).toContain('473 Mike Holmby was marked billed Oct 12 with no send on file.')
     expect(screen.getByTestId('bridge-bill-hand-note').textContent).toContain('1 bill, $1.5k, was marked billed by hand')
     const head = rows[1]!.querySelector('button[aria-expanded]') as HTMLButtonElement
     expect(head.getAttribute('aria-expanded')).toBe('false')

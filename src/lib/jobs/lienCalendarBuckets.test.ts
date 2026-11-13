@@ -25,25 +25,25 @@ function job(over: Partial<LienCalendarJob> & { r?: Partial<LienRunwayInput> } =
   }
 }
 
-const RMC = { gcId: 'gc-rmc', gcName: 'RMC · Dudley Mason' }
-const KNIGHT = { gcId: 'gc-knight', gcName: 'Knight Contracting' }
+const RLC = { gcId: 'gc-rlc', gcName: 'RLC · Dunmere Mallin' }
+const KESTRIN = { gcId: 'gc-kestrin', gcName: 'Kestrin Contracting' }
 
 const ROWS = [
   // This month: four notices due Oct 15 across three GCs
-  job({ jobId: 'a', name: 'Dudley Mason', ...RMC, openBalance: 9800 }),
-  job({ jobId: 'b', name: 'Service Visit', ...RMC, openBalance: 7902, r: { lastWorkYmd: '2026-08-20', propertyKind: '' } }),
-  job({ jobId: 'c', name: 'Springtown', ...KNIGHT, openBalance: 15406, r: { lastWorkYmd: '2026-08-05' } }),
+  job({ jobId: 'a', name: 'Dunmere Mallin', ...RLC, openBalance: 9800 }),
+  job({ jobId: 'b', name: 'Service Visit', ...RLC, openBalance: 7902, r: { lastWorkYmd: '2026-08-20', propertyKind: '' } }),
+  job({ jobId: 'c', name: 'Stonewick', ...KESTRIN, openBalance: 15406, r: { lastWorkYmd: '2026-08-05' } }),
   // worked June to September on a commercial job: July's notice is the next date, not the Jan 15 lien
-  job({ jobId: 'k', name: 'Take 5- Seguin', gcId: 'gc-sp', gcName: 'Southern Post Construction', openBalance: 38625, r: { propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] } }),
+  job({ jobId: 'k', name: 'Tune 5- Seguin', gcId: 'gc-sp', gcName: 'Southern Pine Construction', openBalance: 38625, r: { propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] } }),
   // Next month: a notice and a lien, both Nov 16
-  job({ jobId: 'd', name: 'Water Heater removal', gcId: 'gc-hi', gcName: 'H & I Construction', openBalance: 350, r: { lastWorkYmd: '2026-09-03' } }),
-  job({ jobId: 'e', name: 'Mike Holub', openBalance: 5724, r: { expectedPayYmd: '2026-09-30' } }),
+  job({ jobId: 'd', name: 'Water Heater removal', gcId: 'gc-hi', gcName: 'B & D Construction', openBalance: 350, r: { lastWorkYmd: '2026-09-03' } }),
+  job({ jobId: 'e', name: 'Mike Holmby', openBalance: 5724, r: { expectedPayYmd: '2026-09-30' } }),
   // Later: liens Dec 15 and Jan 15, and a lien on file
-  job({ jobId: 'f', name: 'Coe Trim', openBalance: 900, r: { lastWorkYmd: '2026-09-10' } }),
-  job({ jobId: 'g', name: 'ATI Schertz', openBalance: 1400, r: { lastWorkYmd: '2026-09-10', propertyKind: 'non_residential' } }),
+  job({ jobId: 'f', name: 'Corl Trim', openBalance: 900, r: { lastWorkYmd: '2026-09-10' } }),
+  job({ jobId: 'g', name: 'AXO Schertz', openBalance: 1400, r: { lastWorkYmd: '2026-09-10', propertyKind: 'non_residential' } }),
   job({ jobId: 'j', name: 'Filed one', openBalance: 2000, r: { filedYmd: '2026-09-03' } }),
   // Overdue: July's notice was due Sep 15 and never sent; May's lien window closed Aug 17
-  job({ jobId: 'h', name: 'Dudley Mason', ...RMC, openBalance: 285, r: { lastWorkYmd: '2026-07-10' } }),
+  job({ jobId: 'h', name: 'Dunmere Mallin', ...RLC, openBalance: 285, r: { lastWorkYmd: '2026-07-10' } }),
   job({ jobId: 'i', name: 'Samantha Coyle', openBalance: 5355, r: { lastWorkYmd: '2026-05-05' } }),
   // nothing open: not on the board
   job({ jobId: 'z', name: 'Paid', openBalance: 0 }),
@@ -97,21 +97,21 @@ describe('what each bucket says', () => {
     expect(thisMonth!.facts).toBe('by Oct 15 · in 14 days · 4 notices across 3 GCs')
     // tightest first, then the bigger balance
     expect(thisMonth!.draft).toEqual({ ymd: '2026-10-15', jobIds: ['k', 'c', 'a', 'b'], label: 'Draft the 4' })
-    expect(thisMonth!.groups.map((g) => g.name)).toEqual(['Southern Post Construction', 'RMC · Dudley Mason', 'Knight Contracting'])
+    expect(thisMonth!.groups.map((g) => g.name)).toEqual(['Southern Pine Construction', 'RLC · Dunmere Mallin', 'Kestrin Contracting'])
     // the bar names the date, so a GC row under it says only what to send
     expect(thisMonth!.groups.map((g) => g.word)).toEqual(['send the notice', 'send 2 notices', 'send the notice'])
   })
   it('a GC row keeps its own date when its bucket holds more than one', () => {
     const rows = [
-      job({ jobId: 'oct', ...RMC, r: { lastWorkYmd: '2026-10-01' } }),
-      job({ jobId: 'oct-c', ...RMC, r: { lastWorkYmd: '2026-10-01', propertyKind: 'non_residential' } }),
+      job({ jobId: 'oct', ...RLC, r: { lastWorkYmd: '2026-10-01' } }),
+      job({ jobId: 'oct-c', ...RLC, r: { lastWorkYmd: '2026-10-01', propertyKind: 'non_residential' } }),
     ]
     const later = buildLienCalendarBoard(rows, '', TODAY).buckets[3]!
     expect(later.dates).toEqual(['2026-12-15', '2027-01-15'])
     expect(later.groups[0]!.word).toBe('send 2 notices by Dec 15 · 75 d')
   })
   it('Next month: a notice to one GC and a lien to file; no door while the desk does not list them yet', () => {
-    expect(nextMonth!.facts).toBe('by Nov 16 · in 46 days · 1 notice to H & I Construction · 1 lien to file')
+    expect(nextMonth!.facts).toBe('by Nov 16 · in 46 days · 1 notice to B & D Construction · 1 lien to file')
     expect(nextMonth!.dateLabel).toBe('Nov 16')
     expect(nextMonth!.draft).toBeNull()
   })
@@ -146,11 +146,11 @@ describe('what each bucket says', () => {
     expect(counts.get('2026-10-15')!.total).toBe(71733)
   })
   it('search narrows every bucket', () => {
-    const knight = buildLienCalendarBoard(ROWS, 'knight', TODAY)
-    expect(knight.buckets.map((b) => ids(b.jobs))).toEqual([[], ['c'], [], []])
-    expect(knight.count).toBe(1)
-    expect(knight.buckets[1]!.facts).toBe('by Oct 15 · in 14 days · 1 notice to Knight Contracting')
-    expect(knight.buckets[1]!.draft?.label).toBe('Draft the one')
+    const kestrin = buildLienCalendarBoard(ROWS, 'kestrin', TODAY)
+    expect(kestrin.buckets.map((b) => ids(b.jobs))).toEqual([[], ['c'], [], []])
+    expect(kestrin.count).toBe(1)
+    expect(kestrin.buckets[1]!.facts).toBe('by Oct 15 · in 14 days · 1 notice to Kestrin Contracting')
+    expect(kestrin.buckets[1]!.draft?.label).toBe('Draft the one')
   })
 })
 
@@ -170,7 +170,7 @@ describe('late in the month and across the new year', () => {
   it('after the 15th This month is empty and says so; next month’s notices are inside the desk’s 30 days', () => {
     const OCT_20 = '2026-10-20'
     const rows = [
-      job({ jobId: 'd', ...RMC, r: { todayYmd: OCT_20, lastWorkYmd: '2026-09-03' } }),
+      job({ jobId: 'd', ...RLC, r: { todayYmd: OCT_20, lastWorkYmd: '2026-09-03' } }),
       job({ jobId: 'e', r: { todayYmd: OCT_20, lastWorkYmd: '2026-08-12' } }),
     ]
     const board = buildLienCalendarBoard(rows, '', OCT_20)
@@ -179,38 +179,38 @@ describe('late in the month and across the new year', () => {
     expect(thisMonth!.empty).toBe('Nothing else falls due in October.')
     expect(thisMonth!.facts).toBe('')
     expect(overdue!.empty).toBe('No lien window has closed on a billed job.')
-    expect(nextMonth!.facts).toBe('by Nov 16 · in 27 days · 1 notice to RMC · Dudley Mason · 1 lien to file')
+    expect(nextMonth!.facts).toBe('by Nov 16 · in 27 days · 1 notice to RLC · Dunmere Mallin · 1 lien to file')
     expect(nextMonth!.draft).toEqual({ ymd: '2026-11-16', jobIds: ['d'], label: 'Draft the one' })
   })
   it('in December, next month is January of the next year', () => {
     const DEC_2 = '2026-12-02'
     const rows = [
       job({ jobId: 'dec', r: { todayYmd: DEC_2, lastWorkYmd: '2026-09-10' } }),
-      job({ jobId: 'jan', ...RMC, r: { todayYmd: DEC_2, lastWorkYmd: '2026-11-03' } }),
+      job({ jobId: 'jan', ...RLC, r: { todayYmd: DEC_2, lastWorkYmd: '2026-11-03' } }),
       job({ jobId: 'feb', r: { todayYmd: DEC_2, lastWorkYmd: '2026-11-03' } }),
     ]
     const board = buildLienCalendarBoard(rows, '', DEC_2)
     expect(board.buckets.map((b) => ids(b.jobs))).toEqual([[], ['dec'], ['jan'], ['feb']])
     expect(board.buckets[2]!.span).toEqual({ fromYmd: '2027-01-01', toYmd: '2027-02-01' })
-    expect(board.buckets[2]!.facts).toBe('by Jan 15 · in 44 days · 1 notice to RMC · Dudley Mason')
+    expect(board.buckets[2]!.facts).toBe('by Jan 15 · in 44 days · 1 notice to RLC · Dunmere Mallin')
     expect(board.buckets[3]!.empty).toBe('Nothing falls due after January.')
   })
 })
 
 describe('an overdue job is listed with its property (v2.4526)', () => {
-  const TERRELL = '628 Terrell Rd, San Antonio, TX 78209'
+  const TARROW = '628 Tarrow Rd, San Antonio, TX 78209'
   const LENOX = '9703 Lenox Hl San Antonio, TX 78240'
   const rows = [
-    // RMC, notices due Oct 15: two at Lenox Hl, one at Terrell Rd, one somewhere else
-    job({ jobId: 'n1', number: '273', ...RMC, openBalance: 17585, address: LENOX }),
-    job({ jobId: 'n2', number: '858', ...RMC, openBalance: 7902, address: '9703 Lenox Hl, San Antonio, TX' }),
-    job({ jobId: 'n3', number: '867', ...RMC, openBalance: 1710, address: TERRELL }),
-    job({ jobId: 'n4', number: '868', ...RMC, openBalance: 2650, address: '1875 Co Rd 777, Devine, TX' }),
-    // Overdue: one at Lenox Hl, two at Terrell Rd, one at a property with nothing ahead
-    job({ jobId: 'o1', number: '881', ...RMC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-07-10' } }),
-    job({ jobId: 'o2', number: '226', ...RMC, openBalance: 650, address: TERRELL, r: { lastWorkYmd: '2026-05-05' } }),
-    job({ jobId: 'o3', number: '608', ...RMC, openBalance: 2245, address: '628 Terrell Rd', r: { lastWorkYmd: '2026-07-10' } }),
-    job({ jobId: 'o4', number: '186', ...RMC, openBalance: 6200, address: '574 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
+    // RLC, notices due Oct 15: two at Lenox Hl, one at Tarrow Rd, one somewhere else
+    job({ jobId: 'n1', number: '273', ...RLC, openBalance: 17585, address: LENOX }),
+    job({ jobId: 'n2', number: '858', ...RLC, openBalance: 7902, address: '9703 Lenox Hl, San Antonio, TX' }),
+    job({ jobId: 'n3', number: '867', ...RLC, openBalance: 1710, address: TARROW }),
+    job({ jobId: 'n4', number: '868', ...RLC, openBalance: 2650, address: '1875 Co Rd 777, Devine, TX' }),
+    // Overdue: one at Lenox Hl, two at Tarrow Rd, one at a property with nothing ahead
+    job({ jobId: 'o1', number: '881', ...RLC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-07-10' } }),
+    job({ jobId: 'o2', number: '226', ...RLC, openBalance: 650, address: TARROW, r: { lastWorkYmd: '2026-05-05' } }),
+    job({ jobId: 'o3', number: '608', ...RLC, openBalance: 2245, address: '628 Tarrow Rd', r: { lastWorkYmd: '2026-07-10' } }),
+    job({ jobId: 'o4', number: '186', ...RLC, openBalance: 6200, address: '574 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
   ]
   const board = buildLienCalendarBoard(rows, '', TODAY)
   const [overdue, thisMonth] = board.buckets
@@ -245,7 +245,7 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
       '273',
       '858',
       '881 closed',
-      '# 628 Terrell Rd, San Antonio',
+      '# 628 Tarrow Rd, San Antonio',
       '867',
       '608 closed',
       '226 closed',
@@ -257,20 +257,20 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
   it('a property’s heading says both piles and their sum, which the group’s total leaves out (v2.6849)', () => {
     const g = thisMonth!.groups[0]!
     const labels = lienGroupRows(g).flatMap((r) => (r.kind === 'label' ? [r] : []))
-    const terrell = labels.find((r) => r.label.startsWith('628 Terrell'))!.tally!
-    expect(terrell.open).toEqual({ jobs: 1, total: 1710 })
-    expect(terrell.gone).toEqual({ jobs: 2, total: 2245 + 650 })
-    expect(terrell.owed).toBe(1710 + 2245 + 650)
-    expect(terrell.words).toBe('Lien open on 1 job · $1,710 · lien gone on 2 · $2,895 · $4,605 owed here')
-    expect(terrell.short).toBe('$1,710 lien open · $2,895 lien gone · $4,605 owed')
-    expect(terrell.title).toContain('2 more closed their windows')
+    const tarrow = labels.find((r) => r.label.startsWith('628 Tarrow'))!.tally!
+    expect(tarrow.open).toEqual({ jobs: 1, total: 1710 })
+    expect(tarrow.gone).toEqual({ jobs: 2, total: 2245 + 650 })
+    expect(tarrow.owed).toBe(1710 + 2245 + 650)
+    expect(tarrow.words).toBe('Lien open on 1 job · $1,710 · lien gone on 2 · $2,895 · $4,605 owed here')
+    expect(tarrow.short).toBe('$1,710 lien open · $2,895 lien gone · $4,605 owed')
+    expect(tarrow.title).toContain('2 more closed their windows')
     const lenox = labels.find((r) => r.label.startsWith('9703 Lenox'))!.tally!
     expect(lenox.words).toBe('Lien open on 2 jobs · $25,487 · lien gone on 1 · $1,050 · $26,537 owed here')
     expect(lenox.title).toContain('One more closed its window')
     // Nothing closed among the group's other properties: the rows already add up.
     expect(labels.find((r) => r.label === 'Other properties')!.tally).toBeNull()
     // The piles are the property's, so every tally's open money is part of the group's total and no gone money is.
-    expect(g.total).toBe(terrell.open.total + lenox.open.total + 2650)
+    expect(g.total).toBe(tarrow.open.total + lenox.open.total + 2650)
   })
 
   it('a property with nothing closed has no tally, and the row’s press names the job', () => {
@@ -287,7 +287,7 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
   it('follows the property to its earliest date, in whichever bucket that is', () => {
     const later = buildLienCalendarBoard(
       [
-        job({ jobId: 'd1', gcId: 'gc-hi', gcName: 'H & I Construction', address: '12 Oak St, Seguin, TX', r: { lastWorkYmd: '2026-09-03' } }),
+        job({ jobId: 'd1', gcId: 'gc-hi', gcName: 'B & D Construction', address: '12 Oak St, Seguin, TX', r: { lastWorkYmd: '2026-09-03' } }),
         job({ jobId: 'x1', openBalance: 400, address: '12 Oak St, Seguin, TX', r: { lastWorkYmd: '2026-05-05' } }),
       ],
       '',
@@ -302,11 +302,11 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
     const at = (address: string, addressId: string | null = null) => ({ address, addressId })
     expect(lienSameProperty(at('1 A St', 'addr-1'), at('somewhere else', 'addr-1'))).toBe(true)
     expect(lienSameProperty(at('9703 Lenox Hl San Antonio, TX 78240'), at('9703 Lenox Hl, San Antonio, TX'))).toBe(true)
-    expect(lienSameProperty(at('628 Terrell Rd'), at('628 Terrell Rd, San Antonio, TX 78209'))).toBe(true)
+    expect(lienSameProperty(at('628 Tarrow Rd'), at('628 Tarrow Rd, San Antonio, TX 78209'))).toBe(true)
     // A city alone is not a property, a number and one word is too little, and 62 is not 628.
     expect(lienSameProperty(at('San Antonio, TX'), at('San Antonio, TX'))).toBe(false)
     expect(lienSameProperty(at('12 Oak'), at('12 Oak St, Seguin, TX'))).toBe(false)
-    expect(lienSameProperty(at('62 Terrell Rd'), at('628 Terrell Rd'))).toBe(false)
+    expect(lienSameProperty(at('62 Tarrow Rd'), at('628 Tarrow Rd'))).toBe(false)
     // A filed lien has no date ahead, so it hosts nothing.
     const filed = buildLienCalendarBoard(
       [job({ jobId: 'f1', address: '5 Elm St', r: { filedYmd: '2026-09-03' } }), job({ jobId: 'x2', address: '5 Elm St', r: { lastWorkYmd: '2026-05-05' } })],
@@ -321,9 +321,9 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
 describe('Record the mailing (v2.5522)', () => {
   it('a printed notice leaves Draft the N for Record the mailing · N, the bar counts it, and the GC row under the bar says so', () => {
     const rows = [
-      job({ jobId: 'a', name: 'Dudley Mason', ...RMC, openBalance: 9800 }),
-      job({ jobId: 'p', name: 'Take 5- Seguin', gcId: 'gc-sp', gcName: 'Southern Post Construction', openBalance: 38625, r: { mailedMonths: ['2026-08'] } }),
-      job({ jobId: 'q', name: 'Liberty Hill', gcId: 'gc-sp', gcName: 'Southern Post Construction', openBalance: 6258, r: { mailedMonths: ['2026-08'] } }),
+      job({ jobId: 'a', name: 'Dunmere Mallin', ...RLC, openBalance: 9800 }),
+      job({ jobId: 'p', name: 'Tune 5- Seguin', gcId: 'gc-sp', gcName: 'Southern Pine Construction', openBalance: 38625, r: { mailedMonths: ['2026-08'] } }),
+      job({ jobId: 'q', name: 'Liberty Hill', gcId: 'gc-sp', gcName: 'Southern Pine Construction', openBalance: 6258, r: { mailedMonths: ['2026-08'] } }),
     ]
     const board = buildLienCalendarBoard(rows, '', TODAY)
     const thisMonth = board.buckets.find((b) => b.key === 'this_month')!
@@ -333,7 +333,7 @@ describe('Record the mailing (v2.5522)', () => {
     const sp = thisMonth.groups.find((g) => g.key === 'gc:gc-sp')!
     expect(sp.word).toBe('record 2 mailings')
     expect(sp.sub).toBe('GC · 2 jobs · 2 in the mail')
-    const mixed = buildLienCalendarBoard([...rows, job({ jobId: 'r', name: 'Round Rock', gcId: 'gc-sp', gcName: 'Southern Post Construction', openBalance: 100 })], '', TODAY)
+    const mixed = buildLienCalendarBoard([...rows, job({ jobId: 'r', name: 'Round Rock', gcId: 'gc-sp', gcName: 'Southern Pine Construction', openBalance: 100 })], '', TODAY)
     expect(mixed.buckets.find((b) => b.key === 'this_month')!.groups.find((g) => g.key === 'gc:gc-sp')!.word).toBe('send the notice · 2 in the mail')
   })
 })
