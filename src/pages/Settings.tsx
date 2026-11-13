@@ -75,6 +75,7 @@ import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSetti
 import { EmailCountSettingsCard } from '../components/settings/EmailCountSettingsCard'
 import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
 import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
+import { ReceiptTextsSettingsCard } from '../components/settings/ReceiptTextsSettingsCard'
 import { canSeePhoneAndTexts, canSetAssignSeats } from '../lib/messages/assignRule'
 import { canSwitchReader } from '../lib/messages/emailReader'
 import { canSetEmailCount } from '../lib/emailIn/countCard'
@@ -1628,6 +1629,8 @@ export default function Settings() {
         {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
+            {/* #299 (v2.7126): the receipt text's own switch, off as it ships; it waits on Send texts above. */}
+            {canSwitchTexts(myRole) && <ReceiptTextsSettingsCard />}
             <PhoneAndTextsSettingsSection />
             {/* The Quo connection (v2.5718): the key once, then the seats and the inboxes pick from Quo's lists. */}
             <QuoConnectionProvider enabled={canSetAssignSeats(myRole)}>
