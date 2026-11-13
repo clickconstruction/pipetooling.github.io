@@ -8,12 +8,17 @@ import {
   clockTime,
   courtOf,
   dayLabel,
+  filedByAge,
+  filedMark,
+  FILED_AFTER_DAYS,
   fullWhen,
   isLong,
+  lastAsk,
   lastIn,
   lastMessage,
   lastOut,
   lineWhen,
+  NOTHING_WAITS,
   snippetOf,
   threadOf,
   threadRows,
@@ -214,5 +219,78 @@ describe('bioMark: the small mark on the bio line (v2.6659, punch list #282)', (
   it('draws nothing on every other line', () => {
     expect(bioMark({ introducesUserId: null })).toBeNull()
     expect(bioMark({})).toBeNull()
+  })
+})
+
+describe('a mail filed for the record (v2.7027, punch list #324)', () => {
+  const NOW = '2026-11-12T18:00:00Z'
+  const mail = (id: string, direction: 'in' | 'out', at: string, history = false): ThreadMessage => ({
+    id,
+    contactId: 'dale',
+    jobId: 'j1077',
+    channel: 'email',
+    direction,
+    at,
+    who: direction === 'in' ? 'Dale Okafor' : 'Marisol',
+    subject: 'Rough-in dates',
+    body: 'The 9th works.',
+    ...(history ? { history: true, landedAt: '2026-11-09T22:12:00Z' } : {}),
+  })
+
+  it('files a mail more than fourteen days old when it lands, and no younger', () => {
+    expect(FILED_AFTER_DAYS).toBe(14)
+    expect(filedByAge('2026-03-03T15:00:00Z', NOW)).toBe(true)
+    expect(filedByAge('2026-10-29T17:59:00Z', NOW)).toBe(true)
+    expect(filedByAge('2026-10-29T18:00:00Z', NOW)).toBe(false)
+    expect(filedByAge('2026-11-11T15:00:00Z', NOW)).toBe(false)
+    expect(filedByAge(null, NOW)).toBe(false)
+    expect(filedByAge('not a date', NOW)).toBe(false)
+  })
+
+  it('asks for nothing, so a thread of old mail alone reads Nothing waits, and is still when they last wrote', () => {
+    const lines = [mail('a', 'out', '2026-03-01T15:00:00Z', true), mail('b', 'in', '2026-03-03T15:00:00Z', true)]
+    expect(lastAsk(lines, 'dale')).toBeUndefined()
+    expect(lastIn(lines, 'dale')?.id).toBe('b')
+    expect(courtOf(lines, 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
+    expect(courtOf([mail('b', 'in', '2026-03-03T15:00:00Z', true)], 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
+  })
+
+  it('still reads as before with no filed mail', () => {
+    expect(courtOf([], 'dale', NOW)).toEqual({ side: 'none', word: 'no messages yet' })
+    expect(courtOf([mail('b', 'in', '2026-11-10T18:00:00Z')], 'dale', NOW).word).toBe('Our move · 2 d')
+    expect(courtOf([mail('a', 'out', '2026-11-10T18:00:00Z')], 'dale', NOW).word).toBe('Their move · 2 d')
+  })
+
+  it('is our move again when a new mail comes after the filed ones', () => {
+    const lines = [mail('a', 'out', '2026-03-01T15:00:00Z', true), mail('b', 'in', '2026-03-03T15:00:00Z', true), mail('c', 'in', '2026-11-12T15:00:00Z')]
+    expect(lastAsk(lines, 'dale')?.id).toBe('c')
+    expect(courtOf(lines, 'dale', NOW)).toMatchObject({ side: 'ours', word: 'Our move · 3 h' })
+  })
+
+  it('a filed mail of ours answers what came before it, and starts no clock for them', () => {
+    const lines = [mail('q', 'in', '2026-10-23T15:00:00Z'), mail('r', 'out', '2026-10-27T15:00:00Z', true)]
+    expect(courtOf(lines, 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
+  })
+
+  it('a filed mail of theirs after our last word ends their move without making it ours', () => {
+    const lines = [mail('s', 'out', '2026-10-20T15:00:00Z'), mail('t', 'in', '2026-10-24T15:00:00Z', true)]
+    expect(courtOf(lines, 'dale', NOW)).toEqual({ side: 'none', word: NOTHING_WAITS })
+  })
+
+  it('a live word of theirs still waits when only a filed mail of theirs came after it', () => {
+    const lines = [mail('q', 'in', '2026-10-23T18:00:00Z'), mail('t', 'in', '2026-10-27T15:00:00Z', true)]
+    expect(courtOf(lines, 'dale', NOW)).toMatchObject({ side: 'ours', word: 'Our move · 20 d' })
+  })
+
+  it('marks the line with the day it was filed, and says so in plain words', () => {
+    const theirs = filedMark(mail('b', 'in', '2026-03-03T15:00:00Z', true), NOW)
+    expect(theirs).toEqual({ words: 'filed Nov 9', title: 'This mail is from March 3. It was filed here on November 9. It asked nobody for a reply.' })
+    const ours = filedMark(mail('a', 'out', '2025-03-01T15:00:00Z', true), NOW)
+    expect(ours?.title).toBe('This mail is from March 1, 2025. It was filed here on November 9.')
+    expect(filedMark({ history: true, at: '2026-03-03T15:00:00Z', direction: 'in', landedAt: null }, NOW)).toEqual({
+      words: 'filed',
+      title: 'This mail is from March 3. It was filed here for the record. It asked nobody for a reply.',
+    })
+    expect(filedMark(mail('c', 'in', '2026-11-12T15:00:00Z'), NOW)).toBeNull()
   })
 })

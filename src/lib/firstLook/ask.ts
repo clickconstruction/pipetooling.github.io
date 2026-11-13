@@ -4,10 +4,9 @@
  * line holds the blank `{show}` until the link is back (`mint_first_look`), as a rating ask holds `{rate}`, so the
  * send waits on the link and never on the person. Pure: the words, the `/` words that call it, and the link.
  */
-import { APP_ORIGIN } from '../appOrigin'
 import { APP_LINE_PREFIX } from '../messages/stageLines'
 import type { QuickReply } from '../quickReplies/kernel'
-import { firstLookAskLine, showUsPath } from './look'
+import { firstLookAskLine } from './look'
 
 /** The blank the ask's link fills. */
 export const SHOW_BLANK = '{show}'
@@ -54,10 +53,7 @@ export function showAskLine(first: string | null): QuickReply {
   }
 }
 
-/** The customer's page for a code, as the text carries it. */
-export function showUsLink(code: string, origin: string = APP_ORIGIN): string {
-  return `${origin}${showUsPath(code)}`
-}
+export { showUsLink } from './look'
 
 /** The box after the ask is put in: an empty box takes the line, words already there keep their place above it. */
 export function withAsk(body: string, ask: string): string {

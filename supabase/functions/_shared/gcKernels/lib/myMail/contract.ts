@@ -142,6 +142,8 @@ export interface MyMailTagRequest {
   job: MyMailJobRef
   plan?: boolean
   as?: string
+  /** File every mail for the record whatever its age (v2.7032): the seat's `for_record`. The tab never sends it. */
+  forRecord?: boolean
 }
 
 /** A person as the seat names one for a tag onto an HR file (punch list #289): a `people.id`. */
@@ -224,6 +226,11 @@ export interface MyMailTagPlanMail {
   tie?: boolean
   why?: string
   files?: number
+  /**
+   * On a write (v2.7027, punch list #324): `record` when the mail is old enough to be filed for the record and will ask
+   * nobody for a reply, `followUp` when it lands as mail that came in today would.
+   */
+  lands?: 'record' | 'followUp'
 }
 
 /** The plan of a tag, written nowhere: the job, the counts, each mail, and the job the conversation was on before. */
@@ -243,6 +250,8 @@ export interface MyMailTagCounts {
   tied: number
   files: number
   skipped: number
+  /** How many of `lines` are filed for the record (v2.7027). */
+  filed: number
 }
 
 /**
@@ -257,26 +266,81 @@ export interface MyMailTagOk {
   files: number
   contactId: string | null
   unknownSender: { contactId: string; address: string; name: string } | null
+  /** How many of the mails the tag planned to write were filed for the record (v2.7027). Absent from a function deployed before it. */
+  filed?: number
+  /**
+   * The conversation's state in Follow up once the tag is done (v2.7032, `contacts.state` of `contactId`), for the line
+   * the tab prints after a tag. Absent when it could not be read, and from a function deployed before it.
+   */
+  state?: 'waiting' | 'snoozed' | 'done'
 }
 
-/** Take a conversation back off its job. */
+/**
+ * Take a conversation back off its job. The dev seat's door adds `as`, the login whose box the conversation is in, and
+ * `plan`, which answers what the untag would do (`MyMailUntagPlanOk`) and writes nothing, the row's mark included; a
+ * person's own press carries neither. The seat takes off only a tag the seat made.
+ */
 export interface MyMailUntagRequest {
   action: 'untag'
   threadId: string
+  plan?: boolean
+  as?: string
+}
+
+/** Why one of the person's lines stays through an untag: the office keeps a promise, a highlight or what we owe on it. */
+export type MyMailUntagHeldWhy = 'promise' | 'highlight' | 'owed'
+
+/**
+ * What the seat's untag clears beyond the lines, and what it leaves, so nothing still shows who was written to: the
+ * ties that put a person on the job's people (`contact_jobs`) and the contacts the tag made for a sender nobody knew.
+ * `ties` and `contacts` go. `tiesLeft` are ties that stay though the person keeps no line on the job (made before the
+ * tag, or starred). `contactsLeftEmpty` are contacts that stay with no line at all (known ones, or made before the tag).
+ */
+export interface MyMailUntagSweep {
+  ties: string[]
+  tiesLeft: number
+  contacts: string[]
+  contactsLeftEmpty: number
+}
+
+/** The plan of an untag, written nowhere: what goes, what is held and why, what a matter keeps, and what is left. */
+export interface MyMailUntagPlanOk {
+  ok: true
+  plan: true
+  threadId: string
+  account: string
+  /** The job the conversation is on, as its key, and when it was tagged. */
+  jobKey: string
+  taggedAt: string | null
+  /** The person's own lines of the conversation that go, each with its files and its raw copy. */
+  remove: string[]
+  /** Their lines that stay on the job with their files, each with why. */
+  held: Array<{ id: string; why: MyMailUntagHeldWhy }>
+  /** The boxes' lines the tag tied, which come off the job and stay in Messages. */
+  untie: string[]
+  /** The copied files that leave the bucket with the lines that go. */
+  files: number
+  /** The live documents a legal matter made from the lines that go: the matter keeps its own copies. */
+  keptForMatter: number
+  /** Whether the tag's grey line stands on the thread; it goes. */
+  greyLine: boolean
+  sweep: MyMailUntagSweep
 }
 
 /**
  * The untag done: the lines removed, and whether the office already put the conversation on a legal matter, which keeps
  * its own copy. Since v2.6292 also `held`, the person's lines that stay on the job with their files because the office
- * keeps something on them (a promise written down, a highlight, or what we owe done by one), and `labelLeft`, the mails
- * the label *Tagged in ClickTooling* could not come off in Gmail. A function deployed before v2.6292 sends neither.
+ * keeps something on them (a promise written down, a highlight, or what we owe done by one). Until v2.7035 it also
+ * carried `labelLeft`, the mails a Gmail label could not come off; an untag no longer touches Gmail.
  */
 export interface MyMailUntagOk {
   ok: true
   removed: number
   keptForMatter: boolean
   held?: number
-  labelLeft?: number
+  /** The seat's untag alone: the boxes' lines untied, and what it cleared and left beyond the lines, as counts. */
+  untied?: number
+  swept?: { ties: number; tiesLeft: number; contacts: number; contactsLeftEmpty: number }
 }
 
 /** What the tab posts to the function. */
@@ -327,5 +391,9 @@ export const MY_MAIL_FUNCTION = 'gmail-mine'
 /** How many mails a page of the list reads. */
 export const MY_MAIL_PAGE = 50
 
-/** The Gmail label a tagged mail carries in the person's own box (the owner's call 6), so Gmail shows what is on a job. */
+/**
+ * The Gmail label the app used to put on a tagged mail in the person's own box, until v2.7035. A tagged mail is copied
+ * into the app whole, so the label marked a link that does not exist. Nothing adds it, reads it or takes it off any
+ * more: `gmail-mine`'s one-time clean-up deletes it from every mailbox that has it, and the name is kept for that alone.
+ */
 export const MY_MAIL_GMAIL_LABEL = 'Tagged in ClickTooling'

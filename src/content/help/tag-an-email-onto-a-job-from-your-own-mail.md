@@ -113,9 +113,31 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 - The files come along, each up to 25 MB.
 - The app keeps each mail as it came, for the Legal desk.
 - A mail our bids or team inbox already took is never copied twice. The tag ties it to the job, unless the office tied it to another job already.
-- In your Gmail, a tagged mail gets the label **Tagged in ClickTooling**.
+- Nothing changes in your Gmail. A tag adds no label, and no mail is moved or marked.
+- The line on the job is a copy. It stays if you later delete the mail in Gmail.
 
 After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
+
+A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself. The developer can take it back off the job too.
+
+### Old mail is filed for the record
+
+A mail more than 14 days old when you tag it is filed for the record. You saw it in your own mail when it came, so the app asks nobody to answer it.
+
+- The mail still lands on the thread and on the job, at its own date.
+- Its line wears a small chip, such as *filed Nov 9*. Hover the chip to read when the mail is from.
+- The thread stays off Follow up. A sender nobody has named is not asked about in **New**.
+- When every mail was old, the grey line adds *This is old mail, filed for the record. Nothing went on Follow up.*
+- A thread with nothing else on it says *Nothing waits* where the move line is.
+
+A new mail in the same conversation still opens the thread, as any mail does. A mail from the last 14 days lands as it always has.
+
+After a tag, the green bar says what the tag did to Follow up.
+
+- *6 old mails were filed for the record. Nothing went on Follow up.* Press {{button:outline|Put on Follow up}} when the old mail does need an answer.
+- *This conversation is on Follow up.* Press {{button:outline|No reply needed}} when nothing is owed.
+
+You can also open the thread later, press {{button:outline|⋯}}, then **Reopen**.
 
 A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 
@@ -164,7 +186,7 @@ Press **Not now** to name them later. The tag stays on the job either way.
 2. Press **Untag**.
 3. Press {{button:red|Untag}} to say yes.
 
-Untag takes the conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line our bids or team inbox took goes back to where it was. In your Gmail, the label comes off.
+Untag takes the conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line our bids or team inbox took goes back to where it was. Nothing changes in your Gmail.
 
 Every tagged conversation has **Untag**. A conversation our bids or team inbox read in full has it too.
 

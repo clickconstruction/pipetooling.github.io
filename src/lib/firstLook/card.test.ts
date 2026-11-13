@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lookAskedWords, lookCardDriveLine, lookCards, lookCounts, lookStanding, lookWordsFor, textedKind, textedSince, type ThreadLook, type ThreadLookFile } from './card'
+import { lookAskedLower, lookAskedWords, lookCardDriveLine, lookCards, lookCounts, lookStanding, lookWordsFor, textedKind, textedSince, type ThreadLook, type ThreadLookFile } from './card'
 
 const look = (over: Partial<ThreadLook> = {}): ThreadLook => ({
   id: 'L1',
@@ -96,6 +96,8 @@ describe('a First look card on a thread (punch list #319 PR 1)', () => {
   it('the head names who asked and when', () => {
     expect(lookAskedWords(look(), 'Nov 12')).toBe('Asked Nov 12 by Rosa')
     expect(lookAskedWords(look({ asked_by_name: ' ' }), 'Nov 12')).toBe('Asked Nov 12')
+    // After a comma only the first letter drops: a month and a name keep their capitals.
+    expect(lookAskedLower(look(), 'Nov 12')).toBe('asked Nov 12 by Rosa')
   })
 
   it('the doors take their own words from the page first, with the place', () => {

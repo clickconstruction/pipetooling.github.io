@@ -19,6 +19,7 @@ import {
 } from '../../lib/billedReportEmailClient'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * "Share / Print" on the Billed Awaiting Payment header (v2.1316): email the
@@ -231,14 +232,7 @@ export default function BilledReportShareModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Share Billed Awaiting Payment</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-          >
-            ×
-          </button>
+          <WindowCloseButton onClose={onClose} />
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Emails the report — grouped by customer with amounts due, clickable contacts, and links that open each job in

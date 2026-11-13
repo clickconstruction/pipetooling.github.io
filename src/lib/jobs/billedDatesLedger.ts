@@ -22,28 +22,37 @@
  * can be filed before it), then the lien date with *notice sent* under it; on
  * a direct job the lien date from the start. The bold line under the hairline
  * appears only when it says something the rows do not — the slack (*Can run
- * late · 72d*), a comparison (*Notice first · 4d short*), an ask (*Ask for a
- * date · 12d past*) or a loss (*Lien gone*); when the deadline row is itself
- * the to-do it is bold and nothing repeats it. Pure: the money comes from
- * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
- * arranges them.
+ * late · 72d*), a comparison (*Money lands too late · 4d short*), an ask (*Ask
+ * for a date*); when the deadline row is itself the to-do it is bold and
+ * nothing repeats it. Pure: the money comes from `billedExpectedPayModel`, the
+ * deadlines from `buildLienPayRunway`; this only arranges them.
+ *
+ * Since v2.7043 (punch list #325) the deadline row's WORDS are the next act on
+ * the lien path when the Lien desk has one for the job (`lienActFor`, handed
+ * in as `lienState.act`): *Find the owner by Oct 15*, *Draft the affidavit by
+ * Nov 16*. The day, the count, the dot, the weight and the colour stay the
+ * runway's, so the row and the Lien calendar never show two days. With no act
+ * the row keeps the deadline's own name. A closed window is one line, *Lien
+ * gone Oct 15*, and a filed lien whose copies are not served asks *Serve the
+ * affidavit* by its fifth day.
  */
 import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
 import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
+import { LIEN_ROW_PRESS_SENTENCE, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
 /** A filled dot is a fact behind us, the money, or the row that asks; a ring is a deadline still ahead. */
 export type LedgerDot = 'filled' | 'ring'
 
-export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'inkind' | 'notice' | 'lien' | 'filed' | 'closed'
+export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'inkind' | 'notice' | 'lien' | 'retainage' | 'filed' | 'closed'
 
 export type LedgerRow = {
   key: LedgerRowKey
-  /** "Billed" · "Expected" · "Due" (the payer's Pay calendar, v2.7025) · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
+  /** "Billed" · "Expected" · "Due" (the payer's Pay calendar, v2.7025) · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the affidavit" · the next act ("Draft the affidavit", `lienActFor`) · "Lien filed" · "Lien gone". */
   label: string
   /** The words between the label and the date: '' · 'by'. */
   joiner: string
@@ -65,13 +74,33 @@ export type LedgerRow = {
   subTitle?: string
 }
 
-/** The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`. */
-export type LedgerLienState = { words: string; tone: LedgerTone; title?: string }
+/** The Lien window's tab a lien line opens on (v2.7046): the paper the line names. */
+export type LedgerLienTab = 'notice' | 'affidavit'
+
+/**
+ * The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`.
+ * Since v2.7042 (punch list #325) the chip's parts come too, so the line never says the row's day and count again:
+ * `lead` is the words with no day after them, `dueOn` the day the chip names, `paper` the paper it is about and
+ * `action` the Do now move it stands for. A reader that passes none of them gets the words as written.
+ */
+export type LedgerLienState = {
+  words: string
+  tone: LedgerTone
+  title?: string
+  lead?: string
+  dueOn?: string | null
+  paper?: string
+  action?: string | null
+  /** The next act on the lien path (v2.7043, `lienActFor`): its words take the lien line, and the clock keeps the day. */
+  act?: LienAct | null
+  /** A closed window someone wrote down on the desk: the *Lien gone* line turns plain. */
+  noted?: boolean
+}
 
 export type LedgerVerdict = {
-  /** "Can run late" · "Notice first" · "File the lien first" · "Ask for a date" · "Nothing landed" · "Lien gone". */
+  /** "Can run late" · "Money lands too late" · "Ask for a date" · "Nothing landed". */
   label: string
-  /** "72d" · "4d short" · "12d past" · ''. */
+  /** "72d" · "4d short" · ''. */
   value: string
   tone: LedgerTone
   action: LedgerAction | null
@@ -84,6 +113,12 @@ export type BilledDatesLedger = {
   verdict: LedgerVerdict | null
   /** The whole block as one sentence (the accessible name). */
   full: string
+  /**
+   * The paper the lien line names (v2.7046, punch list #325, PR 3): the Lien window opens on its tab, where it opened
+   * on Demand letter whatever the row said. A notice row, a late notice and a closed notice window open § 53.056
+   * notice; the affidavit, its service and a closed lien window open the lien's tab; null with no lien row.
+   */
+  lienTab: LedgerLienTab | null
 }
 
 export type BilledDatesLedgerInput = {
@@ -138,8 +173,18 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
 
 export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null, inKind = false, calendar = null }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
-  /** The state line under a lien row (v2.5491), when the desk has one. */
-  const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
+  /**
+   * The state line under a lien row (v2.5491), when the desk has one. Since v2.7042 (punch list #325) it says nothing
+   * the row above it says: it is left out when the row asks for the very act it names (*File the affidavit* over
+   * *File the affidavit*), and it drops its own day and count when they are the row's, or when it is about the row's
+   * own paper, whose day is the clock's to give. A line about another paper (a retainage notice, service) keeps its day.
+   */
+  const stateUnder = (rowPaper: 'notice' | 'affidavit' | null, rowYmd: string, rowAsksToFile: boolean): { sub: string; subTone?: LedgerTone; subTitle?: string } | null => {
+    if (!lienState) return null
+    if (rowAsksToFile && lienState.action === 'file_affidavit') return { sub: '' }
+    const sayItOnce = lienState.lead != null && ((lienState.dueOn != null && lienState.dueOn === rowYmd) || (rowPaper != null && lienState.paper === rowPaper))
+    return { sub: sayItOnce ? lienState.lead! : lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words }
+  }
 
   // The bill
   const billedYmd = row ? billedReferenceYmd(row) : null
@@ -234,68 +279,118 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
     })
   }
 
-  // The one deadline, from the runway's verdict
+  // The one deadline: its day, dot, weight and colour from the runway (the clock), its words from the
+  // desk's next act when the desk has one (the paper) — v2.7043, punch list #325.
   let verdict: LedgerVerdict | null = null
+  let lienTab: LedgerLienTab | null = null
+  const act = lienState?.act ?? null
+  /** The money's own ask, when no lien line is pressing: their word that they paid, a day gone by, or no day at all. */
+  const moneyAsk = (): LedgerVerdict | null => {
+    if (said) return saidStale ? { label: 'Nothing landed', value: dWord(daysSinceClaim(said, todayYmd)), tone: 'amber', action: 'they-said', title: `They said they paid ${formatYmdMonthDay(said.paidYmd)} and nothing has landed on the job since — ask whether it went out` } : null
+    // No count beside it (v2.7042): the Expected row two lines up already says how far past the day is.
+    if (moneyPast && moneyTo != null) return { label: 'Ask for a date', value: '', tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${moneyTitle} — the date has gone by with the balance still open` }
+    if (scheduledInKind) return null // a credit comes as it comes: nobody is asked for a date
+    return { label: 'Ask for a date', value: '', tone: 'plain', action: moneyAction, title: 'Nobody has said when this will be paid' }
+  }
   if (runway && runway.state !== 'none') {
+    const guess = lienDayGuessSentence(runway)
     if (runway.state === 'filed') {
-      rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '', ...state })
+      lienTab = 'affidavit'
+      const filedDate = runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? ''
+      const serveBy = lienState?.action === 'record_service' && act && lienState.dueOn ? lienState.dueOn : ''
+      const serveDays = serveBy ? daysBetweenYmd(todayYmd, serveBy) : null
+      if (serveBy && serveDays != null) {
+        // The copies are not served: five days is the shortest clock on the path, so the act takes the line and the filing day sits under it.
+        rows.push({ key: 'filed', label: act!.words, joiner: 'by', date: formatYmdMonthDay(serveBy), far: serveDays < 0 ? `${dWord(-serveDays)} late` : farWords(serveDays, 'bare'), tone: 'red', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: act!.why, dayWords: formatYmdMonthDay(serveBy) }), sub: filedDate ? `Filed ${filedDate}` : '' })
+      } else {
+        rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: filedDate, far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: 'The lien affidavit is on file. The money is still owed.', dayWords: '' }), sub: '', ...stateUnder('affidavit', '', false) })
+      }
     } else if (runway.state === 'closed') {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
-      rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Lien window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
-      verdict = { label: 'Lien gone', value: '', tone: 'red', action: 'lien-desk', title: runway.title }
+      // One short line (v2.7043): *Lien window closed Oct 15* over *Lien gone* said it twice and was cut to dots at the
+      // column's width. Red until someone writes the closed window down on the desk, plain after.
+      lienTab = noticeClosed ? 'notice' : 'affidavit'
+      const noted = lienState?.noted === true
+      const closedWords = closedYmd ? formatYmdMonthDay(closedYmd) : ''
+      rows.push({
+        key: 'closed',
+        label: 'Lien gone',
+        joiner: '',
+        date: closedWords,
+        far: closedYmd ? farWords(closedDays, 'bare') : '',
+        tone: noted ? 'plain' : 'red',
+        bold: !noted,
+        dot: 'filled',
+        action: 'lien-desk',
+        title: lienRowTip({ why: `${noticeClosed ? 'The notice window' : 'The lien window'} closed${closedWords ? ` ${closedWords}` : ''} with nothing ${noticeClosed ? 'sent' : 'filed'}. The lien is gone. The money is still owed.`, dayWords: '' }),
+        sub: '',
+      })
     } else {
       // On a sub job the notice comes first; nothing can be filed before it goes.
       const noticeFirst = runway.state === 'notice_due' && runway.daysToNotice != null && runway.noticeByYmd !== ''
-      const deadlineYmd = noticeFirst ? runway.noticeByYmd : runway.lienByYmd
-      const deadlineDays = noticeFirst ? runway.daysToNotice! : runway.daysToLien
-      if (deadlineYmd && deadlineDays != null) {
+      const clockYmd = noticeFirst ? runway.noticeByYmd : runway.lienByYmd
+      const clockDays = noticeFirst ? runway.daysToNotice! : runway.daysToLien
+      // A retainage notice due before the clock's own day is the nearest paper: it takes the line, with its own day.
+      const ownDays = act && lienState?.paper === 'retainage' && lienState.dueOn && clockYmd && lienState.dueOn < clockYmd ? daysBetweenYmd(todayYmd, lienState.dueOn) : null
+      const own = ownDays != null && ownDays >= 0
+      const deadlineYmd = own ? lienState!.dueOn! : clockYmd
+      const deadlineDays = own ? ownDays : clockDays
+      const rowPaper: 'notice' | 'affidavit' | 'retainage' = own ? 'retainage' : noticeFirst ? 'notice' : 'affidavit'
+      // The act names the row when it is a step toward the row's own day: on the row's paper, or a notice that still has to go before the affidavit.
+      const lineAct = act && (lienState?.paper === rowPaper || (rowPaper === 'affidavit' && lienState?.paper === 'notice')) ? act : null
+      // A notice, a retainage notice and a notice that must go before the affidavit are all read on the window's notice tab.
+      lienTab = rowPaper === 'affidavit' && !(lineAct && lienState?.paper === 'notice') ? 'affidavit' : 'notice'
+      if (lineAct && !lineAct.dated) {
+        // No lien can attach, so there is no day to race: the fact, and who to ask.
+        rows.push({ key: noticeFirst ? 'notice' : 'lien', label: lineAct.words, joiner: '', date: '', far: '', tone: 'amber', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: lineAct.why, dayWords: '' }), sub: lineAct.under, subTone: 'amber', subTitle: lineAct.why })
+        verdict = moneyAsk()
+      } else if (deadlineYmd && deadlineDays != null) {
         /** + when the money lands before the deadline, − when after. */
         const slack = moneyYmd ? daysBetweenYmd(moneyYmd, deadlineYmd) : null
         const short = moneyAhead && slack != null && slack < 0
         // The row is the to-do when the money is not landing before it: expected after it, already
         // past, or never named. A notice is cheap and preserves the lien, so it asks at any distance;
         // a lien asks inside three weeks.
-        const urgent = short || ((moneyPast || moneyTo == null) && (noticeFirst || deadlineDays <= LIEN_RUNWAY_AMBER_DAYS))
+        const urgent = short || ((moneyPast || moneyTo == null) && ((noticeFirst && !own) || deadlineDays <= LIEN_RUNWAY_AMBER_DAYS))
         const tone: LedgerTone = short || deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'red' : urgent ? 'amber' : moneyAhead && slack != null && slack >= 0 ? 'green' : 'plain'
+        const dayWords = formatYmdMonthDay(deadlineYmd)
+        const quietWhy = noticeFirst ? 'A notice to the owner and the GC is owed for this work.' : 'The lien affidavit is the next paper on this job.'
         rows.push({
-          key: noticeFirst ? 'notice' : 'lien',
-          label: noticeFirst ? 'Lien notice' : urgent ? 'File the lien' : 'Lien',
+          key: own ? 'retainage' : noticeFirst ? 'notice' : 'lien',
+          // The paper is the affidavit everywhere a person meets it: the Lien window's header and the desk say *File the affidavit* (v2.7042).
+          label: lineAct ? lineAct.words : noticeFirst ? 'Lien notice' : urgent ? 'File the affidavit' : 'Lien',
           joiner: 'by',
-          date: formatYmdMonthDay(deadlineYmd),
+          date: dayWords,
           far: farWords(deadlineDays, 'bare'),
           tone,
           bold: urgent,
           dot: urgent ? 'filled' : 'ring',
           action: 'lien-desk',
-          title: runway.title,
-          sub: !noticeFirst && runway.noticeSent ? 'notice sent' : '',
-          ...state,
+          title: lienRowTip({ why: lineAct ? lineAct.why : quietWhy, dayWords, guess }),
+          sub: !lineAct && !noticeFirst && runway.noticeSent ? 'notice sent' : '',
+          // The act is the line, so nothing sits under it but what the act itself carries (a hold's reason).
+          ...(lineAct ? (lineAct.under ? { sub: lineAct.under, subTone: lienState?.tone, subTitle: lienState?.title ?? lineAct.under } : {}) : stateUnder(noticeFirst ? 'notice' : 'affidavit', deadlineYmd, !noticeFirst && urgent)),
         })
         if (short && slack != null) {
-          verdict = { label: noticeFirst ? 'Notice first' : 'File the lien first', value: `${dWord(-slack)} short`, tone: 'red', action: 'lien-desk', title: runway.title }
+          // The row above names the act, so this line speaks of the money alone (v2.7042; it read *Notice first* / *File the lien first*).
+          verdict = { label: 'Money lands too late', value: `${dWord(-slack)} short`, tone: 'red', action: 'lien-desk', title: `The money is expected ${-slack} ${slack === -1 ? 'day' : 'days'} after the last day. Act before ${dayWords}. ${LIEN_ROW_PRESS_SENTENCE}` }
         } else if (moneyAhead && slack != null) {
-          verdict = { label: 'Can run late', value: dWord(slack), tone: deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green', action: 'lien-desk', title: `${moneyTitle ? `${moneyTitle} ` : ''}The money can land ${slack} ${slack === 1 ? 'day' : 'days'} later than expected before the ${noticeFirst ? 'notice has to go' : 'lien window closes'}.` }
+          verdict = { label: 'Can run late', value: dWord(slack), tone: deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green', action: 'lien-desk', title: `${moneyTitle ? `${moneyTitle} ` : ''}The money can land ${slack} ${slack === 1 ? 'day' : 'days'} later than expected before the ${noticeFirst && !own ? 'notice has to go' : own ? 'retainage notice has to go' : 'lien window closes'}. ${LIEN_ROW_PRESS_SENTENCE}` }
         } else if (urgent) {
           verdict = null // the deadline row is the to-do; nothing repeats it
-        } else if (said) {
-          // Their word is that they paid: nothing to ask for until a week passes with nothing landed.
-          verdict = saidStale ? { label: 'Nothing landed', value: dWord(daysSinceClaim(said, todayYmd)), tone: 'amber', action: 'they-said', title: `They said they paid ${formatYmdMonthDay(said.paidYmd)} and nothing has landed on the job since — ask whether it went out` } : null
-        } else if (moneyPast && moneyTo != null) {
-          verdict = { label: 'Ask for a date', value: `${dWord(-moneyTo)} past`, tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${moneyTitle} — the date has gone by with the balance still open` }
-        } else if (scheduledInKind) {
-          verdict = null // a credit comes as it comes: nobody is asked for a date
         } else {
-          verdict = { label: 'Ask for a date', value: '', tone: 'plain', action: moneyAction, title: 'Nobody has said when this will be paid' }
+          verdict = moneyAsk()
         }
       }
     }
   }
 
+
   const full = rows
     .map((r) => [r.label, r.joiner, r.date, r.far ? `· ${r.far}` : ''].filter(Boolean).join(' '))
     .concat(verdict ? [[verdict.label, verdict.value ? `· ${verdict.value}` : ''].filter(Boolean).join(' ')] : [])
     .join(' · ')
-  return { rows, verdict, full }
+  return { rows, verdict, full, lienTab }
 }

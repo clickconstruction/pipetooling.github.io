@@ -230,8 +230,20 @@ serve(async (req) => {
       await writeEstimateThreadLine(admin, { estimateId: est.id, eventType: 'public_link_view' })
     }
 
+    // Punch list #319 PR 5: an estimate started from a First look says so, and the page tells the customer the tech
+    // confirms the price at the home. Its own small read, so a database from before the column, or any other miss
+    // here, costs the customer nothing: the estimate opens as it always has.
+    let priced_from_photos = false
+    try {
+      const { data: look, error: lookErr } = await admin.from('estimates').select('first_look_id').eq('id', est.id).maybeSingle()
+      priced_from_photos = !lookErr && Boolean((look as { first_look_id?: string | null } | null)?.first_look_id)
+    } catch {
+      priced_from_photos = false
+    }
+
     return new Response(
       JSON.stringify({
+        priced_from_photos,
         id: est.id,
         title: est.title,
         line_items_snapshot: est.line_items_snapshot,

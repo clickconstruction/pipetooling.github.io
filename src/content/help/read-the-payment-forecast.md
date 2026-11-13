@@ -41,7 +41,7 @@ The **Pay speeds** strip under the buckets gives the medians at a glance. The st
 
 ## Emailing the forecast
 
-The {{button:outline|✉ Email…}} button in the forecast's header sends this exact view as an email. The email has the bucket totals, the pay-speeds line, and every bill with its expected date. Past-expected follow-ups come first. The email is built **fresh at send time**. So a Monday 7 AM email shows Monday's numbers.
+The {{button:outline|Email this forecast…}} button in the forecast's header sends this exact view as an email. The email has the bucket totals, the pay-speeds line, and every bill with its expected date. Past-expected follow-ups come first. The email is built **fresh at send time**. So a Monday 7 AM email shows Monday's numbers.
 
 - **Send now** emails a teammate immediately. **Schedule…** picks a date and time, in Central time. **Repeat weekly** turns it into a standing subscription. The classic setup is Monday 7:00 AM. Then the week's cash-in picture is in the inbox before the day starts.
 - **Preview** opens the email in a new tab. **Email me a test** sends it to your own address first.

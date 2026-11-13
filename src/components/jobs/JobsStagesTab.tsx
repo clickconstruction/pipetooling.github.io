@@ -1181,7 +1181,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         uncollectible: jobUncollectible(row.job),
         lienState: (() => {
           const chip = lienStateFn(row.job.id)
-          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence } : null
+          // v2.7042: the chip's parts go with its words, so the line never repeats the row's day and count (punch list #325).
+          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence, lead: chip.lead, dueOn: chip.dueOn, paper: chip.paper, action: chip.action, act: chip.act, noted: chip.state === 'gone' && chip.tone === 'muted' } : null
         })(),
       })
       if (ledger.rows.length === 0) return null
@@ -1237,7 +1238,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ledger={ledger}
           evidence={evidence}
           onMoney={canMarkPromisedPay ? () => setPromisedPayModalJob({ jobId: row.job.id, jobLabel: label, initialYmd: promise?.promisedYmd ?? null }) : undefined}
-          onLienDesk={() => setLienInstrumentsModal({ job: row.job, invoice: inv })}
+          // v2.7046: the window opens on the paper the lien line names, not on Demand letter (punch list #325, PR 3).
+          onLienDesk={(tab) => setLienInstrumentsModal({ job: row.job, invoice: inv, initialTab: tab ?? undefined })}
         />
       )
     },

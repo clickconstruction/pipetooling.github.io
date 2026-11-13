@@ -16,6 +16,9 @@ import type { DayKept } from '../messages/owed'
 import type { HeardPromiseKind } from '../messages/promises'
 import { supabase } from '../supabase'
 import { checkSupabaseError, DatabaseError, formatErrorMessage } from '../../utils/errorHandling'
+import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
+import { noReplyBody } from './noReply'
+import { loadDoneFold, type DoneFoldRows } from './doneFoldIo'
 import type { ContactOwedRow, FollowUpContactRow, FollowUpMessageRow, FollowUpRows, MessageHighlightRow, MessagePromiseRow } from './followUpRows'
 import { SET_ASIDE_DAYS, type SetAsideRow } from './setAsideFold'
 import type { ContactState } from './queue'
@@ -35,6 +38,14 @@ export interface FollowUpIo {
   putBack(id: string): Promise<void>
   /** Returns the snooze's day for `snoozed`. */
   setState(contactId: string, state: ContactState): Promise<string | null>
+  /**
+   * **No reply needed** (v2.7029): closes the conversation through `set_state`, then writes the grey line that says who
+   * closed it and when (`noReplyBody`) through `follow_up_event`, as Heard back writes its own. The close stands when
+   * the line cannot be written.
+   */
+  noReplyNeeded(contactId: string, byName: string): Promise<void>
+  /** What was done with no reply this week (v2.7030, `doneFold.ts`): the fold under the lanes reads it. */
+  loadDoneFold(): Promise<DoneFoldRows>
   markOwed(contactId: string, what: string, day: DayKept): Promise<string>
   /** Returns the note that marked it done. */
   owedDone(contactId: string, note: string, job: JobRef | null): Promise<string>
@@ -87,7 +98,7 @@ const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, usual_at, cr
  * (R6's `mailbox`, R7's `tied_by`, v2.6012's `auto`, v2.6222's `invitation`).
  */
 export const MESSAGE_COLUMNS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by, auto, invitation'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by, auto, invitation, history'
 /** The open people's jobs, for the New lane's *Which job?*. */
 const JOB_COLUMNS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at, contact:contacts!inner(state)'
 export const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
@@ -278,6 +289,12 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     },
     async setState(contactId, state) {
       return (await call<string | null>('set_state', { p_contact_id: contactId, p_state: state }, 'change a conversation')) ?? null
+    },
+    loadDoneFold: () => loadDoneFold(new Date(), db),
+    async noReplyNeeded(contactId, byName) {
+      await call('set_state', { p_contact_id: contactId, p_state: 'done' }, 'close a conversation')
+      const line = await db.rpc('follow_up_event', { p_contact_id: contactId, p_body: noReplyBody(byName, formatDenverCalendarDayShort(Date.now())) })
+      if (line.error) console.warn('[follow up] the No reply needed line was not written:', line.error.message)
     },
     async markOwed(contactId, what, day) {
       return call<string>('mark_owed', { p_contact_id: contactId, p_what: what, ...dayArgs(day, 'p_by_day', 'p_by_words') }, 'mark what we owe')

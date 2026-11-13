@@ -149,7 +149,7 @@ export function HeaderGlobalSearchProvider({
   authUserId,
   navOverlayBackground,
   isMobile,
-  farmModeActive = false,
+  taskModeActive = false,
   children,
 }: {
   /** Role gate (dev|master|assistant-like). The provider mounts for every role so the
@@ -164,8 +164,8 @@ export function HeaderGlobalSearchProvider({
   authUserId: string | null
   navOverlayBackground: string
   isMobile: boolean
-  /** Farm Mode hides the Roadmap and Map doors, as it hides their nav entries; the box itself is inert under it. */
-  farmModeActive?: boolean
+  /** Task Mode hides the Roadmap and Map doors, as it hides their nav entries; the box itself is inert under it. */
+  taskModeActive?: boolean
   children: ReactNode
 }) {
   const navigate = useNavigate()
@@ -204,8 +204,8 @@ export function HeaderGlobalSearchProvider({
   // Go anywhere (punch list #181, PR 2): the doors this viewer may open, from the one gated index. Every role that has
   // the box reads them (PR 4); a field role sees the guides among them, beside its job card.
   const viewer = useMemo<DoorViewer | null>(
-    () => (role && enabled ? { role, estimatorProspectsAccess, teamProspectsAccess, farmModeActive } : null),
-    [role, enabled, estimatorProspectsAccess, teamProspectsAccess, farmModeActive],
+    () => (role && enabled ? { role, estimatorProspectsAccess, teamProspectsAccess, taskModeActive } : null),
+    [role, enabled, estimatorProspectsAccess, teamProspectsAccess, taskModeActive],
   )
   // The guides and the punch list live in Vite-only modules (`import.meta.glob`, `virtual:punch-list`), so they load
   // once per sign-in, in an idle moment after the role lands, and only for a viewer who may open them (PR 3). Never

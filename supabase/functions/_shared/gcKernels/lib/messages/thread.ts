@@ -89,7 +89,18 @@ export interface ThreadMessage {
   mailUserId?: string | null
   /** Gmail's id of the conversation the line's mail belongs to (`messages.gmail_thread_id`), for an untag from the line. */
   gmailThreadId?: string | null
+  /**
+   * The mail was filed for the record (`messages.history`, v2.7027, punch list #324): tagged from a person's own box
+   * more than `FILED_AFTER_DAYS` days after it was written. It shows in the thread and on the job at its own date. A
+   * filed mail of theirs is nobody's move: `lastIn`, the court and the lanes skip it. A filed mail of ours still
+   * counts as our answer. Unset on a read that leaves it out.
+   */
+  history?: boolean
+  /** When the line landed in the app (`messages.created_at`), for the filed mark's day. Unset on a read that leaves it out. */
+  landedAt?: string | null
 }
+
+export { FILED_AFTER_DAYS, filedByAge } from './filed.ts'
 
 /** The small mark on a bio line (v2.6659): the word and its hover words, naming the tech when the roster knows them. */
 export interface BioMark {
@@ -102,6 +113,25 @@ export function bioMark(m: Pick<ThreadMessage, 'introducesUserId'>, userNames: R
   const name = (userNames[m.introducesUserId] ?? '').trim()
   const who = name ? `${name}'s` : 'the tech’s'
   return { words: 'bio', title: `${who} bio, as the office wrote it. The app sent it after their first On my way to this customer.` }
+}
+
+/** The small mark on a mail filed for the record (v2.7027): the day it was filed, and the hover's words. */
+export interface FiledMark {
+  words: string
+  title: string
+}
+
+/**
+ * *filed Nov 9* beside who, on a mail filed for the record. The hover says when the mail is from and when it was
+ * filed. A mail of theirs adds that it asked nobody for a reply. With no landing time the mark says *filed* alone.
+ */
+export function filedMark(m: Pick<ThreadMessage, 'history' | 'at' | 'landedAt' | 'direction'>, nowIso: string): FiledMark | null {
+  if (!m.history) return null
+  const from = `This mail is from ${longDay(m.at, nowIso)}.`
+  const asked = m.direction === 'in' ? ' It asked nobody for a reply.' : ''
+  if (!m.landedAt) return { words: 'filed', title: `${from} It was filed here for the record.${asked}` }
+  const nowYmd = chicagoDay(nowIso)
+  return { words: `filed ${monthDay(chicagoDay(m.landedAt), nowYmd)}`, title: `${from} It was filed here on ${longDay(m.landedAt, nowIso)}.${asked}` }
 }
 
 export type QuoDeliveryWord = 'delivered' | 'undelivered' | 'failed'
@@ -140,9 +170,21 @@ const newest = (messages: readonly ThreadMessage[], keep: (m: ThreadMessage) => 
   return kept[kept.length - 1]
 }
 
-/** Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them. */
+/**
+ * Their last word to us: the newest call, voicemail, missed call, text, email or portal line from them, a mail filed
+ * for the record included. When they last wrote is a fact, and the stamps sentence says it (v2.7029: v2.7027 left
+ * filed mail out here, and a thread of old mail read *They have not written yet*).
+ */
 export function lastIn(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
   return newest(messages, (m) => m.contactId === contactId && m.direction === 'in')
+}
+
+/**
+ * Their last word that asks for something: `lastIn` without the mail filed for the record (`history`, v2.7027), which
+ * asked nobody for a reply. The move line counts from this one, never from `lastIn`.
+ */
+export function lastAsk(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
+  return newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && !m.history)
 }
 
 /** Our last word to them. A line the app sent on its own (`auto`) is not our word: the row still waits on the office. */
@@ -224,10 +266,21 @@ export function clockTime(iso: string): string {
   return `${get('hour')}:${get('minute')} ${get('dayPeriod').toUpperCase()}`
 }
 
+/** "March 3", with the year when it is not this year's: "March 3, 2025". For a sentence. */
+function longDay(atIso: string, nowIso: string): string {
+  const { y, m, d } = ymdParts(chicagoDay(atIso))
+  return `${MONTHS_LONG[m - 1] ?? ''} ${d}${String(y) === chicagoDay(nowIso).slice(0, 4) ? '' : `, ${y}`}`
+}
+
 /** "Oct 1", with the year when it is not this year's: "Oct 1, 2025". */
 function monthDay(ymd: string, nowYmd: string): string {
   const { y, m, d } = ymdParts(ymd)
   return `${month(m)} ${d}${String(y) === nowYmd.slice(0, 4) ? '' : `, ${y}`}`
+}
+
+/** A day, short, for a chip: "Nov 9", with the year when it is not this year's. */
+export function shortDay(atIso: string, nowIso: string): string {
+  return monthDay(chicagoDay(atIso), chicagoDay(nowIso))
 }
 
 /** A thread's day divider: "Today, Fri Oct 2", "Thursday, Oct 1". */
@@ -286,10 +339,13 @@ export function whenWords(atIso: string, nowIso: string): string {
 
 // ---------- whose move ----------
 
+/** The move line on a thread where nobody owes anybody: only mail filed for the record, or a filed answer of ours. */
+export const NOTHING_WAITS = 'Nothing waits'
+
 export interface Court {
   /** Ours: the last word was theirs, or we owe them something. Theirs: the last word was ours. None: nothing waits. */
   side: 'ours' | 'theirs' | 'none'
-  /** The strip's words: "Our move · 2 h", "Their move · until Wed Oct 7 · quote", "no messages yet". */
+  /** The strip's words: "Our move · 2 h", "Their move · until Wed Oct 7 · quote", "no messages yet", "Nothing waits". */
   word: string
   /** The message the clock counts from. */
   sinceIso?: string
@@ -304,11 +360,18 @@ export interface CourtOptions {
   owed?: { what: string; by?: string | null } | null
   /** Their running promise's line, which their move runs until (cut 2's `runningPromise(...).until`): "until Wed Oct 7 · quote". */
   promisedUntil?: string | null
+  /**
+   * The conversation is Done (`contacts.state`, v2.7029): a word of theirs with nothing of ours after it was closed by a
+   * person, with No reply needed or a team note, so it waits on nobody and the line says *Nothing waits*. Unset on a
+   * read that does not know the state, which reads the lines alone as before.
+   */
+  closed?: boolean
 }
 
 /**
  * Whose move it is: ours when their word is the newest or we owe them something, theirs when ours is, counted from that
- * word. A team note moves nothing.
+ * word. A team note moves nothing. A mail filed for the record (v2.7027) starts no clock: one of theirs is skipped, and
+ * one of ours answers what came before it without making it their move, so such a thread reads *Nothing waits*.
  */
 export function courtOf(messages: readonly ThreadMessage[], contactId: string, nowIso: string, opts: CourtOptions = {}): Court {
   if (opts.optedOut) return { side: 'none', word: 'opted out' }
@@ -316,11 +379,18 @@ export function courtOf(messages: readonly ThreadMessage[], contactId: string, n
     const by = opts.owed.by ? ` · by ${opts.owed.by}` : ''
     return { side: 'ours', word: `Our move · we owe ${opts.owed.what}${by}`, owed: true }
   }
-  const i = lastIn(messages, contactId)
+  const i = lastAsk(messages, contactId)
   const o = lastOut(messages, contactId)
-  if (!i && !o) return { side: 'none', word: 'no messages yet' }
-  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
-  const last = o!
+  if (i && (!o || Date.parse(i.at) > Date.parse(o.at))) {
+    if (opts.closed) return { side: 'none', word: NOTHING_WAITS }
+    return { side: 'ours', word: `Our move · ${agoWords(i.at, nowIso)}`, sinceIso: i.at }
+  }
+  // Nothing of theirs waits on us. A filed mail starts no clock either way: with no word of ours, with a filed mail of
+  // ours as the last word, or with a filed mail of theirs after our last word, nobody owes anybody.
+  const filedIn = newest(messages, (m) => m.contactId === contactId && m.direction === 'in' && m.history === true)
+  if (!o) return { side: 'none', word: filedIn ? NOTHING_WAITS : 'no messages yet' }
+  if (o.history || (filedIn && Date.parse(filedIn.at) > Date.parse(o.at))) return { side: 'none', word: NOTHING_WAITS }
+  const last = o
   const word = opts.promisedUntil ? `Their move · ${opts.promisedUntil}` : `Their move · ${agoWords(last.at, nowIso)}`
   return { side: 'theirs', word, sinceIso: last.at }
 }

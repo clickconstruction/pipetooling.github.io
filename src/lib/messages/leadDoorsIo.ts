@@ -20,8 +20,11 @@ import { nameContact } from './messagesIo'
 export interface LeadDoorsIo {
   /** The customer made from the lead and the thread re-pointed at them. Resolves to the customer's id. */
   convert(contactId: string, facts: LeadFacts, by: { userId: string }, todayYmd: string): Promise<{ customerId: string }>
-  /** A draft estimate on the customer. Resolves to its number, for `/estimates/<n>`. */
-  startEstimate(customerId: string, by: { userId: string; role: UserRole | null }): Promise<{ estimateNumber: number }>
+  /**
+   * A draft estimate on the customer. Resolves to its number, for `/estimates/<n>`. Started on a First look's card, it
+   * remembers the look (`estimates.first_look_id`, punch list #319 PR 5).
+   */
+  startEstimate(customerId: string, by: { userId: string; role: UserRole | null }, from?: { firstLookId?: string | null }): Promise<{ estimateNumber: number }>
 }
 
 export function supabaseLeadDoorsIo(client: SupabaseClient<Database> = supabase, name: typeof nameContact = nameContact): LeadDoorsIo {
@@ -34,23 +37,24 @@ export function supabaseLeadDoorsIo(client: SupabaseClient<Database> = supabase,
       await name(contactId, { record: { table: 'customers', id: customerId }, kind: 'customer' })
       return { customerId }
     },
-    async startEstimate(customerId, by) {
+    async startEstimate(customerId, by, from) {
       const master = await resolveEstimateMasterUserId(by.userId, by.role)
       if (!master) throw new Error('Could not find the company owner for the estimate.')
-      const made = await client
-        .from('estimates')
-        .insert({
-          master_user_id: master,
-          created_by: by.userId,
-          title: '',
-          line_items_snapshot: [defaultDraftFirstLine()],
-          terms_snapshot: '',
-          total_cents: 0,
-          project_id: null,
-          customer_id: customerId,
-        })
-        .select('id, estimate_number')
-        .single()
+      const draft = {
+        master_user_id: master,
+        created_by: by.userId,
+        title: '',
+        line_items_snapshot: [defaultDraftFirstLine()],
+        terms_snapshot: '',
+        total_cents: 0,
+        project_id: null,
+        customer_id: customerId,
+      }
+      const insert = (row: typeof draft & { first_look_id?: string }) => client.from('estimates').insert(row as typeof draft).select('id, estimate_number').single()
+      const lookId = from?.firstLookId ?? null
+      let made = await insert(lookId ? { ...draft, first_look_id: lookId } : draft)
+      // A database from before the column (the hour between a merge and its push): the estimate still starts, without the look.
+      if (lookId && made.error && (made.error.code === '42703' || made.error.code === 'PGRST204' || /first_look_id/.test(made.error.message ?? ''))) made = await insert(draft)
       checkSupabaseError(made, 'start the estimate')
       const row = made.data as { id: string; estimate_number: number }
       recordNavClick(by.userId, by.role, 'estimate_draft_created', '#lead:estimate')
