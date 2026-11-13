@@ -15,7 +15,7 @@ type Props = {
   onTellMe: (next: boolean) => void
   /** What went wrong on the last Send, or null. */
   error: string | null
-  sendRef?: RefObject<HTMLButtonElement | null>
+  sendRef?: RefObject<HTMLButtonElement>
   onSendKeyDown?: KeyboardEventHandler<HTMLButtonElement>
 }
 
