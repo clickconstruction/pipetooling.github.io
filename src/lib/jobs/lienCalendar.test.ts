@@ -43,12 +43,14 @@ describe('buildLienCalendar', () => {
       job({ jobId: 'b', number: '881', name: 'Ulric', ...RLC, openBalance: 7902, r: { lastWorkYmd: '2026-09-02' } }), // notice owed Nov 16
       job({ jobId: 'c', number: '983', name: 'Water Heater', gcId: 'gc-hunter', gcName: 'Hunter Homes', openBalance: 2300, r: { noticedMonths: ['2026-08'] } }), // notice recorded → flag alone Nov 16
       job({ jobId: 'd', number: '473', name: 'Mike Holmby', customer: 'Michael Holmby', openBalance: 5724, r: { expectedPayYmd: '2026-09-30' } }), // direct, room
-      job({ jobId: 'e', number: '663', name: 'Kestrin', gcId: 'gc-kestrin', gcName: 'Kestrin Contracting', openBalance: 658, r: { lastWorkYmd: '2026-07-20' } }), // notice window closed → gone
+      job({ jobId: 'e', number: '663', name: 'Kestrin', gcId: 'gc-kestrin', gcName: 'Kestrin Contracting', openBalance: 658, r: { lastWorkYmd: '2026-06-20' } }), // June: notice and affidavit windows both closed → gone
+      job({ jobId: 'g', number: '664', name: 'Late', gcId: 'gc-late', gcName: 'Late Notice Builders', openBalance: 410, r: { lastWorkYmd: '2026-07-20' } }), // July: notice window closed, affidavit open → a late notice, not gone (v2.7198, punch list #335, row 4)
       job({ jobId: 'f', number: '000', name: 'Paid', openBalance: 0, r: { openBalance: 0 } }), // nothing open → dropped
     ]
     const cal = buildLienCalendar(rows, '')
     expect(cal.groups.map((g) => [g.kind, g.name, g.jobs.length, g.word])).toEqual([
       ['gc', 'RLC · Dunmere Mallin', 2, 'send 2 notices by Oct 15 · 17 d'],
+      ['gc', 'Late Notice Builders', 1, 'send the late notice · 17 d'],
       ['gc', 'Hunter Homes', 1, '49 d to the flag'],
       ['direct', 'Direct — we contracted with the owner', 1, '47 d of room'],
       ['gone', 'Lien gone', 1, 'money still owed'],
@@ -56,9 +58,11 @@ describe('buildLienCalendar', () => {
     expect(cal.groups[0]!.sub).toBe('GC · 2 jobs · 2 notices owed · 2 at one property') // both rows sit at the fixture's one address
     expect(cal.groups[0]!.total).toBe(17702)
     expect(cal.groups[0]!.tone).toBe('amber')
-    expect(cal.groups[3]!.sub).toContain('a window closed unsent')
-    expect(cal.totals).toEqual({ jobs: 5, open: 26384, noticesOwed: 2, inTheMail: 0, gone: 1 })
-    expect(cal.jobs.map((j) => j.jobId)).toEqual(['a', 'b', 'c', 'd', 'e'])
+    // The late notice sits with its GC, by name, and is neither a notice to draft from the bar nor a lien gone.
+    expect(cal.groups[1]).toMatchObject({ sub: 'GC · 1 job · 1 late notice', tone: 'amber' })
+    expect(cal.groups[4]!.sub).toContain('a window closed unsent')
+    expect(cal.totals).toEqual({ jobs: 6, open: 26794, noticesOwed: 2, inTheMail: 0, gone: 1, lateNotices: 1 })
+    expect(cal.jobs.map((j) => j.jobId)).toEqual(['a', 'g', 'b', 'c', 'd', 'e'])
   })
 
   it('a GC with one notice owed says "send the notice"; a GC with none says the tightest verdict', () => {
@@ -152,15 +156,29 @@ describe('lienCalendarMarks', () => {
     expect(workMarkFor(job({ jobId: 'd', r: { lastWorkYmd: null, createdAt: null } }), axis)).toBeNull()
   })
   it('a notice window closed unsent dies on the notice date, not the lien date — the gutter and the flag follow it', () => {
-    const j = job({ jobId: 'e', ...RLC, isSub: true, r: { lastWorkYmd: '2026-07-20' } })
+    // June's notice was due Aug 17 and its affidavit Sep 15: both behind us, so the lien is gone.
+    const j = job({ jobId: 'e', ...RLC, isSub: true, r: { lastWorkYmd: '2026-06-20' } })
     expect(j.runway.state).toBe('closed')
     expect(j.runway.closedBy).toBe('notice')
-    expect(closedYmdFor(j.runway)).toBe('2026-09-15')
+    expect(closedYmdFor(j.runway)).toBe('2026-08-17')
     const axis = lienCalendarAxis([j], TODAY)
-    expect(axis.columns.map((c) => c.ymd)).toEqual(['2026-09-15'])
+    expect(axis.columns.map((c) => c.ymd)).toEqual(['2026-08-17'])
     const marks = lienCalendarMarks(j, axis)
-    expect(marks[1]).toMatchObject({ kind: 'gone', by: 'notice', ymd: '2026-09-15', label: 'notice not sent by Sep 15' })
-    expect(marks[2]).toMatchObject({ kind: 'lien', closed: true, ymd: '2026-09-15' })
+    expect(marks[1]).toMatchObject({ kind: 'gone', by: 'notice', ymd: '2026-08-17', label: 'notice not sent by Aug 17' })
+    expect(marks[2]).toMatchObject({ kind: 'lien', closed: true, ymd: '2026-08-17' })
+  })
+  it('a late notice is not a dead row: its lien flag stands on the affidavit’s day, with no gone mark and no notice flag (v2.7198, punch list #335, row 4)', () => {
+    // July's notice was due Sep 15 and never sent; the affidavit can still be filed by Oct 15.
+    const j = job({ jobId: 'g', ...RLC, isSub: true, r: { lastWorkYmd: '2026-07-20' } })
+    expect(j.runway.state).toBe('late_notice')
+    expect(closedYmdFor(j.runway)).toBe('')
+    expect(noticeFlagsFor(j)).toEqual([])
+    const axis = lienCalendarAxis([j], TODAY)
+    expect(axis.columns.map((c) => c.ymd)).toEqual(['2026-10-15'])
+    const marks = lienCalendarMarks(j, axis)
+    expect(marks.some((m) => m.kind === 'gone')).toBe(false)
+    expect(marks.find((m) => m.kind === 'lien')).toMatchObject({ ymd: '2026-10-15', closed: false })
+    expect(rowWord(j, null)).toEqual({ text: 'send the late notice · 17 d', tone: 'amber' })
   })
   it('the kind bracket shows on a job dated from its creation day too', () => {
     const created = job({ jobId: 'c', ...RLC, isSub: true, r: { lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z', propertyKind: '' } })

@@ -4,6 +4,8 @@ import { lienActFor } from './lienActWords'
 import { lienArChipFor, lienArLedgerTone, type LienArJobInput } from './lienArChip'
 import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import { lienPhoneChipWords } from './lienLineStep'
+import { buildLienCalendar, rowWord, type LienCalendarJob } from './lienCalendar'
+import { lienBucketOf, lienNextDate } from './lienCalendarBuckets'
 import type { LienNextUpAction, LienNextUpRow } from './lienNextUp'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 import { buildLienTimeline, type LienTimelineAffidavitState, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
@@ -89,7 +91,15 @@ describe('one job reads one way on the billed row, the AR chip and the Lien wind
   it('a notice window closed with the affidavit’s day still ahead: a late notice on the row and in the window, never Lien gone', () => {
     const late = '2026-11-20'
     const runway = buildLienPayRunway(runwayInput({ todayYmd: late }))
-    expect(runway).toMatchObject({ state: 'closed', closedBy: 'notice' })
+    // The clock says it too since v2.7198 (punch list #335, row 4), so the Deadlines view and the Share message read the same step.
+    expect(runway).toMatchObject({ state: 'late_notice', closedBy: null })
+    expect(runway.lines[1]).toBe('send the late notice · 25 d')
+    // The Deadlines view reads that clock: the job has a date ahead, its row says the step, and it is not in Lien gone.
+    const deadlinesJob = { jobId: 'j1', number: '412', name: 'Made-up job', customer: '', gcId: 'g1', gcName: 'Made-up GC', address: '1 Made-up St', openBalance: 4200, isSub: true, runway } as LienCalendarJob
+    expect(lienNextDate(deadlinesJob)).toEqual({ ymd: '2026-12-15', what: 'late_notice' })
+    expect(lienBucketOf(deadlinesJob, late)).toBe('next_month')
+    expect(rowWord(deadlinesJob, null)?.text).toBe('send the late notice · 25 d')
+    expect(buildLienCalendar([deadlinesJob], '').totals).toMatchObject({ gone: 0, lateNotices: 1 })
     expect(rowLabel(runway, null, late)).toBe('Send the late notice')
     expect(phoneChip(runway, null, late)).toMatchObject({ label: 'Send the late notice · 25 d', tab: 'notice' })
     const next = buildLienTimeline(timelineInput({ todayYmd: late, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'missed', at: '' }] })).next
@@ -99,6 +109,9 @@ describe('one job reads one way on the billed row, the AR chip and the Lien wind
     const after = '2026-12-20'
     expect(rowLabel(buildLienPayRunway(runwayInput({ todayYmd: after })), null, after)).toBe('Lien gone')
     expect(phoneChip(buildLienPayRunway(runwayInput({ todayYmd: after })), null, after).label).toBe('lien gone')
+    const goneJob = { ...deadlinesJob, runway: buildLienPayRunway(runwayInput({ todayYmd: after })) } as LienCalendarJob
+    expect(lienBucketOf(goneJob, after)).toBe('overdue')
+    expect(buildLienCalendar([goneJob], '').totals).toMatchObject({ gone: 1, lateNotices: 0 })
     expect(buildLienTimeline(timelineInput({ todayYmd: after, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'missed', at: '' }] })).next.kind).toBe('lien_gone')
   })
 })
