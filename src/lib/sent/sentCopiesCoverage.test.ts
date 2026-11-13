@@ -30,6 +30,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'components/materials/ManifestPrintModal.tsx': 'the manifest the office prints to laminate and hang on its own cages and boxes on a job site (Materials on site, #209, v2.6366): paper for the crew like the label, not a send',
   'components/materials/SiteMaterialsReportModal.tsx': 'the material location report the office prints for itself, what is in every cage and box across a development (punch list #268, v2.6533): a reading of the ledger like the manifest, not a send',
   'components/billing/BillsSentLedger.tsx': 'a bill\'s record of its sends and the list of bills sent, printed for the office\'s own file or for counsel (Bills sent, punch list #327, v2.7055 and v2.7056): a reading of the sent copies, not a send',
+  'components/jobs/SubPaymentsLedger.tsx': 'the list of payments made to subs, printed for the office to hold beside a bank statement (Jobs → Subs → Ledger, punch list #347, v2.7174): our own money report, a reading of the payments, not a send',
   'lib/jobsDocuments/printWindow.ts': 'the print helper itself',
   'lib/bidDocuments/htmlDoc.ts': 'the print helper itself',
   'lib/sent/sentCopies.ts': 'the Print button of the window a kept copy opens in',
