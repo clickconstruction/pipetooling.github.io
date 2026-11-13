@@ -13,7 +13,7 @@ import { parseMyMailRequest, tagPlanPreview } from '../myMail/mineFunction'
 import type { MyMailTagPlan } from '../myMail/tagPlan'
 import type { MailAccount } from '../../../supabase/functions/_shared/devMcpMailSearch'
 import type { MyMailPersonTagPlanOk } from '../myMail/contract'
-import { mailTagAppliedWords, mailTagArgs, mailTagChangedWords, mailTagJobOf, mailTagPersonOf, personTagApplyReply, personTagCommitment, personTagPlanReply, personTagReading, tagApplyReply, tagCommitment, tagPlanReply, tagReading } from '../../../supabase/functions/_shared/devMcpMailTag'
+import { followUpReading, mailTagAppliedWords, mailTagArgs, mailTagChangedWords, mailTagJobOf, mailTagPersonOf, personTagApplyReply, personTagCommitment, personTagPlanReply, personTagReading, tagApplyReply, tagCommitment, tagPlanReply, tagReading } from '../../../supabase/functions/_shared/devMcpMailTag'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const MINE = readFileSync('supabase/functions/gmail-mine/index.ts', 'utf8')
@@ -71,7 +71,7 @@ describe('plan_mail_tag · the kernel', () => {
 
   it('takes a current login, a thread id and a job in the seat’s words', () => {
     const r = mailTagArgs({ tag: { account: 'Dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB } } }, KNOWN)
-    expect(r.ok && r.value).toEqual({ account: KNOWN[0], threadId: THREAD, job: { kind: 'pipeline', id: JOB }, person: null, target: `pipeline ${JOB}` })
+    expect(r.ok && r.value).toEqual({ account: KNOWN[0], threadId: THREAD, job: { kind: 'pipeline', id: JOB }, person: null, target: `pipeline ${JOB}`, forRecord: false })
     expect(mailTagJobOf({ bid_id: JOB })).toEqual({ kind: 'bid', id: JOB })
     expect(mailTagJobOf({ project_id: JOB })).toEqual({ kind: 'project', id: JOB })
     expect(mailTagJobOf({ job: '912' })).toBeNull()
@@ -84,7 +84,7 @@ describe('plan_mail_tag · the kernel', () => {
 
   it('takes a person in place of the job (punch list #289), an archived box included, with stop', () => {
     const r = mailTagArgs({ tag: { account: 'old@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON.toUpperCase() } } }, KNOWN)
-    expect(r.ok && r.value).toEqual({ account: KNOWN[1], threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}` })
+    expect(r.ok && r.value).toEqual({ account: KNOWN[1], threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}`, forRecord: false })
     const stop = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON, stop: true } } }, KNOWN)
     expect(stop.ok && stop.value.person).toEqual({ personId: PERSON, stop: true })
     expect(mailTagPersonOf({ person_id: 'nobody' })).toBeNull()
@@ -93,7 +93,7 @@ describe('plan_mail_tag · the kernel', () => {
   })
 
   it('commits to the account, the conversation, the job and what each mail becomes, and words the plan', () => {
-    const args = { account: KNOWN[0]!, threadId: THREAD, job: { kind: 'pipeline' as const, id: JOB }, person: null, target: `pipeline ${JOB}` }
+    const args = { account: KNOWN[0]!, threadId: THREAD, job: { kind: 'pipeline' as const, id: JOB }, person: null, target: `pipeline ${JOB}`, forRecord: false }
     const c = tagCommitment(args, preview)
     expect(c).toEqual({ account: 'dana@example-plumbing.test', thread_id: THREAD, job: { kind: 'pipeline', id: JOB }, counts: { lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 }, mails: [{ gmailId: 'm1', kind: 'write' }, { gmailId: 'm2', kind: 'tie', tie: true }, { gmailId: 'm3', kind: 'skip' }], moving_from: null })
     expect(JSON.stringify(c)).not.toContain('Supplier')
@@ -101,7 +101,21 @@ describe('plan_mail_tag · the kernel', () => {
     expect(tagReading({ ...preview, counts: { lines: 0, tied: 0, files: 0, skipped: 3, filed: 0 }, movingFrom: 'bid:x' })).toContain('moves off bid:x. Nothing would land')
     const reply = tagPlanReply(c, preview, 'abcdef0123456789')
     expect(reply.plan_hash).toBe('abcdef0123456789')
-    expect(reply.lands).toBe("2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat.")
+    expect(reply.lands).toBe(
+      "2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat. 1 line would land as mail that came in today: a mail of theirs opens the thread on Follow up. Pass for_record: true to file every mail instead.",
+    )
+    // for_record (server 0.80.0, punch list #324): the seat's word, kept in the commitment so an apply without it is another plan.
+    const forRecord = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB }, for_record: true } }, KNOWN)
+    expect(forRecord.ok && forRecord.value.forRecord).toBe(true)
+    expect(tagCommitment({ ...args, forRecord: true }, preview).for_record).toBe(true)
+    expect('for_record' in c).toBe(false)
+    const notBoolean = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB }, for_record: 'yes' } }, KNOWN)
+    expect(notBoolean.ok).toBe(false)
+    const onFile = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON }, for_record: true } }, KNOWN)
+    expect(!onFile.ok && onFile.error).toContain('for_record belongs to a tag onto a job')
+    expect(followUpReading({ lines: 0, filed: 0 })).toBe('Nothing new would reach Follow up.')
+    expect(followUpReading({ lines: 6, filed: 6 })).toBe('All 6 new lines would be filed for the record: nothing opens on Follow up, and nobody is asked for a reply.')
+    expect(followUpReading({ lines: 6, filed: 5 })).toContain('5 lines would be filed for the record (older than 14 days). 1 line would land as mail that came in today')
     expect(String(reply.next)).toContain('apply_mail_tag')
     const done = tagApplyReply(c, preview, { ok: true, jobKey: `pipeline:${JOB}`, lines: 1, tied: 1, files: 1, contactId: 'c1', unknownSender: null })
     expect(done.tagged).toBe('1 line written and 1 line tied onto 912 Limitless Renovations, 1 file kept; later mail in the conversation follows by itself.')
@@ -110,7 +124,7 @@ describe('plan_mail_tag · the kernel', () => {
   })
 
   it('commits a person tag to the account, the conversation, the person, the follow and what each mail becomes, and words it', () => {
-    const args = { account: KNOWN[1]!, threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}` }
+    const args = { account: KNOWN[1]!, threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}`, forRecord: false }
     const preview: MyMailPersonTagPlanOk = {
       ok: true,
       plan: true,
@@ -153,7 +167,7 @@ describe('plan_mail_tag · the kernel', () => {
 describe('the doors and the docs', () => {
   it('gmail-mine opens the tag to a dev’s key with the seat header, as a current login, and answers the plan before anything is written', () => {
     expect(MINE).toContain("if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(")
-    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile)) return refuse(")
+    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile && ask.action !== 'untag')) return refuse(")
     // Punch list #289: a person target goes to its own tag, a person's own press never carries one, and the follow reads the file rows.
     expect(MINE).toContain("if ('person' in ask) return await tagPerson(ctx, ask,")
     expect(MINE).toContain("if ('person' in ask) return refuse(")
@@ -168,7 +182,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.78.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
     expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
     expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {

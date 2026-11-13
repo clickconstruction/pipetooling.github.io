@@ -36,6 +36,9 @@ import {
   type MyMailRow,
   type MyMailTagPlanMail,
   type MyMailTagPlanOk,
+  type MyMailUntagHeldWhy,
+  type MyMailUntagPlanOk,
+  type MyMailUntagSweep,
   type MyMailView,
 } from './contract'
 import { guessJob, subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess'
@@ -100,6 +103,7 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
       // The seat's door (server 0.30.0): `as` the login whose box it is, `plan` for the dry run. Anything else in them is no request.
       if (r.plan !== undefined && typeof r.plan !== 'boolean') return null
       if (r.as !== undefined && (typeof r.as !== 'string' || !myMailAddressKey(r.as))) return null
+      if (r.forRecord !== undefined && typeof r.forRecord !== 'boolean') return null
       const plan = r.plan === true ? { plan: true as const } : {}
       const as = typeof r.as === 'string' ? r.as.trim().toLowerCase() : null
       // A person in place of the job (punch list #289): the seat's alone, so `as` is required; `stop` lifts the follow.
@@ -115,10 +119,15 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
       const j = job as Record<string, unknown>
       const kind = JOB_KINDS.find((k) => k === j.kind)
       if (!kind || typeof j.id !== 'string' || !UUID.test(j.id)) return null
-      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...plan, ...(as ? { as } : {}) }
+      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...plan, ...(as ? { as } : {}), ...(r.forRecord === true ? { forRecord: true } : {}) }
     }
-    case 'untag':
-      return typeof r.threadId === 'string' && GMAIL_ID.test(r.threadId) ? { action: 'untag', threadId: r.threadId } : null
+    case 'untag': {
+      if (typeof r.threadId !== 'string' || !GMAIL_ID.test(r.threadId)) return null
+      // The seat's door, as on a tag: `as` the login whose box it is, `plan` for the dry run. Anything else in them is no request.
+      if (r.plan !== undefined && typeof r.plan !== 'boolean') return null
+      if (r.as !== undefined && (typeof r.as !== 'string' || !myMailAddressKey(r.as))) return null
+      return { action: 'untag', threadId: r.threadId, ...(r.plan === true ? { plan: true as const } : {}), ...(typeof r.as === 'string' ? { as: r.as.trim().toLowerCase() } : {}) }
+    }
     default:
       return null
   }
@@ -872,6 +881,202 @@ export function planUntag(input: {
   const mine = new Set(own)
   const untie = (input.tied ?? []).filter((l) => !mine.has(l.id) && isTagTie(l, input.record, input.userId)).map((l) => l.id)
   return { remove, keep, untie: [...new Set(untie)] }
+}
+
+// ---------- the seat's untag: only a tag the seat made, and nothing left that shows who was written to ----------
+
+/** One call of the dev seat as `dev_mcp_calls` keeps it: who the dev was, when, and the arguments as sent. */
+export interface MyMailSeatCall {
+  user_id: string | null
+  created_at?: string | null
+  args: unknown
+}
+
+/** A tag the seat made, read off its call log: the job it put the conversation on, the dev, and when. */
+export interface MyMailSeatTag {
+  jobKey: string
+  devId: string | null
+  at: string | null
+}
+
+const seatJobKey = (job: unknown): string | null => {
+  if (!job || typeof job !== 'object') return null
+  const j = job as Record<string, unknown>
+  for (const [column, kind] of [['jobs_ledger_id', 'pipeline'], ['bid_id', 'bid'], ['project_id', 'project']] as const) {
+    const id = j[column]
+    if (typeof id === 'string' && UUID.test(id)) return jobKey({ kind, id: id.toLowerCase() })
+  }
+  return null
+}
+
+/**
+ * The seat's own tags of one conversation onto a job, from the ok `apply_mail_tag` calls handed in (`args.tag`:
+ * `account`, `thread_id`, `job`), newest first. A call for another box or conversation, or onto a person's HR file, is
+ * none. The address is compared as the database keys one, so the log's own spelling does not matter.
+ */
+export function seatTagsOf(calls: readonly MyMailSeatCall[], account: string, threadId: string): MyMailSeatTag[] {
+  const box = myMailAddressKey(account)
+  const out: MyMailSeatTag[] = []
+  for (const c of calls) {
+    const tag = c.args && typeof c.args === 'object' ? (c.args as { tag?: unknown }).tag : null
+    if (!tag || typeof tag !== 'object') continue
+    const t = tag as Record<string, unknown>
+    if (typeof t.thread_id !== 'string' || t.thread_id.trim() !== threadId) continue
+    if (!box || myMailAddressKey(typeof t.account === 'string' ? t.account : '') !== box) continue
+    const key = seatJobKey(t.job)
+    if (key) out.push({ jobKey: key, devId: c.user_id ?? null, at: c.created_at ?? null })
+  }
+  return out.sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
+}
+
+/** The words when the seat is asked to untag a conversation it may not. */
+export const SEAT_UNTAG_WORDS = {
+  notTagged: 'This conversation is not tagged onto a job in that box. There is nothing to untag.',
+  placedByApp: 'The app put this conversation on its job from the person’s Sent, with no press. The dev seat takes off only a tag the dev seat made.',
+  notTheSeats:
+    'The dev seat takes off only a tag the dev seat made. No apply_mail_tag on record put this conversation on the job it is on. Its untag is the person’s own, in Messages → My email.',
+} as const
+
+/**
+ * Whether the seat may take a conversation off its job: only a tag the seat made. The row must stand, on a job, not
+ * placed by the app, and the call log must hold an ok `apply_mail_tag` that put the conversation on the job it is on
+ * now (`seatTagsOf`); a person who has since moved it to another job made it theirs. Answers the dev whose tag it was,
+ * whom the lines it tied are stamped with.
+ */
+export function seatMayUntag(
+  row: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; placed_by_app?: boolean | null } | null | undefined,
+  tags: readonly MyMailSeatTag[],
+): { ok: true; devId: string | null } | { ok: false; words: string } {
+  const key = row ? jobKeyOfRow(row) : null
+  if (!row || key === null) return { ok: false, words: SEAT_UNTAG_WORDS.notTagged }
+  if (row.placed_by_app === true) return { ok: false, words: SEAT_UNTAG_WORDS.placedByApp }
+  const made = tags.find((t) => t.jobKey === key)
+  return made ? { ok: true, devId: made.devId } : { ok: false, words: SEAT_UNTAG_WORDS.notTheSeats }
+}
+
+/**
+ * The row's record as the seat's untag reads it. A row tagged before v2.7020 names the box's person as its tagger while
+ * the lines the seat tied are stamped the dev, so the record takes the dev from the call log; a row that already names
+ * someone else keeps them.
+ */
+export function seatTagRecord(record: MyMailTagRecord | null, userId: string, devId: string | null): MyMailTagRecord | null {
+  if (!record || !devId) return record
+  return record.taggedBy === null || record.taggedBy === userId ? { ...record, taggedBy: devId } : record
+}
+
+/** Why a line the person wrote stays through an untag, the first that holds: a promise, a highlight, what we owe. */
+export function untagHeldWhy(id: string, kept: { promised: readonly string[]; highlighted: readonly string[]; owed: readonly string[] }): MyMailUntagHeldWhy | null {
+  if (kept.promised.includes(id)) return 'promise'
+  if (kept.highlighted.includes(id)) return 'highlight'
+  if (kept.owed.includes(id)) return 'owed'
+  return null
+}
+
+/** A contact as the sweep reads one: its kind and when it was made. */
+export interface MyMailSweepContact {
+  id: string
+  kind: string | null
+  created_at: string | null
+}
+
+/** A `contact_jobs` row as the sweep reads one: whose, on which job, starred or not, and when it was made. */
+export interface MyMailSweepTie {
+  id: string
+  contact_id: string
+  bid_id: string | null
+  project_id: string | null
+  jobs_ledger_id: string | null
+  is_default: boolean | null
+  created_at: string | null
+}
+
+/** How far before the tag's own time a row may have been made and still be the tag's: the function's clock against the database's. */
+export const UNTAG_SWEEP_SLACK_MS = 60_000
+
+/**
+ * What the seat's untag clears beyond the lines, and what it leaves (`MyMailUntagSweep`). The untag alone leaves a
+ * person on the job's people and, for a sender nobody knew, a contact with a name and an address and no line: both
+ * still show who was written to. So, for the contacts of the lines that go or come off the job:
+ * - a tie onto the tag's job goes when the tag made it (made at or after the tag, `UNTAG_SWEEP_SLACK_MS` of slack),
+ *   it is not the person's star, and the person keeps no line on that job (`onJob`);
+ * - a contact goes when it is still of kind unknown, the tag made it, it keeps no line anywhere (`lines`) and no tie
+ *   but the ones that go.
+ * Everything else stays and is counted: a tie made before the tag or starred, a known contact, one made before the tag.
+ * Without the tag's time nothing is the tag's, and nothing goes.
+ */
+export function planUntagSweep(input: {
+  jobKey: string | null
+  taggedAt: string | null
+  contacts: readonly MyMailSweepContact[]
+  /** Every `contact_jobs` row of those contacts, on any job. */
+  ties: readonly MyMailSweepTie[]
+  /** The lines each contact keeps on the tag's job once the untag is done. */
+  onJob: Readonly<Record<string, number>>
+  /** The lines each contact keeps anywhere once the untag is done. */
+  lines: Readonly<Record<string, number>>
+}): MyMailUntagSweep {
+  const since = input.taggedAt ? Date.parse(input.taggedAt) - UNTAG_SWEEP_SLACK_MS : NaN
+  const tagMade = (at: string | null): boolean => {
+    const t = at ? Date.parse(at) : NaN
+    return Number.isFinite(since) && Number.isFinite(t) && t >= since
+  }
+  const ties: string[] = []
+  let tiesLeft = 0
+  const kept = new Set<string>()
+  for (const tie of input.ties) {
+    const here = input.jobKey !== null && jobKeyOfRow(tie) === input.jobKey
+    const bare = (input.onJob[tie.contact_id] ?? 0) === 0
+    if (here && bare && tie.is_default !== true && tagMade(tie.created_at)) {
+      ties.push(tie.id)
+      continue
+    }
+    kept.add(tie.contact_id)
+    if (here && bare) tiesLeft++
+  }
+  const contacts: string[] = []
+  let contactsLeftEmpty = 0
+  for (const c of input.contacts) {
+    if ((input.lines[c.id] ?? 0) > 0) continue
+    if (c.kind === 'unknown' && tagMade(c.created_at) && !kept.has(c.id)) contacts.push(c.id)
+    else contactsLeftEmpty++
+  }
+  return { ties: [...new Set(ties)].sort(), tiesLeft, contacts: [...new Set(contacts)].sort(), contactsLeftEmpty }
+}
+
+/**
+ * The plan of an untag as the dev seat reads it back before anything is taken off (`plan_mail_untag`): every list in
+ * one order, so the same conversation plans to the same words twice. Pure: the function hands in what it read.
+ */
+export function untagPlanPreview(input: {
+  threadId: string
+  account: string
+  jobKey: string
+  taggedAt: string | null
+  plan: { remove: readonly string[]; keep: readonly string[]; untie: readonly string[] }
+  kept: { promised: readonly string[]; highlighted: readonly string[]; owed: readonly string[] }
+  files: number
+  keptForMatter: number
+  greyLine: boolean
+  sweep: MyMailUntagSweep
+}): MyMailUntagPlanOk {
+  const held = [...input.plan.keep]
+    .sort()
+    .map((id) => ({ id, why: untagHeldWhy(id, input.kept) ?? ('promise' as const) }))
+  return {
+    ok: true,
+    plan: true,
+    threadId: input.threadId,
+    account: input.account,
+    jobKey: input.jobKey,
+    taggedAt: input.taggedAt,
+    remove: [...input.plan.remove].sort(),
+    held,
+    untie: [...input.plan.untie].sort(),
+    files: input.files,
+    keptForMatter: input.keptForMatter,
+    greyLine: input.greyLine,
+    sweep: input.sweep,
+  }
 }
 
 /** Postgres's unique violation (`23505`): a row the insert would double is already there, as `ON CONFLICT DO NOTHING` would leave it. */

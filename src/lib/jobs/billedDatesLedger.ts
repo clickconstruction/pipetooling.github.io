@@ -74,6 +74,9 @@ export type LedgerRow = {
   subTitle?: string
 }
 
+/** The Lien window's tab a lien line opens on (v2.7046): the paper the line names. */
+export type LedgerLienTab = 'notice' | 'affidavit'
+
 /**
  * The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`.
  * Since v2.7042 (punch list #325) the chip's parts come too, so the line never says the row's day and count again:
@@ -110,6 +113,12 @@ export type BilledDatesLedger = {
   verdict: LedgerVerdict | null
   /** The whole block as one sentence (the accessible name). */
   full: string
+  /**
+   * The paper the lien line names (v2.7046, punch list #325, PR 3): the Lien window opens on its tab, where it opened
+   * on Demand letter whatever the row said. A notice row, a late notice and a closed notice window open § 53.056
+   * notice; the affidavit, its service and a closed lien window open the lien's tab; null with no lien row.
+   */
+  lienTab: LedgerLienTab | null
 }
 
 export type BilledDatesLedgerInput = {
@@ -273,6 +282,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   // The one deadline: its day, dot, weight and colour from the runway (the clock), its words from the
   // desk's next act when the desk has one (the paper) — v2.7043, punch list #325.
   let verdict: LedgerVerdict | null = null
+  let lienTab: LedgerLienTab | null = null
   const act = lienState?.act ?? null
   /** The money's own ask, when no lien line is pressing: their word that they paid, a day gone by, or no day at all. */
   const moneyAsk = (): LedgerVerdict | null => {
@@ -285,6 +295,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   if (runway && runway.state !== 'none') {
     const guess = lienDayGuessSentence(runway)
     if (runway.state === 'filed') {
+      lienTab = 'affidavit'
       const filedDate = runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? ''
       const serveBy = lienState?.action === 'record_service' && act && lienState.dueOn ? lienState.dueOn : ''
       const serveDays = serveBy ? daysBetweenYmd(todayYmd, serveBy) : null
@@ -300,6 +311,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
       // One short line (v2.7043): *Lien window closed Oct 15* over *Lien gone* said it twice and was cut to dots at the
       // column's width. Red until someone writes the closed window down on the desk, plain after.
+      lienTab = noticeClosed ? 'notice' : 'affidavit'
       const noted = lienState?.noted === true
       const closedWords = closedYmd ? formatYmdMonthDay(closedYmd) : ''
       rows.push({
@@ -328,6 +340,8 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       const rowPaper: 'notice' | 'affidavit' | 'retainage' = own ? 'retainage' : noticeFirst ? 'notice' : 'affidavit'
       // The act names the row when it is a step toward the row's own day: on the row's paper, or a notice that still has to go before the affidavit.
       const lineAct = act && (lienState?.paper === rowPaper || (rowPaper === 'affidavit' && lienState?.paper === 'notice')) ? act : null
+      // A notice, a retainage notice and a notice that must go before the affidavit are all read on the window's notice tab.
+      lienTab = rowPaper === 'affidavit' && !(lineAct && lienState?.paper === 'notice') ? 'affidavit' : 'notice'
       if (lineAct && !lineAct.dated) {
         // No lien can attach, so there is no day to race: the fact, and who to ask.
         rows.push({ key: noticeFirst ? 'notice' : 'lien', label: lineAct.words, joiner: '', date: '', far: '', tone: 'amber', bold: true, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: lineAct.why, dayWords: '' }), sub: lineAct.under, subTone: 'amber', subTitle: lineAct.why })
@@ -378,5 +392,5 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
     .map((r) => [r.label, r.joiner, r.date, r.far ? `· ${r.far}` : ''].filter(Boolean).join(' '))
     .concat(verdict ? [[verdict.label, verdict.value ? `· ${verdict.value}` : ''].filter(Boolean).join(' ')] : [])
     .join(' · ')
-  return { rows, verdict, full }
+  return { rows, verdict, full, lienTab }
 }

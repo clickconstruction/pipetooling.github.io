@@ -17,6 +17,8 @@ export function fakeFirstLookThreadIo(over: Partial<FirstLookThreadIo> = {}): Fi
     mint: vi.fn(async () => ({ id: 'L9', link: 'https://clicktooling.com/show/k7m2p9xq4d' })),
     stamp: vi.fn(async () => undefined),
     setJob: vi.fn(async () => undefined),
+    askTech: vi.fn(async () => undefined),
+    answer: vi.fn(async () => undefined),
     ...over,
   }
 }
