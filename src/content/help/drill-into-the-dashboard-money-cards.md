@@ -43,10 +43,10 @@ The right side is two tight columns. The first is days waiting over their averag
 
 ## Where the lien paper stands
 
-Under each bill, a chip says where the job's lien paper stands. The words are the Lien desk's own. The sentence after the chip says the rest.
+Under each bill, a chip says where the job's lien paper stands. A chip that asks for a step names the step, in the words the Pipeline's billed row uses. The sentence after the chip says the rest.
 
 - {{chip:red|Waiting on Robert · by Oct 15 · 2d}} is a notice drafted and waiting on the leader. The day is the last day it can mail.
-- {{chip:yellow|Needs the owner · by Oct 25 · 12d}} is a notice with no owner address yet. It cannot mail until the owner of record has one. The chip turns red inside seven days.
+- {{chip:yellow|Find the owner · by Oct 25 · 12d}} is a notice with no owner address yet. It cannot mail until the owner of record has one. The chip turns red inside seven days.
 - {{chip:blue|In the mail · tracking owed}} is a notice printed with the run. Its certified number is not typed yet.
 - {{chip:green|Delivered Sep 16 · day 12 · the attorney’s letter}} is a notice the post office delivered. The day count runs from delivery. The attorney’s letter is due by day 14.
 - {{chip:green|Lien filed Oct 2 · served Oct 6}} is a lien on record. {{chip:gray|Window closed Sep 15 · lien gone}} is a month whose notice never went out.

@@ -32,6 +32,9 @@ import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
+import { groupDeskBySite } from '../../lib/materials/siteRollup'
+import { useOnSiteSites } from '../../hooks/useOnSiteSites'
+import SiteMaterialsView from '../materials/SiteMaterialsView'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
@@ -136,16 +139,28 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   useEffect(() => { setOnSiteErrorHandler((m) => showToast(m, 'error')) }, [showToast])
   const desk = useOnSiteDesk()
   const jobId = searchParams.get('job')
+  /** A site's materials on one screen (punch list #330): `?site=<development id>`, a state of the desk. */
+  const siteId = searchParams.get('site')
   const now = new Date()
   const setJob = (id: string | null) =>
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       if (id) next.set('job', id)
       else next.delete('job')
+      next.delete('site')
+      return next
+    })
+  const setSite = (id: string | null) =>
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      if (id) next.set('site', id)
+      else next.delete('site')
+      next.delete('job')
       return next
     })
 
   const withData = jobIdsWithData()
+  const sites = useOnSiteSites(withData, desk.loaded)
   // A job the page's list does not hold (paid in full, closed) is read by id, so the desk still names it.
   const [extraJobs, setExtraJobs] = useState<MaterialsJob[]>([])
   const withDataKey = withData.join('|')
@@ -166,9 +181,40 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const withLinks = (j: MaterialsJob): MaterialsJob => (madeLinks[j.id] ? { ...j, ...madeLinks[j.id] } : j)
   const allJobs = [...jobs, ...extraJobs].map(withLinks)
 
+  /** A job's page on this same mount, as a link: the tab stays, the site goes. */
+  const jobHref = (id: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('site')
+    next.set('job', id)
+    return `?${next.toString()}`
+  }
+
+  if (siteId && !jobId) {
+    const siteJobs = withData.filter((id) => sites.siteOfJob.get(id) === siteId).map((id) => ({ id, label: jobLabel(allJobs.find((j) => j.id === id), id) }))
+    return (
+      <div style={{ display: 'grid', gap: '0.9rem' }}>
+        <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-site" idempotent />
+        <SiteMaterialsView
+          site={{ id: siteId, name: sites.siteNames.get(siteId) ?? 'This site' }}
+          jobs={siteJobs}
+          showMoney
+          onBack={() => setSite(null)}
+          backLabel="Materials desk"
+          boxHref={jobHref}
+          developmentHref={`/developments/${siteId}`}
+          loading={(desk.loading && !desk.loaded) || !sites.loaded}
+        />
+      </div>
+    )
+  }
+
   if (!jobId) {
     const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now) }))
     rows.sort((a, b) => b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
+    const groups = groupDeskBySite(rows.map((r) => r.id), sites.siteOfJob, sites.siteNames)
+    const anySite = groups.some((g) => g.kind === 'site')
+    const rowOf = (id: string) => rows.find((r) => r.id === id)!
+    const cols = rowDoors ? 7 : 6
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -182,10 +228,11 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td style={td} colSpan={rowDoors ? 7 : 6}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
-              ) : rows.map((r) => (
-                <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
-                  <td style={td}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
+                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
+              ) : groups.flatMap((g, gi) => {
+                const jobRow = (r: (typeof rows)[number], under: boolean) => (
+                  <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : under ? { background: 'var(--bg-subtle)' } : undefined}>
+                  <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}) }}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: under ? 600 : 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
                   <td style={{ ...td, ...num }}>{r.sum.containers}{listPlaces(r.id).length > 1 ? <span style={muted}> · {listPlaces(r.id).length} places</span> : null}</td>
                   <td style={{ ...td, ...num }}>{r.sum.onSiteLines}</td>
                   <td style={{ ...td, ...num, fontWeight: r.sum.missingMoneyWeek > 0 ? 700 : 400 }}><Money n={r.sum.missingMoneyWeek} /></td>
@@ -200,7 +247,37 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                     </td>
                   ) : null}
                 </tr>
-              ))}
+                )
+                if (g.kind === 'job') {
+                  const firstLoose = anySite && groups.findIndex((x) => x.kind === 'job') === gi
+                  return [
+                    ...(firstLoose ? [<tr key="not-on-a-site"><td style={{ ...td, ...muted, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--bg-muted)' }} colSpan={cols}>Not on a site</td></tr>] : []),
+                    jobRow(rowOf(g.jobId), false),
+                  ]
+                }
+                // A site (punch list #330): one row with its jobs' totals, opening the site's screen; its jobs sit under it.
+                const members = g.jobIds.map(rowOf)
+                const boxes = members.reduce((n, r) => n + r.sum.containers, 0)
+                const lines = members.reduce((n, r) => n + r.sum.onSiteLines, 0)
+                const missing = members.reduce((n, r) => n + r.sum.missingMoneyWeek, 0)
+                const stale = members.reduce((n, r) => n + r.sum.stale.length, 0)
+                const credits = members.reduce((n, r) => n + r.sum.credits, 0)
+                return [
+                  <tr key={`site:${g.siteId}`} data-site-row={g.siteId} style={missing > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
+                    <td style={td}>
+                      <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 800, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setSite(g.siteId)} title="Everything on this site on one screen, across its jobs">{g.name}</button>
+                      <span style={muted}> · {members.length === 1 ? '1 job' : `${members.length} jobs`} · the whole site</span>
+                    </td>
+                    <td style={{ ...td, ...num, fontWeight: 700 }}>{boxes}</td>
+                    <td style={{ ...td, ...num, fontWeight: 700 }}>{lines}</td>
+                    <td style={{ ...td, ...num, fontWeight: 700 }}><Money n={missing} /></td>
+                    <td style={td}>{stale === 0 ? <span style={chip('green')}>all this fortnight</span> : <span style={chip('amber')}>{stale} due a count</span>}</td>
+                    <td style={{ ...td, ...num }}>{credits}</td>
+                    {rowDoors ? <td style={td}></td> : null}
+                  </tr>,
+                  ...members.map((r) => jobRow(r, true)),
+                ]
+              })}
             </tbody>
           </table>
         </div>
