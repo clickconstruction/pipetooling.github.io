@@ -9,14 +9,23 @@
  * promise standing) and **not yet past due**. The count is the customers needing a lean, the Next
  * line names the first, the since-last-look line says what moved, and the Mark's note is written
  * from the rows. Pure: the section loads, this shapes.
+ *
+ * Past due is `LEAN_PAST_DUE_DAYS` since billed, for every payer but one on a Pay calendar (punch list
+ * #323, v2.7140). Their bill is past due the day after the calendar's due day (`leanDueByBill`), however
+ * long ago it was billed: a bill in on the 1st and one in on the 30th are due the same day.
  */
-import type { BilledBreakdownCustomerGroup } from '../jobs/billedByCustomerBreakdown'
+import type { BilledBreakdownBill, BilledBreakdownCustomerGroup } from '../jobs/billedByCustomerBreakdown'
 import { BROKEN_PROMISE_GRACE_DAYS, type ChaseTouch } from '../jobs/paymentChase'
 import { daysBetweenYmd, type PromisedPayDate } from '../jobs/billedExpectedPay'
+import { payClockFor } from '../jobs/billedDuePay'
+import { listPayer } from '../jobs/billToParty'
+import { effectiveInvoiceEstBillDate } from '../jobs/invoiceBilling'
+import { calendarFor, dueDayFor, payCalendarMonthDay, type PayCalendarIndex } from '../jobs/payCalendar'
+import type { StageRow } from '../jobsStagesBoard'
 import { arLastTouchLine } from '../arCustomerChase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
-/** A bill is past due this many days after it was billed: the station's own amber chip. */
+/** A bill is past due this many days after it was billed: the station's own amber chip. A payer on a Pay calendar reads its due day instead. */
 export const LEAN_PAST_DUE_DAYS = 30
 /** A customer past due with no touch in this many days needs a lean. The owner's number; `app_settings` key below. */
 export const LEAN_DAYS_DEFAULT = 7
@@ -51,6 +60,11 @@ export type LeanRow = {
   brokenYmd: string | null
   /** Why the row sits where it sits, in a few words for the Last lean column. */
   why: string
+  /**
+   * Days the customer has been past due, the first day counting 1; 0 or less while no bill is, the days still to go
+   * as a negative. Null when no bill has a day to count from.
+   */
+  pastDueDays: number | null
 }
 
 export type LeanInput = {
@@ -59,6 +73,58 @@ export type LeanInput = {
   promises: Readonly<Record<string, PromisedPayDate>> | null
   todayYmd: string
   leanDays: number
+  /** The due day of each bill whose payer is on a Pay calendar, by `leanBillKey` (`leanDueByBill`). Absent, every bill reads its days since billed. */
+  dueByBill?: ReadonlyMap<string, string> | null
+}
+
+/** A bill's key in `dueByBill`: its own id. A job balance has no bill row, so no calendar reads it. */
+export function leanBillKey(bill: Pick<BilledBreakdownBill, 'invoiceId'>): string | null {
+  return bill.invoiceId
+}
+
+/** What the station reads beside the bills for a payer on a Pay calendar. */
+export type LeanCalendars = {
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id; the calendar counts from it. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
+}
+
+/**
+ * The due day of every open bill whose payer is on a Pay calendar, by the bill's id. The payer is the one the
+ * station groups the bill under (`listPayer`), the calendar the job's own when it has one (`calendarFor`), and the
+ * clock the day they accepted the bill, else the day it went in (`payClockFor`), as Money waiting reads them.
+ */
+export function leanDueByBill(rows: ReadonlyArray<StageRow>, calendars: LeanCalendars | null | undefined): Map<string, string> {
+  const out = new Map<string, string>()
+  if (!calendars?.payCalendars) return out
+  for (const r of rows) {
+    if (r.kind === 'job') continue
+    const payerId = listPayer(r.job, r.inv).id
+    if (!payerId) continue
+    const cal = calendarFor(calendars.payCalendars, { payerId, jobId: r.job.id })
+    if (!cal) continue
+    const clock = payClockFor({ billedAtIso: r.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(r.inv), customerId: payerId, acceptedYmd: calendars.acceptedByInvoice?.get(r.inv.id) ?? null })
+    const dueYmd = clock ? dueDayFor(clock.ymd, cal) : null
+    if (dueYmd) out.set(r.inv.id, dueYmd)
+  }
+  return out
+}
+
+/** A bill's due day on its payer's Pay calendar; null for a bill with none, which reads its days since billed. */
+function calendarDueOf(bill: BilledBreakdownBill, dueByBill: ReadonlyMap<string, string> | null | undefined): string | null {
+  const key = leanBillKey(bill)
+  return (key && dueByBill?.get(key)) || null
+}
+
+/**
+ * Days one bill has been past due, the first day counting 1, and 0 or less while it is not: past its calendar's due
+ * day, or `LEAN_PAST_DUE_DAYS` since billed with no calendar. Null for a settled bill and one with no day.
+ */
+function billPastDueDays(bill: BilledBreakdownBill, dueByBill: ReadonlyMap<string, string> | null | undefined, todayYmd: string): number | null {
+  if (bill.settled) return null
+  const dueYmd = calendarDueOf(bill, dueByBill)
+  if (dueYmd) return daysBetweenYmd(dueYmd, todayYmd)
+  return bill.ageDays == null ? null : bill.ageDays - (LEAN_PAST_DUE_DAYS - 1)
 }
 
 /**
@@ -93,12 +159,19 @@ export function leanRows(input: LeanInput): LeanRow[] {
     const broken = promiseYmds.filter((y) => (daysBetweenYmd(y, input.todayYmd) ?? 0) >= BROKEN_PROMISE_GRACE_DAYS).sort()
     const promisedYmd = standing.length ? standing[standing.length - 1]! : null
     const brokenYmd = broken.length ? broken[broken.length - 1]! : null
-    const pastDue = group.worstAgeDays != null && group.worstAgeDays >= LEAN_PAST_DUE_DAYS
+    // The bill furthest past due, or the one nearest to it: a calendar bill by its due day, any other by its days since billed.
+    let worst: { days: number; dueYmd: string | null } | null = null
+    for (const b of group.bills) {
+      const days = billPastDueDays(b, input.dueByBill, input.todayYmd)
+      if (days != null && (!worst || days > worst.days)) worst = { days, dueYmd: calendarDueOf(b, input.dueByBill) }
+    }
+    const pastDueDays = worst?.days ?? null
+    const pastDue = pastDueDays != null && pastDueDays > 0
     let state: LeanState
     let why: string
     if (!pastDue) {
       state = 'current'
-      why = group.worstAgeDays == null ? 'no bill date' : `${LEAN_PAST_DUE_DAYS - group.worstAgeDays} days until past due`
+      why = !worst ? 'no bill date' : worst.dueYmd ? `due ${payCalendarMonthDay(worst.dueYmd)} · pay calendar` : `${1 - worst.days} days until past due`
     } else if (promisedYmd) {
       state = 'waiting'
       why = 'promise standing'
@@ -109,7 +182,7 @@ export function leanRows(input: LeanInput): LeanRow[] {
       state = 'needs'
       why = brokenYmd ? 'promise broken' : lastTouchDays == null ? 'never leaned on' : `no lean in ${lastTouchDays}d`
     }
-    return { group, customerId, state, lastTouch, lastTouchDays, lastTouchLine, promisedYmd, brokenYmd, why }
+    return { group, customerId, state, lastTouch, lastTouchDays, lastTouchLine, promisedYmd, brokenYmd, why, pastDueDays }
   })
   const order: Record<LeanState, number> = { needs: 0, waiting: 1, current: 2 }
   return rows.sort((a, b) => order[a.state] - order[b.state] || (b.group.worstAgeDays ?? -1) - (a.group.worstAgeDays ?? -1) || b.group.total - a.group.total)
@@ -158,8 +231,9 @@ export function leanSince(rows: ReadonlyArray<LeanRow>, sinceIso: string | null,
   let newPastDue = 0
   let leanedSince = 0
   for (const r of rows) {
-    const age = r.group.worstAgeDays
-    if (age != null && age >= LEAN_PAST_DUE_DAYS && age - daysSince < LEAN_PAST_DUE_DAYS) newPastDue++
+    // Past due now and not yet at the last look: 30 days since billed, or its Pay calendar's due day, crossed since.
+    const past = r.pastDueDays
+    if (past != null && past > 0 && past - daysSince <= 0) newPastDue++
     if (r.lastTouch && r.lastTouch.createdAt > sinceIso) leanedSince++
   }
   return { newPastDue, leanedSince, words: `Since the last look, ${whenWords(sinceIso)}` }
