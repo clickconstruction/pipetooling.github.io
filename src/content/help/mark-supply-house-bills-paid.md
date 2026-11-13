@@ -8,7 +8,7 @@ You open a supply house and its bills come first, in groups by the day they fall
 
 ## Read a house's bills
 
-Open **Materials → Supply Houses** and press the house's row. Its card opens on **Invoices**. The heading says the house's pay day, like *pays on the 15th*.
+Open **Materials → Supply Houses** and press the house's row. The house's card opens on **Invoices**. The heading says the house's pay day, like *pays on the 15th*.
 
 Up to four numbers lead the card:
 
@@ -34,7 +34,7 @@ A date reads month and day, like *10/31*. You see a year only when it is not thi
 1. Find the bill in its group.
 2. Press {{button:outline|Mark paid}} on its row.
 
-The row stays where it is and turns grey. It reads **Paid today**. The page does not reload, so you keep your place. The group's count and total go down, and so do the numbers at the top.
+The row stays where it is and turns grey. The row reads **Paid today**. The page does not reload, so you keep your place. The group's count and total go down, and so do the numbers at the top.
 
 Pressed the wrong bill? Press {{button:outline|Mark unpaid}} on the same row. The grey row stays listed until you close the house.
 
@@ -47,7 +47,7 @@ Each bill is marked by itself. The card has no tick boxes. To pay several bills 
 3. You may paste the **Payment or receipt link**. That is the bank confirmation, the house's receipt, or the check image.
 4. Press {{button:green|Apply}}. Each ticked bill turns paid, and its paid day is stamped today.
 
-Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. They sit in a **Paid** group at the bottom of the card.
+Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card.
 
 :::example A paid bill's row
 **201 · Maple Lofts** · paid 9/25 · S1234567 · billed 9/3 · **See the bill ›** · **Receipt ›** · **$412.80** · {{button:outline|Mark unpaid}}
