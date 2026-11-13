@@ -2,7 +2,7 @@
 title: keep working when the signal drops
 category: Field Work
 roles: all
-keywords: offline, no signal, airplane mode, basement, waiting to send, kept on the phone, clock in, clock out, note, field report, photos, job photos, task card photo, retry, got it, try now, fix, could not be sent, sent, queue, the bar at the top, late, typed hours
+keywords: offline, no signal, airplane mode, basement, waiting to send, kept on the phone, clock in, clock out, note, field report, photos, job photos, bid photos, task card photo, retry, got it, try now, fix, could not be sent, sent, queue, the bar at the top, late, typed hours
 where: /dashboard
 order: 12
 ---
@@ -18,6 +18,7 @@ These presses can wait on the phone. Each one is kept with the moment you presse
 - Photos added to a job from the Job photos window.
 - A photo taken on a task card. Read [add a photo to a task card](/help/add-a-photo-to-a-task-card#with-no-signal) for what the card does.
 - A photo of a supply house ticket, with the job you picked. Read [take a photo of a supply house ticket](/help/take-a-photo-of-a-supply-house-ticket#with-no-signal) for what Tally shows.
+- Photos added to a bid from its Files window. Read [add photos to a bid](/help/add-photos-to-a-bid#with-no-signal) for what the window shows.
 
 When you press one with no signal, the window closes as it always does. A small message reads *Kept on the phone. It goes out when the signal is back.* The clock shows you clocked in from the moment you pressed. You can go to work. After Clock Out, the clock shows you clocked out the same way.
 
