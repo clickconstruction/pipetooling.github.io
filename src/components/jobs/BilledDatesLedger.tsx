@@ -9,6 +9,9 @@ import type { BilledDatesLedger as LedgerModel, LedgerAction, LedgerRow, LedgerT
  * every row and word comes from `buildBilledDatesLedger`. The Expected / They
  * said / They say paid row opens the promise window; the deadline row and the verdict open
  * the job's Lien window (or They said… when the verdict asks for a date).
+ * Since v2.7043 (punch list #325) a lien line's words are the next act and the
+ * press: they wear the underline alone, in their own colour, and wrap rather
+ * than end in dots, the day dropping under them in a narrow column.
  */
 
 const INK: Record<LedgerTone, string> = {
@@ -73,7 +76,8 @@ export default function BilledDatesLedger({
     if (action === 'lien-desk') return onLienDesk
     return undefined
   }
-  const doorTitle = (title: string, action: LedgerAction | null) => `${title}${action === 'they-said' ? ' — click to record what the customer said' : action === 'new-date' ? ' — click to record a new date the customer named' : ' — click to open the Lien window'}`
+  // A lien line's tip is whole as the kernel writes it, press and all (v2.7043, `lienRowTip`); the money's doors keep their tail.
+  const doorTitle = (title: string, action: LedgerAction | null) => `${title}${action === 'they-said' ? ' — click to record what the customer said' : action === 'new-date' ? ' — click to record a new date the customer named' : ''}`
   const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: compact ? 4 : 5, width: '100%', maxWidth: '100%', marginTop: compact ? '0.35rem' : '0.5rem', textAlign: 'left', fontSize: '0.75rem', lineHeight: 1.35, fontVariantNumeric: 'tabular-nums' }
   const v = ledger.verdict
   const verdictClick = v ? handlerFor(v.action) : undefined
@@ -90,7 +94,26 @@ export default function BilledDatesLedger({
         const onClick = handlerFor(r.action)
         const valueInk = r.tone === 'done' || r.tone === 'plain' ? 'var(--text-strong)' : INK[r.tone]
         const loud = r.bold || r.tone === 'amber' || r.tone === 'red'
-        const body = (
+        // A lien line (v2.7043, punch list #325): its words are the act and the press, so they are never cut to dots.
+        // The act and its day are two units; in a narrow column the day drops under the act, and the count stays up top.
+        const lienLine = r.action === 'lien-desk'
+        const tail = [r.joiner, r.date].filter(Boolean).join(' ')
+        const body = lienLine ? (
+          <>
+            <span style={{ display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
+              <span style={{ alignSelf: 'flex-start', paddingTop: '0.3em', lineHeight: 0 }}>
+                <Dot tone={r.tone} dot={r.dot} />
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span className={onClick ? 'ledgerAct' : undefined} data-testid={`ledger-act-${r.key}`} style={r.bold ? { fontWeight: 600, color: INK[r.tone] } : undefined}>
+                  {r.label}
+                </span>
+                {tail ? <> <span style={{ whiteSpace: 'nowrap' }}>{tail}</span></> : null}
+              </span>
+            </span>
+            <span style={{ whiteSpace: 'nowrap', color: valueInk, fontWeight: loud ? 600 : 400 }}>{r.far}</span>
+          </>
+        ) : (
           <>
             <span style={{ display: 'flex', alignItems: 'center', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <Dot tone={r.tone} dot={r.dot} />
@@ -113,12 +136,13 @@ export default function BilledDatesLedger({
                   e.stopPropagation()
                   onClick()
                 }}
-                style={{ ...doorStyle, color: 'var(--text-muted)' }}
+                className={lienLine ? 'ledgerActRow' : undefined}
+                style={{ ...doorStyle, color: 'var(--text-muted)', ...(lienLine ? { alignItems: 'baseline' } : null) }}
               >
                 {body}
               </button>
             ) : (
-              <div data-testid={`ledger-row-${r.key}`} title={r.title} style={rowStyle}>
+              <div data-testid={`ledger-row-${r.key}`} title={r.title} style={{ ...rowStyle, ...(lienLine ? { alignItems: 'baseline' } : null) }}>
                 {body}
               </div>
             )}

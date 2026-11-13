@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
-import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -280,18 +280,18 @@ export default function Checklist() {
     })
   }, [authUser?.id])
 
-  // Farm Mode (checklist-only lens): the page keeps just Today + History; the
+  // Task Mode (checklist-only lens): the page keeps just Today + History; the
   // office tabs hide and their deep links bounce to Today until the mode is off.
-  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+  const [taskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
 
   // The Roadmap is its own page now (Tier-2 #41). This page keeps the door
   // (Review/Manage "Open roadmap →", `?tab=roadmap` redirects) for the roles
   // that can open it — dev / master / assistant-like / primary, the RLS edit set.
-  const canSeeRoadmap = canOpenRoadmap(role, farmModeEnabled)
+  const canSeeRoadmap = canOpenRoadmap(role, taskModeEnabled)
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (farmModeEnabled && (tab === 'review' || tab === 'manage' || tab === 'roadmap')) {
+    if (taskModeEnabled && (tab === 'review' || tab === 'manage' || tab === 'roadmap')) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'today')
@@ -322,7 +322,7 @@ export default function Checklist() {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
-        !farmModeEnabled && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
+        !taskModeEnabled && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
           ? 'review'
           : 'today'
       setSearchParams((p) => {
@@ -331,10 +331,10 @@ export default function Checklist() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, role, canSeeRoadmap, farmModeEnabled, navigate, setSearchParams])
+  }, [searchParams, role, canSeeRoadmap, taskModeEnabled, navigate, setSearchParams])
 
   const canManageChecklists =
-    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeEnabled
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !taskModeEnabled
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
   const canEditTechTree =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'

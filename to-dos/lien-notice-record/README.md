@@ -60,7 +60,9 @@ Mock-up: [`mockup.html`](./mockup.html), drawn by the app's own print code with 
    copy. Behind the paper was rejected: a page stapled behind the paper rides to the clerk.
 2. **One row for each copy mailed**, grouped under its notice. The notice's line gives its months, its amount, the day
    it was entered and whether a copy of the paper was saved. A copy the record lacks is a row that says *No copy on
-   record*. A certified copy with no number says *No number on record*.
+   record*. A certified copy with no number says *No number on record*. The line the office typed beside the saved
+   copy prints whole in a row under the notice's copies, and again as the last line of the copy's delivery record:
+   on the owner's own job that line held the USPS receipt and the day of delivery, and the first build left it off.
 3. **No table of the months.** The first draw had one, with each month's last day to mail and how late each copy
    went. The owner asked not to see it. The page keeps the help sheet's own lines under **Ask first**, which name the
    months that do not stand. The kernel still works the months out (`LienNoticeRecord.months`), because those lines
@@ -102,6 +104,11 @@ Mostly, and here is where it is not.
 - **The big check means "a copy went on a day the record holds".** A notice with one copy missing still shows the
   check, with the missing copy on its own line in bold beside an exclamation mark. A check that waited for both copies
   would hide that the owner's did go.
+- **The day of delivery is whatever the office typed.** The record has no field for it. It prints because the office
+  writes it in the saved copy's note. A notice with no note shows no delivery day. **Named, not fixed.**
+- **A redrawn notice entered after the fact carries the day it was entered on its Date line**, not the day it was
+  mailed. The delivery record above it gives the mailed day, and the page says the notice was entered afterwards.
+  **Named, not changed.**
 - **The attorney gets the print only.** The same facts in the legal portal or an email to counsel is a later idea.
 
 ## Where it plugs in
@@ -131,4 +138,4 @@ them, and the tick boxes would be dead without the pages.
 
 ## Where it stands
 
-Built and merged with its mock-up. Left: the office's first real print. A page count on real jobs is in the fragment.
+Built and merged with its mock-up; the saved copy's note followed the same day, after the owner saw her own job's pages. Left: the office's first real print. A page count on real jobs is in the first fragment.

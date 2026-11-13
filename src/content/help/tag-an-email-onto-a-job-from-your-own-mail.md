@@ -113,11 +113,12 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 - The files come along, each up to 25 MB.
 - The app keeps each mail as it came, for the Legal desk.
 - A mail our bids or team inbox already took is never copied twice. The tag ties it to the job, unless the office tied it to another job already.
-- In your Gmail, a tagged mail gets the label **Tagged in ClickTooling**.
+- Nothing changes in your Gmail. A tag adds no label, and no mail is moved or marked.
+- The line on the job is a copy. It stays if you later delete the mail in Gmail.
 
 After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
 
-A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself.
+A grey line on the thread names who tagged the conversation. A developer can tag a conversation from your mail for you. The grey line then names the developer, and ends *through the dev seat*. You can still untag that conversation yourself. The developer can take it back off the job too.
 
 ### Old mail is filed for the record
 
@@ -180,7 +181,7 @@ Press **Not now** to name them later. The tag stays on the job either way.
 2. Press **Untag**.
 3. Press {{button:red|Untag}} to say yes.
 
-Untag takes the conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line our bids or team inbox took goes back to where it was. In your Gmail, the label comes off.
+Untag takes the conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line our bids or team inbox took goes back to where it was. Nothing changes in your Gmail.
 
 Every tagged conversation has **Untag**. A conversation our bids or team inbox read in full has it too.
 

@@ -14,7 +14,7 @@ The Dashboard itself cannot be pinned. It is where pins land. With Pin Mode on, 
 ## Turn it on
 
 1. Open the {{icon:gear}} gear menu in the header.
-2. Tap **Pin Mode**. It sits with the other modes: Job Mode, Dispatch Mode and Farm Mode.
+2. Tap **Pin Mode**. Pin Mode sits with the other modes: Job Mode, Dispatch Mode and Task Mode.
 3. The pin footer appears at the bottom of pinnable pages. {{button:outline|Pin}} pins the page you are on. On Bids with a bid open, {{button:outline|Pin bid}} pins that bid's tab.
 
 Turn it off the same way when you are done arranging shortcuts. The footer disappears, and everything you pinned stays.

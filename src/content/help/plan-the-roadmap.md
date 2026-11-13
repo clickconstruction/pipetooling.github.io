@@ -54,4 +54,4 @@ GOALS
 ## Good to know
 
 - The Dashboard's *"N roadmap tasks need a person"* card is the owner's. It does not appear on other people's dashboards, even though they can open the page.
-- **Farm Mode** hides the Roadmap page along with the rest of the app. A chip at the top of the checklist says the mode is on and has the way out.
+- **Task Mode** hides the Roadmap page along with the rest of the app. A chip at the top of the checklist says the mode is on and has the way out.

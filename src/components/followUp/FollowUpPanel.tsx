@@ -16,7 +16,9 @@
  * signal reads again by itself when it is back, and a refusal shows its reason with no read of its own.
  */
 import { PUT_BACK_WORDS } from '../../lib/followUp/setAsideFold'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { reopenedWords } from '../../lib/followUp/doneFold'
+import { DoneFold } from './DoneFold'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMessagesLive } from '../gc/messages/useMessagesLive'
 import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
@@ -159,6 +161,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
   }, [held, keptAt, onKept])
 
   const nameOf = (contactId: string) => source?.contacts.find((c) => c.id === contactId)?.name ?? 'them'
+  const loadDone = useCallback(() => io.loadDoneFold(), [io])
   const run = async (name: string, press: (x: FollowUpIo) => Promise<unknown>, done: string | null) => {
     const ok = await q.press(name, press)
     if (ok && done) say(done, 'success')
@@ -197,7 +200,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
       const to = userId === null ? null : userId === me.id ? me.name : (userNames[userId] ?? 'Someone')
       void run(`hand ${contactId}`, (x) => (userId === me.id ? x.takeIt(contactId) : x.handTo(contactId, userId)), hasToast(me.name, nameOf(contactId), to))
     },
-    noReplyNeeded: (contactId) => void run(`state ${contactId}`, (x) => x.setState(contactId, 'done'), stateToast('noReplyNeeded', nameOf(contactId))),
+    noReplyNeeded: (contactId) => void run(`state ${contactId}`, (x) => x.noReplyNeeded(contactId, me.name), stateToast('noReplyNeeded', nameOf(contactId))),
     remindMonday: (contactId) => void run(`state ${contactId}`, (x) => x.setState(contactId, 'snoozed'), stateToast('remindMonday', nameOf(contactId))),
     backDone: (noteId) => void run(`back ${noteId}`, (x) => x.backDone(noteId), BACK_CLEARED_TOAST),
     anotherDay: (noteId) => {
@@ -250,6 +253,17 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
       ) : (
         !q.problem && <Card style={{ color: 'var(--text-muted)' }}>Loading who is waiting on us…</Card>
       )}
+      {/* Done with no reply this week (v2.7030, punch list #324): where a closed conversation went, each with Reopen. */}
+      {drawn && source && !held && (
+        <DoneFold
+          refreshKey={q.queue}
+          nowIso={nowIso}
+          busy={q.pressing !== null}
+          load={loadDone}
+          onReopen={(contactId, who) => void run(`state ${contactId}`, (x) => x.setState(contactId, 'waiting'), reopenedWords(who))}
+          onOpenThread={(contactId) => onOpenThread(contactId)}
+        />
+      )}
       {answerAll?.on && drawn && !held && (
         <AnswerAllDesk
           lane={drawn.needsReply}
@@ -257,7 +271,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           contacts={q.contacts}
           lines={q.lines}
           reread={() => void q.reload()}
-          noReplyNeeded={(contactId) => q.press(`state ${contactId}`, (x) => x.setState(contactId, 'done'))}
+          noReplyNeeded={(contactId) => q.press(`state ${contactId}`, (x) => x.noReplyNeeded(contactId, me.name))}
           pressing={q.pressing}
           onClose={() => answerAll.onChange(false)}
           onOpenThread={onOpenThread}

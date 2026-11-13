@@ -194,6 +194,12 @@ Press {{button:outline|I answered, write it down}} when there is no mail to find
 Wendi emailed Rusty from her own mailbox on Tuesday. On Wednesday his thread still read *Our move*. She pressed **Find my sent mail**, saw Tuesday's email and pressed **Tag it**. The thread read *Their move*.
 :::
 
+## Say no reply is needed
+
+Some messages need no answer. Press {{button:outline|No reply needed}} beside **We owe them…** at the top of the thread. The conversation leaves Follow up, and the thread keeps a line that says who closed it.
+
+[Close a conversation that needs no reply](/help/answer-everyone-waiting-on-us-from-one-page#close-a-conversation-that-needs-no-reply) has the rest.
+
 ## Add a note for the team
 
 1. Press {{button:outline|Note}}. The box turns yellow.

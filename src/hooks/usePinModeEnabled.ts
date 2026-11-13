@@ -8,7 +8,7 @@ import {
 
 /**
  * Reads the per-user Pin Mode flag from localStorage and stays in sync
- * across tabs via the storage event. Mirrors `useFarmModeEnabled`.
+ * across tabs via the storage event. Mirrors `useTaskModeEnabled`.
  */
 export function usePinModeEnabled(
   userId: string | null | undefined,

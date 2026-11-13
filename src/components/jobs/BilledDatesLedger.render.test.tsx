@@ -70,12 +70,28 @@ describe('BilledDatesLedger (v2.4205)', () => {
     document.body.innerHTML = ''
     const late = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway({ todayYmd: today, openBalance: 15406, lastWorkYmd: '2026-08-14', propertyKind: 'residential', expectedPayYmd: '2026-10-04', filedYmd: null, releasedYmd: null, isSub: false }), inCollections: false })
     render(<BilledDatesLedger ledger={late} onLienDesk={onLienDesk} onMoney={onMoney} />)
-    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date1d past')
+    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date')
     fireEvent.click(screen.getByTestId('ledger-verdict'))
     expect(onMoney).toHaveBeenCalledTimes(1)
     document.body.innerHTML = ''
     const { container } = render(<BilledDatesLedger ledger={{ rows: [], verdict: null, full: '' }} />)
     expect(container.innerHTML).toBe('')
+  })
+
+  it('a lien line’s act is its press: the underline class on the words alone, the day beside them, no ellipsis, and the kernel’s tip whole (v2.7043)', () => {
+    const acted = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false, lienState: { words: 'Needs the owner · by Oct 15 · 2d', lead: 'Needs the owner', dueOn: '2026-10-15', paper: 'notice', action: 'find_owner', tone: 'red', act: { words: 'Find the owner', why: 'The notice needs the owner of record first.', dated: true, under: '' } } })
+    const onLienDesk = vi.fn()
+    render(<BilledDatesLedger ledger={acted} onLienDesk={onLienDesk} />)
+    const line = screen.getByTestId('ledger-row-notice')
+    const act = screen.getByTestId('ledger-act-notice')
+    expect(act.textContent).toBe('Find the owner')
+    expect(act.className).toBe('ledgerAct')
+    expect(line.className).toBe('ledgerActRow')
+    expect(line.textContent).toContain('Find the owner by Oct')
+    expect(line.getAttribute('title')).toMatch(/^The notice needs the owner of record first\. The last day is Oct \d+\. Press to open the Lien window\.$/)
+    expect(screen.queryByTestId('ledger-sub-notice')).toBeNull()
+    fireEvent.click(line)
+    expect(onLienDesk).toHaveBeenCalledTimes(1)
   })
 
   it('the notice’s state (v2.5491) sits under the lien row in its tone, the sentence as its hover', () => {

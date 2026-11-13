@@ -5,11 +5,11 @@
  * place, and the customer's own words sit under them. The customer's page never draws these.
  */
 import { useEffect, useState } from 'react'
-import { LOOK_CARD_WORDS, LOOK_STRIP_WORDS, lookAskedWords, type ThreadLook, type ThreadLookFile } from '../../lib/firstLook/card'
+import { LOOK_CARD_WORDS, LOOK_STRIP_WORDS, lookAskedLower, type ThreadLook, type ThreadLookFile } from '../../lib/firstLook/card'
 import { driveFolderUrl, LOOK_DRIVE_WORDS } from '../../lib/firstLook/drive'
 import { supabaseFirstLookThreadIo, type FirstLookThreadIo } from '../../lib/firstLook/threadIo'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
-import { LookFile } from './FirstLookCards'
+import { LookFile } from './LookFile'
 
 const DEFAULT_IO = supabaseFirstLookThreadIo()
 
@@ -43,7 +43,7 @@ export function EstimateFirstLookStrip({ estimateId, io = DEFAULT_IO }: { estima
   return (
     <div data-estimate-first-look={look.id} style={{ marginBottom: '1rem' }}>
       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
-        📷 {LOOK_STRIP_WORDS.head} · {LOOK_CARD_WORDS.title}, {lookAskedWords(look, formatDenverCalendarDayShort(Date.parse(look.made_at))).toLowerCase()}
+        📷 {LOOK_STRIP_WORDS.head} · {LOOK_CARD_WORDS.title}, {lookAskedLower(look, formatDenverCalendarDayShort(Date.parse(look.made_at)))}
       </div>
       {files.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>

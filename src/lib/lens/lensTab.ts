@@ -121,8 +121,18 @@ function specFor(as: LensRole, screen: LensScreen, mood: LensMood, theme: LensTh
   }
 }
 
-/** The audiences of What customers see, in its order. */
-export const LENS_AUDIENCES: readonly { id: LensAudience; label: string }[] = customerJourneys().map((j) => ({ id: j.id, label: j.title }))
+/** True for a step that is a page on this origin: the only kind of step this tab can frame. */
+function isOwnPage(s: { render: { kind: string; absolute?: boolean } }): boolean {
+  return s.render.kind === 'page' && !s.render.absolute
+}
+
+/**
+ * The audiences of What customers see that have a page to draw, in its order. A group of letters alone (the lien
+ * letters, punch list #326: papers, emails and texts) has none, so it is not offered here: its pill would draw nothing.
+ */
+export const LENS_AUDIENCES: readonly { id: LensAudience; label: string }[] = customerJourneys()
+  .filter((j) => j.steps.some(isOwnPage))
+  .map((j) => ({ id: j.id, label: j.title }))
 
 /** An audience's pages on this origin, from its journey, each opened by its sample token. */
 export function audienceScreens(audience: LensAudience): LensScreen[] {
@@ -130,7 +140,7 @@ export function audienceScreens(audience: LensAudience): LensScreen[] {
   const seen = new Set<string>()
   const out: LensScreen[] = []
   for (const s of journey?.steps ?? []) {
-    if (s.render.kind !== 'page' || s.render.absolute || seen.has(s.render.path)) continue
+    if (s.render.kind !== 'page' || !isOwnPage(s) || seen.has(s.render.path)) continue
     seen.add(s.render.path)
     out.push({ id: `step:${s.id}`, label: s.label, where: s.when, to: s.render.path, kind: 'page' })
   }
