@@ -10,7 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import { BillsSentLedger } from './BillsSentLedger'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], refuse: null as null | Error, fail: null as null | Error, phone: false }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, refuse: null as null | Error, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
@@ -22,6 +22,7 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     if (io.fail) throw io.fail
     return io.data
   },
+  readBillHandWays: async () => io.ways,
   recordBillByHand: async (filing: unknown) => {
     if (io.refuse) throw io.refuse
     io.filed.push(filing)
@@ -72,6 +73,7 @@ beforeEach(() => {
   io.opened = []
   io.saved = []
   io.filed = []
+  io.ways = null
   io.refuse = null
   io.fail = null
   io.phone = false
@@ -250,6 +252,27 @@ describe('BillsSentLedger', () => {
     await waitFor(() => expect(io.filed).toHaveLength(1))
     expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'hand', recipientName: 'Sable Ridge Builders', source: { table: 'jobs_ledger_invoices', id: GAP }, sourceSnapshot: { how: 'handed', went_on: '2026-11-09' } })
     await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
+  })
+
+  it('offers the office\u2019s own list of ways, and files the way picked with its words', async () => {
+    const GAP = 'dddddddd-4444-4444-8444-444444444444'
+    io.data = { ...data([copy({})]), unsent: [{ billId: GAP, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
+    const row = (over: Record<string, unknown>) => ({ id: 'w1', key: 'handed', label: 'Handed over', sent_how: 'hand', sort_order: 1, retired_at: null, retired_by_name: '', created_by_name: '', created_at: '2026-11-13T15:00:00Z', ...over })
+    io.ways = [
+      row({ id: 'w3', key: 'w_3f9a1c2e77', label: 'Uploaded to the builder\u2019s pay portal', sent_how: 'other', sort_order: 3, created_by_name: 'Priya' }),
+      row({}),
+      row({ id: 'w2', key: 'mailed', label: 'Mailed', sent_how: 'mail', sort_order: 2, retired_at: '2026-11-13T16:00:00Z', retired_by_name: 'Marcus' }),
+    ].map((r) => ({ id: r.id, key: r.key, label: r.label, sentHow: r.sent_how, sortOrder: r.sort_order, retiredAtIso: r.retired_at, retiredByName: r.retired_by_name, createdByName: r.created_by_name, createdAtIso: r.created_at }))
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findByTestId('bills-sent-gap')
+    fireEvent.click(screen.getByRole('button', { name: 'Say how it went…' }))
+    const how = screen.getByLabelText('How the bill went') as HTMLSelectElement
+    // The list's own order, and a way taken off is not offered.
+    await waitFor(() => expect(Array.from(how.options).map((o) => o.textContent)).toEqual(['Pick one', 'Handed over', 'Uploaded to the builder\u2019s pay portal']))
+    fireEvent.change(how, { target: { value: 'w_3f9a1c2e77' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record how it went' }))
+    await waitFor(() => expect(io.filed).toHaveLength(1))
+    expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'other', sourceSnapshot: { how: 'w_3f9a1c2e77', how_label: 'Uploaded to the builder\u2019s pay portal' } })
   })
 
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
