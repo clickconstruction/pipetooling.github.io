@@ -9,10 +9,15 @@ import {
   escapeHtml,
   packagePriceHeading,
   formatPackageCurrency,
+  packageMoneyHtml,
   packageRowRevenueTotalCents,
   type PackageExternalRow,
   type PackageRowInput,
 } from './buildBidPricingPackageHtml'
+import {
+  buildBidPricingPackageTableHtml as edgeTableHtml,
+  packageMoneyHtml as edgeMoneyHtml,
+} from '../../supabase/functions/_shared/bidPricingPackage'
 
 const row = (overrides: Partial<PackageRowInput> = {}): PackageRowInput => ({
   fixture: 'Toilet',
@@ -113,7 +118,7 @@ describe('buildBidPricingPackageTableHtml', () => {
     expect(html).toContain('Count')
     expect(html).toContain('Sale Price')
     expect(html).toContain('Revenue')
-    expect(html).toContain('$200.00')
+    expect(html).toContain('$200<span style="font-size:10px">.00</span>')
     expect(html).toContain('Total')
     expect(html).not.toContain('Margin')
     expect(html).not.toContain('Our cost')
@@ -142,7 +147,7 @@ describe('buildBidPricingPackageTableHtml', () => {
       externalRows: [ext({ revenue: 100 })],
       totalRevenue: 999.5,
     })
-    expect(html).toContain('$999.50')
+    expect(html).toContain('$999<span style="font-size:10px">.50</span>')
   })
 })
 
@@ -418,8 +423,8 @@ describe('Send both (v2.3685): one package, two labeled prices, ★ first', () =
     const second = html.indexOf('Written to Plan — second price')
     expect(first).toBeGreaterThan(-1)
     expect(second).toBeGreaterThan(first)
-    expect(html).toContain('$200.00')
-    expect(html).toContain('$50.00')
+    expect(html).toContain('$200<span style="font-size:10px">.00</span>')
+    expect(html).toContain('$50<span style="font-size:10px">.00</span>')
   })
 
   it('buildBidPricingPackagePlainText with sections: Bid header, then each heading + its own table', () => {
@@ -442,5 +447,54 @@ describe('Send both (v2.3685): one package, two labeled prices, ★ first', () =
     const text = buildBidPricingPackagePlainText({ externalRows: [ext()], totalRevenue: 200, bidLabel: 'B', plansLink: null })
     expect(text.split('\n').filter((l) => l.startsWith('Total')).length).toBe(1)
     expect(text).not.toContain('second price')
+  })
+})
+
+describe('cents in smaller type (v2.7065)', () => {
+  const visible = (html: string): string => html.replace(/<[^>]+>/g, '')
+
+  it('wraps the cents, with their point, in a 10px span and leaves the dollars alone', () => {
+    expect(packageMoneyHtml(1234.5)).toBe('$1,234<span style="font-size:10px">.50</span>')
+    expect(packageMoneyHtml(8700)).toBe('$8,700<span style="font-size:10px">.00</span>')
+    expect(packageMoneyHtml(0.05)).toBe('$0<span style="font-size:10px">.05</span>')
+  })
+
+  it('reads as the same amount to the cent once the tags are gone', () => {
+    for (const n of [0, 0.05, 12.5, 999.995, 1472.88, 18840.38, 1234567.891]) {
+      expect(visible(packageMoneyHtml(n))).toBe(`$${formatPackageCurrency(n)}`)
+    }
+    expect(visible(packageMoneyHtml(Number.NaN))).toBe('$0.00')
+  })
+
+  it('the table uses it for the unit price, the line total and the Total, and nowhere else', () => {
+    const html = buildBidPricingPackageTableHtml({
+      externalRows: [ext({ fixture: 'ft of copper', count: 180.4, unitPrice: 12.5, revenue: 2255 })],
+      totalRevenue: 2255.4,
+    })
+    expect(html.match(/<span style="font-size:10px">/g)?.length).toBe(3)
+    expect(html).toContain('$12<span style="font-size:10px">.50</span>')
+    expect(html).toContain('$2,255<span style="font-size:10px">.00</span>')
+    expect(html).toContain('$2,255<span style="font-size:10px">.40</span>')
+    // The count is not money: 180.4 keeps its size.
+    expect(html).toContain('>180.4</td>')
+  })
+
+  it('leaves the plain-text body for a mail app as it was: text has one size', () => {
+    const text = buildBidPricingPackagePlainText({
+      externalRows: [ext({ unitPrice: 12.5, revenue: 25 })],
+      totalRevenue: 25,
+      bidLabel: 'BE1',
+      plansLink: null,
+    })
+    expect(text).toContain('$12.50')
+    expect(text).not.toContain('<span')
+  })
+
+  it('the edge function\'s copy draws the same money cells, so Send for me matches the preview', () => {
+    for (const n of [0, 12.5, 2255, 18840.38]) expect(edgeMoneyHtml(n)).toBe(packageMoneyHtml(n))
+    const args = { externalRows: [ext({ unitPrice: 12.5, revenue: 25 })], totalRevenue: 25.75 }
+    const cells = (html: string): string[] => html.match(/\$[\d,]+<span[^>]*>\.\d\d<\/span>/g) ?? []
+    expect(cells(edgeTableHtml(args))).toEqual(cells(buildBidPricingPackageTableHtml(args)))
+    expect(cells(edgeTableHtml(args)).length).toBe(3)
   })
 })

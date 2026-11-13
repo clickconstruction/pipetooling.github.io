@@ -272,6 +272,39 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
       expect(build(null, buildLienPayRunway(runwayInput({ openBalance: 0 })), today).lienTab).toBeNull()
     })
 
+    it('the row follows the Lien window on two clocks (v2.7047, PR 4): the late notice, and service with no desk open', () => {
+      // The August notice window closed Oct 15 with nothing sent; the affidavit's day, Nov 16, is four days off.
+      const closedNotice = buildLienPayRunway(runwayInput({ todayYmd: late, expectedPayYmd: '2026-10-04' }))
+      expect(closedNotice).toMatchObject({ state: 'closed', closedBy: 'notice', daysToLien: 4 })
+      // It read *Lien gone*. The window says a late notice can still go (v2.4708), and so does the row.
+      const bare = build(null, closedNotice)
+      expect(bare.rows[2]).toMatchObject({ key: 'lien', label: 'Send the late notice', joiner: 'by', date: 'Nov 16', far: '4d', tone: 'red', bold: true, dot: 'filled' })
+      expect(bare.rows[2]?.title).toBe('The notice window closed with no notice sent. A late notice can still go while the affidavit can be filed. The last day is Nov 16. Press to open the Lien window.')
+      expect(bare.verdict).toBeNull()
+      expect(bare.lienTab).toBe('notice')
+      // The desk's own step takes the words, as on any row.
+      expect(build(chip('notice', 'draft_late'), closedNotice).rows[2]?.label).toBe('Draft the late notice')
+      expect(build(chip('affidavit', 'send_notice'), closedNotice).rows[2]?.label).toBe('Send the late notice')
+      // An earlier month's notice did go: it carries the affidavit, so the row asks to file.
+      const oneSent = buildLienPayRunway(runwayInput({ todayYmd: late, expectedPayYmd: '2026-10-04', workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }))
+      expect(oneSent.state).toBe('closed')
+      expect(build(null, oneSent).rows[2]).toMatchObject({ label: 'File the affidavit', date: 'Nov 16' })
+      expect(build(null, oneSent).lienTab).toBe('affidavit')
+      // Once the affidavit's own day has passed the lien is gone, as before.
+      const gone = buildLienPayRunway(runwayInput({ todayYmd: '2026-11-20', expectedPayYmd: '2026-10-04' }))
+      expect(build(null, gone, '2026-11-20').rows[2]).toMatchObject({ key: 'closed', label: 'Lien gone' })
+
+      // Service: the runway carries the filing's serve day, so the row asks with no chip at all.
+      const unserved = buildLienPayRunway(runwayInput({ todayYmd: late, filedYmd: '2026-11-09', serveDueYmd: '2026-11-16' }))
+      expect(unserved).toMatchObject({ state: 'filed', serveByYmd: '2026-11-16', daysToServe: 4, servedYmd: '' })
+      expect(build(null, unserved).rows[2]).toMatchObject({ key: 'filed', label: 'Serve the affidavit', date: 'Nov 16', far: '4d', tone: 'red', bold: true, sub: 'Filed Nov 9' })
+      const served = buildLienPayRunway(runwayInput({ todayYmd: late, filedYmd: '2026-11-09', serveDueYmd: '2026-11-16', servedYmd: '2026-11-11' }))
+      expect(served).toMatchObject({ serveByYmd: '', daysToServe: null, servedYmd: '2026-11-11' })
+      expect(build(null, served).rows[2]).toMatchObject({ label: 'Lien filed', date: 'Nov 9', sub: 'served Nov 11', subTone: 'green' })
+      // A filing with no serve day written asks nothing, as the Lien desk asks nothing of it.
+      expect(build(null, buildLienPayRunway(runwayInput({ todayYmd: late, filedYmd: '2026-11-09' }))).rows[2]).toMatchObject({ label: 'Lien filed', sub: '' })
+    })
+
     it('every tip the row can show passes the plain-words rules', () => {
       const ledgers = [build(chip('affidavit', 'draft')), build(chip('affidavit', 'fix_property', { missing: ['public_owner'] })), build(null), build(null, buildLienPayRunway(runwayInput()), today), build(null, buildLienPayRunway(runwayInput({ isSub: false, lastWorkYmd: '2026-05-10' })), today), build(null, buildLienPayRunway(runwayInput({ propertyKind: '' })), today), build(null, buildLienPayRunway(runwayInput({ lastWorkYmd: null, createdAt: '2026-08-14T15:00:00Z' })), today)]
       for (const l of ledgers) for (const r of l.rows.filter((x) => x.action === 'lien-desk')) expect(plainWordsFailures(r.title), r.title).toEqual([])
