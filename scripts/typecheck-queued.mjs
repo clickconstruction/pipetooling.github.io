@@ -7,13 +7,14 @@
  *   TYPECHECK_NO_LOCK=1 npm run typecheck   # CI: no lock, each job is its own machine
  *   TYPECHECK_LOCK_DIR=/some/dir npm run typecheck   # the lock somewhere else
  *
- * Extra arguments go to tsc. The exit code is tsc's. The heap stays what the old script gave tsc.
+ * Extra arguments go to tsc. The exit code is tsc's. The heap is 12 GB since 2026-11-13, when the whole program's check
+ * passed 10 GB on GitHub's runners (16 GB of memory); the build's `tsc -b` in package.json has the same heap.
  */
 import { execFileSync, spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { acquire, holderRecord, lockRoot, LOCK_DIR_NAME } from './lib/typecheckLock.mjs'
 
-const TSC_ARGS = ['--max-old-space-size=10240', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json']
+const TSC_ARGS = ['--max-old-space-size=12288', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json']
 
 function gitCommonDir() {
   try {
