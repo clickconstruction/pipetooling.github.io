@@ -142,7 +142,7 @@ Each bid is read at the won rate for bids its size. The sizes are under $10k, $1
 
 **Estimates.** An estimate is won when the customer approves it. It is lost when the customer declines it. It is lost when the customer approves another estimate for the same address after it was sent. It is lost after 90 days with no answer. Any other estimate is still out and is in neither count. The won rate is won dollars over won and lost dollars. The estimates sent in the last eight weeks, a week, times that rate are what the estimates sell.
 
-A bid never sent is in no count. A ZZ test bid is in no count. Change orders and bid proposals are left out.
+A bid never sent is in no count. A ZZ test bid is in no count. Neither is a ZZ test estimate. Change orders and bid proposals are left out.
 
 Press **How Market's figure is counted** under the pipe to read today's counts. The Bid Board's Health section shows [the won rate for each size](/help/read-estimating-health#what-we-win-by-the-size-of-the-bid), by trade. Marking old bids won or lost is what makes the rates true.
 
