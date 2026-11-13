@@ -6,7 +6,7 @@ import type { LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
 import { LienNoticeTimeline } from './LienNoticeTimeline'
 
 /**
- * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
+ * The To do list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
  * rows, each rung with its count, a press narrowing the list to that rung; the four dots and
  * the fraction a row wears; and the card that opens on the dots — the row's ladder written
  * out. The words all come from `lienNextUpSteps.ts`; nothing here reads or writes.
@@ -402,7 +402,7 @@ export function useLienStepCard(isMobile: boolean) {
  * Done steps ticked, the one the row stands on lit and saying whose it is. Nothing for a row past
  * the ladder.
  */
-export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the Do now rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
+export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the To do rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
   const tiles = lienStepTiles(at, ladder, viewerIsLeader)
   if (!tiles) return null
   const inner = tiles.map((t) => (

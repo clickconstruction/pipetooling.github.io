@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The lien month across the top of Do now (punch list #235, PR 2): five zones sized by their days,
+ * The lien month across the top of To do (punch list #235, PR 2): five zones sized by their days,
  * today marked, each zone's counts and press, a pressed zone's Showing line and Show all, the rows
  * on a phone.
  */

@@ -250,12 +250,12 @@ describe('LienDesk', () => {
     view.rerender(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} backDoor={<button type="button">← Pipeline</button>} onAddressChange={onAddressChange} initialKind="next" />)
     await settle()
     await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'next', job: null, pile: null }))
-    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     // Notices opens on its first notice on a computer, and the address names it.
     await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'notice', job: 'j650', pile: null }))
     // The address is the truth: a view word changed from outside moves the desk.
     view.rerender(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} backDoor={<button type="button">← Pipeline</button>} onAddressChange={onAddressChange} initialKind="calendar" />)
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'By date' }).getAttribute('aria-selected')).toBe('true'))
   })
 
   it('stacked (a phone, punch list #182 PR 3): the Notices list is the whole desk and picks nothing; a press asks the page to open the notice; an open notice has ← Notices in the door’s place', async () => {
@@ -289,7 +289,7 @@ describe('LienDesk', () => {
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'What this desk holds' }))
     const card = screen.getByTestId('legend-card-lien-desk')
-    expect(card.textContent).toContain('Do now')
+    expect(card.textContent).toContain('To do')
     expect(card.textContent).toContain('Record the mailing')
     expect((screen.getByTestId('legend-card-lien-desk-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=send-lien-notices-from-the-lien-desk&via=legend')
     fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
@@ -302,7 +302,7 @@ describe('LienDesk', () => {
     const share = document.querySelector('[data-lien-desk-share]') as HTMLButtonElement
     expect(share.textContent).toContain('Share')
     expect(share.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await settle()
     expect(document.querySelector('[data-lien-desk-share]')).toBe(share)
     fireEvent.click(share)
@@ -329,7 +329,7 @@ describe('LienDesk', () => {
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
     view.unmount()
-    // On Deadlines too (v2.6569): the tool row under the title line, with the break before it, the same shape as on All filings.
+    // On By date too (v2.6569): the tool row under the title line, with the break before it, the same shape as on By paper.
     const deadlines = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const up = screen.getByTestId('lien-owner-records-door')
@@ -408,7 +408,7 @@ describe('LienDesk', () => {
     // and says what the run will do (v2.4823), as the printed footer does, instead of Send the run.
     expect(screen.getByRole('button', { name: 'Record the mailing · 1' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Send the run/ })).toBeNull()
-    // v2.4740: the run sits on the title line, right after the views; on All filings the paper tabs lead the second line.
+    // v2.4740: the run sits on the title line, right after the views; on By paper the paper tabs lead the second line.
     expect(document.querySelector('[data-lien-desk-kinds]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
     expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling!.hasAttribute('data-lien-desk-paper-kinds')).toBe(true)
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
@@ -423,7 +423,7 @@ describe('LienDesk', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('two printed notices are one Do now row; its Take back… opens the run on the confirm, and the rail counts them (punch list #101)', async () => {
+  it('two printed notices are one To do row; its Take back… opens the run on the confirm, and the rail counts them (punch list #101)', async () => {
     const item = (id: string, job: string) =>
       ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', printed_at: '2026-09-14T16:00:00Z' }) as unknown as LienDeskItemRow
     const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
@@ -438,22 +438,22 @@ describe('LienDesk', () => {
     expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
   })
 
-  it('the office: a notice waiting on the leader closes Do now under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {
+  it('the office: a notice waiting on the leader closes To do under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {
     const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
     await settle()
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Waiting on Sam · 1'])
     expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Sam · since Sep 12')
-    expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
+    expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
   })
 
-  it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
+  it('To do is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
-    expect(tabs[0]).toBe('Do now · 1')
-    expect(screen.getByRole('tab', { name: 'Do now · 1' }).getAttribute('aria-selected')).toBe('true')
+    expect(tabs[0]).toBe('To do · 1')
+    expect(screen.getByRole('tab', { name: 'To do · 1' }).getAttribute('aria-selected')).toBe('true')
     // J650 has no owner on file: its one move is Find the owner.
     const row = document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement
     expect(row.textContent).toContain('650 · AXO Schertz')
@@ -463,7 +463,7 @@ describe('LienDesk', () => {
     expect(document.querySelector('[data-lien-next-up="list"]')).toBeNull()
   })
 
-  it('a Docsmit envelope that came back is a Do now row opening the notice under Sent, whose head has the Deliveries filter and whose footer has the cost (the Docsmit train, 6b-2)', async () => {
+  it('a Docsmit envelope that came back is a To do row opening the notice under Sent, whose head has the Deliveries filter and whose footer has the cost (the Docsmit train, 6b-2)', async () => {
     const sent = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
     // Every month noticed (v2.6624): a job with a month still due sits in To draft now, and this test is about the Sent pile's filter.
     const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sent], true)
@@ -488,53 +488,53 @@ describe('LienDesk', () => {
   it('a door re-aims an open desk at the same job when its aim key changes (v2.4612)', async () => {
     const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={1} />)
     await settle()
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await settle()
-    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By date' }).getAttribute('aria-selected')).toBe('true')
     // The same job, pressed again from its Lien window: the tab is applied again.
     view.rerender(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
     // A re-render with the same aim changes nothing.
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await settle()
     view.rerender(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
     await settle()
-    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By date' }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('three views (punch list #82, PR 5; renamed v2.4630): Do now, Deadlines, All filings; All filings holds Notices, Affidavits, Retainage and Timeline and reopens on the last one', async () => {
+  it('three views (punch list #82, PR 5; renamed v2.4630): To do, By date, By paper; By paper holds Notices, Affidavits, Retainage and Timeline and reopens on the last one', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const views = () => within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab').map((t) => t.textContent)
-    expect(views()).toEqual(['Do now · 1', 'Deadlines', 'All filings'])
-    // On Do now and on Deadlines the four lists are not drawn.
+    expect(views()).toEqual(['To do · 1', 'By date', 'By paper'])
+    // On To do and on By date the four lists are not drawn.
     expect(screen.queryByRole('tablist', { name: 'Kind of paper' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     await settle()
     const paper = within(screen.getByRole('tablist', { name: 'Kind of paper' }))
     expect(paper.getAllByRole('tab').map((t) => t.textContent?.replace(/ · \d+$/, ''))).toEqual(['Notices', 'Affidavits', 'Retainage', 'Timeline'])
     expect(paper.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'All filings' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By paper' }).getAttribute('aria-selected')).toBe('true')
     // Retainage keeps its named place; leaving and coming back lands on it again.
     fireEvent.click(paper.getByRole('tab', { name: /^Retainage/ }))
     await settle()
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await settle()
     expect(screen.queryByRole('tablist', { name: 'Kind of paper' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Retainage/ }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('a door that names a kind still lands on its list, inside All filings (punch list #82, PR 5)', async () => {
+  it('a door that names a kind still lands on its list, inside By paper (punch list #82, PR 5)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" />)
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /^All filings/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /^By paper/ }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('the empty affidavit list names its press: a find clears, nothing close opens Deadlines (punch list #184, sweep C)', async () => {
+  it('the empty affidavit list names its press: a find clears, nothing close opens By date (punch list #184, sweep C)', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" />)
     await settle()
     const empty = () => document.querySelector('[data-lien-affidavit-empty] [data-empty-state]') as HTMLElement
@@ -543,10 +543,10 @@ describe('LienDesk', () => {
     expect(empty().textContent).toBe('Nothing matches “zzz”. Clear the find')
     fireEvent.click(within(empty()).getByRole('button', { name: 'Clear the find' }))
     expect((screen.getByTestId('lien-desk-find-input') as HTMLInputElement).value).toBe('')
-    expect(empty().textContent).toBe('No affidavit window closes within 30 days. Deadlines › shows what falls due later.')
-    fireEvent.click(within(empty()).getByRole('button', { name: 'Deadlines ›' }))
+    expect(empty().textContent).toBe('No affidavit window closes within 30 days. By date › shows what falls due later.')
+    fireEvent.click(within(empty()).getByRole('button', { name: 'By date ›' }))
     await settle()
-    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By date' }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('a picked affidavit or retainage pile that empties under the list offers Show every pile (punch list #184, sweep C)', async () => {
@@ -2728,14 +2728,14 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '1357', approve: false })
   })
 
-  it('a dev on another master’s job reads Do now as the office does (v2.6734): the row waits on Malachi, out of his count, and his code signature’s confirm group is not drawn on the dev’s Ready footer', async () => {
+  it('a dev on another master’s job reads To do as the office does (v2.6734): the row waits on Malachi, out of his count, and his code signature’s confirm group is not drawn on the dev’s Ready footer', async () => {
     const d = awaitingOn({ master_user_id: 'u-malachi' })
     renderWithProviders(<LienDesk {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={d} initialKind="next" />)
     await settle()
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Waiting on Malachi Whites · 1'])
     expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Malachi Whites · since Sep 14')
-    expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
+    expect(screen.getByRole('tab', { name: /^To do/ }).textContent).toBe('To do · 0')
     cleanup()
     // Ready, signed by Malachi's code on Robert's screen and not yet confirmed: Robert's footer draws no Yes, it was me; Malachi's own does.
     const signedByCode = {

@@ -84,7 +84,7 @@ export type LedgerLienTab = 'notice' | 'affidavit'
  * The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`.
  * Since v2.7042 (punch list #325) the chip's parts come too, so the line never says the row's day and count again:
  * `lead` is the words with no day after them, `dueOn` the day the chip names, `paper` the paper it is about and
- * `action` the Do now move it stands for. A reader that passes none of them gets the words as written.
+ * `action` the To do move it stands for. A reader that passes none of them gets the words as written.
  */
 export type LedgerLienState = {
   words: string

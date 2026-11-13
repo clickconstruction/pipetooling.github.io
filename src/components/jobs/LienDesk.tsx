@@ -231,7 +231,7 @@ export type LienDeskProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
-  /** The Deadlines grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
+  /** The By date grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
   onOpenCalendarLastWork?: (jobId: string) => void
   /** The title bar's door for an owner who asks for our records on their property (v2.4544). */
   onOpenOwnerRecords?: () => void
@@ -517,7 +517,7 @@ export default function LienDesk({
       if (initialKind === 'affidavit') setAffSelectedJobId(initialJobId)
     }
   }, [initialJobId, initialKind, aimKey])
-  // All filings (punch list #82, PR 5; All paper until v2.4630): the four lists share one view; it reopens on the list last looked at.
+  // By paper (punch list #82, PR 5; All paper until v2.4630, All filings until v2.7207): the four lists share one view; it reopens on the list last looked at.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
   const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
   useEffect(() => {
@@ -720,8 +720,8 @@ export default function LienDesk({
   }, [finding, find, sentIndex, visible])
   // The courtesy notice per job with a sent notice (punch list #231): one kernel with the Accounts Receivable chips (`lienCourtesyDesk.ts`), so the row and the chip agree. No read of its own.
   const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob, repliedAtByJob: data.courtesyRepliedAtByJob }) : {}), [data, todayYmd])
-  // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
-  // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the Do now rail draws its counts, a rung pressed lists its names. No read of its own.
+  // To do (punch list #82; Next up until v2.4630, Do now until v2.7207): the queues this desk already holds, folded into one ordered list. No read of its own.
+  // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the To do rail draws its counts, a rung pressed lists its names. No read of its own.
   const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])
   // One sent notice's dated timeline for the step brief (PR 2 of #274): day 0 from the letter's clock, the affidavit's day, the one courtesy, the letter, the payments since the notice, today. Nothing read here.
   const timelineFor = useCallback(
@@ -757,7 +757,7 @@ export default function LienDesk({
     },
     [data, courtesyByJob, todayYmd],
   )
-  // Filed affidavits not yet served (§ 53.055): Do now's record-service rows, and the lien month's copies to mail.
+  // Filed affidavits not yet served (§ 53.055): To do's record-service rows, and the lien month's copies to mail.
   const serveDue = useMemo(
     () =>
       data
@@ -791,7 +791,7 @@ export default function LienDesk({
   }, [data, authRole, authUserId, todayYmd, leaderNameFor, courtesyByJob, serveDue])
   // Whether this viewer is the leader a row's job waits on (v2.6734): the step tiles and the step card say *you* only then.
   const leadsRow = (row: LienNextUpRow): boolean => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (jobId) => data?.jobsById[jobId]?.master_user_id ?? null }, row.jobId)
-  // The lien month (punch list #235, PR 2): the five zones over the same book Do now reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
+  // The lien month (punch list #235, PR 2): the five zones over the same book To do reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
   const lienMonth = useMemo(() => (data ? buildLienMonth({ todayYmd, notices: data.queue.entries, affidavits: data.affidavits.entries, courtesyByJob, serveDue, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : null), [data, todayYmd, courtesyByJob, serveDue])
   const [monthZone, setMonthZone] = useState<LienMonthZoneKey | null>(null)
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
@@ -800,7 +800,7 @@ export default function LienDesk({
     const names = new Set(nextUpRows.filter((r) => r.action === 'approve' && !r.button && r.jobId).map((r) => leaderNameFor(data.jobsById[r.jobId!]?.master_user_id ?? null)?.trim() || ''))
     return names.size === 1 ? [...names][0] || null : null
   }, [data, nextUpRows, leaderNameFor])
-  // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
+  // The paper behind a To do chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   // A stop's paper (v2.4793): the index of the timeline stop whose window is open on the notice pane; null when closed.
   const [stopOpen, setStopOpen] = useState<number | null>(null)
@@ -912,7 +912,7 @@ export default function LienDesk({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paperOpen, paperRows, data, issuer, todayYmd, paperFilledFrom])
-  /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
+  /** A To do row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
@@ -1565,7 +1565,7 @@ export default function LienDesk({
   }, [previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
   // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sits on the title line
-  // left of § Rules on every view (v2.4740 off All filings; v2.4786 there too, the owner's ask — the title line had the room). On a phone it ends the second line.
+  // left of § Rules on every view (v2.4740 off By paper; v2.4786 there too, the owner's ask — the title line had the room). On a phone it ends the second line.
   const ownerRecordsDoor = office && onOpenOwnerRecords ? (
     <button
       type="button"
@@ -1711,7 +1711,7 @@ export default function LienDesk({
   const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
   // *Record the mailing · 7 sealed*, not *· 7  7 sealed* (v2.6569): the pill's words drop the count the door already says.
   const runTail = runDoorTail(runDoor.count, runPill.words)
-  // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
+  // What a To do row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
     if (!data || !row.jobId) return base
@@ -2799,7 +2799,7 @@ export default function LienDesk({
         loading || data == null ? (
           <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Looking at every unpaid job…</p>
         ) : (
-          // Empty words (punch list #184, sweep C): a find clears, a pile lifts back to the list, and nothing close points at Deadlines.
+          // Empty words (punch list #184, sweep C): a find clears, a pile lifts back to the list, and nothing close points at By date.
           <div data-lien-affidavit-empty={finding ? 'find' : affPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
             <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : affPile ? lienPileEmptyWords(() => setAffPile(null)) : lienAffidavitsEmptyWords(() => setKind('calendar')))} />
           </div>
@@ -3713,13 +3713,13 @@ export default function LienDesk({
             ⏱ Lien desk
           </h2>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
-          {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
+          {/* Three views (punch list #82, PR 5): To do, By date, By paper (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the four lists that were tabs of their own, as a second row. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['next', 'calendar', 'paper'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
               return (
                 <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
-                  {v === 'next' ? `Do now${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
+                  {v === 'next' ? `To do${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'By date' : 'By paper'}
                 </button>
               )
             })}
@@ -3740,7 +3740,7 @@ export default function LienDesk({
             </>
           ) : null}
           {isMobile ? headerTools : null}
-          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds the tool row on a computer (v2.6569), or the door on a phone. */}
+          {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
           {/* The second line is the tool row on a computer (v2.6569); on a phone it comes only with the paper tabs or the owner-records door. */}
           {!isMobile || paperShown || ownerRecordsDoor ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
@@ -3778,7 +3778,7 @@ export default function LienDesk({
                 )
               })
             : null}
-          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
+          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (

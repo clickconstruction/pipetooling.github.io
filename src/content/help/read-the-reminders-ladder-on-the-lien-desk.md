@@ -2,10 +2,10 @@
 title: read the reminders ladder on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: reminders, ladder, step, rung, step brief, schedule, day 7, day 10, day 14, lien desk, do now, courtesy notice, the attorney’s letter, closed, every step, on this step
+keywords: reminders, ladder, step, rung, step brief, schedule, day 7, day 10, day 14, lien desk, to do, do now, courtesy notice, the attorney’s letter, closed, every step, on this step
 where: /lien-desk
 ---
-The Lien desk's Do now draws a Reminders strip above the rows. The strip has four steps, and every sent notice stands on one of them. This guide shows what each step means, what a pressed step opens, and where the schedule of days lives.
+The Lien desk's To do tab draws a Reminders strip above the rows. The strip has four steps, and every sent notice stands on one of them. This guide shows what each step means, what a pressed step opens, and where the schedule of days lives.
 
 ## Press a step
 
