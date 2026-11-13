@@ -5,8 +5,8 @@ roles: dev, master_technician
 keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the numbers at the top. They are what the field made last week, the slowest step, and your two balances.
-2. Read the card under them. It names the slowest step and the moves that would change it.
+1. Read the numbers at the top. The numbers are what the field made last week, the slowest step, and your two balances.
+2. Read the card under the numbers. The card names the slowest step and the moves that would change it.
 3. Press a move to open the page where its work is done.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
@@ -44,7 +44,7 @@ When cash goes under your floor, cash comes first. The card reads **Keep cash ab
 
 Under the numbers, **What to do now** names the slowest step and the moves that would change it. Press a move to open the page where the work is done. The card shows the first three moves, or two on a phone.
 
-The card is a reading of today. It records nothing and it hands nothing to a person. It changes when the numbers change.
+The card is a reading of today. The card records nothing and hands nothing to a person. The card changes when the numbers change.
 
 ## The doors
 
