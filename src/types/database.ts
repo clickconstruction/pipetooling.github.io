@@ -6125,6 +6125,7 @@ export type Database = {
           repeat_type: string
           roadmap_group_task_id: string | null
           show_until_completed: boolean
+          spot_photo_path: string | null
           start_date: string
           title: string
           updated_at: string | null
@@ -6154,6 +6155,7 @@ export type Database = {
           repeat_type: string
           roadmap_group_task_id?: string | null
           show_until_completed?: boolean
+          spot_photo_path?: string | null
           start_date: string
           title: string
           updated_at?: string | null
@@ -6183,6 +6185,7 @@ export type Database = {
           repeat_type?: string
           roadmap_group_task_id?: string | null
           show_until_completed?: boolean
+          spot_photo_path?: string | null
           start_date?: string
           title?: string
           updated_at?: string | null
@@ -6272,6 +6275,7 @@ export type Database = {
           place_set_at: string | null
           place_set_by: string | null
           sort_index: number
+          spot_photo_path: string | null
           title: string
         }
         Insert: {
@@ -6291,6 +6295,7 @@ export type Database = {
           place_set_at?: string | null
           place_set_by?: string | null
           sort_index?: number
+          spot_photo_path?: string | null
           title: string
         }
         Update: {
@@ -6310,6 +6315,7 @@ export type Database = {
           place_set_at?: string | null
           place_set_by?: string | null
           sort_index?: number
+          spot_photo_path?: string | null
           title?: string
         }
         Relationships: [
@@ -30443,6 +30449,130 @@ export type Database = {
           },
         ]
       }
+      person_case_items: {
+        Row: {
+          author_label: string | null
+          closed_at: string | null
+          closed_why: string | null
+          created_by: string | null
+          detail: string
+          id: string
+          item_no: number
+          opened_at: string
+          owner_label: string
+          person_id: string
+          session_label: string | null
+          state: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          closed_at?: string | null
+          closed_why?: string | null
+          created_by?: string | null
+          detail?: string
+          id?: string
+          item_no: number
+          opened_at?: string
+          owner_label?: string
+          person_id: string
+          session_label?: string | null
+          state?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          closed_at?: string | null
+          closed_why?: string | null
+          created_by?: string | null
+          detail?: string
+          id?: string
+          item_no?: number
+          opened_at?: string
+          owner_label?: string
+          person_id?: string
+          session_label?: string | null
+          state?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_case_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_case_items_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_case_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_case_log: {
+        Row: {
+          author_label: string | null
+          created_by: string | null
+          id: string
+          item_no: number | null
+          line: string
+          logged_at: string
+          person_id: string
+          session_label: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          created_by?: string | null
+          id?: string
+          item_no?: number | null
+          line: string
+          logged_at?: string
+          person_id: string
+          session_label?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          created_by?: string | null
+          id?: string
+          item_no?: number | null
+          line?: string
+          logged_at?: string
+          person_id?: string
+          session_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_case_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_case_log_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_contract_assignments: {
         Row: {
           created_at: string | null
@@ -30835,6 +30965,35 @@ export type Database = {
           },
         ]
       }
+      person_file_counters: {
+        Row: {
+          next_exhibit_no: number
+          next_item_no: number
+          person_id: string
+          updated_at: string
+        }
+        Insert: {
+          next_exhibit_no?: number
+          next_item_no?: number
+          person_id: string
+          updated_at?: string
+        }
+        Update: {
+          next_exhibit_no?: number
+          next_item_no?: number
+          person_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_file_counters_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_entries: {
         Row: {
           author_label: string | null
@@ -30899,6 +31058,7 @@ export type Database = {
           drive_folder_id: string | null
           drive_folder_url: string | null
           entry_id: string | null
+          exhibit_no: number | null
           fail_why: string | null
           filed_at: string | null
           id: string
@@ -30915,6 +31075,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_url?: string | null
           entry_id?: string | null
+          exhibit_no?: number | null
           fail_why?: string | null
           filed_at?: string | null
           id?: string
@@ -30931,6 +31092,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_url?: string | null
           entry_id?: string | null
+          exhibit_no?: number | null
           fail_why?: string | null
           filed_at?: string | null
           id?: string
@@ -33085,6 +33247,136 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_links: {
+        Row: {
+          code_hash: string
+          expires_at: string
+          id: string
+          made_at: string
+          made_by: string | null
+          made_for: string
+          open_count: number
+          opened_at: string | null
+          request_ids: string[]
+        }
+        Insert: {
+          code_hash: string
+          expires_at: string
+          id?: string
+          made_at?: string
+          made_by?: string | null
+          made_for?: string
+          open_count?: number
+          opened_at?: string | null
+          request_ids: string[]
+        }
+        Update: {
+          code_hash?: string
+          expires_at?: string
+          id?: string
+          made_at?: string
+          made_by?: string | null
+          made_for?: string
+          open_count?: number
+          opened_at?: string | null
+          request_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_links_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_requests: {
+        Row: {
+          answered_at: string | null
+          cell: string | null
+          closed_at: string | null
+          closes_at: string
+          created_at: string
+          holder_name: string
+          holder_user_id: string | null
+          id: string
+          made_by: string | null
+          mercury_transaction_id: string
+          no_text_why: string | null
+          opened_at: string | null
+          reminded_at: string | null
+          texted_at: string | null
+          ticket_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          cell?: string | null
+          closed_at?: string | null
+          closes_at?: string
+          created_at?: string
+          holder_name?: string
+          holder_user_id?: string | null
+          id?: string
+          made_by?: string | null
+          mercury_transaction_id: string
+          no_text_why?: string | null
+          opened_at?: string | null
+          reminded_at?: string | null
+          texted_at?: string | null
+          ticket_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          cell?: string | null
+          closed_at?: string | null
+          closes_at?: string
+          created_at?: string
+          holder_name?: string
+          holder_user_id?: string | null
+          id?: string
+          made_by?: string | null
+          mercury_transaction_id?: string
+          no_text_why?: string | null
+          opened_at?: string | null
+          reminded_at?: string | null
+          texted_at?: string | null
+          ticket_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_requests_holder_user_id_fkey"
+            columns: ["holder_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_requests_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_requests_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_requests_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "counter_tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -36125,6 +36417,7 @@ export type Database = {
           bid_id: string | null
           came_by: string
           check_note: string
+          check_rules: number
           check_state: string
           created_at: string
           created_by: string | null
@@ -36158,6 +36451,7 @@ export type Database = {
           bid_id?: string | null
           came_by?: string
           check_note?: string
+          check_rules?: number
           check_state?: string
           created_at?: string
           created_by?: string | null
@@ -36191,6 +36485,7 @@ export type Database = {
           bid_id?: string | null
           came_by?: string
           check_note?: string
+          check_rules?: number
           check_state?: string
           created_at?: string
           created_by?: string | null
@@ -41300,6 +41595,7 @@ export type Database = {
         Args: { p_item_id: string; p_task_id: string }
         Returns: boolean
       }
+      can_write_task_spot_photo: { Args: { p_name: string }; Returns: boolean }
       charge_standings: {
         Args: never
         Returns: {
@@ -41787,6 +42083,7 @@ export type Database = {
         }
         Returns: Json
       }
+      dev_case_write: { Args: { p: Json; p_dry_run?: boolean }; Returns: Json }
       dev_clock_session_image: { Args: { p_session_id: string }; Returns: Json }
       dev_clock_session_write: {
         Args: { p: Json; p_dry_run?: boolean }
@@ -41808,6 +42105,14 @@ export type Database = {
           p_kind?: string
           p_person_id: string
           p_section?: string
+        }
+        Returns: Json
+      }
+      dev_evidence_number_backfill: {
+        Args: {
+          p_dry_run?: boolean
+          p_number_rest?: boolean
+          p_person_id: string
         }
         Returns: Json
       }
@@ -42083,6 +42388,9 @@ export type Database = {
         Args: { p_evidence_id: string }
         Returns: boolean
       }
+      exhibit_no_from_title: { Args: { p_title: string }; Returns: number }
+      exhibit_title_has_letter: { Args: { p_title: string }; Returns: boolean }
+      exhibit_title_opens_with: { Args: { p_title: string }; Returns: number }
       extend_estimate_good_through: {
         Args: { p_estimate_id: string; p_valid_until: string }
         Returns: Json
@@ -45790,6 +46098,10 @@ export type Database = {
           kind: string
         }[]
       }
+      person_file_next_exhibit_no: {
+        Args: { p_person_id: string }
+        Returns: number
+      }
       person_file_summary_counts: {
         Args: { p_person_id: string }
         Returns: {
@@ -45797,6 +46109,10 @@ export type Database = {
           has_summary: boolean
           updated_at: string
         }[]
+      }
+      person_file_take_number: {
+        Args: { p_explicit?: number; p_person_id: string; p_what: string }
+        Returns: number
       }
       person_file_thing: {
         Args: { p_id: string; p_kind: string }
@@ -46029,6 +46345,33 @@ export type Database = {
       read_question: {
         Args: { p_message_id: string; p_state: string }
         Returns: undefined
+      }
+      receipt_request_ensure: {
+        Args: { p_made_by?: string; p_transaction_id: string }
+        Returns: {
+          answered_at: string | null
+          cell: string | null
+          closed_at: string | null
+          closes_at: string
+          created_at: string
+          holder_name: string
+          holder_user_id: string | null
+          id: string
+          made_by: string | null
+          mercury_transaction_id: string
+          no_text_why: string | null
+          opened_at: string | null
+          reminded_at: string | null
+          texted_at: string | null
+          ticket_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "receipt_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
