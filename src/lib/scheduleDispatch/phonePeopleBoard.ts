@@ -174,7 +174,7 @@ export type PhonePlacementKind = 'copy' | 'move' | 'add-job' | 'linked-apply' | 
 
 export type PhonePlacementMode = {
   kind: PhonePlacementKind
-  /** "J927 · Mike Holub" — the block being copied / moved, or the job being added. */
+  /** "J927 · Mike Holmby" — the block being copied / moved, or the job being added. */
   label: string
   startMinutes: number | null
   endMinutes: number | null

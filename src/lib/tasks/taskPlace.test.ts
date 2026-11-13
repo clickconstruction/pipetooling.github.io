@@ -5,7 +5,12 @@
 import { describe, expect, it } from 'vitest'
 import { directionsUrlForPoint } from '../directionsUrl'
 import {
+  TASK_PLACE_PERSON_COLORS,
   TASK_PLACE_UNNAMED,
+  openTasksWithoutPlaceWords,
+  taskPlacePersonColor,
+  taskPlaceTeamDots,
+  taskTitlePlain,
   cleanTaskPlaceName,
   isPoorTaskPlaceFix,
   isTaskPlacePoint,
@@ -311,6 +316,44 @@ describe('the map of my tasks (PR 4)', () => {
     const p = { lat: HERE.lat + 54 / 111195, lng: HERE.lng + 54 / (111195 * Math.cos((HERE.lat * Math.PI) / 180)) }
     expect(taskPlaceFarShort(HERE, p)).toBe('250 ft north-east')
     expect(taskPlaceFarShort(HERE, HERE)).toBe('here')
+  })
+})
+
+describe('the leader\'s map (PR 7)', () => {
+  const place = (name: string, lat: number): TaskPlace => ({ name, lat, lng: -98.3, accuracyM: null, setBy: null, setAt: null })
+
+  it('one dot a place, with the tasks at it and whose they are, and the tasks with no place counted', () => {
+    const { dots, withoutPlace } = taskPlaceTeamDots([
+      { id: 'a', title: 'Grease the pump bearings', personId: 'theo', place: place('Pump house', 29.55) },
+      { id: 'b', title: 'Swap the pump valve', personId: 'imani', place: place('Pump house', 29.55) },
+      { id: 'c', title: 'Order hose clamps', personId: 'theo', place: null },
+      { id: 'd', title: 'Fix the latch', personId: 'theo', place: place('North gate', 29.56) },
+      { id: 'e', title: 'Paint the pump house door', personId: 'theo', place: place('Pump house', 29.55) },
+    ])
+    expect(dots.map((d) => [d.name, d.tasks.map((t) => t.id), d.personIds])).toEqual([
+      ['Pump house', ['a', 'b', 'e'], ['theo', 'imani']],
+      ['North gate', ['d'], ['theo']],
+    ])
+    expect(withoutPlace).toBe(1)
+  })
+
+  it('reads a title as plain words for a map\'s bar: a job chip keeps its words, an empty title is Task', () => {
+    expect(taskTitlePlain('{{1:1016 · Mission faucet}} — Pick up the cartridge')).toBe('1016 · Mission faucet — Pick up the cartridge')
+    expect(taskTitlePlain('  Grease the   pump bearings ')).toBe('Grease the pump bearings')
+    expect(taskTitlePlain(null)).toBe('Task')
+  })
+
+  it('says how many open tasks the map cannot show', () => {
+    expect(openTasksWithoutPlaceWords(4, 6)).toBe('4 more open tasks have no place.')
+    expect(openTasksWithoutPlaceWords(1, 0)).toBe('1 open task has no place.')
+    expect(openTasksWithoutPlaceWords(0, 6)).toBeNull()
+  })
+
+  it('a colour a person by their place in the list, and a ninth person shares the first\'s', () => {
+    expect(taskPlacePersonColor(0)).toBe(TASK_PLACE_PERSON_COLORS[0])
+    expect(taskPlacePersonColor(7)).toBe(TASK_PLACE_PERSON_COLORS[7])
+    expect(taskPlacePersonColor(8)).toBe(TASK_PLACE_PERSON_COLORS[0])
+    expect(new Set(TASK_PLACE_PERSON_COLORS).size).toBe(8)
   })
 })
 

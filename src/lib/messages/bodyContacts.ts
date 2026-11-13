@@ -1,5 +1,5 @@
 /**
- * Messages: the contact points in a line's words (v2.6513, Grace's ask on Glenn Geling's invitation to bid). An email's
+ * Messages: the contact points in a line's words (v2.6513, Grace's ask on Glenn Gelwin's invitation to bid). An email's
  * signature carries a phone number, an address or two and a street address, and the viewer drew them as plain words:
  * to call Glenn's cell a person copied the number out of the window. This kernel reads the words into pieces the
  * viewer draws — text, a web address, and a **contact point**: a phone number (an extension kept as words, "(832)
@@ -229,7 +229,7 @@ export function pressSourceWords(s: PressSource): string {
 
 /**
  * The gray line a press writes, in the app's words: *Grace pressed Call on (832) 871-4166 ext. 121 from Glenn's email
- * of Oct 22.*, *Grace opened a thread for glenn@maxxbuilders.com from Glenn's email of Oct 22.* The line names the
+ * of Oct 22.*, *Grace opened a thread for glenn@marrexbuilders.example from Glenn's email of Oct 22.* The line names the
  * intent; a call Quo places lands its own call line as the fact.
  */
 export function contactPressBody(who: string, press: ContactPress, value: string, source: PressSource): string {

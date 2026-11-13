@@ -3,12 +3,12 @@
  *
  * A deposit row said what it is — the amount, the payer, a state chip — but not
  * where the money went. The office's two questions on 2026-09-30 ("was the
- * $6,077.51 already applied?", "where did the Southern Post cheque go?") were
+ * $6,077.51 already applied?", "where did the Southern Pine cheque go?") were
  * both answered by one line the row did not have:
  *
- *   → #650 ATI Schertz today 4:02 PM by Taunya · was #878 Take 5- Seguin 9/29
- *   was #878 Take 5- Seguin 9/21 by Taunya · bank failed it 9/23 · taken off, marked returned 9/24 by Taunya
- *   was #650 ATI Schertz 9/29 by Taunya · taken off today 4:02 PM by Taunya
+ *   → #650 AXO Schertz today 4:02 PM by Taunya · was #878 Tune 5- Seguin 9/29
+ *   was #878 Tune 5- Seguin 9/21 by Taunya · bank failed it 9/23 · taken off, marked returned 9/24 by Taunya
+ *   was #650 AXO Schertz 9/29 by Taunya · taken off today 4:02 PM by Taunya
  *
  * Input: the rows of `list_ar_deposit_trails` for one deposit — every payment
  * it ever carried, live or removed — plus what the deposit itself says (marked
@@ -150,7 +150,7 @@ export function buildArDepositTrail(args: {
 
   // The history: each old job followed by its own take-off, oldest job first; the bank's failure
   // goes before the first take-off that came after it, else last (v2.4289, found live on the Elgin
-  // and Loberg rows). A removal followed by a live apply within minutes is a move: no take-off.
+  // and Lowbeck rows). A removal followed by a live apply within minutes is a move: no take-off.
   const failedMs = ms(args.bankFailedAt)
   const history: Array<{ part: ArTrailPart; at: number; group: number; offAt: number | null }> = []
   const goneByApplied = [...gone].sort((a, b) => ms(a.applied_at) - ms(b.applied_at))

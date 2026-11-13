@@ -718,7 +718,7 @@ export const PORTAL_TRADE_COLORS: Record<PortalTradeTag, string> = TRADE_COLORS
 /**
  * Statement line split (v2.2041 trade-first job lines): street rides the
  * headline, city/state drop to the quiet line. Split at the FIRST comma —
- * "415 Springtown Way, San Marcos, TX 78666" → street + "San Marcos, TX
+ * "415 Stonewick Way, San Marcos, TX 78666" → street + "San Marcos, TX
  * 78666"; a comma-less address stays whole with no second line.
  */
 export function splitPortalAddress(address: string | null): { street: string; rest: string | null } | null {

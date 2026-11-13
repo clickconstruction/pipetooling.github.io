@@ -58,7 +58,9 @@ import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
-import type { LeftOutRule } from '../lib/bridge/leftOut'
+import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
+import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
+import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { deskStatus, isStageLink, type BridgeCall, type CallLink } from '../lib/bridge/calls'
@@ -131,8 +133,6 @@ const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNum
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 /** The page is a pulse (punch list #334, PR 7): it reads no call, so the model behind the first screen is told there are none. One list, so memos stay still. */
 const NO_CALLS: BridgeCall[] = []
-/** What the Bridge leaves out of the won rates. The list a person sets is not shipped yet (punch list #318), so the loaders take none. */
-const NOTHING_LEFT_OUT: ReadonlyArray<LeftOutRule> = []
 /** Where a door on the first screen lands: clear of the app's top bar. */
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
@@ -195,21 +195,84 @@ export default function Bridge() {
   // The breakdowns behind the two charts (link PR 11).
   const [netOpen, setNetOpen] = useState(false)
   const [cashOpen, setCashOpen] = useState(false)
-  const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
   /** ZZ test jobs leave the Bridge's own reads, the Bill pile and the Bill desk for everyone but a dev who shows them, as on the Dashboard (v2.5834, v2.6807). */
   const hideZz = useZzTestJobsHidden(role)
-  /** The ids every Bridge read takes (v2.6813): the shared read while ZZ jobs are hidden, null for a dev who shows them. */
-  const readZzTestJobIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
-  const zzKey = hideZz ? 'hide' : 'show'
-
+  // What the Bridge leaves out (punch list #334, PR 2): a list set on the page, of developments, customers and addresses.
+  // The jobs it names leave through the same ids as the ZZ test jobs, so they are left out exactly where a test job is.
+  const [leftOutRead, setLeftOutRead] = useState<LeftOutRead | null>(null)
+  const [leftOutRules, setLeftOutRules] = useState<LeftOutRule[] | null>(null)
+  const [leftOutSaved, setLeftOutSaved] = useState(true)
+  const [leftOutJobIds, setLeftOutJobIds] = useState<ReadonlySet<string> | null>(null)
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const read = await loadLeftOut(supabase)
+        if (cancelled) return
+        setLeftOutRead(read)
+        setLeftOutRules(read.rules)
+        setLeftOutSaved(!read.isDefault)
+      } catch {
+        // A list that cannot be read leaves nothing out, and the page still loads.
+        if (!cancelled) setLeftOutRules([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id])
+  useEffect(() => {
+    if (!leftOutRules) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const ids = await loadLeftOutJobIds(supabase, leftOutRules)
+        if (!cancelled) setLeftOutJobIds(ids)
+      } catch {
+        if (!cancelled) setLeftOutJobIds(new Set())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [leftOutRules])
+  const fin = useDashboardFinancials(isOwnerOrDev(role) && leftOutJobIds != null, refreshKey, role, user?.id ?? null, leftOutJobIds)
+  /** The ids every Bridge read takes (v2.6813): the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
+  const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
+    const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
+    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+  }, [hideZz, user?.id, leftOutJobIds])
+  /**
+   * The viewer's ZZ switch alone, for the won rates. There a set stands for the switch, and a bid on something left
+   * out leaves by the list's own rules, so a dev who shows ZZ bids keeps them when the list names something else.
+   */
+  const readZzSwitchIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
+  const zzKey = `${hideZz ? 'hide' : 'show'}:${leftOutRules ? leftOutKey(leftOutRules) : ''}`
+  // The page follows a change at once and the list is saved behind it. A save that is refused says why and holds for the visit.
+  const changeLeftOut = useCallback(
+    async (next: LeftOutRule[]) => {
+      setLeftOutRules(next)
+      try {
+        await saveLeftOut(supabase, next)
+        setLeftOutSaved(true)
+      } catch (e) {
+        showToast(`Not saved, so it holds until you leave the page. ${formatErrorMessage(e)}`, 'error', 5000)
+      }
+    },
+    [showToast],
+  )
+
+  useEffect(() => {
+    // The left-out list is read first, so the page is read once, without the jobs it names.
+    if (!isOwnerOrDev(role) || !user?.id || leftOutJobIds == null) return
     let cancelled = false
     setLoading(true)
     setError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const d = await loadBridgeData(supabase, { zzTestJobIds })
         if (cancelled) return
@@ -225,7 +288,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey, hideZz])
+  }, [role, user?.id, refreshKey, leftOutJobIds, readZzTestJobIds])
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -385,7 +448,7 @@ export default function Bridge() {
     setBillError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const v = await loadBillPileJobs(supabase, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         if (!cancelled) setBillJobs(v)
@@ -396,7 +459,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, hideZz, user?.id])
+  }, [data, readZzTestJobIds])
   const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
 
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
@@ -439,7 +502,7 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const v = await loadEstimatesSent(supabase, { leftOut: NOTHING_LEFT_OUT })
+        const v = await loadEstimatesSent(supabase, { leftOut: leftOutRules ?? [] })
         if (!cancelled) setEstimatesSent(v)
       } catch {
         if (!cancelled) setEstimatesSent(null)
@@ -448,7 +511,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data])
+  }, [data, leftOutRules])
   const estimateWins = useMemo(() => (data && estimatesSent ? buildEstimateWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, estimates: estimatesSent }) : null), [data, estimatesSent])
 
   // Bids through theirs, the same way: every bid ever sent and the jobs made from them.
@@ -458,9 +521,9 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const zzTestJobIds = await readZzTestJobIds()
+        const zzTestJobIds = await readZzSwitchIds()
         if (cancelled) return
-        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: NOTHING_LEFT_OUT })
+        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: leftOutRules ?? [] })
         if (!cancelled) setBidsSent(v)
       } catch {
         if (!cancelled) setBidsSent(null)
@@ -469,7 +532,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, readZzTestJobIds])
+  }, [data, readZzSwitchIds, leftOutRules])
   const bidWins = useMemo(() => (data && bidsSent ? buildBidWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: bidsSent }) : null), [data, bidsSent])
   // What Market is worth: both kinds of ask, each through its own won rate. It waits for both reads, so the pipe is sized once.
   const marketWorth = useMemo(() => (bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null), [bidWins, estimateWins])
@@ -479,7 +542,7 @@ export default function Bridge() {
   const [billOpen, setBillOpen] = useState(false)
   const [billReads, setBillReads] = useState<{ forKey: string; reads: BillDeskReads } | null>(null)
   const [billReadsError, setBillReadsError] = useState<string | null>(null)
-  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${hideZz ? 'hide' : 'show'}` : ''
+  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${zzKey}` : ''
   useEffect(() => {
     if (!billOpen || !data || !billPile) return
     if (billReads && billReads.forKey === billReadKey) return
@@ -488,7 +551,7 @@ export default function Bridge() {
     setBillReadsError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id), zzTestJobIds })
         if (!cancelled) setBillReads({ forKey: key, reads })
@@ -499,7 +562,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [billOpen, data, billPile, billReads, billReadKey, hideZz, user?.id])
+  }, [billOpen, data, billPile, billReads, billReadKey, readZzTestJobIds])
 
   // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
   const [buildOpen, setBuildOpen] = useState(false)
@@ -1286,6 +1349,17 @@ export default function Bridge() {
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
+      {leftOutRules && (
+        <BridgeLeftOut
+          rules={leftOutRules}
+          isDefault={!leftOutSaved}
+          developments={leftOutPickerNames(leftOutRead?.developments ?? [], hideZz)}
+          customers={leftOutPickerNames(leftOutRead?.customers ?? [], hideZz)}
+          jobCount={leftOutJobIds ? leftOutJobIds.size : null}
+          narrow={narrow}
+          onChange={(next) => void changeLeftOut(next)}
+        />
+      )}
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? `Reading the last ${BRIDGE_DAYS_BACK / 7} weeks…` : '—'}</p>

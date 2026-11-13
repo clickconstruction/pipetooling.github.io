@@ -63,7 +63,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
     }
   }, [phone])
 
-  // The phone (the Gun Dog spike, 2026-11-02): one row with a cell for each look, the look's name over
+  // The phone (the Gray Fox spike, 2026-11-02): one row with a cell for each look, the look's name over
   // one figure, the look you are in underlined, no cap and no ordinals. The desk's chips wrapped into
   // four ragged lines there (the owner: *I don't like how this looks on mobile*). The row counts no
   // columns: each cell is as wide as its words and shares what is left (v2.6371's sixth look dropped

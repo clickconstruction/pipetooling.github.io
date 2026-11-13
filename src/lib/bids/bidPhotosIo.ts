@@ -12,18 +12,24 @@ import { databaseErrorFromResult, errorKindOf, formatErrorMessage } from '../../
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import { PhotoSendError, type SendShotInput, type ShotIo } from '../photos/jobPhotoNotesIo'
 import { makeBytesQueue, type BytesQueue } from '../photos/photoBytesQueue'
+import { bytesAlreadyThere } from '../photos/shotTiles'
 import { BID_PHOTOS_BUCKET, type BidPhotoFolderState } from './bidPhotos'
 import { bidPhotoStoragePath, type BidPhotoAddWrite, type BidPhotoRow } from './bidPhotoWindow'
 
 const FN = 'bid-photos'
 const ROW_COLUMNS = 'id, name, by_name, by_user_id, taken_at, added_at, bytes, storage_path, drive_file_id, filed_at, fail_why'
 
-/** The bytes to the bucket, then the row; the bytes are taken back when the row refuses. `jobId` carries the bid's id. */
+/**
+ * The bytes to the bucket, then the row; the bytes are taken back when the row refuses. `jobId` carries the bid's id.
+ * A resend finds its own bytes already there when the first upload landed and its answer was lost (v2.7133): that is
+ * not a failure, and the send goes on to the row, an upsert on the shot's id. The upload is never an upsert, since the
+ * bucket has no update policy and refuses one onto an object that is there, every try.
+ */
 export async function sendBidPhoto(input: SendShotInput): Promise<{ storagePath: string }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new PhotoSendError('This device has no signal.', 'network')
   const storagePath = bidPhotoStoragePath(input.jobId, input.id)
-  const { error } = await supabase.storage.from(BID_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
+  const { error } = await supabase.storage.from(BID_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
+  if (error && !bytesAlreadyThere(error)) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const { error: rowError } = await supabase.from('bid_photos').upsert(
     {
       id: input.id,

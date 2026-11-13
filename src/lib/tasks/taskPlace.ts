@@ -356,6 +356,71 @@ export function taskPlaceFarShort(from: TaskPlacePoint, place: TaskPlacePoint): 
   return `${taskPlaceDistanceWords(meters)} ${taskPlaceDirection(from, place)}`
 }
 
+/**
+ * A task's title as plain words, for a map's bar, where the card's chips and links do not draw. A
+ * job rides in a title as `{{1:1016 · Mission faucet}} — the words`: the chip's own words are kept.
+ */
+export function taskTitlePlain(title: string | null | undefined): string {
+  const plain = (title ?? '').replace(/\{\{\d+:([^}]*)\}\}/g, '$1').replace(/\s+/g, ' ').trim()
+  return plain || 'Task'
+}
+
+/** A task on the leader's map: whose it is, beside what and where. */
+export type TaskPlaceTeamTask = { id: string; title: string; personId: string; place: TaskPlace | null }
+
+/** One mark on the leader's map: a place, the tasks at it, and whose they are. */
+export type TaskPlaceTeamDot = TaskPlacePoint & {
+  id: string
+  name: string
+  tasks: Array<{ id: string; title: string; personId: string }>
+  /** The people with a task here, in the order they were first met. One person: the dot wears that person's colour. */
+  personIds: string[]
+}
+
+/**
+ * The leader's map (PR 7): everyone's open tasks, one dot a place. It shows where the *tasks* are,
+ * so two people sent to one corner on one morning can be seen before they are sent. It never shows
+ * where a person is: nothing here has, or asks for, anyone's own reading.
+ */
+export function taskPlaceTeamDots(tasks: ReadonlyArray<TaskPlaceTeamTask>): { dots: TaskPlaceTeamDot[]; withoutPlace: number } {
+  const dots: TaskPlaceTeamDot[] = []
+  let withoutPlace = 0
+  for (const t of tasks) {
+    if (!t.place) {
+      withoutPlace += 1
+      continue
+    }
+    const place = t.place
+    const home = dots.find((d) => haversineMeters(d, place) <= TASK_PLACE_HERE_METERS)
+    if (home) {
+      home.tasks.push({ id: t.id, title: t.title, personId: t.personId })
+      if (!home.personIds.includes(t.personId)) home.personIds.push(t.personId)
+      continue
+    }
+    dots.push({ id: t.id, lat: place.lat, lng: place.lng, name: place.name, tasks: [{ id: t.id, title: t.title, personId: t.personId }], personIds: [t.personId] })
+  }
+  return { dots, withoutPlace }
+}
+
+/** The line under the leader's map for the open tasks it cannot show. */
+export function openTasksWithoutPlaceWords(withoutPlace: number, withPlace: number): string | null {
+  if (withoutPlace <= 0) return null
+  const more = withPlace > 0 ? 'more ' : ''
+  return withoutPlace === 1 ? `1 ${more}open task has no place.` : `${withoutPlace.toLocaleString('en-US')} ${more}open tasks have no place.`
+}
+
+/**
+ * A colour a person, by their place in the list, so the same person keeps a colour while the list
+ * stands. Eight saturated colours that read on a view from above and on streets; a ninth person
+ * shares the first's, and the name in the bar tells them apart.
+ */
+export const TASK_PLACE_PERSON_COLORS = ['#2563eb', '#d97706', '#7c3aed', '#059669', '#dc2626', '#0891b2', '#be185d', '#65a30d'] as const
+export function taskPlacePersonColor(index: number): string {
+  return TASK_PLACE_PERSON_COLORS[((index % TASK_PLACE_PERSON_COLORS.length) + TASK_PLACE_PERSON_COLORS.length) % TASK_PLACE_PERSON_COLORS.length]!
+}
+/** A dot several people share. Navy, the canvas's own anchor colour: nobody's, and readable under a count. */
+export const TASK_PLACE_SHARED_COLOR = '#1e3a8a'
+
 /** The line under the map for the tasks it cannot show, or null when every task is on it. */
 export function tasksWithoutPlaceWords(withoutPlace: number, withPlace: number): string | null {
   if (withoutPlace <= 0) return null
