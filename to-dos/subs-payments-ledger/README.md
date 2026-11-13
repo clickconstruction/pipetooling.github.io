@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on the live pages, nothing written · nothing built
+status: asked 2026-11-13 · the card and the mock-up the same day · PR 1, the dates on the Pay rows (PR #7985), and PR 2, the Ledger by date (PR #7987), built and armed the same day · the owner then asked for the sub's payment window to match the pay stubs' Record payment, built as PR 2b with How paid and its migration moved up from PR 4 · that migration is not pushed
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the owner's look at the mock-up and his answers to calls 1 and 2; PR 1 (dates on the Pay rows) needs no answer
-size: M as a train of five (XS · S · S · S · M)
-blocker: none for PR 1 to PR 3; PR 4 is a migration and wants call 1 settled; PR 5 waits on call 2
-opinion: build PR 1 now, it answers the first ask by itself in a day; PR 2 is the screen he asked for and reads rows already in memory; stop before PR 5 until he says where sub money leaves from
+next: push migration 20261113180000 once PR 2b merges, then regenerate the types; the owner's answers to calls 1, 2 and 6; PR 3 (by sub, People → Subs) needs no answer
+size: M as a train of six (XS · S · S · S · S · M)
+blocker: PR 2b waits on its migration's push; none for PR 3; PR 4 is a migration and wants call 1 settled; PR 5 waits on call 2
+opinion: push PR 2b's migration and merge it, since the window is what the office presses every pay day; PR 3 next, it reads rows already in memory; stop before PR 5 until he says where sub money leaves from
 ---
 
 # Sub payments as a ledger (#347)
@@ -93,8 +93,23 @@ Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job
 1. **Dates on the Pay rows** (XS). `sheetPaymentDates(payments)` gives the dates, the count, the last date and how many have no Date sent. The Paid cell's second line, the paid sheet's Pay when words, the phone row's line. Guides `sub-labor-outstanding` and `work-the-subs-tab-on-a-phone`. No migration.
 2. **The Ledger on Jobs → Subs, by date** (S). The kernel's lines and month groups, `?view=ledger` on `JobsSubsTab`, the desk table and the phone cards, periods, Paid to, search, the tiles, Print and CSV, with no ✓ column. A new guide, *see every payment made to subs by date*. `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `docs/JOBS_TABS_ARCHITECTURE.md` gain the view. No migration.
 3. **By sub, and People → Subs** (S). The by-sub rows, one sub's statement with its running balance and the check against Balance due, the statement's print, the **Roster | Ledger** switch on `PeopleSubsTab` (`/people?tab=subs&view=ledger`, and `&sub=<id>` for one sub). `docs/PEOPLE_TABS_ARCHITECTURE.md`, guide `review-your-subs`. No migration.
-4. **The check mark and How paid** (S, a migration). On `people_labor_job_payments`: `checked_at timestamptz`, `checked_by uuid`, `method text` (a short fixed list), `reference text`. A definer RPC `set_sub_payment_checked(p_payment_id, p_checked)` for office staff, and a trigger that clears the tick when `amount` or `payment_date` changes. The ✓ column, the *Not checked* chip, the tile, How paid in the Make Payment and Edit Payment windows, a How paid filter. A back-charge gets a date field. The client reads columns only the migration creates, so it is a *push right after the merge* PR.
+4. **The check mark** (S, a migration). On `people_labor_job_payments`: `checked_at timestamptz`, `checked_by uuid`. A definer RPC `set_sub_payment_checked(p_payment_id, p_checked)` for office staff, and a trigger that clears the tick when `amount` or `payment_date` changes. The ✓ column, the *Not checked* chip, the tile, a How paid filter and a Method column on the ledger. **How paid itself shipped with PR 2b**: `method` and `method_ref` are on the row since migration 20261113180000. A back-charge gets a date field. The client reads columns only the migration creates, so it is a *push right after the merge* PR.
 5. **Match to the bank** (M, the owner's yes to call 2). A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
+
+## PR 2b, added the same day: the payment window
+
+The owner, 2026-11-13, on the sub's Make Payment window:
+
+> On this modal, when I go to pay a sub, I would like the modal to be more similar to the record payment modal, if not exactly like the record payment modal in People Pay stubs. This way we can better track partial payments.
+
+Built with this card's edit, between PR 2 and PR 3:
+
+- **One window, two doors.** The pay stubs' Record payment is lifted into `src/components/pay/RecordPaymentPieces.tsx`, and both windows are built from it. The sub's kernel is `src/lib/subWorkOrders/subPaymentWindow.ts`.
+- **Part payments.** One line reads Total · Paid · Remaining. The amount opens on what remains, and the window says what a part payment leaves due. The sheet keeps its place in the pay run until nothing is left.
+- **How it was sent.** Chips: Check, Zelle, Mercury, Cash App, Apple Pay, Cash, Client direct, Other, with a box for a check number, a Cash App id or a confirmation. Stored on the row as `method` and `method_ref` (migration `20261113180000_sub_payment_method.sql`), carried through a removal and its undo. Edit Payment has the same chips, so an old payment can be given its method.
+- **Past what remains is refused**, with the reason. See call 6.
+- **The portal is unchanged.** The memo is still the only text of a payment the sub reads, and the hide tick is now on both windows.
+- **Left for PR 3 and PR 4:** the ledger's Method column and How paid filter, once the Ledger and this are both on `main`. The dev seat's `plan_sub_labor_payment` does not take a method yet.
 
 ## The owner's calls
 
@@ -103,6 +118,7 @@ Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job
 3. **Crew pay sheets in the ledger?** My pick: yes, with a *crew* chip and a filter, and out of every *We owe*.
 4. **Who sees it?** My pick: the roles who open the Pay view today.
 5. **Order.** My pick: newest first by date, oldest first on one sub's statement.
+6. **An overpayment to a sub.** The new window refuses an amount past what remains. A pay report sends its excess to an employee credit, and a sub has no such place. What should it become: a credit against their next sheet, a back-charge, or nothing? No pick from me: it is how you want to be owed money back.
 
 ## How to verify
 
