@@ -1155,7 +1155,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ledger={ledger}
           evidence={evidence}
           onMoney={canMarkPromisedPay ? () => setPromisedPayModalJob({ jobId: row.job.id, jobLabel: label, initialYmd: promise?.promisedYmd ?? null }) : undefined}
-          onLienDesk={() => setLienInstrumentsModal({ job: row.job, invoice: inv })}
+          // v2.7046: the window opens on the paper the lien line names, not on Demand letter (punch list #325, PR 3).
+          onLienDesk={(tab) => setLienInstrumentsModal({ job: row.job, invoice: inv, initialTab: tab ?? undefined })}
         />
       )
     },
