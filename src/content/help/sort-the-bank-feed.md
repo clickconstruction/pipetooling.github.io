@@ -19,6 +19,7 @@ Card holders sort their own purchases to jobs in **Job Parts Tally → Transacti
 
 ## People and labels: Banking
 
+- A recent card charge may wear a receipt chip beside its store, like {{chip:green|Ticket}} or {{chip:yellow|No text}}. [Sort the team's card purchases from the office](/help/sort-the-teams-card-purchases#the-receipt-on-banking-and-job-summary) explains the chips.
 - **User Sort** is *who*: the person on each card charge. Rules can tag the person for you. A hand-set person is never overwritten. User Sort is also where **Link…** splits a charge to jobs.
 - **Drag Sort** is *what kind*: the accounting label, like fuel, supplies or insurance. Drag a transaction onto its label. Or press **Quick Sort** to label them one at a time.
 - **Accounting** holds the **rules** that suggest labels by counterparty, amount, description or bank category. A counterparty is who the money went to or came from. Accounting also holds the **Approvals** list, where suggestions wait for an OK. Each card says the day the charge was made, like Tuesday, 3 days ago. Approve one, press {{button:green|Approve all (12)}}, or leave the approving to the rules:
