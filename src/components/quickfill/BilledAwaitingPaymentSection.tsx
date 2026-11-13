@@ -14,6 +14,8 @@ import { buildBilledByCustomerBreakdown, type BilledBreakdownCustomerGroup } fro
 import { DEFAULT_SNOOZE_DAYS, parseChaseTouchesRpc, type ChaseTouch } from '../../lib/jobs/paymentChase'
 import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
+import { indexPayCalendars, payCalendarMonthDay } from '../../lib/jobs/payCalendar'
+import { loadInvoiceAcceptances, loadPayCalendars } from '../../lib/jobs/payCalendarIo'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatDayLabel, formatMarkTime } from '../../lib/quickfill/markHistory'
@@ -23,7 +25,9 @@ import {
   LEAN_DAYS_MIN,
   LEAN_DAYS_SETTING_KEY,
   LEAN_PAST_DUE_DAYS,
+  leanBillKey,
   leanCounts,
+  leanDueByBill,
   leanMarkNote,
   leanNextLine,
   leanRows,
@@ -48,6 +52,10 @@ import {
  * count is the customers needing a lean, each row says its last lean, a lean is logged
  * from the row (could not reach, a note) through the shared chase path, and the Mark's
  * note is written from the rows.
+ *
+ * Since v2.7140 (punch list #323) a customer on a Pay calendar is past due the day after the
+ * calendar's due day, not 30 days after the bill. The calendars and the accepted days are read
+ * beside the bills, each fail-soft: with neither, every bill reads its days since billed.
  */
 
 type JobNameRow = { id: string; job_name: string | null; customer_name: string | null; customer_id: string | null }
@@ -64,20 +72,26 @@ const FOLD_ORDER: readonly LeanState[] = ['needs', 'waiting', 'current']
 const FOLD_EMPTY: Record<LeanState, string> = {
   needs: 'Nobody. Every past-due customer was leaned on inside the window or has a promise standing.',
   waiting: 'No past-due customer was leaned on inside the window or holds a promise.',
-  current: `Nobody owes a bill under ${LEAN_PAST_DUE_DAYS} days old.`,
+  current: 'Nobody owes a bill that is not past due yet.',
 }
 
-function ageChip(days: number | null, handSet: boolean) {
+/**
+ * The days since billed, amber once past due and red at 90 days. `calendarPastDue` is set for a bill, or a
+ * customer, on a Pay calendar: its colour then follows the due day (`dueYmd`, for the hover), never the count.
+ */
+function ageChip(days: number | null, handSet: boolean, calendarPastDue?: boolean | null, dueYmd?: string | null) {
   if (days == null) return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bill line</span>
+  const pastDue = calendarPastDue ?? days >= LEAN_PAST_DUE_DAYS
   const tone =
-    days >= 90
+    pastDue && days >= 90
       ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
-      : days >= LEAN_PAST_DUE_DAYS
+      : pastDue
         ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
         : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+  const since = handSet ? `${days} days — from the hand-set est. bill date` : `${days} days since billed`
   return (
     <span
-      title={handSet ? `${days} days — from the hand-set est. bill date` : `${days} days since billed`}
+      title={dueYmd ? `${since}. Due ${payCalendarMonthDay(dueYmd)} by their pay calendar.` : since}
       style={{ fontSize: '0.75rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', padding: '0.05rem 0.4rem', borderRadius: 9999, whiteSpace: 'nowrap', ...tone }}
     >
       {days}d{handSet ? <span aria-hidden style={{ marginLeft: 3, opacity: 0.7 }}>·</span> : null}
@@ -97,6 +111,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
   const [openFolds, setOpenFolds] = useState<ReadonlySet<LeanState>>(new Set<LeanState>(['needs']))
   const [touches, setTouches] = useState<ChaseTouch[] | null>(null)
   const [promises, setPromises] = useState<Record<string, PromisedPayDate> | null>(null)
+  const [dueByBill, setDueByBill] = useState<ReadonlyMap<string, string>>(new Map())
   const [leanDays, setLeanDays] = useState(parseLeanDays(null))
   const [leanDaysDraft, setLeanDaysDraft] = useState<string | null>(null)
   const [noteFor, setNoteFor] = useState<string | null>(null)
@@ -151,8 +166,15 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
           return { ...r, job } as StageRow
         })
         const built = buildBilledByCustomerBreakdown(decorated)
-        await loadLeans()
+        // Punch list #323: the Pay calendars and the accepted days, each fail-soft. A read that fails, or a role that
+        // may not see calendars, leaves every bill on its days since billed.
+        const [payCalendars, acceptedByInvoice] = await Promise.all([
+          loadPayCalendars(supabase).then(indexPayCalendars, () => null),
+          loadInvoiceAcceptances(supabase).catch(() => null),
+          loadLeans(),
+        ])
         if (!cancelled) {
+          setDueByBill(leanDueByBill(decorated, { payCalendars, acceptedByInvoice }))
           setGroups(built)
           setExcluded({ count: res.billTruth.excludedOwed.count, total: res.billTruth.excludedOwed.total })
         }
@@ -169,7 +191,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
   }, [authUser?.id, role, hideZz, loadLeans])
 
   const todayYmd = todayYmdInAppTz()
-  const rows = useMemo(() => leanRows({ groups, touches, promises, todayYmd, leanDays }), [groups, touches, promises, todayYmd, leanDays])
+  const rows = useMemo(() => leanRows({ groups, touches, promises, todayYmd, leanDays, dueByBill }), [groups, touches, promises, todayYmd, leanDays, dueByBill])
   const counts = useMemo(() => leanCounts(rows), [rows])
   const since = useMemo(
     () => leanSince(rows, lastMarkedAt, todayYmd, calendarYmdInAppTzFromIso, (iso) => `${formatDayLabel(calendarYmdInAppTzFromIso(iso))} at ${formatMarkTime(iso)}`),
@@ -278,6 +300,8 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
                         lean={r}
                         open={openKeys.has(r.group.key)}
                         cell={cell}
+                        dueByBill={dueByBill}
+                        todayYmd={todayYmd}
                         canLean={!!r.customerId && r.state !== 'current'}
                         saving={saving === r.group.key}
                         noteOpen={noteFor === r.group.key}
@@ -326,7 +350,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
         </div>
       )}
       <p style={{ ...muted, margin: '0.6rem 0 0', lineHeight: 1.45 }} data-lean-stance>
-        <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>Reads the open bills, the Payment Chase log and the promised dates.</b> A lean is a call, a note, a resend or a promise logged on the customer. Past due is {LEAN_PAST_DUE_DAYS} days since billed. {leanDays} days without a lean is the owner's number.
+        <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>Reads the open bills, the Payment Chase log and the promised dates.</b> A lean is a call, a note, a resend or a promise logged on the customer. Past due is {LEAN_PAST_DUE_DAYS} days since billed. A customer on a pay calendar is past due after their due day. {leanDays} days without a lean is the owner's number.
         {role === 'dev' &&
           (leanDaysDraft === null ? (
             <>
@@ -369,6 +393,8 @@ function GroupRows({
   lean,
   open,
   cell,
+  dueByBill,
+  todayYmd,
   canLean,
   saving,
   noteOpen,
@@ -382,6 +408,9 @@ function GroupRows({
   lean: LeanRow
   open: boolean
   cell: React.CSSProperties
+  /** The due day of each bill on a Pay calendar, by the bill's id; the chip's colour follows it. */
+  dueByBill: ReadonlyMap<string, string>
+  todayYmd: string
   canLean: boolean
   saving: boolean
   noteOpen: boolean
@@ -393,6 +422,12 @@ function GroupRows({
   onToggle: () => void
 }) {
   const g = lean.group
+  const dueOf = (b: (typeof g.bills)[number]): string | null => {
+    const key = leanBillKey(b)
+    return (key && dueByBill.get(key)) || null
+  }
+  // A customer with a bill on a Pay calendar: the chip is amber by the row's own read, not by the count of days.
+  const onCalendar = g.bills.some((b) => dueOf(b) != null)
   const smallBtn: React.CSSProperties = { padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }
   return (
     <>
@@ -402,7 +437,7 @@ function GroupRows({
           {g.customerName}
         </td>
         <td style={{ ...cell, textAlign: 'center', color: 'var(--text-muted)' }}>{g.count}</td>
-        <td style={{ ...cell, textAlign: 'center' }}>{ageChip(g.worstAgeDays, g.worstAgeHandSet)}</td>
+        <td style={{ ...cell, textAlign: 'center' }}>{ageChip(g.worstAgeDays, g.worstAgeHandSet, onCalendar ? (lean.pastDueDays ?? 0) > 0 : null)}</td>
         <td style={{ ...cell, fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600, color: lean.state === 'needs' ? 'var(--text-red-700)' : lean.state === 'waiting' ? 'var(--text-green-800)' : 'var(--text-muted)' }}>{lean.why}</span>
           {lean.lastTouchLine && <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lean.lastTouchLine}</span>}
@@ -465,8 +500,8 @@ function GroupRows({
                 </Link>
               </td>
               <td style={cell} />
-              <td style={{ ...cell, textAlign: 'center' }}>{ageChip(b.ageDays, b.ageHandSet)}</td>
-              <td style={cell} />
+              <td style={{ ...cell, textAlign: 'center' }}>{ageChip(b.ageDays, b.ageHandSet, dueOf(b) ? dueOf(b)! < todayYmd : null, dueOf(b))}</td>
+              <td style={{ ...cell, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dueOf(b) ? `due ${payCalendarMonthDay(dueOf(b)!)} · pay calendar` : null}</td>
               <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(b.amount)}</td>
             </tr>
           ))

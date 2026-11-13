@@ -43,6 +43,12 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-my-mail')).toEqual({ tabId: 'settings-account', anchorId: 'settings-my-mail' })
   })
 
+  it('lands the two card-and-footer cards on their tabs (punch list #313)', () => {
+    expect(resolveSettingsDeepLink('', '#settings-card-and-footer')).toEqual({ tabId: 'settings-account', anchorId: 'settings-card-and-footer' })
+    expect(resolveSettingsDeepLink('', '#settings-card-looks')).toEqual({ tabId: 'settings-people', anchorId: 'settings-card-looks' })
+    expect(resolveSettingsDeepLink('?tab=settings-people', '#settings-card-looks')).toEqual({ tabId: 'settings-people', anchorId: 'settings-card-looks' })
+  })
+
   it('maps known section-anchor hashes to their owning tab + anchor', () => {
     expect(resolveSettingsDeepLink('', '#settings-time-off')).toEqual({
       tabId: 'settings-account',

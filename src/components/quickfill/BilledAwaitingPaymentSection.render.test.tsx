@@ -15,6 +15,9 @@ const state = vi.hoisted(() => ({
   rpc: [] as Array<{ fn: string; args: unknown }>,
   touches: [] as unknown[],
   promises: {} as Record<string, unknown>,
+  /** `payer_pay_calendars` and `invoice_payer_acceptances` as the section reads them (punch list #323). */
+  calendars: [] as unknown[],
+  accepted: [] as unknown[],
 }))
 
 const DAY = 86_400_000
@@ -25,7 +28,7 @@ vi.mock('../../lib/supabase', () => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'in', 'order', 'range', 'upsert', 'maybeSingle']) b[m] = () => b
     b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => {
-      const data = table === 'jobs_ledger' ? [{ id: 'j1', job_name: 'Lot 7', customer_name: 'Ridgeway Builders', customer_id: 'c1' }, { id: 'j2', job_name: 'Building C', customer_name: 'Cedar Bend Partners', customer_id: 'c2' }, { id: 'j3', job_name: 'Clinic', customer_name: 'Lone Oak Dental', customer_id: 'c3' }] : table === 'app_settings' ? null : []
+      const data = table === 'jobs_ledger' ? [{ id: 'j1', job_name: 'Lot 7', customer_name: 'Ridgeway Builders', customer_id: 'c1' }, { id: 'j2', job_name: 'Building C', customer_name: 'Cedar Bend Partners', customer_id: 'c2' }, { id: 'j3', job_name: 'Clinic', customer_name: 'Lone Oak Dental', customer_id: 'c3' }] : table === 'app_settings' ? null : table === 'payer_pay_calendars' ? state.calendars : table === 'invoice_payer_acceptances' ? state.accepted : []
       return Promise.resolve({ data, error: null }).then(ok, bad)
     }
     return b
@@ -81,6 +84,8 @@ beforeEach(() => {
     { id: 't0', customerId: 'c3', jobId: null, outcome: 'note', note: 'thanked them', promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: ago(1), createdByName: 'Marisol' },
   ]
   state.promises = {}
+  state.calendars = []
+  state.accepted = []
 })
 afterEach(() => {
   cleanup()
@@ -135,6 +140,54 @@ describe('Billed Awaiting Payment reads the lean (v2.5885)', () => {
 
   it('a promise standing keeps a past-due customer waiting', async () => {
     state.promises = { j2: { promisedYmd: new Date(Date.now() + 4 * DAY).toISOString().slice(0, 10), markedByName: 'Dale' } }
+    renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <BilledAwaitingPaymentSection />
+        <Probe />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await screen.findByText('Ridgeway Builders')
+    await settle()
+    expect(document.querySelector('[data-lean-fold="needs"]')!.textContent).not.toContain('Cedar Bend Partners')
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^1\|/))
+  })
+
+  it('a customer on a pay calendar is not past due before their due day, however old the bill (v2.7140)', async () => {
+    // Cedar Bend pays the 10th, two months after a bill is in: the bill of Sep 5 is due Nov 10, and today is Oct 26.
+    state.calendars = [{ payer_customer_id: 'c2', job_id: null, off: false, cutoff_day: null, pay_day: 10, months_after: 2, pay_when_paid: false, clause: '', words: '', set_at: null }]
+    renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <BilledAwaitingPaymentSection />
+        <Probe />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await screen.findByText('Ridgeway Builders')
+    await settle()
+    expect(document.querySelector('[data-lean-fold="needs"]')!.textContent).not.toContain('Cedar Bend Partners')
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^1\|Lean on Ridgeway Builders/))
+    fireEvent.click(screen.getByRole('button', { name: /Not yet past due/ }))
+    const current = document.querySelector('[data-lean-fold="current"]')!
+    expect(current.textContent).toContain('Cedar Bend Partners')
+    expect(current.textContent).toContain('due Nov 10 · pay calendar')
+    expect(document.querySelector('[data-lean-stance]')!.textContent).toContain('A customer on a pay calendar is past due after their due day.')
+  })
+
+  it('the calendar counts from the day they accepted the bill, and is past due without one', async () => {
+    // Paid the 10th of the next month: the bill of Sep 5 was due Oct 10, sixteen days ago on Oct 26.
+    state.calendars = [{ payer_customer_id: 'c2', job_id: null, off: false, cutoff_day: null, pay_day: 10, months_after: 1, pay_when_paid: false, clause: '', words: '', set_at: null }]
+    const first = renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <BilledAwaitingPaymentSection />
+        <Probe />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await screen.findByText('Cedar Bend Partners')
+    await settle()
+    expect(document.querySelector('[data-lean-fold="needs"]')!.textContent).toContain('Cedar Bend Partners')
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^2\|/))
+    first.unmount()
+    // They accepted it Oct 2, so it made the October cutoff and is due Nov 10.
+    state.accepted = [{ invoice_id: 'i2', accepted_on: '2026-10-02' }]
     renderWithProviders(
       <QuickfillSectionMetricsProvider>
         <BilledAwaitingPaymentSection />

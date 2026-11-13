@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { billedExpectedPayModel, type PaySpeedData } from './billedExpectedPay'
-import { billedPayModel, payClockFor, payClockShort, payClockWords } from './billedDuePay'
+import { billHeldDay, billedPayModel, payClockFor, payClockShort, payClockWords } from './billedDuePay'
 import { PAY_CALENDAR_DEFAULT, type PayCalendar } from './payCalendar'
 
 /** Paid the 10th of the month after it is received. */
@@ -133,5 +133,28 @@ describe('billedPayModel', () => {
     const none = { billedAtIso: null, estBillYmd: null, customerId: 'lark', payerName: 'Larkfield Construction' }
     expect(billedPayModel(none, DATA, TODAY, null, null, TENTH)).toBeNull()
     expect(billedPayModel(none, DATA, TODAY, { promisedYmd: '2026-11-20', markedByName: 'Rosa' }, null, TENTH)).toMatchObject({ source: 'promised', dueYmd: null })
+  })
+})
+
+describe('billHeldDay: the day a screen holds a bill to when it asks whether it is past due', () => {
+  it('holds a bill on a Pay calendar to its due day, never the expected day', () => {
+    // In Nov 3, due Dec 10, and they usually land 6 days after: expected Dec 16.
+    const on = (today: string) => billHeldDay(billedPayModel(row('2026-11-03'), DATA, today, null, null, TENTH))
+    expect(on('2026-12-10')).toEqual({ ymd: '2026-12-10', late: false, daysLate: 0, onCalendar: true })
+    expect(on('2026-12-11')).toEqual({ ymd: '2026-12-10', late: true, daysLate: 1, onCalendar: true })
+    // Past due while the money is not yet expected: the model still reads upcoming.
+    expect(billedPayModel(row('2026-11-03'), DATA, '2026-12-11', null, null, TENTH)).toMatchObject({ state: 'upcoming', expectedYmd: '2026-12-16' })
+  })
+
+  it('holds a bill with no calendar to the expected day, as before', () => {
+    const on = (today: string) => billHeldDay(billedPayModel(row('2026-11-03'), DATA, today))
+    expect(on('2026-12-14')).toEqual({ ymd: '2026-12-14', late: false, daysLate: 0, onCalendar: false })
+    expect(on('2026-12-20')).toEqual({ ymd: '2026-12-14', late: true, daysLate: 6, onCalendar: false })
+  })
+
+  it('holds a bill to the day the customer named, calendar or not, and reads nothing with no model', () => {
+    const promise = { promisedYmd: '2026-11-20', markedByName: 'Rosa' }
+    expect(billHeldDay(billedPayModel(row('2026-11-03'), DATA, '2026-11-22', promise, null, TENTH))).toEqual({ ymd: '2026-11-20', late: true, daysLate: 2, onCalendar: false })
+    expect(billHeldDay(null)).toBeNull()
   })
 })
