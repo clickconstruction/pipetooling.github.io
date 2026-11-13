@@ -13,8 +13,8 @@ Leave the box empty and you get the customers who were active lately.
 
 The box is the first thing on the page. It stays at the top while you scroll. Type any of these:
 
-- a **name**. *lenox* finds *Lenox Builders* first, then anyone with Lenox in the name.
-- an **address**. *12 Lenox* finds the customer at 12 Lenox Ct.
+- a **name**. *linmor* finds *Linmor Builders* first, then anyone with Linmor in the name.
+- an **address**. *12 Linmor* finds the customer at 12 Linmor Ct.
 - a **phone number**, with or without the dashes.
 - an **email**, or the **account person's** name.
 - a **job**. Its number, its name or its address.
@@ -23,8 +23,8 @@ Customers and jobs come back in two groups. Each customer row says where they ar
 
 You tap {{button:outline|☎}} to call the customer. You tap {{button:outline|✉}} to start an email. Neither opens the customer first. Tap the name to open the customer's page. Tap a job to open the job window.
 
-:::example Someone calls about "the Lenox job"
-Type **lenox**. *Lenox Builders* and the customer on Lenox Ct come up, and under **Jobs**, *J273 · Dudley (Lennox)*. Tap the job.
+:::example Someone calls about "the Linmor job"
+Type **linmor**. *Linmor Builders* and the customer on Linmor Ct come up, and under **Jobs**, *J273 · Dunmere (Linmoor)*. Tap the job.
 :::
 
 An archived customer is never listed. A search still finds one, marked **Archived**.

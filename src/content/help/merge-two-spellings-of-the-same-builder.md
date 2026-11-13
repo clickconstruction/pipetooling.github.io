@@ -8,11 +8,11 @@ order: 74
 
 A builder typed two ways used to be two cards on the Why we lost list. Two things fix that now.
 
-Take "H & I" and "H&I", or "Acme Builders" and "ACME builders LLC". Each spelling was its own card on **Bids → Followup → Why we lost**. Each card held half the history and its own hit rate, the share of bids won.
+Take "B & D" and "H&I", or "Acme Builders" and "ACME builders LLC". Each spelling was its own card on **Bids → Followup → Why we lost**. Each card held half the history and its own hit rate, the share of bids won.
 
 ## Most spellings fold on their own
 
-Case, punctuation, extra spaces, accents and "&" no longer count. "H & I" and "H&I" are one card. "José" and "Jose" are one person. "WATTS" and "watts" are one manufacturer chip. Nothing to do.
+Case, punctuation, extra spaces, accents and "&" no longer count. "B & D" and "H&I" are one card. "José" and "Jose" are one person. "WATTS" and "watts" are one manufacturer chip. Nothing to do.
 
 ## When two names still look alike
 

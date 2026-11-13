@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { lienFootBlockedSentence, buildLienDeskGates, lienSentGatesFold, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
-  ownerName: 'Sabra Texas Holdings Lp',
+  ownerName: 'Sablow Texas Holdings Lp',
   ownerMailingAddress: '18500 Von Karman Ave Ste 550, Irvine, CA 92612',
-  gcName: 'TF Harper',
+  gcName: 'TF Halden',
   gcAddress: '',
   propertyKind: 'non_residential',
   county: 'Comal',
@@ -22,7 +22,7 @@ describe('buildLienDeskGates', () => {
   it('all clear reads ready, with the names as the values', () => {
     const { gates, verdict } = buildLienDeskGates(clear)
     expect(verdict).toEqual({ ready: true, blockers: 0, checks: 0, headline: 'Ready to go out', summary: 'All 4 clear' })
-    expect(gates.map((g) => g.value)).toEqual(['Sabra Texas Holdings Lp', 'TF Harper', 'Commercial · Comal', 'Jul'])
+    expect(gates.map((g) => g.value)).toEqual(['Sablow Texas Holdings Lp', 'TF Halden', 'Commercial · Comal', 'Jul'])
   })
 
   it('a missing owner blocks; an unknown property kind is only a check', () => {
@@ -174,13 +174,13 @@ describe('gate 4 on a job with no month at all (v2.6384, job 890 after its windo
 describe('lienSentGatesFold — the gates as one line on a sent notice (v2.6625, punch list #248)', () => {
   const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
   it('reads the day it went, then the owner, the GC, the kind and the months the notice named, with no verdict', () => {
-    const { gates } = buildLienDeskGates({ ...clear, ownerName: 'Khan Umar', gcName: 'RMC- Dudley Mason', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
+    const { gates } = buildLienDeskGates({ ...clear, ownerName: 'Karrow Ulric', gcName: 'RLC- Dunmere Mallin', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
     const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: ['2026-07', '2026-08'], monthShort })
     expect(fold.head).toBe('Sent Oct 14')
-    expect(fold.line).toBe('Sent Oct 14 · Khan Umar · RMC- Dudley Mason · Residential · Bexar · Jul + Aug')
+    expect(fold.line).toBe('Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug')
     expect(fold.rows.map((r) => [r.n, r.label, r.value])).toEqual([
-      [1, 'Owner of record', 'Khan Umar'],
-      [2, 'Original contractor', 'RMC- Dudley Mason'],
+      [1, 'Owner of record', 'Karrow Ulric'],
+      [2, 'Original contractor', 'RLC- Dunmere Mallin'],
       [3, 'Property kind', 'Residential · Bexar'],
       [4, 'Months the notice named', 'Jul + Aug'],
     ])

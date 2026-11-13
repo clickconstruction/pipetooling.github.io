@@ -16,12 +16,12 @@ import type { RobotRowState } from '../../lib/bids/robotRowState'
 const shadowRows = [
   {
     id: 'sh-live', status: 'locked', axis: null, created_at: '2026-09-07T10:00:00Z', locked_at: '2026-09-07T12:00:00Z', scored_at: null,
-    shadow_bid_number: '482', reference_bid_number: '431', project_name: 'PALMER WINERY', requested_by_name: null,
+    shadow_bid_number: '482', reference_bid_number: '431', project_name: 'PALVERN WINERY', requested_by_name: null,
     reference_sent_at: null, locked_total: null, reference_value: null, delta_pct: null, teacher_name: 'Wendi', teacher_standard: true,
   },
   {
     id: 'sh-practice', status: 'locked', axis: null, created_at: '2026-09-06T10:00:00Z', locked_at: '2026-09-06T12:00:00Z', scored_at: null,
-    shadow_bid_number: '481', reference_bid_number: '385', project_name: 'Galloway Park', requested_by_name: null,
+    shadow_bid_number: '481', reference_bid_number: '385', project_name: 'Gallenby Park', requested_by_name: null,
     reference_sent_at: null, locked_total: null, reference_value: null, delta_pct: null, teacher_name: 'Grace', teacher_standard: false,
   },
   {
@@ -31,7 +31,7 @@ const shadowRows = [
   },
   {
     id: 'sh-sent', status: 'scored', axis: 'franchise-oil-change', created_at: '2026-09-04T10:00:00Z', locked_at: '2026-09-04T12:00:00Z', scored_at: '2026-09-08T15:00:00Z',
-    shadow_bid_number: '418', reference_bid_number: '397', project_name: 'TAKE 5 BROWNSVILLE', requested_by_name: null,
+    shadow_bid_number: '418', reference_bid_number: '397', project_name: 'TUNE 5 BROWNSVILLE', requested_by_name: null,
     reference_sent_at: '2026-09-08', locked_total: 72854, reference_value: 50528, delta_pct: 44.2, teacher_name: 'Wendi', teacher_standard: true,
   },
 ]
@@ -91,10 +91,10 @@ const bid = (over: Partial<BidWithBuilder> & { id: string; bid_number: string; p
   }) as unknown as BidWithBuilder
 
 const humanBids = [
-  bid({ id: 'h431', bid_number: '431', project_name: 'PALMER WINERY' }),
-  bid({ id: 'h385', bid_number: '385', project_name: 'Galloway Park', estimator: { id: 'grace', name: 'Grace', email: 'g@x' } }),
+  bid({ id: 'h431', bid_number: '431', project_name: 'PALVERN WINERY' }),
+  bid({ id: 'h385', bid_number: '385', project_name: 'Gallenby Park', estimator: { id: 'grace', name: 'Grace', email: 'g@x' } }),
   bid({ id: 'h391', bid_number: '391', project_name: 'RBFCU Potranco', bid_date_sent: '2026-09-01', bid_value: null }),
-  bid({ id: 'h397', bid_number: '397', project_name: 'TAKE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
+  bid({ id: 'h397', bid_number: '397', project_name: 'TUNE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
   bid({ id: 'h201', bid_number: '201', project_name: 'AISD GARCIA SCHOOL RENOVATION', outcome: 'lost', bid_date_sent: '2026-04-24', bid_value: 180357 }),
   bid({ id: 'h380', bid_number: '380', project_name: 'MEDINA VALLEY ISD', plans_link: null, bid_due_date: '2026-09-10' }),
   bid({ id: 'h381', bid_number: '381', project_name: 'MEDINA VALLEY ISD PHASE 2', plans_link: null, bid_due_date: '2026-09-11' }),
@@ -104,10 +104,10 @@ const humanBids = [
   bid({ id: 'h3', bid_number: '3', project_name: 'Never-sent lost lead', outcome: 'lost' }),
 ]
 const robotBids = [
-  bid({ id: 's482', bid_number: '482', project_name: 'ZZ Shadow PALMER WINERY', twin_source_bid_id: 'h431' }),
-  bid({ id: 's481', bid_number: '481', project_name: 'ZZ Shadow Galloway Park', twin_source_bid_id: 'h385' }),
+  bid({ id: 's482', bid_number: '482', project_name: 'ZZ Shadow PALVERN WINERY', twin_source_bid_id: 'h431' }),
+  bid({ id: 's481', bid_number: '481', project_name: 'ZZ Shadow Gallenby Park', twin_source_bid_id: 'h385' }),
   bid({ id: 's420', bid_number: '420', project_name: 'ZZ Shadow RBFCU', twin_source_bid_id: 'h391' }),
-  bid({ id: 's418', bid_number: '418', project_name: 'ZZ Shadow TAKE 5 BROWNSVILLE', twin_source_bid_id: null }),
+  bid({ id: 's418', bid_number: '418', project_name: 'ZZ Shadow TUNE 5 BROWNSVILLE', twin_source_bid_id: null }),
   bid({ id: 's471', bid_number: '471', project_name: 'ZZ Twin AISD GARCIA (backtest R2)', twin_source_bid_id: 'h201' }),
   // v2.4256: a shell that pairs to no bid of ours — the operator's line, dev only.
   bid({ id: 's999', bid_number: '999', project_name: 'ZZ Twin ORPHAN', twin_source_bid_id: null }),
@@ -140,7 +140,7 @@ function renderTab(isDev = true) {
 describe('BidsRobotMirrorTab', () => {
   it('mirrors our bids by section: sealed live rows show no money, scored rows show robot / ours / delta, doors follow the audit', async () => {
     const props = renderTab()
-    await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('PALVERN WINERY')).toBeTruthy())
 
     // v2.4256: the six-number strip is the group's now (RobotGroupStrip, drawn by the page on every lens) — not here.
     expect(screen.queryByText('of our bids have a robot run')).toBeNull()
@@ -207,7 +207,7 @@ describe('BidsRobotMirrorTab', () => {
   it('the orphan-shells line is dev only (v2.4256)', async () => {
     renderTab(false)
     await waitFor(() => expect(screen.getByText('MEDINA VALLEY ISD')).toBeTruthy())
-    await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('PALVERN WINERY')).toBeTruthy())
     expect(screen.queryByText(/robot shell with no bid of ours to mirror/)).toBeNull()
   })
 
@@ -248,7 +248,7 @@ describe('BidsRobotMirrorTab', () => {
 
   it('a scored row expands into where the delta lives and the robot\'s own note (v2.3225)', async () => {
     renderTab()
-    await waitFor(() => expect(screen.getByText('TAKE 5 BROWNSVILLE')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('TUNE 5 BROWNSVILLE')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'where the delta lives' }))
     await waitFor(() => expect(screen.getByText('Where the delta lives')).toBeTruthy())
     // missed: our 1IN WATER row (33 × 14.4 ≈ −$475); added: the robot's heaters (4 × 2462.5 = +$9,850); the rest is "everything else".

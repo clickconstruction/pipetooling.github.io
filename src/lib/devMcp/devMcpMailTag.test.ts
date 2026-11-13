@@ -27,7 +27,7 @@ const PERSON = '22222222-2222-4222-8222-222222222222'
 const THREAD = '18f3a2b9c0d1e2f3'
 
 const email = (over: Partial<EmailIn>): EmailIn => ({ gmailId: 'm1', threadId: THREAD, labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [], cc: [], subject: 'Invoice 4471', text: '', links: [], files: [], headers: {}, html: null, ...over })
-const chip = { kind: 'pipeline' as const, id: JOB, key: `pipeline:${JOB}`, num: '912', name: 'Limitless Renovations' }
+const chip = { kind: 'pipeline' as const, id: JOB, key: `pipeline:${JOB}`, num: '912', name: 'Linwick Renovations' }
 const plan: MyMailTagPlan = {
   threadId: THREAD,
   jobKey: `pipeline:${JOB}`,
@@ -102,7 +102,7 @@ describe('plan_mail_tag · the kernel', () => {
     const reply = tagPlanReply(c, preview, 'abcdef0123456789')
     expect(reply.plan_hash).toBe('abcdef0123456789')
     expect(reply.lands).toBe(
-      "2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat. 1 line would land as mail that came in today: a mail of theirs opens the thread on Follow up. Pass for_record: true to file every mail instead.",
+      "2 lines on 912 Linwick Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat. 1 line would land as mail that came in today: a mail of theirs opens the thread on Follow up. Pass for_record: true to file every mail instead.",
     )
     // for_record (server 0.80.0, punch list #324): the seat's word, kept in the commitment so an apply without it is another plan.
     const forRecord = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB }, for_record: true } }, KNOWN)
@@ -118,7 +118,7 @@ describe('plan_mail_tag · the kernel', () => {
     expect(followUpReading({ lines: 6, filed: 5 })).toContain('5 lines would be filed for the record (older than 14 days). 1 line would land as mail that came in today')
     expect(String(reply.next)).toContain('apply_mail_tag')
     const done = tagApplyReply(c, preview, { ok: true, jobKey: `pipeline:${JOB}`, lines: 1, tied: 1, files: 1, contactId: 'c1', unknownSender: null })
-    expect(done.tagged).toBe('1 line written and 1 line tied onto 912 Limitless Renovations, 1 file kept; later mail in the conversation follows by itself.')
+    expect(done.tagged).toBe('1 line written and 1 line tied onto 912 Linwick Renovations, 1 file kept; later mail in the conversation follows by itself.')
     expect(mailTagChangedWords()).toContain('nothing was tagged')
     expect(mailTagAppliedWords({ target: null, at: '2026-11-06T00:00:00Z' })).toContain('applied already at 2026-11-06T00:00:00Z')
   })
@@ -182,7 +182,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
     expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {

@@ -11,7 +11,7 @@ import {
 
 function mark(over: Partial<RoundMarkRow> = {}): RoundMarkRow {
   return {
-    gc_customer_id: 'gc-knight',
+    gc_customer_id: 'gc-kestrin',
     week_start: '2026-08-31',
     action: 'sent',
     acted_by: 'u-mal',
@@ -27,9 +27,9 @@ function mark(over: Partial<RoundMarkRow> = {}): RoundMarkRow {
 function email(over: Partial<GcStatementAppSendRow> = {}): GcStatementAppSendRow {
   return {
     id: 'e1',
-    gc_name: 'Knight Contracting',
+    gc_name: 'Kestrin Contracting',
     group_by: 'gc',
-    sent_to: 'ap@knight.com',
+    sent_to: 'ap@kestrin.com',
     subject: 'Click Plumbing open balances: Sep 3, 2026',
     total: 12345.5,
     job_count: 3,
@@ -64,10 +64,10 @@ describe('gcStatementSendHistory — one list across three lanes (journey-map #4
       ],
     })
     expect(rows.map((r) => r.at)).toEqual(['2026-09-03T12:02:00Z', '2026-09-02T18:00:00Z', '2026-08-27T15:00:00Z', '2026-08-20T12:02:00Z'])
-    expect(rows[0]).toMatchObject({ kind: 'statement', lane: 'scheduled', laneLabel: 'Scheduled send', who: 'Taunya', recipient: 'ap@knight.com', total: 12345.5, status: { label: 'Delivered', tone: 'good' } })
+    expect(rows[0]).toMatchObject({ kind: 'statement', lane: 'scheduled', laneLabel: 'Scheduled send', who: 'Taunya', recipient: 'ap@kestrin.com', total: 12345.5, status: { label: 'Delivered', tone: 'good' } })
     expect(rows[1]).toMatchObject({ kind: 'statement', lane: 'personal', laneLabel: 'Personal · text', who: 'Malachi', recipient: null, total: null, status: null })
     expect(rows[2]).toMatchObject({ kind: 'spoke', lane: 'personal', laneLabel: 'Personal · call', temperature: 'warm', expectedPayBy: '2026-09-10', note: 'Dave says the 10th' })
-    expect(rows[3]).toMatchObject({ lane: 'draft_message', who: 'Robert', recipient: 'ap@knight.com +2', status: { label: 'Bounced', tone: 'bad' } })
+    expect(rows[3]).toMatchObject({ lane: 'draft_message', who: 'Robert', recipient: 'ap@kestrin.com +2', status: { label: 'Bounced', tone: 'bad' } })
     expect(new Set(rows.map((r) => r.key)).size).toBe(4)
   })
 
@@ -86,8 +86,8 @@ describe('gcStatementSendHistory — one list across three lanes (journey-map #4
   })
 
   it('formats recipients and the lane summary', () => {
-    expect(formatStatementRecipient('ap@knight.com', null)).toBe('ap@knight.com')
-    expect(formatStatementRecipient('ap@knight.com', ['a@b.c', ' '])).toBe('ap@knight.com +1')
+    expect(formatStatementRecipient('ap@kestrin.com', null)).toBe('ap@kestrin.com')
+    expect(formatStatementRecipient('ap@kestrin.com', ['a@b.c', ' '])).toBe('ap@kestrin.com +1')
     const rows = buildGcStatementSendHistory({
       marks: [mark(), mark({ action: 'contacted', acted_at: '2026-08-27T15:00:00Z', week_start: '2026-08-24' })],
       emails: [email(), email({ id: 'e2', resend_email_id: 're-2', sent_at: '2026-08-20T12:02:00Z' }), email({ id: 'e3', resend_email_id: null, sent_at: '2026-08-13T12:02:00Z' })],

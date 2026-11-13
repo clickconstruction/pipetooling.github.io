@@ -9,18 +9,18 @@ const filing = (partial: Partial<JobLienFilingRow>): JobLienFilingRow =>
 
 describe('filingSnapshotPage', () => {
   it('rebuilds a mailed notice from the fields the filing stored, with the sends it recorded', () => {
-    const fields = buildLienNoticeFieldsForJob({ jobName: 'Take 5- Liberty Hill', jobAddress: '11730 TX-29, Liberty Hill, TX 78642', homesteadStatement: false, originalContractorName: 'Burd & Assoc.', openBalance: 27_199, contactPerson: 'Robert Douglas, Master Plumber', issuer: null, todayYmd: '2026-10-03', retainageHeld: null, serviceTypeName: 'Plumbing' })
+    const fields = buildLienNoticeFieldsForJob({ jobName: 'Tune 5- Liberty Hill', jobAddress: '11730 TX-29, Liberty Hill, TX 78642', homesteadStatement: false, originalContractorName: 'Brund & Assoc.', openBalance: 27_199, contactPerson: 'Robert Douglas, Master Plumber', issuer: null, todayYmd: '2026-10-03', retainageHeld: null, serviceTypeName: 'Plumbing' })
     const page = filingSnapshotPage(filing({ fields: fields as unknown as JobLienFilingRow['fields'] }), { issuer: null, jobNumber: '891' })
     expect(page?.key).toBe('filing:f1')
     expect(page?.label).toBe('As it went out · the notice')
-    expect(page?.html).toContain('Burd &amp; Assoc.')
+    expect(page?.html).toContain('Brund &amp; Assoc.')
     expect(page?.html).toContain('Job #891')
     expect(page?.html).toContain('Work month 2026-07, 2026-08')
     expect(page?.html).toContain('certified mail, return receipt · 9407 1234')
   })
 
   it('names the paper by the filing’s kind, and is null when the row stores no snapshot', () => {
-    const fields = buildLienNoticeFieldsForJob({ jobName: 'Take 5', jobAddress: '', homesteadStatement: false, originalContractorName: 'Burd & Assoc.', openBalance: 1_000, contactPerson: 'Robert Douglas', issuer: null, todayYmd: '2026-10-03', retainageHeld: 100, serviceTypeName: 'Plumbing' })
+    const fields = buildLienNoticeFieldsForJob({ jobName: 'Tune 5', jobAddress: '', homesteadStatement: false, originalContractorName: 'Brund & Assoc.', openBalance: 1_000, contactPerson: 'Robert Douglas', issuer: null, todayYmd: '2026-10-03', retainageHeld: 100, serviceTypeName: 'Plumbing' })
     expect(filingSnapshotPage(filing({ kind: 'retainage_53_057', months_covered: [], fields: fields as unknown as JobLienFilingRow['fields'] }), { issuer: null, jobNumber: '891' })?.label).toBe('As it went out · the § 53.057 notice')
     expect(filingSnapshotPage(filing({ fields: null as unknown as JobLienFilingRow['fields'] }), { issuer: null, jobNumber: '891' })).toBeNull()
   })

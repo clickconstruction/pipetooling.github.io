@@ -41,8 +41,8 @@ Under the track, **one row per GC**:
 
 :::example One group, three rows
 **Account Man Malachi** · 3 GCs · $96,000 — 2 to do
-› Loberg Contracting {{chip:gray|no word yet}} · $22,000 · 4 jobs · oldest 19d — ◉ Check · ○ Send · ○ Word {{button:blue|Check bills}}
-› Knight Contracting {{chip:yellow|warm · Sep 18}} · $26,000 · 4 jobs · oldest 41d — ✓ Checked · ◉ Send · ○ Word {{button:blue|Send}}
+› Lowbeck Contracting {{chip:gray|no word yet}} · $22,000 · 4 jobs · oldest 19d — ◉ Check · ○ Send · ○ Word {{button:blue|Check bills}}
+› Kestrin Contracting {{chip:yellow|warm · Sep 18}} · $26,000 · 4 jobs · oldest 41d — ✓ Checked · ◉ Send · ○ Word {{button:blue|Send}}
 › Structura {{chip:yellow|warm · Sep 25}} · $48,000 · 12 jobs · oldest 58d — ✓ Checked · ✓ Sent Thu · ✓ warm {{chip:green|✓ Done}}
 :::
 
@@ -76,7 +76,7 @@ Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which
 
 The word is the account man's read of the GC. You can take it in any order, before the statement goes out or after. You tap {{button:outline|Word}}:
 
-1. **Whose word is this?** The GC's account man is already picked. Change it to someone else, or to ***Mine — I talked to Knight Contracting*** when you reached the GC yourself.
+1. **Whose word is this?** The GC's account man is already picked. Change it to someone else, or to ***Mine — I talked to Kestrin Contracting*** when you reached the GC yourself.
 2. **How did you hear it from Malachi?** Pick {{chip:gray|Email}} {{chip:blue|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}. Text is picked to start.
 3. **Their temperature**, the sentence, and the date they said they would pay.
 
@@ -91,7 +91,7 @@ A word written after the statement keeps the statement's day and how it went out
 Seven of Malachi's GCs are seven questions for one phone call. You tap {{button:outline-blue|📞 Call sheet}} on his group:
 
 :::example The sheet
-**Knight Contracting** · $26,000 · oldest 41d · {{chip:red|promised Sep 20 — 7 days late}}
+**Kestrin Contracting** · $26,000 · oldest 41d · {{chip:red|promised Sep 20 — 7 days late}}
 Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 {{chip:gray|Hot}} {{chip:gray|Warm}} {{chip:blue|Cool}} {{chip:gray|Cold}} · *Missed the 20th, now says the 10th.* · Oct 10
 :::
@@ -106,9 +106,9 @@ Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 Saving a word never marks a statement sent.
 
 :::example A GC's bills, opened
-**813 · Reliant Health- Electrical** · billed Jun 25, 2026 · 95d {{chip:red|said Sep 15 · late}} **$4,421.26** ▾
-**898 · Reliant Health** · billed Jul 6, 2026 · 84d **$3,600.00** ▾
-**18 bills — what Knight Contracting owes** · **$26,000.00**
+**813 · Relwyn Health- Electrical** · billed Jun 25, 2026 · 95d {{chip:red|said Sep 15 · late}} **$4,421.26** ▾
+**898 · Relwyn Health** · billed Jul 6, 2026 · 84d **$3,600.00** ▾
+**18 bills — what Kestrin Contracting owes** · **$26,000.00**
 :::
 
 - The bills come to the total on the row. A bill 90 days old or more reads red.
@@ -215,13 +215,13 @@ Every mark keeps **who** marked it, **when**, **how** it went out, and the **not
 The **last sent Aug 27** pill sits in each GC's opened row. It names the channel when this week's mark is what it shows, like *Sent Sep 4 · text*. You click it for **What went out**. The temperature pill and the GC's name on the Temperature board open it too. It lists every statement on record for that GC, newest first, whichever way it went. Each shows the **lane** it took, who sent it, and the details.
 
 :::example One list, three lanes
-Sep 3 · Statement · **Scheduled send** · Taunya · to ap@knight.com · $12,345.50 {{chip:green|Delivered}}
+Sep 3 · Statement · **Scheduled send** · Taunya · to ap@kestrin.com · $12,345.50 {{chip:green|Delivered}}
 Sep 2 · Statement · **Personal · text** · Malachi · warm — Dave says the 10th
 Aug 27 · Spoke · **Personal · call** · Malachi · warm · pays 2026-09-10
-Aug 20 · Statement · **Draft Message** · Robert · to ap@knight.com +1 · $9,800.00 {{chip:red|Bounced}}
+Aug 20 · Statement · **Draft Message** · Robert · to ap@kestrin.com +1 · $9,800.00 {{chip:red|Bounced}}
 :::
 
-"Did anything already go to Knight this week, and did it land?" is answered here before you send another one. App-sent statements show their recipient, total, and delivery status. Personal-round marks show how, the temperature, and the note.
+"Did anything already go to Kestrin this week, and did it land?" is answered here before you send another one. App-sent statements show their recipient, total, and delivery status. Personal-round marks show how, the temperature, and the note.
 
 ## The three lanes
 
@@ -232,7 +232,7 @@ A statement reaches a GC one of three ways. Every surface names the lane the sam
 On GC Review's **Scheduled** tab, **Scheduled statement sends** lists every scheduled statement the office has set up. The tab shows while a send is waiting or a word is due. That is the standing *All GCs → Malachi · Mon · Wed · 7:00 AM · weekly* copies and any per-GC schedule. It shows for everyone who can open GC Review, not just the person who created them. Each line says when it goes and, when it is not yours, **by whom**. Only the person who scheduled a send, or a dev, sees its {{button:outline|Cancel}}. You ask them if a chain needs to stop.
 
 :::example Nobody gets the same statement twice by accident
-If a statement already went to the same address a few minutes ago — by any lane — {{button:blue|Send statement}} in Draft Message tells you so instead of sending again ("already went to ap@knight.com 4 minutes ago"). A scheduled send that would repeat one from the same half-day is skipped, and its weekly chain carries on next week. A scheduled send waits for the check as well. If the GC's bills are not checked this week, or changed since, it does not go. Its weekly chain still carries on.
+If a statement already went to the same address a few minutes ago — by any lane — {{button:blue|Send statement}} in Draft Message tells you so instead of sending again ("already went to ap@kestrin.com 4 minutes ago"). A scheduled send that would repeat one from the same half-day is skipped, and its weekly chain carries on next week. A scheduled send waits for the check as well. If the GC's bills are not checked this week, or changed since, it does not go. Its weekly chain still carries on.
 :::
 
 ## Good to know

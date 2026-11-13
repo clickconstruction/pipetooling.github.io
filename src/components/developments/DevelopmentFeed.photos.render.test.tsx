@@ -30,7 +30,7 @@ function row(over: Partial<UploadedPhotoRow> & { id: string; taken_at: string })
   }
 }
 const io: UploadedPhotosIo = { list: async () => ({ rows: [], more: false }), waiting: async () => null, thumb: async () => null, full: async () => null }
-const labels = { job: (id: string) => ({ kind: 'job' as const, id, label: 'JP629 Lot 14' }), bid: () => null, siteName: 'Gun Dog Trail' }
+const labels = { job: (id: string) => ({ kind: 'job' as const, id, label: 'JP629 Lot 14' }), bid: () => null, siteName: 'Gray Fox Trail' }
 const at = (min: number) => new Date(Date.parse('2026-11-02T14:15:00Z') - min * 60_000).toISOString()
 
 describe('DevelopmentFeed — a photos line', () => {

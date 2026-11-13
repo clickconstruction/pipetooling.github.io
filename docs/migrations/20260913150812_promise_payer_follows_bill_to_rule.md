@@ -6,7 +6,7 @@ writers from `20260911051414` (the `job_promised_pay_dates` trigger and
 `COALESCE(j.gc_customer_id, j.customer_id)` — the pre-v2.3345 guess that any
 job with a GC is a job the GC pays. Every reader has followed
 `jobs_ledger.bill_to_party` since v2.3346, so on a customer-pays job that names
-a GC (Done Right's pretests) the homeowner's promise landed on the GC's
+a GC (Dead Level's pretests) the homeowner's promise landed on the GC's
 reliability record and pay-speed spread.
 
 - New pure helper `job_bill_payer_customer_id(bill_to_party, customer_id, gc_customer_id)`

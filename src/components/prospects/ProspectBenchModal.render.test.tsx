@@ -5,11 +5,11 @@ import { ProspectBenchModal } from './ProspectBenchModal'
 import type { BenchDraft } from '../../lib/prospects/prospectKinds'
 
 const draft: BenchDraft = {
-  name: 'Bexar Fire Protection',
+  name: 'Baxter Fire Protection',
   trades: ['Fire sprinkler', 'HVAC'],
   contactName: 'Tomás Reyna',
   phone: '(210) 555-0188',
-  email: 'bids@bexarfire.example',
+  email: 'bids@baxterfire.example',
   address: '1800 Cibolo Trail, Boerne',
   maxMiles: 40,
   known: false,
@@ -23,18 +23,18 @@ describe('ProspectBenchModal (v2.5559)', () => {
     const onSave = vi.fn()
     render(<ProspectBenchModal draft={draft} saving={false} error={null} onSave={onSave} onCancel={() => {}} />)
     expect(screen.getByRole('dialog', { name: 'Add a company' })).toBeTruthy()
-    expect((screen.getByLabelText('Company') as HTMLInputElement).value).toBe('Bexar Fire Protection')
+    expect((screen.getByLabelText('Company') as HTMLInputElement).value).toBe('Baxter Fire Protection')
     expect((screen.getByLabelText(/Trades/) as HTMLInputElement).value).toBe('Fire sprinkler, HVAC')
     expect((screen.getByLabelText('Goes up to (miles)') as HTMLInputElement).value).toBe('40')
     expect((screen.getByLabelText('English') as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
     expect(onSave).toHaveBeenCalledWith(
       {
-      name: 'Bexar Fire Protection',
+      name: 'Baxter Fire Protection',
       trades: ['Fire sprinkler', 'HVAC'],
       contactName: 'Tomás Reyna',
       phone: '(210) 555-0188',
-      email: 'bids@bexarfire.example',
+      email: 'bids@baxterfire.example',
       address: '1800 Cibolo Trail, Boerne',
       maxMiles: 40,
       known: false,
@@ -73,7 +73,7 @@ describe('ProspectBenchModal (v2.5559)', () => {
 
   it('shows the license and the Google Maps boxes filled from the sub, and saves them (v2.5603)', () => {
     const onSave = vi.fn()
-    render(<ProspectBenchModal draft={{ name: 'Bexar Fire Protection', trades: ['Fire sprinkler'], contactName: 'Tomás Reyna', phone: '(210) 555-0122', email: '', address: '', maxMiles: null, known: false, license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz' }} saving={false} error={null} onSave={onSave} onCancel={() => {}} />)
+    render(<ProspectBenchModal draft={{ name: 'Baxter Fire Protection', trades: ['Fire sprinkler'], contactName: 'Tomás Reyna', phone: '(210) 555-0122', email: '', address: '', maxMiles: null, known: false, license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz' }} saving={false} error={null} onSave={onSave} onCancel={() => {}} />)
     expect((screen.getByLabelText('License') as HTMLInputElement).value).toBe('TX SCR-1884')
     expect((screen.getByLabelText('Google Maps') as HTMLInputElement).value).toBe('https://maps.app.goo.gl/x7Qz')
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
@@ -86,9 +86,9 @@ describe('ProspectBenchModal (v2.5559)', () => {
     const tick = screen.getByRole('checkbox', { name: /Ask them to quote Oak Run Clinic · Fire sprinkler now/ }) as HTMLInputElement
     expect(tick.checked).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench and ask' }))
-    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Bexar Fire Protection' }), true)
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Baxter Fire Protection' }), true)
     fireEvent.click(tick)
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
-    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Bexar Fire Protection' }), false)
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Baxter Fire Protection' }), false)
   })
 })

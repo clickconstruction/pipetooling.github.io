@@ -10,7 +10,7 @@ The test is hydrostatic, pinpoint or gas. A hydrostatic test checks the pipes fo
 
 ## How it works at a glance
 
-1. **The tech clocks out** with a Status Report or Job Complete that says the test was run. For example, *Hydrostatic test passed.* on a job named *Johnson Pretest*. That sentence becomes a **draft** on the job. The type comes from the job name. PASS or FAIL comes from the wording. The date comes from the report. Notes, EOD and Walk reports never draft one. You can always start a report by hand.
+1. **The tech clocks out** with a Status Report or Job Complete that says the test was run. For example, *Hydrostatic test passed.* on a job named *Jarrow Pretest*. That sentence becomes a **draft** on the job. The type comes from the job name. PASS or FAIL comes from the wording. The date comes from the report. Notes, EOD and Walk reports never draft one. You can always start a report by hand.
 2. **The Dashboard says so** with {{chip:yellow|3 test reports are ready to send}} under **Needs you** for office roles. The card opens the first draft.
 3. **You glance and send.** The paper is already filled in. Check the verdict and the notes, then click {{button:amber|Send to GC…}}. GC means the general contractor. The email goes out with the PDF and the job's Stripe pay link. It also goes to the standing cc, the copy address set in Settings. The job's activity gets a line.
 4. **The GC sees it** on their portal statement. A **View report** button opens the exact PDF they were emailed.
@@ -44,7 +44,7 @@ Pick **Pre-Test**, **Sewer**, today's date, 60 minutes, **PASS**, type "PVC. Toi
 - **GC** is the contractor who ordered the test. If the job already has one, their name is here. If not, search for them. Their email fills To. **Set … as the GC on this job** links them for good. The next report and the portal then already know. A GC with no email on file gets a **Save … on their customer card** checkbox under To.
 - **To** is the GC's email, else the customer's. Add more addresses with commas.
 - **cc** is the standing copy from Settings. The master who certifies, say.
-- **Message** reads *Attached is the … report for 112 Seidel St and below is the invoice link…* with the job's **Stripe pay link** and amount. Edit it freely. *Reset to the template* brings the wording back.
+- **Message** reads *Attached is the … report for 112 Sedlow St and below is the invoice link…* with the job's **Stripe pay link** and amount. Edit it freely. *Reset to the template* brings the wording back.
 - **The attachment** is the PDF, built from the report exactly as it is when you click Send.
 
 The **Send** button itself is in the modal's bottom bar, next to Save draft. It is never further down the page than your thumb. It stays gray until the report has what it needs. That is a verdict, findings or a pressure, and a To address. The sheet names what is missing.

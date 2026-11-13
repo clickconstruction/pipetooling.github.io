@@ -200,25 +200,25 @@ describe('marketDesk (v2.5931)', () => {
 
   it('says never answered only when the lifetime read shows no answer on record', () => {
     const base = fixture()
-    const knightOf = (lifetimeByGc: MarketDeskInput['lifetimeByGc']) => {
+    const kestrinOf = (lifetimeByGc: MarketDeskInput['lifetimeByGc']) => {
       const d = buildMarketDesk({ ...base, lifetimeByGc })
       return { d, kestrel: d.rows.find((r) => r.key === 'gc:gc-kestrel')! }
     }
     // The whole record shows no answer: the words say ever.
-    const never = knightOf(new Map([['gc-kestrel', { bids: 11, answered: 0, won: 0 }]]))
+    const never = kestrinOf(new Map([['gc-kestrel', { bids: 11, answered: 0, won: 0 }]]))
     expect(never.kestrel).toMatchObject({ state: 'no answers', neverAnswered: true, desc: 'GC. Quiet 8 weeks. Has never answered a bid.' })
     expect(never.kestrel.detLine).toBe('Nothing answered yet. 6 priced bids in 26 weeks and no answer, ever. Pricing them costs days the live GCs wait on. Last ask Aug 31.')
     expect(never.d.pricingSpend).toEqual(['Kestrel Contracting has taken 6 priced bids for $0 won and no answer, ever. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.'])
     plain(never.kestrel.detLine)
     for (const p of never.d.pricingSpend) plain(p)
     // One answer years back: no answers in the span still, but the words stay with the span.
-    const once = knightOf(new Map([['gc-kestrel', { bids: 11, answered: 1, won: 0 }]]))
+    const once = kestrinOf(new Map([['gc-kestrel', { bids: 11, answered: 1, won: 0 }]]))
     expect(once.kestrel).toMatchObject({ state: 'no answers', neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
     expect(once.kestrel.detLine).toBe('Nothing answered yet. 6 priced bids in 26 weeks, nothing won, nothing answered. Pricing them costs days the live GCs wait on. Last ask Aug 31.')
     expect(once.d.pricingSpend).toEqual(['Kestrel Contracting has taken 6 priced bids for $0 won and no answer in 26 weeks. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.'])
     // The read is in but Kestrel is not in it, or the read is absent: the span's words.
-    expect(knightOf(new Map([['gc-birch', { bids: 40, answered: 0, won: 0 }]])).kestrel).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
-    expect(knightOf(undefined).kestrel).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
+    expect(kestrinOf(new Map([['gc-birch', { bids: 40, answered: 0, won: 0 }]])).kestrel).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
+    expect(kestrinOf(undefined).kestrel).toMatchObject({ neverAnswered: false, desc: 'GC. Quiet 8 weeks.' })
     // A GC that answers in the span never carries the claim, whatever its record says.
     const birch = buildMarketDesk({ ...base, lifetimeByGc: new Map([['gc-birch', { bids: 40, answered: 0, won: 0 }]]) }).rows.find((r) => r.key === 'gc:gc-birch')!
     expect(birch).toMatchObject({ state: 'feeding', neverAnswered: false, desc: 'GC. Last ask Oct 22.' })

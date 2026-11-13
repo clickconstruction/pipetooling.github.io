@@ -8,9 +8,9 @@ import { questionTouchesSealedShadow, scrubMoney, TWIN_MONEY_WITHHELD, type Seal
 
 describe('scrubMoney', () => {
   it("b499's question as filed on 2026-09-29: the robot's size guess goes, the article follows the next word", () => {
-    const q = 'SpaceX BA02 restrooms, Bastrop: an $800k restroom fit-out about 50 miles from the office, months of work. What do you carry for travel on a job like this?'
+    const q = 'SkyLab BA02 restrooms, Bastrop: an $800k restroom fit-out about 50 miles from the office, months of work. What do you carry for travel on a job like this?'
     expect(scrubMoney(q)).toEqual({
-      text: 'SpaceX BA02 restrooms, Bastrop: a restroom fit-out about 50 miles from the office, months of work. What do you carry for travel on a job like this?',
+      text: 'SkyLab BA02 restrooms, Bastrop: a restroom fit-out about 50 miles from the office, months of work. What do you carry for travel on a job like this?',
       removed: 1,
     })
   })

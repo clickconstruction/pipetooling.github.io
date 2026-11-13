@@ -14,7 +14,7 @@ afterEach(() => cleanup())
 
 function setup(over: Partial<Parameters<typeof BidDeleteConfirmModal>[0]> = {}) {
   const props = {
-    projectName: 'Pondhill Building 2' as string | null,
+    projectName: 'Penmoor Building 2' as string | null,
     confirmValue: '',
     onConfirmValueChange: vi.fn(),
     error: null as string | null,
@@ -32,12 +32,12 @@ const field = () => screen.getByRole('textbox') as HTMLInputElement
 
 describe('BidDeleteConfirmModal', () => {
   it('asks for the project name and holds the delete until it matches', () => {
-    setup({ confirmValue: 'Pondhill' })
-    expect(screen.getByText('Pondhill Building 2').tagName).toBe('STRONG')
+    setup({ confirmValue: 'Penmoor' })
+    expect(screen.getByText('Penmoor Building 2').tagName).toBe('STRONG')
     expect(field().placeholder).toBe('Project name')
     expect(confirm().disabled).toBe(true)
     cleanup()
-    const p = setup({ confirmValue: '  Pondhill Building 2 ' })
+    const p = setup({ confirmValue: '  Penmoor Building 2 ' })
     expect(confirm().disabled).toBe(false)
     fireEvent.click(confirm())
     expect(p.onDelete).toHaveBeenCalledTimes(1)
@@ -57,7 +57,7 @@ describe('BidDeleteConfirmModal', () => {
   })
 
   it('while the delete runs everything is held and the button says so', () => {
-    const p = setup({ confirmValue: 'Pondhill Building 2', deleting: true })
+    const p = setup({ confirmValue: 'Penmoor Building 2', deleting: true })
     expect(confirm().textContent).toBe('Deleting…')
     expect(confirm().disabled).toBe(true)
     expect(cancel().disabled).toBe(true)

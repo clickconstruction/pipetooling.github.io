@@ -18,8 +18,8 @@ function bill(over: Partial<StatementBillIn> & Pick<StatementBillIn, 'key'>): St
     jobId: `job-${over.key}`,
     jobNumber: over.key,
     jobName: '',
-    jobAddress: '628 Terrell Rd, San Antonio, TX 78209',
-    customerName: 'Dudley Mason',
+    jobAddress: '628 Tarrow Rd, San Antonio, TX 78209',
+    customerName: 'Dunmere Mallin',
     propertyId: null,
     sentYmd: '2026-08-18',
     sentIsEstimate: false,
@@ -30,13 +30,13 @@ function bill(over: Partial<StatementBillIn> & Pick<StatementBillIn, 'key'>): St
   }
 }
 
-const OPTS = { payerName: 'RMC- Dudley Mason', statementYear: 2026 }
+const OPTS = { payerName: 'RLC- Dunmere Mallin', statementYear: 2026 }
 
 describe('buildStatementModel — what counts as one property', () => {
   it('one address typed the same way is one block, with its own subtotal', () => {
     const m = buildStatementModel([bill({ key: '890', owed: 285, billed: 285 }), bill({ key: '867', owed: 1710, billed: 1710 })], OPTS)
     expect(m.properties).toHaveLength(1)
-    expect(m.properties[0]).toMatchObject({ street: '628 Terrell Rd', city: 'San Antonio', owed: 1995 })
+    expect(m.properties[0]).toMatchObject({ street: '628 Tarrow Rd', city: 'San Antonio', owed: 1995 })
     expect(m.properties[0]!.bills.map((b) => b.job)).toEqual(['Job 867', 'Job 890'])
   })
 
@@ -45,21 +45,21 @@ describe('buildStatementModel — what counts as one property', () => {
       [
         bill({ key: '1008', jobAddress: '1875 Co Rd 777, Devine, TX' }),
         bill({ key: '868', jobAddress: '1875 Co Rd 777, Devine, TX 78016' }),
-        bill({ key: '881', jobAddress: '9703 Lenox Hl San Antonio, TX' }),
-        bill({ key: '858', jobAddress: '9703 Lenox Hl, San Antonio, TX' }),
+        bill({ key: '881', jobAddress: '9703 Linmor Hl San Antonio, TX' }),
+        bill({ key: '858', jobAddress: '9703 Linmor Hl, San Antonio, TX' }),
       ],
       OPTS,
     )
     expect(m.properties.map((p) => [p.street, p.city, p.bills.length])).toEqual([
       ['1875 Co Rd 777', 'Devine', 2],
       // The heading is the spelling that names a city, not the one that runs street and city together.
-      ['9703 Lenox Hl', 'San Antonio', 2],
+      ['9703 Linmor Hl', 'San Antonio', 2],
     ])
   })
 
   it('a different spelling joins the block only through the property record', () => {
-    const hill = bill({ key: '1009', jobAddress: '9703 Lenox Hill, San Antonio, TX' })
-    const hl = bill({ key: '273', jobAddress: '9703 Lenox Hl San Antonio, TX 78255' })
+    const hill = bill({ key: '1009', jobAddress: '9703 Linmor Hill, San Antonio, TX' })
+    const hl = bill({ key: '273', jobAddress: '9703 Linmor Hl San Antonio, TX 78255' })
     expect(buildStatementModel([hill, hl], OPTS).properties).toHaveLength(2)
     const linked = buildStatementModel([{ ...hill, propertyId: 'prop-1' }, { ...hl, propertyId: 'prop-1' }], OPTS)
     expect(linked.properties).toHaveLength(1)
@@ -69,9 +69,9 @@ describe('buildStatementModel — what counts as one property', () => {
   it('an unlinked job joins a linked one that stands at its address', () => {
     const m = buildStatementModel(
       [
-        bill({ key: '1009', jobAddress: '9703 Lenox Hill, San Antonio, TX', propertyId: 'prop-1' }),
-        bill({ key: '273', jobAddress: '9703 Lenox Hl San Antonio, TX 78255', propertyId: 'prop-1' }),
-        bill({ key: '858', jobAddress: '9703 Lenox Hl, San Antonio, TX', propertyId: null }),
+        bill({ key: '1009', jobAddress: '9703 Linmor Hill, San Antonio, TX', propertyId: 'prop-1' }),
+        bill({ key: '273', jobAddress: '9703 Linmor Hl San Antonio, TX 78255', propertyId: 'prop-1' }),
+        bill({ key: '858', jobAddress: '9703 Linmor Hl, San Antonio, TX', propertyId: null }),
       ],
       OPTS,
     )
@@ -81,7 +81,7 @@ describe('buildStatementModel — what counts as one property', () => {
 
   it('suites stay apart — the grouping is never fuzzy', () => {
     const m = buildStatementModel(
-      [bill({ key: '1', jobAddress: '150 E Sonterra Blvd 200A, San Antonio, TX' }), bill({ key: '2', jobAddress: '150 E Sonterra Blvd 200B, San Antonio, TX' })],
+      [bill({ key: '1', jobAddress: '150 E Sonmere Blvd 200A, San Antonio, TX' }), bill({ key: '2', jobAddress: '150 E Sonmere Blvd 200B, San Antonio, TX' })],
       OPTS,
     )
     expect(m.properties).toHaveLength(2)
@@ -113,21 +113,21 @@ describe('buildStatementModel — what counts as one property', () => {
 })
 
 describe('statementJobName — the name only when it says something', () => {
-  const ctx = { streets: ['628 Terrell Rd'], knownNames: ['RMC- Dudley Mason', 'Dudley Mason'] }
+  const ctx = { streets: ['628 Tarrow Rd'], knownNames: ['RLC- Dunmere Mallin', 'Dunmere Mallin'] }
   it('drops a repeat of the GC’s or the customer’s own name', () => {
-    expect(statementJobName('Dudley Mason', ctx)).toBe('')
-    expect(statementJobName('dudley  mason', ctx)).toBe('')
-    expect(statementJobName('RMC- Dudley Mason', ctx)).toBe('')
+    expect(statementJobName('Dunmere Mallin', ctx)).toBe('')
+    expect(statementJobName('dunmere  mallin', ctx)).toBe('')
+    expect(statementJobName('RLC- Dunmere Mallin', ctx)).toBe('')
   })
   it('keeps a name that adds something', () => {
     expect(statementJobName('Trip Charges', ctx)).toBe('Trip Charges')
-    expect(statementJobName('Dudley (Lennox)', ctx)).toBe('Dudley (Lennox)')
-    expect(statementJobName('Lenox Check PU (reissued a bad check)', ctx)).toBe('Lenox Check PU (reissued a bad check)')
+    expect(statementJobName('Dunmere (Linmoor)', ctx)).toBe('Dunmere (Linmoor)')
+    expect(statementJobName('Linmor Check PU (reissued a bad check)', ctx)).toBe('Linmor Check PU (reissued a bad check)')
   })
   it('cuts the address and the HCP number off the end', () => {
-    expect(statementJobName('Service Visit — 628 Terrell Rd (HCP 867)', ctx)).toBe('Service Visit')
-    expect(statementJobName('Service Visit - 628 Terrell Rd', ctx)).toBe('Service Visit')
-    expect(statementJobName('628 Terrell Rd', ctx)).toBe('')
+    expect(statementJobName('Service Visit — 628 Tarrow Rd (HCP 867)', ctx)).toBe('Service Visit')
+    expect(statementJobName('Service Visit - 628 Tarrow Rd', ctx)).toBe('Service Visit')
+    expect(statementJobName('628 Tarrow Rd', ctx)).toBe('')
     // A dash that does not lead into the address is part of the name.
     expect(statementJobName('Rough-in — Bldg 3', ctx)).toBe('Rough-in — Bldg 3')
   })
@@ -184,26 +184,26 @@ describe('the line under a bill — paid and owed always add up to the bill', ()
 
 describe('renderStatementByProperty', () => {
   const bills = [
-    bill({ key: '890', sentYmd: '2026-07-15', billed: 285, owed: 285, jobName: 'Dudley Mason' }),
-    bill({ key: '867', billed: 1710, owed: 1710, jobName: 'Service Visit — 628 Terrell Rd (HCP 867)' }),
+    bill({ key: '890', sentYmd: '2026-07-15', billed: 285, owed: 285, jobName: 'Dunmere Mallin' }),
+    bill({ key: '867', billed: 1710, owed: 1710, jobName: 'Service Visit — 628 Tarrow Rd (HCP 867)' }),
     bill({ key: '372', jobAddress: '1780 FM 1343, Castroville, TX 78009', sentYmd: '2026-09-14', billed: 35200, owed: 17600, payments: [{ invoice_id: '372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '#4402', sequence_order: 1 }] }),
   ]
-  const input = { payerName: 'RMC- Dudley Mason', dateStr: 'Sep 30, 2026', bills }
+  const input = { payerName: 'RLC- Dunmere Mallin', dateStr: 'Sep 30, 2026', bills }
 
   it('HTML: the total first, a heading per property printed once, one line per bill', () => {
     const html = renderStatementByPropertyHtml(input)
-    expect(html).toContain('Statement for RMC- Dudley Mason · Sep 30, 2026')
+    expect(html).toContain('Statement for RLC- Dunmere Mallin · Sep 30, 2026')
     expect(html).toContain('Owed now')
     expect(html).toContain('3 open bills at 2 properties. $37,195.00 billed, $17,600.00 paid so far.')
-    expect(html.split('628 Terrell Rd').length - 1).toBe(1)
-    expect(html).toContain('<strong>628 Terrell Rd</strong> <span style="font-size:12.5px;color:#5b6676">San Antonio · 2 open bills</span>')
+    expect(html.split('628 Tarrow Rd').length - 1).toBe(1)
+    expect(html).toContain('<strong>628 Tarrow Rd</strong> <span style="font-size:12.5px;color:#5b6676">San Antonio · 2 open bills</span>')
     expect(html).toContain('<strong>1780 FM 1343</strong> <span style="font-size:12.5px;color:#5b6676">Castroville · 1 open bill</span>')
     expect(html).toContain('Job 867<span style="color:#5b6676"> · Service Visit</span>')
     expect(html).toContain('$17,600.00 paid by #4402 on Sep 22, of $35,200.00 billed')
-    expect(html).not.toContain('Dudley Mason</span>')
+    expect(html).not.toContain('Dunmere Mallin</span>')
     expect(html).not.toContain('nothing applied yet')
     expect(html.indexOf('Owed now')).toBeLessThan(html.indexOf('1780 FM 1343'))
-    expect(html.indexOf('1780 FM 1343')).toBeLessThan(html.indexOf('628 Terrell Rd'))
+    expect(html.indexOf('1780 FM 1343')).toBeLessThan(html.indexOf('628 Tarrow Rd'))
     // The total is the rows' own sum.
     expect(html.split('$19,595.00').length - 1).toBe(2)
     // GC-facing: no internal pressure language.
@@ -212,15 +212,15 @@ describe('renderStatementByProperty', () => {
   })
 
   it('HTML: the account card carries the code, the address in words and the tagged link', () => {
-    const html = renderStatementByPropertyHtml({ ...input, portalUrl: 'https://my.clickplumbing.com/rmc-dudley-mason', qrImgSrc: 'cid:portal-qr' })
+    const html = renderStatementByPropertyHtml({ ...input, portalUrl: 'https://my.clickplumbing.com/rlc-dunmere-mallin', qrImgSrc: 'cid:portal-qr' })
     expect(html).toContain('Your account, any time')
     expect(html).toContain('<img src="cid:portal-qr" width="120" height="120"')
-    expect(html).toContain('href="https://my.clickplumbing.com/rmc-dudley-mason?src=gc-statement"')
-    expect(html).toContain('>my.clickplumbing.com/rmc-dudley-mason</a>')
+    expect(html).toContain('href="https://my.clickplumbing.com/rlc-dunmere-mallin?src=gc-statement"')
+    expect(html).toContain('>my.clickplumbing.com/rlc-dunmere-mallin</a>')
     expect(html).toContain('Pay online and see every open bill and payment, with no login. Scan the code with your phone camera.')
     // Without a code the card still stands, and does not ask anyone to scan.
-    const plain = renderStatementByPropertyHtml({ ...input, portalUrl: 'https://my.clickplumbing.com/rmc-dudley-mason' })
-    expect(plain).toContain('>my.clickplumbing.com/rmc-dudley-mason</a>')
+    const plain = renderStatementByPropertyHtml({ ...input, portalUrl: 'https://my.clickplumbing.com/rlc-dunmere-mallin' })
+    expect(plain).toContain('>my.clickplumbing.com/rlc-dunmere-mallin</a>')
     expect(plain).not.toContain('<img')
     expect(plain).not.toContain('Scan the code')
     // No portal, no card.
@@ -242,13 +242,13 @@ describe('renderStatementByProperty', () => {
   })
 
   it('text: the same facts, a property at a time', () => {
-    const text = renderStatementByPropertyText({ ...input, portalUrl: 'https://my.clickplumbing.com/rmc-dudley-mason', officePhone: '(210) 555-0100', introText: ' Hello. ' })
+    const text = renderStatementByPropertyText({ ...input, portalUrl: 'https://my.clickplumbing.com/rlc-dunmere-mallin', officePhone: '(210) 555-0100', introText: ' Hello. ' })
     expect(text).toBe(
       [
         'Hello.',
         '',
         'Click Plumbing and Electrical',
-        'Statement for RMC- Dudley Mason · Sep 30, 2026',
+        'Statement for RLC- Dunmere Mallin · Sep 30, 2026',
         '',
         'Owed now: $19,595.00',
         '3 open bills at 2 properties. $37,195.00 billed, $17,600.00 paid so far.',
@@ -256,13 +256,13 @@ describe('renderStatementByProperty', () => {
         '1780 FM 1343, Castroville — $17,600.00',
         '- Job 372 — sent Sep 14 — $17,600.00 ($17,600.00 paid by #4402 on Sep 22, of $35,200.00 billed)',
         '',
-        '628 Terrell Rd, San Antonio — $1,995.00',
+        '628 Tarrow Rd, San Antonio — $1,995.00',
         '- Job 890 — sent Jul 15 — $285.00',
         '- Job 867 · Service Visit — sent Aug 18 — $1,710.00',
         '',
         'Total owed: $19,595.00',
         '',
-        'Pay online any time at https://my.clickplumbing.com/rmc-dudley-mason?src=gc-statement — this statement stays current there.',
+        'Pay online any time at https://my.clickplumbing.com/rlc-dunmere-mallin?src=gc-statement — this statement stays current there.',
         '',
         'Questions about a bill? Reply to this email or call the office at (210) 555-0100.',
       ].join('\n'),
@@ -280,7 +280,7 @@ describe('renderStatementByProperty', () => {
 describe('Payments we have received (v2.4260)', () => {
   const jobs = [
     {
-      id: 'j372', hcp_number: '372', click_number: null, job_name: 'Dudley Mason', job_address: '1780 FM 1343, Castroville, TX 78009', customer_id: 'owner-1', gc_customer_id: 'gc', bill_to_party: 'gc',
+      id: 'j372', hcp_number: '372', click_number: null, job_name: 'Dunmere Mallin', job_address: '1780 FM 1343, Castroville, TX 78009', customer_id: 'owner-1', gc_customer_id: 'gc', bill_to_party: 'gc',
       invoices: [{ id: 'i372', job_id: 'j372', sequence_order: 1, amount: 35200, status: 'billed', billed_at: '2026-09-14' }],
       payments: [{ id: 'p1', job_id: 'j372', invoice_id: 'i372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '4402', sequence_order: 1 }],
     },
@@ -315,10 +315,10 @@ describe('Payments we have received (v2.4260)', () => {
     expect(statementReceivedIntro(null, 0)).toBe('No payments received on record. If you sent one, reply and we will find it.')
   })
 
-  const input = { payerName: 'RMC- Dudley Mason', dateStr: 'Sep 30, 2026', bills: [bill({ key: '372', billed: 35200, owed: 17600 })] }
+  const input = { payerName: 'RLC- Dunmere Mallin', dateStr: 'Sep 30, 2026', bills: [bill({ key: '372', billed: 35200, owed: 17600 })] }
 
   it('HTML: the block sits between the total and the account card, and only when the lane brought it', () => {
-    const html = renderStatementByPropertyHtml({ ...input, received, receivedSinceYmd: '2026-08-31', portalUrl: 'https://my.clickplumbing.com/rmc' })
+    const html = renderStatementByPropertyHtml({ ...input, received, receivedSinceYmd: '2026-08-31', portalUrl: 'https://my.clickplumbing.com/rlc' })
     expect(html).toContain('Payments we have received')
     expect(html).toContain('2 payments since Aug 31, 2026, newest first.')
     expect(html).toContain('Check #4402<span style="color:#5b6676"> to 1780 FM 1343 · Job 372</span>')

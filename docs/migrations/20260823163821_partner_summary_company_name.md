@@ -1,7 +1,7 @@
 # 20260823163821_partner_summary_company_name.sql (2026-08-23, v2.2170)
 
 **Purpose:** the partner statement's letterhead prints the deal's company name
-("Partner account · Herber Electric") and "partner since" from the deal's real
+("Partner account · Helbrow Electric") and "partner since" from the deal's real
 start date instead of inferring it from the oldest ledger week.
 
 **Change:** `CREATE OR REPLACE FUNCTION public.partner_summary_payload(uuid)` —

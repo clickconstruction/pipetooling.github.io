@@ -4,7 +4,7 @@ import { findExactBillCombos, type ComboTargetSlice } from './arPayerBillCombos'
 const t = (key: string, remaining: number): ComboTargetSlice => ({ key, remaining })
 
 describe('findExactBillCombos', () => {
-  it('finds the one pair that sums to the deposit (the Reliant case)', () => {
+  it('finds the one pair that sums to the deposit (the Relwyn case)', () => {
     const combos = findExactBillCombos(4091.5, [t('915', 2711.5), t('880', 1380)])
     expect(combos).toEqual([['915', '880']])
   })

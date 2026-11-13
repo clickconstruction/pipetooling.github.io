@@ -12,8 +12,8 @@ import {
   type WonCascadeSnapshot,
 } from './wonCascade'
 
-const own: CascadePacket = { key: '', name: 'Burd & Assoc.', outcome: null, sentOn: '2026-08-20', versionIds: ['v1'] }
-const southern: CascadePacket = { key: 'c2', name: 'Southern Post', outcome: null, sentOn: '2026-08-21', versionIds: ['v2', 'v2b'] }
+const own: CascadePacket = { key: '', name: 'Brund & Assoc.', outcome: null, sentOn: '2026-08-20', versionIds: ['v1'] }
+const southern: CascadePacket = { key: 'c2', name: 'Southern Pine', outcome: null, sentOn: '2026-08-21', versionIds: ['v2', 'v2b'] }
 const unsent: CascadePacket = { key: 'c3', name: 'PlanHub', outcome: null, sentOn: null, versionIds: ['v3'] }
 const alreadyLost: CascadePacket = { key: 'c4', name: 'MERIT', outcome: 'lost', sentOn: '2026-08-19', versionIds: ['v4'] }
 const shared: CascadePacket = { key: 'shared:c5', name: 'Rider', outcome: null, sentOn: '2026-08-20', versionIds: [], sharedLetter: true }
@@ -21,8 +21,8 @@ const shared: CascadePacket = { key: 'shared:c5', name: 'Rider', outcome: null, 
 describe('wonCascadePlan', () => {
   it('names the sent, unanswered siblings and the bid roll; skips unsent, answered and shared-letter packets', () => {
     const plan = wonCascadePlan({ outcome: null }, [own, southern, unsent, alreadyLost, shared], '')
-    expect(plan.target?.name).toBe('Burd & Assoc.')
-    expect(plan.willLose.map((p) => p.name)).toEqual(['Southern Post'])
+    expect(plan.target?.name).toBe('Brund & Assoc.')
+    expect(plan.willLose.map((p) => p.name)).toEqual(['Southern Pine'])
     expect(plan.willLoseGcIds).toEqual(['c2'])
     expect(plan.willRollBidOutcome).toBe(true)
     expect(plan.overridesHandSetOutcome).toBeNull()
@@ -51,21 +51,21 @@ describe('wonCascadePlan', () => {
 describe('wonCascadeConfirmMessage', () => {
   it('states the cascade before the tap, naming the GCs', () => {
     const msg = wonCascadeConfirmMessage(wonCascadePlan({ outcome: null }, [own, southern, unsent], ''))
-    expect(msg).toBe('Mark Burd & Assoc. Won? This marks the other GC (Southern Post) Lost — GC lost the project and the bid Won. ↩ waiting on the winner puts all of it back.')
+    expect(msg).toBe('Mark Brund & Assoc. Won? This marks the other GC (Southern Pine) Lost — GC lost the project and the bid Won. ↩ waiting on the winner puts all of it back.')
   })
 
   it('calls out a hand-set Lost it will flip', () => {
     const msg = wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'lost' }, [own, southern], 'c2'))
-    expect(msg).toContain('This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won.')
+    expect(msg).toContain('This marks the other GC (Brund & Assoc.) Lost — GC lost the project and the bid Won.')
     expect(msg).toContain('The bid is currently marked Lost by hand — it flips to Won.')
   })
 
   it('joins three names with an and, and says when only the packet changes', () => {
     const third: CascadePacket = { ...unsent, sentOn: '2026-08-22' }
-    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, southern, third], ''))).toContain('(Southern Post and PlanHub) Lost')
+    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, southern, third], ''))).toContain('(Southern Pine and PlanHub) Lost')
     const fourth: CascadePacket = { key: 'c6', name: 'Acme', outcome: null, sentOn: '2026-08-22', versionIds: ['v6'] }
-    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, southern, third, fourth], ''))).toContain('(Southern Post, PlanHub and Acme) Lost')
-    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, alreadyLost], ''), { gcName: 'Burd' })).toBe("Mark Burd Won? Only Burd's packet changes.")
+    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, southern, third, fourth], ''))).toContain('(Southern Pine, PlanHub and Acme) Lost')
+    expect(wonCascadeConfirmMessage(wonCascadePlan({ outcome: 'won' }, [own, alreadyLost], ''), { gcName: 'Brund' })).toBe("Mark Brund Won? Only Brund's packet changes.")
   })
 })
 
@@ -78,7 +78,7 @@ const sessionSnapshot: WonCascadeSnapshot = {
     { id: 'v2', outcome: null, outcome_at: null, loss_category: null },
     { id: 'v2b', outcome: null, outcome_at: null, loss_category: null },
   ],
-  autoLostNames: ['Southern Post'],
+  autoLostNames: ['Southern Pine'],
   bidOutcomeBefore: 'lost',
   bidOutcomeWritten: true,
   takenAt: '2026-09-05T15:00:00Z',
@@ -94,7 +94,7 @@ describe('wonCascadeUndo', () => {
       { id: 'v2b', outcome: null, outcome_at: null, loss_category: null },
     ])
     expect(undo.bidPatch).toEqual({ outcome: 'lost' })
-    expect(undo.restoredSiblingNames).toEqual(['Southern Post'])
+    expect(undo.restoredSiblingNames).toEqual(['Southern Pine'])
   })
 
   it('restores a sibling that had its own prior answer, and leaves bids.outcome alone when the cascade never wrote it', () => {
@@ -130,7 +130,7 @@ describe('inferWonCascadeSnapshot (no session snapshot — reload or signature-s
   it('treats same-day, reason-less Lost siblings as the cascade and leaves reasoned or earlier losses alone', () => {
     const snap = inferWonCascadeSnapshot({ bidId: 'b1', bidOutcome: 'won', gcs: [own, southern, alreadyLost, reasoned, shared], targetKey: '', rows, nowIso: '2026-09-05T15:00:00Z' })
     expect(snap.source).toBe('inferred')
-    expect(snap.autoLostNames).toEqual(['Southern Post'])
+    expect(snap.autoLostNames).toEqual(['Southern Pine'])
     expect(snap.versions.map((v) => v.id)).toEqual(['v1', 'v2', 'v2b'])
     expect(snap.bidOutcomeWritten).toBe(true)
     expect(snap.bidOutcomeBefore).toBeNull()
@@ -154,12 +154,12 @@ describe('telemetry + notes', () => {
   })
 
   it('the packet path finally writes a Win/Loss note, both ways', () => {
-    expect(wonCascadeNoteBody({ gcName: 'Southern Post', autoLostNames: ['Burd & Assoc.'], bidOutcomeSet: true, overrodeHandSet: 'lost' })).toBe(
-      'Marked Won via packet — Southern Post · siblings marked Lost: Burd & Assoc. (GC lost the project) · bid Lost → Won.',
+    expect(wonCascadeNoteBody({ gcName: 'Southern Pine', autoLostNames: ['Brund & Assoc.'], bidOutcomeSet: true, overrodeHandSet: 'lost' })).toBe(
+      'Marked Won via packet — Southern Pine · siblings marked Lost: Brund & Assoc. (GC lost the project) · bid Lost → Won.',
     )
-    expect(wonCascadeNoteBody({ gcName: 'Southern Post', autoLostNames: [], bidOutcomeSet: false, overrodeHandSet: null })).toBe('Marked Won via packet — Southern Post.')
-    expect(wonCascadeUndoNoteBody({ gcName: 'Southern Post', restoredSiblingNames: ['Burd & Assoc.'], bidOutcomeRestoredTo: 'lost' })).toBe(
-      'Won undone via packet — Southern Post back to waiting · Burd & Assoc. back to waiting · bid back to Lost.',
+    expect(wonCascadeNoteBody({ gcName: 'Southern Pine', autoLostNames: [], bidOutcomeSet: false, overrodeHandSet: null })).toBe('Marked Won via packet — Southern Pine.')
+    expect(wonCascadeUndoNoteBody({ gcName: 'Southern Pine', restoredSiblingNames: ['Brund & Assoc.'], bidOutcomeRestoredTo: 'lost' })).toBe(
+      'Won undone via packet — Southern Pine back to waiting · Brund & Assoc. back to waiting · bid back to Lost.',
     )
     expect(wonCascadeUndoNoteBody({ gcName: 'X', restoredSiblingNames: [], bidOutcomeRestoredTo: undefined })).toBe('Won undone via packet — X back to waiting.')
   })

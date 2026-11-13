@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPricingComposition, compositionHeadline, compositionKind } from './pricingComposition'
 
-describe('compositionKind — the names on a real priced bid (b385 Galloway Park)', () => {
+describe('compositionKind — the names on a real priced bid (b385 Gallenby Park)', () => {
   it('fixtures', () => {
     for (const n of ['WC - 2 / Water Closet', 'LAV - 1 / Sink', 'GT -1 / Grease Interceptor', 'UR - 1 / Urinal', 'WS - 1 / Resin Tank & Brine Tank', 'SK - 1 / Sink', 'Toilets', 'Floor Drain', 'Water Heater 50 gal']) {
       expect(compositionKind(n), n).toBe('fixture')

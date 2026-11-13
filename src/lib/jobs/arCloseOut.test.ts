@@ -30,7 +30,7 @@ describe('buildArCloseOutOffer', () => {
   it('suggests a reason from the bank text', () => {
     expect(buildArCloseOutOffer({ remaining: 3.12, consumed: 0, memo: 'INTEREST PAYMENT' })!.suggestedReason).toBe('bank_interest')
     expect(buildArCloseOutOffer({ remaining: 312.48, consumed: 0, counterpartyName: 'Ferguson Enterprises', memo: 'REFUND INV 8842710 RETURN' })!.suggestedReason).toBe('vendor_refund')
-    expect(buildArCloseOutOffer({ remaining: 5000, consumed: 0, counterpartyName: 'Elaine Giesber' })!.suggestedReason).toBeNull()
+    expect(buildArCloseOutOffer({ remaining: 5000, consumed: 0, counterpartyName: 'Elaine Gilbrow' })!.suggestedReason).toBeNull()
   })
 })
 

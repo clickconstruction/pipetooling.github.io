@@ -3,16 +3,16 @@ import { filterBills, filterTxns, isBilledAfterPaid, lensCounts, missingInfoLabe
 
 const raw = {
   payments: [
-    { paymentId: 'p1', paidYmd: '2026-08-14', amount: 8450, paymentType: 'check', customerName: 'Knight Contracting', jobId: 'j1', jobName: 'Panel swap', address: '1207 Kingsbury Ln', billedYmd: '2026-07-21', gapDays: 24, status: 'measurable' },
-    { paymentId: 'p2', paidYmd: '2026-08-11', amount: 1290, paymentType: null, customerName: 'Michael Holub', jobId: 'j2', jobName: 'Water softener', address: '44 Cibolo Trace', billedYmd: null, gapDays: null, status: 'unlinked' },
+    { paymentId: 'p1', paidYmd: '2026-08-14', amount: 8450, paymentType: 'check', customerName: 'Kestrin Contracting', jobId: 'j1', jobName: 'Panel swap', address: '1207 Kingsbury Ln', billedYmd: '2026-07-21', gapDays: 24, status: 'measurable' },
+    { paymentId: 'p2', paidYmd: '2026-08-11', amount: 1290, paymentType: null, customerName: 'Michael Holmby', jobId: 'j2', jobName: 'Water softener', address: '44 Cibolo Trace', billedYmd: null, gapDays: null, status: 'unlinked' },
     { paymentId: 'p5', paidYmd: '2026-08-10', amount: 350, paymentType: null, customerName: 'City of Seguin', jobId: 'j5', jobName: 'Wave pool', address: '1 Wave Pool Dr', invoiceId: 'i5', billedYmd: null, gapDays: null, status: 'unlinked' },
-    { paymentId: 'p3', paidYmd: '2026-07-29', amount: 2140, paymentType: 'hcp', customerName: 'RMC- Dudley Mason', jobId: 'j3', jobName: 'Slab rough-in', address: '8110 FM 1044', billedYmd: '2026-07-29', gapDays: 0, status: 'quarantined' },
-    { paymentId: 'p4', paidYmd: '2026-07-18', amount: 620, paymentType: null, customerName: 'Aaron Berg', jobId: 'j4', jobName: null, address: null, billedYmd: null, gapDays: null, status: 'excluded' },
-    { paymentId: 'p6', paidYmd: '2026-08-14', amount: 5983, paymentType: 'Card (external)', customerName: 'Tyler Moore', jobId: 'j6', jobName: 'Yogo Studio', address: '3556 FM 78', invoiceId: 'i6', billedYmd: '2026-08-19', gapDays: null, status: 'unlinked' },
+    { paymentId: 'p3', paidYmd: '2026-07-29', amount: 2140, paymentType: 'hcp', customerName: 'RLC- Dunmere Mallin', jobId: 'j3', jobName: 'Slab rough-in', address: '8110 FM 1044', billedYmd: '2026-07-29', gapDays: 0, status: 'quarantined' },
+    { paymentId: 'p4', paidYmd: '2026-07-18', amount: 620, paymentType: null, customerName: 'Aaron Birkby', jobId: 'j4', jobName: null, address: null, billedYmd: null, gapDays: null, status: 'excluded' },
+    { paymentId: 'p6', paidYmd: '2026-08-14', amount: 5983, paymentType: 'Card (external)', customerName: 'Tyler Morby', jobId: 'j6', jobName: 'Yobo Studio', address: '3556 FM 78', invoiceId: 'i6', billedYmd: '2026-08-19', gapDays: null, status: 'unlinked' },
     { paymentId: '', paidYmd: 'nope', amount: 1, status: 'measurable' }, // malformed → dropped
   ],
   undatedInvoices: [
-    { invoiceId: 'i1', amount: 32108, status: 'billed', customerName: 'Southern Post Construction', jobId: 'j9', jobName: 'Phase 1', address: '900 Commerce Pk' },
+    { invoiceId: 'i1', amount: 32108, status: 'billed', customerName: 'Southern Pine Construction', jobId: 'j9', jobName: 'Phase 1', address: '900 Commerce Pk' },
   ],
 }
 

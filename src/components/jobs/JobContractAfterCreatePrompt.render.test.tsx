@@ -77,17 +77,17 @@ beforeEach(() => {
 })
 
 function job(p: Record<string, unknown>): Record<string, unknown> {
-  return { id: 'j1', hcp_number: '523', click_number: '', job_name: 'Mission Hills', customer_name: 'TF Harper', revenue: 123600, gc_customer_id: null, gcCustomer: null, bid_id: null, ...p }
+  return { id: 'j1', hcp_number: '523', click_number: '', job_name: 'Mission Flats', customer_name: 'TF Halden', revenue: 123600, gc_customer_id: null, gcCustomer: null, bid_id: null, ...p }
 }
 
 describe('JobContractAfterCreatePrompt', () => {
   it('a GC job leads with filing the builder’s subcontract and opens the Contract modal on the filing sheet', async () => {
-    mockJob = job({ gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Summit GC' }, customer_name: 'Auto Zone' })
+    mockJob = job({ gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Selwick GC' }, customer_name: 'Tire Barn' })
     mockCoverage = { kind: 'none' }
     const onClose = vi.fn()
     renderWithProviders(<JobContractAfterCreatePrompt jobId="j1" onClose={onClose} />)
     await waitFor(() => expect(screen.getByText('Does J523 need a contract?')).toBeTruthy())
-    expect(screen.getByText("File Summit GC's subcontract")).toBeTruthy()
+    expect(screen.getByText("File Selwick GC's subcontract")).toBeTruthy()
     fireEvent.click(screen.getByTestId('contract-prompt-file'))
     await waitFor(() => expect(screen.getByTestId('contract-modal').textContent).toBe('filing'))
   })
@@ -125,7 +125,7 @@ describe('JobContractAfterCreatePrompt', () => {
   })
 
   it('a builder in the customer row with no GC is asked "building this for someone?"; Yes sets the GC and the owner box looks the site up (owner of record, PR 2)', async () => {
-    mockJob = job({ customer_id: 'c-sp', customer_name: 'Southern Post Construction', job_address: '380 TX-123, Seguin, TX', gc_customer_id: null })
+    mockJob = job({ customer_id: 'c-sp', customer_name: 'Southern Pine Construction', job_address: '410 TX-123, Seguin, TX', gc_customer_id: null })
     mockCoverage = { kind: 'none' }
     mockFloor = 0
     builderMock.mockResolvedValue(true)
@@ -133,12 +133,12 @@ describe('JobContractAfterCreatePrompt', () => {
       proposalFromLookupPayload(a, {
         ok: true,
         county_geocoder: 'Guadalupe',
-        parcel: { propId: '9', ownerName: 'TC/JP SEGUIN 2019 LLC', nameCare: '', legalDescription: 'ABS 1', situsAddress: '380 TX-123, SEGUIN, TX', mailingAddress: '1 MAIN ST, AUSTIN, TX', county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' },
+        parcel: { propId: '9', ownerName: 'TC/JP SEGUIN 2019 LLC', nameCare: '', legalDescription: 'ABS 1', situsAddress: '410 TX-123, SEGUIN, TX', mailingAddress: '1 MAIN ST, AUSTIN, TX', county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' },
       }),
     )
     renderWithProviders(<JobContractAfterCreatePrompt jobId="j1" onClose={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('builder-question')).toBeTruthy())
-    expect(screen.getByText('Is Southern Post Construction building this for someone?')).toBeTruthy()
+    expect(screen.getByText('Is Southern Pine Construction building this for someone?')).toBeTruthy()
     // No box while the question is open, and no lookup yet.
     expect(screen.queryByTestId('owner-lookup-box')).toBeNull()
     fireEvent.click(screen.getByTestId('builder-question-builder'))
@@ -151,7 +151,7 @@ describe('JobContractAfterCreatePrompt', () => {
   })
 
   it('"No — they own the site" records nothing and closes the question; a direct customer that is not a builder is never asked', async () => {
-    mockJob = job({ customer_id: 'c-sp', customer_name: 'Southern Post Construction', job_address: '380 TX-123, Seguin, TX', gc_customer_id: null })
+    mockJob = job({ customer_id: 'c-sp', customer_name: 'Southern Pine Construction', job_address: '410 TX-123, Seguin, TX', gc_customer_id: null })
     mockCoverage = { kind: 'none' }
     mockFloor = 0
     builderMock.mockResolvedValue(true)

@@ -58,7 +58,7 @@ The two walks ran on the dev server as the dev the same day:
 
 - **BP166 as an estimator** (2026-11-09, the dev seat's `view_as` on the estimator role's sample account, `get_bid` on
   BP166, read-only): the bid reads whole under the estimator's RLS, and its account strip names the job the Job block
-  reads as *J878 opened from this bid*: job 878 *Take 5- Seguin* at the bid's address, with its four supply-house rows.
+  reads as *J878 opened from this bid*: job 878 *Tune 5- Seguin* at the bid's address, with its four supply-house rows.
   The words themselves were not rendered, since rendering them means pressing Imitate in the owner's Chrome; the row the
   chip reads is visible to the estimator, which is what the check asked.
 

@@ -174,7 +174,7 @@ describe('planPrimaryRtbForBillCustomer — RPC parity, branch for branch', () =
 })
 
 describe('v2.3775 — a partly paid billed line counts for what is still unpaid on it', () => {
-  // Taunya, job 978 (Springtown HVAC), 2026-09-23: $3,630 bid, $2,999 paid on
+  // Taunya, job 978 (Stonewick HVAC), 2026-09-23: $3,630 bid, $2,999 paid on
   // the job ($1,018.87 of it applied to the one billed line), $1,072.50 billed.
   const job978 = { status: 'ready_to_bill', revenue: 3630, payments_made: 2999 }
   const lines978 = [inv({ id: 'billed', status: 'billed', amount: 1072.5 })]

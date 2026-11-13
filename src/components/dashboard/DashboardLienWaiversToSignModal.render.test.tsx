@@ -36,12 +36,12 @@ vi.mock('../../lib/jobs/lienReleaseSignIo', () => ({
     io.signs.push(args)
     return { ok: true, signedAtIso: '2026-09-30T20:00:00Z' }
   }),
-  resolveLienWaiverRecipient: vi.fn(async () => ({ email: 'ap@knight.example', name: 'Knight Contracting' })),
+  resolveLienWaiverRecipient: vi.fn(async () => ({ email: 'ap@kestrin.example', name: 'Kestrin Contracting' })),
 }))
 vi.mock('../../lib/sendLienReleaseEmail', () => ({
   sendLienReleaseEmailToCustomer: vi.fn(async (_r: unknown, _j: unknown, opts: unknown) => {
     io.sends.push(opts)
-    return { ok: true, sentTo: 'ap@knight.example' }
+    return { ok: true, sentTo: 'ap@kestrin.example' }
   }),
 }))
 vi.mock('../../lib/supabase', async () => {
@@ -59,7 +59,7 @@ function row(over: Partial<LienInboxRow> & { id: string; amount: number; form_ty
   return {
     created_at: '2026-09-30T15:00:00Z',
     created_by: null,
-    fields: { companyName: 'Click Plumbing and Electrical', checkFrom: 'Knight Contracting', amount: String(over.amount), projectDescription: 'Springtown — 415 Springtown Way', throughDate: '2026-09-30', signedDate: '2026-09-30', signerName: 'Malachi Reyes', signerTitle: 'Master Plumber' },
+    fields: { companyName: 'Click Plumbing and Electrical', checkFrom: 'Kestrin Contracting', amount: String(over.amount), projectDescription: 'Stonewick — 415 Stonewick Way', throughDate: '2026-09-30', signedDate: '2026-09-30', signerName: 'Malachi Reyes', signerTitle: 'Master Plumber' },
     invoice_ids: ['inv-2'],
     job_id: 'j977',
     minted_at: '2026-09-30T15:00:00Z',
@@ -82,12 +82,12 @@ function row(over: Partial<LienInboxRow> & { id: string; amount: number; form_ty
     through_date: '2026-09-30',
     voided_at: null,
     voided_by: null,
-    job: { id: 'j977', job_name: 'Springtown', hcp_number: '977', click_number: null, customer_email: 'owner@example.com' },
+    job: { id: 'j977', job_name: 'Stonewick', hcp_number: '977', click_number: null, customer_email: 'owner@example.com' },
     ...over,
   } as LienInboxRow
 }
 
-const rows = [row({ id: 'r1', amount: 15406, form_type: 'conditional_progress' }), row({ id: 'r2', amount: 4800, form_type: 'conditional_final', job: { id: 'j898', job_name: 'Reliant Health', hcp_number: '898', click_number: null, customer_email: null }, job_id: 'j898' })]
+const rows = [row({ id: 'r1', amount: 15406, form_type: 'conditional_progress' }), row({ id: 'r2', amount: 4800, form_type: 'conditional_final', job: { id: 'j898', job_name: 'Relwyn Health', hcp_number: '898', click_number: null, customer_email: null }, job_id: 'j898' })]
 
 describe('DashboardLienWaiversToSignModal (v2.4276)', () => {
   it('lists the waivers, shows the picked page, and signing sends to the payor and loads the next', async () => {
@@ -100,19 +100,19 @@ describe('DashboardLienWaiversToSignModal (v2.4276)', () => {
     expect(list.textContent).toContain('Conditional · final')
     expect(screen.getByTestId('lien-waivers-page').textContent).toContain('Conditional Waiver and Release on Progress Payment')
     await screen.findByTestId('lien-waivers-send-after')
-    expect(screen.getByRole('button', { name: '✍ Sign · send to Knight Contracting' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '✍ Sign · send to Kestrin Contracting' })).toBeTruthy()
     // v2.4335: he signs on the page's own line, his name printed under it.
     const line = within(screen.getByTestId('lien-waivers-page')).getByTestId('lien-waiver-sign-foot')
     expect(line.textContent).toContain('Malachi Reyes, Click Plumbing and Electrical')
     fireEvent.click(screen.getByLabelText(/I have read this release/))
-    fireEvent.click(screen.getByRole('button', { name: '✍ Sign · send to Knight Contracting' }))
+    fireEvent.click(screen.getByRole('button', { name: '✍ Sign · send to Kestrin Contracting' }))
     expect(screen.getByRole('alert').textContent).toBe('Sign on the line first.')
     pad.empty = false
-    fireEvent.click(screen.getByRole('button', { name: '✍ Sign · send to Knight Contracting' }))
+    fireEvent.click(screen.getByRole('button', { name: '✍ Sign · send to Kestrin Contracting' }))
     await waitFor(() => expect(io.signs).toHaveLength(1))
     expect(io.signs[0]).toMatchObject({ releaseId: 'r1', signer: { userId: 'master-1' }, onDevice: null, payload: { mode: 'draw', printedName: 'Malachi Reyes', signaturePngBase64: 'data:image/png;base64,DRAWN' } })
     await waitFor(() => expect(io.sends).toHaveLength(1))
-    expect(io.sends[0]).toMatchObject({ recipient: 'ap@knight.example', billLabel: '977 Springtown' })
+    expect(io.sends[0]).toMatchObject({ recipient: 'ap@kestrin.example', billLabel: '977 Stonewick' })
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     // the next row is picked: the final form's page
     await waitFor(() => expect(screen.getByTestId('lien-waivers-page').textContent).toContain('on Final Payment'))
@@ -120,7 +120,7 @@ describe('DashboardLienWaiversToSignModal (v2.4276)', () => {
   it('unticked, signing does not send; picking a row shows its page', async () => {
     renderWithProviders(<DashboardLienWaiversToSignModal open onClose={() => undefined} rows={rows} onChanged={() => undefined} />)
     await settle()
-    fireEvent.click(within(screen.getByTestId('lien-waivers-list')).getByRole('button', { name: /Reliant Health/ }))
+    fireEvent.click(within(screen.getByTestId('lien-waivers-list')).getByRole('button', { name: /Relwyn Health/ }))
     await waitFor(() => expect(screen.getByTestId('lien-waivers-page').textContent).toContain('on Final Payment'))
     await screen.findByTestId('lien-waivers-send-after')
     fireEvent.click(screen.getByTestId('lien-waivers-send-after'))

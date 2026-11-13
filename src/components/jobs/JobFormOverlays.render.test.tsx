@@ -89,7 +89,7 @@ describe('JobFormMercuryUnlinkConfirm', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
   it('v2.4313: a check the bank sent back says so, and never says its money is available again', async () => {
-    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'Southern Post', kind: 'checkDeposit', status: 'failed', failureReason: 'Insufficient funds' } }
+    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'Southern Pine', kind: 'checkDeposit', status: 'failed', failureReason: 'Insufficient funds' } }
     await renderSettled(<JobFormMercuryUnlinkConfirm rowId="p1" payments={payments} editing={editing} busyRowId={null} onCancel={() => {}} onConfirm={() => {}} zIndex={1011} bankFacts={bankFacts} />, { loaded: () => screen.findByText('Unlink and remove?') })
     expect(screen.getByTestId('unlink-bounced-words').textContent).toBe('The bank sent this check back: Insufficient funds. Taking it off puts the money back on the bill as owed.')
     expect(screen.getByText(/It cannot pay another bill/)).toBeTruthy()
@@ -98,7 +98,7 @@ describe('JobFormMercuryUnlinkConfirm', () => {
     expect(screen.getByText(/This job is Paid/)).toBeTruthy()
   })
   it('a deposit the bank still holds keeps the double-count words', async () => {
-    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'DRF', kind: 'checkDeposit', status: 'sent', failureReason: null } }
+    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'DLF', kind: 'checkDeposit', status: 'sent', failureReason: null } }
     await renderSettled(<JobFormMercuryUnlinkConfirm rowId="p1" payments={payments} editing={editing} busyRowId={null} onCancel={() => {}} onConfirm={() => {}} zIndex={1011} bankFacts={bankFacts} />, { loaded: () => screen.findByText('Unlink and remove?') })
     expect(screen.getByText(/available again/)).toBeTruthy()
     expect(screen.queryByTestId('unlink-bounced-words')).toBeNull()
