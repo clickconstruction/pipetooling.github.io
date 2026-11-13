@@ -34,6 +34,7 @@ import { useSentLineFacts } from './useSentLineFacts'
 import { numbersOfRecord } from '../../../lib/messages/toChip'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
 import { EmptyState } from '../../EmptyState'
+import { THREAD_WINDOW_Z } from '../../../lib/windowLayers'
 
 export interface ThreadWindowProps {
   contactId: string
@@ -266,7 +267,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         position: 'fixed',
         inset: 0,
         background: 'rgba(15, 23, 42, 0.55)',
-        zIndex: 1200,
+        zIndex: THREAD_WINDOW_Z,
         display: 'flex',
         alignItems: phone ? 'stretch' : 'center',
         justifyContent: 'center',

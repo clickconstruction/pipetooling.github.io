@@ -16,6 +16,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
+import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from './stickers'
 import type { PhotoNote, PhotoStatus } from './photo'
 import { loadPartPriceRows } from './partPrices'
 import { bookPartIds, bookPriceRow, priceLookup, type BookPriceRow, type PricePick } from './bookPrice'
@@ -241,8 +242,18 @@ export function jobIdsWithData(): string[] {
   return [...jobs.entries()].filter(([, c]) => c.containers.some((x) => !x.retiredAt)).map(([id]) => id)
 }
 
-/** The box a label's code names, from the cache. */
-export function findContainerByCode(code: string): Container | null {
+/** Stickers this device has read by their code (v2.7072, punch list #329), as they stood at that read. */
+const stickersByCode = new Map<string, StickerFacts>()
+
+function cachedContainer(containerId: string): Container | null {
+  for (const c of jobs.values()) {
+    const hit = c.containers.find((x) => x.id === containerId)
+    if (hit) return hit
+  }
+  return null
+}
+
+function ownBoxByCode(code: string): Container | null {
   for (const c of jobs.values()) {
     const hit = c.containers.find((x) => !x.retiredAt && boxCode(x.id) === code)
     if (hit) return hit
@@ -250,14 +261,73 @@ export function findContainerByCode(code: string): Container | null {
   return null
 }
 
-/** The box a label's code names, from the table: the door a scanned code opens on any phone. */
-export async function fetchContainerByCode(code: string): Promise<Container | null> {
-  const cached = findContainerByCode(code)
-  if (cached) return cached
-  const { data, error } = await db.from('job_containers').select(CONTAINER_COLS).eq('code', code).is('retired_at', null).limit(1)
+/**
+ * The box a code names, from the cache: a sticker this device has read first (v2.7072), then a box's own label.
+ * A sticker may have moved since it was read, so a scan asks the table (`resolveBoxCode`); this is the answer with no signal.
+ */
+export function findContainerByCode(code: string): Container | null {
+  const sticker = stickersByCode.get(code)
+  if (sticker) {
+    const box = sticker.state === 'on_box' && sticker.containerId ? cachedContainer(sticker.containerId) : null
+    return box && !box.retiredAt ? box : null
+  }
+  return ownBoxByCode(code)
+}
+
+/** The sticker a code names, as `sticker_by_code` answers it under the caller's session; null when no sticker carries it. */
+async function fetchStickerByCode(code: string): Promise<StickerFacts | null> {
+  const { data, error } = await db.rpc('sticker_by_code' as never, { p_code: code } as never)
   if (error) throw error
-  const row = ((data ?? []) as ContainerRow[])[0]
-  return row ? containerOf(row) : null
+  const facts = stickerFactsOf(data)
+  if (facts) stickersByCode.set(code, facts)
+  else stickersByCode.delete(code)
+  return facts
+}
+
+/**
+ * The one resolver (v2.7072, punch list #329): what a scanned or typed code opens for someone signed in. A sticker's
+ * code is asked first and a box's own beside it, in one round trip; `codeLookup` picks. A label printed before stickers
+ * never depends on the sticker read: when that read fails and a box carries the code, the box opens, and the failure
+ * is thrown only when nothing else answers.
+ */
+export async function resolveBoxCode(code: string): Promise<CodeLookup> {
+  const cachedOwn = ownBoxByCode(code)
+  const [stickerRead, ownRead] = await Promise.allSettled([
+    fetchStickerByCode(code),
+    cachedOwn
+      ? Promise.resolve(cachedOwn)
+      : db.from('job_containers').select(CONTAINER_COLS).eq('code', code).is('retired_at', null).limit(1).then(({ data, error }) => {
+          if (error) throw error
+          const row = ((data ?? []) as ContainerRow[])[0]
+          return row ? containerOf(row) : null
+        }),
+  ])
+  const sticker = stickerRead.status === 'fulfilled' ? stickerRead.value : null
+  if (sticker) {
+    let stickerBox: Container | null = null
+    if (sticker.state === 'on_box' && sticker.containerId) {
+      stickerBox = cachedContainer(sticker.containerId)
+      if (!stickerBox) {
+        // Under the reader's own RLS: a box on a job they are not on comes back as no row.
+        const { data, error } = await db.from('job_containers').select(CONTAINER_COLS).eq('id', sticker.containerId).limit(1)
+        if (error) throw error
+        const row = ((data ?? []) as ContainerRow[])[0]
+        stickerBox = row ? containerOf(row) : null
+      }
+    }
+    return codeLookup({ sticker, stickerBox, ownBox: null })
+  }
+  const ownBox = ownRead.status === 'fulfilled' ? ownRead.value : null
+  if (ownBox) return codeLookup({ sticker: null, stickerBox: null, ownBox })
+  if (stickerRead.status === 'rejected') throw stickerRead.reason
+  if (ownRead.status === 'rejected') throw ownRead.reason
+  return { kind: 'none' }
+}
+
+/** The live box a code names, from the table: a sticker on it first, then its own label. Null for anything else. */
+export async function fetchContainerByCode(code: string): Promise<Container | null> {
+  const found = await resolveBoxCode(code)
+  return found.kind === 'box' ? found.container : null
 }
 
 // ---------------------------------------------------------------------------
