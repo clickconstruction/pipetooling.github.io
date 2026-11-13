@@ -42,6 +42,10 @@ Type what they said in the note box first. It saves with whichever button you ta
 Knight has six late bills. Dana says four are on Friday's run, one was never received, and one is retainage. Tap {{button:outline|Fri Aug 22}} for the four checked, hit Resend on the missing one, and note "retainage — holds till closeout" on the last. One call, everything recorded.
 :::
 
+## A customer on a pay calendar
+
+Some customers pay on a set day of the month. Call mode judges their bills against that calendar. A bill is late once it is past the day their money usually lands. The card's speed line reads like *lands ~6d after their pay day*. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
+
 ## The wrap-up
 
 Finishing the queue shows the session's receipts: dollars that now have promised dates, resends, snoozes, and disputes flagged. So "did anyone chase this?" always has an answer. When a customer racks up **2 broken promises**, the flow suggests Collections. It puts {{button:outline|Move … to Collections…}} right in the banner. That is the same typed confirm the board's Collections button opens. So you never leave call mode to escalate.

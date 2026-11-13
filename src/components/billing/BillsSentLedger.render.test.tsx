@@ -10,7 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import { BillsSentLedger } from './BillsSentLedger'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], fail: null as null | Error }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, fail: null as null | Error }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
@@ -21,6 +21,9 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     if (io.fail) throw io.fail
     return io.data
   },
+}))
+vi.mock('../../lib/storageSave', () => ({
+  saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
 }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({
   openSentCopy: async (row: { id: string }) => (io.opened.push(row.id), true),
@@ -62,6 +65,7 @@ beforeEach(() => {
   io.data = data([])
   io.asks = []
   io.opened = []
+  io.saved = []
   io.fail = null
 })
 afterEach(() => cleanup())
@@ -190,6 +194,25 @@ describe('BillsSentLedger', () => {
     renderWithProviders(<BillsSentLedger />)
     await screen.findAllByTestId('bills-sent-line')
     expect(screen.getByRole('link', { name: 'Bill 1412-0002' }).getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
+  })
+
+  it('prints and saves what the list shows, and offers neither on an empty list', async () => {
+    const printed: string[] = []
+    const opener = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (h: string) => printed.push(h), close: () => {}, images: [] }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    io.data = data([copy({}), copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s' })])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    fireEvent.click(screen.getByRole('button', { name: 'Statement' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }))
+    expect(printed[0]).toContain('<p>Statement. Newest first.')
+    expect(printed[0]).toContain('<b>Statement</b> · 12 jobs · Ridgeway Builders')
+    expect(printed[0]).not.toContain('Bill 1412-0002')
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }))
+    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d\.csv$/), type: 'text/csv;charset=utf-8' }])
+    fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
+    expect(screen.queryByRole('button', { name: 'Print' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Download CSV' })).toBeNull()
+    opener.mockRestore()
   })
 
   it('says what fills an empty list, and offers the Pipeline', async () => {

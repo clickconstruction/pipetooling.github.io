@@ -22,8 +22,12 @@
  *
  * PR 4 adds one bill's record (`billsSentRecord`): every send of that bill in order, newest first, each with who it
  * went to and whether it arrived, and the paper it prints as (`billsSentRecordHtml`).
+ *
+ * PR 5 takes the list out of the app: the lines on the screen as a spreadsheet (`billsSentCsv`) and as a page to
+ * print (`billsSentListHtml`), each in the order and with the words the screen shows.
  */
 import { companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
+import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
@@ -865,5 +869,82 @@ ${record.events.length ? `<table>${rows}</table>` : none}
 ${record.madeWords ? `<p class="foot">${esc(record.madeWords)}</p>` : ''}
 <p class="foot">Delivered means their mail server took the email. It does not mean someone read it. Each time is the app's own record of the send.</p>
 <p class="foot">Printed ${esc(dayAndTime(printedAtIso, false))}.</p>
+</body></html>`
+}
+
+
+/** A cell a spreadsheet will not run: text that opens like a formula is led with an apostrophe. */
+const csvCell = (v: string): string => escapeCsvField(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v)
+
+export const BILLS_SENT_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Time', 'Bill', 'Job', 'For', 'Amount', 'In the day total', 'To', 'Address or number', 'Copy to', 'How it went', 'Sent by', 'Send of this bill', 'Arrived', 'Paid', 'Note']
+
+/**
+ * The lines as a spreadsheet, in the order given, then the bills with no send on record. Dates are the company's
+ * calendar days, times are Central. The amount is a plain number so a column of them adds.
+ */
+export function billsSentCsv(lines: ReadonlyArray<BillsSentLine>, gaps: ReadonlyArray<BillsSentGap> = []): string {
+  const rows: string[][] = [BILLS_SENT_CSV_HEAD.slice()]
+  for (const l of lines) {
+    const ymd = Number.isFinite(Date.parse(l.atIso)) ? calendarYmdInAppTzFromIso(l.atIso) : ''
+    rows.push([
+      ymd,
+      l.dayOnly ? '' : billsSentTime(l.atIso),
+      l.what,
+      l.jobWords,
+      l.payer,
+      l.amount != null ? l.amount.toFixed(2) : '',
+      l.counts ? 'yes' : 'no',
+      l.toName,
+      l.toAddresses.join('; '),
+      l.copyTo.join('; '),
+      l.routeWords,
+      billsSentByWords(l).replace(/^by /, ''),
+      String(l.nth),
+      l.delivery,
+      billsSentPaidWords(l),
+      l.note,
+    ])
+  }
+  for (const g of gaps) {
+    rows.push(['', '', 'Bill', g.jobWords, g.payer, g.amount != null ? g.amount.toFixed(2) : '', 'no', '', '', '', BILLS_SENT_GAP_LABEL, '', '', '', g.paid ? 'Paid' : '', g.billedWords])
+  }
+  return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n'
+}
+
+/** `bills-sent-2026-11-12.csv`. */
+export function billsSentCsvFileName(todayYmd: string): string {
+  return `bills-sent-${todayYmd}.csv`
+}
+
+/**
+ * The list as a page to print: what is shown, under its days, with each day's count and total, then the open bills
+ * with no send on record. `shownWords` says what the page holds when the list was narrowed (*Email · "larkfield"*).
+ */
+export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: ReadonlyArray<BillsSentGap>, opts: { printedAtIso: string; shownWords: string }): string {
+  const lineRow = (l: BillsSentLine): string => {
+    const to = [l.toName, l.toAddresses.join(', ')].filter(Boolean).join(', ')
+    const facts = [l.routeWords, billsSentByWords(l), billsSentAgainWords(l), l.delivery, billsSentPaidWords(l)].filter(Boolean).join(' · ')
+    return `<tr><td class="when">${esc(l.dayOnly ? 'Day only' : billsSentTime(l.atIso))}</td><td><b>${esc(l.what)}</b>${l.jobWords ? ` · ${esc(l.jobWords)}` : ''}${l.payer ? ` · ${esc(l.payer)}` : ''}<br>${to ? `To ${esc(to)}${l.copyTo.length ? `, copy to ${esc(l.copyTo.join(', '))}` : ''}<br>` : ''}${esc(facts)}${l.note ? `<br>${esc(l.note)}` : ''}</td><td class="amt">${l.amount != null ? esc(billsSentMoney(l.amount)) : ''}</td></tr>`
+  }
+  const dayBlock = (d: BillsSentDay): string => {
+    const extras = billsSentDayExtras(d)
+    return `<tr class="day"><td colspan="3"><b>${esc(d.label)}</b> <span>${esc(billsSentSumWords(d.sum))}${extras ? ` · ${esc(extras)}` : ''}</span></td></tr>${d.lines.map(lineRow).join('')}`
+  }
+  const gapBlock = gaps.length
+    ? `<h2>${esc(billsSentGapHeading(gaps.length))}</h2><table>${gaps.map((g) => `<tr><td><b>Bill</b>${g.jobWords ? ` · ${esc(g.jobWords)}` : ''}${g.payer ? ` · ${esc(g.payer)}` : ''}<br>${esc(g.billedWords)} Not paid.</td><td class="amt">${g.amount != null ? esc(billsSentMoney(g.amount)) : ''}</td></tr>`).join('')}</table>`
+    : ''
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Bills sent</title><style>
+body{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:28px}
+h1{font-size:18px;margin:0 0 2px}h2{font-size:13px;margin:16px 0 4px}p{margin:3px 0;color:#444}
+table{border-collapse:collapse;width:100%}td{border-top:1px solid #ccc;padding:5px 8px 5px 0;vertical-align:top}
+td.when{white-space:nowrap;width:1%;padding-right:14px;font-weight:600}td.amt{text-align:right;white-space:nowrap;font-weight:600;padding-right:0}
+tr.day td{border-top:2px solid #111;padding-top:9px}tr.day span{color:#444;margin-left:8px}
+tr{break-inside:avoid}
+</style></head><body>
+<h1>Bills sent</h1>
+<p>${esc(opts.shownWords)} Newest first. All times are Central. A day’s total counts each bill once, on the day it first went.</p>
+${gapBlock}
+${days.length ? `<table>${days.map(dayBlock).join('')}</table>` : ''}
+<p style="margin-top:14px">Delivered means their mail server took the email. It does not mean someone read it. Printed ${esc(dayAndTime(opts.printedAtIso, false))}.</p>
 </body></html>`
 }
