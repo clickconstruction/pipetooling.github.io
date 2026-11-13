@@ -29,6 +29,9 @@
  * PR 6 lets a person say how a bill went when the app did not send it: handed over, mailed, emailed from their own
  * mailbox, sent from Housecall Pro. The record is one sent copy of kind `bill_by_hand` with no copy body
  * (`byHandFiling`), so the bill leaves the gaps and reads as a line on the day it went, marked as someone's word.
+ *
+ * A phone draws a line in three rows (`billsSentPhoneWords`): the time and the amount, then the work, then where it
+ * went. The bill's number stays on the bill's record, where the whole line leads.
  */
 import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { escapeCsvField } from '../domTableToCsv'
@@ -1040,4 +1043,18 @@ export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { 
     source: { table: BILL_SOURCE, id: gap.billId },
     sourceSnapshot: { by_hand: true, how: draft.how, went_on: draft.wentOnYmd, note: draft.note.trim() },
   }
+}
+
+
+/**
+ * A line's words for a phone, where it is three rows and the whole line is the press that opens the bill's record.
+ * `main` names the work: the job and who it is for, or the paper when the line is not a bill's (a statement).
+ * `to` is where it went. `again` says which send it is, short. The long bill number is left to the record.
+ */
+export function billsSentPhoneWords(line: Pick<BillsSentLine, 'billId' | 'what' | 'jobWords' | 'payer' | 'toName' | 'toAddresses' | 'copyTo' | 'nth'>): { main: string; to: string; again: string } {
+  const payer = line.payer && !line.jobWords.includes(line.payer) ? line.payer : ''
+  const main = [line.billId ? '' : line.what, line.jobWords, payer].filter(Boolean).join(' · ') || line.payer || line.what
+  const where = line.toAddresses.length > 0 ? line.toAddresses.join(', ') : line.toName
+  const copies = line.copyTo.length > 0 ? `, copy to ${line.copyTo.join(', ')}` : ''
+  return { main, to: where ? `To ${where}${copies}` : '', again: line.nth > 1 ? `${ordinal(line.nth)} send` : '' }
 }
