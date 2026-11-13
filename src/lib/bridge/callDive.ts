@@ -28,6 +28,9 @@ import { billTodo, payerTodo, pctTodo, priceTodo, projectTodo, supplyTodo, type 
  * Each thing also carries its to-do card (punch list #334, PR 9; `callTodo.ts`), for the check that hands that one
  * line to one person.
  *
+ * A job with no percent says its hours and who worked them (punch list #334, PR 10; `jobHours.ts`). The hours are a
+ * press of their own, which opens the detail: a percent is judged from them.
+ *
  * Nothing is counted here. Every list is handed in from what the page has already read, in the order it is given.
  *
  * Pure. Kept apart from `weekCall.ts`, which is copied to the edge functions: the weekly email does not draw this.
@@ -47,12 +50,14 @@ export type DiveTarget =
   | { kind: 'pct'; job: DivePctJob }
   /** The app's Add task window, written for this one thing (`callTodo.ts`). */
   | { kind: 'todo'; todo: CallTodo }
+  /** The hours behind one job and whose they are (`jobHours.ts`), with the percent window one press on. */
+  | { kind: 'hours'; jobId: string; jobLabel: string; pctJob: DivePctJob | null }
 
 /**
  * One cell of a line drawn as a table row. `text` is the cell under its column's heading; `phone` is the same fact
  * with its unit, for a phone where there is no heading over it.
  */
-export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean }
+export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean; /** A cell that opens its own detail, and what a screen reader hears on it. */ target?: DiveTarget; label?: string }
 /** A line's cells: two short figures and one run of words, under `DiveColumns`. */
 export type DiveRow = { a?: DiveCell; b?: DiveCell; text?: DiveCell }
 /** The headings over a move's lines. An empty heading is a column the move does not use. */
@@ -120,6 +125,10 @@ export type DiveFacts = {
     pctJob?: DivePctJob | null
     /** The percent set on the page this visit; the row stays where it was and says so. */
     setPct?: number | null
+    /** The job's hours and who worked them, in a few words (`jobHoursLine`). Absent until they are read. */
+    hoursLine?: string | null
+    /** The same as cells: the hours as a figure, with its unit for a phone, and the people. */
+    hoursCell?: { text: string; phone: string; by: string } | null
   }>
   noPriceJobs: ReadonlyArray<{ id: string; label: string }>
   /** What falls due on the day the cash call names, one row a supply house, largest first. */
@@ -200,16 +209,19 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
         const press = j.pctJob ? { press: { label: j.setPct != null ? 'Change the percent' : 'Set the percent', target: { kind: 'pct' as const, job: j.pctJob } } } : {}
         // A job set on this visit needs no card.
         const todo = j.setPct == null ? { todo: pctTodo(j) } : {}
+        // The hours are what a percent is judged from: the cell says them, and it opens who worked them and when.
+        const hoursTarget = { kind: 'hours' as const, jobId: j.id, jobLabel: j.label, pctJob: j.pctJob ?? null }
         const row: DiveRow = {
+          ...(j.hoursCell ? { a: { text: j.hoursCell.text, phone: j.hoursCell.phone, target: hoursTarget, label: `See the hours on ${j.label}: ${j.hoursLine ?? j.hoursCell.phone}` } } : {}),
           ...(j.revenueUsd != null && j.revenueUsd > 0 ? { b: { text: shortK(j.revenueUsd), phone: `${shortK(j.revenueUsd)} contract`, muted: true } } : {}),
-          // A percent set on this visit says so on the line, which stays where it was.
-          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : {}),
+          // A percent set on this visit says so where the people were; the line stays where it was.
+          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
         }
         return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row }
       }),
       press: null,
       target: null,
-      columns: { name: 'Job', a: '', b: 'Contract', text: '' },
+      columns: { name: 'Job', a: 'Hours', b: 'Contract', text: 'Worked by' },
     }
   }
   if (move.key === 'price') {

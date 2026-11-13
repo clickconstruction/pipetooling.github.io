@@ -174,13 +174,32 @@ describe('moveDive', () => {
     expect(bill?.columns).toEqual({ name: 'Job', a: 'To bill', b: '', text: '' })
     expect(bill?.items[0]?.row).toEqual({ a: { text: '$18.0k', phone: '$18.0k to bill' } })
     const pct = moveDive({ key: 'pct', title: '', door: null }, { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000 }, { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, setPct: 60 }] })
-    expect(pct?.columns).toEqual({ name: 'Job', a: '', b: 'Contract', text: '' })
+    expect(pct?.columns).toEqual({ name: 'Job', a: 'Hours', b: 'Contract', text: 'Worked by' })
     expect(pct?.items[0]?.row).toEqual({ b: { text: '$30.0k', phone: '$30.0k contract', muted: true } })
     expect(pct?.items[1]?.row).toEqual({ text: { text: 'Set to 60% just now' } })
     const supply = moveDive({ key: 'other', title: 'Ask the supply houses for more days.', door: null }, facts)
     expect(supply?.columns).toEqual({ name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' })
     expect(supply?.items[0]?.row).toEqual({ a: { text: '$7.2k', phone: '$7.2k due' }, b: { text: '4', phone: '4 bills', muted: true }, text: { text: 'd04' } })
     expect(supply?.items[1]?.row).toEqual({ a: { text: '$1.1k', phone: '$1.1k due' }, b: { text: '1', phone: '1 bill', muted: true } })
+  })
+
+  it('says a job’s hours and who worked them, as a cell that opens the detail (#334, PR 10)', () => {
+    const pctJob = { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' }
+    const withHours: DiveFacts = {
+      ...facts,
+      noPctJobs: [
+        { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob, hoursLine: '24 hours by Dana and Sam', hoursCell: { text: '24', phone: '24 hours', by: 'Dana and Sam' } },
+        { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, hoursLine: 'No hours yet', hoursCell: { text: '0', phone: 'No hours yet', by: '' } },
+        { id: 'j303', label: '303 · Fir Lane', revenueUsd: null, pctJob, setPct: 40, hoursLine: '8 hours by Lee', hoursCell: { text: '8', phone: '8 hours', by: 'Lee' } },
+      ],
+    }
+    const d = moveDive({ key: 'pct', title: '', door: null }, withHours)
+    const hours = { kind: 'hours', jobId: 'j301', jobLabel: '301 · Pine Row', pctJob }
+    expect(d?.items[0]?.row).toEqual({ a: { text: '24', phone: '24 hours', target: hours, label: 'See the hours on 301 · Pine Row: 24 hours by Dana and Sam' }, b: { text: '$30.0k', phone: '$30.0k contract', muted: true }, text: { text: 'Dana and Sam', muted: true } })
+    // No hours yet: the cell still opens the window, which says so. A job the percent window cannot take hands it none.
+    expect(d?.items[1]?.row).toEqual({ a: { text: '0', phone: 'No hours yet', target: { kind: 'hours', jobId: 'j302', jobLabel: '302 · Spruce Hall', pctJob: null }, label: 'See the hours on 302 · Spruce Hall: No hours yet' } })
+    // A percent set on this visit says so where the people were.
+    expect(d?.items[2]?.row?.text).toEqual({ text: 'Set to 40% just now' })
   })
 
   it('hands every named thing a to-do card of its own', () => {

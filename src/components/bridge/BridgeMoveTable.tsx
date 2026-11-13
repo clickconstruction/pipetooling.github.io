@@ -64,7 +64,18 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
       return next
     })
 
-  const cellWords = (c: DiveCell | undefined, phone: boolean): ReactNode => (c ? <span style={{ color: cellColor(c) }}>{phone ? (c.phone ?? c.text) : c.text}</span> : null)
+  /** A cell's words, as a press when the cell opens its own detail: a job's hours (punch list #334, PR 10). A word press: the underline alone. */
+  const cellWords = (c: DiveCell | undefined, phone: boolean): ReactNode => {
+    if (!c) return null
+    const words = phone ? (c.phone ?? c.text) : c.text
+    if (!c.target) return <span style={{ color: cellColor(c) }}>{words}</span>
+    const target = c.target
+    return (
+      <button type="button" onClick={() => onDive?.(target)} aria-label={c.label} data-testid="bridge-week-dive-more" style={{ font: 'inherit', fontSize: 'inherit', minHeight: narrow ? 44 : 36, padding: 0, border: 'none', background: 'transparent', color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+        {words}
+      </button>
+    )
+  }
   const nameOf = (item: DiveItem): ReactNode => {
     const style: CSSProperties = { font: 'inherit', fontSize: '0.84rem', fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', textAlign: 'left', minWidth: 0, ...(narrow ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }
     return item.target.kind === 'page' ? (

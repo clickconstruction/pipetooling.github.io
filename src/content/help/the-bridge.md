@@ -52,7 +52,7 @@ Each move names the things behind it, as a small table. A table shows three line
 
 - **Chase the late invoices** lists the customers to call. Each line says what is late, how old the oldest bill is, and the pay date they named. Press a customer's name to open the Collect window on that customer. Press **2 projects** on a line to see each open bill under it. Press **Set a pay date** on a bill to write down the day they named. Press **See who to call ›** to open the Collect window as it is.
 - **Bill the finished jobs** lists the jobs with finished work and no bill. Press a job to open it. Press **See what to bill ›** to open the Bill window.
-- **Set a percent** lists the jobs with no percent. Press **Set the percent** on a line to set it right there. The line stays on the list for the visit and says what you set.
+- **Set a percent** lists the jobs with no percent. Each line says the hours worked on the job and who worked them. Press the hours to see each person, then every day worked, newest first. Hours still waiting on approval are marked and are not in the total. Press **Set the percent** on a line, or at the foot of the hours window, to set it right there. The line stays on the list for the visit and says what you set.
 - **Price the jobs** lists the jobs with no price. Press a job to open it.
 - **Ask the supply houses for more days** lists the supply houses with bills due that day. Press a supply house to open its bills on that day. Press **See the bills ›** to open the list behind Money.
 
