@@ -41,18 +41,24 @@ const rowLabel = (runway: ReturnType<typeof buildLienPayRunway>, chip: ReturnTyp
 const firstWord = (s: string) => s.split(/[\s,]/)[0]
 
 describe('one job reads one way on the billed row, the AR chip and the Lien window’s header (v2.7048)', () => {
-  const NOTICE_STEPS: Array<{ state: LienTimelineNoticeState; action: LienNextUpAction; sub: string; act: string }> = [
+  const NOTICE_STEPS: Array<{ state: LienTimelineNoticeState; action: LienNextUpAction; sub: string; act: string; chipSaysState?: boolean }> = [
     { state: 'needs_owner', action: 'find_owner', sub: 'Needs the owner of record', act: 'Find the owner' },
     { state: 'to_draft', action: 'draft', sub: 'Notice to draft', act: 'Draft the notice' },
     { state: 'awaiting', action: 'approve', sub: 'Waiting on your approval', act: 'Approve the notice' },
     { state: 'ready', action: 'send', sub: 'Approved · ready to send', act: 'Send the notice' },
+    // v2.7077: a printed notice has its own step on the path, so the header no longer falls back to *Draft*.
+    // The chip keeps the state it always said of a paper that is out (*In the mail*); the row and the header name the act.
+    { state: 'printed', action: 'add_tracking', sub: 'In the mail · tracking owed', act: 'Record the mailing', chipSaysState: true },
   ]
   for (const step of NOTICE_STEPS) {
     it(`a notice at "${step.state}": ${step.act}`, () => {
       const chip = chipFor(deskRow('notice', step.action, step.sub, '2026-11-16'))
       expect(lienActFor({ paper: 'notice', action: step.action, yours: true })?.words).toBe(step.act)
-      expect(chip.lead).toBe(step.act)
-      expect(chip.words).toBe(`${step.act} · by Nov 16 · 54d`)
+      expect(chip.act?.words).toBe(step.act)
+      if (!step.chipSaysState) {
+        expect(chip.lead).toBe(step.act)
+        expect(chip.words).toBe(`${step.act} · by Nov 16 · 54d`)
+      }
       expect(rowLabel(buildLienPayRunway(runwayInput()), chip)).toBe(step.act)
       const next = buildLienTimeline(timelineInput({ noticeState: step.state })).next
       expect(next.kind).toBe('notice')
