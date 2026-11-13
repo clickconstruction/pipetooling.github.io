@@ -171,7 +171,7 @@ describe('a new map', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stop, and lose the line' }))
     expect(closed).toBe(0)
     expect(names()).toEqual([])
-    expect(screen.getByText(/Nothing is painted on this map yet\. Press Draw a line or ＋ Place to start it\. Nothing is saved until then\./)).toBeTruthy()
+    expect(screen.getByText(/Nothing is painted on this map yet\. Press Draw a line or ＋ Place to start it\. The map is saved with its first line or place\./)).toBeTruthy()
   })
 
   it('may start with a place: the map is made by that first save', async () => {
