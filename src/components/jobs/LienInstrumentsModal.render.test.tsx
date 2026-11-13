@@ -229,6 +229,27 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(onOpenRelease).toHaveBeenCalledTimes(1)
   })
 
+  it('the header names the desk’s step on a notice in work when the opener hands it over (v2.7077)', async () => {
+    const verdict = async () =>
+      waitFor(() => {
+        const el = document.querySelector('[data-lien-timeline-verdict]') as HTMLElement | null
+        expect(el?.textContent).toMatch(/notice/)
+        return el!
+      })
+    // Made today, with no clock hours: this month's notice window is open whatever day the suite runs.
+    const fresh = () => job({ created_at: new Date().toISOString(), last_work_date: null })
+    const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} />)
+    await settle()
+    expect((await verdict()).textContent).toMatch(/Draft the \w+ notice/)
+    first.unmount()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} deskNotice={{ state: 'printed', holdUntil: null }} />)
+    await settle()
+    const card = await verdict()
+    expect(card.textContent).toMatch(/Record the mailing of the \w+ notice/)
+    expect(card.textContent).toContain('the envelope’s certified number to be typed in')
+    expect(card.textContent).not.toMatch(/Draft the/)
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await settle()

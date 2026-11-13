@@ -7,13 +7,13 @@ import { ESTIMATE_LINK_LOCKED_CODE, recordEstimateLinkMiss } from '../_shared/es
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPageKind, boxPageOfficePhone, boxPagePhotoUrl, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine } from '../_shared/boxPage.ts'
+import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxPageKind, boxPageOfficePhone, boxPagePhotoUrl, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine, type BoxPageStickerRow } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
  * `PRTS.CO/B/<eight hex>`; prts.co forwards it to the app's `/b/:code`, and signed out the page asks here.
  *
- *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, lines, gone, lastCountedOn, photo }, office }
+ *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, lines, gone, lastCountedOn, photo, stickerNumber? }, office }
  *                                             the live container by its code, its lines from `on_site_job_summary` (the
  *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
  *                                             Since v2.6874 a line carries its Can't find presses since its count, `gone` is
@@ -34,6 +34,13 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxP
  * kind and the office's number, which the label in the hand already prints or the letterhead already carries. Each read that opens lands
  * one `public_page_views` row (surface `box_page`); a staff session or `?preview=1` is stamped and not counted, as the
  * portals do. Rate limit: 60 reads a minute per client address and 600 across the isolate, in memory, best effort.
+ *
+ * Since v2.7072 (punch list #329) the code may be a sticker's (`box_stickers.code`, cut from the sticker's own id by the
+ * rule a box's code follows). The sticker is read first. One on a box answers that box, every branch above included,
+ * with `box.stickerNumber` and the scanned code as `box.code`. A blank one answers 404 `{ error: 'sticker_blank',
+ * number }` and nothing else, and counts no miss: it is a real code. A lost one answers 410 `{ error: 'sticker_lost',
+ * number, lostOn }`. A sticker read that fails is logged and the code is read as a box's own, so a label printed before
+ * stickers opens whatever happens to that read.
  */
 
 const corsHeaders = {
@@ -103,13 +110,28 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 
-    const { data: rowRaw, error: rowErr } = await admin
-      .from('job_containers')
-      .select('id, job_id, label, kind, where_note, place_id, retired_at, code')
-      .eq('code', code)
-      .maybeSingle()
+    // A sticker's code first (v2.7072). A read that fails is not the label's fault: log it and read the code as a box's own.
+    let stickerRow: BoxPageStickerRow | null = null
+    {
+      const { data: sRaw, error: sErr } = await admin.from('box_stickers').select('id, number, code, container_id, lost_at').eq('code', code).maybeSingle()
+      if (sErr) console.warn('box-read: the sticker did not read', sErr.message)
+      else stickerRow = sRaw as BoxPageStickerRow | null
+    }
+    const sticker = boxPageStickerAnswer(stickerRow, stickerRow?.lost_at ? calendarYmdInAppTzFromIso(stickerRow.lost_at) : null)
+    if (sticker.kind === 'blank' || sticker.kind === 'lost') {
+      console.log(JSON.stringify({ event: 'box_page_open', code, state: sticker.body.error }))
+      return json(sticker.body, sticker.status)
+    }
+
+    const boxQuery = admin.from('job_containers').select('id, job_id, label, kind, where_note, place_id, retired_at, code')
+    const { data: rowRaw, error: rowErr } = await (sticker.kind === 'box' ? boxQuery.eq('id', sticker.containerId) : boxQuery.eq('code', code)).maybeSingle()
     if (rowErr) throw new Error(rowErr.message)
     const row = rowRaw as BoxPageContainerRow | null
+    if (!row && sticker.kind === 'box') {
+      // Its box went between the two reads: the foreign key has made the sticker blank.
+      console.log(JSON.stringify({ event: 'box_page_open', code, state: 'sticker_blank' }))
+      return json({ error: 'sticker_blank', number: sticker.number }, 404)
+    }
     if (!row) {
       console.log(JSON.stringify({ event: 'box_page_open', code, state: 'not_found' }))
       const miss = await recordEstimateLinkMiss(admin, req, 'box-read')
@@ -166,7 +188,7 @@ serve(async (req) => {
       if (boxesRes.error) throw new Error(boxesRes.error.message)
       if (sumRes.error) throw new Error(sumRes.error.message)
       const sum = (sumRes.data ?? {}) as { lines?: BoxPageServerLine[] }
-      const find = boxPageFind({ thisCode: code, words, containers: (boxesRes.data ?? []) as BoxPageContainerRow[], places: (placesRes.data ?? []) as Array<{ id: string; name: string }>, lines: sum.lines ?? [] })
+      const find = boxPageFind({ thisCode: row.code, words, containers: (boxesRes.data ?? []) as BoxPageContainerRow[], places: (placesRes.data ?? []) as Array<{ id: string; name: string }>, lines: sum.lines ?? [] })
       console.log(JSON.stringify({ event: 'box_page_find', code, words: words.length, boxes: find.total }))
       return json({ ok: true, find })
     }
@@ -200,6 +222,8 @@ serve(async (req) => {
       lastCountAt: lastCount?.at ?? null,
       now: new Date().toISOString(),
       officePhone: phone,
+      scannedCode: sticker.kind === 'box' ? code : null,
+      stickerNumber: sticker.kind === 'box' ? sticker.number : null,
     })
 
     // Who looked: the outside counts; a signed-in teammate or a preview is stamped, never counted.
@@ -208,7 +232,7 @@ serve(async (req) => {
       .from('public_page_views')
       .insert({ surface: 'box_page', entity_id: row.id, via: 'token', viewer: decision.viewer, viewer_user_id: decision.staffUserId })
       .then(() => {}, () => {})
-    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', lines: payload.box.lines.length, gone: payload.box.gone.length, photo: Boolean(photo), viewer: decision.viewer }))
+    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', sticker: sticker.kind === 'box', lines: payload.box.lines.length, gone: payload.box.gone.length, photo: Boolean(photo), viewer: decision.viewer }))
     return json(payload)
   } catch (e) {
     console.error('box-read failed', e)

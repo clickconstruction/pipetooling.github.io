@@ -173,7 +173,8 @@ export interface LienTimelineMonth {
   noteUnknown?: boolean
 }
 
-export type LienTimelineNoticeState = '' | 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'sent'
+/** Where the open months' notice stands on the desk; '' when the reader cannot know. `printed` is a notice in the mail whose certified number is not typed in yet (v2.7077). */
+export type LienTimelineNoticeState = '' | 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent'
 
 export interface LienTimelineInput {
   todayYmd: string
@@ -327,6 +328,8 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
       return 'awaiting approval'
     case 'ready':
       return 'ready to send'
+    case 'printed':
+      return 'in the mail · tracking owed'
     case 'held':
       return holdUntil ? `held · re-asks ${lienDateWords(holdUntil, todayYmd)}` : 'held'
     default:
@@ -342,6 +345,8 @@ function noticeVerb(state: LienTimelineNoticeState): string {
       return 'Approve'
     case 'ready':
       return 'Send'
+    case 'printed':
+      return 'Record the mailing of'
     case 'held':
       return 'Held —'
     default:
@@ -705,6 +710,8 @@ function noticeWaitWords(state: LienTimelineNoticeState): string {
       return 'the leader’s approval of the notice'
     case 'ready':
       return 'the notice to be mailed'
+    case 'printed':
+      return 'the envelope’s certified number to be typed in'
     case 'held':
       return 'the hold to lift'
     default:
