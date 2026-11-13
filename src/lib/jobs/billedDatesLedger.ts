@@ -41,7 +41,7 @@
  */
 import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
-import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
+import { usuallyLandsShort, usuallyLandsWords, type PayCalendarArg } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 import { LIEN_LATE_NOTICE_ACT, LIEN_ROW_PRESS_SENTENCE, lienActFor, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
@@ -158,7 +158,7 @@ export type BilledDatesLedgerInput = {
    * expected day, the due day plus their usual lateness, since a deadline is weighed against when money really comes.
    * Null or absent: the money row as before.
    */
-  calendar?: PayCalendar | null
+  calendar?: PayCalendarArg
 }
 
 /** What the ledger reads of a paid claim. */

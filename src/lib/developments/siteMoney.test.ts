@@ -196,7 +196,7 @@ function row(over: Partial<MoneyRow> & { number: string }): MoneyRow {
 }
 
 function expected(daysLate: number): BilledPayModel {
-  return { expectedYmd: '2026-10-01', state: daysLate > 0 ? 'late' : 'upcoming', source: 'customer', medianDays: 30, samples: 6, payers: 0, daysLate, paceWords: 'pays in ~30d', label: '', title: '', dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, clockYmd: null, clockFrom: null }
+  return { expectedYmd: '2026-10-01', state: daysLate > 0 ? 'late' : 'upcoming', source: 'customer', medianDays: 30, samples: 6, payers: 0, daysLate, paceWords: 'pays in ~30d', label: '', title: '', dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, calendarOwn: false, clockYmd: null, clockFrom: null }
 }
 
 function dates(over: Partial<MoneyDates>): MoneyDates {

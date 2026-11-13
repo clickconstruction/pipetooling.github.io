@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_MISSED_RUN_DAYS,
+  asPayCalendarRead,
   calendarBasisWords,
   calendarBillRead,
   calendarBillWords,
@@ -21,6 +22,7 @@ import {
   parsePayCalendarRow,
   payCalendarPreview,
   payCalendarShort,
+  payCalendarShortFor,
   payCalendarWords,
   payCutoffLine,
   sendTodayCutoffWords,
@@ -226,6 +228,16 @@ describe('whose calendar a job reads (punch list #341)', () => {
     expect(words('p1', 'j3')).toMatchObject({ lead: null, press: 'No pay calendar on this job', tail: 'Larkfield Construction has one' })
     expect(words('p9', 'j8')).toMatchObject({ lead: null, press: 'No pay calendar on this job', tail: null })
     expect(words('p9', 'other')).toMatchObject({ lead: null, press: 'Set a pay calendar…', tail: null })
+  })
+
+  it("marks a job's own calendar wherever a row says its calendar, and takes a bare calendar as the payer's", () => {
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' }))).toBe('This job’s own · In by the 25th, paid the 30th')
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j1' }))).toBe(payCalendarShort(TENTH))
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j3' }))).toBeNull()
+    expect(asPayCalendarRead(BY_25TH)).toEqual({ calendar: BY_25TH, from: 'payer', payerCalendar: BY_25TH })
+    expect(asPayCalendarRead(null)).toEqual({ calendar: null, from: 'none', payerCalendar: null })
+    const read = calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' })
+    expect(asPayCalendarRead(read)).toBe(read)
   })
 
   it('says nothing to a reader who may not set one when none is set, and still names one that is', () => {

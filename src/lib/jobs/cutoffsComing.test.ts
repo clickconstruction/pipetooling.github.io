@@ -54,9 +54,20 @@ describe('buildCutoffsComing', () => {
     const own = indexPayCalendars([row('lark'), row('lark', { jobId: 'j1441', calendar: { ...PAY_CALENDAR_DEFAULT, cutoffDay: 20 } }), row('lark', { jobId: 'j1442', off: true, calendar: null })])
     const lines = buildCutoffsComing({ todayYmd: today, calendars: own, ready: [], working: working.slice(0, 3) })
     expect(lines.map((l) => [l.title, l.detail])).toEqual([
-      ['Larkfield Construction · in by Nov 20, due Dec 10', '1 job working, $18,000 still to bill.'],
+      // Punch list #341: the line that is one job's own calendar names the job. With no label handed in it says "one job".
+      ['Larkfield Construction · one job only · in by Nov 20, due Dec 10', '1 job working, $18,000 still to bill.'],
       ['Larkfield Construction · in by Nov 30, due Dec 10', '1 job working, $20,000 still to bill.'],
     ])
+    expect(lines.map((l) => l.ownJob)).toEqual([{ id: 'j1441', label: 'one job' }, null])
+  })
+
+  it("names the job on its own line, and keeps it apart from the payer's line even on the same days (punch list #341)", () => {
+    // J1441 carries its own calendar with the payer's very days: it still reads its own row, so it gets its own line.
+    const own = indexPayCalendars([row('lark'), row('lark', { jobId: 'j1441' })])
+    const labelled = working.slice(0, 2).map((w) => ({ ...w, jobLabel: w.jobId === 'j1441' ? ' 1441 ' : '1440' }))
+    const lines = buildCutoffsComing({ todayYmd: today, calendars: own, ready: [], working: labelled })
+    expect(lines.map((l) => l.title).sort()).toEqual(['Larkfield Construction · 1441 only · in by Nov 30, due Dec 10', 'Larkfield Construction · in by Nov 30, due Dec 10'])
+    expect(new Set(lines.map((l) => l.key)).size).toBe(2)
   })
 
   it('drops work with no payer and reads an unnamed payer as a customer', () => {

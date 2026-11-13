@@ -78,7 +78,7 @@ import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../..
 import type { PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
 import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
-import { calendarFor, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { calendarFor, calendarSourceFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -1064,11 +1064,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         calendars: payCalendars,
         ready: unfilteredBoardLists.readyToBillRows.map((r) => {
           const payer = paySpeedPayer(r.job, r.kind === 'job' ? null : r.inv)
-          return { payerId: payer.id, payerName: payer.name, jobId: r.job.id, dollars: readyToBillRowsExposureTotal([r]) }
+          return { payerId: payer.id, payerName: payer.name, jobId: r.job.id, jobLabel: jobNumberLabel(r.job), dollars: readyToBillRowsExposureTotal([r]) }
         }),
         working: unfilteredBoardLists.working.map((j) => {
           const payer = paySpeedPayer(j, null)
-          return { payerId: payer.id, payerName: payer.name, jobId: j.id, dollars: jobBillingUnallocatedDollars(j) }
+          return { payerId: payer.id, payerName: payer.name, jobId: j.id, jobLabel: jobNumberLabel(j), dollars: jobBillingUnallocatedDollars(j) }
         }),
       }),
     [payCalendars, unfilteredBoardLists],
@@ -1078,13 +1078,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     (j: JobWithDetails) => {
       const payer = paySpeedPayer(j, null)
       const payerId = payer.id
-      const calendar = payerId ? calendarFor(payCalendars, { payerId, jobId: j.id }) : null
-      const line = calendar ? payCutoffLine(todayYmdInAppTz(), calendar, 'Bill') : null
+      const calRead = calendarSourceFor(payCalendars, { payerId, jobId: j.id })
+      const line = calRead.calendar ? payCutoffLine(todayYmdInAppTz(), calRead.calendar, 'Bill') : null
       if (!line || !payerId || line.daysLeft > PAY_CUTOFF_WORKING_DAYS) return null
       return (
         <PayCutoffLine
           line={line}
           payerName={payer.name}
+          own={calRead.from === 'job'}
           onOpen={payCalendarModal ? () => payCalendarModal.openPayCalendar({ id: payerId, name: payer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(j) }) : undefined}
         />
       )
@@ -1131,14 +1132,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // this block belongs to a Ready to Bill row: it has no bill date, no expected day and no lien clock yet.
       if (row.job.status === 'ready_to_bill') {
         const rtbPayer = paySpeedPayer(row.job, inv)
-        const rtbCalendar = rtbPayer.id ? calendarFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id }) : null
-        const cutoff = rtbCalendar ? payCutoffLine(todayYmdInAppTz(), rtbCalendar) : null
+        const rtbRead = calendarSourceFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id })
+        const cutoff = rtbRead.calendar ? payCutoffLine(todayYmdInAppTz(), rtbRead.calendar) : null
         if (!cutoff) return null
         const rtbPayerId = rtbPayer.id
         return (
           <PayCutoffLine
             line={cutoff}
             payerName={rtbPayer.name}
+            own={rtbRead.from === 'job'}
             onOpen={
               payCalendarModal && rtbPayerId
                 ? () =>
@@ -1156,14 +1158,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const promise = promisedPayDates?.[row.job.id] ?? null
       const payer = inv ? paySpeedPayer(row.job, inv) : null
       // Punch list #323: a payer on a Pay calendar reads Due, with when their money usually lands under it.
-      const calendar = inv && payer ? calendarFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
+      // Punch list #341: the read says whose calendar it is, so the row can mark a job's own and a job switched off.
+      const calRead = inv && payer ? calendarSourceFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
+      const calendar = calRead?.calendar ?? null
       const ledger = buildBilledDatesLedger({
         todayYmd,
         row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: acceptedByInvoice?.get(inv.id) ?? null } : null,
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
-        calendar,
+        calendar: calRead,
         // v2.6695: the customer's word that they paid takes the money row (They say paid).
         claim: paidClaimsByJob?.get(row.job.id) ?? null,
         // v2.6834: a bill an in-kind deal pays reads Scheduled in kind, with no expected day (punch list #301).
@@ -1193,7 +1197,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
             canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
             // The calendar's own words stand where Pays in stood: the spread is the calendar's doing, not the payer's.
-            calendar ? payCalendarShort(calendar) : null,
+            // A job on its own calendar says so before the words (punch list #341): one payer can read two sets of days.
+            calRead ? payCalendarShortFor(calRead) : null,
           )}
           showBars={false}
           // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens). On a Pay
@@ -1209,6 +1214,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           opens={calendar && payCalendarModal ? 'the pay calendar' : 'pay speeds'}
           payerName={payer?.name}
         />
+        {calRead?.from === 'off' && pressedPayer && payCalendarModal ? (
+          // Punch list #341: a job switched off reads like any payer with no calendar. This line says it was a choice, and leads back to it.
+          <button
+            type="button"
+            className="payCalendarPress"
+            data-testid="pay-calendar-off-press"
+            title={`${pressedPayer.name ?? 'This customer'}’s pay calendar is switched off for this job. Press to open it.`}
+            onClick={(e) => {
+              e.stopPropagation()
+              payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) })
+            }}
+            style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+          >
+            {JOB_NO_CALENDAR_WORDS}
+          </button>
+        ) : null}
         {calendar && clock && canMarkPromisedPay && inv ? (
           <button
             type="button"
@@ -2696,7 +2717,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
             paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-            calendarFor(payCalendars, { payerId: payer.id, jobId: job.id }),
+            calendarSourceFor(payCalendars, { payerId: payer.id, jobId: job.id }),
           )
         : null
     const bDetail = deriveStagesBillingActivityDetail(job)

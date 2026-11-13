@@ -5,7 +5,7 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { billedPayModel, type BilledPayModel } from '../lib/jobs/billedDuePay'
-import { calendarFor, indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
+import { calendarSourceFor, indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
 import { loadInvoiceAcceptances, loadPayCalendars, onPayCalendarChanged } from '../lib/jobs/payCalendarIo'
 import { effectiveInvoiceEstBillDate } from '../lib/jobs/invoiceBilling'
 import type { JobsLedgerInvoiceRow } from '../lib/jobs/jobFormTypes'
@@ -91,7 +91,7 @@ export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (i
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promises?.[job.id] ?? null,
         null,
-        calendarFor(calendars, { payerId: payer.id, jobId: job.id }),
+        calendarSourceFor(calendars, { payerId: payer.id, jobId: job.id }),
       )
     },
     [allowed, job.id, payerJob, paySpeeds, promises, calendars, accepted],

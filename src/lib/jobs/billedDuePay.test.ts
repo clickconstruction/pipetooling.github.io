@@ -30,7 +30,7 @@ describe('billedPayModel', () => {
   it('is the pace guess, unchanged, with no calendar', () => {
     const base = billedExpectedPayModel(row('2026-11-03'), DATA, TODAY)
     expect(base?.expectedYmd).toBe('2026-12-14')
-    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, clockYmd: null, clockFrom: null })
+    expect(billedPayModel(row('2026-11-03'), DATA, TODAY)).toEqual({ ...base, dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, calendarOwn: false, clockYmd: null, clockFrom: null })
     expect(billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, null)?.source).toBe('customer')
     expect(billedPayModel(row('2026-11-03'), null, TODAY)).toBeNull()
   })
@@ -46,6 +46,23 @@ describe('billedPayModel', () => {
     expect(m.title).toBe(
       'Billed Nov 3. Larkfield Construction pays on a calendar (§ 5.2): A bill in by the last day of the month is paid the 10th of the next month. Due Dec 10. Their last 4 payments landed 0 to 14 days after the due day. Usually about 6. 1 of 4 were on time. Expected about Dec 16.',
     )
+  })
+
+  it("knows a job's own calendar from its payer's, and says so in the hover (punch list #341)", () => {
+    const own = billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, { calendar: TENTH, from: 'job', payerCalendar: null })!
+    const payers = billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, { calendar: TENTH, from: 'payer', payerCalendar: TENTH })!
+    const bare = billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, TENTH)!
+    expect([own.calendarOwn, payers.calendarOwn, bare.calendarOwn]).toEqual([true, false, false])
+    expect(own.title).toContain('Billed Nov 3. This job is on its own calendar (§ 5.2): A bill in by the last day of the month is paid the 10th of the next month.')
+    expect(own.title).not.toContain('Larkfield Construction pays on a calendar')
+    // Whose calendar it is changes the words alone: the days are the same.
+    expect({ ...own, title: '', calendarOwn: false }).toEqual({ ...payers, title: '' })
+    expect(payers).toEqual(bare)
+    // A job switched off, or with none, is the pace guess.
+    expect(billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, { calendar: null, from: 'off', payerCalendar: TENTH })?.source).toBe('customer')
+    // Their word still wins the day, and the model still knows whose calendar the due day is.
+    const said = billedPayModel(row('2026-11-03'), DATA, TODAY, { promisedYmd: '2026-12-20' } as never, null, { calendar: TENTH, from: 'job', payerCalendar: null })!
+    expect(said).toMatchObject({ source: 'promised', dueYmd: '2026-12-10', calendarOwn: true })
   })
 
   it('reads past due while the money is not yet expected', () => {
