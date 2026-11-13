@@ -6,8 +6,8 @@ keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who
 order: 62
 ---
 1. Read the numbers at the top. They are what the field made last week, the slowest step, and your two balances.
-2. Read the card under them. It names the slowest step and the moves for this week.
-3. Press {{button:blue|Make Build this week's call}} to record it. The button names the step the page reads today.
+2. Read the card under them. It names the slowest step and the moves that would change it.
+3. Press a move to open the page where its work is done.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
@@ -40,43 +40,17 @@ Market's row reads what the asks are worth a week, not every dollar that came in
 
 An amber line under the cash balance names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
-When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
+When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move.
 
-Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
+Under the numbers, **What to do now** names the slowest step and the moves that would change it. Press a move to open the page where the work is done. The card shows the first three moves, or two on a phone.
 
-- Press a name to change who does the move. Pick a person from the list and the move reaches them. Pick **Type a name…** for someone with no account. A typed name reaches nobody, and its chip has a dashed edge.
-- Press {{button:outline|take off}} to drop a move from the call. The step's next move comes on in its place. Press {{button:outline|put back}} to return it.
-- Press {{button:outline|Add a note ›}} to type one line with the call. The card shows the note again once the call stands.
-- Press the blue button to record the call. The button waits until one move is on the call.
-
-Once the call is recorded, each person finds their move on their own [Needs you card](#the-call-reaches-its-people).
-
-After you record it, the card shows each move against today. A move reads *done*, *part* or *not yet*. A move the app cannot measure reads *yours*.
-
-From Friday the card asks whether the step moved. Press {{button:green|It moved}} or {{button:outline|It did not}}. Your answer is the one the page keeps.
-
-When an earlier call was never answered, **The last call** asks for its answer beside this week's card.
-
-To call a different step, press {{button:outline|Pick another step ›}}. The flow opens. Press a stage card there. The card at the top then proposes that step.
-
-## The call reaches its people
-
-A move goes to the person named on it. They do not need to open the Bridge. Their Dashboard's **Needs you** card shows a line named **The week's call**.
-
-- The line reads the move, and who made the call.
-- Its button opens the page where the work is done, such as Stages or Billing.
-- Press **Done** when the work is finished. The line leaves their card.
-- A move with no page has one button, **Mark it done**.
-
-On the Bridge, the card then says who marked a move done. For a move the app can measure, the numbers still decide whether it reads *done*. For one it cannot measure, the person's word decides.
-
-The line leaves by itself when Friday's question is answered, or when the pay week ends.
+The card is a reading of today. It records nothing and it hands nothing to a person. It changes when the numbers change.
 
 ## The doors
 
 The first screen is the whole page until you open a door. Under the card sit {{button:outline|The flow}}, {{button:outline|Money}} and {{button:outline|People}}. Press one and that part of the page opens under the row. Press it again to close it. One door is open at a time.
 
-- **The flow** holds the rule, the five steps and their desks, the dial, the three resources and the last call.
+- **The flow** holds the rule, the five steps and their desks, the dial and the three resources.
 - **Money** holds cash for eight weeks, bills and receipts, net position, money owed and the eight week chart.
 - **People** holds who moved the number, the day grid and the crew's hours.
 
@@ -132,7 +106,7 @@ Press Market's row on the pipe, or **Break it down** on the Market card. A windo
 
 Four presses at the foot open the rest. **Every source** lists each GC with a chip. Feeding means they keep asking. Fading means they ask less than half their usual. New name means their first bid was in the last 91 days. No answers means six priced bids with nothing marked won or lost. Press a row for its quarters and its door. **The asks by week** shows three tiles and the last 26 pay weeks. Press a week and its numbers read under the strip. **What this window cannot see** names courting, reputation and invites that never became a bid. **How this is counted** gives the rules for a win and for the list.
 
-Nothing records here. The week's call stays with the lit link. Esc closes the window.
+Nothing records here. Esc closes the window.
 
 ## Sales, broken down
 
@@ -158,7 +132,7 @@ A list shows its first rows. Press **Show all** under a list for the rest.
 
 Three presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Every open job** holds the whole list, worst first, under three tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
 
-The week's call stays on the link desk above. Esc closes the window.
+Esc closes the window.
 
 ## Bill, broken down
 
@@ -181,7 +155,7 @@ Four presses at the foot open the rest.
 - **What waiting costs** says what one more week of sitting costs. **Billable today** lists the ready jobs there. **The rule, lately** opens the table of every bill and its lag.
 - **How this is counted** gives the rules.
 
-**Open Billing ›** sits at the bottom. Nothing records here. The week's call stays with the lit link desk above. Press {{button:outline|×}} or the Escape key to close the window.
+**Open Billing ›** sits at the bottom. Nothing records here. Press {{button:outline|×}} or the Escape key to close the window.
 
 ## Collect, broken down
 
@@ -203,7 +177,7 @@ Three presses under the lists open the rest.
 - **What is in the pile** holds two tiles and the bar by where each bill stands. Everyone else is one line there, above what slows Collect before any call.
 - **How this is counted** gives the rules for a customer's pace, and for late and doubtful.
 
-One line at the foot says what the sheet asks for, and what Friday asks of it. **Record this as the week's plan** writes the moves into the week's call. Once a plan is recorded, a green card sits above that line. The card says what landed, how many calls ended with a date, and whether the notices went out. The card also says what Monday carries. **Copy the call sheet** puts the rows on the clipboard. **Open Billing** opens Billing. Esc closes the window.
+One line at the foot says what the sheet asks for. **Copy the call sheet** puts the rows on the clipboard. **Open Billing** opens Billing. Esc closes the window.
 
 ## The dial
 
@@ -225,15 +199,11 @@ Every card ends in a badge. Press any badge and a list opens. The list puts the 
 
 A card under the desk lists the four fixes people reach for first. Hire another plumber. Push for more bids. Add a field day. Cut overhead. Two of them show what they are worth in dollars a day. Under them, **Bids due** lists the bids due soon and what a win is worth. Press a fix and the dial and the cards above show what it would do. One line under the press says what changed and whether the link moved. Cut overhead moves nothing above. That is the point. Press {{button:outline|back to today}} to put things back. The {{button:outline|?}} in the corner lists the other links' levers.
 
-## The week's call
+## The step's desk
 
-You record the call on [the first screen](#the-first-screen). It is the one place a call is made.
+Behind **The flow**, the desk of the pressed stage sits under the three resources. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Press {{button:outline|Every move for Bill}} to read every move the stage has. Each row says whether the list at the top holds it. Press {{button:outline|Go to what to do now ↑}} to go back up to the card.
 
-Behind **The flow**, the desk of the pressed stage sits under the three resources. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Press {{button:outline|Every move for Bill}} to read every move the stage has. Each row says whether the card at the top holds it. Press a different stage card and the card at the top proposes that stage. Press {{button:outline|Go to this week's call ↑}} to go back up to it. The call keeps today's numbers, so Friday can read them again.
-
-A recorded call holds the red on its stage for the week. Another stage takes it only when it reads clearly longer.
-
-**Last week's call, against what moved** sits under the desk. It names the link, who called it and how many weeks running. Each move shows its number then and now, and whether it got done. The last line says what that means for this week. From Friday the card asks whether the link moved. Press {{button:green|It moved}} or {{button:red|It did not}}.
+The red sits on the step the page reads as slowest today. No step is held for the week.
 
 ## Money owed and Crew hours, opened
 
@@ -261,7 +231,7 @@ The email shows the three tiles, the strip of pipe and the week's call with its 
 
 Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 
-The email records nothing. The email's button opens the Bridge, where one press makes the call. A move the page would give to you goes out with no name on it. On a Friday the button opens the Bridge so you can answer.
+The email records nothing. The email's button opens the Bridge. A move the page would give to you goes out with no name on it.
 
 ## Cash on hand comes from the bank
 
@@ -393,7 +363,7 @@ The amber door on the first screen counts the soft numbers. Press it and one lis
 - bank transfers or card purchases not sorted
 - bids sent with no value
 
-This list took the place of **This week** and **Fix the reading**. The moves that were on This week are on the call card now. Its dollar sizes are on the usual fixes behind The flow.
+This list took the place of **This week** and **Fix the reading**. The moves that were on This week are on the card at the top now. Its dollar sizes are on the usual fixes behind The flow.
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
 
