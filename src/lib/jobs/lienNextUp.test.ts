@@ -113,7 +113,7 @@ describe('buildLienNextUp — affidavits and retainage', () => {
     expect(one({ affidavits: [affidavit('j1', 'ready')] }).target).toEqual({ open: 'affidavits', jobId: 'j1' })
   })
 
-  it('a lien filed and not served opens the job’s Lien window on the Mechanic’s lien tab', () => {
+  it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
     expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Record service', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
