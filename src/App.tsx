@@ -58,6 +58,7 @@ const JobTally = lazy(() => import('./pages/JobTally'))
 const BoxCode = lazy(() => import('./pages/BoxCode'))
 // #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
 const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
+const ReceiptLink = lazy(() => import('./pages/ReceiptLink'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BillsSent = lazy(() => import('./pages/BillsSent'))
 const FirstLookRead = lazy(() => import('./pages/FirstLookRead'))
@@ -301,6 +302,15 @@ function AppContent() {
           element={
             <Suspense fallback={null}>
               <ShowUs />
+            </Suspense>
+          }
+        />
+        {/* #299 (v2.7101): a receipt link for a card charge, /r/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the box page is. */}
+        <Route
+          path="/r/:code"
+          element={
+            <Suspense fallback={null}>
+              <ReceiptLink />
             </Suspense>
           }
         />

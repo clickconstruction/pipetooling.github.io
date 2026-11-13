@@ -145,7 +145,7 @@ export function olderSetsFor(row: SitePartRow): PlanSetRow[] {
 }
 
 /**
- * The jobs on no part in the order a person picks parts for them (the Gun Dog spike, 2026-11-02: the
+ * The jobs on no part in the order a person picks parts for them (the Gray Fox spike, 2026-11-02: the
  * owner on a grid of bare numbers, *I need a good way to see the job names so a human can quickly make
  * decisions*): by name, so the *ATV building* jobs sit together and the *Bunker* ones after them, the
  * nameless last, ties by number.

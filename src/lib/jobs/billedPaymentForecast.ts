@@ -25,7 +25,7 @@ export type ForecastRow = {
   /** Stable row key: the invoice id (only invoice-bearing rows forecast). */
   invoiceId: string
   jobId: string
-  /** "964 PLUM · Pondhill demo" */
+  /** "964 PLUM · Penmoor demo" */
   label: string
   customerName: string | null
   /** The customer's Res/Comm classification (customers.customer_type via the pay-speeds RPC). */

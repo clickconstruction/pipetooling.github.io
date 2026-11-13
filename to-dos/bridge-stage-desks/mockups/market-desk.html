@@ -119,7 +119,7 @@
 
   <div class="tiles">
     <div class="tile"><div class="k">Asked of us, this quarter</div><div class="n">$1.46M <span class="ok" style="font-size:0.9rem">▲ +18%</span></div><div class="d">against the same span of last quarter ($1.24M). More is arriving.</div></div>
-    <div class="tile"><div class="k">Three GCs carry</div><div class="n">70% <span class="up" style="font-size:0.9rem">▲ from 54%</span></div><div class="d">Burd, Summit and ATI. The book is narrowing. One cold GC is a bad month.</div></div>
+    <div class="tile"><div class="k">Three GCs carry</div><div class="n">70% <span class="up" style="font-size:0.9rem">▲ from 54%</span></div><div class="d">Brund, Selwick and AXO. The book is narrowing. One cold GC is a bad month.</div></div>
     <div class="tile"><div class="k">New names</div><div class="n">1 <span class="muted" style="font-size:0.9rem">this quarter · Q3 had 3</span></div><div class="d">Hargrove Construction, first invite Oct 9. A new name is the only courting result the app can see.</div></div>
   </div>
 
@@ -129,7 +129,7 @@
   <p class="restline">4 smaller GCs hold the rest ($160k asked, $31k won). Steady, none quiet.</p>
 
   <div class="flagrow">
-    <div class="flag"><b>The pricing spend</b> Knight has taken 6 priced bids for $0 won and no answer, ever. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.</div>
+    <div class="flag"><b>The pricing spend</b> Kestrin has taken 6 priced bids for $0 won and no answer, ever. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.</div>
     <div class="flag"><b>Fix the reading: 8 bids ride at $0</b> They hide what their GCs ask and thin the win share. Put the number on each.
       <br><button type="button" class="door" onclick="toast('In the app this opens the Bid Board on the 8 unvalued bids.')">Open the bids ›</button></div>
   </div>
@@ -181,20 +181,20 @@ weeks.forEach((d, i) => {
 })
 
 const book = [
-  { name:'Burd & Assoc.', d:'GC · invites monthly since 2024', state:['feeding','feeding'], spark:[12,18,24,28], asked:'$1.1M · 19 bids', pays:'$118k',
-    q:[['Asks','$190k','$260k','$240k','$412k'],['Won','$42k','$0','$76k','awaiting']], line:'Won 2 of 8 answered · 9% by value · answers in ~24d, as recorded. Last ask Oct 22.', door:'the Bid Board on Burd & Assoc.' },
-  { name:'ATI', d:'GC · steady small work', state:['feeding','feeding'], spark:[16,14,18,20], asked:'$495k · 22 bids', pays:'$92k',
-    q:[['Asks','$110k','$95k','$120k','$170k'],['Won','$31k','$24k','$18k','$19k']], line:'Won 3 of 11 · 18% by value · answers in ~35d, as recorded. Last ask Oct 24.', door:'the Bid Board on ATI' },
-  { name:'Summit GC', d:'GC · growing · 3 bids ride at $0', state:['feeding','feeding'], spark:[6,10,16,26], asked:'$610k · 14 bids', pays:'$64k',
-    q:[['Asks','$60k','$110k','$190k','$250k'],['Won','$0','$64k','$0','awaiting']], line:'Won 1 of 7 · 22% by value · answers in ~19d, as recorded. 3 bids have no value yet — they hide what Summit asks.', door:'the Bid Board on Summit GC' },
+  { name:'Brund & Assoc.', d:'GC · invites monthly since 2024', state:['feeding','feeding'], spark:[12,18,24,28], asked:'$1.1M · 19 bids', pays:'$118k',
+    q:[['Asks','$190k','$260k','$240k','$412k'],['Won','$42k','$0','$76k','awaiting']], line:'Won 2 of 8 answered · 9% by value · answers in ~24d, as recorded. Last ask Oct 22.', door:'the Bid Board on Brund & Assoc.' },
+  { name:'AXO', d:'GC · steady small work', state:['feeding','feeding'], spark:[16,14,18,20], asked:'$495k · 22 bids', pays:'$92k',
+    q:[['Asks','$110k','$95k','$120k','$170k'],['Won','$31k','$24k','$18k','$19k']], line:'Won 3 of 11 · 18% by value · answers in ~35d, as recorded. Last ask Oct 24.', door:'the Bid Board on AXO' },
+  { name:'Selwick GC', d:'GC · growing · 3 bids ride at $0', state:['feeding','feeding'], spark:[6,10,16,26], asked:'$610k · 14 bids', pays:'$64k',
+    q:[['Asks','$60k','$110k','$190k','$250k'],['Won','$0','$64k','$0','awaiting']], line:'Won 1 of 7 · 22% by value · answers in ~19d, as recorded. 3 bids have no value yet — they hide what Selwick asks.', door:'the Bid Board on Selwick GC' },
   { name:'Customers (estimates)', d:'26 requests this window · small and many', state:['feeding','feeding'], spark:[14,15,13,16], asked:'$181k · 61 asks', pays:'$27.8k',
     q:[['Asks','$44k','$46k','$40k','$51k'],['Won','$8k','$9k','$6k','$4.8k']], line:'Small and many. Worked from the Estimates page, not from this book.', door:'Estimates' },
   { name:'MK Builders', d:'GC · last ask Aug 14 · 10 weeks quiet', state:['fading','fading'], spark:[22,18,8,2], asked:'$230k · 4 bids', pays:'$71k',
     q:[['Asks','$120k','$80k','$30k','$0'],['Won','$71k','$0','$0','—']], line:'Won 1 of 3 · 31% by value. A 31% relationship going quiet is the book’s biggest loss.', door:'the Bid Board on MK Builders' },
   { name:'Hargrove Construction', d:'GC · first-ever invite Oct 9', state:['newname','new name'], spark:[0,0,0,10], asked:'$85k · 1 bid', pays:'—',
     q:[['Asks','—','—','—','$85k'],['Won','—','—','—','awaiting']], line:'The quarter’s one new name. First answers tell you what the relationship is.', door:'their bid' },
-  { name:'Knight Contracting', d:'GC · 8 weeks quiet · has never answered a bid', state:['dead','dead weight'], spark:[10,14,12,2], asked:'$290k · 6 bids', pays:'$0',
-    q:[['Asks','$70k','$110k','$110k','$0'],['Won','$0','$0','$0','—']], line:'6 priced bids, nothing won, nothing answered, ever. Pricing them costs days the live GCs wait on.', door:'the Bid Board on Knight Contracting' },
+  { name:'Kestrin Contracting', d:'GC · 8 weeks quiet · has never answered a bid', state:['dead','dead weight'], spark:[10,14,12,2], asked:'$290k · 6 bids', pays:'$0',
+    q:[['Asks','$70k','$110k','$110k','$0'],['Won','$0','$0','$0','—']], line:'6 priced bids, nothing won, nothing answered, ever. Pricing them costs days the live GCs wait on.', door:'the Bid Board on Kestrin Contracting' },
 ]
 const bookEl = document.getElementById('book')
 book.forEach((r, i) => {

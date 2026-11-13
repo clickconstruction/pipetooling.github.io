@@ -15,7 +15,7 @@ const FIXTURES = [
   { id: 'f10', fixture: 'Shower/tub combos' },
 ]
 
-const SPACEX_SCHEDULE = [
+const SKYLAB_SCHEDULE = [
   'PLUMBING FIXTURE SCHEDULE',
   'MARK DESCRIPTION MANUFACTURER MODEL CW HW W V',
   '',
@@ -52,7 +52,7 @@ describe('normalizeTag', () => {
 })
 
 describe('parseFixtureSchedule — a plan schedule', () => {
-  const parsed = parseFixtureSchedule(SPACEX_SCHEDULE, FIXTURES)
+  const parsed = parseFixtureSchedule(SKYLAB_SCHEDULE, FIXTURES)
 
   it('yields one line per tag and skips the header and blank lines', () => {
     expect(parsed.lines.map((l) => l.tag)).toEqual(['WC-1', 'LAV-1', 'DWH-1', 'RPZ-1', 'HB-3', 'FD-1', 'ET-1'])
@@ -60,7 +60,7 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('WC-1: TOTO CT708UVG#01, the wrapped flush-valve line folded into the row', () => {
-    const wc = line(SPACEX_SCHEDULE, 'WC-1')
+    const wc = line(SKYLAB_SCHEDULE, 'WC-1')
     expect(wc.manufacturer).toBe('TOTO')
     expect(wc.model).toBe('CT708UVG#01')
     expect(wc.description).toBe('WATER CLOSET, WALL HUNG, 1.28 GPF')
@@ -71,7 +71,7 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('LAV-1: the model stops at the "/" that starts the faucet', () => {
-    const lav = line(SPACEX_SCHEDULE, 'LAV-1')
+    const lav = line(SKYLAB_SCHEDULE, 'LAV-1')
     expect(lav.manufacturer).toBe('TOTO')
     expect(lav.model).toBe('LT307')
     expect(lav.description).toBe('LAVATORY, WALL HUNG, ADA')
@@ -80,7 +80,7 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('DWH-1: a multi-token model that stops before the "40 GAL" rating', () => {
-    const dwh = line(SPACEX_SCHEDULE, 'DWH-1')
+    const dwh = line(SKYLAB_SCHEDULE, 'DWH-1')
     expect(dwh.manufacturer).toBe('Rheem')
     expect(dwh.model).toBe('PROPH40 T2 RH375')
     expect(dwh.description).toBe('WATER HEATER, GAS, 40 GAL')
@@ -89,7 +89,7 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('RPZ-1: Zurn-Wilkins wins over Zurn, the model is the bare 375, the 4" size is not part of it', () => {
-    const rpz = line(SPACEX_SCHEDULE, 'RPZ-1')
+    const rpz = line(SKYLAB_SCHEDULE, 'RPZ-1')
     expect(rpz.manufacturer).toBe('Zurn-Wilkins')
     expect(rpz.model).toBe('375')
     expect(rpz.description).toBe('REDUCED PRESSURE BACKFLOW PREVENTER')
@@ -97,7 +97,7 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('HB-3: Woodford B74-CH, the wall hydrant lands on the hose bibb row', () => {
-    const hb = line(SPACEX_SCHEDULE, 'HB-3')
+    const hb = line(SKYLAB_SCHEDULE, 'HB-3')
     expect(hb.manufacturer).toBe('Woodford')
     expect(hb.model).toBe('B74-CH')
     expect(hb.description).toBe('WALL HYDRANT, FREEZELESS')
@@ -106,12 +106,12 @@ describe('parseFixtureSchedule — a plan schedule', () => {
   })
 
   it('FD-1 and ET-1: JR Smith beats Smith, a bare first-position integer is the model, ST-12 keeps its hyphen', () => {
-    const fd = line(SPACEX_SCHEDULE, 'FD-1')
+    const fd = line(SKYLAB_SCHEDULE, 'FD-1')
     expect(fd.manufacturer).toBe('JR Smith')
     expect(fd.model).toBe('2005')
     expect(fd.description).toBe('FLOOR DRAIN, NICKEL BRONZE STRAINER')
     expect(fd.fixtureMatches[0]?.fixture).toBe('Floor drain')
-    const et = line(SPACEX_SCHEDULE, 'ET-1')
+    const et = line(SKYLAB_SCHEDULE, 'ET-1')
     expect(et.manufacturer).toBe('Amtrol')
     expect(et.model).toBe('ST-12')
     expect(et.description).toBe('EXPANSION TANK')

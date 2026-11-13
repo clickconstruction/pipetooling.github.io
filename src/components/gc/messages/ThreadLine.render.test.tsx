@@ -13,9 +13,9 @@ const email: ThreadMessage = {
   channel: 'email',
   direction: 'in',
   at: '2026-10-22T15:08:00.000Z',
-  who: 'Glenn Geling <glenn@maxxbuilders.example> to bids@',
+  who: 'Glenn Gelwin <glenn@maxxbuilders.example> to bids@',
   subject: 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid',
-  body: `Wendi,\n\nWe at *Maxx Builders* invite you to bid.\n\n*Link to Plans*:\n**${PLANS}\n<${PLANS}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*`,
+  body: `Wendi,\n\nWe at *Marrex Builders* invite you to bid.\n\n*Link to Plans*:\n**${PLANS}\n<${PLANS}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*`,
 }
 
 describe('ThreadLine: a web address in the words is one press (v2.6508)', () => {
@@ -33,7 +33,7 @@ describe('ThreadLine: a web address in the words is one press (v2.6508)', () => 
     expect(links[0]!.getAttribute('rel')).toBe('noopener noreferrer')
     expect(links[0]!.querySelector('svg')).toBeTruthy()
     // The first strong is the meta row's channel word; the rest are the sender's marks.
-    expect([...line.querySelectorAll('strong')].slice(1).map((b) => b.textContent)).toEqual(['Maxx Builders', 'Link to Plans', PLANS, 'Monday, November 02, 2026, 3:00 PM'])
+    expect([...line.querySelectorAll('strong')].slice(1).map((b) => b.textContent)).toEqual(['Marrex Builders', 'Link to Plans', PLANS, 'Monday, November 02, 2026, 3:00 PM'])
     expect(line.textContent).not.toContain('*')
     expect(line.textContent!.match(/https:/g)?.length).toBe(1)
   })

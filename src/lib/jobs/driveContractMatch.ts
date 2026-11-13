@@ -12,7 +12,7 @@
  *
  * A file whose own name or folder chain names a street that is not the job's
  * is nobody's find for that job, whatever else matched (live 2026-09-24: a
- * customer folder's "105 Dover" contract was offered to that customer's job at
+ * customer folder's "105 Dorrow" contract was offered to that customer's job at
  * 141 Encino; "9511 Arcade Ridge signed contract" to a job at 214 Beechwood).
  */
 
@@ -86,8 +86,8 @@ const NOT_STREET_WORDS = new Set(['projects', 'project', 'jobs', 'job', 'contrac
 
 /**
  * Every street the file's own name or its folder chain names, by the piece that starts with a
- * house number: "_Heron Construction / 105 Dover" → 105 dover; "9511 Arcade Ridge signed contract
- * (dragged).pdf" → 9511 arcade; "CLICK PLUMBING - EST. #123 - 105 DOVER RD. - SIGNED.pdf" → 105 dover.
+ * house number: "_Hadlow Construction / 105 Dorrow" → 105 dorrow; "9511 Arcade Ridge signed contract
+ * (dragged).pdf" → 9511 arcade; "CLICK PLUMBING - EST. #123 - 105 DORROW RD. - SIGNED.pdf" → 105 dorrow.
  * A year or a count before a plain word ("2025 Contracts", "2 story addition") is not a street.
  */
 export function streetsNamed(file: Pick<DriveScanFile, 'name' | 'folderName'>): Array<{ key: string; text: string }> {
@@ -120,7 +120,7 @@ export function normalizeName(s: string): string {
 
 const NAME_NOISE = new Set(['inc', 'llc', 'ltd', 'co', 'the', 'and', 'of', 'group', 'company', 'construction', 'contracting', 'contractors', 'homes', 'custom', 'general', 'services', 'solutions', 'rmc', 'dsi'])
 
-/** The words that identify a party: "RMC- Dudley Mason" → {dudley, mason}; "_Knight Contracting" → {knight}. */
+/** The words that identify a party: "RLC- Dunmere Mallin" → {dunmere, mallin}; "_Kestrin Contracting" → {kestrin}. */
 export function nameWords(s: string): Set<string> {
   return new Set(
     normalizeName(s)
@@ -129,7 +129,7 @@ export function nameWords(s: string): Set<string> {
   )
 }
 
-/** Two party names agree when one's identifying words all appear in the other's ("_Mason Dudley" ↔ "RMC- Dudley Mason"). */
+/** Two party names agree when one's identifying words all appear in the other's ("_Mallin Dunmere" ↔ "RLC- Dunmere Mallin"). */
 export function partyNamesAgree(a: string, b: string): boolean {
   const wa = nameWords(a)
   const wb = nameWords(b)
@@ -142,13 +142,13 @@ export function partyNamesAgree(a: string, b: string): boolean {
 export function folderMatchesJob(folderName: string, job: DriveMatchJob): { strength: 'street' | 'number' | 'name' | 'customer' | null; detail: string } {
   const f = normalizeName(folderName)
   // The job number first: two jobs can share a street, never a number. Only a
-  // labelled number counts — "J105", "job 105", "#105" — a bare "105 Dover" is a street.
+  // labelled number counts — "J105", "job 105", "#105" — a bare "105 Dorrow" is a street.
   if (job.jobNumber && new RegExp(`(^|[^a-z0-9])(j|job|hcp|#)\\s?${job.jobNumber}([^0-9]|$)`, 'i').test(f)) return { strength: 'number', detail: `folder names J${job.jobNumber}` }
   const street = streetKey(job.jobAddress)
   if (street && f.includes(street)) return { strength: 'street', detail: `folder names ${job.jobAddress.split(',')[0]?.trim() ?? street}` }
   const jn = normalizeName(job.jobName)
   if (jn.length >= 6 && f.includes(jn)) return { strength: 'name', detail: `folder names the job "${job.jobName}"` }
-  // The customer folder is the top segment of the chain ("_Mason Dudley / 233 Palomino Trail / Contracts").
+  // The customer folder is the top segment of the chain ("_Mallin Dunmere / 233 Palomino Trail / Contracts").
   const top = folderName.split(' / ')[0] ?? folderName
   for (const who of [job.customerName, job.gcName ?? '']) {
     if (!who.trim()) continue

@@ -51,10 +51,10 @@ export function foldedCount(rows: readonly MyMailRow[], view: MyMailView = 'toTa
 /** The tab's words. */
 export const MY_MAIL_WORDS = {
   /** The three views' pills. */
-  views: { toTag: 'To tag', tagged: 'Tagged', all: 'All' } as Readonly<Record<MyMailView, string>>,
+  views: { toTag: 'Not saved', tagged: 'Saved', all: 'All' } as Readonly<Record<MyMailView, string>>,
   /** The line over the list: what is read, what is kept, what a tag does. */
   card: (address: string): string =>
-    `Your mail, read live from ${address.trim()}. Nothing is kept until you tag it. A tag puts that conversation on the job for the office to read.`,
+    `Your mail, read live from ${address.trim()}. Nothing is kept until you save it. Saving puts the whole conversation on the job for the office to read. Later mail in it follows by itself.`,
   /** The one line the folded mail sits behind. */
   fold: (n: number): string =>
     n === 1 ? '1 notice or newsletter, left out as the bids@ reader leaves it out' : `${n} notices and newsletters, left out as the bids@ reader leaves them out`,
@@ -67,9 +67,9 @@ export const MY_MAIL_WORDS = {
     if (query.trim()) return emptyWords({ kind: 'filter', noun: 'emails', query })
     switch (view) {
       case 'toTag':
-        return { main: 'Nothing waiting to tag.', next: '', tail: '' }
+        return { main: 'Nothing waiting to save.', next: '', tail: '' }
       case 'tagged':
-        return emptyWords({ kind: 'data', noun: 'tagged conversations', page: { label: 'To tag', tail: 'lists the mail you can tag.' } })
+        return emptyWords({ kind: 'data', noun: 'saved conversations', page: { label: 'Not saved', tail: 'lists the mail you can save.' } })
       case 'all':
         return emptyWords({ kind: 'data', noun: 'emails in your Inbox or Sent', page: { label: 'Your account', tail: 'shows what this tab reads.' } })
     }

@@ -109,7 +109,7 @@ const ROWS: FollowUpRows = {
     person('priya', 'customer', { customer_contact_person_id: 'helotes-priya', has_user_id: 'u-rosa', has_since: '2026-09-26T19:30:00.000Z', has_how: 'took' }),
     person('elena', 'customer', { customer_contact_person_id: 'cibolo-elena' }),
     // An email from an address nobody has named, whose From line gave a name.
-    person('unk1', 'unknown', { name: 'Nolan Tressler' }),
+    person('unk1', 'unknown', { name: 'Nolan Tresco' }),
   ],
   channels: [{ id: 'ch-unk', contact_id: 'unk1', kind: 'email', value: 'nolan@ridgeway.example', opted_out_at: null, created_at: '2026-10-02T15:00:00.000Z' }],
   records: {
@@ -228,7 +228,7 @@ describe('FollowUpPanel', () => {
     expect(rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' }).getAttribute('data-new-lane-press')).toBe('who')
     // The question sits before the name (v2.6191), and the address the line came from after it.
     const head = rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' }).parentElement!
-    expect([...head.children].map((el) => el.textContent)).toEqual(['Who is this? ›', 'Nolan Tressler', 'nolan@ridgeway.example'])
+    expect([...head.children].map((el) => el.textContent)).toEqual(['Who is this? ›', 'Nolan Tresco', 'nolan@ridgeway.example'])
 
     const needsYou = within(screen.getByRole('region', { name: 'Needs you' }))
     expect(needsYou.getByText('Call Elena about the gate code.')).toBeTruthy()

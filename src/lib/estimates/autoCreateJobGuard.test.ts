@@ -20,7 +20,7 @@ const estimate: AutoCreateJobGuardEstimate = {
   jobLedgerId: null,
   bidId: null,
   customerId: 'cust-a',
-  title: 'SPACEX BA-02N',
+  title: 'SKYLAB BA-02N',
   totalCents: 24_971_566,
 }
 
@@ -29,7 +29,7 @@ const job = (over: Partial<AutoCreateJobGuardCandidateJob>): AutoCreateJobGuardC
   bidId: null,
   customerId: 'cust-a',
   gcCustomerId: null,
-  jobName: 'SPACEX BA-02N',
+  jobName: 'SKYLAB BA-02N',
   revenue: 249_715.66,
   createdAt: daysAgo(3),
   ...over,
@@ -82,7 +82,7 @@ describe('decideAutoCreateJob (v2.2838 guard)', () => {
   it('hand-typed twin: same customer + folded name + same cents within 90 days → duplicate_by_name_value', () => {
     const d = decideAutoCreateJob({
       estimate,
-      candidateJobs: [job({ id: 'job-twin', jobName: '  spacex   ba-02n ' })],
+      candidateJobs: [job({ id: 'job-twin', jobName: '  skylab   ba-02n ' })],
       now,
       switchOn: true,
     })
@@ -137,7 +137,7 @@ describe('value + name folding', () => {
     expect(revenueMatchesTotal(10, null)).toBe(false)
   })
   it('foldJobName trims, collapses whitespace, lowercases', () => {
-    expect(foldJobName('  Connell   House ')).toBe('connell house')
+    expect(foldJobName('  Corbray   House ')).toBe('corbray house')
     expect(foldJobName(null)).toBe('')
   })
 })

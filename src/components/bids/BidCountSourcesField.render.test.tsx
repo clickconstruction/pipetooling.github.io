@@ -9,8 +9,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 const writes: Array<{ table: string; op: string; payload?: unknown; eq?: unknown[] }> = []
 const SOURCES = [
-  { id: 's1', bid_id: 'b1', link: 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', token: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', project_name: 'SpaceX BA', scope: 'all', imported_by: 'u-t', first_imported_at: '2026-10-09T15:00:00Z', last_imported_at: '2026-10-09T15:00:00Z' },
-  { id: 's2', bid_id: 'b1', link: 'https://counttooling.com/app/?t=11111111-2222-3333-4444-555555555555', token: '11111111-2222-3333-4444-555555555555', project_name: 'SpaceX BA', scope: 'all', imported_by: 'u-r', first_imported_at: '2026-10-13T15:00:00Z', last_imported_at: '2026-10-13T15:00:00Z' },
+  { id: 's1', bid_id: 'b1', link: 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', token: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', project_name: 'SkyLab BA', scope: 'all', imported_by: 'u-t', first_imported_at: '2026-10-09T15:00:00Z', last_imported_at: '2026-10-09T15:00:00Z' },
+  { id: 's2', bid_id: 'b1', link: 'https://counttooling.com/app/?t=11111111-2222-3333-4444-555555555555', token: '11111111-2222-3333-4444-555555555555', project_name: 'SkyLab BA', scope: 'all', imported_by: 'u-r', first_imported_at: '2026-10-13T15:00:00Z', last_imported_at: '2026-10-13T15:00:00Z' },
 ]
 const ROWS = [
   { id: 'w34', source_shares: { s1: 1489.04, s2: 338.41 } },
@@ -60,10 +60,10 @@ describe('BidCountSourcesField (v2.5520)', () => {
     render(<BidCountSourcesField bidId="b1" />)
     const items = await screen.findAllByTestId('bid-count-source')
     expect(items).toHaveLength(2)
-    expect(items[0]!.textContent).toContain('SpaceX BA · Taunya')
+    expect(items[0]!.textContent).toContain('SkyLab BA · Taunya')
     expect(items[0]!.textContent).toContain('first')
     expect(items[0]!.textContent).toContain('imported by Taunya · Oct 9 · every sheet · 2 rows, 1 shared')
-    expect(items[1]!.textContent).toContain('SpaceX BA · Robert')
+    expect(items[1]!.textContent).toContain('SkyLab BA · Robert')
     expect(items[1]!.textContent).toContain('combined')
     expect(items[1]!.textContent).toContain('2 rows, 1 shared')
     fireEvent.click(screen.getAllByRole('button', { name: 'Open ↗' })[1]!)
@@ -74,7 +74,7 @@ describe('BidCountSourcesField (v2.5520)', () => {
     const onFirstLinkChange = vi.fn()
     render(<BidCountSourcesField bidId="b1" onFirstLinkChange={onFirstLinkChange} />)
     await screen.findAllByTestId('bid-count-source')
-    fireEvent.click(screen.getByRole('button', { name: 'Remove SpaceX BA · Taunya' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove SkyLab BA · Taunya' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(writes.some((w) => w.table === 'bid_count_sources' && w.op === 'delete')).toBe(true))
     const updates = writes.filter((w) => w.table === 'bids_count_rows' && w.op === 'update')

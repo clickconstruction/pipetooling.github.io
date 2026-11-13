@@ -16,7 +16,7 @@ const report = {
   field_values: { 'How complete is the job?': '100' },
   job_ledger_id: 'j1',
   project_id: null,
-  job_display_name: 'Mike Holub',
+  job_display_name: 'Mike Holmby',
   job_hcp_number: '473',
   job_address: null,
 }
@@ -45,7 +45,7 @@ async function renderExpandedAs(role: UserRole) {
   renderWithProviders(<DashboardRecentReportsSection authUserId="me" role={role} />)
   await waitFor(() => expect(screen.getByText('Recent Reports')).toBeTruthy())
   fireEvent.click(screen.getByText('Recent Reports'))
-  await waitFor(() => expect(screen.getByText(/Mike Holub/)).toBeTruthy())
+  await waitFor(() => expect(screen.getByText(/Mike Holmby/)).toBeTruthy())
   fireEvent.click(screen.getByText(/Abraham/))
   await waitFor(() => expect(screen.getByText(/How complete is the job/)).toBeTruthy())
 }

@@ -97,6 +97,8 @@ import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMet
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
+import { dueGroupKey } from '../lib/materials/supplyBillGroups'
+import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
@@ -356,6 +358,8 @@ export function SupplyHousesTab({
   const billTicketRef = useRef<string | null>(null)
   /** `/materials?tab=supply-houses&house=<id>&ticket=<id>`: the Tickets tab's Record as a bill lands here. */
   const pendingTicketRef = useRef<string | null>(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('ticket'))
+  /** `&due=<YYYY-MM-DD>` beside `house`: the Bridge's press names the day its bills fall due, and the card lands on that group. */
+  const pendingDueRef = useRef<string | null>(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('due'))
   const [billBusy, setBillBusy] = useState(false)
   const [billRefusal, setBillRefusal] = useState<string | null>(null)
   const [billRead, setBillRead] = useState<{ read: BillRead; file: Extract<BillReadAnswer, { ok: true }>['file']; model: string; readId: string | null; readAt: string } | null>(null)
@@ -464,6 +468,12 @@ export function SupplyHousesTab({
   /** v2.5693: the Directory folds away — the office lives in Accounts payable (the owner's ask, 2026-10-21). Collapsed by default, remembered per device. */
   const [directoryOpen, setDirectoryOpen] = useState(() => readRememberedToggle('directory-open', false))
   const [showPaidInvoices, setShowPaidInvoices] = useState(() => readRememberedToggle('show-paid-invoices', false))
+  // Punch list #334 PR 5: a house's card opens on its bills. The job accounts fold under them, and start folded.
+  const [jobAccountsOpen, setJobAccountsOpen] = useState(() => readRememberedToggle('job-accounts-open', false))
+  useEffect(() => writeRememberedToggle('job-accounts-open', jobAccountsOpen), [jobAccountsOpen])
+  /** The bill whose Mark paid is saving, and the bills marked paid on this visit, which stay where they were. */
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
+  const [paidThisVisit, setPaidThisVisit] = useState<ReadonlySet<string>>(() => new Set())
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
   // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
   const [summarySort, setSummarySort] = useState<SupplyHouseSummarySort>(() => {
@@ -582,6 +592,7 @@ export function SupplyHousesTab({
 
   async function loadSupplyHouseDetail(sh: SupplyHouse): Promise<SupplyHouseInvoiceWithAllocations[]> {
     setSupplyHouseDetailLoading(true)
+    setPaidThisVisit(new Set())
     setPoGeneratorEntriesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
@@ -698,7 +709,21 @@ export function SupplyHousesTab({
     if (!autoOpenHouseId) return
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === autoOpenHouseId)
     if (!sh) return
-    void loadSupplyHouseDetail(sh)
+    // The house's card opens in the list under the aging table, below the fold on most screens. A link that names a
+    // house should land on it, so the row is brought up once its card has read.
+    const houseId = sh.id
+    void loadSupplyHouseDetail(sh).then(() => {
+      const due = pendingDueRef.current
+      pendingDueRef.current = null
+      const target = (): Element | null => (due ? document.querySelector(`[data-due-group="${dueGroupKey(due, todayYmdInAppTz())}"]`) : null) ?? document.querySelector(`[data-supply-house-row="${houseId}"]`)
+      requestAnimationFrame(() => target()?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+      // The rows under the card settle a moment after it reads (the bills' line counts arrive), which moves the
+      // place. One more look, and a second scroll only when the target has drifted well off the top.
+      window.setTimeout(() => {
+        const el = target()
+        if (el && Math.abs(el.getBoundingClientRect().top) > 160) el.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }, 1200)
+    })
     onAutoOpenHouseHandled?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenHouseId, supplyHousesList])
@@ -1471,13 +1496,31 @@ export function SupplyHousesTab({
   }
 
   async function toggleInvoicePaid(inv: SupplyHouseInvoice) {
-    const { error } = await supabase
-      .from('supply_house_invoices')
-      .update({ is_paid: !inv.is_paid })
-      .eq('id', inv.id)
-    if (!error && selectedSupplyHouseForDetail) {
-      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-      await loadSupplyHouseSummary()
+    // One bill at a time. The row is changed where it stands: reading the whole card again would fold it to
+    // "Loading…" and lose the place, which made paying several bills in a row a scroll back each time.
+    setPayingInvoiceId(inv.id)
+    try {
+      const { data: saved, error } = await supabase
+        .from('supply_house_invoices')
+        .update({ is_paid: !inv.is_paid })
+        .eq('id', inv.id)
+        .select('is_paid, paid_at')
+        .single()
+      if (error) {
+        showToast(`${inv.invoice_number} was not changed. ${formatErrorMessage(error)}`, 'error', 5000)
+        return
+      }
+      const isPaid = saved?.is_paid ?? !inv.is_paid
+      setSupplyHouseInvoices((list) => list.map((row) => (row.id === inv.id ? { ...row, is_paid: isPaid, paid_at: saved?.paid_at ?? null } : row)))
+      setPaidThisVisit((ids) => {
+        const next = new Set(ids)
+        if (isPaid) next.add(inv.id)
+        else next.delete(inv.id)
+        return next
+      })
+      void loadSupplyHouseSummary()
+    } finally {
+      setPayingInvoiceId(null)
     }
   }
 
@@ -1924,6 +1967,7 @@ export function SupplyHousesTab({
                   return (
                     <Fragment key={row.supply_house_id}>
                       <tr
+                        data-supply-house-row={row.supply_house_id}
                         onClick={() => {
                           if (!sh) return
                           if (isExpanded) {
@@ -1935,6 +1979,7 @@ export function SupplyHousesTab({
                           borderBottom: '1px solid var(--border)',
                           cursor: 'pointer',
                           background: isExpanded ? '#f0f9ff' : undefined,
+                          scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 1rem)',
                         }}
                       >
                         <td style={{ padding: '0.75rem', fontWeight: 500 }}>
@@ -1995,15 +2040,17 @@ export function SupplyHousesTab({
                                       </div>
                                     )}
                                   </div>
-                                  <SupplyHouseJobAccountsRoster
-                                    house={selectedSupplyHouseForDetail}
-                                    invoices={supplyHouseInvoices}
-                                    jobDetails={supplyHouseJobDetailsMap}
-                                    onInvoicesChanged={() => void loadSupplyHouseDetail(selectedSupplyHouseForDetail)}
-                                  />
                                   <section style={{ marginBottom: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                      <h3 style={{ margin: 0, fontSize: '1rem' }}>Invoices</h3>
+                                      <h3 style={{ margin: 0, fontSize: '1rem' }}>
+                                        Invoices{' '}
+                                        <span style={{ fontWeight: 400, fontSize: '0.875rem', color: 'var(--text-muted)' }} data-testid="supply-bills-payday">
+                                          {(() => {
+                                            const day = sortedSupplyHouseSummary.find((r) => r.supply_house_id === selectedSupplyHouseForDetail.id)?.monthlyPaymentDay
+                                            return day ? `pays on the ${ordinalDay(day)}` : ''
+                                          })()}
+                                        </span>
+                                      </h3>
                                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button
                                           type="button"
@@ -2021,191 +2068,93 @@ export function SupplyHousesTab({
                                         </button>
                                       </div>
                                     </div>
-                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.4 }}>
-                                      A red icon appears when Purchase Order # contains a PO Generator code (five digits, 10000–99999) that is not on the
-                                      PO Generator ledger for this supply house or with no supply house on the ledger row. Shop-style refs like 40326-1
-                                      are not treated as generator codes. Empty or other text is not flagged.
-                                    </p>
-                                    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                        <thead style={{ background: 'var(--bg-subtle)' }}>
-                                          <tr>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Invoice #</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Purchase Order #</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Due</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Jobs</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid On</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Lines</th>
-                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {(() => {
-                                            const invoicesToShow = showPaidInvoices
-                                              ? supplyHouseInvoices
-                                              : supplyHouseInvoices.filter((inv) => !inv.is_paid)
-                                            return invoicesToShow.length === 0 ? (
-                                              <tr>
-                                                <td colSpan={11} style={{ padding: 0 }}>
-                                                  <EmptyState
-                                                    compact
-                                                    {...supplyHouseInvoicesEmptyWords({
-                                                      house: selectedSupplyHouseForDetail.name.trim() || 'this house',
-                                                      total: supplyHouseInvoices.length,
-                                                      addInvoice: openAddInvoice,
-                                                      showPaid: () => setShowPaidInvoices(true),
-                                                    })}
-                                                  />
-                                                </td>
-                                              </tr>
-                                            ) : (
-                                              invoicesToShow.map((inv) => {
-                                                const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
-                                                const showPoGenMismatch =
-                                                  poGenCode != null &&
-                                                  poGeneratorCodesForSelectedHouse != null &&
-                                                  !poGeneratorCodesForSelectedHouse.has(poGenCode)
-                                                return (
-                                              <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  {inv.invoice_number}
-                                                  {(() => {
-                                                    // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
-                                                    const pair = creditPairingLine(inv, supplyHouseInvoices)
-                                                    return pair ? <span data-testid="supply-credit-pair" style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{pair}</span> : null
-                                                  })()}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                    <span>{inv.purchase_order_number?.trim() ? inv.purchase_order_number : '—'}</span>
-                                                    {showPoGenMismatch ? (
-                                                      <span title="No PO Generator ledger entry for this number for this supply house.">
-                                                        <AlertCircle
-                                                          size={16}
-                                                          color="#dc2626"
-                                                          aria-label="No PO Generator ledger entry for this number for this supply house."
-                                                          style={{ flexShrink: 0, display: 'block' }}
-                                                        />
-                                                      </span>
-                                                    ) : null}
-                                                  </div>
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{formatYmdLocal(inv.invoice_date)}</td>
-                                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                                  {inv.due_date ? formatYmdLocal(inv.due_date) : '—'}
-                                                  {(() => {
-                                                    if (inv.is_paid || !inv.due_date) return null
-                                                    const days = daysPastDue(inv.due_date, todayYmdInAppTz())
-                                                    if (days <= 0) return null
-                                                    return (
-                                                      <span
-                                                        style={{
-                                                          marginLeft: '0.4rem',
-                                                          padding: '0.1rem 0.4rem',
-                                                          borderRadius: 999,
-                                                          fontSize: '0.7rem',
-                                                          fontWeight: 600,
-                                                          background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
-                                                          color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
-                                                        }}
-                                                      >
-                                                        {days}d past due
-                                                      </span>
-                                                    )
-                                                  })()}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
-                                                  {isSupplyCredit(inv.amount) ? `− $${formatCurrency(Math.abs(inv.amount))}` : `$${formatCurrency(inv.amount)}`}
-                                                  {isSupplyCredit(inv.amount) ? <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 500 }}>credit</span> : null}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                                                  {inv.on_job_account === true && (
-                                                    <span
-                                                      title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
-                                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}
-                                                    >
-                                                      Job acct
-                                                    </span>
-                                                  )}
-                                                  {inv.job_allocations && inv.job_allocations.length > 0
-                                                    ? inv.job_allocations
-                                                        .map((a) => {
-                                                          const d = supplyHouseJobDetailsMap[a.job_id]
-                                                          return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
-                                                        })
-                                                        .join(', ')
-                                                    : '—'}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={inv.is_paid}
-                                                    onChange={() => toggleInvoicePaid(inv)}
-                                                  />
-                                                </td>
-                                                <td
-                                                  style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
-                                                  title={inv.paid_at ?? undefined}
-                                                >
-                                                  {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                                  {inv.link || inv.payment_link ? (
-                                                    <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                                                      {inv.link ? (
-                                                        <a href={inv.link} target="_blank" rel="noreferrer" title="The invoice" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
-                                                      ) : null}
-                                                      {/* v2.3843: the payment / receipt link from Make Payment, beside the invoice scan. */}
-                                                      {inv.payment_link ? (
-                                                        <a href={inv.payment_link} target="_blank" rel="noreferrer" title="Payment or receipt (Make Payment)" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>Receipt</a>
-                                                      ) : null}
-                                                    </span>
-                                                  ) : (
-                                                    '—'
-                                                  )}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }} data-testid="supply-lines-cell">
-                                                  {(() => {
-                                                    // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
-                                                    const paper = papersByInvoice.get(inv.id) ?? null
-                                                    const w = rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null)
-                                                    const pill =
-                                                      w.tone === 'ok' || w.tone === 'accepted'
-                                                        ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
-                                                        : w.tone === 'off'
-                                                          ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)' }
-                                                          : { color: 'var(--text-muted)' }
-                                                    return (
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                        <span style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, ...pill }}>{w.words}</span>
-                                                        {w.look ? (
-                                                          <button type="button" onClick={(e) => { e.stopPropagation(); void openPaperLook(inv) }} style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>
-                                                            Look
-                                                          </button>
-                                                        ) : null}
-                                                      </span>
-                                                    )
-                                                  })()}
-                                                </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  <button type="button" onClick={(e) => { e.stopPropagation(); openEditInvoice(inv) }} title="Edit" aria-label="Edit" style={{ padding: '0.25rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
-                                                      <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
-                                                    </svg>
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            )
-                                              })
-                                            )
-                                          })()}
-                                        </tbody>
-                                      </table>
-                                    </div>
+                                    {(() => {
+                                      // A bill marked paid on this visit stays listed, so the rows under it do not move.
+                                      const billToday = todayYmdInAppTz()
+                                      const invoicesToShow = showPaidInvoices
+                                        ? supplyHouseInvoices
+                                        : supplyHouseInvoices.filter((inv) => !inv.is_paid || paidThisVisit.has(inv.id))
+                                      const rows: SupplyBillCardRow[] = invoicesToShow.map((inv) => {
+                                        const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
+                                        // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
+                                        const paper = papersByInvoice.get(inv.id) ?? null
+                                        return {
+                                          id: inv.id,
+                                          invoice_number: inv.invoice_number,
+                                          purchase_order_number: inv.purchase_order_number,
+                                          invoice_date: inv.invoice_date,
+                                          due_date: inv.due_date,
+                                          amount: inv.amount,
+                                          is_paid: inv.is_paid,
+                                          paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
+                                          link: inv.link,
+                                          payment_link: inv.payment_link,
+                                          on_job_account: inv.on_job_account,
+                                          jobs: (inv.job_allocations ?? []).map((a) => {
+                                            const d = supplyHouseJobDetailsMap[a.job_id]
+                                            return { label: d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8), pct: a.pct }
+                                          }),
+                                          poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
+                                          // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
+                                          pairLine: creditPairingLine(inv, supplyHouseInvoices),
+                                          lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
+                                        }
+                                      })
+                                      const byId = (id: string) => supplyHouseInvoices.find((x) => x.id === id) ?? null
+                                      return (
+                                        <SupplyHouseBillsCard
+                                          bills={rows}
+                                          todayYmd={billToday}
+                                          jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
+                                          paidThisVisit={paidThisVisit}
+                                          payingId={payingInvoiceId}
+                                          empty={
+                                            <EmptyState
+                                              compact
+                                              {...supplyHouseInvoicesEmptyWords({
+                                                house: selectedSupplyHouseForDetail.name.trim() || 'this house',
+                                                total: supplyHouseInvoices.length,
+                                                addInvoice: openAddInvoice,
+                                                showPaid: () => setShowPaidInvoices(true),
+                                              })}
+                                            />
+                                          }
+                                          onTogglePaid={(id) => {
+                                            const inv = byId(id)
+                                            if (inv) void toggleInvoicePaid(inv)
+                                          }}
+                                          onEdit={(id) => {
+                                            const inv = byId(id)
+                                            if (inv) openEditInvoice(inv)
+                                          }}
+                                          onLook={(id) => {
+                                            const inv = byId(id)
+                                            if (inv) void openPaperLook(inv)
+                                          }}
+                                        />
+                                      )
+                                    })()}
+                                  </section>
+                                  {/* The job accounts sit under the bills, folded until asked for. The fold is remembered. */}
+                                  <section style={{ marginBottom: '1.5rem' }} data-testid="supply-job-accounts-fold">
+                                    <button
+                                      type="button"
+                                      aria-expanded={jobAccountsOpen}
+                                      onClick={(e) => { e.stopPropagation(); setJobAccountsOpen((o) => !o) }}
+                                      style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', marginBottom: jobAccountsOpen ? '0.75rem' : 0, font: 'inherit', textAlign: 'left', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{jobAccountsOpen ? '▾' : '▸'}</span>
+                                      <b>Job accounts</b>
+                                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{jobAccountsOpen ? 'fold them away' : 'each job’s account with this house'}</span>
+                                    </button>
+                                    {jobAccountsOpen && (
+                                    <SupplyHouseJobAccountsRoster
+                                      house={selectedSupplyHouseForDetail}
+                                      invoices={supplyHouseInvoices}
+                                      jobDetails={supplyHouseJobDetailsMap}
+                                      onInvoicesChanged={() => void loadSupplyHouseDetail(selectedSupplyHouseForDetail)}
+                                    />
+                                    )}
                                   </section>
                                   <section>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

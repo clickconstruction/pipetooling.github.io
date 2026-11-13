@@ -13,8 +13,8 @@ import {
 } from './supplyHouseJobAccount'
 
 const args = {
-  jobName: 'Pondhill demo',
-  jobAddress: '4114 Pond Hill Rd, San Antonio, TX',
+  jobName: 'Penmoor demo',
+  jobAddress: '4114 Pen Moor Rd, San Antonio, TX',
   customerName: 'Hank Ibarra',
   customerPhone: '(210) 889-1901',
   customerEmail: 'hank@example.com',
@@ -42,9 +42,9 @@ describe('prefillJobAccountInfo (v2.1609 owner rules)', () => {
   it('GC-routed job: GC block fills, owner section starts BLANK (the GC is not the owner)', () => {
     const info = prefillJobAccountInfo({
       ...args,
-      gc: { name: 'H & I Construction', phone: '(210) 111-2222', email: 'gc@hi.com' },
+      gc: { name: 'B & D Construction', phone: '(210) 111-2222', email: 'gc@hi.com' },
     })
-    expect(info.gcCompany).toBe('H & I Construction')
+    expect(info.gcCompany).toBe('B & D Construction')
     expect(info.gcPhone).toBe('(210) 111-2222')
     expect(info.ownerMode).toBe('building_owner')
     expect(info.companyName).toBe('')
@@ -62,16 +62,16 @@ describe('prefillJobAccountInfo (v2.1609 owner rules)', () => {
   it('a saved job_property_owners row always wins, GC or not', () => {
     const info = prefillJobAccountInfo({
       ...args,
-      gc: { name: 'H & I Construction', phone: null, email: null },
+      gc: { name: 'B & D Construction', phone: null, email: null },
       savedOwner: {
         owner_mode: 'building_owner',
         owner_name: 'Pat Owner',
-        company_name: 'Pondhill Property LLC',
+        company_name: 'Penmoor Property LLC',
         mailing_address: 'PO Box 12, Austin, TX',
-        owner_email: 'pat@pondhill.com',
+        owner_email: 'pat@penmoor.com',
       },
     })
-    expect(info.companyName).toBe('Pondhill Property LLC')
+    expect(info.companyName).toBe('Penmoor Property LLC')
     expect(info.ownerName).toBe('Pat Owner')
     expect(info.mailingAddress).toBe('PO Box 12, Austin, TX')
   })

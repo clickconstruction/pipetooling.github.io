@@ -33,7 +33,7 @@ vi.mock('../../hooks/useJobThreadNotesForModal', () => ({
 
 const rows: CompleteNoBillRow<JobWithDetails>[] = [
   { job: makeJob({ id: 'j-1010', hcp_number: '1010', job_name: 'Lot 4 Kestrel', job_address: '12 Finch Ln', revenue: null }), gaps: ['total', 'work', 'charges'] },
-  { job: makeJob({ id: 'j-1060', hcp_number: '1060', job_name: 'Cano Camera', revenue: 2500 }), gaps: ['work'] },
+  { job: makeJob({ id: 'j-1060', hcp_number: '1060', job_name: 'Carrow Camera', revenue: 2500 }), gaps: ['work'] },
 ]
 
 afterEach(() => cleanup())

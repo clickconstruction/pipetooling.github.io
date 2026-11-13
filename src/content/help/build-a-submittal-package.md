@@ -52,7 +52,7 @@ Stage 1 lists the sources, one row each, with a count and a button. Any one of t
 - **The plans' schedule.** Tap {{button:outline|Type or paste the schedule}} on its row. Or ask the robot to read it off the plans, right beside that button. See *Let the robot read it first* below. The schedule is optional. With it, rows read {{chip:green|As specified}} or {{chip:yellow|Alternate}} instead of Proposed. Alternate means a different product than the plans name. A schedule that comes after the rows were built grades them too. Open step 2 and tap {{button:outline|Grade 12 rows against the schedule…}}. The window lists each Proposed row the schedule names, what the plans say, and the status it will take. Tap **Grade**. Each row takes the plans' product and its status. Parts, houses, lead times, reasons and cut sheets stay as they are. A row the schedule does not name stays Proposed.
 - **Quotes compared.** This row appears only on a bid with quote lines picked on the Pricing compare. It is the one source that carries the reason and lead time from each pick. A tag nobody picked reads {{chip:red|Missing}}. A picked line with no tag on the schedule becomes an {{chip:gray|Accessory}} row. Carriers, stops and traps are accessories. The schedule leaves them to you.
 
-:::example SpaceX, priced from the takeoff
+:::example SkyLab, priced from the takeoff
 BP375 has 26 fixtures on the takeoff, 22 with a part, no quotes compared and no schedule pasted. Wendi opens Submittals, taps Choose from the takeoff, sets the two hose bibbs to Left out, and builds Rev 1: 20 Proposed rows with the product and the house on each, in tag order. The procurement log on stage 8 prints from them.
 :::
 
@@ -62,7 +62,7 @@ Rev 1 is the first version of your submittal. Open the bid on the Submittals tab
 
 One line under stage 3's title says where you stand. It counts rows, as specified, alternates, design changes, proposed, missing and accessories. It says how many alternates still need a reason. And it counts the **cut sheets in**.
 
-:::example SpaceX, the way it should have gone
+:::example SkyLab, the way it should have gone
 Wendi pastes the P002 schedule, picks NWS on the compare, and opens Submittals. Rev 1 builds 22 rows: 6 as specified, 1 superseded, 1 equal, 8 alternates (3 still owe a reason), 1 design change, 1 missing, 4 accessories. Nothing was retyped from the quote.
 :::
 
@@ -78,8 +78,8 @@ Small buttons over the table count what is left, like *Need a cut sheet 6*. Tap 
 
 A row from the takeoff lists its parts, one per line. The maker and the model come first in bold. The rest of the catalog name follows, quiet. Under them a quiet line names the order-only parts. Another names the assembly they came from and every house. In the editor each part is one line under headings. The parts sit in groups. **The GC sees these** comes first, in the order the submittal prints them. **Order only** comes next. Set a part's house, its lead time and the stage it is needed for. An empty lead time shows **add** in amber. A part the GC answered says so under its name, like *Rejected Oct 2*. **Shown to** at the end of the line is a small menu with three choices. **GC sees it** puts the part on the submittal. **Order only** means you buy it and the GC does not see it. **Left out** takes the part off the row when you save. Use it for a part another trade buys. Changing the menu moves the part to that group. A part you have already ordered cannot be left out. The takeoff list remembers a part you left out, so a refresh does not bring it back. On a draft you can rename a part. The arrows move a part among the ones the GC sees. {{button:outline|+ Add a part}} adds one. On a shared revision the GC has read the parts. Only the house, the lead time, the stage and the count change then. The row's lead time is the longest among the parts the GC sees. A row typed as one product can become parts. Tap **List it as parts, each bought on its own**.
 
-:::example LAV-1 on SpaceX
-LAV-1 was priced from *LAV 1 assembly SPACEX*. The row used to read just that name. Now it lists the TSL lavatory, the TOTO faucet and the Bobrick soap dispenser. A quiet line under them reads *Ordered, not submitted: supply × 2, grid drain, P-trap, stop, flange*.
+:::example LAV-1 on SkyLab
+LAV-1 was priced from *LAV 1 assembly SKYLAB*. The row used to read just that name. Now it lists the TSL lavatory, the TOTO faucet and the Bobrick soap dispenser. A quiet line under them reads *Ordered, not submitted: supply × 2, grid drain, P-trap, stop, flange*.
 :::
 
 ## Buy a fixture without the GC
@@ -124,7 +124,7 @@ Tap {{button:outline|Drop a vendor PDF}}. Give it the house's whole submittal PD
 
 A house's own submittal file is often a parts list already. It has a contents page and a divider page for each tag. Each page names its tag, its maker and its model. On a file like that, {{button:blue|Read its parts…}} leads the line. It reads every part under every tag, with the pages each part uses. A review shows the file beside your rows before anything is written. Each card is one tag. A part reads *the same*, *in place of* a part you priced, or *not priced*. When the app could not tell, pick what a part takes the place of. Your parts the file does not carry are kept as order only, or taken off. A tag no row carries can come in as a new row. A row the file names another way can take the file's tag. Then tap {{button:blue|Use the file’s parts}}. Each row takes the file's parts, each with its own pages. A part that is not what you priced shows the priced part beside it. Say why with Edit. The package then stamps each part's pages with that part.
 
-:::example SpaceX, read from National Wholesale's file
+:::example SkyLab, read from National Wholesale's file
 The file lists 32 parts under 10 tags. LAV-2 reads the Sloan lavatory in place of the Kohler that was priced. The 1.28 gpf TOTO valve sits in place of the TET2UB31. ET-1, HWCP-1 and PRV-1 had no row, so they come in as rows. The mop sink row takes the file's tag, MB-1.
 :::
 
@@ -155,7 +155,7 @@ The dropped PDF is a working file, not a record. The record is the pages on rows
 
 Tap {{button:outline|Build package}}. The package is one PDF for the GC. It starts with a cover table on our letterhead. The table lists every row with its tag, the specified and submitted product, the status, the reason and lead time. It also says the page each cut sheet starts on. Then come the sheets in tag order. Each page is stamped *TAG · STATUS* and footed with the product. You do not need every cut sheet first. A row with no sheet reads *to follow* on the cover, and the button counts them, like *Build package · 6 cut sheets to follow*. A question names those rows before it builds. Only a row that still owes a reason holds the button. The package is stored on the revision and opens in a new tab. {{button:outline|Open package}} brings it back. {{button:outline|Rebuild package}} refreshes it after you edit rows or pages.
 
-:::example Rev 3 on SpaceX
+:::example Rev 3 on SkyLab
 22 rows, 14 sheets attached. The cover runs two pages, so DWH-1's sheet reads *p. 3*; the package is 31 pages. Wendi opens it to check the pages, then shares Rev 3 from step 5. The GC's decisions come back onto the rows.
 :::
 

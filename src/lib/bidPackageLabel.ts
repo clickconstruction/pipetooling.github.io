@@ -1,5 +1,5 @@
 /**
- * "BP375 SPACEX BA-02N Architectural"-style bid label for outbound packages.
+ * "BP375 SKYLAB BA-02N Architectural"-style bid label for outbound packages.
  * Extracted from PackageAndSendBidPricingModal (v2.2574) so the Pricing tab's
  * "Copy fixtures for text" can share it without importing a component file.
  */

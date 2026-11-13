@@ -43,13 +43,13 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
-  io.certs.mockReset().mockImplementation(async (week) => [cert('gc-knight', week)])
-  io.marks.mockReset().mockImplementation(async (week) => [mark('gc-loberg', week)])
-  io.marksSince.mockReset().mockImplementation(async () => [mark('gc-loberg'), mark('gc-loberg', '2026-09-21')])
+  io.certs.mockReset().mockImplementation(async (week) => [cert('gc-kestrin', week)])
+  io.marks.mockReset().mockImplementation(async (week) => [mark('gc-lowbeck', week)])
+  io.marksSince.mockReset().mockImplementation(async () => [mark('gc-lowbeck'), mark('gc-lowbeck', '2026-09-21')])
   io.senders.mockReset().mockImplementation(async (ids) => new Map(ids.map((id) => [id, 'u-taunya'] as const)))
 })
 
-const GC_IDS = ['gc-knight', 'gc-loberg']
+const GC_IDS = ['gc-kestrin', 'gc-lowbeck']
 function mount(over: Partial<UseGcStatementRoundInput> = {}) {
   return renderHook((p: UseGcStatementRoundInput) => useGcStatementRound(p), { initialProps: { open: true, certWeekStart: WEEK, roundGcIds: GC_IDS, ...over } })
 }
@@ -63,10 +63,10 @@ describe('useGcStatementRound', () => {
     expect(io.marks).toHaveBeenCalledWith(WEEK)
     expect(io.marksSince).toHaveBeenCalledWith(SIX_WEEKS_BACK)
     expect(io.senders).toHaveBeenCalledWith(GC_IDS)
-    expect(result.current.certRows.map((r) => r.gc_customer_id)).toEqual(['gc-knight'])
-    await waitFor(() => expect(result.current.roundMarks.map((m) => m.gc_customer_id)).toEqual(['gc-loberg']))
+    expect(result.current.certRows.map((r) => r.gc_customer_id)).toEqual(['gc-kestrin'])
+    await waitFor(() => expect(result.current.roundMarks.map((m) => m.gc_customer_id)).toEqual(['gc-lowbeck']))
     expect(result.current.boardMarks.map((m) => m.week_start)).toEqual([WEEK, '2026-09-21'])
-    await waitFor(() => expect([...result.current.roundSenders]).toEqual([['gc-knight', 'u-taunya'], ['gc-loberg', 'u-taunya']]))
+    await waitFor(() => expect([...result.current.roundSenders]).toEqual([['gc-kestrin', 'u-taunya'], ['gc-lowbeck', 'u-taunya']]))
   })
 
   it('reads nothing while shut, and reads the week afresh each time it opens', async () => {
@@ -94,17 +94,17 @@ describe('useGcStatementRound', () => {
     act(() => result.current.refreshCerts())
     await waitFor(() => expect(result.current.certsRead).toBe('failed'))
     expect(result.current.certRows).toEqual([])
-    io.certs.mockImplementationOnce(async () => [cert('gc-knight'), cert('gc-harper')])
+    io.certs.mockImplementationOnce(async () => [cert('gc-kestrin'), cert('gc-halden')])
     act(() => result.current.refreshCerts())
     await waitFor(() => expect(result.current.certsRead).toBe('read'))
-    expect(result.current.certRows.map((r) => r.gc_customer_id)).toEqual(['gc-knight', 'gc-harper'])
+    expect(result.current.certRows.map((r) => r.gc_customer_id)).toEqual(['gc-kestrin', 'gc-halden'])
     expect(io.certs).toHaveBeenCalledTimes(3)
   })
 
   it('refreshRoundMarks reads both lists again, and a failed read empties that list alone', async () => {
     const { result } = mount()
     await waitFor(() => expect(result.current.boardMarks).toHaveLength(2))
-    io.marks.mockImplementationOnce(async () => [mark('gc-loberg'), mark('gc-knight')])
+    io.marks.mockImplementationOnce(async () => [mark('gc-lowbeck'), mark('gc-kestrin')])
     io.marksSince.mockRejectedValueOnce(new Error('offline'))
     act(() => result.current.refreshRoundMarks())
     await waitFor(() => expect(result.current.roundMarks).toHaveLength(2))
@@ -134,11 +134,11 @@ describe('useGcStatementRound', () => {
     const first = deferred<Map<string, string>>()
     io.senders.mockImplementationOnce(() => first.promise)
     const view = mount()
-    view.rerender({ open: true, certWeekStart: WEEK, roundGcIds: ['gc-harper'] })
-    await waitFor(() => expect(view.result.current.roundSenders.get('gc-harper')).toBe('u-taunya'))
-    expect(io.senders).toHaveBeenLastCalledWith(['gc-harper'])
-    await act(async () => first.resolve(new Map([['gc-knight', 'u-old']])))
-    expect([...view.result.current.roundSenders]).toEqual([['gc-harper', 'u-taunya']])
+    view.rerender({ open: true, certWeekStart: WEEK, roundGcIds: ['gc-halden'] })
+    await waitFor(() => expect(view.result.current.roundSenders.get('gc-halden')).toBe('u-taunya'))
+    expect(io.senders).toHaveBeenLastCalledWith(['gc-halden'])
+    await act(async () => first.resolve(new Map([['gc-kestrin', 'u-old']])))
+    expect([...view.result.current.roundSenders]).toEqual([['gc-halden', 'u-taunya']])
   })
 
   it('shutting the window drops a senders answer still on its way', async () => {
@@ -146,31 +146,31 @@ describe('useGcStatementRound', () => {
     io.senders.mockImplementationOnce(() => late.promise)
     const view = mount()
     view.rerender({ open: false, certWeekStart: WEEK, roundGcIds: GC_IDS })
-    await act(async () => late.resolve(new Map([['gc-knight', 'u-late']])))
+    await act(async () => late.resolve(new Map([['gc-kestrin', 'u-late']])))
     expect(view.result.current.roundSenders.size).toBe(0)
   })
 
   it('reloadSenders reads the round GCs’ senders and keeps them; a failed read rejects for the caller to say so', async () => {
     const { result } = mount()
     await waitFor(() => expect(result.current.roundSenders.size).toBe(2))
-    io.senders.mockImplementationOnce(async () => new Map([['gc-knight', 'u-malachi']]))
+    io.senders.mockImplementationOnce(async () => new Map([['gc-kestrin', 'u-malachi']]))
     await act(async () => {
       await result.current.reloadSenders()
     })
     expect(io.senders).toHaveBeenLastCalledWith(GC_IDS)
-    expect([...result.current.roundSenders]).toEqual([['gc-knight', 'u-malachi']])
+    expect([...result.current.roundSenders]).toEqual([['gc-kestrin', 'u-malachi']])
     io.senders.mockRejectedValueOnce(new Error('offline'))
     await expect(result.current.reloadSenders()).rejects.toThrow('offline')
-    expect([...result.current.roundSenders]).toEqual([['gc-knight', 'u-malachi']])
+    expect([...result.current.roundSenders]).toEqual([['gc-kestrin', 'u-malachi']])
   })
 
   it('reloadSenders reads the GCs the round has now, not the ones it started with', async () => {
     const view = mount()
     await waitFor(() => expect(view.result.current.roundSenders.size).toBe(2))
-    view.rerender({ open: true, certWeekStart: WEEK, roundGcIds: ['gc-harper'] })
+    view.rerender({ open: true, certWeekStart: WEEK, roundGcIds: ['gc-halden'] })
     await act(async () => {
       await view.result.current.reloadSenders()
     })
-    expect(io.senders).toHaveBeenLastCalledWith(['gc-harper'])
+    expect(io.senders).toHaveBeenLastCalledWith(['gc-halden'])
   })
 })

@@ -4,8 +4,8 @@
 \set ON_ERROR_STOP on
 INSERT INTO public.users (id, name) VALUES ('00000000-0000-0000-0000-0000000000a1', 'Taunya');
 INSERT INTO public.jobs_ledger (id, job_name) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Palmer 251'),
-  ('00000000-0000-0000-0000-000000000002', 'Dudley 410'),
+  ('00000000-0000-0000-0000-000000000001', 'Palvern 251'),
+  ('00000000-0000-0000-0000-000000000002', 'Dunmere 410'),
   ('00000000-0000-0000-0000-000000000003', 'Whitfield 2148');
 INSERT INTO public.jobs_ledger_invoices (id, job_id, status, amount, stripe_invoice_id, external_send_channel, sent_to_customer_at) VALUES
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-000000000001', 'billed', 4720, 'in_1', 'stripe', '2026-08-27T20:40:00Z'),

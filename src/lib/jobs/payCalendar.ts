@@ -352,6 +352,64 @@ export function usuallyLandsWords(dueYmd: string, lateness: PayCalendarLateness 
   return `Usually lands about ${lateness.medianDays}d after. About ${payCalendarMonthDay(expectedFromDue(dueYmd, lateness))}.`
 }
 
+/**
+ * A bill this many days past its expected day has missed a whole pay run: a payer on a calendar
+ * pays once a month, so the next run has come and gone too. The waiting lists read it red.
+ */
+export const PAY_CALENDAR_MISSED_RUN_DAYS = 30
+
+/** How a waiting list reads one open bill of a payer on a Pay calendar. */
+export type CalendarBillTone = 'ok' | 'warn' | 'late'
+
+/**
+ * One open bill against its payer's calendar, for the lists that ask whose money is slow
+ * (Money waiting, Dashboard Accounts Receivable). A count of days since billing cannot judge
+ * such a payer: a bill in on the 1st and one in on the 30th are paid the same day.
+ */
+export type CalendarBillRead = {
+  /** The day the contract makes the bill due. */
+  dueYmd: string
+  /** The due day plus how late this payer usually runs. */
+  expectedYmd: string
+  /** Days past the due day; 0 while it is ahead. */
+  daysPastDue: number
+  /** Days past the expected day; 0 while it is ahead. */
+  daysPastExpected: number
+  /** ok until the expected day has passed · warn once it has · late once a whole pay run was missed. */
+  tone: CalendarBillTone
+}
+
+/**
+ * Reads one open bill against the calendar. `clockYmd` is the day the calendar counts from:
+ * the day the payer accepted the bill, else the day it went in. Null with no usable day.
+ */
+export function calendarBillRead(clockYmd: string | null | undefined, cal: PayCalendar, lateness: PayCalendarLateness | null | undefined, todayYmd: string): CalendarBillRead | null {
+  const dueYmd = dueDayFor(clockYmd, cal)
+  if (!dueYmd) return null
+  const expectedYmd = expectedFromDue(dueYmd, lateness)
+  const sinceDue = payCalendarDaysBetween(dueYmd, todayYmd)
+  const sinceExpected = payCalendarDaysBetween(expectedYmd, todayYmd)
+  if (sinceDue == null || sinceExpected == null) return null
+  const daysPastExpected = Math.max(0, sinceExpected)
+  const tone: CalendarBillTone = daysPastExpected >= PAY_CALENDAR_MISSED_RUN_DAYS ? 'late' : daysPastExpected > 0 ? 'warn' : 'ok'
+  return { dueYmd, expectedYmd, daysPastDue: Math.max(0, sinceDue), daysPastExpected, tone }
+}
+
+/** The read in a row's words: "due Dec 10" · "due Nov 10 · 5d past due" · "due Nov 10 · 12d past expected". */
+export function calendarBillWords(read: CalendarBillRead): string {
+  const due = `due ${payCalendarMonthDay(read.dueYmd)}`
+  if (read.daysPastExpected > 0) return `${due} · ${read.daysPastExpected}d past expected`
+  if (read.daysPastDue > 0) return `${due} · ${read.daysPastDue}d past due`
+  return due
+}
+
+/** What a calendar payer's waits are measured against, in a list's small line: "pay calendar · lands ~6d after the pay day". */
+export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined): string {
+  if (!lateness) return 'pay calendar · no payment on record yet'
+  if (lateness.medianDays <= 0) return 'pay calendar · lands by the pay day'
+  return `pay calendar · lands ~${lateness.medianDays}d after the pay day`
+}
+
 /** The cutoff asks in amber once it is this close, the last week a bill can still make this month's run. */
 export const PAY_CUTOFF_SOON_DAYS = 7
 

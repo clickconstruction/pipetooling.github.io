@@ -91,11 +91,11 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#9 Robots residuals](../to-dos/robots-residuals.md) | CountTooling work. Nothing is left on the client. |
 | [#11 Weekly Money phase 6](../to-dos/weekly-money-later.md) | The owner's call. It is optional. |
 | [#12 Dispatch residuals](../to-dos/dispatch-residuals.md) | A per-sheet key in the feed or the email log |
-| [#17 Submittals](../to-dos/submittals/README.md) | A twin key for gate 6b's robot half. Wendi's schedule on one live bid. The SpaceX Rev 3 rebuild and Rev 4 on B375. Stage 3b when the owner says. |
+| [#17 Submittals](../to-dos/submittals/README.md) | A twin key for gate 6b's robot half. Wendi's schedule on one live bid. The SkyLab Rev 3 rebuild and Rev 4 on B375. Stage 3b when the owner says. |
 | [#25 PO code](../to-dos/po-generator-stated-need.md) | Nothing to build. The ledger read for the week from 2026-09-22 closes it. |
 | [#27 MCP servers](../to-dos/mcp-servers.md) | A `ptt_` key in the owner's hands for three live checks. PR 7 starts with the owner's KV namespace. |
 | [#29 People spine](../to-dos/people-spine-residuals.md) | The owner's data. Twin Estimator 2's flag, the Training Helper row and the archived "Kyle" row. |
-| [#35 Lien notices sent by hand](../to-dos/lien-notice-sent-by-hand/README.md) | Nothing to build — delete after the office records the Lenox paper on 273 and the owner answers the $350 call |
+| [#35 Lien notices sent by hand](../to-dos/lien-notice-sent-by-hand/README.md) | Nothing to build — delete after the office records the Linmor paper on 273 and the owner answers the $350 call |
 | [#42 Lien windows](../to-dos/lien-windows/README.md) | Counsel's answers to three questions |
 | #45 Owner's portal (dropped 2026-11-05) | Nothing to build — delete after the first real owner's notices are recorded and the owner switch is on |
 | #47 The owner is calling (closed 2026-11-05) | Counsel reads the script's words. Option 3 and the other doors wait until the office asks. |
@@ -119,7 +119,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 
 ## 4. For the owner (filed today in `to-dos/owner-decisions-pending.md`)
 
-Edgar's back charge for Gibbs ($4,200 unpaid) and Lennox ($8,500 unpaid): the owner said he is to be back-charged; the amounts and the mechanism are the office's call · pay codes on the GC's copy of the lien notice and the real scan test (come back to it) · the Ferguson rep's phone and email (the owner does it in the app) · Partnerships' toggles (owner + attorney) · Twins Phase 2 (not now) · the four stale Overhead texts Helper 1 found (a task chip) · the icon's dark-tile candidate sheet to pick from once built · the clickplumbing.com sender: the runbook `docs/runbooks/CLICKPLUMBING_SENDER.md` names the DNS records, the Resend step and the Google Workspace alias the owner performs before the one-line flip.
+Edgar's back charge for Gibbs ($4,200 unpaid) and Linmoor ($8,500 unpaid): the owner said he is to be back-charged; the amounts and the mechanism are the office's call · pay codes on the GC's copy of the lien notice and the real scan test (come back to it) · the Ferguson rep's phone and email (the owner does it in the app) · Partnerships' toggles (owner + attorney) · Twins Phase 2 (not now) · the four stale Overhead texts Helper 1 found (a task chip) · the icon's dark-tile candidate sheet to pick from once built · the clickplumbing.com sender: the runbook `docs/runbooks/CLICKPLUMBING_SENDER.md` names the DNS records, the Resend step and the Google Workspace alias the owner performs before the one-line flip.
 
 ## 5. Gotchas learned today
 

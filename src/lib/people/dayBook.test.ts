@@ -45,8 +45,8 @@ function payload(over: Partial<DayBookPayload> = {}): DayBookPayload {
     ],
     jobs: [
       { id: 'job-102', hcp_number: '102', click_number: null, job_name: 'Halvorsen' },
-      { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dudley Mason' },
-      { id: 'job-273', hcp_number: null, click_number: '273', job_name: 'Dudley Lennox' },
+      { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dunmere Mallin' },
+      { id: 'job-273', hcp_number: null, click_number: '273', job_name: 'Dunmere Linmoor' },
     ],
     ref_people: [],
     sessions: [],
@@ -317,7 +317,7 @@ describe('the estimator lines (v2.3727)', () => {
     payload({
       users: [{ id: W, name: 'Wendi', role: 'estimator' }],
       bids: [
-        { id: 'bid-483', bid_number: '483', project_name: 'Lenox Hill' },
+        { id: 'bid-483', bid_number: '483', project_name: 'Linmor Hill' },
         { id: 'bid-485', bid_number: 'BP485', project_name: null },
         { id: 'bid-486', bid_number: null, project_name: 'Walmart' },
       ],

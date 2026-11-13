@@ -10,8 +10,8 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import DocsmitReviewModal from './DocsmitReviewModal'
 
 const prepared = [
-  { key: 'e1', n: 1, label: 'Owner of record', who: 'ATI Schertz Holdings LLC', windowLines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', recipient: 'owner' as const, jobNumber: '650', itemIds: ['it1'], pieceId: 'p1', price: 9.85, correction: 'ZIP+4: 78154-2011', sheets: 4, envelope: '#10' as const, pdfUrl: 'blob:one', pdfPath: 'mail/KX7M2QRT.pdf' },
-  { key: 'e2', n: 2, label: 'Original contractor', who: 'Loberg Contracting', windowLines: ['Loberg Contracting', '4303 Thousand Oaks Dr', 'San Antonio, TX 78217'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'ABCD2345', recipient: 'original_contractor' as const, jobNumber: '650', itemIds: ['it1', 'it2'], pieceId: 'p2', price: 12.4, correction: null, sheets: 9, envelope: 'Flat' as const, pdfUrl: 'blob:two', pdfPath: 'mail/ABCD2345.pdf' },
+  { key: 'e1', n: 1, label: 'Owner of record', who: 'AXO Schertz Holdings LLC', windowLines: ['AXO Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', recipient: 'owner' as const, jobNumber: '650', itemIds: ['it1'], pieceId: 'p1', price: 9.85, correction: 'ZIP+4: 78154-2011', sheets: 4, envelope: '#10' as const, pdfUrl: 'blob:one', pdfPath: 'mail/KX7M2QRT.pdf' },
+  { key: 'e2', n: 2, label: 'Original contractor', who: 'Lowbeck Contracting', windowLines: ['Lowbeck Contracting', '4303 Thousand Oaks Dr', 'San Antonio, TX 78217'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'ABCD2345', recipient: 'original_contractor' as const, jobNumber: '650', itemIds: ['it1', 'it2'], pieceId: 'p2', price: 12.4, correction: null, sheets: 9, envelope: 'Flat' as const, pdfUrl: 'blob:two', pdfPath: 'mail/ABCD2345.pdf' },
 ]
 const held = [{ key: 'e4', n: 4, label: 'Owner of record', why: 'The address needs a ZIP or ZIP+4.' }]
 
@@ -35,7 +35,7 @@ describe('DocsmitReviewModal', () => {
     expect((screen.getByTestId('dsm-mail') as HTMLButtonElement).disabled).toBe(true)
     fireEvent.keyDown(window, { key: 'ArrowDown' })
     expect((screen.getByTestId('dsm-pdf') as HTMLIFrameElement).getAttribute('src')).toBe('blob:two')
-    expect(screen.getByTestId('dsm-face').textContent).toContain('Loberg Contracting')
+    expect(screen.getByTestId('dsm-face').textContent).toContain('Lowbeck Contracting')
     fireEvent.click(screen.getByTestId('dsm-env-1'))
     expect((screen.getByTestId('dsm-pdf') as HTMLIFrameElement).getAttribute('src')).toBe('blob:one')
     fireEvent.keyDown(window, { key: 'Escape' })

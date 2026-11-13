@@ -17,7 +17,7 @@ A **clock session** is one punch in and out. You put the job on the session and 
 - **The day audit** is a day cell on People → Hours. {{button:blue|Edit}} shows {{button:outline|+ Link 1 session (0.72 h)}} when a session has no job yet. It sits beside the per-session {{button:blue|Assign}} control and {{button:outline|↺ Re-sync from clock}}. A session that is still pending carries the link into approval. The toast, the small pop-up message, says *the split updates on approval*.
 
 :::example Linking yesterday's floating hours
-Isiah · 0.72 h with no job → {{button:blue|Link to J523}} (dispatch had him at Mission Hills). Toast: *Linked 1 session (0.72 h) to J523 · Mission Hills — split recomputed from the clock*. On the Team board the chip moves onto the Mission Hills row in green; on Pipeline, Mission Hills' man hours go up by 0.72.
+Isiah · 0.72 h with no job → {{button:blue|Link to J523}} (dispatch had him at Mission Flats). Toast: *Linked 1 session (0.72 h) to J523 · Mission Flats — split recomputed from the clock*. On the Team board the chip moves onto the Mission Flats row in green; on Pipeline, Mission Flats' man hours go up by 0.72.
 :::
 
 ## Two jobs on one day

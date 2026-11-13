@@ -41,7 +41,7 @@ vi.mock('../../lib/supabase', async () => {
 
 const invoice = makeInvoice({ id: 'inv-1', status: 'billed', amount: 2200, sequence_order: 0 })
 // revenue above the one bill: a progress payment, so the through date box is on the form (a bill that covers the whole job picks the final form, v2.4274)
-const job = makeJob({ id: 'j1', hcp_number: '375', job_name: 'Springtown Vet', customer_name: 'Knight Contracting', invoices: [invoice], revenue: 6000 })
+const job = makeJob({ id: 'j1', hcp_number: '375', job_name: 'Stonewick Vet', customer_name: 'Kestrin Contracting', invoices: [invoice], revenue: 6000 })
 
 const HELD_LINE = /Not saved: a date is not finished\. Type the year in full, like \d{4}\./
 const signedBox = () => screen.getByLabelText('Signature date') as HTMLInputElement

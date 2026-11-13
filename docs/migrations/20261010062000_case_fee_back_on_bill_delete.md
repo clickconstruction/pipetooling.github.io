@@ -71,7 +71,7 @@ The migration runs twice after `20261010044000`. The bed's stand-ins add what th
   - writes D's revenue as $1,030 (1,060 − 30), which is the $1,000 line plus `job_rider_fees`' $30 for F's entry still on bill 2;
   - writes the history line once;
   - leaves case F alone.
-- **Deleting Southern Post's bill 1**, whose entry names `case-1` (not a uuid), goes without an error. Its total is left to the next rewrite, $1,813, and no history line is written.
+- **Deleting Southern Pine's bill 1**, whose entry names `case-1` (not a uuid), goes without an error. Its total is left to the next rewrite, $1,813, and no history line is written.
 - **A bill that comes back** (Split's part, or a restore) carrying D's entry and its `added_at`:
   - attaches case D to it, with the entry's amount and day, and clears the stamp;
   - puts the $30 back on the revenue ($1,060, which is 1,000 + `job_rider_fees`' 60);

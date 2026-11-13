@@ -12,11 +12,11 @@ describe('prefillTestReportTo', () => {
 
 describe('testReportRecipientLabel', () => {
   it('names the GC when its address is a recipient, else the customer, else nothing', () => {
-    const base = { gcEmail: 'billing@doneright.com', gcName: 'Done Right Foundation Repair', customerEmail: 'anna@example.com', customerName: 'Anna & Jeffrey Johnson' }
-    expect(testReportRecipientLabel({ ...base, toList: ['Billing@DoneRight.com'] })).toBe('Done Right Foundation Repair')
-    expect(testReportRecipientLabel({ ...base, toList: ['anna@example.com'] })).toBe('Anna & Jeffrey Johnson')
+    const base = { gcEmail: 'billing@deadlevel.example', gcName: 'Dead Level Foundation Repair', customerEmail: 'anna@example.com', customerName: 'Anna & Jeffrey Jarrow' }
+    expect(testReportRecipientLabel({ ...base, toList: ['Billing@deadlevel.example'] })).toBe('Dead Level Foundation Repair')
+    expect(testReportRecipientLabel({ ...base, toList: ['anna@example.com'] })).toBe('Anna & Jeffrey Jarrow')
     expect(testReportRecipientLabel({ ...base, toList: ['someone@else.com'] })).toBeNull()
-    expect(testReportRecipientLabel({ ...base, gcEmail: null, toList: ['anna@example.com', 'x@y.z'] })).toBe('Anna & Jeffrey Johnson')
+    expect(testReportRecipientLabel({ ...base, gcEmail: null, toList: ['anna@example.com', 'x@y.z'] })).toBe('Anna & Jeffrey Jarrow')
   })
 })
 

@@ -9,7 +9,7 @@
  * the chip reads the row's origin — a bank deposit link, a Stripe bill, or a
  * hand-typed row — and only then the type word. The bank names the payer on
  * every check deposit (`mercury_transactions.counterparty_name`), which is why
- * a bank row says "check from Loberg Contracting" and never the deposit id.
+ * a bank row says "check from Lowbeck Contracting" and never the deposit id.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
@@ -81,7 +81,7 @@ export function paymentSource(row: PaymentRow, job: JobWithDetails | null, bank?
 }
 
 /**
- * The source in a sentence, lower case, for the line's words: "check from Loberg
+ * The source in a sentence, lower case, for the line's words: "check from Lowbeck
  * Contracting", "check · bank deposit", "card through Stripe", "check recorded in
  * Stripe", "check · typed by hand", "typed by hand".
  */
@@ -116,7 +116,7 @@ export function daysAfterBill(sentYmd: string | null, paidYmd: string | null): n
 export type PaymentLineWords = {
   /** "Sep 14" */
   dateText: string
-  /** "check from Loberg Contracting" on a bank row; the chip on its own carries the rest. */
+  /** "check from Lowbeck Contracting" on a bank row; the chip on its own carries the rest. */
   who: string | null
   /** "61 d" when the bill went out before the money; "13 d before the bill" when it did not; null without dates. */
   daysText: string | null

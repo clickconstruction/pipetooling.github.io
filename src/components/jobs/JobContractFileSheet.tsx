@@ -71,7 +71,7 @@ export type JobContractFileSheetProps = {
   cancelLabel?: string | null
   /** 'sheet' stacks a modal (the Contract modal); 'inline' renders a card in place (the sweep's pane). */
   layout: 'sheet' | 'inline'
-  /** The heading over an inline card — "File Summit GC's subcontract" on a GC job. */
+  /** The heading over an inline card — "File Selwick GC's subcontract" on a GC job. */
   inlineTitle?: string
   onFiled: (row: JobContractRow) => void
   onCancel: () => void

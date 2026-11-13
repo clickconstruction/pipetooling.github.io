@@ -335,7 +335,7 @@ export function scoreboardCellWords(key: ScoreboardColumnKey, value: number): st
 }
 
 /**
- * A dollar figure short enough for a narrow column (v2.6457, the walk at tablet widths): the Gun Dog phone
+ * A dollar figure short enough for a narrow column (v2.6457, the walk at tablet widths): the Gray Fox phone
  * strip's rule (`lookFigure.ts`), from a million *$2.4M*, from ten thousand *$712k*, and since a 57 px column
  * cannot hold *−$6,840* in bold, from a thousand one decimal (*$9.4k*, *−$8k*); under a thousand the whole
  * dollars, a minus sign before a loss. Hours and days stay whole. The exact figure rides the cell's title.

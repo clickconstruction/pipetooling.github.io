@@ -40,7 +40,7 @@ describe('jobFormRiderFeesDollars (v2.5091)', () => {
     expect(jobFormRiderFeesDollars(Number.NaN, [billWithFees(30)])).toBe(30)
   })
 
-  it('the Job Total and the revenue written on save keep the fee: Southern Post’s bill 1', () => {
+  it('the Job Total and the revenue written on save keep the fee: Southern Pine’s bill 1', () => {
     const fixtures = [line('Rough-in', 1, 13_680), line('Final', 2, 2_000)]
     expect(jobFormRevenueDollars(fixtures, jobFormRiderFeesDollars(0, [billWithFees(30)]))).toBe(17_710)
   })

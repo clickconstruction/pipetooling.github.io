@@ -135,7 +135,7 @@ describe('doneFoldWords', () => {
   })
 })
 
-describe('the archived bids and the live order (the Gun Dog spike, 2026-11-02)', () => {
+describe('the archived bids and the live order (the Gray Fox spike, 2026-11-02)', () => {
   it('an archived bid with no job sits apart: after the live rows, before the done ones, out of liveRows', () => {
     const members: Members = {
       bids: [

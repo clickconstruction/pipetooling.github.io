@@ -43,14 +43,14 @@ Click a role chip on an existing contact to move them.
 :::
 
 :::example Ferguson
-**Curly Conley · curly.conley@ferguson.com · 210-344-4950** {{chip:green|Job accounts}} — the office calls Curly before a job's first parts run. The starred **cristian.almendarez** {{chip:gray|Price requests}} still gets the price requests.
+**Curly Conmere · curly.conmere@ferguson.com · 210-344-4950** {{chip:green|Job accounts}} — the office calls Curly before a job's first parts run. The starred **cristian.almendarez** {{chip:gray|Price requests}} still gets the price requests.
 :::
 
 ## Job accounts at a house
 
 Some houses open an account per property. A job's purchases then land on their own statement. Ferguson, Reece and Moore do this. The office marks each house on **Edit**. **Job accounts** is set to *Expects one per property*, *Optional*, or *None*. Only *expects* houses raise a signal when a job buys there with no account on record.
 
-Expand a house in **Accounts payable**. The **Job accounts** roster sits above its invoices. It lists every job with an account there. {{chip:green|open}} shows the house's reference and how it was opened. {{chip:purple|requested}} means someone is waiting on the office. {{chip:gray|not needed}} shows the reason. In amber, it lists every job that has invoices at this house but **no account on record**. {{button:green|Mark opened…}} on a row takes two taps after the call. You record how it was opened: by phone, the packet, or at the counter. You add the reference if the house gave one, the rep and a note. **Not needed** records why, so the signal stops for that job. The reason might be that the job buys on the builder's account, or a small service call.
+Expand a house in **Accounts payable**. **Job accounts** sits under its invoices, folded. Press it to open the roster. The roster lists every job with an account there. {{chip:green|open}} shows the house's reference and how it was opened. {{chip:purple|requested}} means someone is waiting on the office. {{chip:gray|not needed}} shows the reason. In amber, it lists every job that has invoices at this house but **no account on record**. {{button:green|Mark opened…}} on a row takes two taps after the call. You record how it was opened: by phone, the packet, or at the counter. You add the reference if the house gave one, the rep and a note. **Not needed** records why, so the signal stops for that job. The reason might be that the job buys on the builder's account, or a small service call.
 
 See [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account) for what the account changes on invoices.
 

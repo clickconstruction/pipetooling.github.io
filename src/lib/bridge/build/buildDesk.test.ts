@@ -12,12 +12,12 @@ const block = (jobId: string, workDate: string, assigneeUserId: string) => ({ jo
 
 /** The mock-up's seven jobs on 2026-10-26: the window is Oct 13–26, the crew look-ahead Oct 26 – Nov 1. */
 const openJobs: BuildJob[] = [
-  job('977', 'Springtown', 71_000, 45),
-  job('1017', 'Terrell', null, null),
+  job('977', 'Stonewick', 71_000, 45),
+  job('1017', 'Tarrow', null, null),
   job('1086', 'Big Easy sink drain', null, null),
-  job('878', 'Take 5- Seguin', 124_000, 62),
-  job('912', 'Limitless Renovations', 44_000, 30),
-  job('1007', 'SPACEX BA-02N Architectural', 170_000, 60),
+  job('878', 'Tune 5- Seguin', 124_000, 62),
+  job('912', 'Linwick Renovations', 44_000, 30),
+  job('1007', 'SKYLAB BA-02N Architectural', 170_000, 60),
   job('1081', 'Adams Pretest', 32_000, 100),
 ]
 const points: PctPoint[] = [pt('977', '2026-09-28', 45), pt('878', '2026-09-01', 62), pt('912', '2026-08-20', 30), pt('1007', '2026-09-30', 48), pt('1007', '2026-10-20', 60, 'report'), pt('1081', '2026-10-01', 90), pt('1081', '2026-10-22', 100, 'report')]
@@ -119,7 +119,7 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(r.why).toBe('The % is 4 weeks old. 22h went on in the last 14 days. Either the crew built and nobody wrote it, or the hours vanished. One look at the job says which.')
     expect(r.doors).toEqual([{ label: 'Open the job', href: '/jobs?tab=stages&edit=977' }])
     expect(r.canSetPct).toBe(true)
-    expect(r.modalJob).toEqual({ id: '977', hcpNumber: 'J977', jobName: 'Springtown', label: 'J977 · Springtown' })
+    expect(r.modalJob).toEqual({ id: '977', hcpNumber: 'J977', jobName: 'Stonewick', label: 'J977 · Stonewick' })
   })
 
   it('reads a job with no price: hours earning zero, the crew-days onto it, the Price the job door, no Set the %', () => {
@@ -188,7 +188,7 @@ describe('buildBuildDesk (v2.5929)', () => {
   })
 
   it('says both when the job’s own % sits below a report before the window (v2.5938), and moves nothing', () => {
-    const d = buildBuildDesk({ openJobs: [...openJobs, job('931', 'Heron Construction', 48_700, 40)], points: [...points, pt('931', '2026-09-10', 100, 'report')], sessions, spanWeeks: 13, todayYmd: TODAY, reads, paces: null, outPerWeekUsd: null, weeks: null })
+    const d = buildBuildDesk({ openJobs: [...openJobs, job('931', 'Hadlow Construction', 48_700, 40)], points: [...points, pt('931', '2026-09-10', 100, 'report')], sessions, spanWeeks: 13, todayYmd: TODAY, reads, paces: null, outPerWeekUsd: null, weeks: null })
     const r = d.rows.find((x) => x.id === '931')!
     expect(r.group).toBe('stalled')
     expect(r.movedUsd).toBe(0)
@@ -196,7 +196,7 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(r.pctWords).toBe('40 · a report read 100')
     expect(r.why).toBe('The job says 40%. A report read 100% 7 weeks ago. One look at the job says which is true. $29.2k of sold work has had no hours in 13 weeks. The Schedule shows nobody this week either. Crew it, or name why it waits.')
     expect(plainWordsFailures(r.why)).toEqual([])
-    const hand = buildBuildDesk({ openJobs: [job('931', 'Heron Construction', 48_700, 40)], points: [pt('931', '2026-09-10', 100)], sessions: [], spanWeeks: 13, todayYmd: TODAY, reads: null, paces: null, outPerWeekUsd: null, weeks: null })
+    const hand = buildBuildDesk({ openJobs: [job('931', 'Hadlow Construction', 48_700, 40)], points: [pt('931', '2026-09-10', 100)], sessions: [], spanWeeks: 13, todayYmd: TODAY, reads: null, paces: null, outPerWeekUsd: null, weeks: null })
     expect(hand.rows[0]!.pctWords).toBe('40 · was set to 100')
     expect(hand.rows[0]!.why.startsWith('The job says 40%. The % was set to 100% 7 weeks ago.')).toBe(true)
   })

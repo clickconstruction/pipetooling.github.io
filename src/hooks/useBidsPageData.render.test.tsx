@@ -218,7 +218,7 @@ describe('useBidsPageData — loadBids', () => {
   const ROW = {
     id: 'bid-1',
     bid_number: '482',
-    customers: [{ id: 'c-1', name: 'H & I Construction' }],
+    customers: [{ id: 'c-1', name: 'B & D Construction' }],
     bids_gc_builders: null,
     estimator: [{ id: 'u-1', name: 'Tristen', email: 't@x.test' }],
     account_manager: { id: 'u-2', name: 'Wendi', email: 'w@x.test' },
@@ -258,7 +258,7 @@ describe('useBidsPageData — loadBids', () => {
     await act(async () => { rows = await result.current.data.loadBids() })
     expect(rows).toHaveLength(1)
     const bid = result.current.data.bids[0]!
-    expect(bid.customers).toEqual({ id: 'c-1', name: 'H & I Construction' })
+    expect(bid.customers).toEqual({ id: 'c-1', name: 'B & D Construction' })
     expect(bid.bids_gc_builders).toBeNull()
     expect(bid.estimator).toEqual({ id: 'u-1', name: 'Tristen', email: 't@x.test' })
     expect(bid.account_manager).toEqual({ id: 'u-2', name: 'Wendi', email: 'w@x.test' })

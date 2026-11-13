@@ -114,7 +114,7 @@ function slowTap(el: Element, ms: number, how: How = 'pointer') {
 function BoardRow({ onMark, children }: { onMark: () => void; children: ReactNode }) {
   return (
     <div data-testid="board-row" {...bidMarkHoldHandlers('board:b-385', onMark)}>
-      <span>Galloway Park</span>
+      <span>Gallenby Park</span>
       {children}
     </div>
   )
@@ -132,7 +132,7 @@ describe('Bid Board row: a press inside a window drawn in it', () => {
     renderWithProviders(<BoardRow onMark={onMark}>{null}</BoardRow>)
     await settle()
     vi.useFakeTimers()
-    slowTap(screen.getByText('Galloway Park'), BID_MARK_HOLD_MS + 100)
+    slowTap(screen.getByText('Gallenby Park'), BID_MARK_HOLD_MS + 100)
     expect(onMark).toHaveBeenCalledTimes(1)
   })
 
@@ -140,10 +140,10 @@ describe('Bid Board row: a press inside a window drawn in it', () => {
     const onMark = vi.fn()
     renderWithProviders(
       <BoardRow onMark={onMark}>
-        <BidGcNotesPopover bidId="b-385" bidLabel="Galloway Park" gcId="gc-1" gcName="HCS, Inc." sentOn="9/22" outcome={null} onClose={() => {}} onChanged={() => {}} />
+        <BidGcNotesPopover bidId="b-385" bidLabel="Gallenby Park" gcId="gc-1" gcName="HCS, Inc." sentOn="9/22" outcome={null} onClose={() => {}} onChanged={() => {}} />
       </BoardRow>,
     )
-    const dialog = await screen.findByRole('dialog', { name: 'Notes for HCS, Inc. on Galloway Park' })
+    const dialog = await screen.findByRole('dialog', { name: 'Notes for HCS, Inc. on Gallenby Park' })
     await screen.findByText('No notes yet for HCS, Inc. on this bid.')
     const box = screen.getByPlaceholderText('Add a note for HCS, Inc. on this bid…')
     fireEvent.change(box, { target: { value: 'Called Dana, wants the alternates split out' } })
@@ -173,7 +173,7 @@ describe('Bid Board row: a press inside a window drawn in it', () => {
       job_id: 'j-258',
       job_hcp_number: '258',
       job_click_number: null,
-      job_name: 'Dudley Mason',
+      job_name: 'Dunmere Mallin',
       job_address: null,
       supply_house_id: 'h-1',
       house_name: 'Ferguson',

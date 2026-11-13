@@ -5255,6 +5255,129 @@ export type Database = {
           },
         ]
       }
+      box_sticker_events: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          from_container_id: string | null
+          id: string
+          kind: string
+          sticker_id: string
+          to_container_id: string | null
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          from_container_id?: string | null
+          id?: string
+          kind: string
+          sticker_id: string
+          to_container_id?: string | null
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          from_container_id?: string | null
+          id?: string
+          kind?: string
+          sticker_id?: string
+          to_container_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "box_sticker_events_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "box_sticker_events_from_container_id_fkey"
+            columns: ["from_container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "box_sticker_events_sticker_id_fkey"
+            columns: ["sticker_id"]
+            isOneToOne: false
+            referencedRelation: "box_stickers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "box_sticker_events_to_container_id_fkey"
+            columns: ["to_container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      box_stickers: {
+        Row: {
+          code: string | null
+          container_id: string | null
+          created_at: string
+          id: string
+          lost_at: string | null
+          number: number
+          placed_at: string | null
+          placed_by: string | null
+          placed_by_name: string
+          run_id: string
+        }
+        Insert: {
+          code?: string | null
+          container_id?: string | null
+          created_at?: string
+          id?: string
+          lost_at?: string | null
+          number: number
+          placed_at?: string | null
+          placed_by?: string | null
+          placed_by_name?: string
+          run_id: string
+        }
+        Update: {
+          code?: string | null
+          container_id?: string | null
+          created_at?: string
+          id?: string
+          lost_at?: string | null
+          number?: number
+          placed_at?: string | null
+          placed_by?: string | null
+          placed_by_name?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "box_stickers_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "box_stickers_placed_by_fkey"
+            columns: ["placed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "box_stickers_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sticker_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bridge_calls: {
         Row: {
           called_by: string | null
@@ -6142,6 +6265,12 @@ export type Database = {
           id: string
           percent_complete: number
           pinned_at: string | null
+          place_accuracy_m: number | null
+          place_lat: number | null
+          place_lng: number | null
+          place_name: string | null
+          place_set_at: string | null
+          place_set_by: string | null
           sort_index: number
           title: string
         }
@@ -6155,6 +6284,12 @@ export type Database = {
           id?: string
           percent_complete?: number
           pinned_at?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           sort_index?: number
           title: string
         }
@@ -6168,6 +6303,12 @@ export type Database = {
           id?: string
           percent_complete?: number
           pinned_at?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           sort_index?: number
           title?: string
         }
@@ -6184,6 +6325,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_place_set_by_fkey"
+            columns: ["place_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -19893,6 +20041,51 @@ export type Database = {
             columns: ["to_place_id"]
             isOneToOne: false
             referencedRelation: "job_places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_container_names: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          container_id: string
+          id: string
+          new_label: string
+          old_label: string
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id: string
+          id?: string
+          new_label: string
+          old_label: string
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id?: string
+          id?: string
+          new_label?: string
+          old_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_container_names_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_container_names_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
             referencedColumns: ["id"]
           },
         ]
@@ -34809,6 +35002,57 @@ export type Database = {
           },
         ]
       }
+      sticker_runs: {
+        Row: {
+          copies: number
+          first_number: number | null
+          id: string
+          job_id: string | null
+          last_number: number | null
+          printed_at: string
+          printed_by: string | null
+          printed_by_name: string
+          sticker_count: number
+        }
+        Insert: {
+          copies?: number
+          first_number?: number | null
+          id?: string
+          job_id?: string | null
+          last_number?: number | null
+          printed_at?: string
+          printed_by?: string | null
+          printed_by_name?: string
+          sticker_count: number
+        }
+        Update: {
+          copies?: number
+          first_number?: number | null
+          id?: string
+          job_id?: string | null
+          last_number?: number | null
+          printed_at?: string
+          printed_by?: string | null
+          printed_by_name?: string
+          sticker_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sticker_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_runs_printed_by_fkey"
+            columns: ["printed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_oob_payment_reverts: {
         Row: {
           created_at: string
@@ -40877,6 +41121,9 @@ export type Database = {
         Args: { p_lang: string; p_user_id: string }
         Returns: string
       }
+      box_sticker_caller_name: { Args: never; Returns: string }
+      box_sticker_facts: { Args: { p_sticker_id: string }; Returns: Json }
+      box_sticker_number_words: { Args: { p_number: number }; Returns: string }
       bridge_mark_my_move_done: {
         Args: { p_call_id: string; p_idx: number }
         Returns: Json
@@ -45276,6 +45523,10 @@ export type Database = {
         Returns: Json
       }
       mint_pay_code: { Args: never; Returns: string }
+      mint_sticker_run: {
+        Args: { p_copies?: number; p_count: number; p_job_id: string }
+        Returns: Json
+      }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
@@ -45575,6 +45826,18 @@ export type Database = {
           who_text: string
           who_user_id: string
         }[]
+      }
+      place_sticker: {
+        Args: {
+          p_container_id?: string
+          p_job_id?: string
+          p_kind?: string
+          p_label?: string
+          p_place_id?: string
+          p_sticker_id: string
+          p_where_note?: string
+        }
+        Returns: Json
       }
       plan_job_names_from_work: {
         Args: { p_apply?: boolean }
@@ -46860,6 +47123,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      sticker_by_code: { Args: { p_code: string }; Returns: Json }
+      sticker_can_mint: { Args: never; Returns: boolean }
       sub_portal_visit_summary: {
         Args: { p_person_ids: string[] }
         Returns: {
