@@ -66,7 +66,7 @@ describe('devMcpJobCombine — the verbs on the allowlist', () => {
       expect(SERVER).toContain(`name: '${v}',`)
     }
     expect(planVerbFor('apply_job_combine')).toBe('plan_job_combine')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(99)
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(101)
     expect(README).toContain('`plan_job_combine(combine)` · `apply_job_combine(combine, plan_hash, confirm_no_undo)`')
     expect(alreadyApplied('apply_job_combine', { target: REAL, at: null })).toContain('The source job is gone')
   })

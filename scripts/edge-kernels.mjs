@@ -255,6 +255,11 @@ export const ENTRIES = {
   'lib/bridge/cashAccounts.ts': { values: [], types: [] },
   'lib/bridge/mercuryCash.ts': { values: [], types: [] },
   'lib/jobs/zzTestJobReads.ts': { values: [], types: [] },
+  // The dev seat's last day of work (v2.7206): the Lien window's own rule for a day set by hand and the table its
+  // confirm window draws, so plan_last_work_day refuses what the window refuses and shows the dates the window shows.
+  // The index exports nothing of them: the seat imports each file by its path.
+  'lib/jobs/lienLastWorkDay.ts': { values: [], types: [] },
+  'lib/jobs/lienLastWorkDayPreview.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
   'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },
