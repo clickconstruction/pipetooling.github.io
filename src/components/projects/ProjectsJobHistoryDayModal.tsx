@@ -1366,7 +1366,7 @@ function DayContextMiniGantt({
                   alignItems: 'center',
                   lineHeight: 1.1,
                   fontWeight: isSelected ? 700 : 500,
-                  color: isSelected ? '#9a3412' : isWeekend ? 'var(--text-slate-400)' : 'var(--text-slate-600)',
+                  color: isSelected ? 'var(--text-orange-800)' : isWeekend ? 'var(--text-slate-400)' : 'var(--text-slate-600)',
                 }}
               >
                 <span style={{ fontSize: '0.625rem' }}>{wd}</span>

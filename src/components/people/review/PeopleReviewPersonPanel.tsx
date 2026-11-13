@@ -689,7 +689,7 @@ export function PeopleReviewPersonPanel({
                                   }}
                                   title={j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                 >
-                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
+                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
                                   <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                     if (j.revenueBeforeOverhead === 0) return '—'
                                     const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
@@ -799,7 +799,7 @@ export function PeopleReviewPersonPanel({
                                   }}
                                   title={j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                 >
-                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
+                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
                                   <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                     if (j.revenueBeforeOverhead === 0) return '—'
                                     const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
@@ -925,7 +925,7 @@ export function PeopleReviewPersonPanel({
                             {(() => {
                               const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
                               return (
-                                <div style={{ fontWeight: 600, color: totalRevenue >= 0 ? undefined : '#b91c1c' }}>{totalRevenue !== 0 ? `$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</div>
+                                <div style={{ fontWeight: 600, color: totalRevenue >= 0 ? undefined : 'var(--text-red-700)' }}>{totalRevenue !== 0 ? `$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</div>
                               )
                             })()}
                             <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {

@@ -156,11 +156,11 @@ export function ReviewJobExpandedDetail({
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
           <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead)</span>
-          <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
+          <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s Net Revenue on Job`}</span>
-          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
+          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s Net Revenue this Day`}</span>
-          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</span>
+          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>

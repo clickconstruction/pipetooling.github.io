@@ -730,7 +730,7 @@ export function BankingMercuryUserReviewTab({
                     key={row.rowKey}
                     style={{
                       borderBottom: '1px solid var(--border)',
-                      background: isSelected ? '#eff6ff' : undefined,
+                      background: isSelected ? 'var(--bg-blue-tint)' : undefined,
                     }}
                   >
                     <td

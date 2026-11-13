@@ -45,6 +45,7 @@ import {
 } from '../../lib/jobScheduleOverlap'
 import { ScheduleDayTimeline, type ScheduleTimelineSegment } from './ScheduleDayTimeline'
 import { scheduleAddSplit, scheduleAddWords } from '../../lib/schedule/scheduleAddSplit'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type { ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 
@@ -804,11 +805,11 @@ export function ScheduleJobModal({
                 fontSize: '0.875rem',
                 background:
                   saving || addWords.dead || !hasAssigneePickOptions
-                    ? 'var(--bg-200)'
+                    ? DEAD_PRESS_FILL
                     : '#2563eb',
                 color:
                   saving || addWords.dead || !hasAssigneePickOptions
-                    ? '#6b7280'
+                    ? DEAD_PRESS_TEXT
                     : '#fff',
                 border: 'none',
                 borderRadius: 4,
