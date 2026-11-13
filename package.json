@@ -126,6 +126,7 @@
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",
     "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",
+    "test:pg:bill-send-marks": "bash scripts/pgtest-bill-send-marks.sh",
     "test:pg:salary-sync-open-punch": "bash scripts/pgtest-salary-sync-open-punch.sh",
     "test:pg:count-sources": "bash scripts/pgtest-count-sources.sh",
     "test:pg:robot-fixtures": "bash scripts/pgtest-robot-fixtures.sh",
