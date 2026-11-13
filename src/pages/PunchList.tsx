@@ -29,7 +29,22 @@ import {
 } from '../lib/todos/punchListView'
 import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
 import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
+import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
+import {
+  ORDER_KEY,
+  ORDER_PARAM,
+  PUNCH_VIEWS,
+  VIEW_KEY,
+  VIEW_LABEL,
+  VIEW_PARAM,
+  flipOrder,
+  orderFrom,
+  searchFor,
+  viewFrom,
+  type NumberOrder,
+  type PunchView,
+} from '../lib/todos/punchListByNumber'
 import { unpackHistory } from '../lib/todos/punchListHistory'
 import packedHistory from '../lib/todos/punchListHistoryData'
 import board from 'virtual:punch-list'
@@ -51,6 +66,11 @@ import board from 'virtual:punch-list'
  * The door is `canOpenPunchList` (dev + master); a refused deep link lands on Today with
  * the #29 sentence. Picks are shared rows in `punch_list_picks` (v2.3559), stamped with
  * who made them; until the table is pushed they stay on the device and the page says so.
+ *
+ * Two views: **By group** (the Shortlist, the flagged rows, then each group) and **By number**
+ * (`PunchListByNumber`: every card in one list, the highest number first). The address names
+ * the view (`?view=number`, `&order=oldest`), the device remembers the last press, and a bare
+ * address reads the device (`lib/todos/punchListByNumber.ts`).
  */
 /** The board's history as the build replayed it from git; the burndown reads it. */
 const history = unpackHistory(packedHistory)
@@ -71,6 +91,17 @@ export default function PunchList() {
   const { picks, shared, save } = usePunchListPicks(allowed)
   const [filter, setFilter] = useState<PunchFilter>('all')
   const [waitingOnly, setWaitingOnly] = useState(false)
+  // The view and the sort: the address first, then the last press on this device, then the groups.
+  const [remembered, setRemembered] = useState(() => ({ view: readChoice(VIEW_KEY), order: readChoice(ORDER_KEY) }))
+  const params = new URLSearchParams(location.search)
+  const view = viewFrom(params.get(VIEW_PARAM), remembered.view)
+  const order = orderFrom(params.get(ORDER_PARAM), remembered.order)
+  const choose = (nextView: PunchView, nextOrder: NumberOrder) => {
+    writeChoice(VIEW_KEY, nextView === 'number' ? nextView : null)
+    writeChoice(ORDER_KEY, nextOrder === 'oldest' ? nextOrder : null)
+    setRemembered({ view: nextView, order: nextOrder })
+    navigate({ pathname: location.pathname, search: searchFor(location.search, nextView, nextOrder), hash: location.hash }, { replace: true })
+  }
   const waitingCount = useMemo(() => waitingOnMockupCount(board.items), [])
 
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
@@ -162,6 +193,13 @@ export default function PunchList() {
       <PunchListBurndown history={history} items={board.items} />
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
+        <span style={eyebrow}>View</span>
+        {PUNCH_VIEWS.map((v) => (
+          <button key={v} type="button" onClick={() => choose(v, order)} aria-pressed={view === v} style={pillStyle(view === v)}>
+            {VIEW_LABEL[v]}
+          </button>
+        ))}
+        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
         <span style={eyebrow}>Show</span>
         {PUNCH_FILTERS.map((f) => {
           const n = f === 'all' ? counts.all : counts[f]
@@ -172,17 +210,7 @@ export default function PunchList() {
               type="button"
               onClick={() => setFilter(f)}
               aria-pressed={active}
-              style={{
-                font: 'inherit',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                padding: '0.3rem 0.75rem',
-                borderRadius: 999,
-                border: `1px solid ${active ? 'var(--text-strong)' : 'var(--border-strong)'}`,
-                background: active ? 'var(--text-strong)' : 'var(--surface)',
-                color: active ? 'var(--bg-page)' : 'var(--text-base)',
-                cursor: 'pointer',
-              }}
+              style={pillStyle(active)}
             >
               {FILTER_LABEL[f]} <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{n}</span>
             </button>
@@ -210,6 +238,21 @@ export default function PunchList() {
         </button>
       </div>
 
+      {/* By number: every card in one list, the highest number first. It stands in for the Shortlist and the groups. */}
+      {view === 'number' ? (
+        <PunchListByNumber
+          items={board.items}
+          visible={(it) => rowVisible(it, picks, filter, waitingOnly)}
+          order={order}
+          onFlip={() => choose('number', flipOrder(order))}
+          onClearFilters={() => {
+            setFilter('all')
+            setWaitingOnly(false)
+          }}
+          renderCard={(it) => <Row item={it} group={it.group} picks={picks} onSave={save} first anchor={false} />}
+        />
+      ) : (
+      <>
       {/* v2.6618 · the Shortlist: every open row by group, smallest first, from the cards' own size words. */}
       <PunchListShortlist items={board.items} visible={(it) => rowVisible(it, picks, filter, waitingOnly)} />
 
@@ -263,6 +306,8 @@ export default function PunchList() {
           </section>
         )
       })}
+      </>
+      )}
 
       <footer style={{ marginTop: '2.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
         Every row opens with its number — say “#16” and everyone knows which one; a number is given once, when the to-do is
@@ -280,12 +325,15 @@ function Row({
   picks,
   onSave,
   first,
+  anchor = true,
 }: {
   item: BoardItem
   group: BoardGroup
   picks: PickMap
   onSave: (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => void | Promise<void>
   first: boolean
+  /** False under a By number row, which carries the `#n<N>` anchor itself. */
+  anchor?: boolean
 }) {
   const pick = pickOf(picks, item.slug)
   const note = picks[item.slug]?.note ?? ''
@@ -298,7 +346,7 @@ function Row({
     <article
       data-slug={item.slug}
       data-number={item.number}
-      id={`n${item.number}`}
+      id={anchor ? `n${item.number}` : undefined}
       className="punch-row"
       style={{ borderTop: first ? 0 : '1px solid var(--border)' }}
     >
@@ -501,6 +549,40 @@ const PICK_FILL: Record<PunchPick, string> = {
   do: '#15803d',
   later: '#92400e',
   drop: '#b91c1c',
+}
+
+/** The View and Show pills: dark when it is the one chosen. */
+function pillStyle(active: boolean): CSSProperties {
+  return {
+    font: 'inherit',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    padding: '0.3rem 0.75rem',
+    borderRadius: 999,
+    border: `1px solid ${active ? 'var(--text-strong)' : 'var(--border-strong)'}`,
+    background: active ? 'var(--text-strong)' : 'var(--surface)',
+    color: active ? 'var(--bg-page)' : 'var(--text-base)',
+    cursor: 'pointer',
+  }
+}
+
+/** What this device remembered for a choice; storage may be blocked, and then it remembers nothing. */
+function readChoice(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+/** The default is remembered as nothing, so a device that never chose reads like one that chose the default. */
+function writeChoice(key: string, value: string | null): void {
+  try {
+    if (value === null) window.localStorage.removeItem(key)
+    else window.localStorage.setItem(key, value)
+  } catch {
+    // A private window or blocked storage: the press still works for this page.
+  }
 }
 
 const mono: CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }
