@@ -152,6 +152,17 @@ The app tells you. Nothing is sent to your inbox, and you get no push.
 
 Several conversations saved close together show as one line with a count.
 
+### When a developer tags your mail for you
+
+The app tells you. Nothing is sent to your inbox, and you get no push.
+
+- On the Dashboard, the **Needs you** card shows a line under *Your mail*. It names the developer, how many conversations, and the job.
+- On a phone, the same line is under the **Inbox** tab.
+- The line stays for seven days. Press **See the record** to open it.
+- The record itself stays under Settings, on the **Activity logs** tab. Only you can read it.
+
+Several conversations tagged close together show as one line with a count.
+
 ## Mail you send lands by itself
 
 You do not have to save the mail you send. The app reads your Sent every five minutes.

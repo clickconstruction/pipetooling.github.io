@@ -78,6 +78,9 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
     propertyKind: clock.propertyKind,
     expectedPayYmd: model?.expectedYmd ?? null,
     filedYmd: clock.filedYmd,
+    // v2.7047: whether the filed affidavit's copy is served, and by when it has to be.
+    servedYmd: clock.servedYmd ?? null,
+    serveDueYmd: clock.serveDueYmd ?? null,
     releasedYmd: clock.releasedYmd,
     isSub: Boolean(job.gc_customer_id),
     noticedMonths: clock.noticedMonths,

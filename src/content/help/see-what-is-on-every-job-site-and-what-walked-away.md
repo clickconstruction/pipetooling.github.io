@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
+keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -16,6 +16,35 @@ The same desk opens from the Materials page. Open **Materials** and press **On s
 The Pipeline's tools menu has a **Materials desk** row with the count of jobs that lost something this week. A job's window has a **Materials** tab with the same facts and **Open the materials page**. A bid's Procure step has the same door once the bid is a job. The line under its four steps reads **Materials on site**.
 
 The Needs you card on the Dashboard carries two lines for the office. One names the money of material that walked away this week across every job. The other counts the boxes not counted in 14 days. Press **Open the desk** on a line to see the jobs. When one job holds every row, the press reads **Open the job** and opens that job's page.
+
+## See a whole site on one screen
+
+A site is a development. A site's boxes can sit under more than one job. The desk groups those jobs under one row with the site's name. Press the site's name to open the whole site.
+
+The Development page has the same door. Press **Open the site’s materials** in the head of Jobs & bids.
+
+The top row of figures reads the site at a glance.
+
+- **Last recorded** says when someone last pressed anything on this site. The figure turns amber after seven quiet days.
+- **Boxes** and **On hand** count what is there.
+- **Due a count** counts the boxes past 14 days. A smaller line says how many more fall due this week.
+- **Can't find** and **Short at a count** count the lines to chase.
+- **Missing this week** is the money that walked away.
+- **This week** is what came in and what was used.
+
+The counts are only as fresh as the last press. Read **Last recorded** before you trust a total.
+
+Press **Due a count**, **Can't find** or **Short at a count** to narrow the list to those rows. Press it again to see every row.
+
+Under the figures, **By part** lists one row per part across the site's jobs. The row shows the total and the boxes that hold it. Press a row to see each box with its place, its job and its last count. Press a box's stencil to open that job's page.
+
+Two names are one row when their words are the same. *2" 90 PVC* and *2 inch 90 pvc* are one row, and the row says **2 spellings**. Each name keeps its own count in its box. A name with a different size or a missing word stays its own row. The app never guesses.
+
+Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
+
+Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
+
+Nothing on this screen changes a count. A count and a correction stay on the job's page and the phone.
 
 ## Read the row
 

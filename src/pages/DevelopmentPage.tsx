@@ -1420,6 +1420,12 @@ export default function DevelopmentPage() {
                   Print the material location report
                 </SmallButton>
               ) : null}
+              {/* The site's materials on one screen (punch list #330): the office door's link to the Materials page's On site tab on this site. */}
+              {moneyShown && shown.jobs.length > 0 ? (
+                <SmallButton onClick={() => navigate(`/materials?tab=on-site&site=${dev.id}`)} title="Everything in the cages and boxes on this site, across its jobs, on one screen: what is on hand, what is due a count and what cannot be found">
+                  Open the site’s materials
+                </SmallButton>
+              ) : null}
               {wonCandidates.length > 0 && !pairMode ? (
                 <SmallButton onClick={doMarkWon} disabled={busy} title="Sets Won on the paired bids that have no outcome yet, after a window shows what changes; the Bid Board moves them, so this press is yours">
                   {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}

@@ -17,6 +17,24 @@ A bill with no bill date sits in **No pay history** at the end. So no money ever
 
 A payer on a pay calendar shows its due day on the row, like *due Nov 10 · 2d past*. The date on the right is still when their money is expected. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
 
+## Cutoffs coming
+
+Some payers pay on a set day of the month, and a bill must be in by their cutoff. The forecast opens with **Cutoffs coming** when any of them has work not yet billed.
+
+:::example Cutoffs coming
+**Sable Ridge Builders · in by Nov 25, due Dec 30**
+1 bill ready, $8,900. 2 jobs working, $21,500 still to bill.
+**Larkfield Construction · in by Nov 30, due Dec 10**
+1 bill ready, $14,200. 3 jobs working, $38,000 still to bill.
+:::
+
+- Each line is one payer and its next cutoff. The nearest cutoff comes first.
+- **Ready** is what waits in Ready to Bill. Send those first.
+- **Working** is what is left to bill on jobs still being worked.
+- A line turns amber in the cutoff's last 7 days.
+
+A bill in one day past a cutoff waits a whole month. So read this list before the weeks under it.
+
 A bill an in kind arrangement pays is in no bucket, since no money is coming for it. The last line says how much is scheduled in kind. The email says the same. See [keep track of work paid in kind](/help/keep-track-of-work-paid-in-kind).
 
 The **Pay speeds** strip under the buckets gives the medians at a glance. The strip shows the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} medians. Each median says how many payments it's based on. Res means residential and Comm means commercial. Every row also wears its customer's Res/Comm tag. Commercial GCs usually pay on check runs, while homeowners pay on the spot. So the same "late by 10 days" reads very differently between the two.
