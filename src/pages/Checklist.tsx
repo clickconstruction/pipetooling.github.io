@@ -910,6 +910,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   placeFar={placeFarFor(inst)}
                   openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
                   spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
+                  onPlaceAdded={() => void taskPlaces.reload()}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -1006,6 +1007,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         placeFarFor={(inst) => placeFarFor(inst as ChecklistInstance)}
         openInstance={shownTask}
         spotPhotoUrlFor={(inst) => spotPhotos.urlFor((inst as ChecklistInstance).checklist_item_id)}
+        onPlaceAdded={() => void taskPlaces.reload()}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)

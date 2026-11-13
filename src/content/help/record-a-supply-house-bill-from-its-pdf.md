@@ -100,7 +100,7 @@ Some papers are right and still look off. The check knows these cases.
 
 ## The bills that need a person
 
-One line under **Accounts payable** says where every bill's lines stand. It reads like *Lines read on 496 of 543 bills · 475 add up · 47 need a person*.
+One line under **Accounts payable** says where every bill's lines stand. The line reads like *Lines read on 496 of 543 bills · 475 add up · 47 need a person*.
 
 Press {{button:outline|Show the 47}}. The **Bill lines** window lists each reason a bill waits. Each reason has its count and what opens it.
 

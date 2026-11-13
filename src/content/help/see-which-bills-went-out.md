@@ -28,6 +28,22 @@ A **Bills sent** button now sits in the pinned row on your Dashboard. One tap op
 
 The owner and developers can pin the page for someone else. Press the small button beside **Pin** in the same footer. Pick the person, then press **Pin for**.
 
+## On a phone
+
+The list is the first thing on the screen. Each send is a card with three or four short rows.
+
+- The first row has the time, how the bill went, who sent it and the amount.
+- The next row names the job and the customer.
+- The last rows hold the address, then whether the bill arrived.
+
+Tap anywhere on a card to open that bill's record. The record has **Copy as sent** and **Print this record** as full buttons.
+
+The chips sit in one row. Slide the row sideways to reach the rest.
+
+The yellow box is one line on a phone. Tap the line, or the yellow tile above, to open the box.
+
+**Print** and **Download CSV** are under the list.
+
 ## Read a line
 
 Each line is one send. The line shows these facts.
