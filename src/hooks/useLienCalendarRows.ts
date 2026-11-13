@@ -21,7 +21,7 @@ export function useLienCalendarRows(
 ): { rows: LienCalendarJob[] | null; reloadPromises: () => void } {
   const clockJobs = useMemo(() => billedLienClockJobsOf(jobs), [jobs])
   const clocks = useBilledLienClocks(clockJobs, opts.refreshKey ?? 0)
-  const { billedPaySpeeds, promisedPayDates, loadPromisedPayDates, loadPromiseRecords, paceFacts, payCalendars } = useBilledMoneyData({
+  const { billedPaySpeeds, promisedPayDates, loadPromisedPayDates, loadPromiseRecords, paceFacts, payCalendars, acceptedByInvoice } = useBilledMoneyData({
     canSeeBilledExpectedPay: canSeeBilledExpectedPay(opts.role),
     canMarkPromisedPay: isStagesOfficeRole(opts.role),
   })
@@ -32,8 +32,8 @@ export function useLienCalendarRows(
   )
   const rows = useMemo(() => {
     if (!opts.billedLoaded || !clocks) return null
-    return buildLienCalendarRows(jobs, (job, inv) => lienRunwayForJob(job, inv, { clocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext, todayYmd: opts.todayYmd, payCalendars }))
-  }, [opts.billedLoaded, opts.todayYmd, clocks, jobs, billedPaySpeeds, promisedPayDates, paceContext, payCalendars])
+    return buildLienCalendarRows(jobs, (job, inv) => lienRunwayForJob(job, inv, { clocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext, todayYmd: opts.todayYmd, payCalendars, acceptedByInvoice }))
+  }, [opts.billedLoaded, opts.todayYmd, clocks, jobs, billedPaySpeeds, promisedPayDates, paceContext, payCalendars, acceptedByInvoice])
   const reloadPromises = () => {
     void loadPromisedPayDates()
     void loadPromiseRecords()

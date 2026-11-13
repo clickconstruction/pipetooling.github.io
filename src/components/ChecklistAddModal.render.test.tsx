@@ -21,6 +21,10 @@ vi.mock('../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
+// The places tasks already carry (#328): the Place row's chips. Empty unless a test fills it.
+const offeredPlaces = vi.hoisted(() => ({ places: [] as Array<{ name: string; lat: number; lng: number; accuracyM: number | null; setBy: string | null; setAt: string | null }> }))
+vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise.resolve(offeredPlaces.places), loadTaskPlace: () => Promise.resolve(null) }))
+
 // Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
 const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
 
@@ -334,6 +338,40 @@ describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () 
     expect(calendar).not.toBeNull()
     expect(landing()).toEqual([today])
     expect(calendar.querySelector(`[data-cal-day="${dueYmd}"]`)!.getAttribute('data-due')).toBe('true')
+    cleanup()
+  })
+})
+
+describe('ChecklistAddModal place (punch list #328)', () => {
+  it('a task with no place sends the row it always sent: no place column at all', async () => {
+    inserted.length = 0
+    offeredPlaces.places = [{ name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'u1', setAt: '2026-11-03T15:00:00Z' }]
+    const title = await renderOpenModal()
+    expect((await screen.findByRole('button', { name: 'Pump house' })).getAttribute('aria-pressed')).toBe('false')
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(Object.keys(row).filter((k) => k.startsWith('place_'))).toEqual([])
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    offeredPlaces.places = []
+    cleanup()
+  })
+
+  it('one press on a place chip and Send stores the place whole, set by the sender', async () => {
+    inserted.length = 0
+    offeredPlaces.places = [{ name: 'Pump house', lat: 29.5512, lng: -98.2874, accuracyM: 6, setBy: 'u1', setAt: '2026-11-03T15:00:00Z' }]
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Pump house' }))
+    expect(screen.getByRole('button', { name: 'Pump house' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(row).toMatchObject({ place_name: 'Pump house', place_lat: 29.5512, place_lng: -98.2874, place_accuracy_m: 6, place_set_by: 'smoke-auth-user-1' })
+    expect(typeof row.place_set_at).toBe('string')
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    offeredPlaces.places = []
     cleanup()
   })
 })

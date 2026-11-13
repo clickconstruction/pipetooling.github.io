@@ -12,5 +12,5 @@ export const THREAD_WINDOW_Z = 1200
 /** Add a task (`ChecklistAddModal`): over the thread's window, Job Detail and Edit Job. */
 export const ADD_TASK_WINDOW_Z = 1210
 
-/** A list Add a task drops down through a portal: over Add a task itself. */
+/** What Add a task opens through a portal, its notify list and its place sheet (`TaskPlaceSheet`): over Add a task itself. */
 export const ADD_TASK_PICKER_Z = 1220

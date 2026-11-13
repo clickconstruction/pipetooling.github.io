@@ -132,6 +132,58 @@ export function matchingTaskPlace(place: TaskPlace | null, offered: ReadonlyArra
   return offered.find((o) => sameTaskPlace(o, place)) ?? null
 }
 
+/** The place as the giver is setting it: not yet saved, so no setter and no day. */
+export type TaskPlaceDraft = TaskPlacePoint & { name: string; accuracyM: number | null }
+
+/** A saved place back into the giver's hands, for the Edit window. */
+export function taskPlaceDraft(place: TaskPlace | null): TaskPlaceDraft | null {
+  return place ? { lat: place.lat, lng: place.lng, name: place.name === TASK_PLACE_UNNAMED ? '' : place.name, accuracyM: place.accuracyM } : null
+}
+
+/** Has the giver changed the place? Compared as written, so opening and closing the sheet on the same ring is no change. */
+export function taskPlaceDraftChanged(a: TaskPlaceDraft | null, b: TaskPlaceDraft | null): boolean {
+  if (!a || !b) return a !== b
+  return a.lat !== b.lat || a.lng !== b.lng || cleanTaskPlaceName(a.name) !== cleanTaskPlaceName(b.name) || a.accuracyM !== b.accuracyM
+}
+
+/** A drag past this takes the ring off the phone's reading: about 10 ft, more than a map settles by on its own. */
+export const TASK_PLACE_DRAG_METERS = 3
+
+/**
+ * The margin to keep when the sheet closes. The phone's reading has one and a hand has none, so the
+ * margin stays only while the ring still sits on the reading. Drag the ring and the place is the
+ * giver's own call.
+ */
+export function taskPlaceSheetAccuracy(fix: (TaskPlacePoint & { accuracyM: number | null }) | null, ring: TaskPlacePoint): number | null {
+  if (!fix || fix.accuracyM == null) return null
+  return haversineMeters(fix, ring) <= TASK_PLACE_DRAG_METERS ? fix.accuracyM : null
+}
+
+/**
+ * Where the sheet's map opens: on the place being moved, else on the last place anyone set, else on
+ * the office. A task is almost never tied to a job (2 of 151 when this was built), so the job's
+ * address is not on the list.
+ */
+export function taskPlaceSheetStart(current: TaskPlacePoint | null, offered: ReadonlyArray<TaskPlacePoint>, office: TaskPlacePoint | null): TaskPlacePoint | null {
+  const pick = current ?? offered[0] ?? office
+  return pick && isTaskPlacePoint(pick.lat, pick.lng) ? { lat: pick.lat, lng: pick.lng } : null
+}
+
+/**
+ * How long the sheet waits for somewhere to open before it opens wide: the office's address is one
+ * settings read away, and a giver who was refused a reading must still get a map to drag.
+ */
+export const TASK_PLACE_START_WAIT_MS = 2500
+/** The zoom of that wide view: the country, so any spot is a few pinches away. */
+export const TASK_PLACE_WIDE_ZOOM = 4
+/** Its centre: the middle of the lower 48. Nobody's place, only somewhere to start a drag. */
+export const TASK_PLACE_WIDE_START: TaskPlacePoint = { lat: 39.5, lng: -98.35 }
+
+/** The ring still sits where the wide view opened: nobody chose that point, so it is not a place to use yet. */
+export function isTaskPlaceWideStart(ring: TaskPlacePoint | null): boolean {
+  return ring != null && haversineMeters(ring, TASK_PLACE_WIDE_START) <= TASK_PLACE_DRAG_METERS
+}
+
 /** `250 ft`, `0.3 mi`, `12 mi`. Feet to the nearest ten under a fifth of a mile, then miles. */
 export function taskPlaceDistanceWords(meters: number): string {
   const feet = Math.max(0, meters) * FEET_PER_METER

@@ -174,7 +174,7 @@ describe('the seat’s untag: the server, the function and the docs', () => {
       expect(SERVER).toContain(`verb === '${verb}'`)
       expect(isWriteVerb(verb)).toBe(false)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.79.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
     const start = SERVER.indexOf("if (name === 'plan_mail_untag' || name === 'apply_mail_untag') {")
     const block = SERVER.slice(start, SERVER.indexOf("if (name === 'plan_mail_tag' || name === 'apply_mail_tag') {"))
     // A dev's own key, the plan first through gmail-mine's door, the hash over the commitment, one apply per plan.

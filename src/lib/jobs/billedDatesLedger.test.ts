@@ -255,6 +255,23 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
       expect(served.rows[2]).toMatchObject({ label: 'Lien filed', date: 'Nov 9', sub: 'served Nov 11', subTone: 'green' })
     })
 
+    it('the press knows the paper the line names, so the Lien window opens on its tab (v2.7046, PR 3)', () => {
+      // The affidavit, on a lien row, whatever its step.
+      expect(build(null).lienTab).toBe('affidavit')
+      expect(build(chip('affidavit', 'draft')).lienTab).toBe('affidavit')
+      // A notice row, and a late notice that has to go before the affidavit.
+      expect(build(null, buildLienPayRunway(runwayInput()), today).lienTab).toBe('notice')
+      expect(build(chip('notice', 'draft_late')).lienTab).toBe('notice')
+      // A reminder under a lien row does not move the tab: the row still names the affidavit.
+      expect(build({ words: 'day 12 · the attorney’s letter overdue', lead: 'day 12 · the attorney’s letter overdue', dueOn: null, paper: 'letter_two', action: 'letter_two', tone: 'red', act: null }).lienTab).toBe('affidavit')
+      // Filed: the lien's tab. A closed window: the paper whose window closed.
+      expect(build(null, buildLienPayRunway(runwayInput({ todayYmd: late, filedYmd: '2026-11-09' }))).lienTab).toBe('affidavit')
+      expect(build(null, buildLienPayRunway(runwayInput({ isSub: false, lastWorkYmd: '2026-05-10' })), today).lienTab).toBe('affidavit')
+      expect(build(null, buildLienPayRunway(runwayInput({ lastWorkYmd: '2026-06-10' })), today).lienTab).toBe('notice')
+      // No lien row, no tab.
+      expect(build(null, buildLienPayRunway(runwayInput({ openBalance: 0 })), today).lienTab).toBeNull()
+    })
+
     it('every tip the row can show passes the plain-words rules', () => {
       const ledgers = [build(chip('affidavit', 'draft')), build(chip('affidavit', 'fix_property', { missing: ['public_owner'] })), build(null), build(null, buildLienPayRunway(runwayInput()), today), build(null, buildLienPayRunway(runwayInput({ isSub: false, lastWorkYmd: '2026-05-10' })), today), build(null, buildLienPayRunway(runwayInput({ propertyKind: '' })), today), build(null, buildLienPayRunway(runwayInput({ lastWorkYmd: null, createdAt: '2026-08-14T15:00:00Z' })), today)]
       for (const l of ledgers) for (const r of l.rows.filter((x) => x.action === 'lien-desk')) expect(plainWordsFailures(r.title), r.title).toEqual([])
