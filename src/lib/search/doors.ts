@@ -10,6 +10,7 @@
  * whole index in node and hold it against `src/App.tsx`, the Settings groups and anchors, and the route guard.
  */
 import type { UserRole } from '../../hooks/useAuth'
+import { BILLS_SENT_PATH, canOpenBillsSent } from '../billing/billsSent'
 import { isAssistantLike, isSubcontractorLikeRole } from '../subcontractorLikeRole'
 import { isPathAllowedForRole } from '../layoutRouteAccess'
 import { canAccessBanking } from '../bankingAccess'
@@ -55,7 +56,7 @@ export interface DoorViewer {
   role: UserRole
   estimatorProspectsAccess: boolean
   teamProspectsAccess: boolean
-  farmModeActive: boolean
+  taskModeActive: boolean
 }
 
 export interface Door {
@@ -97,7 +98,7 @@ const office: Gate = (v) => v.role === 'dev' || v.role === 'master_technician' |
 const officeOrSuper: Gate = (v) => office(v) || v.role === 'superintendent'
 const officeOrEstimator: Gate = (v) => office(v) || v.role === 'estimator'
 const notField: Gate = (v) => !isSubcontractorLikeRole(v.role)
-const notFarm = (g: Gate): Gate => (v) => !v.farmModeActive && g(v)
+const notTaskMode = (g: Gate): Gate => (v) => !v.taskModeActive && g(v)
 const role = (...roles: UserRole[]): Gate => (v) => roles.includes(v.role)
 
 /** The Dev doors card's `who`, as a gate. */
@@ -256,28 +257,30 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Projects board', where: 'Jobs · Stages, the Projects press beside Forecast', words: ['projects board', 'projects', 'expected hours', 'pace', 'ahead or behind', 'labor budget', 'pace strip', 'superintendent line', 'where every project stands', 'big jobs'], to: '/projects-board', gate: officeOrSuper }),
   ...bidsTabDoors(),
   p({ label: 'New bid', kind: 'window', where: 'Bids · the bid form', words: ['create a bid', 'add bid', 'new bid'], to: '/bids?newBid=true', gate: (v) => canOpenBids(v.role) && v.role !== 'primary', reads: { file: 'src/pages/Bids.tsx', text: "params.get('newBid')" } }),
-  p({ label: 'Customers', where: 'Customers', words: ['customers', 'builders', 'gcs', 'general contractors', 'customer profile', 'customer history', 'customer'], to: '/customers', gate: notFarm(officeOrEstimator) }),
-  p({ label: 'New customer', kind: 'window', where: 'Customers · the customer form', words: ['add customer', 'create customer', 'new customer'], to: '/customers/new', gate: notFarm(officeOrEstimator) }),
+  p({ label: 'Customers', where: 'Customers', words: ['customers', 'builders', 'gcs', 'general contractors', 'customer profile', 'customer history', 'customer'], to: '/customers', gate: notTaskMode(officeOrEstimator) }),
+  p({ label: 'New customer', kind: 'window', where: 'Customers · the customer form', words: ['add customer', 'create customer', 'new customer'], to: '/customers/new', gate: notTaskMode(officeOrEstimator) }),
   p({ label: 'Estimates', where: 'Estimates', words: ['estimates', 'quotes', 'homeowner quotes', 'small quotes', 'estimate'], to: '/estimates', gate: (v) => officeOrSuper(v) || v.role === 'estimator' || v.role === 'primary' }),
   p({ label: 'New estimate', kind: 'window', where: 'Estimates · the estimate form', words: ['start an estimate', 'add estimate', 'new estimate'], to: '/estimates?newEstimate=true', gate: (v) => officeOrSuper(v) || v.role === 'estimator' || v.role === 'primary', reads: { file: 'src/pages/Estimates.tsx', text: "searchParams.get('newEstimate')" } }),
-  p({ label: 'Documents', where: 'Documents', words: ['contracts', 'document packets', 'packets', 'documents'], to: '/documents', gate: notFarm(notField) }),
-  p({ label: 'Materials', where: 'Materials', words: ['materials', 'parts book', 'price book', 'labor book', 'assembly', 'assemblies', 'catalog', 'books'], to: '/materials', gate: notFarm(notField) }),
+  p({ label: 'Documents', where: 'Documents', words: ['contracts', 'document packets', 'packets', 'documents'], to: '/documents', gate: notTaskMode(notField) }),
+  p({ label: 'Materials', where: 'Materials', words: ['materials', 'parts book', 'price book', 'labor book', 'assembly', 'assemblies', 'catalog', 'books'], to: '/materials', gate: notTaskMode(notField) }),
   // Punch list #304 (v2.6851): the cages and boxes on every job, on the Materials page, for every role that opens it.
-  p({ label: 'Find a part on any job', where: 'Materials · On site', words: ['find a part on any job', 'where is a part', 'which box', 'print labels', 'box labels', 'labels', 'scan a label', 'boxes on every job', 'track materials', 'track'], to: '/materials?tab=on-site', gate: (v) => !v.farmModeActive && canOpenMaterialsTab(v.role, 'on-site') }),
-  p({ label: 'Supply houses', where: 'Materials · Supply houses', words: ['supply houses', 'supply house', 'house invoices', 'invoices from the house', 'bills from supply houses'], to: '/materials?tab=supply-houses', gate: notFarm(notField) }),
+  p({ label: 'Find a part on any job', where: 'Materials · On site', words: ['find a part on any job', 'where is a part', 'which box', 'print labels', 'box labels', 'labels', 'scan a label', 'boxes on every job', 'track materials', 'track'], to: '/materials?tab=on-site', gate: (v) => !v.taskModeActive && canOpenMaterialsTab(v.role, 'on-site') }),
+  p({ label: 'Supply houses', where: 'Materials · Supply houses', words: ['supply houses', 'supply house', 'house invoices', 'invoices from the house', 'bills from supply houses'], to: '/materials?tab=supply-houses', gate: notTaskMode(notField) }),
   p({ label: 'Job accounts to move', kind: 'window', where: 'Materials · Supply houses', words: ['job accounts', 'movable invoices', 'move onto a job account'], to: '/materials?tab=supply-houses&list=movable', gate: office, reads: { file: 'src/pages/Materials.tsx', text: "searchParams.get('list')" } }),
-  p({ label: 'Map', where: 'Map', words: ['map of work', 'map', 'where the jobs are', 'clocked in map'], to: '/map', gate: notFarm(officeOrEstimator) }),
+  p({ label: 'Map', where: 'Map', words: ['map of work', 'map', 'where the jobs are', 'clocked in map'], to: '/map', gate: notTaskMode(officeOrEstimator) }),
   p({ label: 'Schedule hub', where: 'Schedule', words: ['schedule crews', 'dispatch', 'schedule by week', 'crews to jobs', 'schedule'], to: '/schedule-dispatch', gate: officeOrSuper }),
   p({ label: 'Calendar', where: 'Calendar', words: ['calendar', 'calendar view', 'time off'], to: '/calendar', gate: everyone }),
   p({ label: 'Checklist', where: 'Checklist', words: ['tasks', 'company task list', 'checklist', 'today', 'to do'], to: '/checklist', gate: everyone }),
-  p({ label: 'Roadmap', where: 'Roadmap', words: ['roadmap', 'plan', 'tech tree', 'roadmap tasks'], to: '/roadmap', gate: (v) => canOpenRoadmap(v.role, v.farmModeActive) }),
+  p({ label: 'Roadmap', where: 'Roadmap', words: ['roadmap', 'plan', 'tech tree', 'roadmap tasks'], to: '/roadmap', gate: (v) => canOpenRoadmap(v.role, v.taskModeActive) }),
   p({ label: 'People', where: 'People', words: ['people', 'who worked', 'clock cards', 'users', 'accounts', 'roster', 'team'], to: '/people', gate: (v) => office(v) && v.role !== 'estimator' }),
   p({ label: 'Users', where: 'People · Users', words: ['users', 'accounts', 'roles', 'invite', 'archive user'], to: '/people?tab=users', gate: office }),
   p({ label: 'Day book', where: 'People · Day book', words: ['day book', 'estimator day'], to: '/people?tab=day_book', gate: (v) => canOpenDayBook(v.role) }),
-  p({ label: 'Tally', where: 'Tally', words: ['job parts tally', 'purchases', 'card purchases', 'transactions', 'payroll marks', 'spending', 'tally', 'sort purchases'], to: '/tally?tab=transactions', gate: notFarm(notField) }),
-  p({ label: 'On site', where: 'Tally · On site', words: ['on site', 'materials on site', 'my boxes', 'cage', 'box', 'put away', 'unsorted', 'count this box', 'count a box', "can't find"], to: '/tally?tab=on-site', gate: notFarm(notField) }),
+  p({ label: 'Tally', where: 'Tally', words: ['job parts tally', 'purchases', 'card purchases', 'transactions', 'payroll marks', 'spending', 'tally', 'sort purchases'], to: '/tally?tab=transactions', gate: notTaskMode(notField) }),
+  p({ label: 'On site', where: 'Tally · On site', words: ['on site', 'materials on site', 'my boxes', 'cage', 'box', 'put away', 'unsorted', 'count this box', 'count a box', "can't find"], to: '/tally?tab=on-site', gate: notTaskMode(notField) }),
   p({ label: 'Banking', where: 'Banking', words: ['bank ledger', 'card sorting', 'accounting review', 'bank', 'mercury', 'banking'], to: '/banking', gate: (v) => canAccessBanking(v.role) }),
   p({ label: 'Accounts receivable', where: 'AR', words: ['who owes us', 'owed', 'ar', 'receivables', 'accounts receivable', 'money owed'], to: '/accounts-receivable', gate: office }),
+  // v2.7049: every bill that left, to whom and the minute it went (punch list #327).
+  p({ label: 'Bills sent', where: 'Bills sent', words: ['bills sent', 'sent bills', 'bill ledger', 'which bills went out', 'when was the bill sent', 'who got the bill', 'invoice sent', 'went out'], to: BILLS_SENT_PATH, gate: (v) => canOpenBillsSent(v.role) }),
   // v2.6836: every arrangement where work is paid with something other than money (punch list #301).
   p({ label: 'In kind', where: 'AR', words: ['in kind', 'paid in kind', 'trade', 'barter', 'rent credit', 'credit instead of money', 'arrangement'], to: '/in-kind', gate: office }),
   p({ label: 'Prospects', where: 'Prospects', words: ['prospects', 'new builders', 'new builder pipeline', 'hiring', 'candidates', 'hiring pipeline'], to: '/prospects', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),
@@ -510,7 +513,7 @@ export function thereOpenFor(to: string, viewer: DoorViewer, byTo: ReadonlyMap<s
 
 /** A viewer with no flags, for a role: what the tests and the Dev doors share ask with. */
 export function plainViewer(role: UserRole): DoorViewer {
-  return { role, estimatorProspectsAccess: false, teamProspectsAccess: false, farmModeActive: false }
+  return { role, estimatorProspectsAccess: false, teamProspectsAccess: false, taskModeActive: false }
 }
 
 /** True when the door opens for a dev and for no other role, flags on or off. */

@@ -154,6 +154,9 @@ describe('What everyone sees · frames load one after another', () => {
 describe('What everyone sees · the customer\'s side', () => {
   it('lists What customers see\'s audiences, and each one\'s pages on this origin by their sample tokens', () => {
     expect(LENS_AUDIENCES.map((a) => a.id)).toEqual(['homeowner', 'gc', 'sub', 'house', 'firm'])
+    // The lien letters (punch list #326) are papers, emails and texts: no page to frame, so no pill that would draw nothing.
+    expect(audienceScreens('lien')).toEqual([])
+    expect(LENS_AUDIENCES.every((a) => audienceScreens(a.id).length > 0)).toBe(true)
     const pages = audienceScreens('homeowner')
     expect(pages.length).toBeGreaterThan(3)
     expect(pages.every((p) => p.to.startsWith('/') && /[?&/]t?=?sample|sample/.test(p.to))).toBe(true)

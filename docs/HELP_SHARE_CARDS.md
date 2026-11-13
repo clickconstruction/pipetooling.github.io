@@ -2,7 +2,7 @@
 
 > What happens when someone texts or posts a guide's link, what a guide's author has to get right for it, and how to check it. Nothing is built per guide by hand: the build draws every guide's page and card from the guide file itself.
 
-last_updated: 2026-09-29
+last_updated: 2026-11-12
 
 ## What a shared link shows
 
@@ -12,6 +12,7 @@ The Vite build (`helpSharePagesPlugin` in `vite.config.ts`, pure helpers in `src
 
 - `dist/g/<slug>/index.html` — the landing page with the Open Graph and Twitter tags (`og:title`, `og:description`, `og:image`, `og:url`, `canonical`, …).
 - `dist/g/<slug>/card.png` — the 1200×630 card, rasterised from `helpShareCardSvg` with Playwright's Chromium (the deploy workflow installs it; without a browser the pages point at the site card `public/og-card.png` and the build log says so).
+- `dist/g/<old-slug>/index.html` — a renamed guide's page again at its old address (v2.7050), one per row of `HELP_GUIDE_FORMER_SLUGS` in [`helpGuideFormerSlugs.ts`](../src/lib/helpGuideFormerSlugs.ts). Its tags name the new address and the new card, and it opens the guide under its new slug, so a link texted before the rename still unfurls and still lands. In the app `GuideBrowser` reads `/help?g=<old-slug>` through `currentHelpGuideSlug` and rewrites the address.
 
 Two kinds of fetcher read the page. Crawlers that never run scripts (Slack, Facebook, WhatsApp) read the tags. **Apple's Messages runs a real WebKit** — which is why the page must not bounce on load: v2.3147's instant redirect landed Messages on the sign-in page and the text showed a bare `clicktooling.com` (v2.4190 fixed it). The redirect now runs only after `load`, after `HELP_SHARE_REDIRECT_MS`, never in a hidden tab, and never for a user agent matching `HELP_SHARE_PREVIEW_AGENTS`.
 

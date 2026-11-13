@@ -140,10 +140,10 @@ export function fencedQuery(q: string): string {
 /**
  * The Gmail search one page of the list reads: the Inbox and the Sent box, or the one asked for; never Drafts, Spam,
  * Trash or Chats; never a label the person left out (`users.my_mail_hidden_labels`, by name); and the person's own search
- * as one group. Tagged reads only mail carrying the tag's label (`MY_MAIL_GMAIL_LABEL`, which a tag puts on every mail it
- * lands), so its page never fills with mail it hides. To tag reads past the label (v2.6292): a label left behind (an
- * untag that could not take it off, a job deleted with its tag) would hide that mail from To tag for good, and
- * `viewRows` already hides a tagged conversation by the database's own record.
+ * as one group. No view names a label of the app's: a tag puts none on (v2.7035), so what is tagged is the database's
+ * own record alone. Tagged with no search of the person's own never comes here: its page is read from the tagged
+ * conversations themselves (`taggedOffset`), so it never fills with mail it hides. With a search it reads as All does
+ * and `viewRows` keeps the tagged.
  */
 export function myMailQuery(input: { view: MyMailView; labels?: readonly MyMailLabel[]; hidden?: readonly string[]; q?: string }): string {
   const asked = input.labels && input.labels.length > 0 ? LABELS.filter((l) => input.labels!.includes(l)) : LABELS
@@ -156,10 +156,34 @@ export function myMailQuery(input: { view: MyMailView; labels?: readonly MyMailL
     seen.add(label.toLowerCase())
     parts.push(`-label:"${label}"`)
   }
-  if (input.view === 'tagged') parts.push(`label:"${MY_MAIL_GMAIL_LABEL}"`)
   const own = fencedQuery(input.q ?? '')
   if (own) parts.push(own)
   return parts.join(' ')
+}
+
+/** How many tagged conversations a page of Tagged reads, each whole: Gmail counts 10 units a conversation. */
+export const MY_MAIL_TAGGED_PAGE = 15
+
+/**
+ * Where a page of Tagged starts among the person's tagged conversations, newest mail first: its page token is a count
+ * of our own, since the page comes from `email_tag_threads` and never from a Gmail search. Anything else starts at 0.
+ */
+export function taggedOffset(pageToken: string | null | undefined): number {
+  return typeof pageToken === 'string' && /^\d{1,6}$/.test(pageToken) ? Number(pageToken) : 0
+}
+
+/** The token of the page after this one, or null when this page came up short of a full one. */
+export function taggedNextToken(offset: number, got: number): string | null {
+  return got >= MY_MAIL_TAGGED_PAGE ? String(offset + MY_MAIL_TAGGED_PAGE) : null
+}
+
+/**
+ * Whether a mail of a tagged conversation is in a box the person asked for. Asked for neither or both, every mail of
+ * the conversation is, an archived one too: Tagged shows what is on the job, wherever Gmail files it now.
+ */
+export function inAskedBoxes(labelIds: readonly string[] | undefined, asked: readonly MyMailLabel[] | undefined): boolean {
+  if (!asked || asked.length === 0 || LABELS.every((l) => asked.includes(l))) return true
+  return (labelIds ?? []).some((l) => asked.some((a) => a === l))
 }
 
 /** How many messages a list reads whole at once: Gmail counts 5 units a read and lets a box spend 250 a second. */
@@ -1077,12 +1101,13 @@ export const MY_MAIL_FOLLOW_GONE = 'This conversation is gone from their Gmail. 
 /**
  * The Gmail search the follow's Sent read makes for one person: their Sent since the cursor (`after:` in epoch seconds,
  * the second the newest mail read was taken, so the read picks that mail up again and the lines' fences drop it),
- * never a draft, Spam, Trash or a chat, never a mail the tag's label already marks, never a label the person leaves
- * out. `myMailQuery` writes the hidden labels the same way.
+ * never a draft, Spam, Trash or a chat, never a label the person leaves out. A mail already on a job is dropped by the
+ * database's own fences (the conversation's row, the line's Message-ID), never by a label: a tag puts none on
+ * (v2.7035). `myMailQuery` writes the hidden labels the same way.
  */
 export function sentFollowQuery(since: string, hidden: readonly string[] = []): string {
   const epoch = Math.floor(Date.parse(since) / 1000)
-  const parts = ['in:sent', `after:${Number.isFinite(epoch) ? epoch : 0}`, '-in:drafts', '-in:spam', '-in:trash', '-in:chats', `-label:"${MY_MAIL_GMAIL_LABEL}"`]
+  const parts = ['in:sent', `after:${Number.isFinite(epoch) ? epoch : 0}`, '-in:drafts', '-in:spam', '-in:trash', '-in:chats']
   const seen = new Set<string>()
   for (const name of hidden) {
     const label = name.replace(/"/g, '').replace(/\s+/g, ' ').trim()
@@ -1136,6 +1161,92 @@ export const PLACED_LINE_WORDS = {
   untagged: 'The conversation is off the job. The app will not put it back.',
   notUntagged: 'The conversation was not untagged.',
 } as const
+
+// ---------- the old Gmail label, taken out of every mailbox once (v2.7035) ----------
+
+/** Where the clean-up keeps its place: one `app_settings` row, so it needs no column of its own and ends by itself. */
+export const LABEL_CLEANUP_KEY = 'my_mail_label_cleanup_v1'
+/** How many mailboxes one run of the follow looks in: the rest wait for the next run, five minutes on. */
+export const LABEL_CLEANUP_PER_RUN = 10
+/** How many times a mailbox Google will not open is asked before the clean-up leaves it, counted as failed. */
+export const LABEL_CLEANUP_TRIES = 3
+
+/** What the clean-up found in one mailbox: no such label, the label deleted, or Google's refusal. */
+export type LabelCleanupOutcome = 'none' | 'deleted' | 'failed'
+
+export interface LabelCleanupMark {
+  at: string
+  outcome: LabelCleanupOutcome
+  tries: number
+  /** Google's reason for a failure, with every address taken out. */
+  reason?: string
+}
+
+/** The clean-up's record: each mailbox by its login's id, and when every one was settled. */
+export interface LabelCleanupState {
+  boxes: Record<string, LabelCleanupMark>
+  finished_at: string | null
+}
+
+/** The record as kept in `app_settings.value_text`; anything unreadable is a clean start. */
+export function readLabelCleanup(valueText: string | null | undefined): LabelCleanupState {
+  try {
+    const raw = valueText ? (JSON.parse(valueText) as Partial<LabelCleanupState> | null) : null
+    const boxes: Record<string, LabelCleanupMark> = {}
+    for (const [id, m] of Object.entries(raw?.boxes ?? {})) {
+      const outcome = (['none', 'deleted', 'failed'] as const).find((o) => o === m?.outcome)
+      if (outcome && typeof m.at === 'string') boxes[id] = { at: m.at, outcome, tries: Number.isFinite(m.tries) ? Number(m.tries) : 1, ...(typeof m.reason === 'string' ? { reason: m.reason } : {}) }
+    }
+    return { boxes, finished_at: typeof raw?.finished_at === 'string' ? raw.finished_at : null }
+  } catch {
+    return { boxes: {}, finished_at: null }
+  }
+}
+
+/** Whether a mailbox is settled: looked in with an answer, or refused by Google as often as the clean-up asks. */
+const labelSettled = (m: LabelCleanupMark | undefined): boolean => Boolean(m) && (m!.outcome !== 'failed' || m!.tries >= LABEL_CLEANUP_TRIES)
+
+/** The mailboxes still to look in, one never asked before one that failed, at most a run's worth. */
+export function labelCleanupDue(state: LabelCleanupState, userIds: readonly string[]): string[] {
+  const due = [...new Set(userIds)].filter((id) => !labelSettled(state.boxes[id]))
+  return due.sort((a, b) => (state.boxes[a]?.tries ?? 0) - (state.boxes[b]?.tries ?? 0)).slice(0, LABEL_CLEANUP_PER_RUN)
+}
+
+/** The record after one mailbox was looked in. A failure counts its tries; an answer settles it. */
+export function labelCleanupMarked(state: LabelCleanupState, userId: string, result: { outcome: LabelCleanupOutcome; reason?: string }, now: string): LabelCleanupState {
+  const tries = (state.boxes[userId]?.tries ?? 0) + 1
+  const reason = result.outcome === 'failed' && result.reason ? { reason: labelCleanupReason(result.reason) } : {}
+  return { ...state, boxes: { ...state.boxes, [userId]: { at: now, outcome: result.outcome, tries, ...reason } } }
+}
+
+/** Google's reason as the record and the log keep it: one line, every address out, 160 characters at most. */
+export function labelCleanupReason(words: string): string {
+  return words.replace(/[^\s<>"'()]+@[^\s<>"'()]+/g, '(an address)').replace(/\s+/g, ' ').trim().slice(0, 160)
+}
+
+/** The clean-up's counts over the mailboxes it covers: how many, looked in, with the label deleted, with none, failed, and left. */
+export function labelCleanupCounts(state: LabelCleanupState, userIds: readonly string[]): { mailboxes: number; checked: number; deleted: number; none: number; failed: number; left: number } {
+  const ids = [...new Set(userIds)]
+  const marks = ids.map((id) => state.boxes[id])
+  const of = (o: LabelCleanupOutcome) => marks.filter((m) => m?.outcome === o).length
+  return { mailboxes: ids.length, checked: marks.filter(Boolean).length, deleted: of('deleted'), none: of('none'), failed: of('failed'), left: ids.filter((id) => !labelSettled(state.boxes[id])).length }
+}
+
+/** Gmail's id of the old label in a box's labels, by its exact name, or null when the box has none. */
+export function oldLabelId(labels: readonly { id: string; name: string }[] | undefined): string | null {
+  return (labels ?? []).find((l) => l.name === MY_MAIL_GMAIL_LABEL)?.id ?? null
+}
+
+/**
+ * Whether an address is one the delegation reaches: on the Workspace's own domain (the domain of the box the reader
+ * signs in as). With no domain known every address is tried, and Google refuses the ones it does not hold.
+ */
+export function onWorkspace(email: string | null | undefined, domain: string | null | undefined): boolean {
+  const key = myMailAddressKey(email)
+  if (!key) return false
+  const d = (domain ?? '').trim().toLowerCase()
+  return d === '' || key.endsWith(`@${d}`)
+}
 
 // ---------- the seat's dry run (server 0.30.0) ----------
 

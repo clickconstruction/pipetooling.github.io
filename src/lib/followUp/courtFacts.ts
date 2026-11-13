@@ -11,7 +11,7 @@ import { heardLinesFromRows, owedRecordsFromRows, type ContactOwedRow, type Mess
 import { openOwed } from './queue'
 
 /** What cut 2 adds to one person's move line. */
-export type CourtFacts = Pick<CourtOptions, 'owed' | 'promisedUntil'>
+export type CourtFacts = Pick<CourtOptions, 'owed' | 'promisedUntil' | 'closed'>
 
 /**
  * The facts by person: what we owe (the newest open record) and the running promise's day (`runningPromise`). A person

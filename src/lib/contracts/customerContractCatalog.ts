@@ -156,6 +156,7 @@ export type ContractCatalogEntry = {
 
 const H = (stepId: string): ContractStepRef => ({ journeyId: 'homeowner', stepId })
 const G = (stepId: string): ContractStepRef => ({ journeyId: 'gc', stepId })
+const L = (stepId: string): ContractStepRef => ({ journeyId: 'lien', stepId })
 
 const CX_BUILTIN = builtinEstimateExperience()
 
@@ -441,7 +442,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     source: { kind: 'code', text: null },
     edit: { kind: 'code', note: 'The sworn text is fixed in the app. A cover letter can be edited per packet on the Lien desk.' },
     copyKept: 'The blanks as filed are kept on the filing.',
-    seenOn: [G('owner-notice'), H('customer-portal')],
+    seenOn: [L('lien-cover-letter'), L('owner-notice'), H('customer-portal')],
     routes: ['/portal', '/p/:slug'],
   },
   {

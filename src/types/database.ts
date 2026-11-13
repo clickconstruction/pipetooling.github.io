@@ -28991,6 +28991,73 @@ export type Database = {
           },
         ]
       }
+      payer_pay_calendars: {
+        Row: {
+          clause: string
+          cutoff_day: number | null
+          id: string
+          job_id: string | null
+          months_after: number
+          off: boolean
+          pay_day: number | null
+          pay_when_paid: boolean
+          payer_customer_id: string
+          set_at: string
+          set_by: string | null
+          words: string
+        }
+        Insert: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Update: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id?: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payer_pay_calendars_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_payer_customer_id_fkey"
+            columns: ["payer_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_forecast_email_requests: {
         Row: {
           attempts: number
@@ -46436,6 +46503,14 @@ export type Database = {
       }
       set_pay_config: {
         Args: { p_changes: Json; p_person: string; p_reason: string }
+        Returns: Json
+      }
+      set_payer_pay_calendar: {
+        Args: {
+          p_calendar: Json
+          p_job_id: string
+          p_payer_customer_id: string
+        }
         Returns: Json
       }
       set_person_hours: {
