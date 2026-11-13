@@ -7,11 +7,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../types/database'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { fetchAllRowsChunkedIn } from '../../supabasePaging'
 import type { PaperLine } from './paperChecks'
 import type { LineSave, PaperRow, PaperSave } from './paperRows'
 
 export interface PaperIo {
-  /** The papers on these bills, with their lines, by invoice id. Fail-soft: a read that fails is an empty map. */
+  /**
+   * The papers on these bills, with their lines, by invoice id, however many bills and lines there are. Fail-soft: a
+   * read that fails is an empty map, never a paper with some of its lines.
+   */
   loadForInvoices(invoiceIds: readonly string[]): Promise<Map<string, PaperRow>>
   /** The paper and its lines for a bill, written whole. Resolves to the paper's id, or rejects in words. */
   save(invoiceId: string, paper: PaperSave, lines: readonly LineSave[]): Promise<string>
@@ -103,6 +107,9 @@ export function paperOfDb(p: PaperDbRow, lines: readonly LineDbRow[]): PaperRow 
   }
 }
 
+/** How many id chunks are read at once: a house of a few hundred bills is two or three chunks a table. */
+const PAPER_READS_AT_ONCE = 4
+
 async function appClient(): Promise<SupabaseClient<Database>> {
   return (await import('../../supabase')).supabase
 }
@@ -115,13 +122,26 @@ export function supabasePaperIo(given?: SupabaseClient<Database>): PaperIo {
       if (invoiceIds.length === 0) return out
       try {
         const client = await db()
+        // PostgREST answers a read with no range with its first 1,000 rows and no error, and a house with many bills
+        // holds more lines than that. So both reads go in chunks of ids, a URL of every bill's id being too long to
+        // send, and each chunk is paged in a stable order. A page that fails throws, and the catch below answers with
+        // the empty map: half the lines would read as a paper with fewer lines than it has.
         // The generated types learn the two tables after the push; until then the names are strings here.
-        const { data: papers, error } = await client.from('supply_papers').select('*').in('invoice_id', [...invoiceIds])
-        if (error || !papers?.length) return out
-        const rows = papers as PaperDbRow[]
-        const { data: lines } = await client.from('supply_paper_lines').select('*').in('paper_id', rows.map((p) => p.id))
+        const rows = await fetchAllRowsChunkedIn<PaperDbRow, string>(
+          [...new Set(invoiceIds)],
+          (chunk, from, to) => client.from('supply_papers').select('*').in('invoice_id', chunk).order('id').range(from, to),
+          'supply papers',
+          { parallel: PAPER_READS_AT_ONCE },
+        )
+        if (rows.length === 0) return out
+        const lines = await fetchAllRowsChunkedIn<LineDbRow, string>(
+          rows.map((p) => p.id),
+          (chunk, from, to) => client.from('supply_paper_lines').select('*').in('paper_id', chunk).order('paper_id').order('line_no').range(from, to),
+          'supply paper lines',
+          { parallel: PAPER_READS_AT_ONCE },
+        )
         const byPaper = new Map<string, LineDbRow[]>()
-        for (const l of (lines ?? []) as LineDbRow[]) {
+        for (const l of lines) {
           const list = byPaper.get(l.paper_id) ?? []
           list.push(l)
           byPaper.set(l.paper_id, list)
