@@ -54,7 +54,7 @@ describe('MyMailReader', () => {
     expect(await within(dialog).findByText('3 in this conversation')).toBeTruthy()
     expect(io.open).toHaveBeenCalledWith({ gmailId: 'dale-new' })
     const bar = dialog.querySelector('[data-my-mail-bar="guess"]') as HTMLElement
-    expect(bar.textContent).toContain('Tag this conversation onto')
+    expect(bar.textContent).toContain('Save this conversation to')
     expect(bar.textContent).toContain('JP1077 · 4 Elm Ct')
     expect(bar.textContent).toContain('the subject names 4 Elm Ct')
     expect(within(dialog).getByText('Dale Okafor <dale@ridgeway.example>')).toBeTruthy()
@@ -89,7 +89,7 @@ describe('MyMailReader', () => {
     expect(presses.onOpenThread).toHaveBeenCalledWith('c-dale', 'm-elm-1')
     fireEvent.click(within(bar).getByRole('button', { name: 'Another job…' }))
     expect(presses.onMove).toHaveBeenCalledWith(ELM.key)
-    fireEvent.click(within(bar).getByRole('button', { name: 'Untag' }))
+    fireEvent.click(within(bar).getByRole('button', { name: 'Take off the job' }))
     expect(presses.onUntag).toHaveBeenCalledTimes(1)
     expect(presses.onPick).not.toHaveBeenCalled()
   })
@@ -137,7 +137,7 @@ describe('MyMailReader', () => {
     const io = fakeMyMailIo({ open: async () => openedMail(byId('dale-old'), { inMessages: box, threadRows: [mailRow('dale-2', { inMessages: { messageId: 'm-elm-2', jobKey: ELM.key } })] }) })
     const { presses, dialog } = await read('dale-old', {}, io)
     const bar = (await within(dialog).findByText('✓ On')).closest('[data-my-mail-bar]') as HTMLElement
-    fireEvent.click(within(bar).getByRole('button', { name: 'Untag' }))
+    fireEvent.click(within(bar).getByRole('button', { name: 'Take off the job' }))
     expect(presses.onUntag).toHaveBeenCalledTimes(1)
     fireEvent.click(within(bar).getByRole('button', { name: 'Another job…' }))
     expect(presses.onMove).toHaveBeenCalledWith(ELM.key)
@@ -179,7 +179,7 @@ describe('MyMailReader', () => {
     // The conversation is tagged all the same: it moves or comes off from here too.
     fireEvent.click(within(bar).getByRole('button', { name: 'Another job…' }))
     expect(presses.onMove).toHaveBeenCalledWith(ELM.key)
-    expect(within(bar).getByRole('button', { name: 'Untag' })).toBeTruthy()
+    expect(within(bar).getByRole('button', { name: 'Take off the job' })).toBeTruthy()
   })
 
   it('turns green once the mail is put on the job, before the mail reads again, and stays green once it has', async () => {
@@ -208,17 +208,17 @@ describe('MyMailReader', () => {
     expect(bar.textContent).toContain('The bids@ or team@ reader took this mail.')
     fireEvent.click(within(bar).getByRole('button', { name: 'open the thread ›' }))
     expect(presses.onOpenThread).toHaveBeenCalledWith('c-dale', 'm-box-1')
-    fireEvent.click(within(bar).getByRole('button', { name: 'Tag the conversation…' }))
+    fireEvent.click(within(bar).getByRole('button', { name: 'Save the conversation…' }))
     expect(presses.onPick).toHaveBeenCalledTimes(1)
   })
 
   it('offers Tag… on a mail with no guess, waits while it is tagged, and says why a tag did not go', async () => {
     const { presses, dialog } = await read('harlan')
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Tag…' }))
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Save to job…' }))
     expect(presses.onPick).toHaveBeenCalledTimes(1)
     cleanup()
     const busy = await read('harlan', { busy: true, problem: 'That mail or that job is not there anymore.' })
-    expect(await within(busy.dialog).findByText('Tagging…')).toBeTruthy()
+    expect(await within(busy.dialog).findByText('Saving…')).toBeTruthy()
     expect(within(busy.dialog).getByRole('alert').textContent).toBe('That mail or that job is not there anymore.')
   })
 
