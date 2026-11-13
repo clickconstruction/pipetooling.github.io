@@ -50,6 +50,8 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
     const p = paperSample('demand-letter', TODAY)
     expect(p.html).toContain(SAMPLE_HOMEOWNER.name)
     expect(p.html).toContain('1,850')
+    // How to pay is a whole sentence, so the dispute line after it starts its own (v2.7080).
+    expect(p.html).toContain('Pay by card or bank transfer from the bill link, or by check to the office. If you believe this balance is incorrect')
   })
 
   it('the notice to the owner of record names the builder as original contractor and the project', () => {

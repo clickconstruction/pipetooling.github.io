@@ -20,6 +20,10 @@
  * with; the list has its outline and bolder counts; the search is one joined control; and the three next steps (text the
  * office, call the office, sign in) are rows of one card, an icon, a title and a line each, where three headed presses
  * read as a form. The words are the same but for the sign-in's second line and the call, which has a row of its own.
+ *
+ * v2.7072 (punch list #329), stickers before boxes: the code may be a sticker's. One on a box draws that box as a label
+ * does, with the sticker's number beside the code. A blank one draws its number, *is not on a box yet*, the sign-in
+ * and nothing else: no search, no site, no office number. A lost one says so and offers another scan.
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -27,6 +31,7 @@ import { POST_LOGIN_REDIRECT_KEY } from '../../lib/iosPwa'
 import { publicFunctionHeaders } from '../../lib/customerSampleMode'
 import { BOX_PAGE_FIND_MAX, BOX_SCAN_PATH, boxPageCallHref, boxPageCannotFindWords, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageFindPath, boxPageFindView, boxPageFoundWords, boxPageNoun, boxPagePartsWords, boxPagePath, boxPageTextHref, boxPageTextWords, boxPageView, type BoxPageFindView, type BoxPageView } from '../../lib/materials/boxPage'
 import { readLastBox, rememberLastBox } from '../../lib/materials/boxPageMemory'
+import { blankStickerTitle, lostStickerTitle, stickerNumberWords } from '../../lib/materials/stickers'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { portalFailure } from '../../lib/portal/portalFailure'
@@ -111,8 +116,9 @@ export function BoxPublicPage({ code }: { code: string }) {
 
   const payload = view.kind === 'box' ? view.payload : null
   useEffect(() => {
-    document.title = payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : 'Box label · Click Plumbing & Electrical'
-  }, [payload])
+    const sticker = view.kind === 'sticker_blank' || view.kind === 'sticker_lost' ? `Sticker ${stickerNumberWords(view.number)}` : null
+    document.title = payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : `${sticker ?? 'Box label'} · Click Plumbing & Electrical`
+  }, [payload, view])
 
   const signIn = () => {
     rememberBoxForSignIn(code)
@@ -143,7 +149,7 @@ export function BoxPublicPage({ code }: { code: string }) {
 
         {view.kind === 'loading' && !finding ? <div style={{ color: MUTED, fontSize: 15 }}>Finding box {words}…</div> : null}
 
-        {finding && view.kind !== 'not_found' && view.kind !== 'locked' && view.kind !== 'retired' ? (
+        {finding && view.kind !== 'not_found' && view.kind !== 'locked' && view.kind !== 'retired' && view.kind !== 'sticker_blank' && view.kind !== 'sticker_lost' ? (
           <section data-testid="box-page-find">
             <button type="button" onClick={() => setFinding(false)} style={{ ...link, padding: 0 }} data-testid="box-page-find-back">
               ‹ {payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil}` : `Box ${words}`}
@@ -233,7 +239,10 @@ export function BoxPublicPage({ code }: { code: string }) {
                   <span aria-hidden style={{ flex: '0 0 auto', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: plate.soft, border: `1px solid ${plate.hair}`, borderRadius: 999, padding: '3px 10px' }}>{boxPageNoun(payload.box.kind)}</span>
                 </div>
                 {placeWords ? <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere' }} data-testid="box-page-place">{placeWords}</div> : null}
-                <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, letterSpacing: '0.04em', color: plate.soft }} data-testid="box-page-code">{boxPageCodeWords(payload.box.code)}</div>
+                <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, letterSpacing: '0.04em', color: plate.soft }} data-testid="box-page-code">
+                  {payload.box.stickerNumber ? <span data-testid="box-page-sticker">Sticker {stickerNumberWords(payload.box.stickerNumber)}, </span> : null}
+                  {boxPageCodeWords(payload.box.code)}
+                </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', alignItems: 'baseline', fontSize: 15, padding: '10px 16px', background: plate.band, borderTop: `1px solid ${plate.hair}` }} data-testid="box-page-counted" data-verdict={verdict.kind}>
                 <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: verdict.kind === 'fresh' ? plate.fresh : verdict.kind === 'due' ? plate.due : plate.soft }} />
@@ -354,6 +363,27 @@ export function BoxPublicPage({ code }: { code: string }) {
                 Text the office about {retiredName}
               </a>
             ) : null}
+          </section>
+        ) : null}
+
+        {/* A sticker on no box yet (v2.7072): its number, the sign-in, and nothing else. */}
+        {view.kind === 'sticker_blank' ? (
+          <section data-testid="box-page-sticker-blank">
+            <h1 style={h1}>{blankStickerTitle(view.number)}</h1>
+            <p style={para}>Sign in to say what it is.</p>
+            <button type="button" onClick={signIn} style={{ ...press, marginTop: 14 }} data-testid="box-page-sticker-sign-in">
+              Sign in
+            </button>
+          </section>
+        ) : null}
+
+        {view.kind === 'sticker_lost' ? (
+          <section data-testid="box-page-sticker-lost">
+            <h1 style={h1}>{lostStickerTitle(view.number)}</h1>
+            <p style={para}>{view.lostOn ? `Someone marked it lost on ${boxPageDayWords(view.lostOn)}. ` : ''}It no longer opens a box.</p>
+            <Link to={BOX_SCAN_PATH} style={{ ...press, marginTop: 14, textDecoration: 'none' }} data-testid="box-page-scan-another">
+              Scan another label
+            </Link>
           </section>
         ) : null}
 

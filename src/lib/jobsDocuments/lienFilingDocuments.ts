@@ -696,7 +696,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
       case 'qrLink': {
         const qr = WINDOW_QR_MM
         ensureRoom(qr + 4)
-        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr, undefined, 'FAST')
         else {
           doc.setDrawColor(...RULE)
           doc.rect(PAGE_MARGIN, y, qr, qr)
@@ -749,7 +749,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         doc.setDrawColor(...RULE)
         doc.setLineWidth(0.25)
         doc.line(PAGE_MARGIN, y - 2, RIGHT_EDGE, y - 2)
-        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr, undefined, 'FAST')
         else {
           doc.setDrawColor(...RULE)
           doc.rect(PAGE_MARGIN, y, qr, qr)

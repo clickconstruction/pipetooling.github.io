@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
 import { parseLines } from '../../lib/taskCriteria'
 import { asksForPhotoDefault } from '../../lib/taskProgress'
+import type { TaskPlaceDraft } from '../../lib/tasks/taskPlace'
+import { TaskPlaceRow } from './TaskPlaceRow'
 import {
   matchesPersonQuery,
   singleEnterTarget,
@@ -25,7 +27,7 @@ type Props = {
   currentUserId: string | null
   onClose: () => void
   /** Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed; PR 4: the photo switch. */
-  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean) => Promise<boolean>
+  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean, place: TaskPlaceDraft | null) => Promise<boolean>
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
   portalContainer?: HTMLElement | null
   /** When set, modal is in edit mode (title + assignees pre-filled). */
@@ -57,6 +59,8 @@ export function ChecklistTechTreeAddTaskModal({
   const [title, setTitle] = useState('')
   const [linesText, setLinesText] = useState('')
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
+  // Punch list #328, PR 5: where the work is. Null is a task with no place, the default.
+  const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
   const [assignees, setAssignees] = useState<Record<string, boolean>>({})
   const [personQuery, setPersonQuery] = useState('')
   const [saving, setSaving] = useState(false)
@@ -87,6 +91,7 @@ export function ChecklistTechTreeAddTaskModal({
     setLinesText('')
     setViaCrew({})
     setPersonQuery('')
+    setPlace(null)
   }, [open, groupId, editingTaskId, initialEditTitle, initialEditAssigneeUserIds])
 
   if (!open || !groupId) return null
@@ -100,7 +105,7 @@ export function ChecklistTechTreeAddTaskModal({
         .filter(([, v]) => v)
         .map(([k]) => k)
       const lines = editingTaskId ? [] : parseLines(linesText)
-      const ok = await onSave(trimmed, assigneeUserIds, lines, asksForPhotoPick ?? asksForPhotoDefault(lines.length))
+      const ok = await onSave(trimmed, assigneeUserIds, lines, asksForPhotoPick ?? asksForPhotoDefault(lines.length), place)
       if (ok) {
         setLinesText('')
         setAsksForPhotoPick(null)
@@ -195,6 +200,11 @@ export function ChecklistTechTreeAddTaskModal({
               <span>Asks for a photo at the finish</span>
             </label>
           </>
+        ) : null}
+        {!isEditMode ? (
+          <div style={{ marginBottom: 12 }}>
+            <TaskPlaceRow value={place} onChange={setPlace} />
+          </div>
         ) : null}
         <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>
         <ChecklistCrewTagsRow
