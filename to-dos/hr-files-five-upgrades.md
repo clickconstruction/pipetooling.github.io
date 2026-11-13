@@ -11,12 +11,12 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969
-next: Upgrade 1 PR 2, the Timeline's chips and Correct this entry in the composer, once PR 1's migration is pushed. Then the seat's reads, then upgrade 2.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107
+next: Upgrade 2 PR 3, the seat's reads of the numbers and plan_case. Then upgrade 3, drawn in the mock-up.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
-mockup: not required — each screen change before upgrade 3 is a chip or a door on a view that exists; the approvals list (upgrade 3) and the Case view (upgrade 2b) get a mock-up beside this card before their screen PRs
+mockup: hr-files-five-upgrades-case-and-approvals.html — the Case view as built (upgrade 2) and Waiting on you as proposed (upgrade 3), drawn before upgrade 3's screen PR; every other screen change is a chip or a door on a view that exists
 ---
 
 # HR files: five upgrades (#315)
@@ -90,19 +90,25 @@ by adding rows where a column would have meant stamping old entries.
 
 ## 2. Rows the system numbers
 
+**Is this the best we can do?** Three answers changed the map. A new exhibit number starts past the highest
+number any old title opens with, so numbering is safe from the first push with no backfill run on a real file. An
+item can be carried over with the number people already call it by, since notes and hand-overs cite those
+numbers. And one door takes items and log lines together, so the seat needs one verb pair.
+
 | | |
 |---|---|
-| Tables and RPCs | 2a: `person_file_evidence.exhibit_no`, unique a person, set by a before-insert trigger from `person_file_counters`. `dev_evidence_number_backfill(person, dry_run)` reads the number a title already carries and reports clashes and gaps. 2b: `person_case_items` (number from the same counter, what, owner, state open · done · dropped, opened and closed days, why) and `person_case_log` (append-only: when, who, which session, one line), written through `dev_case_item_write` and `dev_case_log_write`. All new tables dev-only with the four fences. |
-| Screens | Evidence row and Timeline line show the number beside the title; titles stay as they are. A **Case** view beside Documents lists the open items, the closed ones folded, and the log newest first. |
-| Seat | `get_person_file`, `get_case_brief` and `search_case` carry `exhibit_no`; `plan_person_evidence`'s reply names the number the record would take. New pairs `plan_case_item` → `apply_case_item` and `plan_case_log` → `apply_case_log`; the brief gains `open_items` and `log`. |
+| Tables and RPCs | `person_file_counters`; `person_file_evidence.exhibit_no`, set by a before-insert trigger; `dev_evidence_number_backfill(person, dry_run, number_rest)`; `person_case_items` and `person_case_log`, written through `dev_case_write(p, dry_run)`. All in migration `20261113080000` (v2.7106), dev-only with the four fences. |
+| Screens | Evidence row and Timeline line show *Ev #41* beside a title that does not already wear it. *Ev #41* in an entry's words opens the record. The Evidence view's **Number them…** shows the backfill's dry run and numbers what is clear. A **Case** view beside Documents lists the open items, the closed ones folded, and the log newest first. |
+| Seat | `get_person_file`, `get_case_brief` and `search_case` carry `exhibit_no`; `plan_person_evidence`'s reply names the number the record would take (`person_file_next_exhibit_no`). One new pair, `plan_case` → `apply_case`; the brief gains `open_items` and `log`. |
+| Kernel | `supabase/functions/_shared/personCase.ts` with the app's door. |
 
-- **PR 2a (first, S):** the column, the counter, the trigger, the backfill function, kernel
-  `exhibitNumberFromTitle` with tests. New records are numbered from the merge on.
-- **2b:** the items and log tables with their functions. **2c:** the seat verbs. **2d:** the Case view.
-- **His calls:** which title forms count as carrying a number; whether a record with none is numbered
-  after the highest or left blank; each clash the backfill reports. Whether a session may add a log
-  line without his *Apply it*. Moving a file's prose items into rows, per person, on his word. *Agent
-  notes* stays as prose for the standing rules and the map.
+- **PR 1 (v2.7106, built):** the migration, the kernel with its tests, the bed
+  (`npm run test:pg:person-file-numbers`), the docs. New records are numbered from the push on.
+- **PR 2:** the numbers on the screen, *Number them…*, the Case view, the help guide.
+- **PR 3:** the seat's reads and `plan_case`.
+- **His calls:** running the backfill on a real file, and what each clash and each lettered number it reports becomes. Whether the titles with no number are numbered after the highest.
+  Moving a file's prose items into rows, with their numbers, per person. Whether a session may add a log line
+  without his *Apply it*. *Agent notes* stays as prose for the standing rules and the map.
 
 ## 3. One approvals list
 

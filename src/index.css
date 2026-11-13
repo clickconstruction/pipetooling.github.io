@@ -230,6 +230,12 @@ button:focus-visible {
   --man-hours-office: #8b5cf6;
   --man-hours-bids: #e2602b;
 
+  /* Price over time's houses (Materials → What we buy, punch list #298): three series every pair of which a
+     color-blind reader can tell apart on --surface, one set per theme; every other house is the muted mark. */
+  --house-series-1: #2a78d6;
+  --house-series-2: #eb6834;
+  --house-series-3: #1baf7a;
+
   /* surfaces (background:) */
   --bg-page: #f0f2f5; /* v2.2203: was #fafafa — white cards need a ground to sit on, like dark mode */
   --surface: #ffffff;
@@ -369,6 +375,10 @@ button:focus-visible {
   --man-hours-field: #199e70;
   --man-hours-office: #8b6fe0;
   --man-hours-bids: #e0703f;
+
+  --house-series-1: #3987e5;
+  --house-series-2: #d95926;
+  --house-series-3: #199e70;
 
   --bg-page: #111827;
   --surface: #1f2937;

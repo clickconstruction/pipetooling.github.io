@@ -10,7 +10,8 @@
  * one. Since v2.6823 the bids follow their own rule for the same viewer (`withoutZzBridgeBids`, the bid picker's
  * `isZzBidName`: a project name that starts with the word ZZ, the robots' shadow and backtest bids and the office's
  * test bids; the rule sits beside the jobs' in `_shared/zzTestJob.ts`), so a robot's bid is no ask on Market, no bid sent, won or awaiting on Sales, nobody's on Vectors and no
- * bid due; the shared ids stand for the viewer's switch, null keeping them. Estimates have no ZZ rule anywhere.
+ * bid due; the shared ids stand for the viewer's switch, null keeping them. Since v2.7119 the estimates behind the won
+ * rate follow the same switch (`isZzEstimate` in `loadEstimateWins.ts`); the count of asks still reads every estimate.
  */
 import { isZzBidName } from '../jobs/zzTestJobSweep'
 import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility'
