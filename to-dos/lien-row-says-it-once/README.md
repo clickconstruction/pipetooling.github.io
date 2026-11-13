@@ -252,10 +252,24 @@ affidavit that is not drafted, since the window cannot see the desk's record, an
 keep a state beside a button that names the act. `lienOneReading.test.ts` holds the row, the chip, the act
 table and the window's header to one step where they can be compared.
 
+The whole train was then walked read-only on the live board from the top of the stack (2026-11-12, 61 billed
+rows and 10 in Collections). No row repeats itself and nothing is cut to dots. One press on each kind of line
+opened the Lien window on the tab of the paper the line names. The Accounts Receivable chips read in the row's
+words. The walk also found two places where the window and the row still part, both under *Seen, not in this
+card*: the header on a notice in work, and a last day of work set by hand.
+
 ## Seen, not in this card
 
 - The Lien window's header names an affidavit's earlier steps only once the window is handed the job's Do now
-  row. Its *Waiting on* line would change with it.
+  row. Its *Waiting on* line would change with it. The same holds for a notice in work, which the live walk
+  showed: the header reads *Draft the Sep notice* on a row whose line reads *Find the owner*, *Approve the
+  notice* or *Record the mailing*, because `buildLienTimelineFromWindow` passes no notice state. The kernel
+  already has the words for each step (`buildLienTimelineFromDesk` hands it the state), so the window needs
+  only the job's desk entry.
+- Two rules disagree on a last day of work set by hand that is earlier than later clock hours. The row's clock
+  counts from the hand day alone (`buildLienPayRunway`, v2.4830). The Lien window takes the later of the two
+  (`lienWindowLastMonth`, v2.4676). One live row reads *Lien gone* while its window gives the affidavit 95 more
+  days. Which rule is right is the owner's call, then one of the two readers changes.
 
 - The Lien window's third tab is named *Mechanic's lien*. The row, the header and the desk call that
   paper the affidavit. A rename is its own small card.
