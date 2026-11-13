@@ -4,7 +4,7 @@ import { editStatusChoices, editWindowTitle, groupPartDrafts, neighborInGroup, n
 const d = (on_submittal: boolean, left_out = false) => ({ on_submittal, left_out })
 
 describe('groupPartDrafts', () => {
-  // LAV-1 on the SpaceX bid: two GC parts, five order only, then one more the GC sees at the end.
+  // LAV-1 on the SkyLab bid: two GC parts, five order only, then one more the GC sees at the end.
   const lav = [d(true), d(true), d(false), d(false), d(false), d(false), d(false), d(true)]
 
   it('the GC’s parts first, then order only, each with its count and its places in the drafts', () => {

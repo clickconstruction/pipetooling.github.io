@@ -181,7 +181,7 @@ const pct = (n: number): string => `${Math.round(n * 100)}%`
 
 export const MARKET_CANNOT_SEE = 'Courting, reputation, invites that die before a bid exists. A GC enters the book at their first invite and not before. This page shows where relationship time pays and where it burns. It cannot make the calls.'
 
-export const MARKET_RECORDED_LINE = 'No plan is recorded here. The week’s call stays with the lit link above.'
+export const MARKET_RECORDED_LINE = 'Nothing is recorded in this window.'
 
 const NO_GC_KEY = 'no-gc'
 const CUSTOMERS_KEY = 'customers'

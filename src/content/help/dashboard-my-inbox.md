@@ -17,7 +17,7 @@ On a **desktop screen** each item is a compact one-line row. It shows a checkbox
 - **Overdue** holds items past their scheduled date. Each has a day counter:
 
 :::example an overdue item
-Order the water heater for 813 · Reliant Health {{chip:gray|(T+17)}}
+Order the water heater for 813 · Relwyn Health {{chip:gray|(T+17)}}
 :::
 
   `T+17` means it's 17 days past due. The higher the number, the louder it's asking.

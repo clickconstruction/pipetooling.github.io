@@ -57,10 +57,10 @@ describe('buildCustomerWaitingBanner', () => {
 
   it('a GC stage ask reads as "asks for other dates" under the GC name', () => {
     const b = buildCustomerWaitingBanner(
-      [row({ id: 'g', pending_action: 'gc_stage_ask', pending_payload: { source: 'customer_portal', kind: 'gc_stage_ask', gcName: 'Knight Contracting', start: '2026-09-15', end: '2026-09-17', note: 'framing slipped' } })],
+      [row({ id: 'g', pending_action: 'gc_stage_ask', pending_payload: { source: 'customer_portal', kind: 'gc_stage_ask', gcName: 'Kestrin Contracting', start: '2026-09-15', end: '2026-09-17', note: 'framing slipped' } })],
       NOW,
     )
-    expect(b?.leadName).toBe('Knight Contracting')
+    expect(b?.leadName).toBe('Kestrin Contracting')
     expect(b?.leadKind).toBe('asks for other dates')
     expect(b?.snippet).toBe('framing slipped')
   })

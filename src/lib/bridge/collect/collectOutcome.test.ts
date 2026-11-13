@@ -16,7 +16,6 @@ describe('collectOutcomePlan (v2.5855)', () => {
     const p = collectOutcomePlan({ answer: 'paid', words: 'check 4471' }, opts)
     expect(p.recordPaymentFirst).toBe(true)
     expect(p.writes).toEqual([{ kind: 'touch', outcome: 'note', note: 'Paid after the call. check 4471' }])
-    expect(p.friday).toBe('landed')
     for (const t of p.then) plain(t)
   })
 
@@ -25,13 +24,12 @@ describe('collectOutcomePlan (v2.5855)', () => {
     expect(p.writes).toEqual([{ kind: 'promise', ymd: '2026-11-11', saidBy: 'Dana, accounts payable', note: 'Check run is Thursday the 5th, in the mail Friday' }])
     expect(p.then[0]).toBe('The forecast moves the money to Nov 11.')
     expect(p.then[1]).toBe('Until then the payer waits off the call sheet, unless other bills are late.')
-    expect(p.then[3]).toBe("If Nov 11 passes unpaid, the row turns to past a promise after the 7-day grace. The broken promise is then this payer's call.")
+    expect(p.then[2]).toBe("If Nov 11 passes unpaid, the row turns to past a promise after the 7-day grace. The broken promise is then this payer's call.")
     // Before a date is picked the words name the day to come (v2.5873); it read "Invalid Date".
     const blank = collectOutcomePlan({ answer: 'promised', ymd: '', saidBy: '', words: '' }, opts)
     expect(blank.then[0]).toBe('The forecast moves the money to the day they name.')
     expect(blank.then.join(' ')).not.toMatch(/Invalid/)
     for (const t of blank.then) plain(t)
-    expect(p.friday).toBe('dated')
     for (const t of p.then) plain(t)
   })
 
@@ -45,7 +43,6 @@ describe('collectOutcomePlan (v2.5855)', () => {
       { kind: 'touch', outcome: 'note', note: 'Spoke, they would not name a day. the check went out Friday' },
       { kind: 'touch', outcome: 'resend', note: 'The bill, sent again after the call.' },
     ])
-    expect(s.friday).toBe('no_date')
     expect(s.then[0]).toContain('a note with their words')
     for (const t of [...a.then, ...s.then]) plain(t)
   })
@@ -53,7 +50,6 @@ describe('collectOutcomePlan (v2.5855)', () => {
   it('records a dispute with what they dispute and their words, for the owner', () => {
     const d = collectOutcomePlan({ answer: 'dispute', reason: 'payapp_rejected', words: 'the August quantities' }, opts)
     expect(d.writes).toEqual([{ kind: 'touch', outcome: 'dispute', note: 'A pay app they rejected. the August quantities' }])
-    expect(d.friday).toBe('on_the_owner')
     for (const t of d.then) plain(t)
   })
 

@@ -92,7 +92,7 @@ export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', clear: 'both', ...det }}>
-        <span>They come back when the link moves. Friday asks whether it did.</span>
+        <span>They come back when the link moves.</span>
         {activeId && (
           <button type="button" onClick={onReset} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }} data-testid="bridge-waits-reset">
             back to today

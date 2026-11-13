@@ -82,7 +82,7 @@ export type RunNotice = {
   jobId: string
   /** Which Subchapter C form this is (v2.3753): the monthly § 53.056 notice, or the § 53.057 retainage notice — same recipients, same envelope rules, its own form and footer. */
   kind: LienNoticeInstrument
-  /** "650 · ATI Schertz" */
+  /** "650 · AXO Schertz" */
   label: string
   jobNumber: string
   months: string[]

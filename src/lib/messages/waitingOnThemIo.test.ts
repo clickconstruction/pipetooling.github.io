@@ -37,7 +37,7 @@ function fakeClient(results: Partial<Record<string, Result | Result[]>>, rpc: Pa
 }
 
 const NOW = new Date('2026-11-04T18:00:00Z')
-const CONTACT = { name: 'Evan Johnson', kind: 'customer', customer: { name: 'Evan Johnson' } }
+const CONTACT = { name: 'Evan Jarrow', kind: 'customer', customer: { name: 'Evan Jarrow' } }
 const LINES = [
   { id: 'm1', contact_id: 'c1', direction: 'out', body: 'Evan, your estimate is ready.', at: '2026-10-20T20:00:00Z', channel: 'text', delivery: 'delivered', number: { value: '(830) 555-0121' }, contact: CONTACT },
   { id: 'm0', contact_id: 'c1', direction: 'in', body: 'Hi', at: '2026-10-19T20:00:00Z', channel: 'text', delivery: null, number: null, contact: CONTACT },
@@ -52,8 +52,8 @@ describe('loadWaitingOnThem (v2.5704; the event lines since v2.6500)', () => {
     const { client, calls } = fakeClient({ messages: [{ data: LINES, error: null }, { data: EVENTS, error: null }] })
     const lines = await loadWaitingOnThem(NOW, client)
     expect(lines).toEqual([
-      { id: 'm1', contactId: 'c1', name: 'Evan Johnson', customerName: 'Evan Johnson', kind: 'customer', direction: 'out', body: 'Evan, your estimate is ready.', atMs: Date.parse('2026-10-20T20:00:00Z'), number: '(830) 555-0121', channel: 'text', delivery: 'delivered' },
-      { id: 'm0', contactId: 'c1', name: 'Evan Johnson', customerName: 'Evan Johnson', kind: 'customer', direction: 'in', body: 'Hi', atMs: Date.parse('2026-10-19T20:00:00Z'), number: null, channel: 'text', delivery: null },
+      { id: 'm1', contactId: 'c1', name: 'Evan Jarrow', customerName: 'Evan Jarrow', kind: 'customer', direction: 'out', body: 'Evan, your estimate is ready.', atMs: Date.parse('2026-10-20T20:00:00Z'), number: '(830) 555-0121', channel: 'text', delivery: 'delivered' },
+      { id: 'm0', contactId: 'c1', name: 'Evan Jarrow', customerName: 'Evan Jarrow', kind: 'customer', direction: 'in', body: 'Hi', atMs: Date.parse('2026-10-19T20:00:00Z'), number: null, channel: 'text', delivery: null },
       { id: 'e1', contactId: 'c1', name: null, kind: null, direction: 'event', body: '✍️ Evan accepted estimate #212.', atMs: Date.parse('2026-10-22T15:00:00Z'), channel: 'event', key: 'estimate:est-1:accepted' },
       { id: 'e2', contactId: 'c2', name: null, kind: null, direction: 'event', body: 'Taunya heard back by phone on Nov 3.', atMs: Date.parse('2026-11-03T19:00:00Z'), channel: 'event', key: null },
     ])

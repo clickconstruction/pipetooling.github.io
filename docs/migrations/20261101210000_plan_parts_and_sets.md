@@ -1,6 +1,6 @@
 # 20261101210000_plan_parts_and_sets.sql (2026-11-01, v2.6297)
 
-Plan sets by part, the ground (punch list #239, PR 1). The owner's two cases, 2026-11-01: *on a project they often get an updated set halfway through, or make their own as-builts and want to save them with the build.* The read-out on the Gun Dog development found the shape of the problem: a bid carries set rows (`bid_plan_sets`, v2.6168) but a job holds one link, nothing carries a set from a bid to the job it becomes, two sets were current at once for two buildings, and ten jobs read *on an older set* with no door to move them.
+Plan sets by part, the ground (punch list #239, PR 1). The owner's two cases, 2026-11-01: *on a project they often get an updated set halfway through, or make their own as-builts and want to save them with the build.* The read-out on the Gray Fox development found the shape of the problem: a bid carries set rows (`bid_plan_sets`, v2.6168) but a job holds one link, nothing carries a set from a bid to the job it becomes, two sets were current at once for two buildings, and ten jobs read *on an older set* with no door to move them.
 
 The design, option D of the read-out: **a set belongs to a part of a site, and each part has one set it builds from.** A job names its part and follows it, so it never needs moving. A job outside any development owns its own part. A bid keeps its own rows and pins what it was priced on. An as-built is a set of kind `as_built`, on the job that made it, marking up the set it built from.
 

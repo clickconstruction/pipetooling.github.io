@@ -1,6 +1,6 @@
 /**
  * The Next line (punch list #176, change 2): under a station's question, one line that names
- * the first row to act on and its verb, *Lean on TF Harper · $29,323 · 38 days*. Each station's
+ * the first row to act on and its verb, *Lean on TF Halden · $29,323 · 38 days*. Each station's
  * body sorts its rows and hands the kernel the shape it has; the kernel picks the worst row
  * where the body's order is not worst first, and writes the words. Null means the station has
  * nothing to say: at zero, or a count with no row behind it (the warmth totals, the GC week).

@@ -2,7 +2,7 @@
 name: "The employer's electrical safety procedures: the paper, its licensed reader and where it lives"
 number: 122
 group: gated
-status: DRAFTED 2026-10-18 — the paper is written from Intro to electrical and the OSHA 30 refresher's two electrical lessons and sits beside this file for the owner's read and the licensed reader's check; the owner's three calls were asked once for both sets and the defaults taken (placeholders for the names, read-only reference first with the signing flow as a later PR, English only); the licensed reader was named 2026-11-01, Brian Herber, and nothing in the app changes until he has corrected it
+status: DRAFTED 2026-10-18 — the paper is written from Intro to electrical and the OSHA 30 refresher's two electrical lessons and sits beside this file for the owner's read and the licensed reader's check; the owner's three calls were asked once for both sets and the defaults taken (placeholders for the names, read-only reference first with the signing flow as a later PR, English only); the licensed reader was named 2026-11-01, Brian Helbrow, and nothing in the app changes until he has corrected it
 summary: >
   Intro to electrical's lessons say "the company's rule" at the water heater, the bonding
   jumper, the lock and the reset, and point at an employer's written procedure that did not
@@ -15,9 +15,9 @@ summary: >
   Training card first, the electrician's number in a private company document, and a signing
   flow through Contract Forms when the owner wants every crew member to sign. The plumbing
   procedures are their own set, #121, read by the owner.
-next: Brian Herber, the licensed reader the owner named on 2026-11-01 (the same reader #120 waits on), corrects the paper in place and closes every Confirm line marked for the reader, and his name and licence number go on its Read by line then; the owner closes the rest and names procedure 13's electrician with a phone and a licence number. Then PR 1 puts it in the app.
+next: Brian Helbrow, the licensed reader the owner named on 2026-11-01 (the same reader #120 waits on), corrects the paper in place and closes every Confirm line marked for the reader, and his name and licence number go on its Read by line then; the owner closes the rest and names procedure 13's electrician with a phone and a licence number. Then PR 1 puts it in the app.
 size: S for PR 1 (one guide and one line on the card); M for the signing flow; S for the Spanish copy
-blocker: Brian Herber's read (the owner named him 2026-11-01, for #120 too). The company cannot vouch for electrical numbers itself, so the paper is not handed out until his name is on its Read by line.
+blocker: Brian Helbrow's read (the owner named him 2026-11-01, for #120 too). The company cannot vouch for electrical numbers itself, so the paper is not handed out until his name is on its Read by line.
 opinion: build PR 1 the week the reader signs off, in the same PR train as #120's read-through, because the reader checks the lesson and the procedure against the same code cycle in one sitting
 mockup: not required — the paper beside this file is the thing to read; PR 1 draws it on the real help page as a dev preview
 ---
@@ -60,7 +60,7 @@ paper carries a *Read by* line for a licensed electrician and the code cycle the
 inspect under, the way `course.md`'s `line` does for #120, and the paper is not handed out until
 that line is filled. The reader is the same one #120 waits on: the course's owner's call 1 named
 the electrical sub the company works with, with a published source behind every number. The
-owner named him on 2026-11-01: Brian Herber.
+owner named him on 2026-11-01: Brian Helbrow.
 
 Every Confirm line in the paper says which of the two readers checks it. **The reader** confirms
 every number and every article against the code cycle, and that nothing in the paper reads as a
@@ -189,7 +189,7 @@ procedure that says what to do.
 The paper's Confirm lines are the list. Each says whose it is.
 
 - **The owner: names.** The company name. The safety lead. The licensed reader's licence number
-  (the reader is Brian Herber, named 2026-11-01). The electrician and the second electrician. The
+  (the reader is Brian Helbrow, named 2026-11-01). The electrician and the second electrician. The
   utility's emergency line per city.
 - **The owner: the lock owner.** On the company's own jobs, who locks and unlocks. The draft says
   the crew lead locks a water heater's breaker and the electrician locks everything else.

@@ -13,12 +13,12 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 
 const JOBS: JobWithDetails[] = [
   makeJob({
-    development: { id: 'dev-1', name: 'Gun Dog' },
+    development: { id: 'dev-1', name: 'Gray Fox' },
     account_manager_user_id: 'u-trace',
     account_manager: { id: 'u-trace', name: 'Trace' },
     account_manager_relationship: 'only',
   } as Partial<JobWithDetails>),
-  makeJob({ gcCustomer: { id: 'gc-1', name: 'Heron Construction Group' } } as Partial<JobWithDetails>),
+  makeJob({ gcCustomer: { id: 'gc-1', name: 'Hadlow Construction Group' } } as Partial<JobWithDetails>),
 ]
 
 describe('JobsStagesHideGroupsModal', () => {
@@ -35,8 +35,8 @@ describe('JobsStagesHideGroupsModal', () => {
       <JobsStagesHideGroupsModal open onClose={vi.fn()} jobs={JOBS} filters={EMPTY_STAGES_EXCLUDE_FILTERS} onChange={onChange} />,
     )
     expect(screen.getByText('Hide groups from the board')).toBeTruthy()
-    expect(screen.getByText('Gun Dog')).toBeTruthy()
-    expect(screen.getByText('Heron Construction Group')).toBeTruthy()
+    expect(screen.getByText('Gray Fox')).toBeTruthy()
+    expect(screen.getByText('Hadlow Construction Group')).toBeTruthy()
     expect(screen.getByText('Trace')).toBeTruthy()
     // Section order is a user choice (v2.1478): Account Man, then Development, then GC.
     const sectionOrder = [screen.getByText('Account Man'), screen.getByText('Development'), screen.getByText('GC / Builder')]
@@ -45,7 +45,7 @@ describe('JobsStagesHideGroupsModal', () => {
       const cur = sectionOrder[i]
       expect(prev && cur && prev.compareDocumentPosition(cur) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
-    fireEvent.click(screen.getByText('Gun Dog'))
+    fireEvent.click(screen.getByText('Gray Fox'))
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_STAGES_EXCLUDE_FILTERS, development: ['dev-1'] })
   })
 

@@ -122,7 +122,7 @@
   <blockquote>On legal desk we recently added a map but I don't think we well updated how to onboard firms, and we used to have a button in the top right hand corner. Can you help me add a full screen button to this modal like other modals have, and help me re-develop this flow and expose useful buttons to the user like a map where they can see all the jobs and add more firms?</blockquote>
   <p class="lede" style="margin-top:12px">Today the header's firm group assumes one firm: it shows the oldest active firm, whatever county the account is in, and every release goes to it. With counties colored on Settings, the header should say <b>which firm this account belongs to, and why</b>, keep that firm's Emails and Portal link, and carry two doors the owner asked for: <b>Map</b> (every case on the county map) and <b>Firms…</b> (add a firm, color its counties). The full screen button is in (v2.5780).</p>
 
-  <h2><span class="rank">Frame 1</span> The header, on The Learning Experience</h2>
+  <h2><span class="rank">Frame 1</span> The header, on The Reading Corner</h2>
   <p class="lede">Left to right in the control row: the <b>Accounts · Map</b> switch (the desk's two views, like the Lien desk's Do now · Calendar · All filings), the <b>firm group</b> whose first segment now reads the firm <i>and the county that picked it</i>, then <b>Firms…</b> (a dev's door), then ⤢ and ✕. Under the account's address the venue says where the county came from.</p>
   <div class="frame">
     <div class="chrome"><i></i><i></i><i></i>&nbsp; clicktooling.com/jobs?tab=stages&amp;legal=1 · Legal Desk</div>
@@ -139,12 +139,12 @@
       <div class="rail">
         <div class="lbl" style="margin-bottom:6px">Needs a dev's eyes · 3</div>
         <div class="acct on"><b>The Learning Expe… <span>$15,781.82</span></b><div class="m">3 jobs · 3 no contract · Travis <span class="chip b">Austin</span></div></div>
-        <div class="acct"><b>Burd &amp; Assoc. <span>$2,028.04</span></b><div class="m">1 job · 1 no contract · Williamson <span class="chip warn">no firm</span></div></div>
-        <div class="acct"><b>RMC- Dudley Mason <span>$1,712.50</span></b><div class="m">1 job · GC pays · Bexar <span class="chip a">Snell</span></div></div>
+        <div class="acct"><b>Brund &amp; Assoc. <span>$2,028.04</span></b><div class="m">1 job · 1 no contract · Williamson <span class="chip warn">no firm</span></div></div>
+        <div class="acct"><b>RLC- Dunmere Mallin <span>$1,712.50</span></b><div class="m">1 job · GC pays · Bexar <span class="chip a">Snell</span></div></div>
       </div>
       <div class="main">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div><div class="nm">The Learning Experience</div><div class="addr">718 · 717 · 707 · 15054 State Hwy 71, Bee Cave, TX 78738<br><span class="venue">Venue · Travis County</span>, from the property record · Austin Legal covers it</div></div>
+          <div><div class="nm">The Reading Corner</div><div class="addr">718 · 717 · 707 · 15054 State Hwy 71, Bee Cave, TX 78738<br><span class="venue">Venue · Travis County</span>, from the property record · Austin Legal covers it</div></div>
           <div style="text-align:right"><div style="font-size:18px;font-weight:700">$15,781.82</div><div class="addr">balance · oldest 193d</div></div>
         </div>
         <div class="acts"><span class="chip warn">1 thing an attorney will ask for first</span> <button class="btn">⎙ Print packet</button><span style="flex:1"></span><button class="btn pri">⚖ Mark attorney ready…</button><button class="btn">Write it down…</button></div>
@@ -158,7 +158,7 @@
     </div>
     <div class="body" id="map-view" style="display:none;grid-template-columns:1fr">
       <div class="main">
-        <div class="flag"><b>1 case in a county no firm covers</b> · Burd &amp; Assoc. (Williamson). Press Firms… to color it, or the desk cannot release it.</div>
+        <div class="flag"><b>1 case in a county no firm covers</b> · Brund &amp; Assoc. (Williamson). Press Firms… to color it, or the desk cannot release it.</div>
         <div class="two">
           <div>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="lbl" style="margin-right:auto">8 accounts · 10 jobs · $26,462.01 open · scroll to zoom, drag to pan</span><button class="btn">Central Texas</button><button class="btn">All of Texas</button></div>
@@ -180,7 +180,7 @@
               <div class="row"><span>No firm covers it<div class="m">Williamson</div></span><span style="text-align:right"><b>1 case</b><div class="m">$2,028.04</div></span></div>
             </div>
             <div class="side"><h4>Travis County <span class="m">· Austin Legal · 2 cases · $16,033.82 open</span></h4>
-              <div class="row"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);margin-right:6px"></span>The Learning Experience<div class="m">718 · 717 · 707 · with Austin Legal since 10/06</div></span><span>$15,781.82</span></div>
+              <div class="row"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);margin-right:6px"></span>The Reading Corner<div class="m">718 · 717 · 707 · with Austin Legal since 10/06</div></span><span>$15,781.82</span></div>
               <div class="row"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--warn);margin-right:6px"></span>Bruce Hall<div class="m">needs a dev's eyes</div></span><span>$252.00</span></div>
               <div class="m" style="margin-top:6px">Tap a county to list its cases; tap a case and the desk opens on it under Accounts.</div>
             </div>

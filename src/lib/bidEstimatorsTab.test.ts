@@ -195,7 +195,7 @@ describe('buildBidEstimatorsCostModeChip', () => {
 
 describe('formatBidEstimatorsProjectNameClip', () => {
   it('appends three dots when name exceeds max chars', () => {
-    expect(formatBidEstimatorsProjectNameClip('Take 5 Oil Change')).toBe('Take 5 Oil...')
+    expect(formatBidEstimatorsProjectNameClip('Tune 5 Oil Change')).toBe('Tune 5 Oil...')
   })
 
   it('returns name unchanged when within limit', () => {
@@ -203,11 +203,11 @@ describe('formatBidEstimatorsProjectNameClip', () => {
   })
 
   it('returns name unchanged at exactly max chars (no ellipsis)', () => {
-    expect(formatBidEstimatorsProjectNameClip('Take 5 Oil')).toBe('Take 5 Oil')
+    expect(formatBidEstimatorsProjectNameClip('Tune 5 Oil')).toBe('Tune 5 Oil')
   })
 
   it('trims surrounding whitespace before measuring', () => {
-    expect(formatBidEstimatorsProjectNameClip('  Take 5 Oil Change  ')).toBe('Take 5 Oil...')
+    expect(formatBidEstimatorsProjectNameClip('  Tune 5 Oil Change  ')).toBe('Tune 5 Oil...')
   })
 
   it('returns empty string for empty/nullish input', () => {
@@ -217,7 +217,7 @@ describe('formatBidEstimatorsProjectNameClip', () => {
   })
 
   it('honors a custom max', () => {
-    expect(formatBidEstimatorsProjectNameClip('Take 5 Oil Change', 4)).toBe('Take...')
+    expect(formatBidEstimatorsProjectNameClip('Tune 5 Oil Change', 4)).toBe('Tune...')
   })
 })
 
@@ -238,7 +238,7 @@ describe('bidEstimatorsBidMatchesSearch', () => {
   const fields = {
     ledgerLabel: 'BE249',
     bidNumber: '249',
-    projectName: 'Take 5 Oil Change',
+    projectName: 'Tune 5 Oil Change',
     gcBuilderName: 'Vernon Construction',
   }
 
@@ -262,7 +262,7 @@ describe('bidEstimatorsBidMatchesSearch', () => {
 
   it('is case-insensitive', () => {
     expect(bidEstimatorsBidMatchesSearch('be249', fields)).toBe(true)
-    expect(bidEstimatorsBidMatchesSearch('TAKE 5', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('TUNE 5', fields)).toBe(true)
   })
 
   it('matches a substring of the project name', () => {

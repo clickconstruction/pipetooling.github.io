@@ -52,7 +52,7 @@ describe('portalAccountCardHtml ("Your account, any time")', () => {
 
 describe('portalAddressInWords', () => {
   it('drops the scheme and a trailing slash', () => {
-    expect(portalAddressInWords('https://my.clickplumbing.com/knight-x7kq/')).toBe('my.clickplumbing.com/knight-x7kq')
+    expect(portalAddressInWords('https://my.clickplumbing.com/kestrin-x7kq/')).toBe('my.clickplumbing.com/kestrin-x7kq')
   })
   it('is null for nothing, a token address and an address too long to read', () => {
     expect(portalAddressInWords(null)).toBeNull()

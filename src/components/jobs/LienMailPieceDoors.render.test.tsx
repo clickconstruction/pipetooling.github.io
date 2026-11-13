@@ -13,7 +13,7 @@ const resend = vi.fn()
 const resolve = vi.fn()
 vi.mock('../../lib/mail/runDocsmitIo', () => ({ resendDocsmitPiece: (...a: unknown[]) => resend(...a), resolveDocsmitPiece: (...a: unknown[]) => resolve(...a) }))
 
-const piece: LienMailPieceRow = { id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', source_ids: ['f1'], organization: 'ATI Schertz Holdings LLC', name: '' }
+const piece: LienMailPieceRow = { id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', source_ids: ['f1'], organization: 'AXO Schertz Holdings LLC', name: '' }
 
 describe('LienMailPieceDoors', () => {
   it('a plain copy is one press; another address is split and checked before it can go; by hand takes a note', async () => {
@@ -28,7 +28,7 @@ describe('LienMailPieceDoors', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mail to another address ›' }))
     const again = screen.getByRole('button', { name: 'mail it again ›' }) as HTMLButtonElement
     expect(again.disabled).toBe(true)
-    expect((screen.getByLabelText('Name on the envelope') as HTMLInputElement).value).toBe('ATI Schertz Holdings LLC')
+    expect((screen.getByLabelText('Name on the envelope') as HTMLInputElement).value).toBe('AXO Schertz Holdings LLC')
     fireEvent.change(screen.getByLabelText('The other address, on one line'), { target: { value: '1 Main St, Austin, Texas 787' } })
     expect(screen.getByText('needs a two-letter state, a ZIP or ZIP+4')).toBeTruthy()
     expect(again.disabled).toBe(true)
@@ -36,7 +36,7 @@ describe('LienMailPieceDoors', () => {
     expect(again.disabled).toBe(false)
     fireEvent.click(again)
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(2))
-    expect(resend).toHaveBeenLastCalledWith({ pieceId: 'p1', mode: 'address', jobNumber: '650', address: { name: '', organization: 'ATI Schertz Holdings LLC', address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230' } })
+    expect(resend).toHaveBeenLastCalledWith({ pieceId: 'p1', mode: 'address', jobNumber: '650', address: { name: '', organization: 'AXO Schertz Holdings LLC', address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'handled by hand ›' }))
     const record = screen.getByRole('button', { name: 'record it ›' }) as HTMLButtonElement

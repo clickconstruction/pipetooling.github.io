@@ -2,7 +2,7 @@
 name: "A text when a charge lands on your card, with a place to photograph the receipt"
 number: 299
 group: gated
-status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · waiting on her look and five calls · nothing built
+status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101) built 2026-11-12: the page at /r/<code>, the function receipt-link, Copy the receipt link on the Team queue · no text goes yet · PR 1 merged 2026-11-13 (#7888), its migration pushed and receipt-link deployed the same night, live on clicktooling.com, and walked there the same day on one of the dev's own card charges with Grace's yes · PR 2, the text, half built on branch claude/299-receipt-text-pr2 and parked 2026-11-13 on Grace's word (no building on Opus 5.5) · PR 3 not built
 mockup: to-dos/ticket-text/mockup.html
 summary: >
   The second door on the supply house ticket (#295). When a card charge posts to a card assigned
@@ -11,9 +11,9 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: Diane's look at the mock-up and her word on the five calls at its foot; then PR 1, the request table and the no-sign-in link's page, before any text goes.
+next: the office's first real use of Copy the receipt link; the rule for /r/ on the short host's Worker, which a person adds in the Cloudflare dashboard; then PR 2 from its branch, in a session that may build, after Diane's look at the mock-up and her word on calls 1, 3 and 5.
 size: M as a train of three (M · M · S), after #295's PR 3 has shipped
-blocker: #295 PR 3 (the match written and the office's Tickets list), since the text's photo is a ticket the office reads there; then the five calls.
+blocker: PR 2 waits for a session that may build (Grace, 2026-11-13: no major changes on Opus 5.5) and for the owner's word on calls 1, 3 and 5. The Worker rule waits on a person with the Cloudflare dashboard.
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
 ---
 
@@ -198,6 +198,21 @@ only as an addition (call 4 of the foot), never instead of the text she chose.
    Needs you items. Switched on by one `app_settings` key, off at merge, on by the owner's press.
 3. **PR 3, the rest** (S): the guide, the charge row in Banking and Job Summary's costs, the
    push beside the text if she wants it.
+
+## Where it stands (2026-11-13)
+
+**PR 1 is live** (v2.7101, #7888, `docs/recent-features/v2.7101.md`): the page `/r/<code>`, the function `receipt-link`, `receipt_requests` and `receipt_links`, and **Copy the receipt link** on a Team queue charge line. It sends no text. Two things differ from the design above, each for a reason the fragment gives: a link is its own row (one row a code) instead of a hash on the request, and the link rides the app's own address until the short host's Worker forwards `/r/`. The page names whose card by first name, since the app keeps no last four. Walked live on 2026-11-13, with Grace's yes, on one of the dev's own card charges, since no ZZ Test person has a card. The link was made by the press's own request. Opened signed out at phone size, the page named the charge and took one test photo, and opened again it drew the thumbnail from the function by the link's code. The ticket landed as `source = link` and `match_kind = link` with no job, so its page was never filed to Drive. It showed in the holder's My tickets with its photo and was removed there, after which the link shows the charge with no ticket. A wrong code reads *This link opens nothing*, and the office's request with no sign-in is refused in words.
+
+**PR 2, the text, is half built and parked** on branch `claude/299-receipt-text-pr2` (one work-in-progress commit on top of PR 1; no PR open; claims v2.7126 and migration `20261113123000` sit on that branch, and the migration needs a fresh stamp from main when it is picked up). Done there, with tests: the sweep (`_shared/receiptSweep.ts`, 22 tests over a stood-in database and sender) and its rules and words (`_shared/receiptText.ts`). Written but unchecked: the migration (the switch row, two columns, the cron and its guard), the function `receipt-request`, the Settings switch and the Team queue's line. Not started: typecheck and build, the rest of the tests, every doc. The decisions taken there, for whoever picks it up to keep or overturn knowingly:
+
+- No new contact row: `quo_place_number` already puts a roster number on its own team contact, with its STOP and its Messages thread, so the text goes there.
+- A cron every five minutes that runs only when there is something to do, and no step in the bank's webhook, which stays untouched.
+- The switch is `app_settings` `receipt_texts_v1`, off as it ships. Switching it on stamps the moment, so no charge from before is ever texted, and the sweep never looks past 48 hours. It can be tried on one person first. Send texts must be on too.
+- Charges that wait together and post inside one hour share one text and one link. One reminder, between six and nine in the evening at least twelve hours after the text.
+- A request is claimed before its text goes, so two sweeps never text one charge twice, and a refused text gives the claim back.
+- The four Needs you items are a separate step after PR 2; until then each reason shows on the charge's line in the Team queue.
+
+**Owner's calls, as built so far:** 2, the day's jobs offered and skippable, is on the page. 1, 3 and 5 are PR 2's defaults (one reminder, one text for the charges of an hour, every linked card). 4, a push beside the text, is not built.
 
 ## How to verify
 

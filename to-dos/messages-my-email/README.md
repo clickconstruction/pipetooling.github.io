@@ -1,22 +1,22 @@
 ---
-name: "Messages → My email: a person's own @clickplumbing.com mail beside the threads, one press to tag a conversation onto a job or a bid"
+name: "Messages → My email: a person's own @clickplumbing.com mail beside the threads, one press to save a conversation to a job or a bid"
 number: 230
 group: close
-status: built 2026-11-01 after the owner's "build all of this", every call taken as recommended and the switch on by default; twelve PRs, six migrations pushed, gmail-mine and login-as-user deployed; one tag row exists since 2026-11-07, made through the seat as Taunya on a ZZ Test job, not a person's own press (Where it stands, 2026-11-09); left: a clickplumbing.com person's first live tag of their own, then a month of use
+status: built 2026-11-01 after the owner's "build all of this", every call taken as recommended and the switch on by default; twelve PRs, six migrations pushed, gmail-mine and login-as-user deployed; on 2026-11-12/13 the press became Save to job, the Gmail label came out and a seat save names the dev (five PRs, Where it stands); 23 saved conversations by 2026-11-13, one of them most likely the first by a person's own press; left: a real save walked end to end, then a month of use; the larger changes are notes under What should change next
 summary: >
   Built 2026-11-01. Messages has a second tab, My email, beside Follow up: each office member's own
   @clickplumbing.com Inbox and Sent, read live from Gmail under the delegation the bids@ reader holds,
-  kept nowhere until a tag. The app guesses the job from the subject, the sender and the conversation,
-  and the person presses Yes. A tag copies the whole conversation onto the job as lines with the files
-  and a court-ready .eml, adds the job to the person's jobs, labels the mail in their Gmail, and later
-  mail in it lands by itself until 60 days past its newest mail. Untag and Another job undo or move it.
-  The Legal desk puts a tagged conversation on a matter's Evidence. The switch on Your account is on by
+  kept nowhere until a save. The app guesses the job from the subject, the sender and the conversation,
+  and the person presses Yes. A save copies the whole conversation onto the job as lines with the files
+  and a court-ready .eml, adds the job to the person's jobs and puts nothing in their Gmail, and later
+  mail in it lands by itself until 60 days past its newest mail. Take off the job and Another job undo
+  or move it. The Legal desk puts a saved conversation on a matter's Evidence. The switch on Your account is on by
   default. An independent review found ten defects, the worst a teammate's mail readable through
   Imitate; all ten are fixed, and two more the lead found after it.
-next: Grace's own walk as grace@clickplumbing.com on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email, counting the guesses over the first thirty rows and tagging one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Reviewed 2026-11-04 (the section at the foot): four days live, no visit by a Workspace person and no tag; the doors that would change that are #263 (`to-dos/messages-my-email-doors/`). The month of use starts at the first visit; the tab retires if nobody tags by its end.
+next: Grace's own walk as grace@clickplumbing.com on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email, counting the guesses over the first thirty rows and saving one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Reviewed 2026-11-04 (the section at the foot): four days live, no visit by a Workspace person and no tag; the doors that would change that are #263 (`to-dos/messages-my-email-doors/`). The month of use starts at the first visit; the tab retires if nobody saves by its end. The save log points to a first save by a person's own press on 2026-11-12 (Where it stands, 2026-11-13).
 size: M, built as twelve PRs on 2026-11-01: the five planned, the forward guide, four from the review (the imitation refusal, the follow's window, the tab's Untag, the function's untag and ties) and two the lead found after it (the row's words, hidden labels in an open conversation)
-blocker: Nothing in the code. The first live read and tag needs a clickplumbing.com session, which no agent may open.
-ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296
+blocker: Nothing in the code. The first live read and save needs a clickplumbing.com session, which no agent may open.
+ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296 · 7020 · 7022 · 7035 · 7068 · 7073 · 7132
 opinion: built — watch whether people tag; retire the tab after a month if nobody does, and the forward guide stays
 mockup: to-dos/messages-my-email/mockup.html
 ---
@@ -233,7 +233,7 @@ month of use. The whole train touches `gmail-sync` nowhere, so #207's PR 3 and P
 | 3 | Who may turn it on | Every office member, their own switch. The owner's list of people. | **Their own switch**; the owner sees who has it on. | Their own switch, **on by default** (the owner's word, 2026-11-01). |
 | 4 | The unit of a tag | The conversation, and later mail follows (PR 4). One mail at a time. | **The conversation.** It is the unit a person thinks in, and it keeps the court honest. | The conversation. |
 | 5 | Evidence | The Legal desk pulls from the job's messages (PR 5). The tag pushes with a second press. | **The desk pulls.** One press stays one press. | The desk pulls. |
-| 6 | A label in the person's Gmail (*Tagged in ClickTooling*) | Yes, as the reader labels the boxes. Never write to a person's box. | **Yes**: the person sees in Gmail what is on a job, and `gmail.modify` is granted already. | Yes. |
+| 6 | A label in the person's Gmail (*Tagged in ClickTooling*) | Yes, as the reader labels the boxes. Never write to a person's box. | **Yes**: the person sees in Gmail what is on a job, and `gmail.modify` is granted already. | Yes. Reversed 2026-11-12 on the owner's word: the label came out (v2.7035), so a save puts nothing in a person's Gmail. |
 | 7 | The key | The delegation as the person, as today. Each person's own Connect Gmail (#159 way 2). | **The delegation**, with the honest sentence on the card. Way 2 swaps PR 2's token source if the owner wants Google's own yes. | The delegation. |
 
 ## Where it plugs in
@@ -354,6 +354,77 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
   and the sign-in waits on the desk's Attach a login. The checklist for the walk, in Grace's words, is
   in the shared notes folder (`close-out-notes-2026-11-09.md`); PR #7465 gives the seat the verbs to
   make the account and attach the login, so the next session can run it with the owner.
+- 2026-11-12 and 11-13: five PRs, after the batch of 2026-11-09 showed a seat save reading as the
+  person's own. All merged and live:
+
+  | PR | Version | What it changed |
+  | --- | --- | --- |
+  | #7778 | v2.7020 | A save the dev seat makes names the dev: `tagged_by` is the dev and the grey line says *… through the dev seat* |
+  | #7780 | v2.7022 | The seat can take off a save it made, and only one it made (`plan_mail_untag` → `apply_mail_untag`, server 0.79.0) |
+  | #7794 | v2.7035 | The Gmail label is gone: a save puts nothing in the person's Gmail, the Saved list reads the app's own rows, and a one-time run deleted the label from every company mailbox |
+  | #7839 | v2.7068 | When the seat saves someone's mail to a job, its owner gets a Needs you line for seven days and a record under Settings → Activity logs, in the app only (the owner's choice), migration `20261113001500` |
+  | #7850 | v2.7073 | Tag is Save to job in every word a person reads: the press, *Not saved · Saved · All*, *Take off the job*, the grey line, the guide (renamed, its old address kept) |
+
+- On prod: the migration pushed, `gmail-mine` and `dev-mcp` deployed from `main` after each merge,
+  and `npm run check:edge-drift` clean at 06:42 UTC on 11-13. The label run finished at 23:30 UTC on
+  11-12: 22 mailboxes, the label deleted in 5, never there in 12, and 5 refused by Google three times
+  each (*Invalid email or User ID*) and left. The 5 it deleted from are exactly the 5 mailboxes with a
+  save. Its marker row, `my_mail_label_cleanup_v1`, stays.
+- The save log, read 2026-11-13 (`email_tag_threads` against `dev_mcp_calls`): 23 saved
+  conversations. 18 are the seat's, one on 11-07 and seventeen from one mailbox on 11-09, each with an
+  `apply_mail_tag` call behind it. All 18 predate v2.7020, so they still name the mailbox's person as
+  the one who saved. 4 were placed by the app from a person's Sent (#263 call 2), 11-10 to 11-12. One,
+  at 19:05 UTC on 11-12, has no seat call behind it and was not placed by the app: by the log, the
+  first save made by a person's own press. It came before the line after a save went live (#324,
+  v2.7032), and its green bar was not seen. No save has come since v2.7020 went live, so no grey line
+  in the new words exists yet, no owner's notice has been written, and the seat's take-off has never
+  run.
+- Live walk, 06:43 to 06:55 UTC on 11-13, as the dev: the tab reads in the new words, the guide opens
+  at its new address and at its old one, and Settings → Activity logs is headed *Most recent
+  notifications*. The dev's address is off the Workspace, so the lists were empty and no row could be
+  pressed. The walk found two flaws in the train, fixed in v2.7132 (PR #7916): the notice's **See the
+  record** opened its tab above an owner's sent emails, and the guide held the notice's section twice.
+- v2.7132 merged at 08:19 UTC on 11-13, and its door was walked on the live site at 15:30 UTC as the
+  dev, in headless Chrome: at 1280 × 768 the page scrolls past the 996 px card of sent emails and
+  *Most recent notifications* sits whole on screen; at 375 × 812 it opens at the top of the screen.
+  The live guide holds the notice's section once.
+- Left: a real save walked end to end: the grey line in its new words, the owner's notice on their
+  Needs you card, and the seat's take-off. A seat save
+  onto a ZZ Test job would prove all three, but the mailbox's real owner would see the notice for seven
+  days, so it waits for a mailbox whose owner has agreed.
+
+## What should change next (notes, 2026-11-13)
+
+Notes from the train above, not built. On Opus 5.5 the team makes no major change (Grace,
+2026-11-13), so each waits here for a yes. None is urgent.
+
+1. **Correct the seat's 18 old saves.** They predate v2.7020, so `tagged_by` names the mailbox's
+   person and each grey line says that person saved it. A one-off correction: for each row an
+   `apply_mail_tag` call names (`tag.account` and `tag.thread_id` in `dev_mcp_calls.args`), set
+   `tagged_by` to the dev who made the call and rewrite the row's grey line (`messages.quo_id` =
+   `mytag:<row id>`) in the seat's words. It writes to prod rows, so it needs the owner's word. The
+   seventeen of 2026-11-09 stay on their jobs either way (#324 call 2). Size S.
+2. **The owner of the 2026-11-09 mailbox was never told.** The notice (v2.7068) came after that batch.
+   Whether to tell them now, and how, is the owner's call. Size XS.
+3. **Take out the label run.** It finished on 2026-11-12, and now it only reads its marker at the
+   start of every `follow`: `clearOldLabel` and `deleteLabel` in `gmail-mine`, the clean-up kernel in
+   `src/lib/myMail/mineFunction.ts` and their tests. Then tighten the run test's pin
+   (`gmailMine.run.test.ts`), which still allows one write to Gmail (`DELETE /labels`), so that any
+   write to a person's Gmail fails a test. The 5 mailboxes Google refused keep the label; a person can
+   delete it in Gmail by hand. Size S. The kernel is shared, so it deploys six functions.
+4. **A person's own Take off the job leaves two traces.** The seat's take-off also clears the ties the
+   save made onto the job's people, and a contact it made for a sender nobody knew (`planUntagSweep`,
+   run only when `ctx.seat` is set). A person's own press does neither, so the job still lists the
+   people the conversation named. Run the same sweep for both. Size S.
+5. **The Sent read's refusal log can carry an address.** `gmail_mine_sent_refused` writes Google's own
+   error text, up to 300 characters, and Google's delegation refusal names the mailbox. Log the kind
+   of refusal and the user id only, as the function's other lines do. Size XS.
+6. **Found here, owned elsewhere: three seat verbs write in another person's name.**
+   `apply_cost_batch` (a `thread_note` lands under the payload's `author_user_id`),
+   `apply_person_report` (an HR entry titled as the reporter's while its words may be the seat's) and
+   `apply_clock_sessions` (a changed session keeps no editor stamp). None says the dev seat made the
+   change, the gap v2.7020 closed for mail. It belongs to the dev seat (`docs/dev-mcp/README.md`). No
+   card holds it yet; the nearest is #27. Size M across the three.
 
 ## Review 2026-11-04: is this still relevant, and could we do it better?
 

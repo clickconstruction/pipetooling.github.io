@@ -208,7 +208,7 @@ describe('typecheckLock: the wiring', () => {
     const pkg = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as { scripts: Record<string, string> }
     expect(pkg.scripts.typecheck).toBe('node scripts/typecheck-queued.mjs')
     const wrapper = readFileSync(join(repo, 'scripts', 'typecheck-queued.mjs'), 'utf8')
-    expect(wrapper).toContain("'--max-old-space-size=10240', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'")
+    expect(wrapper).toContain("'--max-old-space-size=12288', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'")
     expect(wrapper).toContain("process.env.TYPECHECK_NO_LOCK === '1'")
   })
 

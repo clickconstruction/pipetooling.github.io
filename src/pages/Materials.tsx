@@ -8,7 +8,7 @@ import {
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
-import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, resolveMaterialsTab, supplyHousesPaneFor, type MaterialsTab } from '../lib/materials/materialsTabs'
+import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, resolveMaterialsTab, supplyHousesPaneFor, type MaterialsTab, isMaterialsOfficeRole } from '../lib/materials/materialsTabs'
 import { materialsGroupsFor, materialsPressesFor, trackBadges, type MaterialsPress } from '../lib/materials/materialsGroups'
 import { boxPagePath } from '../lib/materials/boxPage'
 import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
@@ -26,6 +26,9 @@ import { SupplyHousesTab } from '../components/SupplyHousesTab'
 import { MaterialsSupplyHouseDirectoryTab } from '../components/materials/MaterialsSupplyHouseDirectoryTab'
 import { MaterialsPoGeneratorTab } from '../components/materials/MaterialsPoGeneratorTab'
 import { MaterialsJobAccountsTab } from '../components/materials/MaterialsJobAccountsTab'
+import { WhatWeBuyTab } from '../components/materials/WhatWeBuyTab'
+import { supabasePurchaseLinesIo } from '../lib/materials/lines/purchaseLinesIo'
+import { supabaseHeldBillsIo } from '../lib/materials/lines/heldBillsIo'
 import { MaterialsPurchaseOrdersTab } from '../components/materials/MaterialsPurchaseOrdersTab'
 import { MaterialsPartsBookTab } from '../components/materials/MaterialsPartsBookTab'
 import { MATERIAL_PRICES_CHANGED_EVENT } from '../components/materials/MaterialPricesCard'
@@ -62,6 +65,10 @@ interface ServiceType {
 
 // fetchPricesForParts now lives in lib/materials/partPrices; formatCurrency in lib/format
 
+
+/** What we buy's reads (punch list #298 PR 4a). Each opens the client when first called, so one of each serves the page. */
+const purchaseLinesIo = supabasePurchaseLinesIo()
+const heldBillsIo = supabaseHeldBillsIo()
 
 export default function Materials() {
   const { user: authUser, profileName: authProfileName } = useAuth()
@@ -1436,8 +1443,8 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Service Type Filter — hidden on Supply Houses, Held for suppliers and On site, which don't filter by service type */}
-      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && activeTab !== 'on-site' && (
+      {/* Service Type Filter — hidden on Supply Houses, Held for suppliers, What we buy and On site, which don't filter by service type */}
+      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && activeTab !== 'what-we-buy' && activeTab !== 'on-site' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {visibleServiceTypes.map(st => (
             <button
@@ -1521,6 +1528,7 @@ export default function Materials() {
         setExpandedPartId={setExpandedPartId}
         setViewingPartPrices={setViewingPartPrices}
         openAddPart={openAddPart}
+        openAddPartNamed={isMaterialsOfficeRole(myRole) ? openAddPartWithName : undefined}
         openEditPart={openEditPart}
         openSupplyHousesModal={openSupplyHousesModal}
       />
@@ -1956,6 +1964,9 @@ export default function Materials() {
         selectedServiceTypeId={selectedServiceTypeId}
         onError={setError}
       />
+
+      {/* What we buy (punch list #298 PR 4a): every bill's lines as what the company buys. Office only; mounted while it is the tab, so it reads when opened. */}
+      {activeTab === 'what-we-buy' && canOpenMaterialsTab(myRole, 'what-we-buy') && <WhatWeBuyTab io={purchaseLinesIo} heldIo={heldBillsIo} />}
 
       {/* Held for suppliers tab (key `job-accounts`; named Job Accounts until v2.3641) — always mounted so loaded data survives tab switches (renders null when inactive) */}
       <MaterialsJobAccountsTab

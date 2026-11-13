@@ -1,24 +1,28 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
-import { SearchableSelect } from './SearchableSelect'
-import { SearchableMultiSelect } from './SearchableMultiSelect'
-import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
-import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar'
 import { originallyDueLine, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
-import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
+import { dailyFromScope, dayBeforeApplicable, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { parseLines, type TaskCriterion } from '../lib/taskCriteria'
 import { loadItemLines, syncItemLines } from '../lib/taskLinesIo'
 import { useAuth } from '../hooks/useAuth'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
+import { newTaskSentence, taskPersonName } from '../lib/tasks/newTaskWindow'
+import { TaskFormRows } from './checklist/newTask/TaskFormRows'
+import { TaskSendBar } from './checklist/newTask/TaskSendBar'
+import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindowShell'
+import { TASK_WORDS_BOX_STYLE } from './checklist/newTask/taskWindowBits'
 import { taskPlaceColumns, taskPlaceDraft, taskPlaceDraftChanged, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
 import { loadTaskPlace } from '../lib/tasks/taskPlaceIo'
-import { TaskPlaceRow } from './checklist/TaskPlaceRow'
+import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
+import { loadTaskSpotPhotoPath, putTaskSpotPhoto, removeTaskSpotPhotoFile, saveTaskSpotPhotoPath, taskSpotPhotoUrls } from '../lib/tasks/taskSpotPhotoIo'
 
 type UserRole =
   | 'dev'
@@ -52,8 +56,6 @@ type ChecklistItem = {
   updated_at: string | null
   users?: { name: string; email: string } | null
 }
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 type FormState = {
   title: string
@@ -147,6 +149,14 @@ export function ChecklistItemEditModal({
   // Punch list #328: the task's place as loaded and as the editor has it now. Save writes it only when it changed, so
   // an edit to the title leaves who placed it and when alone.
   const { user: authUser } = useAuth()
+  const phone = useIsMobile()
+  /** The same rows as the New task window (v2.7092): the faces want the people given to last and whoever has the task now. */
+  const recentIds = useRecentTaskAssignees(authUser?.id ?? null, Boolean(itemId))
+  const [loadedAssigneeIds, setLoadedAssigneeIds] = useState<string[]>([])
+  /** Who gave the task. The bell beside Save is theirs. */
+  const [creatorId, setCreatorId] = useState<string | null>(null)
+  /** What went wrong on the last Save, shown in the bar. The page behind gets it too. */
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [loadedPlace, setLoadedPlace] = useState<TaskPlaceDraft | null>(null)
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
   useEffect(() => {
@@ -164,11 +174,29 @@ export function ChecklistItemEditModal({
       cancelled = true
     }
   }, [itemId])
+  // PR 6: the photo of the spot, as loaded (its path) and as the editor has it now.
+  const [loadedPhotoPath, setLoadedPhotoPath] = useState<string | null>(null)
+  const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
+  useEffect(() => {
+    setLoadedPhotoPath(null)
+    setSpotPhoto(null)
+    if (!itemId) return
+    let cancelled = false
+    void loadTaskSpotPhotoPath({ kind: 'item', id: itemId }).then(async (path) => {
+      if (cancelled || !path) return
+      const url = (await taskSpotPhotoUrls([path])).get(path) ?? null
+      if (cancelled) return
+      setLoadedPhotoPath(path)
+      setSpotPhoto({ kind: 'saved', path, previewUrl: url })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [itemId])
   /** Due-change ledger for this item (v2.2371) — powers the "originally due" line. */
   const [dueChanges, setDueChanges] = useState<DueChangeRow[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [form, setForm] = useState<FormState>(initialForm)
-  const [customTimeOpen, setCustomTimeOpen] = useState(false)
   /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
   /** Same When grammar as the Add modal (v2.2075); derived from the stored item on open. */
@@ -197,19 +225,11 @@ export function ChecklistItemEditModal({
     }
   }, [itemId, canSeeReach, form.reminder_time, form.assigned_to_user_ids])
 
-  const notifyUserSelectOptions = useMemo(
-    () =>
-      users.map((u) => ({
-        value: u.id,
-        label: u.name?.trim() || u.email,
-      })),
-    [users],
-  )
-
   useEffect(() => {
     if (!itemId) return
     setLoading(true)
     setError(null)
+    setSaveError(null)
     Promise.all([
       supabase
         .from('checklist_items')
@@ -231,6 +251,8 @@ export function ChecklistItemEditModal({
       }
       if (item) {
         setExistingLines(linesRows)
+        setLoadedAssigneeIds(assigneeIds)
+        setCreatorId(item.created_by_user_id)
         setForm({ ...populateForm(item, assigneeIds), lines: linesRows.map((l) => l.body).join('\n') })
         void supabase
           .from('checklist_item_due_changes')
@@ -262,6 +284,7 @@ export function ChecklistItemEditModal({
   async function handleSave() {
     if (!itemId) return
     setError(null)
+    setSaveError(null)
     if (form.assigned_to_user_ids.length === 0) {
       setError('Select at least one assignee.')
       return
@@ -318,6 +341,16 @@ export function ChecklistItemEditModal({
         })
         .eq('id', itemId)
       if (error) throw error
+      // The photo of the spot (#328, PR 6): a new picture replaces the old one, and no picture takes it off.
+      if (spotPhoto?.kind === 'new') {
+        const put = await putTaskSpotPhoto({ kind: 'item', id: itemId }, spotPhoto.id, spotPhoto.blob)
+        if ('error' in put) throw new Error(`The task was saved, but its photo was not: ${put.error}`)
+        if (loadedPhotoPath) void removeTaskSpotPhotoFile(loadedPhotoPath)
+      } else if (!spotPhoto && loadedPhotoPath) {
+        const why = await saveTaskSpotPhotoPath({ kind: 'item', id: itemId }, null)
+        if (why) throw new Error(`The task was saved, but its photo was not taken off: ${why}`)
+        void removeTaskSpotPhotoFile(loadedPhotoPath)
+      }
       // Task cards (#273, PR 2): the Done when… lines follow the edit; a ticked line gone is retired, never deleted.
       const lineErr = await syncItemLines(itemId, existingLines, parseLines(form.lines))
       if (lineErr) throw new Error(lineErr)
@@ -350,7 +383,9 @@ export function ChecklistItemEditModal({
       onSaved()
       onClose()
     } catch (err) {
-      setError(formatErrorMessage(err, 'Failed to save'))
+      const why = formatErrorMessage(err, 'Failed to save')
+      setError(why)
+      setSaveError(why)
     } finally {
       setSaving(false)
     }
@@ -359,611 +394,129 @@ export function ChecklistItemEditModal({
   if (!itemId) return null
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
+  const todayStr = todayYmdInAppTz()
+  const meId = authUser?.id ?? null
+  const nameOf = (id: string) => taskPersonName(users.find((u) => u.id === id))
+  // The bell is the giver's: *When it's done, notify the creator*. An edit by someone else names the giver.
+  const giverIsMe = !creatorId || creatorId === meId
+  const giverName = giverIsMe ? null : nameOf(creatorId)
+  const onlyGivers = form.assigned_to_user_ids.length === 1 && form.assigned_to_user_ids[0] === (creatorId ?? meId)
+  const sentence = newTaskSentence({
+    meId,
+    assigneeIds: form.assigned_to_user_ids,
+    nameOf,
+    title: form.title,
+    when,
+    repeatMode,
+    startDate: form.start_date,
+    todayStr,
+    daysOfWeek: form.repeat_days_of_week,
+    daysAfter: form.repeat_days_after,
+    endDate: form.repeat_end_date || null,
+    staysUntilDone: form.due_date ? true : form.show_until_completed,
+    dueDate: when !== 'repeat' ? form.due_date || null : null,
+    lineCount: parseLines(form.lines).length,
+    asksForPhoto: form.asks_for_photo,
+    tellMe: form.notify_creator_on_complete && !onlyGivers,
+    tellOtherName: form.notify_on_complete_user_id ? nameOf(form.notify_on_complete_user_id) : null,
+    giverName,
+  })
+  const dueLine = when !== 'repeat' && form.due_date ? originallyDueLine(summarizeDuePushes(dueChanges, form.due_date)) : null
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="checklist-edit-modal-title"
-      style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-      onClick={onClose}
+    <TaskWindowShell
+      titleId="checklist-edit-modal-title"
+      title="Edit task"
+      phone={phone}
+      zIndex={1000}
+      onBackdrop={onClose}
+      cardTestId="checklist-edit-modal-card"
+      headActions={<TaskWindowClose onClose={onClose} />}
+      bar={
+        <TaskSendBar
+          sentence={sentence.text}
+          dead={sentence.dead}
+          label="Save"
+          busyLabel="Saving…"
+          submitting={saving}
+          onSend={handleSave}
+          tellMe={onlyGivers ? null : form.notify_creator_on_complete}
+          tellLabel={giverName ? `Tell ${giverName}` : 'Tell me'}
+          onTellMe={(next) => setForm((f) => ({ ...f, notify_creator_on_complete: next }))}
+          error={saveError}
+        />
+      }
     >
-      <div
-        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="checklist-edit-modal-title" style={{ marginTop: 0 }}>Edit checklist item</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <label>
-              <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
-              <textarea
-                ref={titleInputRef}
-                value={form.title}
-                onChange={(e) => {
-                  const t = e.target.value.replace(/\n/g, ' ')
-                  setForm((f) => ({ ...f, title: t }))
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.preventDefault()
-                }}
-                rows={1}
-                style={{
-                  width: '100%',
-                  minHeight: '2.75rem',
-                  padding: '0.5rem',
-                  boxSizing: 'border-box',
-                  font: 'inherit',
-                  lineHeight: 1.5,
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                  resize: 'none',
-                }}
-              />
-            </label>
-            <div style={{ marginTop: '0.25rem' }}>
-              <span id="checklist-edit-assign-label" style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>
-              <SearchableMultiSelect
-                id="checklist-edit-assign"
-                searchPlaceholder="Search people…"
-                options={notifyUserSelectOptions}
-                value={form.assigned_to_user_ids}
-                onChange={(ids) => setForm((f) => ({ ...f, assigned_to_user_ids: ids }))}
-                listAriaLabel="Assign to"
-                pinSelectedToTop
-                keyboardSelect
-              />
-            </div>
-          </div>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Links</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {form.links.map((url, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = titleInputRef.current
-                      if (input) {
-                        const start = input.selectionStart ?? form.title.length
-                        const end = input.selectionEnd ?? form.title.length
-                        const placeholder = `[${i + 1}]`
-                        const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
-                        setForm((f) => ({ ...f, title: newTitle }))
-                        setTimeout(() => {
-                          input.focus()
-                          const pos = start + placeholder.length
-                          input.setSelectionRange(pos, pos)
-                        }, 0)
-                      }
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      padding: '0.25rem 0.5rem',
-                      background: 'var(--bg-muted)',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    [{i + 1}]
-                  </button>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        links: f.links.map((u, j) => (j === i ? e.target.value : u)),
-                      }))
-                    }
-                    placeholder="URL"
-                    style={{ flex: 1, padding: '0.5rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        links: f.links.filter((_, j) => j !== i),
-                      }))
-                    }
-                    style={{
-                      padding: '0.25rem',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      fontSize: '1.25rem',
-                      lineHeight: 1,
-                    }}
-                    title="Remove link"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '0.25rem 0.5rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-link)',
-                  textDecoration: 'underline',
-                  fontSize: '0.875rem',
-                }}
-              >
-                [+ add]
-              </button>
-            </div>
-          </label>
-          <TaskPlaceRow value={place} onChange={setPlace} />
-          <label style={{ display: 'block', marginTop: '0.85rem' }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>
-              Done when… <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>what done means, one line each, ticked off on the card</span>
-            </span>
-            <textarea
-              value={form.lines}
-              onChange={(e) => setForm((f) => ({ ...f, lines: e.target.value }))}
-              rows={3}
-              placeholder="One line a row. Each becomes a box the person ticks."
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', fontSize: '1rem', fontFamily: 'inherit', lineHeight: 1.4 }}
-            />
-            <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              The card reads its percent from the ticks. A line taken off keeps the ticks already on it.
-            </span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem', fontSize: '0.9375rem' }}>
-            <input type="checkbox" checked={form.asks_for_photo} onChange={(e) => setForm((f) => ({ ...f, asks_for_photo: e.target.checked }))} />
-            <span>
-              Asks for a photo at the finish
-              <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>With this on, the finish holds until a photo is in or a reason is typed.</span>
-            </span>
-          </label>
-          <div style={{ marginBottom: '1rem' }}>
-            {/* ── When (v2.2075): same grammar as the Add modal ── */}
-            <div style={{ marginTop: '0.85rem' }}>
-              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>When</span>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['today', 'Today'], ['date', 'On a date'], ['repeat', 'Repeats']] as const).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setWhen(key)}
-                    aria-pressed={when === key}
-                    style={{
-                      ...{ flex: '1 1 90px', padding: '0.45rem 0.5rem', fontSize: '0.875rem', borderRadius: 9, cursor: 'pointer' },
-                      border: when === key ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-                      background: when === key ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                      color: when === key ? 'var(--text-blue-800)' : 'var(--text-700)',
-                      fontWeight: when === key ? 600 : 400,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {when === 'date' ? (
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
-                  <span>Do on</span>
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                    style={{ padding: '0.4rem' }}
-                  />
-                </label>
-              ) : null}
-              {when !== 'repeat' ? (
-                // Due by (v2.2351): optional deadline — on the list from Do on, late after this.
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span>Due by</span>
-                    <input
-                      type="date"
-                      value={form.due_date}
-                      min={when === 'today' ? todayYmdInAppTz() : form.start_date || undefined}
-                      onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-                      style={{ padding: '0.4rem' }}
-                    />
-                  </label>
-                  {form.due_date ? (
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, due_date: '' }))}
-                      style={{ border: 'none', background: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', padding: 0 }}
-                    >
-                      clear — no due date
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-              {when !== 'repeat' && form.due_date ? (
-                (() => {
-                  const line = originallyDueLine(summarizeDuePushes(dueChanges, form.due_date))
-                  return line ? (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', borderRadius: 8, padding: '0.45rem 0.7rem' }}>
-                      {line}
-                    </div>
-                  ) : null
-                })()
-              ) : null}
-              {when !== 'repeat' ? (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', cursor: form.due_date ? 'default' : 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.due_date ? true : form.show_until_completed}
-                    disabled={Boolean(form.due_date)}
-                    onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
-                  />
-                  <span>Stays on the list until done{form.due_date ? ' (a due date keeps it on the list)' : ''}</span>
-                </label>
-              ) : null}
-              {when === 'repeat' ? (
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {([['weekly', 'Weekly on\u2026'], ['after_done', "\u2014 days after it's done"]] as const).map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setRepeatMode(key)}
-                        aria-pressed={repeatMode === key}
-                        style={{
-                          ...{ flex: '1 1 90px', padding: '0.45rem 0.5rem', fontSize: '0.875rem', borderRadius: 9, cursor: 'pointer' },
-                          flex: '0 1 auto',
-                          border: repeatMode === key ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-                          background: repeatMode === key ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                          color: repeatMode === key ? 'var(--text-blue-800)' : 'var(--text-700)',
-                          fontWeight: repeatMode === key ? 600 : 400,
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {repeatMode === 'weekly' ? (
-                    <>
-                      <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Days of the week">
-                        {DAYS.map((name, i) => {
-                          const on = form.repeat_days_of_week.includes(i)
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              aria-pressed={on}
-                              aria-label={name}
-                              onClick={() =>
-                                setForm((f) => ({
-                                  ...f,
-                                  repeat_days_of_week: on
-                                    ? f.repeat_days_of_week.filter((d) => d !== i)
-                                    : [...f.repeat_days_of_week, i].sort((a, b) => a - b),
-                                }))
-                              }
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                padding: '0.35rem 0',
-                                borderRadius: 8,
-                                fontSize: '0.8125rem',
-                                fontWeight: on ? 700 : 400,
-                                border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-                                background: on ? '#2563eb' : 'var(--surface)',
-                                color: on ? 'white' : 'var(--text-muted)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {name[0]}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
-                          <input
-                            type="date"
-                            value={form.start_date}
-                            onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                            style={{ padding: '0.4rem' }}
-                          />
-                        </label>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Ends (optional)</span>
-                          <input
-                            type="date"
-                            value={form.repeat_end_date}
-                            onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
-                            style={{ padding: '0.4rem' }}
-                          />
-                        </label>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span>Repeat</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={form.repeat_days_after}
-                          onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
-                          style={{ padding: '0.4rem', width: 64 }}
-                        />
-                        <span>days after it's completed</span>
-                      </label>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
-                        <input
-                          type="date"
-                          value={form.start_date}
-                          onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                          style={{ padding: '0.4rem' }}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-              {/* The schedule drawn (punch list #217, office-13): this week and the next three, the sentence under it as the caption. */}
-              <ChecklistScheduleCalendar
-                input={{
-                  when,
-                  repeatMode,
-                  startDate: form.start_date,
-                  todayStr: todayYmdInAppTz(),
-                  daysOfWeek: form.repeat_days_of_week,
-                  daysAfter: form.repeat_days_after,
-                  endDate: form.repeat_end_date || null,
-                  dueDate: when !== 'repeat' ? form.due_date || null : null,
-                }}
-              />
-              <div
-                role="status"
-                style={{
-                  marginTop: '0.6rem',
-                  padding: '0.5rem 0.7rem',
-                  borderRadius: 9,
-                  background: 'var(--bg-green-100)',
-                  border: '1px solid #16a34a',
-                  color: 'var(--text-green-700)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                {checklistScheduleSummary({
-                  when,
-                  repeatMode,
-                  startDate: form.start_date,
-                  todayStr: todayYmdInAppTz(),
-                  daysOfWeek: form.repeat_days_of_week,
-                  daysAfter: form.repeat_days_after,
-                  endDate: form.repeat_end_date || null,
-                  staysUntilDone: form.due_date ? true : form.show_until_completed,
-                  dueDate: when !== 'repeat' ? form.due_date || null : null,
-                  assigneeNames: form.assigned_to_user_ids.map(
-                    (id) => users.find((u) => u.id === id)?.name?.trim() || users.find((u) => u.id === id)?.email || '\u2026',
-                  ),
-                })}
-                {when === 'repeat' && repeatMode === 'weekly' && startNotOnChosenDay(form.start_date, form.repeat_days_of_week)
-                  ? ' First occurrence lands on the next chosen day.'
-                  : ''}
-              </div>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Saving reshapes upcoming occurrences — completed ones and their notes stay put.
-              </p>
-            </div>
-
-            {/* ── Notify: one line (v2.2075) ── */}
-            <div style={{ marginTop: '0.75rem' }}>
-              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>When it's done, notify</span>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input
-                    id="checklist-edit-notify-creator"
-                    type="checkbox"
-                    checked={form.notify_creator_on_complete}
-                    onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
-                  />
-                  Me
-                </label>
-                <div style={{ minWidth: 200, flex: '1 1 200px' }}>
-                  <SearchableSelect
-                    id="checklist-edit-notify-on-complete"
-                    value={form.notify_on_complete_user_id}
-                    onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
-                    options={notifyUserSelectOptions}
-                    emptyOption={{ value: '', label: '\u2014 add someone else \u2014' }}
-                    placeholder="\u2014 add someone else \u2014"
-                    listAriaLabel="Also notify when completed"
-                    searchReplacesTrigger
-                    hideEmptyOptionInListWhenUnset
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Remind (v2.2096): open to every task creator — preset chips, plain-words options, reachability. */}
-            <div style={{ marginTop: '1rem' }}>
-              <p style={{ fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.5rem' }}>Remind</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(() => {
-                  const isPreset = REMINDER_PRESETS.some((p) => p.time === form.reminder_time)
-                  const customVisible = customTimeOpen || (form.reminder_time !== '' && !isPreset)
-                  const chips: Array<{ label: string; active: boolean; onClick: () => void }> = [
-                    {
-                      label: 'No reminder',
-                      active: !form.reminder_time && !customVisible,
-                      onClick: () => {
-                        setForm((f) => ({ ...f, reminder_time: '' }))
-                        setCustomTimeOpen(false)
-                      },
-                    },
-                    ...REMINDER_PRESETS.map((p) => ({
-                      label: p.label,
-                      active: !customVisible && form.reminder_time === p.time,
-                      onClick: () => {
-                        setForm((f) => ({ ...f, reminder_time: p.time }))
-                        setCustomTimeOpen(false)
-                      },
-                    })),
-                    { label: 'Custom…', active: customVisible, onClick: () => setCustomTimeOpen(true) },
-                  ]
-                  return chips.map((c) => (
-                    <button
-                      key={c.label}
-                      type="button"
-                      onClick={c.onClick}
-                      style={{
-                        padding: '0.45rem 0.9rem',
-                        borderRadius: 9,
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        border: c.active ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-                        background: c.active ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                        color: c.active ? 'var(--text-blue-800)' : 'var(--text-700)',
-                        fontWeight: c.active ? 600 : 400,
-                      }}
-                    >
-                      {c.label}
-                    </button>
-                  ))
-                })()}
-              </div>
-              {(customTimeOpen || (form.reminder_time !== '' && !REMINDER_PRESETS.some((p) => p.time === form.reminder_time))) && (
-                <label style={{ display: 'block', marginTop: '0.6rem' }}>
-                  <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Remind at (CST)</span>
-                  <input
-                    type="time"
-                    value={form.reminder_time}
-                    onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
-                    style={{ padding: '0.5rem' }}
-                  />
-                </label>
-              )}
-              {form.reminder_time ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.reminder_daily}
-                      onChange={(e) => setForm((f) => ({ ...f, reminder_daily: e.target.checked }))}
-                    />
-                    Keep reminding every day until it&apos;s done
-                  </label>
-                  {dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayYmdInAppTz()) && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={form.remind_day_before}
-                        onChange={(e) => setForm((f) => ({ ...f, remind_day_before: e.target.checked }))}
-                      />
-                      Also remind the day before it&apos;s due
-                    </label>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={form.escalate_enabled}
-                        onChange={(e) => setForm((f) => ({ ...f, escalate_enabled: e.target.checked }))}
-                      />
-                      Still not done after
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={form.escalate_days}
-                      disabled={!form.escalate_enabled}
-                      onChange={(e) => setForm((f) => ({ ...f, escalate_days: Math.min(30, Math.max(1, Number(e.target.value) || 1)) }))}
-                      aria-label="Days overdue before reminding the creator"
-                      style={{ width: 52, padding: '0.25rem 0.35rem' }}
-                    />
-                    <span>days? Remind me too</span>
-                  </div>
-                  {canSeeReach && pushEnabledIds && form.assigned_to_user_ids.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border)', paddingTop: '0.55rem' }}>
-                      {form.assigned_to_user_ids.map((uid) => {
-                        const u = users.find((x) => x.id === uid)
-                        const name = u?.name?.trim() || u?.email || 'Unknown'
-                        const hasPush = pushEnabledIds.has(uid)
-                        return (
-                          <span key={uid}>
-                            <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{name}</b>{' '}
-                            {hasPush ? (
-                              <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{'📱'} phone alert</span>
-                            ) : (
-                              <>
-                                <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{'✉️'} email</span>
-                                <span> {'—'} no phone alerts set up</span>
-                              </>
-                            )}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  ) : null}
-                  {(() => {
-                    const names = form.assigned_to_user_ids
-                      .map((uid) => {
-                        const u = users.find((x) => x.id === uid)
-                        return u?.name?.trim() || u?.email || ''
-                      })
-                      .filter(Boolean)
-                    const s = reminderSummary(
-                      {
-                        time: form.reminder_time,
-                        dailyUntilDone: form.reminder_daily,
-                        dayBefore:
-                          form.remind_day_before && dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayYmdInAppTz()),
-                        escalateAfterDays: form.escalate_enabled ? form.escalate_days : null,
-                      },
-                      names,
-                    )
-                    return s ? (
-                      <div
-                        role="status"
-                        style={{
-                          padding: '0.5rem 0.7rem',
-                          borderRadius: 9,
-                          background: 'var(--bg-green-100)',
-                          border: '1px solid #16a34a',
-                          color: 'var(--text-green-700)',
-                          fontSize: '0.85rem',
-                        }}
-                      >
-                        {s}
-                      </div>
-                    ) : null
-                  })()}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginTop: '1.5rem',
-            width: '100%',
-            boxSizing: 'border-box',
+      <div style={{ paddingBottom: 12 }}>
+        <textarea
+          ref={titleInputRef}
+          aria-label="Task"
+          value={form.title}
+          onChange={(e) => {
+            const t = e.target.value.replace(/\n/g, ' ')
+            setForm((f) => ({ ...f, title: t }))
           }}
-        >
-          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
-            Cancel
-          </button>
-          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault()
+          }}
+          rows={2}
+          placeholder="What needs to be done?"
+          style={TASK_WORDS_BOX_STYLE}
+        />
       </div>
-    </div>
+      <TaskFormRows
+        key={itemId}
+        value={form}
+        onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+        when={when}
+        onWhen={setWhen}
+        repeatMode={repeatMode}
+        onRepeatMode={setRepeatMode}
+        linesText={form.lines}
+        onLinesText={(lines) => setForm((f) => ({ ...f, lines }))}
+        linesHint="The card reads its percent from the ticks. A line taken off keeps the ticks already on it. With Photo at the finish on, the finish holds until a photo is in or a reason is typed."
+        asksForPhoto={form.asks_for_photo}
+        onAsksForPhoto={(asks_for_photo) => setForm((f) => ({ ...f, asks_for_photo }))}
+        place={place}
+        onPlace={setPlace}
+        spotPhoto={spotPhoto}
+        onSpotPhoto={setSpotPhoto}
+        busy={saving}
+        users={users}
+        meId={meId}
+        recentIds={recentIds}
+        // Whoever has the task now keeps a face, recent or not.
+        seatIds={loadedAssigneeIds}
+        // An edit adds a person beside whoever has the task. It never takes the editor off by itself.
+        soloSelfRule={false}
+        canSeeReach={canSeeReach}
+        pushEnabledIds={pushEnabledIds}
+        phone={phone}
+        todayStr={todayStr}
+        searchId="checklist-edit-assign-search"
+        onLinkToken={(i) => {
+          const input = titleInputRef.current
+          if (!input) return
+          const start = input.selectionStart ?? form.title.length
+          const end = input.selectionEnd ?? form.title.length
+          const placeholder = `[${i + 1}]`
+          const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
+          setForm((f) => ({ ...f, title: newTitle }))
+          setTimeout(() => {
+            input.focus()
+            const pos = start + placeholder.length
+            input.setSelectionRange(pos, pos)
+          }, 0)
+        }}
+        dueNote={
+          dueLine ? (
+            <div data-testid="edit-task-originally-due" style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', borderRadius: 8, padding: '0.45rem 0.7rem' }}>
+              {dueLine}
+            </div>
+          ) : null
+        }
+        whenNote="Saving reshapes the days still to come. The ones already done keep their notes."
+      />
+    </TaskWindowShell>
   )
 }

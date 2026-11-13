@@ -17,10 +17,10 @@ import {
 
 const DEFAULTS: LienNoticeFields = {
   noticeDate: '2026-09-16',
-  projectDescription: 'Dudley Mason — 628 Terrell Rd, San Antonio, TX 78209',
+  projectDescription: 'Dunmere Mallin — 628 Tarrow Rd, San Antonio, TX 78209',
   claimantName: 'Click Plumbing and Electrical',
   laborMaterialsType: 'Plumbing labor and materials',
-  originalContractorName: 'RMC- Dudley Mason',
+  originalContractorName: 'RLC- Dunmere Mallin',
   contractedWithIfDifferent: '',
   claimAmount: '9800.00',
   contactPerson: 'Malachi Whites, Master Plumber',
@@ -55,7 +55,7 @@ describe('wording edits', () => {
 
   it('diffs against the job defaults, ignoring whitespace, and names the line', () => {
     expect(noticeWordingDiff(DEFAULTS, DEFAULTS)).toEqual([])
-    const edited = { ...DEFAULTS, laborMaterialsType: ' Electrical labor and materials ', contractedWithIfDifferent: 'Loberg Contracting' }
+    const edited = { ...DEFAULTS, laborMaterialsType: ' Electrical labor and materials ', contractedWithIfDifferent: 'Lowbeck Contracting' }
     expect(noticeWordingDiff(edited, DEFAULTS)).toEqual(['laborMaterialsType', 'contractedWithIfDifferent'])
     expect(noticeWordingDiff({ ...DEFAULTS, laborMaterialsType: 'Plumbing labor and materials ' }, DEFAULTS)).toEqual([])
     expect(wordingLineText([], null)).toBe('Nothing changed from the job’s wording')
@@ -71,15 +71,15 @@ describe('the form lines carry their field name', () => {
       if (k === 'contractedWithIfDifferent') expect(html).not.toContain(`data-field="${k}"`)
       else expect(html).toContain(`data-field="${k}"`)
     }
-    const withParty = filingDocHtml(buildLienNoticeBlocks({ ...DEFAULTS, contractedWithIfDifferent: 'Loberg Contracting' }))
+    const withParty = filingDocHtml(buildLienNoticeBlocks({ ...DEFAULTS, contractedWithIfDifferent: 'Lowbeck Contracting' }))
     expect(withParty).toContain('data-field="contractedWithIfDifferent"')
   })
 })
 
 describe('the preview page', () => {
   it('is the print HTML plus a legend, both tints, the two lists, and the message the desk listens for', () => {
-    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null })
-    expect(html).toContain('<title>Notice · 258 · Dudley Mason · preview</title>')
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dunmere Mallin', editedBy: null })
+    expect(html).toContain('<title>Notice · 258 · Dunmere Mallin · preview</title>')
     expect(html).toContain('Notice of Claim for Unpaid Labor or Materials')
     expect(html).toContain('You can change this on the desk')
     expect(html).toContain('Filled from the job · change it there')
@@ -97,14 +97,14 @@ describe('the preview page', () => {
 
   it('says who changed the wording when it differs from the defaults', () => {
     const fields = { ...DEFAULTS, laborMaterialsType: 'Electrical labor and materials' }
-    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Reliant Health', editedBy: 'Taunya' })
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Relwyn Health', editedBy: 'Taunya' })
     expect(html).toContain('Wording edited (1) by Taunya')
     expect(html).toContain('“Electrical labor and materials” · <em>changed from the default</em>')
   })
 
   it('with `editable` the four typed values are boxes that post to the desk, and the pages have slots the desk refills (v2.3660)', () => {
     const fields = { ...DEFAULTS, laborMaterialsType: 'Electrical "labor" & materials' }
-    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Reliant Health', editedBy: 'Taunya', editable: true, coverBlocks: [{ kind: 'paragraph', text: 'Cover.' }] })
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Relwyn Health', editedBy: 'Taunya', editable: true, coverBlocks: [{ kind: 'paragraph', text: 'Cover.' }] })
     expect(html).toContain('You can change this — here or on the desk')
     for (const k of LIEN_NOTICE_TYPED_FIELDS) expect(html).toContain(`<input type="text" data-edit="${k}"`)
     // The value is escaped into the attribute; the changed one offers the way back to the job's wording.
@@ -142,14 +142,14 @@ describe('the preview page', () => {
 
 describe('the cover page in the preview (v2.3540)', () => {
   const cover = [
-    { kind: 'title' as const, lines: ['Re: 258 · Dudley Mason', 'July and August 2026'] },
+    { kind: 'title' as const, lines: ['Re: 258 · Dunmere Mallin', 'July and August 2026'] },
     { kind: 'paragraph' as const, text: 'This notice is routine paper under Texas law, not a claim that anyone is in default.' },
   ]
   it('prints the cover page first as page 1 of 2, breaking the page before the notice', () => {
-    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks: cover })
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dunmere Mallin', editedBy: null, coverBlocks: cover })
     expect(html).toContain('Page 1 of 2 · cover letter')
     expect(html).toContain('Page 2 of 2 · the notice')
-    expect(html.indexOf('Re: 258 · Dudley Mason')).toBeLessThan(html.indexOf('Notice of Claim for Unpaid Labor or Materials'))
+    expect(html.indexOf('Re: 258 · Dunmere Mallin')).toBeLessThan(html.indexOf('Notice of Claim for Unpaid Labor or Materials'))
     expect(html).toContain('.doc.cover { page-break-after: always; }')
     expect(html).toContain("Counsel's cover letter is page 1, as the packet prints it")
   })
@@ -165,14 +165,14 @@ describe('the pay page in the preview window (punch list #35, PR 3)', () => {
   it('is the last page, labelled, refilled by the desk with the rest', () => {
     const payBlocks: FilingDocBlock[] = [{ kind: 'title', lines: ['Once these bills are paid, there will be no lien filed.'] }, { kind: 'payRow', label: 'Invoice #1', description: 'Trim.', amountLine: 'Still owed: $350.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code></svg>', png: null }]
     const coverBlocks: FilingDocBlock[] = [{ kind: 'paragraph', text: 'Re: the job' }]
-    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks, payBlocks })
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dunmere Mallin', editedBy: null, coverBlocks, payBlocks })
     expect(html).toContain('Page 1 of 3 · cover letter')
     expect(html).toContain('Page 2 of 3 · the notice')
     expect(html).toContain('Page 3 of 3 · pay codes')
     expect(html).toContain('data-page="pay"')
     expect(html).toContain('<svg data-code></svg>')
     expect(html).toContain('The pay codes page follows the notice')
-    const without = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null })
+    const without = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dunmere Mallin', editedBy: null })
     expect(without).toContain('Page 1 of 1 · the notice')
     expect(without).not.toContain('<div class="doc" data-page="pay">')
     expect(without).not.toContain('· pay codes')

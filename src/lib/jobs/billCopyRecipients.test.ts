@@ -9,14 +9,14 @@ import {
   type BillCopyContact,
 } from './billCopyRecipients'
 
-const drf: BillCopyContact = { id: 'c1', name: 'DRF', email: 'AP@drfbuilders.com', getsBillCopies: true }
-const lisa: BillCopyContact = { id: 'c2', name: 'Lisa Peterson', email: 'lisa.p@gmail.com', getsBillCopies: false }
+const dlf: BillCopyContact = { id: 'c1', name: 'DLF', email: 'AP@dlfbuilders.example', getsBillCopies: true }
+const lisa: BillCopyContact = { id: 'c2', name: 'Lisa Pettlow', email: 'lisa.p@gmail.com', getsBillCopies: false }
 const noEmail: BillCopyContact = { id: 'c3', name: 'Site super', email: '', getsBillCopies: true }
-const gc = { name: 'Done Right Foundation', email: 'donerightfoundation@outlook.com', role: 'gc' as const }
+const gc = { name: 'Dead Level Foundation', email: 'deadlevelfoundation@example.com', role: 'gc' as const }
 
 describe('defaultCopyContactIds', () => {
   it('ticks flagged contacts that have an email, and nobody else', () => {
-    expect([...defaultCopyContactIds([drf, lisa, noEmail])]).toEqual(['c1'])
+    expect([...defaultCopyContactIds([dlf, lisa, noEmail])]).toEqual(['c1'])
   })
 })
 
@@ -32,8 +32,8 @@ describe('defaultCopyOtherParty', () => {
 
 describe('buildCopyEmails', () => {
   const base = {
-    primaryEmail: 'jdpeterson76@hotmail.com',
-    contacts: [drf, lisa],
+    primaryEmail: 'jdpettlow76@example.com',
+    contacts: [dlf, lisa],
     tickedContactIds: new Set(['c1']),
     otherParty: gc,
     copyOtherParty: true,
@@ -41,11 +41,11 @@ describe('buildCopyEmails', () => {
     billToOverride: false,
   }
   it('lowercases, keeps the tick order, then the other party', () => {
-    expect(buildCopyEmails(base)).toEqual(['ap@drfbuilders.com', 'donerightfoundation@outlook.com'])
+    expect(buildCopyEmails(base)).toEqual(['ap@dlfbuilders.example', 'deadlevelfoundation@example.com'])
   })
   it('never repeats the primary address or a duplicate', () => {
-    expect(buildCopyEmails({ ...base, oneOffEmail: 'JDPeterson76@hotmail.com' })).toEqual(['ap@drfbuilders.com', 'donerightfoundation@outlook.com'])
-    expect(buildCopyEmails({ ...base, oneOffEmail: 'ap@drfbuilders.com' })).toHaveLength(2)
+    expect(buildCopyEmails({ ...base, oneOffEmail: 'JDPettlow76@example.com' })).toEqual(['ap@dlfbuilders.example', 'deadlevelfoundation@example.com'])
+    expect(buildCopyEmails({ ...base, oneOffEmail: 'ap@dlfbuilders.example' })).toHaveLength(2)
   })
   it('drops an implausible one-off and an unticked contact', () => {
     expect(buildCopyEmails({ ...base, tickedContactIds: new Set(), copyOtherParty: false, oneOffEmail: 'not an email' })).toEqual([])
@@ -62,13 +62,13 @@ describe('buildCopyEmails', () => {
 
 describe('billsAlsoGoToSummary', () => {
   it('names the flagged contacts and the other party', () => {
-    expect(billsAlsoGoToSummary({ contacts: [drf, lisa], otherParty: gc, copyOtherParty: true })).toBe('DRF · Done Right Foundation (GC)')
+    expect(billsAlsoGoToSummary({ contacts: [dlf, lisa], otherParty: gc, copyOtherParty: true })).toBe('DLF · Dead Level Foundation (GC)')
   })
   it('is null when nobody is copied', () => {
     expect(billsAlsoGoToSummary({ contacts: [lisa, noEmail], otherParty: gc, copyOtherParty: false })).toBeNull()
   })
   it('names the customer plainly when the customer is the other party', () => {
-    expect(billsAlsoGoToSummary({ contacts: [], otherParty: { name: 'Laura Shearer', role: 'customer' }, copyOtherParty: true })).toBe('Laura Shearer')
+    expect(billsAlsoGoToSummary({ contacts: [], otherParty: { name: 'Laura Shellan', role: 'customer' }, copyOtherParty: true })).toBe('Laura Shellan')
   })
 })
 

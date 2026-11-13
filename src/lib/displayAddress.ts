@@ -1,6 +1,6 @@
 /**
  * Trailing-ZIP stripper for compact display rows (search results, pickers).
- * "105 Dover Rd San Antonio, TX 78209" → "105 Dover Rd San Antonio, TX".
+ * "105 Dorrow Rd San Antonio, TX 78209" → "105 Dorrow Rd San Antonio, TX".
  * Zip-only on purpose — the state stays (unlike PeopleReviewTab's
  * stripAddressZipState, which drops ", TX 78209" entirely for its own layout).
  */

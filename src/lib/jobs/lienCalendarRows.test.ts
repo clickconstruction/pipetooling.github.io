@@ -16,7 +16,7 @@ function billedJob(id: string, extra: Record<string, unknown> = {}) {
     job_name: `Job ${id}`,
     customer_name: 'Ridgeway Builders',
     gc_customer_id: 'gc-1',
-    gcCustomer: { id: 'gc-1', name: 'Loberg Contracting' },
+    gcCustomer: { id: 'gc-1', name: 'Lowbeck Contracting' },
     customer_address_id: 'addr-1',
     revenue: 9000,
     payments_made: 0,
@@ -55,7 +55,7 @@ describe('lienCalendarRows (punch list #182: the Deadlines rows, one kernel for 
     expect(row.name).toBe('Job j1')
     expect(row.customer).toBe('Ridgeway Builders')
     expect(row.gcId).toBe('gc-1')
-    expect(row.gcName).toBe('Loberg Contracting')
+    expect(row.gcName).toBe('Lowbeck Contracting')
     expect(row.openBalance).toBe(9000)
     expect(row.isSub).toBe(true)
     expect(row.lastWorkYmd).toBe('2026-07-20')

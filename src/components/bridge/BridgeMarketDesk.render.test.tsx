@@ -86,8 +86,27 @@ describe('BridgeMarketDesk on the step frame (punch list #318)', () => {
 
     const figures = screen.getAllByTestId('bridge-market-figure')
     expect(figures).toHaveLength(2)
-    expect(figures[0]!.textContent).toMatch(/^\$[\d.]+k?bids, at \d+% won$/)
-    expect(figures[1]!.textContent).toBe('$1.5kestimates, at 75% won')
+    // Each amount is a press that opens what makes it up.
+    expect(figures[0]!.textContent).toMatch(/^\$[\d.]+k?what makes it up ›bids, at \d+% won$/)
+    expect(figures[1]!.textContent).toBe('$1.5kwhat makes it up ›estimates, at 75% won')
+    expect(figures[1]!.getAttribute('aria-label')).toBe('$1.5k estimates, at 75% won. Show what makes it up.')
+    // The estimates' amount opens a window of its own, over the Market window, with the same amount at its head.
+    fireEvent.click(figures[1]!)
+    const estimatesWindow = screen.getByRole('dialog', { name: 'What the estimates sell a week' })
+    expect(screen.getByTestId('bridge-market-breakout-estimates').contains(estimatesWindow)).toBe(true)
+    expect(screen.getByTestId('bridge-market-breakout-amount').textContent).toBe('$1.5k')
+    expect(screen.getAllByTestId('bridge-market-breakout-row').map((r) => r.firstElementChild?.firstChild?.textContent)).toEqual(['Approved', 'Declined', 'Passed over', 'No answer', 'Won rate, by dollars', 'Still out'])
+    // Escape closes that window alone; the Market window stays.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('bridge-market-breakout-estimates')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    // The bids' amount opens the other, a row for each size and the row they add up to. A press outside closes it alone.
+    fireEvent.click(figures[0]!)
+    expect(screen.getByRole('dialog', { name: 'What the bids win a week' })).toBeTruthy()
+    expect(screen.getAllByTestId('bridge-market-breakout-row').map((r) => r.firstElementChild?.firstChild?.textContent)).toEqual(['Under $10k', '$10k to $50k', '$50k to $500k', 'Over $500k', 'All bids'])
+    fireEvent.click(screen.getByTestId('bridge-market-breakout-bids'))
+    expect(screen.queryByTestId('bridge-market-breakout-bids')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
 
     expect(screen.getByText('What we win, by the size of the bid')).toBeTruthy()
     const bars = screen.getAllByTestId('bridge-market-size-bar')
@@ -171,7 +190,7 @@ describe('BridgeMarketDesk on the step frame (punch list #318)', () => {
     // Under 200 words, and nothing in it says the list counts wins another way.
     expect((counted.textContent ?? '').replace(/([a-z.])([A-Z])/g, '$1 $2').split(/\s+/).filter(Boolean).length).toBeLessThan(200)
     expect(counted.textContent).not.toMatch(/job was made|became a job/)
-    expect(counted.textContent).toContain('No plan is recorded here. The week’s call stays with the lit link above.')
+    expect(counted.textContent).toContain('Nothing is recorded in this window.')
     expect(counted.textContent).not.toMatch(/How this reads|[a-z]_[a-z]/)
     expect(dialog.textContent).not.toMatch(OLD_JUDGEMENT)
   })

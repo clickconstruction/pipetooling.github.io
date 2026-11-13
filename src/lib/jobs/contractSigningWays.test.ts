@@ -22,10 +22,10 @@ describe('signingWaysForRow', () => {
   })
 
   it('a builder row collapses to filing their subcontract, ours demoted not removed', () => {
-    const plan = signingWaysForRow(state({ flags: ['gc_job'], readyForBulk: false, action: 'file_theirs' }), 'Summit GC')
+    const plan = signingWaysForRow(state({ flags: ['gc_job'], readyForBulk: false, action: 'file_theirs' }), 'Selwick GC')
     expect(plan.defaultWay).toBe('file_theirs')
     expect(plan.ways).toHaveLength(1)
-    expect(plan.ways[0]?.label).toBe("File Summit GC's subcontract")
+    expect(plan.ways[0]?.label).toBe("File Selwick GC's subcontract")
     expect(plan.demoted.map((w) => w.way)).toEqual(['pdf_email', 'link', 'download'])
     expect(signingWaysForRow(state({ flags: ['gc_job'] }), null).ways[0]?.label).toBe('File their subcontract')
   })
@@ -38,7 +38,7 @@ describe('effectiveSigningWay', () => {
     expect(effectiveSigningWay(ok, null)).toBe('pdf_email')
     const noEmail = signingWaysForRow(state({ emailOk: false }), null)
     expect(effectiveSigningWay(noEmail, 'link')).toBe('download')
-    const gc = signingWaysForRow(state({ flags: ['gc_job'] }), 'Summit GC')
+    const gc = signingWaysForRow(state({ flags: ['gc_job'] }), 'Selwick GC')
     expect(effectiveSigningWay(gc, 'pdf_email')).toBe('pdf_email')
     expect(effectiveSigningWay(gc, undefined)).toBe('file_theirs')
   })
@@ -54,7 +54,7 @@ describe('signingWayDetailLine (v2.3706)', () => {
       note: 'Email the PDF to sign by hand and Email a signing link: needs a signer email — type one in To above',
     })
     // A builder's row: the one way shown has nothing out; a demoted way still has a detail when picked.
-    const gc = signingWaysForRow({ flags: ['gc_job'], sameEmailAs: [], emailOk: true, readyForBulk: false, action: 'file_theirs' }, 'Summit GC')
+    const gc = signingWaysForRow({ flags: ['gc_job'], sameEmailAs: [], emailOk: true, readyForBulk: false, action: 'file_theirs' }, 'Selwick GC')
     expect(signingWayDetailLine(gc, 'file_theirs').note).toBeNull()
     expect(signingWayDetailLine(gc, 'pdf_email').detail).toContain('they print and sign')
   })

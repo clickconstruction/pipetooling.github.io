@@ -14,3 +14,16 @@ export const ADD_TASK_WINDOW_Z = 1210
 
 /** What Add a task opens through a portal, its notify list and its place sheet (`TaskPlaceSheet`): over Add a task itself. */
 export const ADD_TASK_PICKER_Z = 1220
+
+/**
+ * A roadmap task's windows, its card and Add task (`.roadmap-task-overlay`, `ChecklistTechTreeAddTaskModal`). They sit
+ * far up because the roadmap's canvas can fill the screen and its windows must sit over it.
+ */
+export const ROADMAP_TASK_WINDOW_Z = 10050
+
+/**
+ * What a roadmap task's window opens through a portal, its place sheet: over that window. The sheet opened behind
+ * both roadmap windows until this layer was named (punch list #328).
+ */
+export const ROADMAP_TASK_PICKER_Z = 10060
+

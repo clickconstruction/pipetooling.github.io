@@ -123,7 +123,7 @@ session artifacts; this is its doc home):
   (`FEEDBACK_LOOP.md` step 0); those seven still owe their paste.
 - **A shadow was audited unsealed**: b418 and b419 were opened before v2.2543 stamped
   `twin_source_bid_id`, so the tab could not hold them; Wendi audited b418 (live, unsent
-  Take 5 Brownsville) in the open. The six unstamped bids were paired by hand the
+  Tune 5 Brownsville) in the open. The six unstamped bids were paired by hand the
   same day (SQL in the v2.2795 fragment); b418's scorecard is auditor-exposed.
 
 ### As of 2026-09-01
@@ -140,7 +140,7 @@ session artifacts; this is its doc home):
   (54 more flagged), **all unclassified** — assigning `bids.backtest_axis` is how they
   surface under the axes that need them. (Reference survey 2026-08-31: 132 Tier-A
   of 344 decided bids.)
-- Pending owner ruling: question 836b6c22 (small-TI residual + Take 5 proto package —
+- Pending owner ruling: question 836b6c22 (small-TI residual + Tune 5 proto package —
   recorded, deliberately not applied).
 
 ## Day-to-day operation
@@ -234,7 +234,7 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
    instead of judgment — 26 unambiguous ones written 2026-09-06, 67 ambiguous left for a
    dev's judgment; the **holdout set** (v2.2942, target 20–25 references) still needs the
    owner's picks on the same lens (`LEARNING_PLAN.md` items 6 and 11).
-5. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
+5. **Owner ruling on 836b6c22** (small-TI residual + Tune 5 package doctrine).
 6. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
    it since 08-30; the review-gate walk needs it too.
 7. **The comparison's fixtures and equipment line misreads two kinds of row** (data point for the counting guide, 2026-10-22; nothing changed without the owner). Shell b500 for b497 Lone Star Market read 1,626 against our 193. The robot's 1,626 is its travel row (count 1,500 = 50 mi × 30 job days, the travel rule) plus 126 real fixtures and equipment; our 193 is 106 fixtures and equipment, 86 fittings our takeoff names `T` and `Y` (`2IN T WATER`, `4IN Y WASTE`) and our travel row (count 1). `classifyCountRow` (`src/lib/bids/robotBidComparison.ts`) knows only `90/45/tee/ell/wye/coupling` and puts every other row in the fixtures bucket. Like for like: 126 vs 106, the robot about a fifth heavy. The rule-shaped note is in `PLACEMENT.md` → Reference protocol at unseal, without the bid's numbers so b497 stays blind for a backtest. Owner's call: give travel its own class, and read `T`/`Y` as fittings. The 30 job days behind the robot's travel row (≈20 fixtures, 18 connections, 9 gas drops) is a second question for the same sitting.

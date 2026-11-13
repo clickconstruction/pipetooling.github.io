@@ -8,6 +8,14 @@ type Props = {
   /** The task's place as the giver has it now, or null for a task with no place. */
   value: TaskPlaceDraft | null
   onChange: (next: TaskPlaceDraft | null) => void
+  /**
+   * `shelf` is the New task window's one row (punch list #331): **New** first, then the places used
+   * last on one line that slides sideways, a lit place leading. No label and no hint: the row's own
+   * label says Where, and the window's sentence says the rest.
+   */
+  variant?: 'field' | 'shelf'
+  /** The layer of the Where is it? sheet, for a window that sits above Add a task. */
+  sheetZIndex?: number
 }
 
 const chipBase = {
@@ -24,6 +32,9 @@ const chipBase = {
 }
 const chipOff = { ...chipBase, background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)' }
 const chipOn = { ...chipBase, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }
+// The shelf lights a place with the window's tint, since the only solid blue in that window is Send.
+const shelfChipOn = { ...chipBase, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', border: '1px solid #2563eb', fontWeight: 700 }
+const shelfChip = { flex: 'none' as const, whiteSpace: 'nowrap' as const, minHeight: 36 }
 const dot = { width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.75, flex: 'none' as const }
 
 /** Two drafts are the same chip when they share a name and a point. */
@@ -41,7 +52,7 @@ function sameChip(value: TaskPlaceDraft | null, place: TaskPlace): boolean {
  * to keep, and a place is offered because a task has it. A place set in this window and not yet
  * saved shows as its own chip, lit.
  */
-export function TaskPlaceRow({ value, onChange }: Props) {
+export function TaskPlaceRow({ value, onChange, variant = 'field', sheetZIndex }: Props) {
   const [offered, setOffered] = useState<TaskPlace[]>([])
   const [sheetOpen, setSheetOpen] = useState(false)
   // Read with the row, not with the sheet: one cached settings read, there before ＋ New place is pressed.
@@ -60,6 +71,71 @@ export function TaskPlaceRow({ value, onChange }: Props) {
   const onAChip = offered.some((p) => sameChip(value, p))
   const start = useMemo(() => taskPlaceSheetStart(value, offered, office), [value, offered, office])
   const ownName = value ? value.name || TASK_PLACE_UNNAMED : ''
+
+  const sheet = sheetOpen ? (
+    <TaskPlaceSheet
+      start={start}
+      initial={value && !onAChip ? value : null}
+      {...(sheetZIndex != null ? { zIndex: sheetZIndex } : {})}
+      onClose={() => setSheetOpen(false)}
+      onUse={(place) => {
+        onChange(place)
+        setSheetOpen(false)
+      }}
+    />
+  ) : null
+
+  if (variant === 'shelf') {
+    // A lit place leads, so it is never off the shelf's end.
+    const ordered = [...offered].sort((a, b) => Number(sameChip(value, b)) - Number(sameChip(value, a)))
+    return (
+      <div data-task-place-row style={{ minWidth: 0 }}>
+        <div role="group" aria-label="Place" className="ntwShelf">
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-label="New place"
+            style={{ ...chipBase, ...shelfChip, background: 'var(--surface)', color: 'var(--text-700)', border: '1px dashed var(--border-strong)' }}
+          >
+            ＋ New
+          </button>
+          {value && !onAChip ? (
+            <>
+              <button type="button" aria-pressed="true" title="Press to move this place" onClick={() => setSheetOpen(true)} style={{ ...shelfChipOn, ...shelfChip }}>
+                <span aria-hidden style={dot} />
+                {ownName}
+              </button>
+              <button
+                type="button"
+                aria-label="Remove the place"
+                title="Remove the place"
+                onClick={() => onChange(null)}
+                style={{ ...chipBase, ...shelfChip, padding: '5px 9px', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)' }}
+              >
+                ✕
+              </button>
+            </>
+          ) : null}
+          {ordered.map((p) => {
+            const on = sameChip(value, p)
+            return (
+              <button
+                key={`${p.name}|${p.lat}|${p.lng}`}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange(on ? null : { lat: p.lat, lng: p.lng, name: p.name, accuracyM: p.accuracyM })}
+                style={{ ...(on ? shelfChipOn : chipOff), ...shelfChip }}
+              >
+                <span aria-hidden style={dot} />
+                {p.name}
+              </button>
+            )
+          })}
+        </div>
+        {sheet}
+      </div>
+    )
+  }
 
   return (
     <div data-task-place-row style={{ marginTop: '0.5rem' }}>
@@ -108,17 +184,7 @@ export function TaskPlaceRow({ value, onChange }: Props) {
           </button>
         ) : null}
       </div>
-      {sheetOpen ? (
-        <TaskPlaceSheet
-          start={start}
-          initial={value && !onAChip ? value : null}
-          onClose={() => setSheetOpen(false)}
-          onUse={(place) => {
-            onChange(place)
-            setSheetOpen(false)
-          }}
-        />
-      ) : null}
+      {sheet}
     </div>
   )
 }

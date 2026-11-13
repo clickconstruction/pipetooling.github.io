@@ -7,7 +7,7 @@ const TODAY = '2026-10-01'
 
 const base: ArReturnCaseRow = {
   mercury_transaction_id: 'tx-sp',
-  counterparty_name: 'Southern Post',
+  counterparty_name: 'Southern Pine',
   amount: '13680',
   kind: 'checkDeposit',
   posted_at: '2026-09-18T22:00:58Z',
@@ -22,7 +22,7 @@ const base: ArReturnCaseRow = {
   replaced_by_mercury_transaction_id: null,
   notified_at: null,
   live_payments: [],
-  last_job: { job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
+  last_job: { job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
   recorded_payment: null,
   promise: null,
 }
@@ -34,7 +34,7 @@ const spTrail: ArDepositTrailRow[] = [
     live: false,
     job_id: 'job-878',
     job_number: '878',
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     invoice_id: 'inv-878-1',
     amount: 13680,
     applied_at: '2026-09-21T16:00:00Z',
@@ -45,37 +45,37 @@ const spTrail: ArDepositTrailRow[] = [
 ]
 
 describe('arReturnCaseView — the case as the pane says it', () => {
-  it('Southern Post: off #878, the story in order, the stake, get a new check', () => {
+  it('Southern Pine: off #878, the story in order, the stake, get a new check', () => {
     const v = arReturnCaseView({ row: base, trail: spTrail, todayYmd: TODAY })
     expect(v.chip).toEqual({ text: 'came back · Insufficient funds', tone: 'red' })
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
       'Sep 18 The check posted.',
-      'Sep 21 Taunya applied it to #878 Take 5- Seguin.',
+      'Sep 21 Taunya applied it to #878 Tune 5- Seguin.',
       'Sep 23 The bank sent it back. Insufficient funds.',
       'Sep 24 Taunya took it off #878.',
     ])
     expect(v.stake).toEqual({ text: '#878 owes the $13,680 again.', detail: 'It owes $38,625 in all.', jobId: 'job-878', tone: 'red' })
-    expect(v.next).toEqual({ kind: 'new_check', sentence: 'Get a new check from Southern Post. It has been 8 days.' })
+    expect(v.next).toEqual({ kind: 'new_check', sentence: 'Get a new check from Southern Pine. It has been 8 days.' })
     expect(v.rowLine).toBe('off #878 since 9/24 · no new check in 8 days')
-    expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Take 5- Seguin' })
-    expect(v.watch).toBe("When Southern Post's money lands, it shows here to pick. The new check can come alone or inside a bigger payment on the job.")
+    expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Tune 5- Seguin' })
+    expect(v.watch).toBe("When Southern Pine's money lands, it shows here to pick. The new check can come alone or inside a bigger payment on the job.")
     expect(v.billsItPaid).toEqual([{ invoiceId: 'inv-878-1', jobId: 'job-878', amount: 13680 }])
     expect(v.takeOff).toBeNull()
   })
 
-  it('Loberg: a stop payment asks why, and came back today reads so', () => {
+  it('Lowbeck: a stop payment asks why, and came back today reads so', () => {
     const row: ArReturnCaseRow = {
       ...base,
       mercury_transaction_id: 'tx-l',
-      counterparty_name: 'Loberg',
+      counterparty_name: 'Lowbeck',
       amount: 5622.49,
       posted_at: '2026-09-28T22:00:00Z',
       failed_at: '2026-10-01T13:41:00Z',
       bank_reason: 'Stop payment',
-      last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya', job_revenue: 33500, job_payments_made: 24477.51 },
+      last_job: { job_id: 'job-650', job_number: '650', job_name: 'AXO Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya', job_revenue: 33500, job_payments_made: 24477.51 },
     }
     const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
-    expect(v.next.sentence).toBe('Ask Loberg why they stopped it.')
+    expect(v.next.sentence).toBe('Ask Lowbeck why they stopped it.')
     expect(v.rowLine).toBe('off #650 since 9/30 · came back today')
     expect(v.stake?.text).toBe('#650 owes the $5,622.49 again.')
     expect(v.stake?.detail).toBe('It owes $9,022.49 in all.')
@@ -89,36 +89,36 @@ describe('arReturnCaseView — the case as the pane says it', () => {
     expect(v.rowLine).toBe('off #878 since 9/24 · they said 10/8')
   })
 
-  it('Iannotti: a check that never reached the bank, matched to a payment recorded by hand', () => {
+  it('Ilmotti: a check that never reached the bank, matched to a payment recorded by hand', () => {
     const row: ArReturnCaseRow = {
       ...base,
       mercury_transaction_id: 'tx-i',
-      counterparty_name: 'Sal Iannotti',
+      counterparty_name: 'Sal Ilmotti',
       amount: 600,
       posted_at: null,
       failed_at: '2026-09-25T15:00:00Z',
       bank_reason: 'There was an issue with this transaction. Please contact help@mercury.com.',
       source: 'rejected',
       last_job: null,
-      recorded_payment: { payment_id: 'p9', job_id: 'job-1040', job_number: '1040', job_name: 'Iannotti PRV', amount: 600, paid_on: '2026-09-29', job_revenue: 600, job_payments_made: 600 },
+      recorded_payment: { payment_id: 'p9', job_id: 'job-1040', job_number: '1040', job_name: 'Ilmotti PRV', amount: 600, paid_on: '2026-09-29', job_revenue: 600, job_payments_made: 600 },
     }
     const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
     expect(v.chip).toEqual({ text: 'never reached the bank', tone: 'amber' })
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
       'Sep 25 Mercury could not take this check in. It never posted.',
-      'Sep 29 $600 was recorded as paid on #1040 Iannotti PRV. No deposit is linked to it.',
+      'Sep 29 $600 was recorded as paid on #1040 Ilmotti PRV. No deposit is linked to it.',
     ])
     expect(v.stake?.text).toBe('#1040 reads paid in full. The money is not in the bank.')
     expect(v.next).toEqual({ kind: 'deposit_again', sentence: 'Find the check and deposit it again.' })
     expect(v.rowLine).toBe('never posted · #1040 reads paid')
-    expect(v.recorded).toEqual({ paymentId: 'p9', jobId: 'job-1040', label: '#1040 Iannotti PRV', amount: 600 })
+    expect(v.recorded).toEqual({ paymentId: 'p9', jobId: 'job-1040', label: '#1040 Ilmotti PRV', amount: 600 })
   })
 
   it('a check typed in by hand that never reached the bank (v2.4902): the story, the stake, deposit it, no new check to wait for', () => {
     const row: ArReturnCaseRow = {
       ...base,
-      mercury_transaction_id: 'case-drf',
-      counterparty_name: 'DRF',
+      mercury_transaction_id: 'case-dlf',
+      counterparty_name: 'DLF',
       amount: 250,
       kind: 'Check',
       posted_at: null,
@@ -127,30 +127,30 @@ describe('arReturnCaseView — the case as the pane says it', () => {
       source: 'unbanked',
       opened_at: '2026-09-29T15:17:00Z',
       last_job: null,
-      recorded_payment: { payment_id: 'p-drf', job_id: 'job-777', job_number: '777', job_name: 'DRF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 250, job_payments_made: 250 },
+      recorded_payment: { payment_id: 'p-dlf', job_id: 'job-777', job_number: '777', job_name: 'DLF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 250, job_payments_made: 250 },
     }
     const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
     expect(v.source).toBe('unbanked')
     expect(v.chip).toEqual({ text: 'never deposited', tone: 'amber' })
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
-      'Sep 19 $250 was recorded as paid on #777 DRF pool house. No deposit is linked to it.',
+      'Sep 19 $250 was recorded as paid on #777 DLF pool house. No deposit is linked to it.',
       'Sep 29 10 days on, no deposit had come in for it.',
     ])
     expect(v.stake?.text).toBe('#777 reads paid in full. The money is not in the bank.')
     expect(v.next).toEqual({ kind: 'deposit_again', sentence: 'Find the check and deposit it. If it went in with other checks, link this payment to that deposit.' })
     expect(v.rowLine).toBe('typed in 9/19 · no deposit · #777 reads paid')
-    expect(v.recorded).toEqual({ paymentId: 'p-drf', jobId: 'job-777', label: '#777 DRF pool house', amount: 250 })
+    expect(v.recorded).toEqual({ paymentId: 'p-dlf', jobId: 'job-777', label: '#777 DLF pool house', amount: 250 })
     expect(v.watch).toBeNull()
     expect(v.takeOff).toBeNull()
-    // A deposit from DRF for $250 is not a new check for it: the payment is linked to its deposit instead.
-    expect(arReplacementFor(v, [{ mercury_transaction_id: 'tx-new', counterparty_name: 'DRF', amount: 250, posted_at: '2026-09-30T15:00:00Z', remaining_available: 250 }])).toBeNull()
+    // A deposit from DLF for $250 is not a new check for it: the payment is linked to its deposit instead.
+    expect(arReplacementFor(v, [{ mercury_transaction_id: 'tx-new', counterparty_name: 'DLF', amount: 250, posted_at: '2026-09-30T15:00:00Z', remaining_available: 250 }])).toBeNull()
   })
 
-  it('Peter Garza: an old return nobody linked, the job it reads paid on, the year in the dates', () => {
+  it('Peter Garlen: an old return nobody linked, the job it reads paid on, the year in the dates', () => {
     const row: ArReturnCaseRow = {
       ...base,
       mercury_transaction_id: 'tx-g',
-      counterparty_name: 'Peter Garza',
+      counterparty_name: 'Peter Garlen',
       amount: 2700,
       posted_at: null,
       failed_at: '2025-07-11T15:00:00Z',
@@ -162,7 +162,7 @@ describe('arReturnCaseView — the case as the pane says it', () => {
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual(['Jul 11, 2025 The bank sent it back. Insufficient funds.'])
     expect(v.stake?.text).toBe('#120 still reads paid. $2,700 was recorded there with no deposit.')
     expect(v.rowLine).toBe('#120 reads paid · came back 7/11/25')
-    expect(v.next.sentence).toBe('Get a new check from Peter Garza. It has been 447 days.')
+    expect(v.next.sentence).toBe('Get a new check from Peter Garlen. It has been 447 days.')
   })
 
   it('Texas Mutual: a hand mark says the bank never said so', () => {
@@ -178,25 +178,25 @@ describe('arCaseTakeOff — what comes off each job, read back before the press'
   it('KCG across three jobs: per job, biggest first, the paid bill going back', () => {
     const t = arCaseTakeOff({
       live_payments: [
-        { payment_id: 'a', job_id: 'j977', job_number: '977', job_name: 'Springtown', amount: 11181.48, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'billed' },
-        { payment_id: 'b', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
-        { payment_id: 'c', job_id: 'j978', job_number: '978', job_name: 'Springtown- HVAC', amount: 1980, invoice_id: 'i3', invoice_sequence_order: 0, invoice_status: 'paid' },
-        { payment_id: 'd', job_id: 'j977', job_number: '977', job_name: 'Springtown', amount: 0.3, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'billed' },
-        { payment_id: 'e', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 1482, invoice_id: 'i4', invoice_sequence_order: 2, invoice_status: 'billed' },
-        { payment_id: 'f', job_id: 'j978', job_number: '978', job_name: 'Springtown- HVAC', amount: 1018.87, invoice_id: 'i5', invoice_sequence_order: 1, invoice_status: 'billed' },
+        { payment_id: 'a', job_id: 'j977', job_number: '977', job_name: 'Stonewick', amount: 11181.48, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'billed' },
+        { payment_id: 'b', job_id: 'j963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
+        { payment_id: 'c', job_id: 'j978', job_number: '978', job_name: 'Stonewick- HVAC', amount: 1980, invoice_id: 'i3', invoice_sequence_order: 0, invoice_status: 'paid' },
+        { payment_id: 'd', job_id: 'j977', job_number: '977', job_name: 'Stonewick', amount: 0.3, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'billed' },
+        { payment_id: 'e', job_id: 'j963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 1482, invoice_id: 'i4', invoice_sequence_order: 2, invoice_status: 'billed' },
+        { payment_id: 'f', job_id: 'j978', job_number: '978', job_name: 'Stonewick- HVAC', amount: 1018.87, invoice_id: 'i5', invoice_sequence_order: 1, invoice_status: 'billed' },
       ],
     })!
     expect(t.jobs.map((j) => `${j.label}: ${j.words}`)).toEqual([
-      '#977 Springtown: $11,181.78 comes off bill 2.',
-      '#963 Knight Springtown Vet: $3,572 comes off bills 1 and 3.',
-      '#978 Springtown- HVAC: $2,998.87 comes off bills 1 and 2. Bill 1 goes back to Billed.',
+      '#977 Stonewick: $11,181.78 comes off bill 2.',
+      '#963 Kestrin Stonewick Vet: $3,572 comes off bills 1 and 3.',
+      '#978 Stonewick- HVAC: $2,998.87 comes off bills 1 and 2. Bill 1 goes back to Billed.',
     ])
     expect(t.summary).toBe("6 payments on 3 jobs. Each job's history keeps the removal and who did it.")
     expect(t.blocked).toBe(false)
   })
   it('a bill Stripe holds as paid blocks the press and says where to go', () => {
     const t = arCaseTakeOff({
-      live_payments: [{ payment_id: 'c', job_id: 'j978', job_number: '978', job_name: 'Springtown- HVAC', amount: 1980, invoice_id: 'i3', invoice_sequence_order: 0, invoice_status: 'paid', stripe_bill: true }],
+      live_payments: [{ payment_id: 'c', job_id: 'j978', job_number: '978', job_name: 'Stonewick- HVAC', amount: 1980, invoice_id: 'i3', invoice_sequence_order: 0, invoice_status: 'paid', stripe_bill: true }],
     })!
     expect(t.blocked).toBe(true)
     expect(t.jobs[0]!.blocker).toBe("Bill 1 is marked paid in Stripe. Press Check didn't clear on it in #978 first.")
@@ -215,18 +215,18 @@ describe('the new check', () => {
   const dep = (id: string, name: string, amount: number, posted: string, remaining = amount) => ({ mercury_transaction_id: id, counterparty_name: name, amount, posted_at: posted, remaining_available: remaining })
   it('same payer (first five letters), same cents, untouched, after it came back — oldest first', () => {
     const r = arReplacementFor(view, [
-      dep('late', 'Southern Post Construction', 13680, '2026-10-03T15:00:00Z'),
-      dep('early', 'SOUTHERN POST', 13680, '2026-09-30T15:00:00Z'),
-      dep('before', 'Southern Post', 13680, '2026-09-20T15:00:00Z'),
-      dep('other', 'Poolcorp', 13680, '2026-09-30T15:00:00Z'),
-      dep('part', 'Southern Post', 13680, '2026-09-30T15:00:00Z', 100),
-      dep('cents', 'Southern Post', 13680.01, '2026-09-30T15:00:00Z'),
+      dep('late', 'Southern Pine Construction', 13680, '2026-10-03T15:00:00Z'),
+      dep('early', 'SOUTHERN PINE', 13680, '2026-09-30T15:00:00Z'),
+      dep('before', 'Southern Pine', 13680, '2026-09-20T15:00:00Z'),
+      dep('other', 'Poolmark', 13680, '2026-09-30T15:00:00Z'),
+      dep('part', 'Southern Pine', 13680, '2026-09-30T15:00:00Z', 100),
+      dep('cents', 'Southern Pine', 13680.01, '2026-09-30T15:00:00Z'),
     ])
     expect(r?.mercury_transaction_id).toBe('early')
   })
   it('the reverse: a deposit names the case it may replace', () => {
-    expect(arCaseThisReplaces(dep('early', 'SOUTHERN POST', 13680, '2026-09-30T15:00:00Z'), [view])?.id).toBe('tx-sp')
-    expect(arCaseThisReplaces(dep('x', 'DRF', 250, '2026-09-30T15:00:00Z'), [view])).toBeNull()
+    expect(arCaseThisReplaces(dep('early', 'SOUTHERN PINE', 13680, '2026-09-30T15:00:00Z'), [view])?.id).toBe('tx-sp')
+    expect(arCaseThisReplaces(dep('x', 'DLF', 250, '2026-09-30T15:00:00Z'), [view])).toBeNull()
   })
   it('arPayerKey', () => {
     expect(arPayerKey('M&M Roofing Co')).toBe(arPayerKey('M & M Roofing'))
@@ -261,7 +261,7 @@ describe('the words are plain', () => {
           posted_at: null,
           failed_at: null,
           last_job: null,
-          recorded_payment: { payment_id: 'p-drf', job_id: 'job-777', job_number: '777', job_name: 'DRF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 500, job_payments_made: 250 },
+          recorded_payment: { payment_id: 'p-dlf', job_id: 'job-777', job_number: '777', job_name: 'DLF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 500, job_payments_made: 250 },
         },
         trail: [],
         todayYmd: TODAY,
@@ -280,12 +280,12 @@ describe('the words are plain', () => {
 
 describe('v2.4328: the payer remembers', () => {
   const c = (id: string, name: string, failed: string, source = 'bank') => ({ mercury_transaction_id: id, counterparty_name: name, source, failed_at: failed, opened_at: failed })
-  it('Poolcorp: two in April on a new deposit, the deposit itself left out, older than a year dropped', () => {
-    const cases = [c('a', 'Poolcorp', '2026-04-01T15:00:00Z'), c('b', 'POOLCORP', '2026-04-13T15:00:00Z'), c('old', 'Poolcorp', '2025-03-01T15:00:00Z'), c('h', 'Poolcorp', '2026-05-01T15:00:00Z', 'hand')]
-    expect(arPayerCameBackNote('Poolcorp', cases, '2026-10-01')).toBe('2 came back · Apr')
-    expect(arPayerCameBackNote('Poolcorp', cases, '2026-10-01', 'b')).toBe('1 came back · Apr')
-    expect(arPayerCameBackNote('DRF', cases, '2026-10-01')).toBeNull()
-    expect(arPayerCameBackNote('Peter Garza', [c('g', 'Peter Garza', '2025-11-11T15:00:00Z')], '2026-10-01')).toBe('1 came back · Nov 2025')
+  it('Poolmark: two in April on a new deposit, the deposit itself left out, older than a year dropped', () => {
+    const cases = [c('a', 'Poolmark', '2026-04-01T15:00:00Z'), c('b', 'POOLMARK', '2026-04-13T15:00:00Z'), c('old', 'Poolmark', '2025-03-01T15:00:00Z'), c('h', 'Poolmark', '2026-05-01T15:00:00Z', 'hand')]
+    expect(arPayerCameBackNote('Poolmark', cases, '2026-10-01')).toBe('2 came back · Apr')
+    expect(arPayerCameBackNote('Poolmark', cases, '2026-10-01', 'b')).toBe('1 came back · Apr')
+    expect(arPayerCameBackNote('DLF', cases, '2026-10-01')).toBeNull()
+    expect(arPayerCameBackNote('Peter Garlen', [c('g', 'Peter Garlen', '2025-11-11T15:00:00Z')], '2026-10-01')).toBe('1 came back · Nov 2025')
   })
 })
 
@@ -293,7 +293,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
   const dispute = (sc: Partial<NonNullable<ArReturnCaseRow['stripe_case']>> = {}, over: Partial<ArReturnCaseRow> = {}): ArReturnCaseRow => ({
     ...base,
     mercury_transaction_id: 'case-dp1',
-    counterparty_name: 'Heron Construction',
+    counterparty_name: 'Hadlow Construction',
     amount: 500,
     kind: 'card',
     posted_at: null,
@@ -302,7 +302,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
     source: 'stripe_dispute',
     opened_at: '2026-09-28T15:00:05Z',
     last_job: null,
-    recorded_payment: { payment_id: 'pay-1', job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', amount: 500, paid_on: '2026-09-24' },
+    recorded_payment: { payment_id: 'pay-1', job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', amount: 500, paid_on: '2026-09-24' },
     ...over,
     stripe_case: {
       kind: 'dispute',
@@ -318,7 +318,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
       invoice_status: 'paid',
       job_id: 'job-878',
       job_number: '878',
-      job_name: 'Take 5- Seguin',
+      job_name: 'Tune 5- Seguin',
       payment_live: true,
       ...sc,
     },
@@ -330,13 +330,13 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
     expect(v.chip).toEqual({ text: 'card disputed', tone: 'red' })
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
       'Sep 24 $500 was paid by card on bill 1 of #878.',
-      'Sep 28 Heron Construction disputed it. They say they did not make the payment.',
+      'Sep 28 Hadlow Construction disputed it. They say they did not make the payment.',
     ])
     expect(v.stake).toEqual({ text: '#878 reads paid. Stripe holds the $500 while the dispute runs.', detail: null, jobId: 'job-878', tone: 'red' })
     expect(v.next).toEqual({ kind: 'answer_dispute', sentence: 'Answer the dispute in Stripe by Oct 9.' })
     expect(v.rowLine).toBe('card disputed · bill 1 on #878 · answer by 10/9')
     expect(v.stripe).toEqual({ url: 'https://dashboard.stripe.com/test/disputes/dp_1', label: 'Open the dispute in Stripe' })
-    expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Take 5- Seguin' })
+    expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Tune 5- Seguin' })
     expect(v.putBack).toBeNull()
     expect(v.takeOff).toBeNull()
     expect(v.recorded).toBeNull()
@@ -349,7 +349,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
     expect(v.chip).toEqual({ text: 'dispute lost', tone: 'red' })
     expect(v.story[v.story.length - 1]?.text).toBe('They won the dispute. Stripe keeps the money.')
     expect(v.stake).toEqual({ text: '#878 reads paid. The $500 is gone.', detail: 'Put the bill back and it is billed again.', jobId: 'job-878', tone: 'red' })
-    expect(v.next).toEqual({ kind: 'put_back', sentence: 'The money is gone. Put the bill back, then bill Heron Construction again.' })
+    expect(v.next).toEqual({ kind: 'put_back', sentence: 'The money is gone. Put the bill back, then bill Hadlow Construction again.' })
     expect(v.rowLine).toBe('dispute lost · #878 reads paid')
     expect(v.putBack).toEqual({
       words: ['$500 comes off bill 1 on #878.', 'The bill goes back to be billed again, with a new Stripe bill.', '#878 owes the $500 again.'],
@@ -371,7 +371,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
     expect(v.chip).toEqual({ text: 'bank payment failed', tone: 'amber' })
     expect(v.story.map((s) => s.text)).toEqual(['A $500 bank payment on bill 3 of #878 did not go through.'])
     expect(v.stake).toEqual({ text: 'Bill 3 on #878 is still open.', detail: "Stripe says: The customer's account has insufficient funds.", jobId: 'job-878', tone: 'amber' })
-    expect(v.next).toEqual({ kind: 'new_payment', sentence: 'Ask Heron Construction for another payment.' })
+    expect(v.next).toEqual({ kind: 'new_payment', sentence: 'Ask Hadlow Construction for another payment.' })
     expect(v.rowLine).toBe('bank debit failed · bill 3 on #878')
     expect(v.stripe).toEqual({ url: 'https://dashboard.stripe.com/payments/pi_1', label: 'Open the payment in Stripe' })
   })
@@ -379,7 +379,7 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
   it('a promise after the dispute joins the story; no deposit is offered as its replacement', () => {
     const v = arReturnCaseView({ row: dispute({}, { promise: { job_id: 'job-878', promised_date: '2026-10-05', said_by: 'Malachi', created_at: '2026-09-29T15:00:00Z' } }), trail: [], todayYmd: TODAY })
     expect(v.story.map((s) => s.text)).toContain('Malachi said they pay by Oct 5.')
-    expect(arReplacementFor(v, [{ mercury_transaction_id: 'd1', counterparty_name: 'Heron Construction', amount: 500, posted_at: '2026-09-30T15:00:00Z', remaining_available: 500 }])).toBeNull()
+    expect(arReplacementFor(v, [{ mercury_transaction_id: 'd1', counterparty_name: 'Hadlow Construction', amount: 500, posted_at: '2026-09-30T15:00:00Z', remaining_available: 500 }])).toBeNull()
   })
 
   it('every sentence follows the plain-words rules', () => {
@@ -396,7 +396,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
   const OCT26 = '2026-10-26'
   const bigDeposit: ArReplacementDeposit = {
     mercury_transaction_id: 'tx-big',
-    counterparty_name: 'SOUTHERN POST CO',
+    counterparty_name: 'SOUTHERN PINE CO',
     amount: 34825,
     posted_at: '2026-10-26T14:51:00Z',
     remaining_available: 625,
@@ -407,7 +407,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
     live: true,
     job_id: 'job-878',
     job_number: '878',
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     invoice_id: 'inv-878-2',
     amount: 34200,
     applied_at: '2026-10-26T14:51:00Z',
@@ -423,7 +423,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
     expect(got).toEqual({
       deposit: bigDeposit,
       appliedToCaseJobs: 34200,
-      jobLabels: ['#878 Take 5- Seguin'],
+      jobLabels: ['#878 Tune 5- Seguin'],
       appliedBy: 'Taunya',
       appliedYmd: '2026-10-26',
     })
@@ -438,7 +438,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
   })
 
   it('another payer, another job, or a payment taken off proves nothing', () => {
-    expect(arCombinedReplacementFor(waiting(), [{ ...bigDeposit, counterparty_name: 'Loberg' }], trails([bigTrailRow]))).toBeNull()
+    expect(arCombinedReplacementFor(waiting(), [{ ...bigDeposit, counterparty_name: 'Lowbeck' }], trails([bigTrailRow]))).toBeNull()
     expect(arCombinedReplacementFor(waiting(), [bigDeposit], trails([{ ...bigTrailRow, job_id: 'job-999', job_number: '999' }]))).toBeNull()
     expect(arCombinedReplacementFor(waiting(), [bigDeposit], trails([{ ...bigTrailRow, live: false }]))).toBeNull()
   })
@@ -446,7 +446,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
   it('a case whose money is still on the jobs is not waiting for a new check', () => {
     const row: ArReturnCaseRow = {
       ...base,
-      live_payments: [{ payment_id: 'p1', job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', amount: 13680, invoice_id: 'inv-878-1', invoice_sequence_order: 0, invoice_status: 'paid', stripe_bill: false, stripe_credit_note: false, job_status: 'billed' }],
+      live_payments: [{ payment_id: 'p1', job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', amount: 13680, invoice_id: 'inv-878-1', invoice_sequence_order: 0, invoice_status: 'paid', stripe_bill: false, stripe_credit_note: false, job_status: 'billed' }],
     }
     const v = arReturnCaseView({ row, trail: spTrail, todayYmd: OCT26 })
     expect(v.next.kind).toBe('take_off')
@@ -466,7 +466,7 @@ describe('v2.5891: the new check inside a bigger payment', () => {
     const got = arMadeGoodAfterApply([waiting()], bigDeposit, new Map([['job-878', 34200]]))
     expect(got.map((m) => [m.view.id, m.applied])).toEqual([['tx-sp', 34200]])
     expect(arMadeGoodAfterApply([waiting()], bigDeposit, new Map([['job-878', 5000]]))).toEqual([])
-    expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, counterparty_name: 'Loberg' }, new Map([['job-878', 34200]]))).toEqual([])
+    expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, counterparty_name: 'Lowbeck' }, new Map([['job-878', 34200]]))).toEqual([])
     expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, posted_at: '2026-09-20T14:00:00Z' }, new Map([['job-878', 34200]]))).toEqual([])
   })
 })

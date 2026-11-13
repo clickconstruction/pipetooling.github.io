@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { addGcsButtonLabel, filterPickableGcs, tickedSummary } from './gcRecipientPicker'
 
 const customers = [
-  { id: 'loberg', name: 'Loberg Contracting', address: '311 E Illinois Ave, Palatine, IL' },
+  { id: 'lowbeck', name: 'Lowbeck Contracting', address: '311 E Illinois Ave, Palatine, IL' },
   { id: 'turner', name: 'Turner Construction', address: '550 W Adams St, Chicago, IL' },
   { id: 'pepper', name: 'Pepper Construction', address: '643 N Orleans St, Chicago, IL' },
   { id: 'skender', name: 'Skender', address: null },
@@ -11,7 +11,7 @@ const customers = [
 
 describe('filterPickableGcs', () => {
   it('excludes the bid GC and existing recipients', () => {
-    const out = filterPickableGcs(customers, { bidCustomerId: 'loberg', recipientIds: new Set(['pepper']), search: '' })
+    const out = filterPickableGcs(customers, { bidCustomerId: 'lowbeck', recipientIds: new Set(['pepper']), search: '' })
     expect(out.map((c) => c.id)).toEqual(['turner', 'skender'])
   })
 

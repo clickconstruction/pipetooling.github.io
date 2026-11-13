@@ -144,7 +144,7 @@ export type LienSentGatesFold = {
   sentOn: string
   /** "Sent Oct 14" */
   head: string
-  /** "Sent Oct 14 · Khan Umar · RMC- Dudley Mason · Residential · Bexar · Jul + Aug" */
+  /** "Sent Oct 14 · Karrow Ulric · RLC- Dunmere Mallin · Residential · Bexar · Jul + Aug" */
   line: string
   rows: Array<{ n: 1 | 2 | 3 | 4; key: Exclude<LienGateKey, 'billed'>; label: string; value: string }>
 }

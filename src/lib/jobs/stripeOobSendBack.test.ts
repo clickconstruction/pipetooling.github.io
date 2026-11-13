@@ -8,7 +8,7 @@ import {
   stripeShowsOobMarkOnly,
 } from './stripeOobSendBack'
 
-// J1040 Iannotti PRV (2026-09-28): Stripe paid out of band on Sep 24, amount_paid 0, no payments left in the ledger.
+// J1040 Ilmotti PRV (2026-09-28): Stripe paid out of band on Sep 24, amount_paid 0, no payments left in the ledger.
 const oobMark = { amount_paid: 0, paid_at: 1790260292, oob_paid_on: '2026-09-24' }
 const openBill = { amount_paid: 0, paid_at: null, oob_paid_on: null }
 const cardPaid = { amount_paid: 60000, paid_at: 1790260292, oob_paid_on: null }

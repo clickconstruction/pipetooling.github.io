@@ -21,7 +21,7 @@ function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToo
       sortMode: 'number',
       contract: '',
       gc: '',
-      gcOptions: [{ id: 'gc-1', name: 'Knight Homes' }],
+      gcOptions: [{ id: 'gc-1', name: 'Kestrin Homes' }],
       development: '',
       developmentOptions: [],
       accountMan: '',
@@ -140,7 +140,7 @@ describe('JobsStagesToolsMenu', () => {
     unmount()
     const p = props({ filters: { ...props().filters, gc: 'gc-1' } })
     render(<JobsStagesToolsMenu {...p} />)
-    fireEvent.click(screen.getByText('Put Knight Homes on notice…'))
+    fireEvent.click(screen.getByText('Put Kestrin Homes on notice…'))
     expect(p.onPutGcOnNotice).toHaveBeenCalledWith('gc-1')
     expect(p.onOpenChange).toHaveBeenCalledWith(false)
   })

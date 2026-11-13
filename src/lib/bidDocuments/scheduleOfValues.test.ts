@@ -110,13 +110,13 @@ describe('the printed page', () => {
 
   it('builds the two pages with the totals, the footer and the fixture rows', () => {
     const html = buildScheduleOfValuesHtml({
-      title: 'PALMER WINERY — Schedule of values (materials)',
+      title: 'PALVERN WINERY — Schedule of values (materials)',
       subtitle: 'BP431 · takeoff materials by stage × 1.5',
       summary,
       unstagedNames: ['travel/rentals'],
       factorNote: 'Factor 1.5 is the company default.',
     })
-    expect(html).toContain('<title>PALMER WINERY — Schedule of values (materials)</title>')
+    expect(html).toContain('<title>PALVERN WINERY — Schedule of values (materials)</title>')
     expect(html).toContain('<strong>1 · Rough In</strong>')
     // rough: ½ × 400 + the sk line d (100) = 300 → × 1.5 = 450; trim: 400 + 300 = 700 → 1050; top: 200 → 300
     expect(html).toContain('<strong>$450.00</strong>')

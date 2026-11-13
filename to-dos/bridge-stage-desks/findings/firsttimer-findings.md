@@ -39,7 +39,7 @@ Takeaway (right): *We ask for about half of what the field needs. Call the quiet
 
 ## Sales
 
-1. **must** · the dark button is labeled with the move (*"Call Burd about Take 5 Georgetown"*) but pressing it takes the call OFF the sheet — verified, the footer dropped to 3 calls. A first-timer presses the instruction and undoes it. Keep the title as text; make the toggle its own words: *On the sheet ✓* / *Put it back on the sheet*, `aria-pressed` kept.
+1. **must** · the dark button is labeled with the move (*"Call Brund about Tune 5 Georgetown"*) but pressing it takes the call OFF the sheet — verified, the footer dropped to 3 calls. A first-timer presses the instruction and undoes it. Keep the title as text; make the toggle its own words: *On the sheet ✓* / *Put it back on the sheet*, `aria-pressed` kept.
 2. **should** · *"After the call: record the answer ›"* — the desk's most important write — is an 18px-tall text link. Make it a bordered ≥36px button; same for Open the bid / Bid Board links on phone.
 3. **should** · the header verdict and two notes use em dashes in first-read lines (*"$1.56M has gone quiet — four calls this week decide it"*). Split into two sentences each.
 4. **should** · the *owner · day* pill gives no example, so nobody knows what to type. Placeholder: *"who calls · which day, e.g. Sam · Thu"*.

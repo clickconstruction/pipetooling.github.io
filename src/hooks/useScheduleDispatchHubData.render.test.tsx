@@ -105,7 +105,7 @@ const MON = '2099-01-05'
 const PAST_WEEK = '2020-01-05'
 const PAST_WEEK_END = '2020-01-11'
 
-const JOB: ScheduleDispatchHubJobRow = { id: 'job-1', hcp_number: '927', job_name: 'Berg AirBnb', project_id: null, job_address: '12 Elm St' }
+const JOB: ScheduleDispatchHubJobRow = { id: 'job-1', hcp_number: '927', job_name: 'Birkby AirBnb', project_id: null, job_address: '12 Elm St' }
 
 function block(over: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
   return {
@@ -199,7 +199,7 @@ describe('useScheduleDispatchHubData — one load', () => {
     expect(new Set(io.fetchUserNamesForIds.mock.calls[0]?.[0])).toEqual(new Set(['abraham', 'zed', 'paige', 'carl']))
 
     expect(result.current.hubAllPeopleRows.map((r) => r.displayName)).toEqual(['Abraham', 'Carl', 'Paige'])
-    expect(result.current.hubJobTitleById.get('job-1')).toContain('Berg AirBnb')
+    expect(result.current.hubJobTitleById.get('job-1')).toContain('Birkby AirBnb')
     expect(result.current.getHubJobAddress('job-1')).toBe('12 Elm St')
     expect(result.current.hubPersonDayBlocks.get(hubPersonDayKey('carl', MON))?.map((b) => b.id)).toEqual(['blk-1'])
     expect(result.current.hubBlockById.get('blk-1')?.assignee_user_id).toBe('carl')

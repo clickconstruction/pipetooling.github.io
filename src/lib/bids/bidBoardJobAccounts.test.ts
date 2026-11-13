@@ -18,8 +18,8 @@ function row(over: Partial<BidJobAccountRow>): BidJobAccountRow {
     job_id: 'j1018',
     job_hcp_number: '1018',
     job_click_number: null,
-    job_name: 'Pondhill Building 2',
-    job_address: '4114 Pond Hill Rd',
+    job_name: 'Penmoor Building 2',
+    job_address: '4114 Pen Moor Rd',
     supply_house_id: 'h-ferg',
     house_name: 'Ferguson',
     policy: 'per_property',
@@ -77,7 +77,7 @@ describe('the page-wide read', () => {
 
   it('names the job and the houses on it, and which are missing', () => {
     const byBid = groupStripRowsByBid(rows)
-    expect(stripJob(byBid.get('b398')!)).toEqual({ id: 'j1018', hcpNumber: '1018', clickNumber: null, name: 'Pondhill Building 2' })
+    expect(stripJob(byBid.get('b398')!)).toEqual({ id: 'j1018', hcpNumber: '1018', clickNumber: null, name: 'Penmoor Building 2' })
     expect(housesOnJob(byBid.get('b398')!).length).toBe(2)
     expect(missingHouses(byBid.get('b398')!).map((r) => r.house_name)).toEqual(['Reece'])
     expect(missingHouses(byBid.get('b402')!)).toEqual([])

@@ -242,7 +242,7 @@ export async function readUserNamesAndTwins(userIds: readonly string[]): Promise
  */
 export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office'): Promise<DevelopmentPageData> {
   const office = door === 'office'
-  // The read is four round trips deep, not seven (the Gun Dog spike, 2026-11-02): the row and the members go
+  // The read is four round trips deep, not seven (the Gray Fox spike, 2026-11-02): the row and the members go
   // out together, the pay-speed read rides in the fan-out once the members name the payers (punch list #280 PR 2;
   // it left at once for every billed customer before), the prior numbers ride there too, and only the names
   // wait on everything.

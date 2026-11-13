@@ -20,7 +20,7 @@ function cand(overrides: Partial<ArRecordedPaymentCandidate> = {}): ArRecordedPa
     invoice_id: null,
     hcp_number: '941',
     click_number: null,
-    job_name: 'Berg AirBnb',
+    job_name: 'Birkby AirBnb',
     ...overrides,
   }
 }
@@ -35,7 +35,7 @@ describe('arRecordedPaymentJobNumber', () => {
 
 describe('arRecordedPaymentSearchLabel', () => {
   it('builds the full one-liner', () => {
-    expect(arRecordedPaymentSearchLabel(cand())).toBe('#941 Berg AirBnb — check $2,500.00 · 2026-07-22 · chk 1042')
+    expect(arRecordedPaymentSearchLabel(cand())).toBe('#941 Birkby AirBnb — check $2,500.00 · 2026-07-22 · chk 1042')
   })
 
   it('falls back to reference number when note is empty and survives missing fields', () => {
@@ -70,7 +70,7 @@ describe('arRecordedPaymentMatchesForQuery (v2.2597 — billed-line dead-end ste
       payment_id: 'p989',
       hcp_number: '',
       click_number: '989',
-      job_name: 'Montolongo- Pretest',
+      job_name: 'Montelby- Pretest',
       amount: 250,
       payment_type: 'Check',
       note: null,
@@ -78,7 +78,7 @@ describe('arRecordedPaymentMatchesForQuery (v2.2597 — billed-line dead-end ste
     })
     const rows = [cand(), j989]
     expect(arRecordedPaymentMatchesForQuery(rows, new Set(), '989').map((c) => c.payment_id)).toEqual(['p989'])
-    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), 'montolongo').map((c) => c.payment_id)).toEqual(['p989'])
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), 'montelby').map((c) => c.payment_id)).toEqual(['p989'])
     expect(arRecordedPaymentMatchesForQuery(rows, new Set(), 'zzz')).toEqual([])
   })
 

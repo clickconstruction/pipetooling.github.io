@@ -4,7 +4,7 @@
  * A job with two or more sent bills draws one row per bill, and every one of
  * those rows prints the whole job's money legend. Before this, the only thing a
  * row said about its own bill was its original amount, labelled "draft" — so
- * Springtown's Sep 1 bill read "$11,770 draft · 25d past" while $11,182 of it
+ * Stonewick's Sep 1 bill read "$11,770 draft · 25d past" while $11,182 of it
  * was paid and $588 was left. This line says what is paid and what is left on
  * the row's own bill: *This bill · $11,182 paid* … *$588 left*.
  *

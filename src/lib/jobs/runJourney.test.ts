@@ -8,17 +8,17 @@ import type { RunNotice, RunRecipient, RunSendMethod } from './lienDeskRun'
 
 /** A notice with two recipients, signed unless told otherwise; the run's problems come from the real `runNoticeProblems`. */
 function notice(itemId: string, jobNumber: string, over: Partial<RunNotice> = {}): RunNotice {
-  const owner: RunRecipient = { key: 'owner', label: 'Owner of record', name: 'ATI Schertz Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' }
-  const gc: RunRecipient = { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '4303 Thousand Oaks Dr, San Antonio, TX 78217', email: 'ap@loberg.example', method: 'certified_mail', tracking: '' }
+  const owner: RunRecipient = { key: 'owner', label: 'Owner of record', name: 'AXO Schertz Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' }
+  const gc: RunRecipient = { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '4303 Thousand Oaks Dr, San Antonio, TX 78217', email: 'ap@lowbeck.example', method: 'certified_mail', tracking: '' }
   return {
     itemId,
     jobId: `j-${jobNumber}`,
     kind: 'notice_53_056',
-    label: `${jobNumber} · ATI Schertz`,
+    label: `${jobNumber} · AXO Schertz`,
     jobNumber,
     months: ['2026-06'],
     amount: 33500,
-    fields: { claimantName: 'Click', contactPerson: 'Robert Douglas', originalContractorName: 'Loberg Contracting' } as RunNotice['fields'],
+    fields: { claimantName: 'Click', contactPerson: 'Robert Douglas', originalContractorName: 'Lowbeck Contracting' } as RunNotice['fields'],
     extras: {} as RunNotice['extras'],
     coverNote: null,
     coverLetter: null,

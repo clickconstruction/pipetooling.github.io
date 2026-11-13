@@ -19,7 +19,7 @@ const rates = new Map([
 ])
 const labels = new Map([
   ['j1', '1047 Magnus Sewer Line'],
-  ['j2', '1017 Terrell'],
+  ['j2', '1017 Tarrow'],
 ])
 const s = (userId: string, workDate: string, hours: number, jobId = 'j1', pending = false): VectorSession => ({ userId, workDate, hours, jobId, onBid: false, officeJob: false, approved: !pending, pending })
 
@@ -42,7 +42,7 @@ describe('buildWeekCards', () => {
     expect(wk.effort).toBe('20h on record · 2 sessions · 2 people · $45 an hour')
     expect(wk.jobs.map((j) => [j.label, j.usd])).toEqual([
       ['1047 Magnus Sewer Line', '$1.0k'],
-      ['1017 Terrell', '$0.6k'],
+      ['1017 Tarrow', '$0.6k'],
     ])
     expect(wk.jobs[1]!.share).toBeCloseTo(0.6, 5)
     expect(wk.foot).toContain('against the 8-week average')

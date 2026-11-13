@@ -150,14 +150,14 @@ describe('buildSubsHqRows', () => {
   })
 
   it('v2.6486: a settled step work order and the paid sheet its settlement minted count once, not twice', () => {
-    const fixed = (amount: number) => [{ fixture: 'Rough In — Dudley Mason', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
+    const fixed = (amount: number) => [{ fixture: 'Rough In — Dunmere Mallin', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
     const result = buildSubsHqRows({
       people: [BEHAR],
       users: [],
       sheets: [sheet({ id: 'minted', items: fixed(3000), payments: [{ id: 'a', amount: 3000, memo: null, created_at: '2026-07-01' }] })],
       assignees: [{ labor_job_id: 'minted', person_id: 'p-behar' }],
       // settle_step_commitment keeps step_id on the order (so the tab passes no sheetLabel) and writes the sheet it minted to labor_job_id.
-      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dudley Mason', laborJobId: 'minted' }],
+      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dunmere Mallin', laborJobId: 'minted' }],
       docs: [],
       todayYmd: TODAY,
     })
@@ -168,13 +168,13 @@ describe('buildSubsHqRows', () => {
   })
 
   it('v2.6486: a settled step work order whose minted sheet is still unpaid counts once, on the order, and the sheet still owes', () => {
-    const fixed = (amount: number) => [{ fixture: 'Rough In — Dudley Mason', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
+    const fixed = (amount: number) => [{ fixture: 'Rough In — Dunmere Mallin', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
     const result = buildSubsHqRows({
       people: [BEHAR],
       users: [],
       sheets: [sheet({ id: 'minted', items: fixed(3000), payments: [] })],
       assignees: [{ labor_job_id: 'minted', person_id: 'p-behar' }],
-      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dudley Mason', laborJobId: 'minted' }],
+      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dunmere Mallin', laborJobId: 'minted' }],
       docs: [],
       todayYmd: TODAY,
     })
@@ -191,8 +191,8 @@ describe('buildSubsHqRows', () => {
       sheets: [],
       assignees: [],
       commitments: [
-        { person_id: 'p-behar', amount: 6400, status: 'accepted', stepName: 'Top Out', projectName: 'Dudley Mason' },
-        { person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dudley Mason' },
+        { person_id: 'p-behar', amount: 6400, status: 'accepted', stepName: 'Top Out', projectName: 'Dunmere Mallin' },
+        { person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dunmere Mallin' },
         { person_id: 'p-behar', amount: 100, status: 'cancelled', stepName: null, projectName: null },
       ],
       docs: [
@@ -216,7 +216,7 @@ describe('buildSubsHqRows', () => {
       users: [],
       sheets: [],
       assignees: [],
-      commitments: [{ person_id: 'p-behar', amount: 6400, status: 'offered', stepName: null, projectName: null, sheetLabel: 'J977 · 415 Springtown Way' }],
+      commitments: [{ person_id: 'p-behar', amount: 6400, status: 'offered', stepName: null, projectName: null, sheetLabel: 'J977 · 415 Stonewick Way' }],
       docs: [
         { person_id: 'p-behar', person_name: null, doc_type: 'other', status: 'signed', expires_at: null, applied_contract_template_document_id: 'gc-doc', applied_version_date: '2026-03-02', document_name: 'General Conditions' },
         { person_id: 'p-behar', person_name: null, doc_type: 'other', status: 'signed', expires_at: null, applied_contract_template_document_id: null, applied_version_date: '2026-06-19', document_name: 'general conditions ' },
@@ -225,7 +225,7 @@ describe('buildSubsHqRows', () => {
       generalConditions: { documentId: 'gc-doc', documentName: 'General Conditions', bookVersionDate: '2026-06-19' },
     })
     const behar = result.rows.find((r) => r.personId === 'p-behar')!
-    expect(behar.openCommitments[0]!.sheetLabel).toBe('J977 · 415 Springtown Way')
+    expect(behar.openCommitments[0]!.sheetLabel).toBe('J977 · 415 Stonewick Way')
     expect(behar.generalConditions).toBe('current')
     expect(result.rows.find((r) => r.personId === 'p-kyle')!.generalConditions).toBe('unsigned')
   })

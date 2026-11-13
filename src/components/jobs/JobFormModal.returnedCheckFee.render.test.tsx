@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Edit Job keeps a returned check's fee in the job's total. Southern Post's shape, as v2.5033's tests drew it:
+ * Edit Job keeps a returned check's fee in the job's total. Southern Pine's shape, as v2.5033's tests drew it:
  * bill 1 is the $13,680 rough-in, and the $30 returned check fee went on it (`add_ar_return_case_fee`), so the
  * bill reads $13,710 and the job's revenue grew by $30 with it. The final line, $2,000, is not billed yet.
  *
@@ -58,11 +58,11 @@ const line = (id: string, name: string, price: number, seq: number, invoiceId: s
   shared_with_gc: false,
 })
 
-function southernPost() {
+function southernPine() {
   return makeJob({
     id: 'job-sp',
     hcp_number: '878',
-    job_name: 'Southern Post',
+    job_name: 'Southern Pine',
     status: 'working',
     revenue: 15_710,
     fixtures: [line('f-rough', 'Rough-in', 13_680, 0, 'inv-878'), line('f-final', 'Final', 2_000, 1, null)],
@@ -72,8 +72,8 @@ function southernPost() {
 
 const revenueWrites = () => db.jobWrites.filter((w) => 'revenue' in w).map((w) => w.revenue)
 
-async function openSouthernPost(onClose: () => void) {
-  db.job = southernPost()
+async function openSouthernPine(onClose: () => void) {
+  db.job = southernPine()
   db.jobWrites = []
   renderWithProviders(
     <JobFormModal mode="edit" editJobId="job-sp" initialJob={null} billingCustomerHighlightInitial={false} fixturesSectionHighlightInitial={false} jobPicturesLinkHighlightInitial={false} alsoOpenCreateCustomerModal={false} onClose={onClose} onSaved={null} />,
@@ -85,7 +85,7 @@ async function openSouthernPost(onClose: () => void) {
 describe("Edit Job keeps a returned check's $30 fee in the job's total", () => {
   it('a money edit writes the line items and the fee on bill 1 as the revenue', async () => {
     const onClose = vi.fn()
-    await openSouthernPost(onClose)
+    await openSouthernPine(onClose)
     // The final line goes to 2: $13,680 + $4,000 + the $30 fee.
     const counts = screen.getAllByRole('spinbutton', { name: 'Count' }).filter((el) => !(el as HTMLInputElement).disabled)
     expect(counts).toHaveLength(1)
@@ -98,21 +98,21 @@ describe("Edit Job keeps a returned check's $30 fee in the job's total", () => {
   })
 
   it('the Job Total counts the fee as a rider before anything is saved', async () => {
-    await openSouthernPost(vi.fn())
+    await openSouthernPine(vi.fn())
     // The cents read small since v2.6300, so the total is read whole off the button's text.
     expect(await screen.findByText((_, el) => el?.tagName === 'BUTTON' && el.textContent === 'Job Total: $15,710.00 ($15,680.00 work + $30.00 riders)')).toBeTruthy()
     expect(db.jobWrites).toEqual([])
   })
 
   it('the Bill tab’s riders block stays the hazmat fees it names: the check fee is already on bill 1', async () => {
-    await openSouthernPost(vi.fn())
+    await openSouthernPine(vi.fn())
     const card = await screen.findByTestId('money-card')
     expect(within(card).getByText('Final')).toBeTruthy()
     expect(within(card).queryByText('Riders (hazmat fees)')).toBeNull()
   })
 
   it('the Final line reads not billed: the $30 is bill 1’s own line, not money covering Final (v2.5102)', async () => {
-    await openSouthernPost(vi.fn())
+    await openSouthernPine(vi.fn())
     const card = await screen.findByTestId('money-card')
     expect(within(card).queryByText(/covered/)).toBeNull()
     expect(within(card).getByText(/not billed/)).toBeTruthy()

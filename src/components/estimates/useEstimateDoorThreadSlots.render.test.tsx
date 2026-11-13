@@ -14,7 +14,7 @@ import { useEstimateDoorThreadSlots } from './useEstimateDoorThreadSlots'
 
 afterEach(cleanup)
 
-const SUBJECT = 'Estimate #166 — Estimate for Evan Johnson — $6,250 · Click Plumbing and Electrical'
+const SUBJECT = 'Estimate #166 — Estimate for Evan Jarrow — $6,250 · Click Plumbing and Electrical'
 const CONTACT = { id: 'c-evan' } as Contact
 const message = (set: Partial<ThreadMessage> = {}): ThreadMessage =>
   ({ id: 'm1', contactId: 'c-evan', jobId: null, channel: 'email', direction: 'out', at: '2026-10-20T18:33:00Z', who: 'Taunya', subject: SUBJECT, body: SUBJECT, ...set }) as ThreadMessage

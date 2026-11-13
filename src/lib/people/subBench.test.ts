@@ -76,10 +76,10 @@ describe('note lines and helpers', () => {
     const rows = [
       { name: 'Cale', balanceDue: 0, committedTotal: 0, s: subBenchStatus({ ...base, endDate: '2026-06-02', lastWorkedYmd: '2026-02-11' }, TODAY) },
       { name: 'Behar', balanceDue: 0, committedTotal: 0, s: subBenchStatus({ ...base, lastWorkedYmd: '2026-08-28' }, TODAY) },
-      { name: 'Texas R & A', balanceDue: 40000, committedTotal: 0, s: subBenchStatus({ ...base, lastWorkedYmd: '2026-08-14' }, TODAY) },
+      { name: 'Texas Q & E', balanceDue: 40000, committedTotal: 0, s: subBenchStatus({ ...base, lastWorkedYmd: '2026-08-14' }, TODAY) },
       { name: 'Bill', balanceDue: 0, committedTotal: 0, s: subBenchStatus({ ...base, createdYmd: '2026-07-01' }, TODAY) },
     ]
     const sorted = [...rows].sort((a, b) => compareSubsForBench(a, b, a.s, b.s)).map((r) => r.name)
-    expect(sorted).toEqual(['Texas R & A', 'Behar', 'Bill', 'Cale'])
+    expect(sorted).toEqual(['Texas Q & E', 'Behar', 'Bill', 'Cale'])
   })
 })

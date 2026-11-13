@@ -41,7 +41,7 @@ describe('house policy and contact role', () => {
     const reps = [
       { id: 'a', name: 'Cristian', email: 'c@f.com', phone: null, role: 'price_requests' },
       { id: 'b', name: 'Curly', email: 'curly@f.com', phone: '210-344-4950', role: 'job_accounts', archived_at: '2026-01-01' },
-      { id: 'c', name: 'Curly Conley', email: 'curly2@f.com', phone: '210-344-4950', role: 'job_accounts' },
+      { id: 'c', name: 'Curly Conmere', email: 'curly2@f.com', phone: '210-344-4950', role: 'job_accounts' },
     ]
     expect(jobAccountRepOf(reps)?.id).toBe('c')
     expect(jobAccountRepOf(reps.slice(0, 1))).toBeNull()

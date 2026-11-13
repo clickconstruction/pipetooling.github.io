@@ -16,7 +16,7 @@ import {
 const bid = (o: Partial<LossTriageBid> = {}): LossTriageBid => ({
   id: 'b1',
   builderKey: 'k1',
-  builderName: 'Knight Contracting',
+  builderName: 'Kestrin Contracting',
   value: 100000,
   category: null,
   ...o,
@@ -179,7 +179,7 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
     const s = lossReasonState({ loss_category: null, loss_reason: null }, [
       pk('Structura, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
       pk('PlanHub - Subcontractor Prime Opportunity', 'lost', [{ loss_category: 'price', outcome_note: NOTE }, { loss_category: 'price', outcome_note: NOTE }]),
-      pk('Workman Commercial', null, [], true),
+      pk('Wrenman Commercial', null, [], true),
     ])
     expect(s.categorized).toBe(true)
     expect(s.source).toBe('packets')
@@ -192,7 +192,7 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
   })
 
   it('a single-GC bid marked lost from the Sent panel keeps its reason on its one version — categorized, one line', () => {
-    const s = lossReasonState({ loss_category: null, loss_reason: '' }, [pk('Knight Contracting', 'lost', [{ loss_category: 'other_sub', outcome_note: null }])])
+    const s = lossReasonState({ loss_category: null, loss_reason: '' }, [pk('Kestrin Contracting', 'lost', [{ loss_category: 'other_sub', outcome_note: null }])])
     expect(s.categorized).toBe(true)
     expect(s.source).toBe('packets')
     expect(s.lines.map((l) => l.label)).toEqual(['Went with another sub'])
@@ -201,11 +201,11 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
   it('one lost GC still without a reason: not categorized, missing names it, the recorded lines still read', () => {
     const s = lossReasonState({ loss_category: null, loss_reason: null }, [
       pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]),
-      pk('Burd & Assoc.', 'lost', [{ loss_category: null }]),
+      pk('Brund & Assoc.', 'lost', [{ loss_category: null }]),
     ])
     expect(s.categorized).toBe(false)
     expect(s.source).toBe('none')
-    expect(s.missing).toEqual(['Burd & Assoc.'])
+    expect(s.missing).toEqual(['Brund & Assoc.'])
     expect(s.lines.map((l) => l.gcName)).toEqual(['Structura'])
   })
 
@@ -222,7 +222,7 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
   })
 
   it('a shared-letter GC and a GC not marked lost never count either way; a bad category key on a version is no reason', () => {
-    expect(lossReasonState({ loss_category: null }, [pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Knight', null, [{ loss_category: null }]), pk('Workman', null, [], true)]).categorized).toBe(true)
+    expect(lossReasonState({ loss_category: null }, [pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Kestrin', null, [{ loss_category: null }]), pk('Wrenman', null, [], true)]).categorized).toBe(true)
     expect(lossReasonState({ loss_category: null }, [pk('Structura', 'lost', [{ loss_category: 'nonsense' }])])).toMatchObject({ categorized: false, missing: ['Structura'] })
   })
 

@@ -220,8 +220,10 @@ export default function StagesBilledMoneyModals({
       chaseTodayYmd,
       gcTemperatureById,
       billedPace,
+      payCalendars,
+      acceptedByInvoice,
     )
-  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPace])
+  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPace, payCalendars, acceptedByInvoice])
 
   return (
     <>
@@ -322,6 +324,8 @@ export default function StagesBilledMoneyModals({
           focusRows={payerFocusRows}
           rows={unfilteredBoardLists.billedActiveRows}
           paySpeeds={billedPaySpeeds}
+          payCalendars={payCalendars}
+          acceptedByInvoice={acceptedByInvoice}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setPaySpeedsPayer(null)}
           onOpenJobDetail={(jobId) => {

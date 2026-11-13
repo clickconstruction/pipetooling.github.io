@@ -13,7 +13,7 @@ import DispatchModeSchedule from './DispatchModeSchedule'
 const openJobDetail = vi.fn()
 /** The day's blocks the agenda reads; a test empties it to see the empty day. */
 let mockDayBlocks: Array<Record<string, unknown>> = []
-const BLOCK_473 = { id: 'b1', assigneeUserId: 'u-m', assigneeName: 'Malachi', timeStart: '07:00:00', timeEnd: '09:00:00', note: null, sharedBlockGroupId: null, jobId: 'j473', hcpNumber: '473', clickNumber: null, jobName: 'Mike Holub', jobAddress: '109 Tuscarora Trail', customerName: 'Mike Holub', serviceTypeName: null }
+const BLOCK_473 = { id: 'b1', assigneeUserId: 'u-m', assigneeName: 'Malachi', timeStart: '07:00:00', timeEnd: '09:00:00', note: null, sharedBlockGroupId: null, jobId: 'j473', hcpNumber: '473', clickNumber: null, jobName: 'Mike Holmby', jobAddress: '109 Tamberline Trail', customerName: 'Mike Holmby', serviceTypeName: null }
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -51,13 +51,13 @@ describe('DispatchModeSchedule · the block sheet', () => {
     const block = document.querySelector('[data-dispatch-mode-block="b1"]') as HTMLElement
     expect(block).toBeTruthy()
     fireEvent.click(block)
-    const sheet = screen.getByRole('dialog', { name: /473 · Mike Holub/ })
+    const sheet = screen.getByRole('dialog', { name: /473 · Mike Holmby/ })
     expect([...sheet.querySelectorAll('button')].map((b) => b.querySelector('span')?.textContent ?? b.textContent)).toEqual(['Open the job', 'Add a note', 'Move or reassign', 'Remove from the schedule', 'Close'])
     expect(sheet.textContent).toContain('Malachi')
     fireEvent.click(screen.getByText('Move or reassign'))
     await settle()
     expect(screen.queryByText('Remove from the schedule')).toBeNull()
-    expect(document.body.textContent).toContain('473 · Mike Holub')
+    expect(document.body.textContent).toContain('473 · Mike Holmby')
   })
 
   it('Open the job opens the job window', async () => {

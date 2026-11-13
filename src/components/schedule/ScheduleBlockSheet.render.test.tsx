@@ -12,7 +12,7 @@ vi.mock('../dispatchMode/DispatchModeFooter', () => ({ DISPATCH_MODE_FOOTER_HEIG
 
 afterEach(cleanup)
 
-const base = { title: 'J473 · Mike Holub', subtitle: '7:00 AM–9:00 AM · Malachi · 109 Tuscarora Trail', note: '', onClose: () => {}, onOpenJob: () => {} }
+const base = { title: 'J473 · Mike Holmby', subtitle: '7:00 AM–9:00 AM · Malachi · 109 Tamberline Trail', note: '', onClose: () => {}, onOpenJob: () => {} }
 
 describe('ScheduleBlockSheet', () => {
   it('the Day tab’s sheet: Open the job · Add a note · Move or reassign · Remove, and each fires its handler', () => {
@@ -22,8 +22,8 @@ describe('ScheduleBlockSheet', () => {
     const onRemove = vi.fn()
     const onClose = vi.fn()
     render(<ScheduleBlockSheet {...base} onClose={onClose} onOpenJob={onOpenJob} onEditNote={onEditNote} onMove={onMove} moveLabel="Move or reassign" moveHint="Pick the day and the person" onRemove={onRemove} />)
-    const dialog = screen.getByRole('dialog', { name: 'J473 · Mike Holub' })
-    expect(dialog.textContent).toContain('7:00 AM–9:00 AM · Malachi · 109 Tuscarora Trail')
+    const dialog = screen.getByRole('dialog', { name: 'J473 · Mike Holmby' })
+    expect(dialog.textContent).toContain('7:00 AM–9:00 AM · Malachi · 109 Tamberline Trail')
     const labels = [...dialog.querySelectorAll('button')].map((b) => b.querySelector('span')?.textContent ?? b.textContent)
     expect(labels).toEqual(['Open the job', 'Add a note', 'Move or reassign', 'Remove from the schedule', 'Close'])
     fireEvent.click(screen.getByText('Open the job'))
