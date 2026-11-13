@@ -49,7 +49,7 @@ On their portal they see a card for the records. They type their name. It must m
 
 When they sign, checks 1 and 4 turn green on your window. Check 4 names them and how they signed. The office still does check 2 and presses **Record it as sent**. The owner sees nothing of the packet until then.
 
-The Dashboard's **Needs you** card tells you when they sign. It reads like *Umar Khan signed for the records on 9703 Lenox Hill*. Press {{button:amber|Open their request}} on it. The Lien desk opens with this window on their property. The line stays until you record the packet as sent.
+The Dashboard's **Needs you** card tells you when they sign. It reads like *Ulric Karrow signed for the records on 9703 Linmor Hill*. Press {{button:amber|Open their request}} on it. The Lien desk opens with this window on their property. The line stays until you record the packet as sent.
 
 To send it on their portal, pick **On their portal** as how it went, then press {{button:blue|Record it as sent}}. The owner's card then has one button, **Download the records**. It saves the cover note and the statement as one PDF. Nothing else is listed on their portal.
 
@@ -65,6 +65,6 @@ You can close the window and come back. The checks you put on file are kept.
 
 A copy of each page is kept when you print it or download it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
 
-:::example Umar Khan asks about 9703 Lenox Hl
-He emails on Oct 3. Taunya opens the desk, presses An owner asked for records, and picks him. The packet shows four jobs and $29,337 owed. She puts his email on file. Malachi reads the Dudley contract and ticks check 2. She prints the acknowledgment. He signs it on Oct 6. She prints the packet, hands it to him, and records it as sent.
+:::example Ulric Karrow asks about 9703 Linmor Hl
+He emails on Oct 3. Taunya opens the desk, presses An owner asked for records, and picks him. The packet shows four jobs and $29,337 owed. She puts his email on file. Malachi reads the Dunmere contract and ticks check 2. She prints the acknowledgment. He signs it on Oct 6. She prints the packet, hands it to him, and records it as sent.
 :::

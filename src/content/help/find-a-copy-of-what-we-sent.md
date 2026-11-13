@@ -68,6 +68,6 @@ Our own working sheets and reports are not sends, so they are not kept here. Pay
 
 The office can. That is the leader, the assistants and the controller.
 
-:::example Did Umar Khan get the October figure
-Taunya opens job 273 and presses Documents. Under Sent from this job she sees Records for 9703 Lenox Hill, handed over on Oct 6. She presses the name. The window shows $30,387.00 owed, the figure he was given that day.
+:::example Did Ulric Karrow get the October figure
+Taunya opens job 273 and presses Documents. Under Sent from this job she sees Records for 9703 Linmor Hill, handed over on Oct 6. She presses the name. The window shows $30,387.00 owed, the figure he was given that day.
 :::

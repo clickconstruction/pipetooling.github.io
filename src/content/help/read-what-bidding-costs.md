@@ -54,7 +54,7 @@ Each row shows **Bids**, every bid in the window, clocked or not. Then **With ti
 
 **By GC** is the one to read when you are deciding who to keep bidding for. A GC with twenty bids, no wins and a 0% hit rate is costing estimating hours. Another GC's plans would repay those hours.
 
-You click a row to drop into the Pursuit ledger filtered to that person or GC. A {{chip:blue|Knight Contracting ×}} chip marks the filter. You tap it to clear.
+You click a row to drop into the Pursuit ledger filtered to that person or GC. A {{chip:blue|Kestrin Contracting ×}} chip marks the filter. You tap it to clear.
 
 :::example Counts read every bid; spend reads the clocked ones
 A bid nobody clocked against still won or lost, so it counts toward the hit rate. It just adds nothing to hours or spend. That keeps the rate honest while the bid clock is young.
