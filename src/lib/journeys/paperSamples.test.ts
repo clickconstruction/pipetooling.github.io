@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PAPER_IDS, SAMPLE_JOB, SAMPLE_OWNER, paperSample, sampleBillDocument, sampleDemandLetterFields, sampleHazmatInputs, sampleLienReleaseInputs, sampleOwnerNoticeInputs } from './paperSamples'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from '../customerSample'
+import { SAMPLE_PAY_CODE_ID } from './samplePayCode'
 import { customerJourneys } from '../customerJourneys'
 import { sampleLienDays } from './lienLetterSamples'
 
@@ -50,8 +51,19 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
     const p = paperSample('demand-letter', TODAY)
     expect(p.html).toContain(SAMPLE_HOMEOWNER.name)
     expect(p.html).toContain('1,850')
-    // How to pay is a whole sentence, so the dispute line after it starts its own (v2.7080).
-    expect(p.html).toContain('Pay by card or bank transfer from the bill link, or by check to the office. If you believe this balance is incorrect')
+    // v2.7086: the sample is the letter the Lien window builds, letter first. The bill is a statement of account behind the signature.
+    expect([f.layout, f.statement?.length, f.statement?.[0]?.invoiceNumber, f.paymentMethod]).toEqual(['letter-first', 1, `#${SAMPLE_JOB.number}`, ''])
+    expect([f.feeClockYmd, f.interestBasis, f.interestFromYmd, f.includeLateFees]).toEqual(['2026-10-16', 'ch28', '2026-08-31', true])
+    expect(f.lienBlockedReason).toContain('homestead')
+    expect(p.html.indexOf('Sincerely,')).toBeLessThan(p.html.indexOf('<div data-demand-page-break'))
+    expect(p.html.indexOf('<div data-demand-page-break')).toBeLessThan(p.html.indexOf('Statement of account'))
+    expect(p.html).toContain('for the work on the statement of account behind this letter')
+    // Its one pay code sits in the amount box: the kept drawing, at the sample bill's own address.
+    const box = p.html.slice(p.html.indexOf('data-demand-amount-box'), p.html.indexOf('</table>', p.html.indexOf('data-demand-amount-box')))
+    expect(box).toContain(`data-demand-pay-code="${SAMPLE_PAY_CODE_ID}"`)
+    expect(box).toContain('viewBox="0 0 37 37"')
+    expect(box).toContain('or go to clicktooling.com/pay/sample')
+    expect(p.html).toContain('Exhibit A')
   })
 
   it('the notice to the owner of record names the builder as original contractor and the project', () => {
