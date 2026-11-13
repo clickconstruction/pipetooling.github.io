@@ -34,7 +34,7 @@ export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'o
   // the pay page (v2.3758) rides behind the form, in front of the invoices it points at.
   const parts: Blob[] = []
   // The window envelope (the Docsmit train, PR 4): a copy that mails through a provider carries the recipient block at the window zone and the pay page's code under it.
-  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0, window: opts.window ?? null })))
+  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0, window: opts.window ?? null }), { fit: 'one-page' }))
   // The conditional release (v2.4729): behind the owner's letter, behind the GC's form — as the printed packet stacks it.
   const release = n.release ? await buildLienWaiverPdfBlob(n.release.formType, n.release.fields, n.release.signature) : null
   if (recipientKey === 'owner' && release) parts.push(release)

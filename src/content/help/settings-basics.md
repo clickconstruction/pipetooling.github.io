@@ -69,7 +69,7 @@ Push notifications are how the app reaches you: dispatch alerts, report notifica
 1. Tap {{button:blue|Enable push notifications}}.
 2. When it shows {{chip:green|Enabled}}, you send a **Test notification**. You should see "If you see this, push notifications are working!"
 
-Recent notifications you've received are listed under the **Activity logs** tab, in the System group, as *Most recent push notifications*. So you can catch up on anything you dismissed. The owner and devs also see "Most recent emails sent" there, 25 at a time. That list shows every email the app has sent, with delivery status. In that list, rows from a recurring stream are clickable. Recurring streams are digests, Paid in Full, Billed reports and the like. You tap one and land on that stream's card in **Emails & reports**. The card is highlighted, so you can see who's subscribed.
+Recent notifications you've received are listed under the **Activity logs** tab, in the System group, as *Most recent notifications*. So you can catch up on anything you dismissed. A notice that someone saved your mail to a job is listed there too. The owner and devs also see "Most recent emails sent" there, 25 at a time. That list shows every email the app has sent, with delivery status. In that list, rows from a recurring stream are clickable. Recurring streams are digests, Paid in Full, Billed reports and the like. You tap one and land on that stream's card in **Emails & reports**. The card is highlighted, so you can see who's subscribed.
 
 On a phone, you add the app to your Home Screen from the browser's Share menu. Then the app and its notifications behave like an app installed from the app store.
 
