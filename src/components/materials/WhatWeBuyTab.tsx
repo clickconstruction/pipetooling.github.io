@@ -9,6 +9,14 @@ import type { PurchaseData, PurchaseLinesIo } from '../../lib/materials/lines/pu
 import type { HeldBillsIo } from '../../lib/materials/lines/heldBillsIo'
 import { heldBills } from '../../lib/materials/lines/heldBills'
 import { defaultSpan, dollarsWords, monthWords, priceWords, quantityWords, timesWords, WHAT_WE_BUY_FOOT, whatWeBuy, type BuyFilters, type BuyRow, type BuySort } from '../../lib/materials/lines/whatWeBuy'
+import { PriceOverTime } from './PriceOverTime'
+
+/** The tab's own views: the sums, and one row's price bill by bill (punch list #298 PR 4b). */
+type BuyView = 'buy' | 'price'
+const VIEWS: { key: BuyView; label: string }[] = [
+  { key: 'buy', label: 'What we buy' },
+  { key: 'price', label: 'Price over time' },
+]
 
 /** Rows drawn before the press that shows the rest. */
 const ROWS_AT_FIRST = 100
@@ -62,6 +70,8 @@ export function WhatWeBuyTab({ io, heldIo }: { io: PurchaseLinesIo; /** For the 
   const span = useMemo(() => defaultSpan(todayYmdInAppTz()), [])
   const [filters, setFilters] = useState<BuyFilters>(() => ({ houseId: '', jobId: '', ...span, sort: 'spend' }))
   const [showAll, setShowAll] = useState(false)
+  const [viewKey, setViewKey] = useState<BuyView>('buy')
+  const [priceKey, setPriceKey] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setBusy(true)
@@ -103,6 +113,14 @@ export function WhatWeBuyTab({ io, heldIo }: { io: PurchaseLinesIo; /** For the 
 
   const view = useMemo(() => (data ? whatWeBuy({ lines: data.lines, teaches: data.teaches, partNames: data.partNames, houseNames: data.houseNames, shares, filters }) : null), [data, shares, filters])
 
+  // Every row over all the months on file, the most spent first, for Price over time's picker.
+  const allRows = useMemo(() => {
+    if (!data) return []
+    const months = data.lines.map((l) => (l.datedOn ?? '').slice(0, 7)).filter(Boolean).sort()
+    if (months.length === 0) return []
+    return whatWeBuy({ lines: data.lines, teaches: data.teaches, partNames: data.partNames, houseNames: data.houseNames, filters: { houseId: '', jobId: '', fromMonth: months[0]!, toMonth: months[months.length - 1]!, sort: 'spend' } }).rows
+  }, [data])
+
   const houses = useMemo(() => (data ? [...data.houseNames.entries()].filter(([id]) => data.lines.some((l) => l.houseId === id)).sort((a, b) => a[1].localeCompare(b[1])) : []), [data])
   const jobs = useMemo(() => (data ? [...data.jobNames.entries()].sort((a, b) => a[1].localeCompare(b[1])) : []), [data])
 
@@ -130,13 +148,51 @@ export function WhatWeBuyTab({ io, heldIo }: { io: PurchaseLinesIo; /** For the 
 
   const partCell = (r: BuyRow) => (
     <td style={{ ...cell, minWidth: 200 }}>
-      <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{r.name}</div>
+      {/* The name is the door to the row's prices, bill by bill: a word press, so the underline alone. */}
+      <button
+        type="button"
+        title="See what was paid for it, bill by bill"
+        onClick={() => {
+          setPriceKey(r.key)
+          setViewKey('price')
+        }}
+        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-strong)', textDecoration: 'underline', textAlign: 'left', cursor: 'pointer' }}
+      >
+        {r.name}
+      </button>
       {r.byCode ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>no part yet · {r.byCode}</div> : null}
     </td>
   )
 
+  const viewStrip = (
+    <div role="tablist" aria-label="What we buy" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', marginBottom: '0.9rem' }}>
+      {VIEWS.map((v) => (
+        <button
+          key={v.key}
+          type="button"
+          role="tab"
+          aria-selected={viewKey === v.key}
+          onClick={() => setViewKey(v.key)}
+          style={{ padding: '0.45rem 0.8rem', border: 'none', borderBottom: viewKey === v.key ? '2px solid #2563eb' : '2px solid transparent', background: 'none', font: 'inherit', fontSize: '0.875rem', fontWeight: viewKey === v.key ? 700 : 500, color: viewKey === v.key ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (viewKey === 'price') {
+    return (
+      <div data-testid="what-we-buy">
+        {viewStrip}
+        <PriceOverTime data={data} io={io} rows={allRows} rowKey={priceKey} onPick={setPriceKey} />
+      </div>
+    )
+  }
+
   return (
     <div data-testid="what-we-buy">
+      {viewStrip}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '0.75rem' }}>
         <label style={label}>
           House

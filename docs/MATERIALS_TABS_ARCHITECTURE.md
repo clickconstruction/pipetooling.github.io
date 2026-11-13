@@ -192,6 +192,7 @@ Page-level modals: `PartFormModal` (extracted; opened from Parts Book, Assembly 
 - **Parent JSX:** `<WhatWeBuyTab io heldIo>`, mounted while it is the tab and the role may open it; the two reads are module constants of `Materials.tsx`. The service-type row is hidden on this tab.
 - **What it is:** punch list #298's stage 4. Every bill's lines that count as purchases (`supply_purchase_lines`), added up per part, or per house and code where no part is matched.
 - **Inside the tab:** all state. Kernel [`whatWeBuy.ts`](../src/lib/materials/lines/whatWeBuy.ts) (tested), reads [`purchaseLinesIo.ts`](../src/lib/materials/lines/purchaseLinesIo.ts) (paged, a ZZ test house left out), a failed read on `OfflineRetryPanel`.
+- **Its views:** a strip inside the tab. *What we buy* is the sums; *Price over time* (v2.7116) is [`PriceOverTime`](../src/components/materials/PriceOverTime.tsx) over [`priceOverTime.ts`](../src/lib/materials/lines/priceOverTime.ts), fed the same read, plus the book's prices for the one part on screen.
 - **External coupling:** none. *Bills not counted* links to `?tab=supply-houses`.
 
 ### `po-generator` — PO Generator
