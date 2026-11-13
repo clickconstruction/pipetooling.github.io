@@ -31,6 +31,7 @@ The top row of figures reads the site at a glance.
 - **Can't find** and **Short at a count** count the lines to chase.
 - **Missing this week** is the money that walked away.
 - **This week** is what came in and what was used.
+- **Worth** is the money of the material that has a price. A smaller line says how many lines have one.
 
 The counts are only as fresh as the last press. Read **Last recorded** before you trust a total.
 
@@ -45,6 +46,10 @@ Some names are nearly the same. One may have one more word, or a small spelling 
 The chip **Same part?** beside By place lists only the rows with a question. The app asks only when the sizes match. A 2 inch part and a 3 inch part are never offered as one.
 
 To take a join back, press the row to open it. **Names joined here** lists each pair with who joined it. Press **Undo** beside a pair. A join never changes a count or a box.
+
+**Worth** is never the whole site unless every line has a price. Read the smaller line with it, such as *9 of 118 lines have a price*. Press **Worth** to list the rows with no price, most pieces first.
+
+A name typed on site has no price until it is tied to the parts book. Press a row to open it. Press **This is a parts-book part** and type words from the part's name. Press the part in the list. The row now reads the book's name and price, and **Worth** grows. **Undo** under **Names joined here** takes the tie back.
 
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
