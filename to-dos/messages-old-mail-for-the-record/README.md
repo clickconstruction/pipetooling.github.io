@@ -15,7 +15,7 @@ summary: >
   nobody's move; the age decides and a person overrules in one press; No reply needed and the
   thread's state sit in plain sight, on New's cards too; and a fold lists what was done with no
   reply this week, each with Reopen. No new lane, no new state, no third word.
-next: Watch the first tag an office person presses in Messages → My email, and read the line the green bar prints after it. Then the dev's call 2, whether the batch of 2026-11-09 stays on its jobs. Delete the folder after both.
+next: Watch the first save an office person presses in Messages → My email (the press is **Save to job…** since v2.7073), and read the line the green bar prints after it. Then the dev's call 2, whether the batch of 2026-11-09 stays on its jobs. Delete the folder after both.
 size: M as a train of five (S · S · S · S · S), all built; left: a look at one real press (XS)
 blocker: Nobody in the office has tagged by their own press since the line after a tag went live (v2.7032), so the line is unproven by use.
 ver: v2.7026 · 7027 · 7029 · 7030 · 7032

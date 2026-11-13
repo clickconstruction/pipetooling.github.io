@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { ServerSummary } from './onSiteServerSummary'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
@@ -130,27 +131,33 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
   bump()
   const p = (async () => {
     try {
-      const [places, containers, movements, photos] = await Promise.all([
-        db.from('job_places').select(PLACE_COLS).eq('job_id', jobId).order('name'),
-        db.from('job_containers').select(CONTAINER_COLS).eq('job_id', jobId).order('created_at'),
+      // Every read is paged (v2.7160): PostgREST cuts an un-ranged answer at 1,000 rows without a word, so `.limit(5000)`
+      // came back as the newest 1,000 and `capped` could never be true. A page that fails throws, as the read did before.
+      const [places, containerRows, movementRowsNewestFirst, photos] = await Promise.all([
+        fetchAllRows<PlaceRow>((from, to) => db.from('job_places').select(PLACE_COLS).eq('job_id', jobId).order('name').order('id').range(from, to), 'read the places on this job'),
+        fetchAllRows<ContainerRow>((from, to) => db.from('job_containers').select(CONTAINER_COLS).eq('job_id', jobId).order('created_at').order('id').range(from, to), 'read the boxes on this job'),
         // Newest first (v2.6743): a job past the cap keeps its newest rows — the counts that reset its lines — not its oldest.
-        db.from('job_material_movements').select(MOVEMENT_COLS).eq('job_id', jobId).order('at', { ascending: false }).order('id', { ascending: false }).limit(MOVEMENTS_LIMIT),
-        db.from('job_box_photos').select(PHOTO_COLS).eq('job_id', jobId).order('taken_at', { ascending: true }),
+        fetchAllRows<MovementRow>(
+          (from, to) => db.from('job_material_movements').select(MOVEMENT_COLS).eq('job_id', jobId).order('at', { ascending: false }).order('id', { ascending: false }).range(from, to),
+          'read what was recorded on this job',
+          undefined,
+          { maxRows: MOVEMENTS_LIMIT },
+        ),
+        fetchAllRows<PhotoRow>((from, to) => db.from('job_box_photos').select(PHOTO_COLS).eq('job_id', jobId).order('taken_at', { ascending: true }).order('id').range(from, to), 'read the box photos on this job'),
       ])
-      for (const r of [places, containers, movements, photos]) if (r.error) throw r.error
-      const containerRows = (containers.data ?? []) as ContainerRow[]
       const ids = containerRows.map((r) => r.id)
-      const moves = ids.length ? await db.from('job_container_moves').select(MOVE_COLS).in('container_id', ids).order('at', { ascending: true }) : { data: [] as MoveRow[], error: null }
-      if (moves.error) throw moves.error
-      c.places = ((places.data ?? []) as PlaceRow[]).map(placeOf)
+      // Chunked over the box ids as well: a few hundred ids in one address is past what a request line carries.
+      const moves = await fetchAllRowsChunkedIn<MoveRow, string>(ids, (chunk, from, to) => db.from('job_container_moves').select(MOVE_COLS).in('container_id', chunk).order('at', { ascending: true }).order('id').range(from, to), 'read where the boxes moved', { parallel: 4 })
+      moves.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+      c.places = places.map(placeOf)
       c.containers = containerRows.map(containerOf)
-      const movementRows = ((movements.data ?? []) as MovementRow[]).map(movementOf).reverse()
+      const movementRows = movementRowsNewestFirst.map(movementOf).reverse()
       c.movements = movementRows
       c.capped = movementRows.length >= MOVEMENTS_LIMIT
       // Past the cap the device's sums would read a part of the ledger, so the database sums it whole (on_site_job_summary, v2.6743).
       c.summary = c.capped ? await loadServerSummary(jobId) : null
-      c.photos = ((photos.data ?? []) as PhotoRow[]).map(photoOf)
-      c.moves = ((moves.data ?? []) as MoveRow[]).map((r) => moveOf(r, jobId))
+      c.photos = photos.map(photoOf)
+      c.moves = moves.map((r) => moveOf(r, jobId))
       c.loadedAt = Date.now()
       void loadBookPrices(bookPartIds(c.movements))
     } catch (e) {
@@ -183,9 +190,8 @@ export function loadDesk(opts: { force?: boolean } = {}): Promise<string[]> {
   bump()
   deskPromise = (async () => {
     try {
-      const { data, error } = await db.from('job_containers').select('job_id').is('retired_at', null).limit(5000)
-      if (error) throw error
-      const ids = [...new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id))]
+      const live = await fetchAllRows<{ job_id: string }>((from, to) => db.from('job_containers').select('job_id').is('retired_at', null).order('id').range(from, to), 'read the jobs with boxes')
+      const ids = [...new Set(live.map((r) => r.job_id))]
       await Promise.all(ids.map((id) => loadJob(id, opts)))
       deskIds = ids
       return ids

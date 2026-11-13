@@ -112,3 +112,5 @@ person-file-amendments
 pay-calendar
 person-file-numbers
 person-engagements
+dev-seat-kept-plans
+receipt-texts

@@ -4,7 +4,7 @@
  * shortcut and the row's Lien window button. The kernel names the icon
  * (`StagesToolGlyph` in `lib/jobs/stagesSectionToolsMenu`); this draws it.
  */
-import { Banknote, Bell, Building2, CalendarRange, ChartColumn, History, Landmark, Route, Scale, Share2, type LucideIcon } from 'lucide-react'
+import { Banknote, Bell, Building2, CalendarRange, ChartColumn, History, Landmark, Route, Scale, Send, Share2, type LucideIcon } from 'lucide-react'
 import type { StagesToolGlyph } from '../../lib/jobs/stagesSectionToolsMenu'
 import { StagesGavelGlyph } from './StagesRowActionButtons'
 
@@ -22,6 +22,8 @@ const LINE: Record<Exclude<StagesGlyphName, 'gavel' | 'file-dollar'>, LucideIcon
   'chart-bar': ChartColumn,
   'calendar-bars': CalendarRange,
   scales: Scale,
+  // The paper plane: a bill that left (Bills sent, punch list #327).
+  send: Send,
 }
 
 const SIZE = 16

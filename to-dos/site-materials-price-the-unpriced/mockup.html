@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A site's materials: price what has no price</title>
+<style>
+  /* Punch list #342. Press the Worth on a site's materials, see everything with no price, and price it fast. Drawn
+     2026-11-13, with that day as today. Nothing here is built. Every name, job, box, supply house, part, price and count
+     in a drawing is made up: the site is the made-up development Juniper Ridge of #330's mock-up, Dana Whitfield is in the
+     office, Pecan Supply and Cedar Fork Supply are made-up houses. The one strip of real figures is marked as such and
+     holds counts only. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* a desk frame beside a phone frame */
+  .dp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 22px; margin-top: 14px; align-items: start; }
+  @media (max-width: 900px) { .dp { grid-template-columns: minmax(0, 1fr); } }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .frame.phone { max-width: 380px; }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; }
+  .pick p.b { font-weight: 600; color: var(--text-strong); }
+
+  .steps { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .steps .n { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--copper); }
+  .steps .big { font-size: 20px; font-weight: 800; color: var(--text-strong); line-height: 1.2; margin: 2px 0; }
+  .steps p { margin: 0; font-size: 13px; }
+
+  /* drawn app pieces, in the app's own tokens */
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+  .hdr b { color: var(--text-strong); font-size: 14px; }
+  .hdr .x { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 10px; font-weight: 600; color: var(--text-strong); background: var(--surface); white-space: nowrap; }
+  .sub { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+  .btn { min-height: 36px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-align: center; padding: 4px 12px; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.sm { min-height: 28px; font-size: 12px; padding: 2px 9px; }
+  .btn.tall { min-height: 44px; }
+  .btn.dead { color: var(--text-muted); background: var(--bg-muted); border-color: var(--border); }
+  .link { color: var(--text-link); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { min-height: 28px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .pill { display: inline-flex; align-items: center; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); color: var(--text-muted); white-space: nowrap; }
+  .pill.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .pill.green { background: var(--bg-green-tint); color: var(--text-green-700); border-color: var(--border-green); }
+  .pill.box { font-family: var(--mono); color: var(--text-strong); border-color: var(--border-strong); background: var(--bg-subtle); }
+  .field { min-height: 38px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); padding: 6px 10px; display: flex; align-items: center; font-size: 13.5px; }
+  .field.ph { color: var(--text-muted); }
+  .sec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sec > h4 { margin: 0; padding: 8px 12px; font-size: 13px; color: var(--text-strong); border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--bg-subtle); }
+  .sec > h4 .r { margin-left: auto; display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; min-width: 0; display: grid; gap: 1px; align-content: start; }
+  .tile .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .tile .v { font-size: 19px; font-weight: 800; color: var(--text-strong); line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile .m { font-size: 12px; color: var(--text-muted); }
+  .tile.amber { background: var(--bg-amber-tint); border-color: var(--border-amber); }
+  .tile.amber .v, .tile.amber .k { color: var(--text-amber-800); }
+  .tile.on { outline: 2px solid var(--text-link); outline-offset: 1px; }
+  .tile.dim { opacity: .55; }
+  .tile.done { background: var(--bg-green-tint); border-color: var(--border-green); }
+  .tile.done .v, .tile.done .k { color: var(--text-green-700); }
+  .prow { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; align-items: baseline; }
+  .prow:last-child { border-bottom: 0; }
+  .prow .nm { font-weight: 700; color: var(--text-strong); min-width: 0; overflow-wrap: anywhere; }
+  .prow .nm small { font-weight: 500; color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+  .prow .tot { font-weight: 800; font-size: 16px; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prow .bx { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .prow .open { grid-column: 1 / -1; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; display: grid; gap: 6px; font-size: 12.5px; }
+  .prow .open .l { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: space-between; align-items: center; }
+  .prow .open .l b { color: var(--text-strong); }
+  .prow.focus { background: var(--bg-blue-tint); box-shadow: inset 3px 0 0 var(--text-link); }
+  .prow.priced { background: var(--bg-green-tint); }
+  .prow.out { background: var(--bg-muted); }
+  .sumline { padding: 6px 12px; font-size: 12.5px; color: var(--text-700); background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .sumline b { color: var(--text-strong); }
+
+  /* the new pieces */
+  .offers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+  /* an offer is a guess: a dashed edge and the word, never the look of a checked price */
+  .offer { flex: 1 1 250px; min-width: 0; min-height: 40px; border: 1.5px dashed var(--border-strong); border-radius: 8px; background: var(--surface); padding: 4px 8px; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; font-size: 12.5px; color: var(--text-700); }
+  .offer .w { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .offer .what { flex: 1 1 150px; min-width: 0; overflow-wrap: anywhere; }
+  .offer .what b { color: var(--text-strong); }
+  .offer .p { font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .offer .go { margin-left: auto; }
+  .offer.first { border-color: var(--text-link); }
+  .own { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pricebox { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; min-width: 150px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 0 8px; font-size: 13.5px; color: var(--text-muted); }
+  .pricebox b { color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .pricebox.typing { border-color: var(--text-link); box-shadow: 0 0 0 2px var(--bg-blue-tint); }
+  .kbd { font: 700 11px var(--mono); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--text-700); background: var(--bg-subtle); white-space: nowrap; }
+  .bar { height: 8px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--text-green-700); border-radius: 999px; }
+  .win { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); margin: 14px; display: grid; gap: 10px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .frame.phone .win { margin: 0; border-radius: 0; border: 0; box-shadow: none; }
+  .scrim { background: rgba(17,24,39,.45); }
+  .frame.phone .scrim { background: none; }
+  .big-name { font-size: 20px; font-weight: 800; color: var(--text-strong); line-height: 1.2; }
+  .ans { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; min-height: 52px; border: 1.5px dashed var(--border-strong); border-radius: 10px; padding: 6px 10px; background: var(--surface); font-size: 13px; }
+  .ans .what { min-width: 0; overflow-wrap: anywhere; color: var(--text-700); }
+  .ans .what b { color: var(--text-strong); display: block; }
+  .ans .p { font-size: 16px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ans.first { border-color: var(--text-link); background: var(--bg-blue-tint); }
+  .tick { width: 18px; height: 18px; border: 1.5px solid var(--border-strong); border-radius: 4px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex: 0 0 auto; }
+  .tick.on { background: #2563eb; border-color: #2563eb; }
+  .crow { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .crow:last-child { border-bottom: 0; }
+  .crow .nm { flex: 1 1 170px; min-width: 0; font-weight: 700; color: var(--text-strong); overflow-wrap: anywhere; }
+  .crow .nm small { font-weight: 500; color: var(--text-muted); }
+  .crow .fit { flex: 2 1 240px; min-width: 0; color: var(--text-700); overflow-wrap: anywhere; }
+  .crow .p { font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .crow.held { background: var(--bg-amber-tint); }
+  .empty { padding: 22px 14px; text-align: center; display: grid; gap: 6px; justify-items: center; }
+  .empty b { font-size: 15px; color: var(--text-strong); }
+
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .card p { margin: 0; font-size: 13px; }
+  .card .rec { border-left: 3px solid var(--new); padding-left: 8px; }
+  .card .rec b { color: var(--new); }
+  .card .alt { border-left: 3px solid var(--border-strong); padding-left: 8px; color: var(--text-muted); }
+  .train { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+  .train > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .train b { display: block; color: var(--text-strong); font-size: 14px; }
+  .train .sz { font: 700 11px var(--mono); color: var(--copper); }
+  .train .stop { background: var(--new-tint); border: 2px solid var(--new); }
+  table.q { border-collapse: collapse; width: 100%; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+  table.q th, table.q td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.q th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  table.q td:first-child { font-weight: 600; color: var(--text-strong); }
+  table.q td.y { color: var(--text-green-700); font-weight: 600; }
+  @media (max-width: 560px) { table.q, table.q tbody, table.q tr, table.q td { display: block; } table.q thead { display: none; } table.q td { border-bottom: 0; padding: 2px 10px; } table.q tr { border-bottom: 1px solid var(--border); padding: 6px 0; } table.q td:nth-child(2)::before { content: "Rows it fits: "; color: var(--text-muted); } table.q td:nth-child(3)::before { content: "Today: "; color: var(--text-muted); font-weight: 400; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #342 · a decision mock-up · nothing here is built · every name, price and count in a drawing is made up</p>
+    <h1>A site's materials: price what has no price</h1>
+    <p><b>You picked drawing B on Nov 13: one at a time.</b> A press on Worth lists every row with no price, as it does today. One press on that list opens a window that asks about one name at a time. It shows the parts-book part that fits, what a supply house bill paid, a box for a price you type, and <b>Not a part</b>. An offer is a guess with a dashed edge, and it counts for nothing until you press it. A price you accept is saved where every on-site money figure reads it. A and C stay below for the record.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#measure">The real site, measured</a>
+  <a href="#today">Today</a>
+  <a href="#a">A · In place</a>
+  <a href="#b">B · One at a time</a>
+  <a href="#c">C · By source</a>
+  <a href="#words">The words as you go</a>
+  <a href="#undo">A wrong price</a>
+  <a href="#calls">Your calls</a>
+  <a href="#plan">The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>A press on Worth lists the rows with no price. It stops there.</li>
+      <li>Pricing one row is three presses and a search of the parts book.</li>
+      <li>The search finds nothing for most names a crew typed.</li>
+      <li>A name the parts book does not hold cannot be priced on this screen at all.</li>
+      <li>A row that is scrap or tools reads <i>no price</i> for ever, so the cover can never reach the end.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>Each row with no price shows its offers: a parts-book part, a bill's price.</li>
+      <li>One press accepts an offer. Enter moves to the next row.</li>
+      <li>A box takes a price you type. <b>Not a part</b> takes a row out.</li>
+      <li>An offer is never counted. Only a price you accepted is <i>known</i>.</li>
+      <li>Every answer has <b>Undo</b>.</li>
+    </ul>
+    <p class="b">The Parts Book is never written from here. A count, a box and a name are never changed.</p>
+  </div>
+</div>
+
+<h2 id="measure">The real site, measured <small>read on the live data with nothing written · counts only</small></h2>
+<p class="lede">These six figures are the real site's. Everything else on this page is made up.</p>
+<div class="steps">
+  <div><div class="n">No price</div><div class="big">96 of 100 rows</div><p>113 of 116 lines, and nineteen pieces in twenty. 94 of the rows are names a crew typed.</p></div>
+  <div><div class="n">The parts book</div><div class="big">fits 34 rows</div><p>One sure part on 10. A short list on 18. The search you have today finds nothing for 60 names.</p></div>
+  <div><div class="n">The bills</div><div class="big">fit 39 rows</div><p>Read from every bill the company has. The site's own bills fit one row.</p></div>
+  <div><div class="n">Either one</div><div class="big">46 rows</div><p>Three quarters of the pieces. Almost every fit is a list of two or more.</p></div>
+  <div><div class="n">Nothing found</div><div class="big">48 rows</div><p>About 20 are not a part. About 15 are fixtures, where the dollars are. They are typed.</p></div>
+  <div><div class="n">Today's cost</div><div class="big">about 290 presses</div><p>Three presses and a search for each row, with no way to finish.</p></div>
+</div>
+<table class="q">
+  <thead><tr><th>Where a price could come from</th><th>Rows it fits</th><th>Today</th></tr></thead>
+  <tbody>
+    <tr><td>A parts-book part with no price in the book</td><td>2</td><td>Fixed in the Parts Book, on its own page</td></tr>
+    <tr><td>A typed name that fits a parts-book part</td><td>34</td><td>Three presses a row, where the search finds it at all</td></tr>
+    <tr><td>A bill for the same job or site</td><td>1</td><td>Not read</td></tr>
+    <tr><td>A bill for any job</td><td>39</td><td>Not read, and nowhere to keep the price</td></tr>
+    <tr><td>The same name priced on another job</td><td>0</td><td>Nothing to read: a typed price never leaves its device</td></tr>
+    <tr><td>Nothing: a person types it</td><td>48</td><td>No price box on the screen</td></tr>
+  </tbody>
+</table>
+<p class="note"><b>Why nothing is accepted for you.</b> A crew writes a size and an angle and leaves the material out. That name fits a PVC part, a copper one and a PEX one, and their prices are far apart. Three of the eight names the search answered with one part were answered with the wrong thing. So an offer waits for your press, every time.</p>
+
+<h2 id="today">Today <small>what the press does now</small></h2>
+<p class="lede">The one spot: Juniper Ridge, after a press on Worth.</p>
+<div class="dp">
+  <div class="col">
+    <div class="cap">Now · at a desk</div>
+    <div class="frame">
+      <div class="hdr"><span>Materials desk ›</span><b>Juniper Ridge</b><span>2 jobs</span><span class="x">Print the material location report</span></div>
+      <div class="pad">
+        <div class="glance">
+          <div class="tile dim"><span class="k">On hand</span><span class="v">118 lines</span><span class="m">1,940 pieces</span></div>
+          <div class="tile dim"><span class="k">Missing this week</span><span class="v">$86.40</span><span class="m">1 line</span></div>
+          <div class="tile on"><span class="k">Worth</span><span class="v">$2,310.00 known</span><span class="m">9 of 118 lines have a price · 2 on a price older than 90 days</span></div>
+        </div>
+        <div class="sec">
+          <div class="sumline"><span><b>1,734 pieces in the 88 rows shown</b> · the rows with a line that has no price, most pieces first</span><span class="btn sm">Show every row</span></div>
+          <div class="prow"><span class="nm">1" pex tees</span><span class="tot">240</span>
+            <span class="bx"><span class="pill box">R12 · 140</span><span class="pill box">R31 · 100</span><span class="pill">counted Mon</span><span class="pill">no price</span></span>
+            <span class="open">
+              <span class="l"><span><b>R12</b> · Cage row A · J1042</span><span><b>140</b> · counted Mon</span></span>
+              <span class="l"><span><b>R31</b> · Cage row B · J1042</span><span><b>100</b> · counted Mon</span></span>
+              <span><span class="btn sm">This is a parts-book part</span></span>
+              <span style="border:1px solid var(--border-strong);border-radius:8px;padding:6px 8px;background:var(--surface);display:grid;gap:5px">
+                <b>Which parts-book part is “1" pex tees”?</b>
+                <span class="field">1 pex tees</span>
+                <span class="sub">The parts book has no part with every one of those words. Try fewer words.</span>
+              </span>
+            </span></div>
+          <div class="prow"><span class="nm">1/2" PEX male adapter</span><span class="tot">64</span>
+            <span class="bx"><span class="pill box">R40 · 64</span><span class="pill">counted Tue</span><span class="pill">no price</span></span></div>
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="bx"><span class="pill box">R58 · 42</span><span class="pill amber">due a count</span><span class="pill">no price</span></span></div>
+          <div class="prow"><span class="nm">Tote of odd fittings</span><span class="tot">18</span>
+            <span class="bx"><span class="pill box">R77 · 18</span><span class="pill">no price</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The list is right. Each row then asks for an open, a press, a search and a pick. The book writes TEE where the crew wrote tees, so this search finds nothing. And the tote of odd fittings will read <i>no price</i> for good.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Now · on a phone</div>
+    <div class="frame phone">
+      <div class="hdr"><b>Juniper Ridge</b><span>2 jobs</span></div>
+      <div class="pad">
+        <div class="tile on"><span class="k">Worth</span><span class="v">$2,310.00 known</span><span class="m">9 of 118 lines have a price · 2 on a price older than 90 days</span></div>
+        <div class="sec">
+          <div class="sumline"><span><b>1,734 pieces in the 88 rows shown</b></span></div>
+          <div class="prow"><span class="nm">1" pex tees</span><span class="tot">240</span><span class="bx"><span class="pill box">R12 · 140</span><span class="pill box">R31 · 100</span><span class="pill">no price</span></span></div>
+          <div class="prow"><span class="nm">1/2" PEX male adapter</span><span class="tot">64</span><span class="bx"><span class="pill box">R40 · 64</span><span class="pill">no price</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The same list, and the same three presses a row.</p>
+  </div>
+</div>
+
+<h2 id="a">A · In place <small>the list you already get, with the answers on each row</small></h2>
+<p class="lede">The press on Worth narrows the list as it does today. Each row now carries what the app found, a box and <b>Not a part</b>. Nothing opens over the screen.</p>
+<div class="dp">
+  <div class="col sug">
+    <div class="cap">A · at a desk</div>
+    <div class="frame">
+      <div class="hdr"><span>Materials desk ›</span><b>Juniper Ridge</b><span>2 jobs</span><span class="x">Print the material location report</span></div>
+      <div class="pad">
+        <div class="glance">
+          <div class="tile dim"><span class="k">On hand</span><span class="v">118 lines</span><span class="m">1,940 pieces</span></div>
+          <div class="tile dim"><span class="k">Missing this week</span><span class="v">$86.40</span><span class="m">1 line</span></div>
+          <div class="tile on new"><span class="k">Worth</span><span class="v">$2,996.40 known</span><span class="m">11 of 118 lines have a price · 2 on a price older than 90 days · 40 rows have an offer</span></div>
+        </div>
+        <div class="sec">
+          <div class="sumline new" style="border-radius:0">
+            <span><b>87 rows have no price</b> · 1,494 pieces · most pieces first</span>
+            <span class="chips"><span class="chip on">Every row · 87</span><span class="chip">Has an offer · 40</span><span class="chip">Nothing found · 47</span><span class="chip">Left out · 0</span></span>
+            <span class="btn sm">Show every row</span>
+          </div>
+
+          <div class="prow priced"><span class="nm">1" PEX TEE BRASS <small>was “1" pex tees”</small></span><span class="tot">240</span>
+            <span class="bx"><span class="pill box">R12 · 140</span><span class="pill box">R31 · 100</span><span class="pill green">$686.40 · parts book · checked Oct 3</span><span class="pill green">priced just now</span><span class="btn sm">Undo</span></span></div>
+
+          <div class="prow focus"><span class="nm">1/2" PEX male adapter</span><span class="tot">64</span>
+            <span class="bx"><span class="pill box">R40 · 64</span><span class="pill">counted Tue</span><span class="pill">no price</span></span>
+            <span class="offers">
+              <span class="offer first"><span class="w">Offer · a bill</span><span class="what"><b>1/2 PEX X 1/2 MIP ADAPTER</b> Pecan Supply · Sep 30</span><span class="p">$3.12 each</span><span class="btn sm pri go">Use this price</span></span>
+            </span>
+            <span class="own"><span class="pricebox">$ <span>for one, as counted</span></span><span class="btn sm">Other part…</span><span class="btn sm">Not a part</span><span class="sub"><span class="kbd">Enter</span> takes the first offer and moves down · <span class="kbd">↓</span> skips</span></span></div>
+
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="bx"><span class="pill box">R58 · 42</span><span class="pill amber">due a count</span><span class="pill">no price</span></span>
+            <span class="offers">
+              <span class="offer"><span class="w">Offer · parts book</span><span class="what"><b>2" PVC DWV 90</b> checked Oct 3</span><span class="p">$2.41</span><span class="btn sm go">Use this part</span></span>
+              <span class="offer"><span class="w">Offer · parts book</span><span class="what"><b>2" COPPER 90 WROT</b> checked Sep 12</span><span class="p">$18.60</span><span class="btn sm go">Use this part</span></span>
+              <span class="offer"><span class="w">Offer · a bill</span><span class="what"><b>2 PVC DWV 1/4 BEND</b> Cedar Fork Supply · Oct 9</span><span class="p">$2.18 each</span><span class="btn sm go">Use this price</span></span>
+            </span>
+            <span class="own"><span class="pricebox">$ <span>for one, as counted</span></span><span class="btn sm">4 more fits…</span><span class="btn sm">Not a part</span><span class="sub">The name does not say the material. Pick the one in the box.</span></span></div>
+
+          <div class="prow"><span class="nm">4X3 WYE DWV <small>parts-book part · no price in the book</small></span><span class="tot">36</span>
+            <span class="bx"><span class="pill box">R19 · 36</span><span class="pill">no price</span></span>
+            <span class="offers">
+              <span class="offer"><span class="w">Offer · a bill</span><span class="what"><b>4X3 PVC DWV WYE</b> Pecan Supply · Oct 21</span><span class="p">$11.80 each</span><span class="btn sm go">Use this price</span></span>
+            </span>
+            <span class="own"><span class="pricebox">$ <span>for one, as counted</span></span><span class="btn sm">Open in the Parts Book</span></span></div>
+
+          <div class="prow"><span class="nm">Lav sink, white</span><span class="tot">12</span>
+            <span class="bx"><span class="pill box">R80 · 8</span><span class="pill box">R81 · 4</span><span class="pill">no price</span></span>
+            <span class="own"><span class="pricebox typing">$ <b>148.00</b></span><span class="btn sm pri">Save $148.00 for one</span><span class="btn sm">Other part…</span><span class="btn sm">Not a part</span><span class="sub">Nothing found in the parts book or on a bill.</span></span></div>
+
+          <div class="prow"><span class="nm">Tote of odd fittings</span><span class="tot">18</span>
+            <span class="bx"><span class="pill box">R77 · 18</span><span class="pill">no price</span></span>
+            <span class="own"><span class="pricebox">$ <span>for one, as counted</span></span><span class="btn sm">Other part…</span><span class="btn sm">Not a part</span><span class="sub">Nothing found.</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">One row was priced a moment ago and stays in green with <b>Undo</b>. The next row is the blue one: its bill offer is one press, or Enter. The row under it shows why nothing is accepted for you: three fits, two materials, prices far apart. The sink has no fit, so the box takes a price. The tote is one press on <b>Not a part</b>.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">A · on a phone</div>
+    <div class="frame phone">
+      <div class="hdr"><b>Juniper Ridge</b><span>2 jobs</span></div>
+      <div class="pad">
+        <div class="tile on"><span class="k">Worth</span><span class="v">$2,996.40 known</span><span class="m">11 of 118 lines have a price · 2 on a price older than 90 days · 40 rows have an offer</span></div>
+        <div class="chips"><span class="chip on">Every row · 87</span><span class="chip">Has an offer · 40</span><span class="chip">Nothing found · 47</span><span class="chip">Left out · 0</span></div>
+        <div class="sec">
+          <div class="prow"><span class="nm">2" 90</span><span class="tot">42</span>
+            <span class="bx"><span class="pill box">R58 · 42</span><span class="pill">no price</span></span>
+            <span class="offers">
+              <span class="offer"><span class="w">Offer · parts book</span><span class="what"><b>2" PVC DWV 90</b> checked Oct 3</span><span class="p">$2.41</span><span class="btn sm go">Use this part</span></span>
+              <span class="offer"><span class="w">Offer · parts book</span><span class="what"><b>2" COPPER 90 WROT</b> checked Sep 12</span><span class="p">$18.60</span><span class="btn sm go">Use this part</span></span>
+              <span class="offer"><span class="w">Offer · a bill</span><span class="what"><b>2 PVC DWV 1/4 BEND</b> Cedar Fork Supply · Oct 9</span><span class="p">$2.18 each</span><span class="btn sm go">Use this price</span></span>
+            </span>
+            <span class="own"><span class="pricebox" style="flex:1 1 150px">$ <span>for one, as counted</span></span><span class="btn sm">4 more fits…</span><span class="btn sm">Not a part</span></span></div>
+          <div class="prow"><span class="nm">Lav sink, white</span><span class="tot">12</span>
+            <span class="bx"><span class="pill box">R80 · 8</span><span class="pill box">R81 · 4</span><span class="pill">no price</span></span>
+            <span class="own"><span class="pricebox" style="flex:1 1 150px">$ <span>for one, as counted</span></span><span class="btn sm">Other part…</span><span class="btn sm">Not a part</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The offers stack under the row, each a full-width press. The row gets tall where a name has several fits.</p>
+  </div>
+</div>
+<p class="note"><b>For A:</b> you see every row at once. It is the smallest step from what is built, and it is the one I recommended. <b>Against:</b> on a phone a row with three offers fills most of the screen.</p>
+
+<h2 id="b">B · One at a time <span class="tag">picked · Nov 13</span> <small>a window, one name, a count that ticks down</small></h2>
+<p class="lede">A press on Worth lists the rows with no price, as today, so you still see all of them. The line over that list gains one press. It opens a window that shows one name with its boxes and its offers as large answers, then the next.</p>
+<div class="two" style="margin-top:14px">
+  <div class="col sug">
+    <div class="cap">B · the press that opens it</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="tile on"><span class="k">Worth</span><span class="v">$2,310.00 known</span><span class="m">9 of 118 lines have a price · 2 on a price older than 90 days · 41 rows have an offer</span></div>
+        <div class="sec">
+          <div class="sumline"><span><b>1,734 pieces in the 88 rows shown</b> · the rows with a line that has no price, most pieces first</span><span class="btn sm pri new">Price 88 rows one at a time</span><span class="btn sm">Show every row</span></div>
+          <div class="prow"><span class="nm">1" pex tees</span><span class="tot">240</span><span class="bx"><span class="pill box">R12 · 140</span><span class="pill box">R31 · 100</span><span class="pill">no price</span></span></div>
+          <div class="prow"><span class="nm">1/2" PEX male adapter</span><span class="tot">64</span><span class="bx"><span class="pill box">R40 · 64</span><span class="pill">no price</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The list is the one you get today. The new press says how many rows it will walk. Call 9 asks whether Worth should open the window at once.</p>
+  </div>
+</div>
+<div class="dp">
+  <div class="col sug">
+    <div class="cap">B · at a desk</div>
+    <div class="frame">
+      <div class="hdr"><span>Materials desk ›</span><b>Juniper Ridge</b><span>2 jobs</span></div>
+      <div class="scrim">
+        <div class="win">
+          <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;justify-content:space-between">
+            <b style="color:var(--text-strong);font-size:15px">Price what has no price · Juniper Ridge</b>
+            <span class="sub"><b style="color:var(--text-strong)">Row 3 of 88</b> · 86 left · 1,430 pieces to go</span>
+          </div>
+          <div class="bar"><i style="width:18%"></i></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline">
+            <span class="big-name">2" 90</span>
+            <span class="sub"><b style="color:var(--text-strong)">42</b> pieces · <span class="pill box">R58 · 42</span> Cage row C · J1042 · due a count</span>
+          </div>
+          <div class="ans first"><span class="kbd">1</span><span class="what"><b>2" PVC DWV 90</b>Offer · parts book · checked Oct 3</span><span class="p">$2.41</span></div>
+          <div class="ans"><span class="kbd">2</span><span class="what"><b>2" COPPER 90 WROT</b>Offer · parts book · checked Sep 12</span><span class="p">$18.60</span></div>
+          <div class="ans"><span class="kbd">3</span><span class="what"><b>2 PVC DWV 1/4 BEND</b>Offer · a bill · Cedar Fork Supply · Oct 9</span><span class="p">$2.18 each</span></div>
+          <div class="own" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            <span class="pricebox" style="flex:1 1 180px">$ <span>or type a price for one</span></span>
+            <span class="btn">4 more fits…</span><span class="btn">Not a part <span class="kbd" style="margin-left:6px">N</span></span><span class="btn">Skip <span class="kbd" style="margin-left:6px">S</span></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px">
+            <span class="sub">Just now: 1/2" PEX male adapter · $3.12 from Pecan Supply's bill <span class="btn sm" style="margin-left:6px">Undo</span></span>
+            <span class="btn">Done for now</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="say">One question at a time, answered with a number key. The last answer sits at the foot with <b>Undo</b>. <b>Done for now</b> closes it, and the tile shows where you stopped.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">B · on a phone</div>
+    <div class="frame phone">
+      <div class="win">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="color:var(--text-strong)">Price what has no price</b><span class="sub">3 of 88</span></div>
+        <div class="bar"><i style="width:18%"></i></div>
+        <div class="big-name">2" 90</div>
+        <span class="sub"><b style="color:var(--text-strong)">42</b> pieces · <span class="pill box">R58 · 42</span> Cage row C</span>
+        <div class="ans first"><span class="kbd">1</span><span class="what"><b>2" PVC DWV 90</b>Offer · parts book · Oct 3</span><span class="p">$2.41</span></div>
+        <div class="ans"><span class="kbd">2</span><span class="what"><b>2" COPPER 90 WROT</b>Offer · parts book · Sep 12</span><span class="p">$18.60</span></div>
+        <div class="ans"><span class="kbd">3</span><span class="what"><b>2 PVC DWV 1/4 BEND</b>Offer · a bill · Oct 9</span><span class="p">$2.18</span></div>
+        <span class="pricebox">$ <span>or type a price for one</span></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><span class="btn tall">Not a part</span><span class="btn tall">Skip</span></div>
+      </div>
+    </div>
+    <p class="say">This is the better drawing for a thumb: every answer is a wide press.</p>
+  </div>
+</div>
+<p class="note"><b>For B:</b> the fastest way through a long list, and the best on a phone. <b>Against:</b> it is a second surface to build and keep beside the list. The list stays under it, so you still see every row.</p>
+
+<h2 id="c">C · By source <small>one table, grouped by where the price would come from</small></h2>
+<p class="lede">The press opens the rows in sections. The first two sections have one fit each, so a counted press can act on the rows you leave ticked. It says what it held and why.</p>
+<div class="dp">
+  <div class="col sug">
+    <div class="cap">C · at a desk</div>
+    <div class="frame">
+      <div class="hdr"><span>Materials desk ›</span><b>Juniper Ridge</b><span>Worth · 88 rows with no price</span></div>
+      <div class="pad">
+        <div class="sec">
+          <h4>One part in the parts book fits · 9 rows <span class="r"><span class="btn sm pri">Tie 8 names to their part · 1 unticked ▸</span></span></h4>
+          <div class="crow"><span class="tick on">✓</span><span class="nm">1" pex tees <small>· 240</small></span><span class="fit">1" PEX TEE BRASS · checked Oct 3</span><span class="p">$2.86</span></div>
+          <div class="crow"><span class="tick on">✓</span><span class="nm">3" pvc 45 <small>· 60</small></span><span class="fit">3" PVC DWV 45 · checked Oct 3</span><span class="p">$4.90</span></div>
+          <div class="crow held"><span class="tick"></span><span class="nm">4" cleanout <small>· 9</small></span><span class="fit">CLEANOUT COVER 4" CHROME · checked Aug 30</span><span class="p">$6.40</span><span class="pill amber">you unticked it</span></div>
+          <div class="crow"><span class="sub">6 more rows, each with its one fit and a tick</span></div>
+        </div>
+        <div class="sec">
+          <h4>One bill has it · 6 rows <span class="r"><span class="btn sm pri">Use 6 bill prices</span></span></h4>
+          <div class="crow"><span class="tick on">✓</span><span class="nm">1/2" PEX male adapter <small>· 64</small></span><span class="fit">1/2 PEX X 1/2 MIP ADAPTER · Pecan Supply · Sep 30</span><span class="p">$3.12 each</span></div>
+          <div class="crow"><span class="sub">5 more rows</span></div>
+        </div>
+        <div class="sec">
+          <h4>More than one fit · 26 rows <span class="r"><span class="sub">pick on each row</span></span></h4>
+          <div class="crow"><span class="nm">2" 90 <small>· 42</small></span><span class="fit">2" PVC DWV 90 $2.41 · 2" COPPER 90 WROT $18.60 · a bill $2.18 · 4 more</span><span class="btn sm">Pick…</span></div>
+          <div class="crow"><span class="sub">25 more rows</span></div>
+        </div>
+        <div class="sec">
+          <h4>Nothing found · 47 rows <span class="r"><span class="sub">type a price, or say it is not a part</span></span></h4>
+          <div class="crow"><span class="nm">Lav sink, white <small>· 12</small></span><span class="pricebox">$ <span>for one</span></span><span class="btn sm">Not a part</span></div>
+          <div class="crow"><span class="nm">Tote of odd fittings <small>· 18</small></span><span class="pricebox">$ <span>for one</span></span><span class="btn sm">Not a part</span></div>
+          <div class="crow"><span class="sub">45 more rows</span></div>
+        </div>
+        <div class="sec">
+          <h4>After the press</h4>
+          <div class="crow"><span class="fit"><b style="color:var(--text-strong)">8 names tied to their part.</b> 1 stays where it is: you unticked it. It is under <i>More than one fit</i> now.</span><span class="btn sm">Undo the 8</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Two presses clear fourteen rows. The third row shows the risk: the one fit for a cleanout is its cover. It is caught only if you read every row before the press.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">C · on a phone</div>
+    <div class="frame phone">
+      <div class="hdr"><b>Juniper Ridge</b><span>88 rows with no price</span></div>
+      <div class="pad">
+        <div class="sec">
+          <h4>One part in the parts book fits · 9</h4>
+          <div class="crow"><span class="tick on">✓</span><span class="nm">1" pex tees <small>· 240</small></span><span class="fit">1" PEX TEE BRASS · Oct 3</span><span class="p">$2.86</span></div>
+          <div class="crow"><span class="tick on">✓</span><span class="nm">3" pvc 45 <small>· 60</small></span><span class="fit">3" PVC DWV 45 · Oct 3</span><span class="p">$4.90</span></div>
+          <div class="crow"><span class="btn pri" style="flex:1 1 100%">Tie 8 names to their part · 1 unticked ▸</span></div>
+        </div>
+        <div class="sec">
+          <h4>More than one fit · 26</h4>
+          <div class="crow"><span class="nm">2" 90 <small>· 42</small></span><span class="btn sm">Pick…</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The sections stack. The counted press sits under its rows.</p>
+  </div>
+</div>
+<p class="note"><b>For C:</b> the fewest presses where a name has one fit. <b>Against:</b> on the real site the search's lone answer was the wrong thing three times in eight, and at most 16 rows have a lone fit. The other 80 still need an answer row by row. I would add a counted press to A later, once PR 1 has shown how often the first offer is right.</p>
+
+<h2 id="words">The words as you go <small>the Worth tile, and the end</small></h2>
+<p class="lede">The same tile at four moments. Only a price you accepted moves the dollar figure. The offers are a count of rows, never dollars.</p>
+<div class="glance" style="margin-top:14px">
+  <div class="tile"><span class="k">Worth · before</span><span class="v">$2,310.00 known</span><span class="m">9 of 118 lines have a price · 2 on a price older than 90 days · 41 rows have an offer</span></div>
+  <div class="tile"><span class="k">Worth · one row in</span><span class="v">$2,996.40 known</span><span class="m">11 of 118 lines have a price · 2 on a price older than 90 days · 40 rows have an offer</span></div>
+  <div class="tile"><span class="k">Worth · the offers worked</span><span class="v">$9,412.75 known</span><span class="m">58 of 118 lines have a price · 9 on a price older than 90 days · 47 rows have nothing found</span></div>
+  <div class="tile done"><span class="k">Worth · done</span><span class="v">$21,480.10 known</span><span class="m">104 of 104 lines have a price · 9 on a price older than 90 days · 14 left out</span></div>
+</div>
+<div class="two">
+  <div class="col sug">
+    <div class="cap">The end · a press on Worth with nothing left</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="sec">
+          <div class="sumline"><span class="chips"><span class="chip on">No price · 0</span><span class="chip">An old price · 9</span><span class="chip">Left out · 14</span></span></div>
+          <div class="empty"><b>Nothing waiting on a price on this site.</b><span class="sub">9 lines are on a price older than 90 days.</span><span class="btn sm pri">Show the 9 on an old price</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Empty is the good state, and it says so. The amber half of the cover is the next list.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">An old price · the second list</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="sec">
+          <div class="sumline"><span><b>9 lines on a price older than 90 days</b></span></div>
+          <div class="prow"><span class="nm">4" PVC DWV 45</span><span class="tot">30</span>
+            <span class="bx"><span class="pill box">R22 · 30</span><span class="pill amber">$147.00 · parts book · checked Jul 14, 122 days ago</span></span>
+            <span class="offers"><span class="offer"><span class="w">Offer · a newer bill</span><span class="what"><b>4 PVC DWV 1/8 BEND</b> Cedar Fork Supply · Oct 28</span><span class="p">$5.35 each</span><span class="btn sm go">Use this price</span></span></span>
+            <span class="own"><span class="btn sm">Open in the Parts Book</span><span class="sub">The book's price is checked there, for every site at once.</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">A price past 90 days stays in <i>known</i> and stays amber. A newer bill is offered beside it. Checking the book's own price stays in the Parts Book.</p>
+  </div>
+</div>
+
+<h2 id="undo">A wrong price <small>how it is taken back</small></h2>
+<div class="two">
+  <div class="col sug">
+    <div class="cap">The open row, after an answer</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="sec">
+          <div class="prow"><span class="nm">1/2" PEX male adapter</span><span class="tot">64</span>
+            <span class="bx"><span class="pill box">R40 · 64</span><span class="pill">$199.68 · Pecan Supply's bill · Sep 30</span></span>
+            <span class="open">
+              <span class="l"><span><b>R40</b> · Cage row B · J1042</span><span><b>64</b> · counted Tue</span></span>
+              <span class="sub" style="font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:11px">Priced here</span>
+              <span class="l"><span>$3.12 for one · Pecan Supply's bill of Sep 30 · by Dana, Nov 13</span><span class="btn sm">Undo</span></span>
+              <span class="sub">Undo takes this price back. The count and the box do not change.</span>
+            </span></div>
+          <div class="prow out"><span class="nm">Tote of odd fittings <small>left out · not a part</small></span><span class="tot">18</span>
+            <span class="bx"><span class="pill box">R77 · 18</span><span class="pill">left out by Dana, Nov 13</span><span class="btn sm">Bring back</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Every price says where it came from, who accepted it and when. A second price for the row wins over the first, and Undo steps back one.</p>
+  </div>
+  <div class="col">
+    <div class="cap">What a price here changes elsewhere</div>
+    <div class="frame">
+      <div class="hdr"><b>J1042 · Juniper Ridge, phase 2</b><span>Materials · Missing</span></div>
+      <div class="pad">
+        <div class="sec">
+          <div class="prow"><span class="nm">1/2" PEX male adapter</span><span class="tot">6 missing</span>
+            <span class="bx"><span class="pill">before: $0.00 · no price</span><span class="pill green">after: $18.72 · Pecan Supply's bill · Sep 30</span></span></div>
+        </div>
+        <p class="sub">The job's Missing table and the desk's <b>Missing this week</b> read the same price, on every device. The Parts Book, a bid, a purchase order and a job's costs do not.</p>
+      </div>
+    </div>
+    <p class="say">One rule prices everything on site. So a part that goes missing next week has a dollar figure where it reads $0.00 today.</p>
+  </div>
+</div>
+
+<h2 id="calls">Your calls</h2>
+<p class="lede">Nine calls, each a word. My pick is first on each. Call 1 is answered. The first build rests on calls 2, 3 and 9.</p>
+<div class="cards">
+  <div class="card"><h3>1 · Which drawing?</h3><p class="rec"><b>Answered Nov 13: B.</b> One at a time, in a window over the list.</p><p class="alt">A, in place, which I recommended. Or C, by source.</p></div>
+  <div class="card"><h3>2 · May an offer come from any bill?</h3><p class="rec"><b>Yes.</b> The site's own bills fit one row. Every bill the company has fits 39.</p><p class="alt">Only this site's bills.</p></div>
+  <div class="card"><h3>3 · Does an offer count in <i>known</i>?</h3><p class="rec"><b>No.</b> Only a price a person accepted.</p><p class="alt">Yes, as a second figure beside it.</p></div>
+  <div class="card"><h3>4 · Does Not a part leave the cover?</h3><p class="rec"><b>Yes.</b> The cover says how many were left out.</p><p class="alt">No. It stays as no price.</p></div>
+  <div class="card"><h3>5 · Does a typed or bill price go stale?</h3><p class="rec"><b>Yes.</b> After 90 days, like a parts-book price.</p><p class="alt">No. It is what was paid.</p></div>
+  <div class="card"><h3>6 · Does a price belong to the site?</h3><p class="rec"><b>Yes.</b> As a tie does. A name can mean another part on the next site.</p><p class="alt">To the whole company.</p></div>
+  <div class="card"><h3>7 · Who may price?</h3><p class="rec"><b>The roles that tie today.</b> They already read the desk's money.</p><p class="alt">The office only.</p></div>
+  <div class="card"><h3>8 · Does it price the job's page too?</h3><p class="rec"><b>Yes.</b> One rule, one price, on the Missing table and the desk.</p><p class="alt">The site's screen only.</p></div>
+  <div class="card"><h3>9 · Does Worth open the window at once?</h3><p class="rec"><b>No.</b> It lists the rows as today. One press on the list opens the window.</p><p class="alt">Yes, straight into the window.</p></div>
+</div>
+
+<h2 id="plan">The plan</h2>
+<div class="train">
+  <div><span class="sz">PR 1 · M</span><b>The window and its offers</b>One name at a time with its fits. A parts-book fit is one key. A bill's price is shown. Skip, Undo, Done for now. No database change.</div>
+  <div class="stop"><span class="sz">STOP</span><b>Look on the real site</b>Count how often the first offer was the right one.</div>
+  <div><span class="sz">PR 2 · M</span><b>A price of the site's own</b>Use a bill's price, type a price, Not a part, Undo. One new table. The job's page reads it too.</div>
+  <div><span class="sz">PR 3 · S</span><b>The end and the old prices</b>The empty state, the chips on the list, the walk of prices older than 90 days, the phone.</div>
+</div>
+<p class="note"><b>What I would leave out.</b> A press that accepts guesses in bulk. A guessed total for the site. Writing the Parts Book from here. New parts-book parts made from crew spellings. Pricing from the phone's On site tab.</p>
+
+</div>
+<script>
+  var buttons = document.querySelectorAll('.themes button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === t)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.set); }); });
+  var wanted = new URLSearchParams(location.search).get('theme');
+  if (wanted === 'dark' || wanted === 'light') setTheme(wanted);
+</script>
+</body>
+</html>

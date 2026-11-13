@@ -15,6 +15,11 @@
  * every estimate ever sent (`loadBidWins.ts`, `loadEstimateWins.ts`), each through its own won rate, as the page
  * reads them. If either read fails it is named in what was not read and Market reads the dollars that came in.
  *
+ * The mail leaves out what the page leaves out: `loadMondaySheetReads` reads the owner's list (`app_settings`
+ * `bridge_left_out_v1`, `leftOut.ts`) before anything else and hands it to every read the page hands it to, and the
+ * mail says the list under its name in the page's sentence. No row is an empty list. A list that cannot be read
+ * leaves nothing out and is named in what was not read.
+ *
  * Modes on the POST:
  * - the cron (no body, or `{}`): X-Cron-Secret. The cron fires at 11:00 and 12:00 UTC on Mondays and posts only while
  *   the switch `app_settings` `bridge_weekly_sheet_on_v1` reads 'true'; the function checks the switch again, runs only

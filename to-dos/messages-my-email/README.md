@@ -16,7 +16,7 @@ summary: >
 next: Grace's own walk as grace@clickplumbing.com on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email, counting the guesses over the first thirty rows and saving one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Reviewed 2026-11-04 (the section at the foot): four days live, no visit by a Workspace person and no tag; the doors that would change that are #263 (`to-dos/messages-my-email-doors/`). The month of use starts at the first visit; the tab retires if nobody saves by its end. The save log points to a first save by a person's own press on 2026-11-12 (Where it stands, 2026-11-13).
 size: M, built as twelve PRs on 2026-11-01: the five planned, the forward guide, four from the review (the imitation refusal, the follow's window, the tab's Untag, the function's untag and ties) and two the lead found after it (the row's words, hidden labels in an open conversation)
 blocker: Nothing in the code. The first live read and save needs a clickplumbing.com session, which no agent may open.
-ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296 · 7020 · 7022 · 7035 · 7068 · 7073
+ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296 · 7020 · 7022 · 7035 · 7068 · 7073 · 7132
 opinion: built — watch whether people tag; retire the tab after a month if nobody does, and the forward guide stays
 mockup: to-dos/messages-my-email/mockup.html
 ---
@@ -382,11 +382,14 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
 - Live walk, 06:43 to 06:55 UTC on 11-13, as the dev: the tab reads in the new words, the guide opens
   at its new address and at its old one, and Settings → Activity logs is headed *Most recent
   notifications*. The dev's address is off the Workspace, so the lists were empty and no row could be
-  pressed. The walk found two flaws in the train, fixed in PR #7916 (in the merge queue at writing):
-  the notice's **See the record** opened its tab above an owner's sent emails, and the guide held the
-  notice's section twice.
-- Left: PR #7916 onto `main`, and its door walked live. A real save walked end to end: the grey line
-  in its new words, the owner's notice on their Needs you card, and the seat's take-off. A seat save
+  pressed. The walk found two flaws in the train, fixed in v2.7132 (PR #7916): the notice's **See the
+  record** opened its tab above an owner's sent emails, and the guide held the notice's section twice.
+- v2.7132 merged at 08:19 UTC on 11-13, and its door was walked on the live site at 15:30 UTC as the
+  dev, in headless Chrome: at 1280 × 768 the page scrolls past the 996 px card of sent emails and
+  *Most recent notifications* sits whole on screen; at 375 × 812 it opens at the top of the screen.
+  The live guide holds the notice's section once.
+- Left: a real save walked end to end: the grey line in its new words, the owner's notice on their
+  Needs you card, and the seat's take-off. A seat save
   onto a ZZ Test job would prove all three, but the mailbox's real owner would see the notice for seven
   days, so it waits for a mailbox whose owner has agreed.
 

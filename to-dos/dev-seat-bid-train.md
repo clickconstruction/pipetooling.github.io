@@ -1,16 +1,16 @@
 ---
-name: "The dev seat's bid train: the bid, its counts, takeoff, labor and prices are live; the submission pair waits on the owner"
+name: "The dev seat's bid train: the bid, its counts, takeoff, labor and prices are live; the submission pair is card #339"
 number: 317
 group: waiting
-status: LIVE on `dev-mcp` 0.78.0 (2026-11-12 08:48 UTC) — `plan_bid_update` (v2.6945, PR #7680), `plan_bid_counts` (v2.6967, #7714), `plan_bid_takeoff` (v2.6968, #7717), `plan_bid_labor` (v2.6976, #7728), `get_bid`'s priced total (v2.6990, #7744) and `plan_bid_pricing` (v2.6992, #7749); each deployed from main, `whoami` lists it, and each was dry-run on b398 "ZZ Test" · no live apply has been walked on prod: the building session's permission layer refused writes there, so the first real apply of each is the one to read closely · pair 6 (the submission paper) is briefed in `to-dos/mcp-servers.md` and not started
+status: LIVE on `dev-mcp` 0.78.0 (2026-11-12 08:48 UTC) — `plan_bid_update` (v2.6945, PR #7680), `plan_bid_counts` (v2.6967, #7714), `plan_bid_takeoff` (v2.6968, #7717), `plan_bid_labor` (v2.6976, #7728), `get_bid`'s priced total (v2.6990, #7744) and `plan_bid_pricing` (v2.6992, #7749); each deployed from main, `whoami` lists it, and each was dry-run on b398 "ZZ Test" · no live apply has been walked on prod: the building session's permission layer refused writes there, so the first real apply of each is the one to read closely · pair 6 (the submission paper) is live on 0.82.0, v2.7154, with one apply walked on b398 (card #339)
 summary: >
   The owner asked on 2026-11-11 for dev seat verbs that change a bid and fill in its counts, takeoff,
   labor and pricing, so an agent can enter a bid from a paper proposal. He gave the go on the map's
-  order the same day. Two of the pairs are live. This card is the hand-over for the rest: what is
-  on which branch, what each still needs, and the recipe that gets a seat PR past the version
-  collisions every other seat PR causes. The map and a build brief per pair stay in
-  to-dos/mcp-servers.md under "The bid train"; this card is only the state.
-next: The owner's go on pair 6, the submission paper (file a paper from Drive into the bid's folder and link it, make the project folder, read a Drive folder), which the old-proposals work needs beyond the link `plan_bid_update` already sets. Then retire this card. A first live apply of any pair on a ZZ bid, with the owner's word, would close the one check not yet made.
+  order the same day, and all five pairs on the Bids tabs went live by 2026-11-12. This card is the
+  hand-over: what shipped where, and the recipe that gets a seat PR past the version collisions
+  every other seat PR causes. The map and a brief per pair stay in to-dos/mcp-servers.md under
+  "The bid train"; the one pair left, the submission paper, is card #339.
+next: Pair 6, the submission paper, is its own card now: #339 (`to-dos/dev-seat-bid-submission.md`). Retire this card once #339 ships. A first live apply of any pair on a ZZ bid, with the owner's word, would close the one check not yet made.
 size: L as a train, shipped; pair 6 is M
 blocker: none.
 opinion: build in order — counts, takeoff, labor and pricing each hang on the one before, and a paper proposal is entered in that order.
@@ -32,7 +32,7 @@ what is on which branch, and what each piece still needs.
 | 3 · `plan_bid_takeoff` | Merged (v2.6968, PR #7717). Live on `dev-mcp` 0.74.0. | The same: dry runs on b398 only. |
 | 4 · `plan_bid_labor` | Merged (v2.6976, PR #7728). Live on `dev-mcp` 0.75.0. | The same: dry runs on b398 only. |
 | 5 · `plan_bid_pricing` | Merged: v2.6990 (`get_bid` states the grid's revenue total, PR #7744) and v2.6992 (the pair, PR #7749). Live on `dev-mcp` 0.78.0. | The same: dry runs on b398 only. On b398 `get_bid` reads $56,343.00, the bid's sent value. |
-| 6 · `plan_bid_submission` | Not started. | Brief in `mcp-servers.md`. The proposals work needs it to file a paper from Drive onto its bid. |
+| 6 · `plan_bid_submission` | Merged (v2.7154, PR #7964), with `read_drive_folder`. Live on `dev-mcp` 0.82.0. | Walked on b398 on 2026-11-13: a dry run and one apply by Drive's copy. A bid with no folder, a file outside the Shared Drive and `replace: true` have not run on prod (card #339). |
 
 ## Get the kit
 

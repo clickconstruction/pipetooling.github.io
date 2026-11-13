@@ -13,7 +13,7 @@ import { buildLienPayRunway, type LienPayRunway } from './lienPayRunway'
 import { lienBilledOpen } from './lienBilledOpen'
 import type { PaySpeedData, PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel } from './billedDuePay'
-import { calendarFor, type PayCalendarIndex } from './payCalendar'
+import { calendarSourceFor, type PayCalendarIndex } from './payCalendar'
 import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import { listPayer, paySpeedPayer } from './billToParty'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
@@ -64,7 +64,7 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
           deps.todayYmd,
           deps.promisedPayDates?.[job.id] ?? null,
           paceInputFor(deps.paceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, deps.paySpeeds),
-          calendarFor(deps.payCalendars, { payerId: payer.id, jobId: job.id }),
+          calendarSourceFor(deps.payCalendars, { payerId: payer.id, jobId: job.id }),
         )
       : null
   return buildLienPayRunway({

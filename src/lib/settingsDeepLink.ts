@@ -18,6 +18,8 @@
  * - /settings?tab=settings-phone-texts#settings-phone-texts-missed-calls (the Missed calls card, punch list #195 PR 2)
  * - /settings?tab=settings-phone-texts#settings-phone-texts-reminders (the Reminders the app offers card, v2.5720;
  *                                       the switch card's Reminders door lands on it)
+ * - /settings#settings-card-and-footer  (Your card and footer, punch list #313; Settings search lands on it)
+ * - /settings?tab=settings-people#settings-card-looks (Card and footer looks, the owner's and a dev's card)
  *
  * `?tab=` values are settings tab/group ids (e.g. `settings-data`). Hashes are
  * either a section anchor inside a tab (mapped below) or a tab id themselves.
@@ -37,6 +39,9 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-lien-sign-code': 'settings-account',
   // My email in Messages (punch list #230 PR 3): the My email tab's off line opens the switch here.
   'settings-my-mail': 'settings-account',
+  // Cards and footers (punch list #313): a person's own card on Your account, and the owner's looks and sizes on People & teams.
+  'settings-card-and-footer': 'settings-account',
+  'settings-card-looks': 'settings-people',
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',

@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
+keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -51,6 +51,16 @@ To take a join back, press the row to open it. **Names joined here** lists each 
 
 A name typed on site has no price until it is tied to the parts book. Press a row to open it. Press **This is a parts-book part** and type words from the part's name. Press the part in the list. The row now reads the book's name and price, and **Worth** grows. **Undo** under **Names joined here** takes the tie back.
 
+To price many rows, press **Worth** and then {{button:blue|Price 88 rows one at a time}}. The number on the button is how many rows have no price. A window opens on the row with the most pieces.
+
+The window shows parts from the parts book whose names hold every word of the row's name. Each one is marked **Offer** and shows its price and the day it was checked. An offer is a guess. Read the name before you press it. A name with no material can fit a PVC part and a copper part.
+
+Press an offer to use that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
+
+Under **What a bill paid** the window shows what a supply house charged for a line that fits. You can read that price. You cannot press it yet.
+
+The foot of the window names your last answer. Press **Undo** there to take it back. Press **Done for now** to close the window. The rows you priced have left the list.
+
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
 Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
@@ -79,11 +89,11 @@ The money uses the parts book's price. Beside each figure a small chip reads {{c
 
 ## Land a delivery
 
-Open **Deliveries**. Press **Open the job's Drive folder** and drop the invoice there. The app reads it from the folder.
+Open **Deliveries**. Press **Add the invoice to the job’s Drive folder** and drop the invoice there. That keeps the invoice with the job. The app does not read the file yet, so its lines land from pasted text.
 
 A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. Press it once. The app makes the job's folder under Jobs with Customer Pictures, Plans and Team only inside. The office sees it, and a box photo from the phone files there by itself. On the desk, **Make folders for 12 jobs** does the same for every live job without one. A job whose link is not a folder is held with the reason. A job with a folder but no pictures or plans link has the same press on its window's Documents tab. It fills in what is missing.
 
-To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
+To land the lines, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
 ## Print a label
 

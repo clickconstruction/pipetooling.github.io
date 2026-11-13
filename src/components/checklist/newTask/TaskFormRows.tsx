@@ -95,6 +95,12 @@ type Props = {
   dueNote?: ReactNode
   /** Shown under the When row: an edit says what a save does to the days already made. */
   whenNote?: ReactNode
+  /** A roadmap task has no day of its own, so its window leaves the When row out. */
+  hideWhen?: boolean
+  /** A window that does not set the place leaves the Where row out. */
+  hideWhere?: boolean
+  /** The presses the Add row offers. All of them, unless a window names its own: a roadmap task has only the lines and the photo. */
+  addKeys?: readonly TaskAddKey[]
   /** The layer of what the rows open through a portal, over the window that holds them. Left out, each keeps its own. */
   pickerZIndex?: number
 }
@@ -154,7 +160,7 @@ export function TaskFormRows(props: Props) {
     lineCount,
     asksForPhoto: props.asksForPhoto,
     staysUntilDone: value.show_until_completed,
-  })
+  }).filter((p) => !props.addKeys || props.addKeys.includes(p.key))
   // A panel belongs to a press on the row, so it closes with a press that has left the row (Due by on a repeating task).
   const openPanel = addOpen && addPresses.some((p) => p.key === addOpen) ? addOpen : null
   const onAddPress = (press: TaskAddPress) => {
@@ -222,6 +228,7 @@ export function TaskFormRows(props: Props) {
       </div>
 
       {/* ── When: one joined bar, over the When control of v2.2058 ── */}
+      {props.hideWhen ? null : (
       <div style={rowStyle}>
         <span style={labStyle}>When</span>
         <TaskWhenBar
@@ -340,17 +347,21 @@ export function TaskFormRows(props: Props) {
         )}
         {props.whenNote ? <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{props.whenNote}</div> : null}
       </div>
+      )}
 
       {/* ── Where: the place and the photo of the spot on one row (#328) ── */}
-      <div style={rowStyle}>
-        <span style={labStyle}>Where</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
-          <TaskPlaceRow value={props.place} onChange={props.onPlace} variant="shelf" {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} />
-          <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
+      {props.hideWhere ? null : (
+        <div style={rowStyle}>
+          <span style={labStyle}>Where</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
+            <TaskPlaceRow value={props.place} onChange={props.onPlace} variant="shelf" {...(props.pickerZIndex != null ? { sheetZIndex: props.pickerZIndex } : {})} />
+            <TaskSpotPhotoField value={props.spotPhoto} onChange={props.onSpotPhoto} busy={props.busy} variant="press" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Add: the rare things, each by name. A press opens that one thing here. ── */}
+      {addPresses.length === 0 ? null : (
       <div style={{ ...rowStyle, alignItems: 'start', paddingBottom: 14 }}>
         <span style={{ ...labStyle, paddingTop: 9 }}>Add</span>
         <TaskAddRow presses={addPresses} openKey={openPanel} onPress={onAddPress} />
@@ -556,6 +567,7 @@ export function TaskFormRows(props: Props) {
           </div>
         ) : null}
       </div>
+      )}
     </>
   )
 }

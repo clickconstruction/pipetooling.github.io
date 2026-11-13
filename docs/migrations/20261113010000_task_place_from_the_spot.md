@@ -29,3 +29,5 @@ Read-only on prod after the push:
 
 - `select has_function_privilege('authenticated', 'public.add_task_place_from_the_spot(uuid, double precision, double precision, integer, text)', 'EXECUTE')` reads `true`, and the same for `anon` reads `false`.
 - `select prosecdef from pg_proc where proname = 'add_task_place_from_the_spot'` reads `true`.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7925.

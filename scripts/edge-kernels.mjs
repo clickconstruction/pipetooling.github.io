@@ -66,6 +66,7 @@ export const IMPORTERS = [
   'quo-send',
   'quo-webhook',
   'receipt-link',
+  'receipt-request',
   'remind-bid-followups',
   'send-checklist-notification',
   'send-estimate-to-customer',

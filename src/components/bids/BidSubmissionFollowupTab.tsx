@@ -1902,7 +1902,7 @@ export function BidSubmissionFollowupTab({
                     style={{
                       borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
-                      background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
+                      background: selectedBid?.id === bid.id ? 'var(--bg-blue-tint)' : undefined,
                     }}
                   >
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
@@ -2031,7 +2031,7 @@ export function BidSubmissionFollowupTab({
                     style={{
                       borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
-                      background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
+                      background: selectedBid?.id === bid.id ? 'var(--bg-blue-tint)' : undefined,
                     }}
                   >
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
@@ -2127,7 +2127,7 @@ export function BidSubmissionFollowupTab({
                   style={{
                     borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
-                    background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
+                    background: selectedBid?.id === bid.id ? 'var(--bg-blue-tint)' : undefined,
                   }}
                 >
                   <td style={{ padding: '0.75rem' }}>

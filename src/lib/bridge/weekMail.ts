@@ -31,6 +31,11 @@ export type WeekMail = {
    * punch list #318): "bids $22k at 7% won". Empty or absent while Market still reads the dollars that came in.
    */
   marketParts?: ReadonlyArray<string>
+  /**
+   * What the Bridge leaves out, in the page's own sentence under its name (`leftOutWords`): "Leaves out Oak Hollow."
+   * Empty or absent when nothing is left out, and then the mail says nothing of it.
+   */
+  leftOut?: string
   /** What could not be read when it was built, in plain words; empty when everything came back. */
   gaps: string[]
 }
@@ -60,6 +65,11 @@ export function weekMailMoves(model: WeekCallModel): WeekMove[] {
 /** What could not be read, in one sentence; empty when everything came back. */
 export function weekMailGapsLine(gaps: ReadonlyArray<string>): string {
   return gaps.length ? `Not read when this was built: ${gaps.join(', ')}. The rest reads without it.` : ''
+}
+
+/** What the Bridge leaves out, under the mail's name as under the page's; empty when nothing is left out. */
+export function weekMailLeftOutLine(mail: Pick<WeekMail, 'leftOut'>): string {
+  return (mail.leftOut ?? '').trim()
 }
 
 /** What Market's amount is made of, in one line under the pipe; empty while Market still reads the dollars that came in. */
@@ -196,7 +206,7 @@ export function weekMailHtml(mail: WeekMail, bridgeUrl: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media (max-width:${WEEK_MAIL_STACK_PX}px){.col{max-width:100%!important}}</style></head><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${INK}">
 <div style="max-width:${WEEK_MAIL_WIDTH_PX}px;margin:0 auto;padding:20px 12px">
 <div style="padding:0 6px"><div style="font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">${WEEK_MAIL_WORDS.title}</div>
-<div style="font-size:13px;color:${MUTED};margin:2px 0 14px">${esc(weekMailLine(mail))}</div></div>
+<div style="font-size:13px;color:${MUTED};margin:2px 0 14px">${esc(weekMailLine(mail))}${weekMailLeftOutLine(mail) ? `<br>${esc(weekMailLeftOutLine(mail))}` : ''}</div></div>
 ${tiles}
 ${model.cashLeads ? '' : strip}${block(cardHtml(model, bridgeUrl))}${model.cashLeads ? strip : ''}
 ${gaps ? `<div style="font-size:12px;color:#b42318;padding:0 6px 8px">${esc(gaps)}</div>` : ''}<div style="font-size:12px;color:${MUTED};padding:0 6px">${esc(WEEK_MAIL_WORDS.foot)} ${esc(WEEK_MAIL_WORDS.sent)} <a href="${esc(bridgeUrl)}" style="color:#1d4ed8">Open the Bridge</a>.</div>
@@ -218,6 +228,7 @@ export function weekMailText(mail: WeekMail, bridgeUrl: string): string {
   const gaps = weekMailGapsLine(mail.gaps)
   return [
     `${WEEK_MAIL_WORDS.title}, ${weekMailLine(mail)}`,
+    ...(weekMailLeftOutLine(mail) ? [weekMailLeftOutLine(mail)] : []),
     '',
     ...tiles,
     ...(model.cashLeads ? [] : strip),

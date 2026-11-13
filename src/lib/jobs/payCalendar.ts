@@ -185,15 +185,80 @@ export function indexPayCalendars(rows: ReadonlyArray<PayCalendarRow>): PayCalen
   return { byPayer, byPayerJob }
 }
 
+/** Whose calendar a bill reads: its job's own, its payer's, none because the job switched it off, or none because none is set. */
+export type PayCalendarSource = 'job' | 'payer' | 'off' | 'none'
+
+/** The calendar one bill reads, and whose it is (punch list #341). */
+export type PayCalendarRead = {
+  /** The calendar the bill reads; null when the job switched it off, or none is set. */
+  calendar: PayCalendar | null
+  from: PayCalendarSource
+  /** The payer's own calendar, whatever the job carries: what the job would follow without a row of its own. */
+  payerCalendar: PayCalendar | null
+}
+
+const NO_CALENDAR: PayCalendarRead = { calendar: null, from: 'none', payerCalendar: null }
+
 /**
- * The calendar one bill reads: its job's own row for its payer, else the payer's, else none.
- * A job's row that is off means none, whatever the payer holds. None is today's behavior.
+ * The calendar one bill reads and whose it is: its job's own row for its payer, else the
+ * payer's, else none. A job's row that is off means none, whatever the payer holds. None is
+ * today's behavior. A job's row belongs to one payer: a bill another party pays reads past it.
  */
-export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendar | null {
-  if (!index || !bill.payerId) return null
+export function calendarSourceFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendarRead {
+  if (!index || !bill.payerId) return NO_CALENDAR
+  const payerCalendar = index.byPayer.get(bill.payerId)?.calendar ?? null
   const own = bill.jobId ? index.byPayerJob.get(`${bill.payerId}|${bill.jobId}`) : undefined
-  if (own) return own.off ? null : own.calendar
-  return index.byPayer.get(bill.payerId)?.calendar ?? null
+  if (own) return own.off || !own.calendar ? { calendar: null, from: 'off', payerCalendar } : { calendar: own.calendar, from: 'job', payerCalendar }
+  return payerCalendar ? { calendar: payerCalendar, from: 'payer', payerCalendar } : NO_CALENDAR
+}
+
+/** A calendar handed over bare, or with whose it is: the pay model takes either (punch list #341). */
+export type PayCalendarArg = PayCalendar | PayCalendarRead | null | undefined
+
+/** Either form as a read. A bare calendar is taken as the payer's, which is what every caller before #341 meant. */
+export function asPayCalendarRead(arg: PayCalendarArg): PayCalendarRead {
+  if (!arg) return NO_CALENDAR
+  if ('from' in arg) return arg
+  return { calendar: arg, from: 'payer', payerCalendar: arg }
+}
+
+/** What a job switched off reads, on its row, in the job window and in its payer's window: one home, so the three never drift. It is a state and the press back to it, not an empty list. */
+export const JOB_NO_CALENDAR_WORDS = 'No pay calendar on this job'
+
+/** The words that mark a calendar as one job's own, wherever a row says its calendar (punch list #341). */
+export const OWN_CALENDAR_WORDS = 'This job’s own'
+
+/** A row's calendar in a few words, marked when it is the job's own: "This job’s own · In by the 25th, paid the 30th". Null with none. */
+export function payCalendarShortFor(read: PayCalendarRead): string | null {
+  if (!read.calendar) return null
+  return read.from === 'job' ? `${OWN_CALENDAR_WORDS} · ${payCalendarShort(read.calendar)}` : payCalendarShort(read.calendar)
+}
+
+/** The calendar one bill reads (`calendarSourceFor`, without whose it is). */
+export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendar | null {
+  return calendarSourceFor(index, bill).calendar
+}
+
+/** The job window's Pay calendar line (punch list #341): what leads, the words that are the press, what follows, and the hover. */
+export type JobPayCalendarWords = { lead: string | null; press: string; tail: string | null; title: string }
+
+/**
+ * Whose calendar a job reads, in the job window's words. `canSet` is false for a reader who
+ * may not set one: with nothing set there is then nothing to say, and the answer is null.
+ */
+export function jobPayCalendarWords(read: PayCalendarRead, payerName: string | null | undefined, canSet: boolean): JobPayCalendarWords | null {
+  const who = (payerName ?? '').trim() || 'this customer'
+  if (read.from === 'job' && read.calendar) return { lead: OWN_CALENDAR_WORDS, press: payCalendarShort(read.calendar), tail: null, title: `${payCalendarWords(read.calendar)} Only this job reads it.` }
+  if (read.from === 'payer' && read.calendar) return { lead: `Follows ${who}`, press: payCalendarShort(read.calendar), tail: null, title: `${payCalendarWords(read.calendar)} Every job ${who} pays reads it.` }
+  if (read.from === 'off') {
+    return {
+      lead: null,
+      press: JOB_NO_CALENDAR_WORDS,
+      tail: read.payerCalendar ? `${who} has one` : null,
+      title: 'This job reads the usual guess: the bill date plus how long they take to pay.',
+    }
+  }
+  return canSet ? { lead: null, press: 'Set a pay calendar…', tail: null, title: 'For a job whose payer pays on a set day of the month' } : null
 }
 
 /** The year and month whose cutoff a bill received on `receivedYmd` makes. */

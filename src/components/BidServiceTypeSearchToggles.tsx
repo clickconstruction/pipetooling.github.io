@@ -63,7 +63,7 @@ export default function BidServiceTypeSearchToggles({
               letterSpacing: '0.02em',
               borderRadius: 3,
               border: `1px solid ${borderColor}`,
-              background: on ? borderColor : 'white',
+              background: on ? borderColor : 'var(--surface)',
               color: on ? '#fff' : 'var(--text-700)',
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.6 : 1,

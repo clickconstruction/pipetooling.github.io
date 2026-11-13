@@ -56,6 +56,9 @@ export function PayCalendarModalProvider({ children }: { children: ReactNode }) 
           zIndex={open.zIndex}
           onClose={closePayCalendar}
           onSaved={() => onSavedRef.current?.()}
+          // The payer's window lists the jobs that carry their own calendar (punch list #341); a press reopens it on that job,
+          // and the screen that opened the window is still told of a save.
+          onOpenJob={(job) => openPayCalendar({ id: open.id, name: open.name }, { job, onSaved: onSavedRef.current, zIndex: open.zIndex })}
         />
       )}
     </PayCalendarModalContext.Provider>

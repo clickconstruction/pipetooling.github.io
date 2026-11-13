@@ -17,6 +17,8 @@ const { io, auth } = vi.hoisted(() => ({
     loadPayerReceipts: vi.fn(),
     loadDevelopmentJobIds: vi.fn(),
     savePayCalendar: vi.fn(),
+    dispatchPayCalendarChanged: vi.fn(),
+    loadPayCalendarJobs: vi.fn(),
   },
   auth: { role: 'assistant' as string },
 }))
@@ -71,6 +73,8 @@ beforeEach(() => {
   io.loadPayerReceipts.mockReset().mockResolvedValue(RECEIPTS)
   io.savePayCalendar.mockReset().mockResolvedValue(undefined)
   io.loadDevelopmentJobIds.mockReset().mockResolvedValue([])
+  io.dispatchPayCalendarChanged.mockReset()
+  io.loadPayCalendarJobs.mockReset().mockResolvedValue(new Map())
 })
 
 describe('PayCalendarModal', () => {
@@ -114,6 +118,8 @@ describe('PayCalendarModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save pay calendar' }))
     expect(await screen.findByText(/Not allowed to set a pay calendar/)).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
+    // Nothing was saved, so no screen is told to read again.
+    expect(io.dispatchPayCalendarChanged).not.toHaveBeenCalled()
   })
 
   it('fills the form from a stored calendar and removes it behind a confirm that names the act', async () => {
@@ -170,6 +176,68 @@ describe('PayCalendarModal', () => {
     open({ initial: { clause: '§ 9', words: 'something else' } })
     await waitFor(() => expect((screen.getByLabelText('Clause number') as HTMLInputElement).value).toBe('§ 5.2'))
     expect(screen.getByTestId('pay-calendar-modal').style.zIndex).toBe('1200')
+  })
+
+  describe('the jobs that do not follow the payer (punch list #341)', () => {
+    const OWN: PayCalendarRow = { payerCustomerId: 'payer-1', jobId: 'job-2', off: false, calendar: { cutoffDay: 20, payDay: 10, monthsAfter: 2, payWhenPaid: false, clause: '', words: '' }, setByName: null, setAt: null }
+    const OFF: PayCalendarRow = { payerCustomerId: 'payer-1', jobId: 'job-3', off: true, calendar: null, setByName: null, setAt: null }
+    const MOVED: PayCalendarRow = { ...OWN, jobId: 'job-4' }
+    const facts = new Map([
+      ['job-2', { job: { id: 'job-2', label: '1431 · Larkfield medical office', developmentId: null, developmentName: null }, payerIdNow: 'payer-1' }],
+      ['job-3', { job: { id: 'job-3', label: '1418 · Larkfield tenant repair', developmentId: null, developmentName: null }, payerIdNow: 'payer-1' }],
+      ['job-4', { job: { id: 'job-4', label: '1402 · Whitfield remodel', developmentId: null, developmentName: null }, payerIdNow: 'cust-9' }],
+    ])
+    const lines = () => screen.getAllByTestId('pay-calendar-own-job').map((el) => el.textContent)
+
+    it('lists them under the payer’s calendar, says what each reads, and no longer claims every bill', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED, OWN, OFF])
+      io.loadPayCalendarJobs.mockResolvedValue(facts)
+      open()
+      await waitFor(() => expect(lines()).toEqual(['1431 · Larkfield medical officeIts own: In by the 20th, paid the 10th', '1418 · Larkfield tenant repairNo pay calendar on this job']))
+      expect(screen.getByTestId('pay-calendar-own-jobs').textContent).toContain('2 jobs do not follow this')
+      expect(io.loadPayCalendarJobs).toHaveBeenCalledWith(expect.anything(), ['job-2', 'job-3'])
+      expect(screen.getByText(/Every other bill this payer pays reads it\./)).toBeTruthy()
+    })
+
+    it('makes each job a press that reopens the window on it', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED, OWN])
+      io.loadPayCalendarJobs.mockResolvedValue(facts)
+      const onOpenJob = vi.fn()
+      renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" onClose={vi.fn()} onOpenJob={onOpenJob} />)
+      fireEvent.click(await screen.findByRole('button', { name: '1431 · Larkfield medical office' }))
+      expect(onOpenJob).toHaveBeenCalledWith(facts.get('job-2')!.job)
+      expect(screen.getByTestId('pay-calendar-own-jobs').textContent).toContain('1 job does not follow this')
+    })
+
+    it('says when a job’s calendar is held for a payer who no longer pays it', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED, MOVED])
+      io.loadPayCalendarJobs.mockResolvedValue(facts)
+      open()
+      await waitFor(() => expect(lines()).toEqual(['1402 · Whitfield remodelIts own: In by the 20th, paid the 10th. Larkfield Construction no longer pays this job, so no bill reads it.']))
+    })
+
+    it('still lists a job whose name could not be read, with no press, and draws nothing with no such job', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED, OWN])
+      const { unmount } = renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" onClose={vi.fn()} onOpenJob={vi.fn()} />)
+      await waitFor(() => expect(lines()).toEqual(['A jobIts own: In by the 20th, paid the 10th']))
+      expect(screen.queryByRole('button', { name: 'A job' })).toBeNull()
+      unmount()
+      io.loadPayerPayCalendars.mockResolvedValue([STORED])
+      open()
+      await waitFor(() => expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('25'))
+      expect(screen.queryByTestId('pay-calendar-own-jobs')).toBeNull()
+      expect(screen.getByText(/Every bill this payer pays reads it\./)).toBeTruthy()
+    })
+
+    it('hides the list on the job’s own side of the window', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED, OWN])
+      io.loadPayCalendarJobs.mockResolvedValue(facts)
+      open({ job: { id: 'job-2', label: '1431 · Larkfield medical office' } })
+      await waitFor(() => expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('20'))
+      expect(screen.queryByTestId('pay-calendar-own-jobs')).toBeNull()
+      fireEvent.click(screen.getByRole('radio', { name: 'Every job Larkfield Construction pays' }))
+      expect(screen.getByTestId('pay-calendar-own-jobs')).toBeTruthy()
+    })
   })
 
   describe('opened from a job (PR 4)', () => {
@@ -245,6 +313,8 @@ describe('PayCalendarModal', () => {
       // The window stays open on a partial save, and the board is told to read again.
       expect(onClose).not.toHaveBeenCalled()
       expect(onSaved).toHaveBeenCalledTimes(1)
+      // Punch list #341: every other screen is told once, however many jobs were written.
+      expect(io.dispatchPayCalendarChanged).toHaveBeenCalledTimes(1)
     })
 
     it('offers no neighbours for a job in no development', async () => {

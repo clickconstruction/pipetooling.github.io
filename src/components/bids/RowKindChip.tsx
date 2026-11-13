@@ -57,7 +57,7 @@ export function RowKindChip({ kind, guessed, rowName, onChange }: Props) {
         triggerContent: <span title={guessed ? "The app's guess from the name — pick one to make it the row's own" : "The row's own kind"}>{ROW_KIND_WORDS[k]}</span>,
         labelContent: (
           <span style={{ display: 'block', lineHeight: 1.25 }}>
-            <span style={{ fontWeight: 600, color: k === 'equipment' ? '#b45309' : undefined }}>{ROW_KIND_WORDS[k]}</span>
+            <span style={{ fontWeight: 600, color: k === 'equipment' ? 'var(--text-amber-700)' : undefined }}>{ROW_KIND_WORDS[k]}</span>
             <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{KIND_WORDS[k]}</span>
           </span>
         ),

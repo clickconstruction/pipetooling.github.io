@@ -436,7 +436,7 @@ export function WorkflowStagesList({
                     <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isCollapsed ? '\u25B6' : '\u25BC'}</span>
                     <span style={{ fontWeight: isCollapsed ? getStepStatusStyle(s.status).fontWeight : 600, color: isCollapsed ? getStepStatusStyle(s.status).color : 'var(--text-strong)' }}>{s.name}</span>
                     <span style={{ color: 'var(--text-faint)' }}>·</span>
-                    <span style={{ color: s.status === 'rejected' ? '#b91c1c' : s.status === 'skipped' ? 'var(--text-muted)' : 'var(--text-700)', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                    <span style={{ color: s.status === 'rejected' ? 'var(--text-red-700)' : s.status === 'skipped' ? 'var(--text-muted)' : 'var(--text-700)', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
                       {s.status === 'rejected' ? 'Previous work incomplete' : s.status === 'skipped' ? 'Skipped' : s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'skipped' && s.skipped_reason ? ` - ${s.skipped_reason}` : ''}{s.status === 'in_progress' && (() => {
                         const d = daysOpen(s.started_at, s.ended_at)
                         return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null

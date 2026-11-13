@@ -2121,7 +2121,7 @@ export default function Jobs() {
 
       {activeTab === 'materials' && (
         <JobsMaterialsTab
-          jobs={jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address ?? null, google_drive_link: j.google_drive_link ?? null }))}
+          jobs={jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, click_number: j.click_number ?? null, job_name: j.job_name, job_address: j.job_address ?? null, google_drive_link: j.google_drive_link ?? null }))}
           byUserId={authUser?.id ?? null}
           byName={materialsProfileName ?? 'the office'}
           onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}

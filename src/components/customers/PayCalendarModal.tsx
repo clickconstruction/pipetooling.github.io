@@ -9,8 +9,9 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { isStagesOfficeRole } from '../../lib/jobs/stagesRoleGates'
-import { loadDevelopmentJobIds, loadPayerPayCalendars, loadPayerReceipts, savePayCalendar, type PayCalendarSave } from '../../lib/jobs/payCalendarIo'
+import { dispatchPayCalendarChanged, loadDevelopmentJobIds, loadPayCalendarJobs, loadPayerPayCalendars, loadPayerReceipts, savePayCalendar, type PayCalendarJobFacts, type PayCalendarSave } from '../../lib/jobs/payCalendarIo'
 import {
+  JOB_NO_CALENDAR_WORDS,
   PAY_CALENDAR_CLAUSE_MAX,
   PAY_CALENDAR_CUTOFF_MAX,
   PAY_CALENDAR_DEFAULT,
@@ -25,6 +26,7 @@ import {
   type PayCalendarReceipt,
   type PayCalendarRow,
 } from '../../lib/jobs/payCalendar'
+import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 
 /**
  * Pay calendar · <payer> (punch list #323): the day bills must be in by, the day they pay, and
@@ -39,14 +41,7 @@ import {
  * calendar, or none, and one in a development can set the development's other jobs with it.
  */
 
-/** The job a press sat on: the window can set a calendar for it alone. */
-export type PayCalendarJob = {
-  id: string
-  /** The job in the board's words: "1412 · Larkfield retail shell". */
-  label: string
-  developmentId?: string | null
-  developmentName?: string | null
-}
+export type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 
 type Scope = 'payer' | 'job'
 
@@ -74,6 +69,7 @@ export default function PayCalendarModal({
   zIndex = 1200,
   onClose,
   onSaved,
+  onOpenJob,
 }: {
   payerId: string
   payerName: string
@@ -85,6 +81,8 @@ export default function PayCalendarModal({
   zIndex?: number
   onClose: () => void
   onSaved?: () => void
+  /** Reopens the window on one of the payer's jobs (punch list #341): the list of jobs that carry their own calendar is then a list of presses. Absent, it names them only. */
+  onOpenJob?: (job: PayCalendarJob) => void
 }) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -95,6 +93,9 @@ export default function PayCalendarModal({
 
   const [payerRow, setPayerRow] = useState<PayCalendarRow | null>(null)
   const [jobRow, setJobRow] = useState<PayCalendarRow | null>(null)
+  /** Every job that carries a row of its own under this payer (punch list #341): the payer's window lists them, so its calendar never claims a job it does not reach. */
+  const [ownJobRows, setOwnJobRows] = useState<PayCalendarRow[]>([])
+  const [ownJobFacts, setOwnJobFacts] = useState<ReadonlyMap<string, PayCalendarJobFacts>>(new Map())
   const [scope, setScope] = useState<Scope>('payer')
   const [receipts, setReceipts] = useState<PayCalendarReceipt[]>([])
   const [form, setForm] = useState<PayCalendar>(PAY_CALENDAR_DEFAULT)
@@ -126,6 +127,14 @@ export default function PayCalendarModal({
         const forJob = jobId ? (rows.find((r) => r.jobId === jobId) ?? null) : null
         setPayerRow(own)
         setJobRow(forJob)
+        const jobRows = rows.filter((r) => r.jobId != null)
+        setOwnJobRows(jobRows)
+        // Their names come after the window has drawn: a list of jobs is not worth holding the form for.
+        if (jobRows.length) {
+          void loadPayCalendarJobs(supabase, jobRows.map((r) => r.jobId as string)).then((facts) => {
+            if (!cancelled) setOwnJobFacts(facts)
+          })
+        }
         // A job that already carries its own opens on the job; anything else opens on the payer.
         setScope(forJob ? 'job' : 'payer')
         setJobOff(forJob?.off === true)
@@ -169,6 +178,8 @@ export default function PayCalendarModal({
 
   const finish = (line: string, tone: 'success' | 'warning' | 'error') => {
     showToast(line, tone)
+    // Every screen that reads a calendar reads again (punch list #341), whichever door opened this window.
+    dispatchPayCalendarChanged()
     onSaved?.()
     if (tone === 'success') onClose()
   }
@@ -402,6 +413,35 @@ export default function PayCalendarModal({
           </label>
         ) : null}
 
+        {!onJob && ownJobRows.length > 0 ? (
+          <div data-testid="pay-calendar-own-jobs" style={{ ...boxStyle, border: '1px solid var(--border)', padding: '0.5rem 0.7rem' }}>
+            <div style={{ fontWeight: 700 }}>
+              {ownJobRows.length} {ownJobRows.length === 1 ? 'job does' : 'jobs do'} not follow this
+            </div>
+            {ownJobRows.map((r) => {
+              const facts = r.jobId ? ownJobFacts.get(r.jobId) : undefined
+              const label = facts?.job.label ?? 'A job'
+              // The job's bills now go to someone else: this calendar is stored and no bill reads it.
+              const stale = facts != null && facts.payerIdNow !== payerId
+              return (
+                <div key={r.jobId} data-testid="pay-calendar-own-job" style={{ marginTop: 4 }}>
+                  {onOpenJob && facts ? (
+                    <button type="button" className="payCalendarPress" disabled={saving} onClick={() => onOpenJob(facts.job)} style={{ fontWeight: 600 }}>
+                      {label}
+                    </button>
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>{label}</span>
+                  )}
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: stale ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+                    {r.off || !r.calendar ? JOB_NO_CALENDAR_WORDS : `Its own: ${payCalendarShort(r.calendar)}`}
+                    {stale ? `. ${payerName} no longer pays this job, so no bill reads it.` : ''}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
           {canSet && stored ? (
             <button type="button" onClick={() => void remove()} disabled={dead} style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: onJob ? 'var(--text-700)' : 'var(--text-red-600)', border: '1px solid var(--border)', borderRadius: 6, cursor: dead ? 'default' : 'pointer' }}>
@@ -424,7 +464,7 @@ export default function PayCalendarModal({
           ) : null}
         </div>
         <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {canSet ? (onJob ? 'Only this job’s bills read it.' : 'Every bill this payer pays reads it.') : 'The office sets this.'}
+          {canSet ? (onJob ? 'Only this job’s bills read it.' : ownJobRows.length > 0 ? 'Every other bill this payer pays reads it.' : 'Every bill this payer pays reads it.') : 'The office sets this.'}
           {storedWords ? ` ${storedWords}` : ''}
         </p>
       </div>

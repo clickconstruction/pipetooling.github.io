@@ -67,3 +67,5 @@ Read-only on prod after the push:
 ## Undo
 
 `restore_deleted_records` for each estimate's id, as above, inside the 90 days.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

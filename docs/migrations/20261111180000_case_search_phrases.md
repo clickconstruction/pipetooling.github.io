@@ -37,4 +37,4 @@ and the same for `idx_person_files_fts`, `idx_person_file_entries_fts`, `idx_per
 
 After `20261108230000`. Nothing else waits on it: the seat calls the same function with the same arguments, so no edge function is deployed. The types PR follows the push for the four new functions.
 
-**Not applied yet**: `supabase db push` is owed once this file is on `main`.
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

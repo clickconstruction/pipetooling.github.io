@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry, settingsSearchGuideQuery, settingsSearchTrail } from './settingsSearch'
+import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry, settingsSearchGuideQuery, settingsSearchIndexFor, settingsSearchTrail } from './settingsSearch'
+import { getZonedSettingsGroups } from './settingsGroups'
+import { ROLES } from './userRoles'
 
 const ALL_TABS = [...new Set(SETTINGS_SEARCH_INDEX.map((e) => e.tabId))]
 
@@ -46,6 +48,42 @@ describe('searchSettings', () => {
       expect(e.tabId.startsWith('settings-')).toBe(true)
       for (const k of e.keywords ?? []) expect(k).toBe(k.toLowerCase())
     }
+  })
+})
+
+describe('a card drawn for fewer roles than its tab (v2.7139, punch list #313)', () => {
+  const find = (role: (typeof ROLES)[number], query: string) =>
+    searchSettings(query, getZonedSettingsGroups(role).map((g) => g.id), settingsSearchIndexFor(role)).map((h) => h.entry)
+
+  it('Card and footer looks: the owner and a dev find it on People & teams, the rest of the office does not', () => {
+    for (const role of ['master_technician', 'dev'] as const) {
+      expect(find(role, 'card and footer looks')[0]).toMatchObject({ label: 'Card and footer looks', tabId: 'settings-people', anchorId: 'settings-card-looks' })
+      expect(find(role, 'card sizes').some((e) => e.anchorId === 'settings-card-looks')).toBe(true)
+    }
+    for (const role of ROLES.filter((r) => r !== 'master_technician' && r !== 'dev')) {
+      expect(find(role, 'card and footer looks').some((e) => e.anchorId === 'settings-card-looks'), role).toBe(false)
+      expect(find(role, 'looks').some((e) => e.anchorId === 'settings-card-looks'), role).toBe(false)
+    }
+  })
+
+  it('Your card and footer: every role but a subcontractor finds it on Your account', () => {
+    for (const role of ROLES) {
+      const found = find(role, 'business card').some((e) => e.tabId === 'settings-account' && e.anchorId === 'settings-card-and-footer')
+      expect(found, role).toBe(role !== 'subcontractor')
+    }
+    expect(find('assistant', 'your card')[0]?.label).toBe('Your card and footer')
+  })
+
+  it('settingsSearchIndexFor keeps every entry with no seenBy, and drops a gated one for no role', () => {
+    const open = SETTINGS_SEARCH_INDEX.filter((e) => !e.seenBy)
+    expect(settingsSearchIndexFor(null)).toEqual(open)
+    expect(settingsSearchIndexFor('dev')).toHaveLength(SETTINGS_SEARCH_INDEX.length)
+    const index: SettingsSearchEntry[] = [
+      { label: 'Open', tabId: 't1' },
+      { label: 'Gated', tabId: 't1', seenBy: (r) => r === 'controller' },
+    ]
+    expect(settingsSearchIndexFor('controller', index).map((e) => e.label)).toEqual(['Open', 'Gated'])
+    expect(settingsSearchIndexFor('assistant', index).map((e) => e.label)).toEqual(['Open'])
   })
 })
 

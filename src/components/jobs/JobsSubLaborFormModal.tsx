@@ -2058,8 +2058,8 @@ function JobsSubLaborFormModalInner(
                                 <Fragment key={p.id}>
                                 <tr data-testid="sub-payment-row">
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                 </tr>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>

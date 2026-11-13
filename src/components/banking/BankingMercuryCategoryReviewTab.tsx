@@ -669,7 +669,7 @@ export function BankingMercuryCategoryReviewTab({
                 return (
                   <tr
                     key={entry.colKey}
-                    style={{ borderBottom: '1px solid var(--border)', background: isSelected ? '#eff6ff' : undefined }}
+                    style={{ borderBottom: '1px solid var(--border)', background: isSelected ? 'var(--bg-blue-tint)' : undefined }}
                   >
                     <td
                       style={{

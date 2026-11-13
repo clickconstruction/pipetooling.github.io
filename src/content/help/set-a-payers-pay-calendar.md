@@ -95,12 +95,28 @@ The paper holds the clause. The calendar holds the days. You set the calendar fo
 Most of a customer's jobs follow one calendar. One job may have a contract of its own, or none.
 
 :::steps
-1. Find the job on **Jobs → Pipeline**.
-2. Press the calendar's words under the row's dates. On a Ready to Bill row, press the *Send by* line.
-3. Under **This calendar is for**, pick the choice that names the job.
-4. Change the days, or tick **This job has no pay calendar**.
-5. Press {{button:blue|Save for this job}}.
+1. Open the job and go to its **Edit** tab.
+2. Find the **Pay calendar** row. It sits with the customer's rows.
+3. Press the row's words.
+4. Under **This calendar is for**, pick the choice that names the job.
+5. Change the days, or tick **This job has no pay calendar**.
+6. Press {{button:blue|Save for this job}}.
 :::
+
+The row's words say whose calendar the job reads.
+
+- *Follows Larkfield Construction* means the job reads its customer's calendar.
+- *This job's own* means the job has a calendar of its own.
+- *No pay calendar on this job* means the job was switched off.
+- *Set a pay calendar…* means nothing is set yet.
+
+You can start from **Jobs → Pipeline** too. Press the calendar's words under the row's dates. On a Ready to Bill row, press the *Send by* line.
+
+A row with no calendar reads *Pays in* there. Press it. Then press the pay calendar line in the window that opens.
+
+On the Pipeline a job on its own calendar says so. The job's row reads *This job's own* before the calendar's words. A job that was switched off reads *No pay calendar on this job*. Press either one to open the window on that job.
+
+The customer's own window lists the jobs that do not follow it. Press a job there to open its calendar.
 
 A job in a development offers one more tick, like *Also set on the other 12 jobs in Larkfield Commons*. Tick it to set them all at once. The button then names the count, like {{button:blue|Save for 13 jobs}}. A job that fails is named with its reason, and the rest are still saved.
 
@@ -154,6 +170,8 @@ Every bill that customer pays reads the calendar.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
 - **Money waiting** and the Dashboard's Accounts Receivable judge them by each bill's expected day. See [A customer on a pay calendar](/help/see-which-customers-pay-slowly#a-customer-on-a-pay-calendar).
+- Quickfill's **Billed Awaiting Payment** calls their bill past due after its due day, not 30 days after it was billed.
+- A development's **Money** look reads **Due** on their billed jobs. It counts a job past due after that day.
 
 A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
 

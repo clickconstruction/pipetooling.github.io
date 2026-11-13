@@ -5,8 +5,8 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { billedPayModel, type BilledPayModel } from '../lib/jobs/billedDuePay'
-import { calendarFor, indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
-import { loadInvoiceAcceptances, loadPayCalendars } from '../lib/jobs/payCalendarIo'
+import { calendarSourceFor, indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
+import { loadInvoiceAcceptances, loadPayCalendars, onPayCalendarChanged } from '../lib/jobs/payCalendarIo'
 import { effectiveInvoiceEstBillDate } from '../lib/jobs/invoiceBilling'
 import type { JobsLedgerInvoiceRow } from '../lib/jobs/jobFormTypes'
 import { paySpeedPayer, type PayerNamedJob } from '../lib/jobs/billToParty'
@@ -34,6 +34,9 @@ export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (i
   const [promises, setPromises] = useState<Record<string, PromisedPayDate> | null>(null)
   const [calendars, setCalendars] = useState<PayCalendarIndex | null>(null)
   const [accepted, setAccepted] = useState<ReadonlyMap<string, string> | null>(null)
+  /** Bumped when a pay calendar is saved in this tab (punch list #341): the job window's row sits beside these bills. */
+  const [calendarRev, setCalendarRev] = useState(0)
+  useEffect(() => onPayCalendarChanged(() => setCalendarRev((n) => n + 1)), [])
 
   useEffect(() => {
     if (!allowed) return
@@ -67,7 +70,7 @@ export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (i
     return () => {
       cancelled = true
     }
-  }, [allowed])
+  }, [allowed, calendarRev])
 
   // The payer fields, not the job object: the Invoices list passes a fresh literal each render.
   const { customer_id, gc_customer_id, bill_to_party, customer_name } = job
@@ -88,7 +91,7 @@ export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (i
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promises?.[job.id] ?? null,
         null,
-        calendarFor(calendars, { payerId: payer.id, jobId: job.id }),
+        calendarSourceFor(calendars, { payerId: payer.id, jobId: job.id }),
       )
     },
     [allowed, job.id, payerJob, paySpeeds, promises, calendars, accepted],

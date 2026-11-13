@@ -2,7 +2,7 @@
 name: "Messages: file the mail we already have onto its jobs, for the record"
 number: 332
 group: gated
-status: parked by Grace 2026-11-13 · the rule, the runner and the runbook built · the read-only count run · nothing filed · no further design or build until she says so
+status: un-parked 2026-11-13 on the owner's word ("let's also do #332") · the contact step built and the run rehearsed against a made-up seat (v2.7144) · recounted, read-only · nothing filed · the pilot waits on the never-tag list, calls 11 to 13 and a yes
 summary: >
   The office's mail about a job sits in thirteen separate mailboxes. Punch list #324 made it safe to
   file old mail onto a job: it lands at its own date and asks nobody for a reply. This card is the
@@ -12,11 +12,11 @@ summary: >
   which about a quarter match by the customer's address alone, and a single-job customer holds 4
   to 13 conversations. The hard part is not the cost. It is picking the right job for a customer
   who has several, and keeping private mail out.
-next: Parked. Start at the section Pick up here. First Grace's calls 11 to 13, then the office's never-tag list, then the customer's contact step, then the pilot on one job.
-size: M; left: the contact step and the held sheet's workflow (S · S), then the runs
-blocker: Parked by Grace. When it resumes: the never-tag list, which only the office can name, and call 11, since a rule alone files 93 of 5,451.
-ver: v2.7084
-opinion: build, but the count changed the shape — a rule is sure of 1 conversation in 60, so the held mail is the real work and needs its own answer before a wide run
+next: Start at the section Pick up here. The owner answers calls 11 to 13, the office names the never-tag list, someone opens the pilot customer's thread, then the pilot on one job outside office hours.
+size: M; left: the runs, then call 12's rule if it is a yes (S)
+blocker: The never-tag list, which only the office can name, the owner's calls 11 to 13, and a named yes for the pilot's plan and apply.
+ver: v2.7144
+opinion: run the pilot — the rule is sure of 94 and the app can name the senders of 17 today, 34 after five presses; who the app knows is now the limit, ahead of which job
 mockup: not required — a data run through the dev seat; no screen changes
 ---
 
@@ -83,7 +83,7 @@ And four things the code does not do, which the plan has to cover:
 
 1. **The seat does not check a person's My email switch.** A person's own press does (`my_mail_on`). The seat's door only asks for a current login.
 2. **An archived login's mailbox cannot be filed onto a job.** The seat refuses it. Mail that only a departed teammate holds stays out.
-3. **A customer's address with no contact becomes an unnamed sender.** `email_place_address` looks for a contact holding the address and makes an `unknown` one when there is none. It does not look at the customer's record. Filed mail keeps such a sender out of New, but they would still pile up in *Everyone we have talked with*.
+3. **A customer's address with no contact becomes an unnamed sender.** `email_place_address` looks for a contact holding the address and makes an `unknown` one when there is none. It does not look at the customer's record. Filed mail keeps such a sender out of New, but they would still pile up in *Everyone we have talked with*. Since v2.7144 the run holds such a conversation instead (`backfillContact.ts`).
 4. **A tag needs a job.** There is no way to file a conversation on a customer with no job named.
 
 ## The matching rule
@@ -117,8 +117,10 @@ A conversation one mailbox files and another mailbox also holds is planned once 
 - **Always for the record.** Every tag carries `for_record: true`, even for mail from last week. A backfill is a record. It must never ask the office to answer anything.
 - **A never-tag list.** Addresses and domains that are never filed whatever they say: the company's attorneys, its accountant, payroll, the bank, insurers, and anything the office adds. The office names it. The run refuses to start without one.
 - **People only by their own switch.** The run skips a mailbox whose owner has turned My email off, though the seat would allow it.
-- **The customer's contact first.** Before a job's mail is filed, its customer and the people at it get their named contact, the way the app makes one when their thread is opened. Then the mail lands on a named thread and no unnamed sender is made for someone we know. How this is called is the first thing PR 2 settles.
-- **Caps and pauses.** A run files at most a set number of conversations, pauses between calls, and stops at the first refusal it does not expect. It runs outside office hours.
+- **The customer's contact first.** Before a conversation is planned, the run names who each of its mails would be filed under, by the tag's own reading of a mail's sender. A conversation with a sender who has no named contact is held on the sheet with the press that names them, and never planned. The run makes no contact itself: `contact_for_customer` writes, the seat's read door refuses a write, and `contact_for_job` is a tech's door. A person opens the customer's thread in the app, and the next plan reads the contact that press made (v2.7144).
+- **Never in office hours.** `apply` refuses from 6 am to 7 pm Central, Monday to Saturday, with no flag past it.
+- **A stop at an unnamed sender.** The seat says when a filing made one. The run stops there, since the contact step should have held it.
+- **Caps and pauses.** A run files at most a set number of conversations, pauses between calls, and stops at the first refusal it does not expect.
 - **A ledger.** Every plan and every filing is written to a file outside the repo, with the mailbox, the conversation, the job, the rule that matched and the counts. The seat's own call log holds the same on the server.
 - **Undo.** The run's `undo` takes back any job's filings, or all of them, through the seat's untag. A line the office has since written a promise or a highlight on is held back by the untag, as it always is.
 - **No real name in the repo.** The sheets and the ledger live outside it. The repo is public.
@@ -180,12 +182,12 @@ For a first pass, yes. Three honest limits:
 | The match | `mailGuess.ts`, `jobInSubject.ts` (the tab's own guess, one mail at a time) | `src/lib/myMail/backfillMatch.ts`: sure, held or left out, with the reason |
 | The run | none | `scripts/mail-backfill.mjs`: `count`, `plan`, `apply`, `undo` |
 | The runbook | none | `docs/MAIL_BACKFILL.md` |
-| A customer's contact | made when their thread is opened | the runner calls the same path first |
+| A customer's contact | made when their thread is opened (`contact_for_customer`, the office's press) | `src/lib/myMail/backfillContact.ts`: who each mail lands on, named or held with the press. The runner reads and never makes one. |
 
 ## The plan
 
 1. **PR 1 (S): the rule.** `backfillMatch.ts` and its tests: each case in *The matching rule* above, the never-tag list, the date fence. Pure. No run.
-2. **PR 2 (S): the runner and the runbook.** `count`, `plan`, `apply` and `undo`, the ledger, the caps, the customer's contact first. Tested against a fake seat.
+2. **PR 2 (S): the runner and the runbook.** `count`, `plan`, `apply` and `undo`, the ledger, the caps (v2.7084). The customer's contact first, the office-hours refusal, and every command rehearsed against a made-up seat (`mailBackfillRehearsal.test.ts`, v2.7144).
 3. **Runs**, in the order of *The stages*, each reported on this card with its counts.
 
 ## How to verify
@@ -224,18 +226,48 @@ Three calls the count adds:
 
 ## Where it stands
 
-2026-11-13: the rule, the runner and the runbook are built (v2.7084). `seed` and `count` have run against prod, read-only. **`plan`, `apply` and `undo` have never run, and nothing was filed.** The never-tag list is empty: the app holds no law-firm addresses to seed it. Filing the 93 today would make 59 unnamed senders, so the customer's contact step comes first. Nobody who knows the jobs has read one of the 93.
+2026-11-13, morning: the rule, the runner and the runbook built (v2.7084). `seed` and `count` ran against prod, read-only. Parked the same day.
+
+2026-11-13, later: un-parked on the owner's word, "let's also do #332". The customer's contact step is built, `apply` refuses in office hours, and every command is rehearsed against a made-up seat in a test (v2.7144). `count` ran again, read-only. **`plan`, `apply` and `undo` have never run against the real seat, and nothing was filed.** The never-tag list is still empty. Nobody who knows the jobs has read a sure conversation.
+
+### The recount (2026-11-13)
+
+`docs/recent-features/v2.7144.md` has the tables. 160 searches, 13 mailboxes, 119 open jobs, 5,445 conversations: 94 sure, 2,666 held for a person, 2,685 left out. Nothing moved by more than a few.
+
+The contact step over the 94 sure ones:
+
+| | Conversations |
+|---|---|
+| Every sender named, ready to plan | **17**, on 5 jobs |
+| Held: the customer has no contact yet | 17. One press each on 5 customers names them. |
+| Held: on the customer's record, on no contact | 8 |
+| Held: on *Who is this?* already | 1 |
+| Held: nobody the app knows | 51, of which 4 hold only an address of ours |
+
+The unnamed senders are 34 addresses. 20 of them are at a company's own domain: people at a customer or a GC who are written to by name and kept on no record.
+
+### The pilot jobs, by counts alone
+
+Picked from `count-jobs-<date>.csv`. A plan reads every mail the seat would write, so its sheet may differ by a conversation.
+
+| Job | Sure | Mails | Mailboxes | Ready | Held | Why it is a good first |
+|---|---|---|---|---|---|---|
+| **JP892** | 8 | 41 | 2 | 7 | 1, an address of ours | Needs no press. One customer with one open job. Enough mail to read like a record. |
+| **JP775** | 4 | 4 | 4 | 0 | 4, the customer has no contact yet | One press makes all four ready. Four mailboxes hold it, so it shows a conversation tied, not written twice. |
+| JP473 | 5 | 7 | 2 | 4 | 1, an address of ours | A spare. Its customer has two open jobs. |
 
 ## Pick up here
 
-Grace parked this card on 2026-11-13. She asked for a stopping point that anyone can come back to. No mock-up and no further build until she says so.
+The owner lifted the park on 2026-11-13. Everything that can be done without a write to prod is done. What is left needs a person's word.
 
 ### What exists
 
 - **The rule:** `src/lib/myMail/backfillMatch.ts`, with its tests beside it.
+- **The contact step:** `src/lib/myMail/backfillContact.ts`, with its tests beside it.
 - **The runner:** `scripts/mail-backfill.ts`, run as `npm run mail:backfill`.
+- **The rehearsal:** `src/lib/mailBackfillRehearsal.test.ts` runs every command against a made-up seat.
 - **The runbook:** `docs/MAIL_BACKFILL.md`. Read it before any run.
-- **The story of the count:** `docs/recent-features/v2.7084.md`.
+- **The story of the counts:** `docs/recent-features/v2.7084.md` and `v2.7144.md`.
 
 ### What you need before a run
 
@@ -243,29 +275,46 @@ Grace parked this card on 2026-11-13. She asked for a stopping point that anyone
 2. A folder outside the repo. The runner uses `~/.pipetooling/mail-backfill` unless `--dir` names another.
 3. The never-tag list in that folder, as `never-tag.txt`. `count` runs with an empty list and warns. `plan` and `apply` refuse.
 
-**The sheet from 2026-11-13 is on one Mac and is not in the repo.** It holds real names. To get your own, run `npm run mail:backfill -- count`. It only reads, and it writes `sheets/count-<date>.csv` in your folder. Expect numbers near the ones above, not the same ones, since mail keeps arriving.
+**The sheets hold real names and are not in the repo.** To get your own, run `npm run mail:backfill -- count`. It only reads, takes about 40 minutes, and writes `sheets/count-<date>.csv` and `sheets/count-jobs-<date>.csv` in your folder. Expect numbers near the ones above, not the same ones, since mail keeps arriving.
 
 ### What has never run
 
-`plan`, `apply` and `undo`. A test pins their guards by reading the script. Nobody has watched one work against the seat. Nothing has been filed on any job.
+`plan`, `apply` and `undo`, against the real seat. The rehearsal runs them against a made-up one built from the shapes the real seat answers. Nothing has been filed on any job.
 
 ### What is left, in order
 
-1. **Grace answers calls 11 to 13.** Calls 1 to 10 stand as picked unless she changes one.
-2. **The office names the never-tag list.** The app holds no law-firm addresses, so `seed` wrote an empty one.
-3. **Build the customer's contact step (S).** Filing the 93 without it makes 59 unnamed senders. The database already has `contact_for_job` and `contact_for_customer`. How the runner calls them is not settled.
-4. **The pilot on one job.** `plan --job <n>`, read the sheet, `apply --job <n> --approved`. Someone who knows the job reads its Activity. Check that New and the badge did not move. Then `undo` once and file it again.
-5. **The rest of the 93,** a few jobs a batch, each sheet approved first.
-6. **If call 12 is yes,** add one rule (S): a street several jobs share files on the job under way when the mail was written. Then count again.
-7. **The held mail.** See below.
+1. **The owner answers calls 11 to 13.** Calls 1 to 10 stand as picked unless one changes.
+2. **The office names the never-tag list.** One address or `@domain` a line, in `never-tag.txt` in the run's folder: the attorneys, the accountant, payroll, the bank, insurers, anyone whose mail is private. The app holds no law-firm addresses, so `seed` wrote an empty one twice.
+3. **Someone who knows the pilot job is named,** to read its plan sheet and then its Activity.
+4. **A yes for the pilot's `plan`,** which reads every mail it would file, and **a yes for its `apply`,** outside office hours.
+5. **The pilot on one job.** `plan --job <n>`, read the sheet, do the presses it names, plan again, `apply --job <n> --approved`. The reader opens the job's Activity. Check that New and the badge did not move. Then `undo` once and file it again.
+6. **The rest of the ready conversations,** a few jobs a batch, each sheet approved first. After the five presses that is 34 of the 94.
+7. **The 60 held for a contact nobody has.** See below.
+8. **If call 12 is yes,** add one rule (S): a street several jobs share files on the job under way when the mail was written. Then count again.
+9. **The held mail.** See below.
+
+### The 60 sure conversations with a sender the app cannot name
+
+The rule is sure of the job. The app does not know the person. One of the 60 is on *Who is this?* already and can be named today. For the rest, no press adds an email address to a contact before a mail from it lands: a sender is named in *Who is this?* afterwards. Three ways on, the owner's to pick after the pilot:
+
+- **Leave them held.** File the 34 and stop. Nothing unnamed is made.
+- **Let them land and name them.** About 30 people to name in *Who is this?*, once each. This is the pile-up the guard was written to prevent, though it is 30 and not hundreds. The run would need a flag to allow it, which is not built.
+- **A seat verb that names a sender from a customer's record** (S, a dev-seat change, not built). It would do the five presses and the 8 on a record. It would not name the 20 people at a company who are on no record, unless someone first adds them to the customer's people.
 
 ### The held mail has no answer yet
 
-Grace asked on 2026-11-13 how to see and process the count in the app. The answers given:
+The owner asked on 2026-11-13 how to see and process the count in the app. The answers given:
 
 - **Seeing it:** nothing in the app shows the count. It is the sheet. A filed conversation shows on its job's Activity at its own date with the *filed* chip, and never in New.
-- **Processing it:** the app has no screen for a batch. My email's own tag press files one conversation at a time, for the record when the mail is old. That suits a handful, not 2,659.
-- **An idea, not designed:** a place in Messages where a person places held mail a customer at a time. It was offered as a card with a mock-up and Grace declined it for now. Do not start it without her.
+- **Processing it:** the app has no screen for a batch. My email's own tag press files one conversation at a time, for the record when the mail is old. That suits a handful, not 2,666.
+- **An idea, not designed:** a place in Messages where a person places held mail a customer at a time. It was offered as a card with a mock-up and declined for now. Do not start it without the owner.
+
+### What the recount and the contact step change about the held mail
+
+- **The pile is steady.** 2,659 became 2,666 in a day. It is old mail, and it will wait.
+- **There are two gates, not one.** The count asked which job. The contact step asks who. Only 17 of 94 sure conversations pass both today. A way to place the held mail would meet the second gate at once, and the 318 held as *the street named and a stranger on the mail* fail it by their own reason.
+- **So the cheap win is people, before placement.** A customer's people on its record, each with a contact, would name senders for the sure mail and the held mail alike. That is office work in Customers, or the seat verb above.
+- **The cheapest next experiment is call 12, measured and not filed.** If the owner says yes and the office confirms that jobs sharing a street are phases of one house: add the one rule, run `count`, and read two numbers. How many of the 614 it places, and how many of those pass the contact step. It costs one small PR and 40 minutes of reading, and it writes nothing.
 
 ### Small things found on the way, not fixed
 

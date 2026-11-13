@@ -9,6 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { parsePaySpeedsRpc } from './billedExpectedPay'
 import { parsePayCalendarRow, type PayCalendar, type PayCalendarDbRow, type PayCalendarReceipt, type PayCalendarRow } from './payCalendar'
+import { payCalendarJobOf, type PayCalendarJob, type PayCalendarJobInput } from './payCalendarJob'
+import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
 
 type Db = SupabaseClient<Database>
 type CodedError = { code?: string | null; message: string }
@@ -53,6 +55,28 @@ export function loadPayCalendars(db: Db): Promise<PayCalendarRow[]> {
 /** One payer's rows: its own calendar and any a job of theirs carries. */
 export function loadPayerPayCalendars(db: Db, payerId: string): Promise<PayCalendarRow[]> {
   return readRows(db, payerId)
+}
+
+const PAY_CALENDAR_CHANGED_EVENT = 'pay-calendar-changed'
+
+/** Says a pay calendar was saved or cleared in this tab (punch list #341): the window says it once per save, however many jobs it wrote. */
+export function dispatchPayCalendarChanged(): void {
+  try {
+    window.dispatchEvent(new Event(PAY_CALENDAR_CHANGED_EVENT))
+  } catch {
+    /* non-browser */
+  }
+}
+
+/**
+ * Runs `onChange` after any pay calendar save in this tab, whichever door opened the window, so
+ * the board, the job window's row and a line elsewhere never show yesterday's calendar. Returns
+ * the unsubscribe.
+ */
+export function onPayCalendarChanged(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener(PAY_CALENDAR_CHANGED_EVENT, onChange)
+  return () => window.removeEventListener(PAY_CALENDAR_CHANGED_EVENT, onChange)
 }
 
 /** What a save writes: a calendar, a job's off switch, or null to clear the row. */
@@ -100,6 +124,44 @@ export async function loadInvoiceAcceptances(db: Db): Promise<Map<string, string
 export async function saveInvoiceAcceptance(db: Db, args: { invoiceId: string; acceptedYmd: string | null }): Promise<void> {
   const { error } = await db.rpc('set_invoice_payer_accepted_on' as never, { p_invoice_id: args.invoiceId, p_accepted_on: args.acceptedYmd } as never)
   if (error) throw error
+}
+
+/** A job that carries a row of its own under a payer, as the payer's window lists it (punch list #341). */
+export type PayCalendarJobFacts = {
+  job: PayCalendarJob
+  /** Who pays the job's bills today, by the job's own rule; null when it names nobody, or the read could not say. */
+  payerIdNow: string | null
+}
+
+type JobFactsRow = PayCalendarJobInput & { customer_id?: string | null; gc_customer_id?: string | null; bill_to_party?: string | null }
+
+/**
+ * The jobs behind a payer's job rows: each one's name as the board says it, its development, and who pays it
+ * today, so the window can name each job and say when its calendar is held for a payer who no longer pays it.
+ * Keyed by job id. Empty on a read that fails: the window then lists the jobs without their names.
+ */
+export async function loadPayCalendarJobs(db: Db, jobIds: ReadonlyArray<string>): Promise<Map<string, PayCalendarJobFacts>> {
+  const out = new Map<string, PayCalendarJobFacts>()
+  if (!jobIds.length) return out
+  try {
+    const { data, error } = await db.from('jobs_ledger').select('id, hcp_number, click_number, job_name, development_id, customer_id, gc_customer_id, bill_to_party').in('id', [...jobIds])
+    if (error) return out
+    const rows = (data ?? []) as JobFactsRow[]
+    const devIds = [...new Set(rows.map((r) => r.development_id).filter((id): id is string => !!id))]
+    const devNames = new Map<string, string | null>()
+    if (devIds.length) {
+      // Best effort: with no name the window says "this development".
+      const { data: devs } = await db.from('developments').select('id, name').in('id', devIds)
+      for (const d of (devs ?? []) as Array<{ id: string; name: string | null }>) devNames.set(d.id, d.name)
+    }
+    for (const r of rows) {
+      const development = r.development_id ? { name: devNames.get(r.development_id) ?? null } : null
+      out.set(r.id, { job: payCalendarJobOf({ ...r, development }), payerIdNow: payerCustomerId(r, effectiveInvoiceParty(r, null)) })
+    }
+  } catch {
+    // the list still draws, without names
+  }
+  return out
 }
 
 /** The jobs of one development, for *Also set on the other jobs here*: their ids, with no order. Empty on a read that fails. */

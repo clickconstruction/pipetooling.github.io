@@ -5,13 +5,18 @@
  * the hexes they replace, so light mode is pixel-for-pixel unchanged).
  *
  * Property-aware: the same hex maps differently as text vs background vs
- * border, keyed off the style property name on the same line. Saturated
+ * border, keyed off the style property that holds the value. Saturated
  * action backgrounds (blue/green/red buttons) are intentionally left alone —
- * they read fine on dark surfaces.
+ * they read fine on dark surfaces. The tables and the rewrite live in
+ * scripts/lib/themeTokenize.mjs (tests: src/lib/themeTokenize.test.ts).
+ *
+ * A ternary is read whatever its other side is (v2.7149): `open ? '#f0f9ff'
+ * : undefined`, nested, over several lines, and a `??` fallback.
  *
  * Usage: node scripts/theme-tokenize.mjs <file-or-dir> [...more]
  * Prints per-file replacement counts and, at the end, any mapped hexes left
- * behind (ternaries and computed styles need a manual pass).
+ * behind (a colour inside a template string, held in a const or handed to a
+ * call needs a manual pass).
  *
  * --check: dry-run guard for CI — writes nothing, exits 1 if any file
  * contains a literal the codemod would rewrite (i.e. someone added a raw
@@ -20,161 +25,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-
-const TEXT = {
-  '#111827': 'var(--text-strong)',
-  '#1a1a1a': 'var(--text-base)',
-  '#374151': 'var(--text-700)',
-  '#4b5563': 'var(--text-600)',
-  '#6b7280': 'var(--text-muted)',
-  '#9ca3af': 'var(--text-faint)',
-  '#d1d5db': 'var(--text-faint-300)',
-  '#0f172a': 'var(--text-slate-900)',
-  '#475569': 'var(--text-slate-600)',
-  // slate-700 text consolidated onto the slate-600 token: one shade apart in
-  // light mode, and the token gives it a readable value on dark surfaces.
-  '#334155': 'var(--text-slate-600)',
-  '#64748b': 'var(--text-slate-500)',
-  '#94a3b8': 'var(--text-slate-400)',
-  '#2563eb': 'var(--text-link)',
-  '#3b82f6': 'var(--text-blue-500)',
-  '#1d4ed8': 'var(--text-blue-700)',
-  '#dc2626': 'var(--text-red-600)',
-  '#b91c1c': 'var(--text-red-700)',
-  '#991b1b': 'var(--text-red-800)',
-  '#059669': 'var(--text-green-600)',
-  // green-700 words: the literal stayed dark on the dark surface, 2.93:1; the token reads #4ade80 there.
-  '#15803d': 'var(--text-green-700)',
-  '#b45309': 'var(--text-amber-700)',
-  '#92400e': 'var(--text-amber-800)',
-  '#78350f': 'var(--text-amber-900)',
-  '#854d0e': 'var(--text-yellow-800)',
-  '#c2410c': 'var(--text-orange-700)',
-  '#9a3412': 'var(--text-orange-800)',
-  '#1f2937': 'var(--text-gray-800)',
-  '#1e40af': 'var(--text-blue-800)',
-  '#166534': 'var(--text-green-800)',
-  '#065f46': 'var(--text-emerald-800)',
-  '#7f1d1d': 'var(--text-red-900)',
-  '#0369a1': 'var(--text-sky-700)',
-  '#075985': 'var(--text-sky-800)',
-  '#6d28d9': 'var(--text-violet-700)',
-  '#5b21b6': 'var(--text-violet-800)',
-  '#3730a3': 'var(--text-indigo-800)',
-}
-
-const BG = {
-  '#fafafa': 'var(--bg-page)',
-  '#ffffff': 'var(--surface)',
-  '#fff': 'var(--surface)',
-  '#fefdfb': 'var(--surface)',
-  white: 'var(--surface)',
-  '#f9fafb': 'var(--bg-subtle)',
-  '#fafbfc': 'var(--bg-subtle)',
-  '#fef08a': 'var(--bg-yellow-200)',
-  '#bbf7d0': 'var(--bg-green-200)',
-  '#f3f4f6': 'var(--bg-muted)',
-  '#e5e7eb': 'var(--bg-200)',
-  '#eff6ff': 'var(--bg-blue-tint)',
-  '#f0f9ff': 'var(--bg-sky-tint)',
-  '#fef2f2': 'var(--bg-red-tint)',
-  '#fee2e2': 'var(--bg-red-100)',
-  '#fecaca': 'var(--bg-red-200)',
-  '#fffbeb': 'var(--bg-amber-tint)',
-  '#fef3c7': 'var(--bg-amber-100)',
-  '#fff7ed': 'var(--bg-orange-tint)',
-  '#f0fdf4': 'var(--bg-green-tint)',
-  '#dcfce7': 'var(--bg-green-100)',
-  '#f8fafc': 'var(--bg-slate-tint)',
-  '#f1f5f9': 'var(--bg-slate-100)',
-  '#f5f5f5': 'var(--bg-neutral-100)',
-  '#fdfaf3': 'var(--bg-cream)',
-  '#fefce8': 'var(--bg-yellow-tint)',
-  '#ffedd5': 'var(--bg-orange-100)',
-  '#ecfdf5': 'var(--bg-emerald-tint)',
-  '#d1fae5': 'var(--bg-emerald-100)',
-  '#dbeafe': 'var(--bg-blue-200)',
-  '#e0f2fe': 'var(--bg-sky-100)',
-  '#fde68a': 'var(--bg-amber-200)',
-  '#ede9fe': 'var(--bg-violet-100)',
-  '#ddd6fe': 'var(--bg-violet-200)',
-  '#e0e7ff': 'var(--bg-indigo-100)',
-  '#c7d2fe': 'var(--bg-indigo-200)',
-}
-
-const BORDER = {
-  '#e5e7eb': 'var(--border)',
-  // slate-200/300 borders consolidated onto the gray-200/300 border tokens: the
-  // light values differ by only a few units (imperceptible on a border) and this
-  // gives them proper dark values instead of staying light in dark mode.
-  '#e2e8f0': 'var(--border)',
-  // gray-100/slate-100 hairline borders also consolidate onto --border: as
-  // near-white lines they glare on dark surfaces, and at 1px the light-mode
-  // difference from gray-200 is imperceptible.
-  '#f3f4f6': 'var(--border)',
-  '#f1f5f9': 'var(--border)',
-  '#d1d5db': 'var(--border-strong)',
-  '#cbd5e1': 'var(--border-strong)',
-  '#9ca3af': 'var(--border-400)',
-  '#fdba74': 'var(--border-orange)',
-  '#bfdbfe': 'var(--border-blue)',
-  '#bbf7d0': 'var(--border-green)',
-  // green-300 borders consolidated onto the green-200 border token: one shade
-  // apart at 1px, and the token gives them a proper dark value.
-  '#86efac': 'var(--border-green)',
-  '#fcd34d': 'var(--border-amber)',
-  '#fde68a': 'var(--border-amber-soft)',
-  '#fca5a5': 'var(--border-red)',
-  '#bae6fd': 'var(--border-sky)',
-  '#a5b4fc': 'var(--border-indigo)',
-  '#c7d2fe': 'var(--border-indigo-soft)',
-  '#c4b5fd': 'var(--border-violet)',
-}
-
-const TEXT_PROPS = /^(color|caretColor|WebkitTextFillColor)$/
-const BG_PROPS = /^(background|backgroundColor)$/
-const BORDER_PROPS = /^(border|borderTop|borderRight|borderBottom|borderLeft|borderColor|borderTopColor|borderRightColor|borderBottomColor|borderLeftColor|outline|outlineColor)$/
-
-function tableFor(prop) {
-  if (TEXT_PROPS.test(prop)) return TEXT
-  if (BG_PROPS.test(prop)) return BG
-  if (BORDER_PROPS.test(prop)) return BORDER
-  return null
-}
-
-/** Replace mapped literals inside one quoted style value ('#hex' or '1px solid #hex'). */
-function rewriteValue(value, table) {
-  const direct = table[value.toLowerCase()]
-  if (direct) return direct
-  // shorthand like '1px solid #e5e7eb' / '2px dashed #d1d5db'
-  return value.replace(/#[0-9a-fA-F]{3,6}\b/g, (hex) => table[hex.toLowerCase()] ?? hex)
-}
-
-// prop: '...'  — including both branches of simple same-line ternaries
-const STYLE_LITERAL = /([A-Za-z]+)(\s*:\s*)('([^']*)')/g
-const TERNARY_TAIL = /([A-Za-z]+)(\s*:\s*[^,\n{}]*?\?\s*)('([^']*)')(\s*:\s*)('([^']*)')/g
-
-function processSource(src) {
-  let count = 0
-  let out = src.replace(TERNARY_TAIL, (m, prop, pre, q1, v1, mid, q2, v2) => {
-    const table = tableFor(prop)
-    if (!table) return m
-    const n1 = rewriteValue(v1, table)
-    const n2 = rewriteValue(v2, table)
-    if (n1 !== v1) count++
-    if (n2 !== v2) count++
-    return `${prop}${pre}'${n1}'${mid}'${n2}'`
-  })
-  out = out.replace(STYLE_LITERAL, (m, prop, sep, quoted, value) => {
-    const table = tableFor(prop)
-    if (!table) return m
-    const next = rewriteValue(value, table)
-    if (next === value) return m
-    count++
-    return `${prop}${sep}'${next}'`
-  })
-  return { out, count }
-}
+import { TEXT, BG, BORDER, processSource } from './lib/themeTokenize.mjs'
 
 function* walk(target) {
   const stat = fs.statSync(target)

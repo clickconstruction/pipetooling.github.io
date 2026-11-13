@@ -86,7 +86,7 @@ describe('the dev seat reads counsel-only material (v2.6986)', () => {
   })
 
   it('the seat marks what it reads and names a hold only for what did not come back', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.82.0'")
     expect(SERVER).toContain('a counsel-only paper is read like any other since 0.76.0')
     expect(PERSON_FILE).toContain("drive_folder_url,filed_at,fail_why,counsel_only'")
     expect(PERSON_FILE).toContain("counselOnlyStillHeld(raw, evidenceRows.filter((r) => r.counsel_only === true).length)")

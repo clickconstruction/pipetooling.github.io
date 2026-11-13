@@ -30,26 +30,32 @@ Drag from **Drill a well** into empty space, name the new box **Run water to the
 ## Add tasks to a stage
 
 1. Hover the stage box. Two tiny buttons sit on its right side. The **✎ pencil** edits the stage. Just below it, the **+** is *Add task to this group*.
-2. Press **+**. The "Add task" dialog asks for the task title and, optionally, who it is assigned to. Tick one or more names, or type in the **search box** to filter the list. Enter ticks the only match.
-3. {{button:blue|Save}}. The task appears inside the stage as its next number, such as 1.1 or 1.2. It shows on each assignee's list once the stage unlocks. An assignee is a person the task is given to.
+2. Press **+**. The **Add task** window opens with the stage named under its title. Type the task.
+3. The row called **For** shows faces. Tap a face to give the task to that person. Tap **Someone else** for the full list with a search box. A task can also have nobody yet.
+4. Press {{button:blue|Add task}}. The task appears inside the stage as its next number, such as 1.1 or 1.2. It shows on each assignee's list once the stage unlocks. An assignee is a person the task is given to.
+
+A green sentence above the button says what will happen before you press. The window has no day to set. The stage decides when the task lands.
+
+The row called **Add** holds **Done when…** and **Photo at the finish**. [Say what done looks like](/help/give-someone-a-task#say-what-done-looks-like) shows both.
 
 ## Staff a whole crew at once
 
-Above the assignee list, the dialog shows a **crew chip** for every team on **People → Teams**. Each chip shows its member count.
+In the **For** row, every team on **People → Teams** shows as a face with its member count.
 
-- **Tap a chip** to tick everyone in that crew. Each name gets a small crew pill. Tap it again to untick them. Untick one person by hand and the chip turns dashed. Your manual picks always win.
-- **＋ New crew** builds one without leaving the dialog. Name it, tick who is in it, and press {{button:blue|Save crew}}. It saves to People → Teams, so the same crew shows up everywhere. It comes back already ticked on this task.
-- **✎ Edit**, or press-and-hold any chip, opens a crew for changes. Rename it, change its people, or **Delete crew…**. Deleting removes only the grouping, never the people.
+- **Tap a crew's face** to pick everyone in that crew. Tap it again to take them off. Take one person off by hand and the crew's ring turns dashed. Your own picks always win.
+- **＋ New crew** sits under **Someone else**. It builds a crew without leaving the window. Name it, tick who is in it, and press {{button:blue|Save crew}}. It saves to People → Teams, so the same crew shows up everywhere.
+- **✎ Edit** sits beside it and opens a crew for changes. Rename it, change its people, or **Delete crew…**. Deleting removes only the grouping, never the people.
 
 :::example Two taps, four assignees
-Tap **Farm crew** and all four members are ticked; untick the one who's out this week and the chip goes dashed to show a partial crew.
+Tap **Farm crew** and all four members are picked. Take off the one who's out this week and the crew's ring goes dashed to show a partial crew.
 :::
 
 ## Say where a task is
 
-A roadmap task can have a place, like *Pump house*. The Add task window has a row called **Place**. So does the task's card.
+A roadmap task can have a place, like *Pump house*. The Add task window has a row called **Where**. The task's card has a row called **Place**.
 
-- Tap a place you have used before, or tap **＋ New place** to set a new one. [Say where it is](/help/give-someone-a-task#say-where-it-is) shows how.
+- In the Add task window, tap a place you have used before. Tap **＋ New** to set a new one. [Say where it is](/help/give-someone-a-task#say-where-it-is) shows how.
+- At the end of the **Where** row, **Photo** takes a picture of the spot.
 - On the task's card each tap saves itself. There is no Save button.
 - The task's card also has **Photo of the spot**. A picture you take there saves itself too.
 - The place stays with the roadmap task. The person sees the place on their checklist once the task reaches it.
