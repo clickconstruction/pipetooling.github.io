@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import type { BookPrice, PurchaseData, PurchaseLinesIo } from '../../lib/materials/lines/purchaseLinesIo'
 import { priceWords, quantityWords, type BuyRow } from '../../lib/materials/lines/whatWeBuy'
 import { bookIsStale, bookLine, changeWords, dayAt, dayWords, houseSeries, lastPaidByHouse, priceAt, pricePoints, priceScale, type PricePoint } from '../../lib/materials/lines/priceOverTime'
@@ -117,7 +119,9 @@ export function PriceOverTime({ data, io, rows, rowKey, onPick }: {
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No part or code matches ‘{query.trim()}’.</div>
+        <div style={{ alignSelf: 'flex-start' }}>
+          <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts or codes', query }), { onPress: () => setQuery('') })} />
+        </div>
       )}
     </div>
   )
@@ -149,7 +153,7 @@ export function PriceOverTime({ data, io, rows, rowKey, onPick }: {
       </div>
 
       {points.length === 0 || !scale ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No bill prints a price for this one yet, so there is no point to draw.</p>
+        <EmptyState compact main="Nothing to draw yet: no bill prints a price for this one." next={{ label: 'Pick another', onPress: () => onPick(null) }} />
       ) : (
         <>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>

@@ -153,7 +153,10 @@ describe('WhatWeBuyTab', () => {
     expect(within(picker).getAllByRole('button')).toHaveLength(1)
     fireEvent.change(within(picker).getByLabelText('Find a part or a code'), { target: { value: 'zzz' } })
     await settle()
-    expect(picker.textContent).toMatch(/No part or code matches ‘zzz’\./)
+    expect(picker.textContent).toMatch(/No parts or codes match ‘zzz’\./)
+    fireEvent.click(within(picker).getByRole('button', { name: 'Clear the search' }))
+    await settle()
+    expect(within(picker).getAllByRole('button')).toHaveLength(2)
   })
 
   it('What to stock ranks by trips, says where and how it reads, and a name opens its prices', async () => {
