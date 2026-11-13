@@ -57,6 +57,8 @@ Press **By place** to read the boxes by where they stand. A place name that two 
 
 Nothing on this screen changes a count. A count and a correction stay on the job's page and the phone.
 
+Press **Print the material location report** at the top to print the site. The [report](/help/print-the-material-location-report) opens on the site's Development page. The report's **By part** chip prints this same list.
+
 ## Read the row
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
@@ -65,7 +67,7 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 
 ## On site
 
-The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List** and **Map** at the row's end switch between the boxes and the site map with their pins.
+The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
 
@@ -105,7 +107,7 @@ The press is withheld when a live box on the job already carries that stencil. T
 
 ## Find a box from anywhere
 
-Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
+Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Type a site's name and the list has a row for the whole site. Press it to open the site's materials. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
 
 ## Find a part on any job
 

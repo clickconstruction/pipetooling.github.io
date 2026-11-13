@@ -38,7 +38,7 @@ type Props = {
   backLabel: string
   /** Where a box opens: the job's page for the office, the phone screen for a crew. */
   boxHref: (jobId: string, containerId: string) => string
-  /** The site's Development page, for the roles that may open it. */
+  /** The site's Development page, for the roles that may open it: where the material location report prints. */
   developmentHref?: string | null
   /** The desk is still reading the boxes. */
   loading?: boolean
@@ -208,7 +208,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
             {loading ? ' Loading…' : ''}
           </span>
         </div>
-        {developmentHref ? <Link to={developmentHref} style={{ ...btn, fontWeight: 500 }}>Open the Development page</Link> : null}
+        {developmentHref ? <Link to={`${developmentHref}?report=materials`} style={{ ...btn, fontWeight: 500 }} title="One Letter paper of every cage and box on the site, by job, by location or by part. It opens on the site’s Development page.">Print the material location report</Link> : null}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '0.5rem' }} role="group" aria-label="This site at a glance">
