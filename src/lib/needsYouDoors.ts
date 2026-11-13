@@ -31,15 +31,11 @@ export type NeedsYouDoor =
   | { kind: 'test-report'; first: { jobId: string; reportId: string } | null; href: string }
   /** A station on the Quickfill page, or the Teams Inbox card on the Dashboard; `href` when the host cannot show it. */
   | { kind: 'station'; station: 'dispatch-inbox' | 'people-hours-new'; href: string }
-  /** The week's call (punch list #303 PR 4): the viewer's first move has no page, so the button marks it done. */
-  | { kind: 'bridge-move-done' }
 
 export type NeedsYouSecondaryDoor =
   | { kind: 'href'; href: string }
   /** A nudge hook's own snooze or dismiss; the host owns the hook. */
   | { kind: 'nudge'; nudge: 'bulk-delete' | 'bulk-hours' | 'claim-dev' | 'robot-backlog' | 'robot-asleep'; action: 'snooze' | 'dismiss' }
-  /** The week's call (punch list #303 PR 4): Done on the viewer's first move. */
-  | { kind: 'bridge-move-done' }
   | null
 
 /** What the doors read from the host's data: the first row of a pile, an id to land on. All optional; a door falls back to its page. */
@@ -71,8 +67,6 @@ export type NeedsYouDoorData = {
   whileOffFirst?: { contactId: string; messageId: string } | null
   /** Looks like a customer (punch list #307): the city whose Builders the line opens, this browser's own when it has some. */
   lookAlikeCity?: string | null
-  /** The week's call (punch list #303 PR 4): the page where the viewer's first move is done; null when the app has none. */
-  bridgeMoveDoor?: string | null
   /** The day back (punch list #256 PR 9): the first teammate whose countdown ended, whose desk opens on Bring back. */
   awayBackFirstUserId?: string | null
   /** Materials on site (punch list #209, v2.6728): the one job holding every box due, or every shortfall, when there is one. */
@@ -97,9 +91,6 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return { kind: 'window', window: 'tally-team' }
     case 'todays-sends':
       return { kind: 'window', window: 'todays-sends' }
-    case 'bridge-moves':
-      // The week's call: the page where the first move is done, or Done itself when the app has no page for it.
-      return d.bridgeMoveDoor ? href(d.bridgeMoveDoor) : { kind: 'bridge-move-done' }
     case 'mail-saved':
       // The owner is told (v2.7068): the person's own record under Settings, which every role can open.
       return href(MAIL_SAVED_DOOR)
@@ -268,7 +259,6 @@ export function needsYouSecondaryDoor(item: Pick<NeedsYouItem, 'key'>, key: stri
   if (item.key === 'bulk-delete' || item.key === 'bulk-hours' || item.key === 'claim-dev' || item.key === 'robot-backlog' || item.key === 'robot-asleep') {
     return action ? { kind: 'nudge', nudge: item.key, action } : null
   }
-  if (item.key === 'bridge-moves' && key === 'done') return { kind: 'bridge-move-done' }
   if (item.key === 'lien-notice-draft' && key === 'missed') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'missed' }) }
   // Letter two is sent from a notice's Sent row (v2.4561).
   if (item.key === 'lien-notice-draft' && key === 'letter-two') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'sent' }) }

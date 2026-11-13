@@ -8,7 +8,7 @@ describe('materialsGroupsFor', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
       expect(materialsGroupsFor(role)).toEqual([
         { key: 'plan', word: 'Plan', tabs: ['parts-book', 'assembly-book', 'assemblies-po'] },
-        { key: 'purchase', word: 'Purchase', tabs: ['purchase-orders', 'po-generator', 'supply-houses', 'job-accounts'] },
+        { key: 'purchase', word: 'Purchase', tabs: ['purchase-orders', 'po-generator', 'supply-houses', 'job-accounts', 'what-we-buy'] },
         { key: 'track', word: 'Track', tabs: ['on-site'] },
       ])
     }

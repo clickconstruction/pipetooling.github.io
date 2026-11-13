@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, parseSectionCitations, sectionByNumber, splitByCitations } from './hrDocCitations'
+import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, parseSectionCitations, sectionByNumber, splitByCitations, splitByDoors } from './hrDocCitations'
 
 describe('hrDocCitations (an entry cites a section of the narrative, v2.6615)', () => {
   it('parses N§16, N §16 and §16, each number once, in order', () => {
@@ -38,6 +38,20 @@ describe('hrDocCitations (an entry cites a section of the narrative, v2.6615)', 
     expect(by.get(2)?.map((l) => l.key)).toEqual(['a', 'b'])
     expect(citedByWords(2)).toBe('cited by 2 entries')
     expect(citedByWords(1)).toBe('cited by 1 entry')
+  })
+
+  it('splits a line into words, citations of the narrative and evidence numbers (punch list #315)', () => {
+    expect(splitByDoors('Gate log (Ev #41), see N§2. Ev. #7 too; Ev 4 is words.')).toEqual([
+      { kind: 'text', text: 'Gate log (' },
+      { kind: 'exhibit', raw: 'Ev #41', exhibitNo: 41 },
+      { kind: 'text', text: '), see ' },
+      { kind: 'cite', raw: 'N§2', section: 2 },
+      { kind: 'text', text: '. ' },
+      { kind: 'exhibit', raw: 'Ev. #7', exhibitNo: 7 },
+      { kind: 'text', text: ' too; Ev 4 is words.' },
+    ])
+    expect(splitByDoors('Plain words.')).toEqual([{ kind: 'text', text: 'Plain words.' }])
+    expect(splitByDoors('Prev #41 is not one.')).toEqual([{ kind: 'text', text: 'Prev #41 is not one.' }])
   })
 
   it('counts the citing entries a later entry corrected (punch list #315)', () => {

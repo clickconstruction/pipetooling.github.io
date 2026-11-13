@@ -22,11 +22,9 @@ import { COLLECT_BAR_STATES, type CollectBillState, type CollectPile } from '../
 import type { CollectPayer, CollectPayerCut } from '../../lib/bridge/collect/collectPayers'
 import { collectLegend, collectPaceWords, collectRestWords, collectSlowFacts, collectStandsWords, collectTiles, type CollectTile } from '../../lib/bridge/collect/collectWords'
 import type { CollectSheet } from '../../lib/bridge/collect/collectMoves'
-import { collectSheetAsCallMoves, collectSheetText } from '../../lib/bridge/collect/collectMoves'
+import { collectSheetText } from '../../lib/bridge/collect/collectMoves'
 import type { CollectDecision } from '../../lib/bridge/collect/collectDecisions'
 import type { CollectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
-import type { CollectScorecard } from '../../lib/bridge/collect/collectScorecard'
-import type { BridgeCall, CallMove } from '../../lib/bridge/calls'
 import { BridgeCollectOutcome, type CollectOutcomeWriter } from './BridgeCollectOutcome'
 import { BridgeStepWindow, StepRows, type StepFoldSpec, type StepGroup, type StepPress, type StepRow } from './BridgeStepWindow'
 import { collectCountedLines, collectHeadline, collectPileLead, collectPlanLine, collectThreeParts } from './BridgeCollectCounted'
@@ -66,19 +64,14 @@ export type BridgeCollectDeskProps = {
   chipsByJob: ReadonlyMap<string, LienArChip | null> | null
   arDoor: { to: string; label: string }
   onClose: () => void
-  /** PR C: the sheet, the owner's strip, the what-if and the plan. Absent, the modal reads only. */
+  /** PR C: the sheet, the owner's strip and the what-if. Absent, the modal reads only. */
   sheet?: CollectSheet | null
   decisions?: ReadonlyArray<CollectDecision> | null
   whatIf?: CollectWhatIf | null
-  thisWeekCall?: BridgeCall | null
-  recording?: boolean
-  onRecordPlan?: (moves: CallMove[]) => void
   customerHref?: (payerId: string) => string
   /** PR D: the after-the-call sheet writes through this; absent, the rows offer no sheet. */
   outcomeWriter?: CollectOutcomeWriter | null
   onOutcomeRecorded?: () => void
-  /** PR G: Friday's answer to the recorded plan; null until a plan is recorded on Collect. */
-  scorecard?: CollectScorecard | null
 }
 
 function edgeFor(p: CollectPayer): string {
@@ -96,12 +89,11 @@ const WAIT_WORDS: Partial<Record<string, string>> = {
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
-  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref, outcomeWriter, onOutcomeRecorded, scorecard } = props
+  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, customerHref, outcomeWriter, onOutcomeRecorded } = props
   const [outcomeFor, setOutcomeFor] = useState<CollectPayer | null>(null)
   const [standsOpen, setStandsOpen] = useState<ReadonlySet<string>>(() => new Set())
   const [owners, setOwners] = useState<Map<string, string>>(() => new Map())
   const [copied, setCopied] = useState(false)
-  const planRecorded = !!thisWeekCall && thisWeekCall.link === 'collect' && thisWeekCall.moves.some((m) => m.title.includes(': '))
 
   const largestNotDue = pile.bills.filter((b) => b.state === 'notdue' && b.expectedYmd).sort((a, b) => b.usd - a.usd)[0] ?? null
   const legend = collectLegend(pile, { largestNotDue: largestNotDue ? { name: largestNotDue.payerName, usd: largestNotDue.usd, dueYmd: largestNotDue.expectedYmd!, dueWords: dayLabel(largestNotDue.expectedYmd!) } : null })
@@ -164,7 +156,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, borderLeft: `3px solid ${edgeFor(p)}`, paddingLeft: 10 }}>
           {move?.opener ? <div style={{ fontSize: '0.84rem', fontStyle: 'italic', color: 'var(--text-700)', lineHeight: 1.4, overflowWrap: 'anywhere' }}>{move.opener}</div> : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 1rem' }}>
-            {move?.onSheet ? <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} disabled={planRecorded} onChange={(e) => setOwners((m) => new Map(m).set(key, e.target.value))} style={{ font: 'inherit', fontSize: '0.8rem', height: 32, padding: '0 10px', borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text)', width: 130, boxSizing: 'border-box' }} /> : null}
+            {move?.onSheet ? <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} onChange={(e) => setOwners((m) => new Map(m).set(key, e.target.value))} style={{ font: 'inherit', fontSize: '0.8rem', height: 32, padding: '0 10px', borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text)', width: 130, boxSizing: 'border-box' }} /> : null}
             {move?.paper ? (
               <Link to={move.paper.href} style={linkPress}>
                 {move.paper.label} ›
@@ -326,52 +318,11 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
 
   const footer = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-      {scorecard && thisWeekCall && (
-        <div style={{ ...card, borderColor: 'var(--text-green-700)', display: 'flex', flexDirection: 'column', gap: 8, fontVariantNumeric: 'tabular-nums' }} data-testid="bridge-collect-scorecard">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '1rem', fontWeight: 700 }}>Since the plan, recorded {dayLabel(thisWeekCall.calledOn)}</div>
-            <span style={det}>the week so far · Friday asks whether it moved, below the dial</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-            <div>
-              <div style={label}>Landed, of {stageUsd(scorecard.askUsd)} asked</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-green-700)' }}>
-                {stageUsd(scorecard.landedUsd)} · {Math.round(scorecard.landedShare * 100)}%
-              </div>
-              <div style={det}>{stageUsd(scorecard.landedAfterCallUsd)} of it after a call. The app counts both.</div>
-            </div>
-            <div>
-              <div style={label}>Calls that ended with a date</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: scorecard.noDateCalls > 0 ? 'var(--text-amber-800)' : 'var(--text-green-700)' }}>
-                {scorecard.datedCalls} of {scorecard.calls}
-              </div>
-              <div style={det}>
-                {scorecard.noDateCalls} with no date{scorecard.onOwnerCalls > 0 ? `, ${scorecard.onOwnerCalls} on the owner` : ''}. Only if the answers are recorded.
-              </div>
-            </div>
-            <div>
-              <div style={label}>The notices</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{scorecard.notices ? `${scorecard.notices.signed} signed · ${scorecard.notices.mailed} mailed` : 'not read'}</div>
-              <div style={det}>{scorecard.notices ? `${scorecard.notices.drafted} drafted since the plan${scorecard.notices.affidavitsFiled > 0 ? `, ${scorecard.notices.affidavitsFiled} ${scorecard.notices.affidavitsFiled === 1 ? 'affidavit' : 'affidavits'} filed` : ''}. The Lien desk knows this without anyone typing.` : ''}</div>
-            </div>
-          </div>
-          {scorecard.carries.length > 0 && (
-            <div style={{ fontSize: '0.82rem' }}>
-              <b>Monday carries:</b> {scorecard.carries.join(' ')}
-            </div>
-          )}
-        </div>
-      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
         <span style={det} data-testid="bridge-collect-plan-line">
-          {collectPlanLine(sheet, planRecorded ? { on: thisWeekCall?.calledOn ? dayLabel(thisWeekCall.calledOn) : null } : null)}
+          {collectPlanLine(sheet)}
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {sheet && onRecordPlan && !planRecorded && (
-            <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={footPress} data-testid="bridge-collect-record-plan">
-              {recording ? 'Recording…' : "Record this as the week's plan"}
-            </button>
-          )}
           {sheet && (
             <button
               type="button"

@@ -42,12 +42,10 @@ export function collectPileLead(pile: CollectPile, pace: { paidPerWeekUsd: numbe
   return out.join(' ')
 }
 
-/** The foot's line: what the sheet asks for, and what Friday asks of it. */
-export function collectPlanLine(sheet: CollectSheet | null | undefined, recorded: { on: string | null } | null): string {
-  if (!sheet) return 'The moves, the owner’s decisions and the week’s plan come next.'
-  const calls = sheet.calls === 1 ? 'Did the 1 call end with a date?' : `How many of the ${sheet.calls} calls ended with a date?`
-  if (recorded) return `This week’s plan is recorded${recorded.on ? `, ${recorded.on}` : ''}. Friday asks three things. How much of the ${stageUsd(sheet.askUsd)} landed? ${calls} Did the notices go out?`
-  return `${sheet.moves} ${sheet.moves === 1 ? 'move asks' : 'moves ask'} for ${stageUsd(sheet.askUsd)}.${sheet.waiting > 0 ? ` ${collectWaitingWords(sheet.waiting)}` : ''} Friday asks three things. How much landed? ${calls} Did the notices go out?`
+/** The foot's line: what the sheet asks for. The page makes no call, so it asks nothing on Friday (punch list #334, PR 7). */
+export function collectPlanLine(sheet: CollectSheet | null | undefined): string {
+  if (!sheet) return 'The moves and the owner’s decisions come next.'
+  return `${sheet.moves} ${sheet.moves === 1 ? 'move asks' : 'moves ask'} for ${stageUsd(sheet.askUsd)}.${sheet.waiting > 0 ? ` ${collectWaitingWords(sheet.waiting)}` : ''}`
 }
 
 /** *How this is counted*: the old *How this reads*, one short sentence to a line. */

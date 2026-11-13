@@ -27,6 +27,7 @@ const GROUP_OF: Record<MaterialsTab, MaterialsGroupKey> = {
   'po-generator': 'purchase',
   'supply-houses': 'purchase',
   'job-accounts': 'purchase',
+  'what-we-buy': 'purchase',
   'on-site': 'track',
 }
 
@@ -39,6 +40,7 @@ export const MATERIALS_TAB_LABELS: Record<MaterialsTab, string> = {
   'po-generator': 'PO Generator',
   'supply-houses': 'Supply houses',
   'job-accounts': 'Held for suppliers',
+  'what-we-buy': 'What we buy',
   'on-site': 'On site',
 }
 
