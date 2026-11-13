@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine } from './lienLastWorkDay'
+import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LIEN_LAST_WORK_CLEAR, lienClockMonths, lienHoursAfterHandDay, lienHoursAfterHandDayWords, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine } from './lienLastWorkDay'
+import { plainWordsFailures } from '../plainWords'
 
 describe('lienLastWorkDay (v2.4676)', () => {
   it('a hand-set day wins, then the last clock day, then the creation day, then nothing', () => {
@@ -24,5 +25,41 @@ describe('lienLastWorkDay (v2.4676)', () => {
     expect(lienLastWorkSourceLine(d, 'Robert')).toBe('set by hand · Robert · Oct 6')
     expect(lienLastWorkSourceLine(d)).toBe('set by hand · Oct 6')
     expect(lienLastWorkSourceLine(lienLastWorkDay({ last_work_date: '2026-09-24' }))).toBe('from clock hours')
+  })
+})
+
+describe('lienClockMonths — the day set by hand counts (v2.7193, punch list #335, row 1, the owner’s reading of 2026-11-13)', () => {
+  it('with no day set by hand the clock counts every month with approved hours', () => {
+    expect(lienClockMonths(['2026-07', '2026-05', '2026-07'], null)).toEqual({ months: ['2026-05', '2026-07'], lastMonth: '2026-07', byHand: false, hoursAfter: [] })
+    expect(lienClockMonths([], null)).toEqual({ months: [], lastMonth: '', byHand: false, hoursAfter: [] })
+    expect(lienClockMonths(['2026-07'], 'not a day')).toMatchObject({ lastMonth: '2026-07', byHand: false })
+  })
+
+  it('a hand day later than the hours adds its month, as it always did', () => {
+    expect(lienClockMonths(['2026-05', '2026-07'], '2026-08-14')).toEqual({ months: ['2026-05', '2026-07', '2026-08'], lastMonth: '2026-08', byHand: true, hoursAfter: [] })
+    expect(lienClockMonths([], '2026-08-14')).toEqual({ months: ['2026-08'], lastMonth: '2026-08', byHand: true, hoursAfter: [] })
+  })
+
+  it('hours approved after the hand day do not move the clock: their months are off it, and named', () => {
+    // The live case: a day set in June, hours approved four months later.
+    expect(lienClockMonths(['2026-05', '2026-10'], '2026-06-12')).toEqual({ months: ['2026-05', '2026-06'], lastMonth: '2026-06', byHand: true, hoursAfter: ['2026-10'] })
+    expect(lienClockMonths(['2026-09', '2026-10'], '2026-06-12')).toEqual({ months: ['2026-06'], lastMonth: '2026-06', byHand: true, hoursAfter: ['2026-09', '2026-10'] })
+  })
+
+  it('hours in the hand day’s own month keep that one month, by hand', () => {
+    expect(lienClockMonths(['2026-05', '2026-06'], '2026-06-12')).toEqual({ months: ['2026-05', '2026-06'], lastMonth: '2026-06', byHand: true, hoursAfter: [] })
+  })
+
+  it('later hours are found by the day, and said in plain words', () => {
+    expect(lienHoursAfterHandDay({ last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' })).toBe('2026-10-20')
+    expect(lienHoursAfterHandDay({ last_work_date: '2026-06-25', lien_last_work_on: '2026-06-12' })).toBe('2026-06-25')
+    expect(lienHoursAfterHandDay({ last_work_date: '2026-06-12', lien_last_work_on: '2026-06-12' })).toBe('')
+    expect(lienHoursAfterHandDay({ last_work_date: '2026-05-02', lien_last_work_on: '2026-06-12' })).toBe('')
+    expect(lienHoursAfterHandDay({ last_work_date: '2026-10-20' })).toBe('')
+    expect(lienHoursAfterHandDay(null)).toBe('')
+    expect(lienHoursAfterHandDayWords('2026-10-20')).toBe('Hours were approved after it, through Oct 20. They do not move it.')
+    expect(lienHoursAfterHandDayWords('')).toBe('')
+    expect(plainWordsFailures(lienHoursAfterHandDayWords('2026-10-20'))).toEqual([])
+    expect(LAST_DAY_BY_HAND_LATER_HOURS_WORDS).toBe('last day set by hand · later hours do not move it')
   })
 })
