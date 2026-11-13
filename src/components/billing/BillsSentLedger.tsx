@@ -9,6 +9,8 @@ import {
   billsSentAgainWords,
   billsSentByWords,
   billsSentCopyLabel,
+  billsSentCsv,
+  billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
@@ -16,6 +18,7 @@ import {
   billsSentGapHeading,
   billsSentGaps,
   billsSentLines,
+  billsSentListHtml,
   billsSentMoney,
   billsSentPaidWords,
   billsSentRecord,
@@ -35,6 +38,7 @@ import {
 import { readBillsSent } from '../../lib/billing/billsSentIo'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { saveBlobAs } from '../../lib/storageSave'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -57,6 +61,8 @@ import { EmptyState } from '../EmptyState'
  *
  * PR 4: a bill's name on a line opens that bill's record, every send of it in order, at `?bill=<id>`, so the
  * address is the link to keep or paste. **Print this record** prints it as one page.
+ *
+ * PR 5: **Print** and **Download CSV** take what the list shows out of the app, in the screen's order and words.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -404,8 +410,31 @@ export function BillsSentLedger() {
     )
   }
 
+  // What goes out of the app is what the list shows: the lines the chip and the search leave, and the open gaps with them.
+  const outGaps = stripVisible ? gapsShown.open : []
+  const shownWords = [BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? 'All', typed.trim() ? `“${typed.trim()}”` : ''].filter(Boolean).join(' · ') + '.'
+  const printList = () => {
+    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+  const saveCsv = () => {
+    // The byte order mark lets a spreadsheet read the file's accents and dots as written.
+    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today))
+  }
+  const nothingShown = shown.length === 0 && outGaps.length === 0
+  const outPress: CSSProperties = { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }
+
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      {data != null && !nothingShown ? (
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={printList} style={outPress}>
+            Print
+          </button>
+          <button type="button" onClick={saveCsv} style={outPress}>
+            Download CSV
+          </button>
+        </div>
+      ) : null}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
