@@ -146,6 +146,26 @@ describe('BillsSentLedger', () => {
     expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
   })
 
+  it('says whether an email arrived, counts the ones that did not, and narrows to them', async () => {
+    io.data = {
+      ...data([copy({ id: 'c2', sentAt: '2026-11-05T17:02:00.000Z', recipientEmails: ['old@sableridge.example'] }), copy({ id: 'c1' })]),
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }]]),
+      marks: new Map([
+        ['c2', { id: 'c2', lastEvent: 'bounced', lastEventAtIso: '2026-11-05T17:02:04.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+        ['c1', { id: 'c1', lastEvent: 'delivered', lastEventAtIso: '2026-11-03T22:41:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const lines = await screen.findAllByTestId('bills-sent-line')
+    expect(lines[0]?.textContent).toContain('Bounced. It did not arrive.')
+    expect(lines[1]?.textContent).toContain('Delivered 4:41 PM')
+    expect(screen.getByTestId('bills-sent-tile-missed').textContent).toBe('Did not arrive1')
+    expect(screen.getAllByTestId('bills-sent-day')[0]?.textContent).toContain('1 did not arrive')
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
+    expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Delivered means their mail server took it.')
+  })
+
   it('says what fills an empty list, and offers the Pipeline', async () => {
     renderWithProviders(<BillsSentLedger />)
     const empty = await screen.findByTestId('bills-sent-empty')
