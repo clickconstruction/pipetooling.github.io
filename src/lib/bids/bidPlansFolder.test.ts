@@ -16,7 +16,7 @@ describe('bidPlansFolder (v2.4162)', () => {
   })
 
   it('the folder is named the way the job folder is: the project name', () => {
-    expect(bidPlansFolderName({ project_name: '  Knight Contracting- Marcos Pizza Boerne ', bid_number: '367', id: 'x' })).toBe('Knight Contracting- Marcos Pizza Boerne')
+    expect(bidPlansFolderName({ project_name: '  Kestrin Contracting- Marcos Bakery Boerne ', bid_number: '367', id: 'x' })).toBe('Kestrin Contracting- Marcos Bakery Boerne')
     expect(bidPlansFolderName({ project_name: null, bid_number: '367', id: 'x' })).toBe('Bid 367')
   })
 

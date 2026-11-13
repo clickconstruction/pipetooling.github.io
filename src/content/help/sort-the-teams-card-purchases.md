@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo
+keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
 where: /tally?tab=transactions
 order: 60
 ---
@@ -77,6 +77,21 @@ The **Tickets** tab holds every ticket that is not sitting on its charge.
 Once you sort a charge with its ticket in front, the ticket is used. The tech can no longer move it or remove it.
 
 A tech hands you the paper instead? Press **+ Ticket** on the charge's line and pick the scan, the photo or the PDF. The paper lands on that charge with the tech named as its taker.
+
+## Send a receipt link
+
+The tech has the receipt and is not at the office? Send them a receipt link.
+
+1. On the charge's line, press **Copy the receipt link**. A note says the link was copied.
+2. Paste the link into a text or an email to the tech.
+
+The link opens a page for that one charge. The page needs no sign-in. The tech takes a photo of the receipt there, as [take a photo of a supply house ticket](/help/take-a-photo-of-a-supply-house-ticket#a-receipt-link-from-the-office) explains.
+
+The photo lands on the charge. The line then wears a green chip, like {{chip:green|Receipt from the link · JP1038 first}}.
+
+The link opens for 14 days. The page shows that charge and nothing else. A charge with a ticket on it has no **Copy the receipt link**.
+
+The app sends no text by itself. You send the link.
 
 A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
 

@@ -6,8 +6,8 @@ import {
   parseBidTabPaste,
 } from './bidTabPaste'
 
-// The Culebra block from Burd & Assoc.'s 2026-08-21 "Bid Tabs for Take 5's" email.
-const CULEBRA = `Culebra
+// The Calvera block from Brund & Assoc.'s 2026-08-21 "Bid Tabs for Tune 5's" email.
+const CALVERA = `Calvera
 $40,500
 $54,500
 $146,500
@@ -16,10 +16,10 @@ $39,919 - Click Plumbing
 $115,000`
 
 describe('parseBidTabPaste', () => {
-  it('parses the Culebra email block: 6 entries, ours auto-detected, header skipped', () => {
-    const { entries, skippedLines } = parseBidTabPaste(CULEBRA)
+  it('parses the Calvera email block: 6 entries, ours auto-detected, header skipped', () => {
+    const { entries, skippedLines } = parseBidTabPaste(CALVERA)
     expect(entries).toHaveLength(6)
-    expect(skippedLines).toEqual(['Culebra'])
+    expect(skippedLines).toEqual(['Calvera'])
     const ours = entries.find((e) => e.isOurs)!
     expect(ours.amount).toBe(39919)
     expect(ours.bidderName).toBe('Click Plumbing')
@@ -34,9 +34,9 @@ describe('parseBidTabPaste', () => {
   })
 
   it('accepts a bare-number line but never a number inside words', () => {
-    const { entries, skippedLines } = parseBidTabPaste('Take 5 - Post Oak\n39,400\nno numbers here')
+    const { entries, skippedLines } = parseBidTabPaste('Tune 5 - Post Oak\n39,400\nno numbers here')
     expect(entries).toEqual([{ amount: 39400, alternateAmount: null, bidderName: null, isOurs: false }])
-    expect(skippedLines).toEqual(['Take 5 - Post Oak', 'no numbers here'])
+    expect(skippedLines).toEqual(['Tune 5 - Post Oak', 'no numbers here'])
   })
 
   it('flags ours on the first Click line only', () => {
@@ -46,8 +46,8 @@ describe('parseBidTabPaste', () => {
 })
 
 describe('deriveTabSummaryFromEntries', () => {
-  it('derives the v2.2081 summary from the Culebra tab — we were #1 of 6', () => {
-    const { entries } = parseBidTabPaste(CULEBRA)
+  it('derives the v2.2081 summary from the Calvera tab — we were #1 of 6', () => {
+    const { entries } = parseBidTabPaste(CALVERA)
     expect(deriveTabSummaryFromEntries(entries)).toEqual({
       low: 39919,
       high: 146500,
@@ -65,13 +65,13 @@ describe('deriveTabSummaryFromEntries', () => {
 
 describe('markEntryOurs / buildTabLadder', () => {
   it('markEntryOurs moves the flag to exactly one entry', () => {
-    const { entries } = parseBidTabPaste(CULEBRA)
+    const { entries } = parseBidTabPaste(CALVERA)
     const moved = markEntryOurs(entries, 0) // $40,500
     expect(moved.filter((e) => e.isOurs).map((e) => e.amount)).toEqual([40500])
   })
 
   it('ladder is sorted, ranked, scaled, and gap-annotated', () => {
-    const { entries } = parseBidTabPaste(CULEBRA)
+    const { entries } = parseBidTabPaste(CALVERA)
     const ladder = buildTabLadder(entries)
     expect(ladder.map((r) => r.amount)).toEqual([39919, 40500, 54500, 56500, 115000, 146500])
     expect(ladder[0]!.rank).toBe(1)

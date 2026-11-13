@@ -40,7 +40,7 @@ describe('the stack of words', () => {
     expect(ys(placeRows(LAYOUTS.cardBackReworked.words!, dale))).toEqual([306, 345, 397, 455, 513])
   })
   it('gives a person with no title and no phone the designer’s footer exactly', () => {
-    expect(ys(placeRows(LAYOUTS.footerReworked.words!, { name: 'Renee Castillo', email: 'renee@example.com' }))).toEqual([349, 418])
+    expect(ys(placeRows(LAYOUTS.footerReworked.words!, { name: 'Renee Castwell', email: 'renee@example.com' }))).toEqual([349, 418])
   })
   it('keeps four footer rows clear of the pipe under them', () => {
     const rows = placeRows(LAYOUTS.footerReworked.words!, dale)
@@ -140,8 +140,8 @@ describe('the print pages', () => {
 
 describe('a person’s facts', () => {
   it('prefers the name on the card and trims every fact', () => {
-    const p = kitPersonFromUser({ name: 'Renee', card_name: ' Renee Castillo ', title: null, email: 'renee@example.com', phone: ' (512) 555-0131 ' }, '(512) 555-0100', null)
-    expect(p).toEqual({ name: 'Renee Castillo', title: '', email: 'renee@example.com', mobile: '(512) 555-0131', office: '(512) 555-0100', photo: null })
+    const p = kitPersonFromUser({ name: 'Renee', card_name: ' Renee Castwell ', title: null, email: 'renee@example.com', phone: ' (512) 555-0131 ' }, '(512) 555-0100', null)
+    expect(p).toEqual({ name: 'Renee Castwell', title: '', email: 'renee@example.com', mobile: '(512) 555-0131', office: '(512) 555-0100', photo: null })
   })
   it('prints every number one way, however it was typed', () => {
     for (const typed of ['617 939 6295', '6179396295', '617-939-6295', '(617) 939-6295', '+1 617 939 6295', '1.617.939.6295']) {

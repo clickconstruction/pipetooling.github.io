@@ -17,7 +17,7 @@ Read 2026-10-05 as the owner (dev), read-only:
 | 90 days to 2026-10-05 | 27 | +$1,083.34 | every one money in |
 | All time | 135 | +$11,618.37 | every one money in |
 
-Merchant refunds and returns: Shell and Fuelman pump refunds (the bank description starts `RBT`, a fuel pre-authorization given back), The Home Depot, Lowe's, O'Reilly Auto Parts, AutoZone, Elliott Electric, Amazon, H-E-B and a few others. No outbound `other` row carries a card. A few all-time rows have status `failed`; the read keeps them as the Job window does (neither filters on status). Of the 642 `other` rows all time, the 507 with no card are not card activity and stay out. No card-kind row lacks a card id, and there are no `creditCardTransaction` rows at all.
+Merchant refunds and returns: Shell and Fuelman pump refunds (the bank description starts `RBT`, a fuel pre-authorization given back), The Home Depot, Lowe's, O'Reilly Auto Parts, TireBarn, Elliott Electric, Amazon, H-E-B and a few others. No outbound `other` row carries a card. A few all-time rows have status `failed`; the read keeps them as the Job window does (neither filters on status). Of the 642 `other` rows all time, the 507 with no card are not card activity and stay out. No card-kind row lacks a card id, and there are no `creditCardTransaction` rows at all.
 
 The kernel needs no change: an amount keeps the bank's sign, `cardChargeCostUsd` turns a refund into negative cost, and a refund on a job's split nets against that job — exactly as the Job window counts it.
 

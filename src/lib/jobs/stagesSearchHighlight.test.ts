@@ -36,8 +36,8 @@ describe('splitTextByMatch', () => {
   })
 
   it('trims the query like the board filter does', () => {
-    expect(splitTextByMatch('Tovi Pinpoint', '  tovi ')).toEqual([
-      { text: 'Tovi', match: true },
+    expect(splitTextByMatch('Tavin Pinpoint', '  tavin ')).toEqual([
+      { text: 'Tavin', match: true },
       { text: ' Pinpoint', match: false },
     ])
   })
@@ -45,8 +45,8 @@ describe('splitTextByMatch', () => {
 
 describe('textHasMatch', () => {
   it('mirrors the split verdict', () => {
-    expect(textHasMatch('Frantzen Water Heater', 'FRAN')).toBe(true)
-    expect(textHasMatch('Frantzen', 'zz')).toBe(false)
+    expect(textHasMatch('Franlow Water Heater', 'FRAN')).toBe(true)
+    expect(textHasMatch('Franlow', 'zz')).toBe(false)
     expect(textHasMatch(null, 'a')).toBe(false)
     expect(textHasMatch('abc', '  ')).toBe(false)
   })

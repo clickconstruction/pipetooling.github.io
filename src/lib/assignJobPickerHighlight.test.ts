@@ -12,8 +12,8 @@ describe('splitTextForQueryHighlight', () => {
   })
 
   it('marks a single case-insensitive occurrence', () => {
-    expect(splitTextForQueryHighlight('Take 5- Liberty Hill', 'liberty')).toEqual([
-      { text: 'Take 5- ', match: false },
+    expect(splitTextForQueryHighlight('Tune 5- Liberty Hill', 'liberty')).toEqual([
+      { text: 'Tune 5- ', match: false },
       { text: 'Liberty', match: true },
       { text: ' Hill', match: false },
     ])

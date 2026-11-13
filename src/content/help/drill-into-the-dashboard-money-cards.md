@@ -30,7 +30,7 @@ The Accounts Receivable drill-down opens on a **Customers** view. That is one ro
 Each customer row shows their open bills as a small **bar**. Each segment is one bill, sized by dollars. The row also shows how long they've kept you waiting **against their own pay speed**. That is the same 12-month median the Payment forecast uses. The median is the middle value of their past pay times.
 
 :::example A customer row
-**RMC- Dudley Mason** · {{chip:red|169d}} 35d avg · `$56,021` 14 jobs
+**RLC- Dunmere Mallin** · {{chip:red|169d}} 35d avg · `$56,021` 14 jobs
 :::
 
 The right side is two tight columns. The first is days waiting over their average pay speed. "35d avg" is their own 12-month median, or the company average when they have no history. The second is open dollars over the job count. Hover either column for the full story, with exact cents and where the average comes from.
@@ -63,7 +63,7 @@ Customer rows also wear their **chase state**, straight from the Payment Chase q
 
 Below the bills, each expanded customer gets a **call card** for office roles:
 
-1. A ready-made opener, like *3 bills past their ~35d — oldest 169d: 273 · Dudley (Lennox), $13,420.*
+1. A ready-made opener, like *3 bills past their ~35d — oldest 169d: 273 · Dunmere (Linmoor), $13,420.*
 2. **They paid** chips: their last payments with how many days each took, colored against the company pace.
 3. The **last touch** on record. It says who called, when, and how it went.
 4. One-tap outcomes. {{button:outline|They promised…}} stamps the date they named on their late bills. A bill the date did not reach stays listed with the reason. Save the promise again to try it. {{button:outline|Can't reach — snooze 7d}} parks them. {{button:outline|Copy summary}} puts the whole picture on your clipboard for a text or email. That means the bills and the line items.

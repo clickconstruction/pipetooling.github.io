@@ -15,7 +15,7 @@ const line = (key: string, over: Partial<GcBillLine> = {}): GcBillLine => ({
   key,
   jobId: `job-${key}`,
   hcp: key,
-  jobName: 'Dudley Mason',
+  jobName: 'Dunmere Mallin',
   jobAddress: '233 Palomino Trail',
   customerName: 'Billy Garcia',
   referenceDateDisplay: 'Sep 21, 2026',
@@ -44,7 +44,7 @@ describe('GcBillLines', () => {
     expect(lineFor('651').getByText('$8,780.00')).toBeTruthy()
     expect(lineFor('186').getByText('no bill-out date')).toBeTruthy()
     // Without a way to open the job, the job is text.
-    expect(lineFor('651').queryByRole('button', { name: /Dudley Mason/ })).toBeNull()
+    expect(lineFor('651').queryByRole('button', { name: /Dunmere Mallin/ })).toBeNull()
   })
 
   it('says under a bill what paid it, when the row carries the line', () => {
@@ -56,7 +56,7 @@ describe('GcBillLines', () => {
   it('the job link opens that job', () => {
     const onOpenJobDetail = vi.fn()
     render(<GcBillLines rows={rows} onOpenJobDetail={onOpenJobDetail} />)
-    fireEvent.click(lineFor('790').getByRole('button', { name: '790 · Dudley Mason' }))
+    fireEvent.click(lineFor('790').getByRole('button', { name: '790 · Dunmere Mallin' }))
     expect(onOpenJobDetail).toHaveBeenCalledWith('job-790')
   })
 
@@ -92,14 +92,14 @@ describe('GcBillLines', () => {
   })
 
   it('names who was billed and marks a Collections bill, in either layout', () => {
-    const withCollections = [line('651'), line('412', { inCollections: true, customerName: 'Rizvi Syed' })]
+    const withCollections = [line('651'), line('412', { inCollections: true, customerName: 'Rilvo Sorn' })]
     const { unmount } = render(<GcBillLines rows={withCollections} showCustomer />)
-    expect(lineFor('412').getByText(/Rizvi Syed/)).toBeTruthy()
+    expect(lineFor('412').getByText(/Rilvo Sorn/)).toBeTruthy()
     expect(lineFor('412').getByText('Collections')).toBeTruthy()
     expect(lineFor('651').queryByText('Collections')).toBeNull()
     unmount()
     render(<GcBillLines rows={withCollections} showCustomer compact />)
-    expect(lineFor('412').getByText('Rizvi Syed')).toBeTruthy()
+    expect(lineFor('412').getByText('Rilvo Sorn')).toBeTruthy()
     expect(lineFor('412').getByText('billed Sep 21, 2026 · 7d')).toBeTruthy()
   })
 

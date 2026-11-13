@@ -155,7 +155,7 @@ describe('JobsMapCard', () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     renderCard([
       job({ id: 'a', status: 'billed', collections_at: '2026-08-01T00:00:00Z' }),
-      job({ id: 'b', hcp_number: '1002', job_name: 'Palmer lot 14', job_address: '5100 Pine Ridge Blvd' }),
+      job({ id: 'b', hcp_number: '1002', job_name: 'Palvern lot 14', job_address: '5100 Pine Ridge Blvd' }),
     ])
     await settle()
     expect(screen.getByText('Jobs on a map')).toBeTruthy()
@@ -189,12 +189,12 @@ describe('JobsMapCard', () => {
 
   it('a pin click focuses the row and the popup carries the payer, the status, the address and the three doors', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
-    renderCard([job({ id: 'a', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Done Right Foundation' } } as Partial<JobWithDetails> & { id: string })])
+    renderCard([job({ id: 'a', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Dead Level Foundation' } } as Partial<JobWithDetails> & { id: string })])
     await settle()
     fireEvent.click(await screen.findByText(/^pin 1019 · Vasquez pretest$/))
     expect(onFocusJob).toHaveBeenCalledWith('a', '1019')
     const popup = screen.getByTestId('popup')
-    expect(popup.textContent).toContain('Bills go to Done Right Foundation')
+    expect(popup.textContent).toContain('Bills go to Dead Level Foundation')
     expect(popup.textContent).toContain('60% done')
     expect(popup.textContent).toContain('173 Atlantis, Kyle')
     fireEvent.click(screen.getByRole('button', { name: 'Open job' }))

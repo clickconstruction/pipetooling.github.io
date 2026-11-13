@@ -123,7 +123,7 @@ describe('design drawing plan date formatters', () => {
 
 describe('bidTriagePillLabel', () => {
   it('leads with the project name, ellipsized', () => {
-    expect(bidTriagePillLabel({ project: 'Take 5 Dickinson', address: '484 w fm 646 rd Dickinson, TX', label: 'BP251' })).toBe('Take 5 Dickinson')
+    expect(bidTriagePillLabel({ project: 'Tune 5 Dickinson', address: '484 w fm 646 rd Dickinson, TX', label: 'BP251' })).toBe('Tune 5 Dickinson')
     expect(bidTriagePillLabel({ project: 'Bastrop County Community Development Services Building', address: null, label: 'BP1' })).toBe('Bastrop County Community D…')
   })
 

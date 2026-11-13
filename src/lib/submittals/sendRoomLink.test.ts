@@ -57,7 +57,7 @@ describe('what the Share step reads', () => {
   it('the line after the Share window’s sends', () => {
     expect(sharedLinksLine(1, [])).toBe('Emailed one person their link.')
     expect(sharedLinksLine(2, [])).toBe('Emailed 2 people their links.')
-    expect(sharedLinksLine(1, [{ name: 'Logan Parsons', key: 'noEmail' }])).toBe('Emailed one person their link. Not sent to Logan Parsons: There is no email address on file for them.')
+    expect(sharedLinksLine(1, [{ name: 'Logan Parlen', key: 'noEmail' }])).toBe('Emailed one person their link. Not sent to Logan Parlen: There is no email address on file for them.')
     expect(sharedLinksLine(0, [{ name: 'Dana', key: 'sendFailed' }])).toBe('No link was emailed. Not sent to Dana: The email did not go. Try again in a minute.')
   })
 })

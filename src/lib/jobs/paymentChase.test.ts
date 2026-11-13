@@ -22,9 +22,9 @@ const TODAY = '2026-08-21'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 16, samples: 40 },
-  customers: { knight: { medianDays: 25, samples: 6 } },
+  customers: { kestrin: { medianDays: 25, samples: 6 } },
   segments: { residential: { medianDays: 7, samples: 8 }, commercial: { medianDays: 25, samples: 32 } },
-  customerTypes: { knight: 'commercial', palmer: 'commercial', holub: 'residential' },
+  customerTypes: { kestrin: 'commercial', palvern: 'commercial', holmby: 'residential' },
   receipts: {},
   quality: null,
 }
@@ -78,11 +78,11 @@ function touch(over: Partial<ChaseTouch> & Pick<ChaseTouch, 'customerId' | 'outc
 
 describe('buildPaymentChaseQueue', () => {
   it('queues late unpromised bills as ask, grouped per customer with dollars', () => {
-    // Knight pays in ~25d; billed Jul 1 → expected Jul 26 → 26d late today.
+    // Kestrin pays in ~25d; billed Jul 1 → expected Jul 26 → 26d late today.
     const q = buildPaymentChaseQueue(
       [
-        invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
-        invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j2', invoiceId: 'i2', amount: 2700, billedAt: '2026-07-01T12:00:00Z' }),
+        invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
+        invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j2', invoiceId: 'i2', amount: 2700, billedAt: '2026-07-01T12:00:00Z' }),
       ],
       speeds,
       null,
@@ -90,16 +90,16 @@ describe('buildPaymentChaseQueue', () => {
       TODAY,
     )
     expect(q.due).toHaveLength(1)
-    expect(q.due[0]).toMatchObject({ customerId: 'knight', state: 'ask', openLate: 6300 })
+    expect(q.due[0]).toMatchObject({ customerId: 'kestrin', state: 'ask', openLate: 6300 })
     expect(q.due[0]?.bills).toHaveLength(2)
     expect(q.dueDollars).toBe(6300)
     expect(q.askCount).toBe(1)
   })
 
   it('never queues a bill an in-kind deal pays, however old it is (punch list #301)', () => {
-    const inKind = invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-01-05T12:00:00Z' })
+    const inKind = invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-01-05T12:00:00Z' })
     ;(inKind as { job: { in_kind_arrangement_id?: string } }).job.in_kind_arrangement_id = 'a1'
-    const cash = invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j2', invoiceId: 'i2', amount: 2700, billedAt: '2026-07-01T12:00:00Z' })
+    const cash = invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j2', invoiceId: 'i2', amount: 2700, billedAt: '2026-07-01T12:00:00Z' })
     const q = buildPaymentChaseQueue([inKind, cash], speeds, null, [], TODAY)
     expect(q.due[0]?.bills.map((b) => b.invoiceId)).toEqual(['i2'])
     expect(q.dueDollars).toBe(2700)
@@ -109,7 +109,7 @@ describe('buildPaymentChaseQueue', () => {
 
   it('keeps a bill inside its promise out of the queue, and re-queues it as broken only past the grace', () => {
     const rows = [
-      invRow({ customerId: 'palmer', customerName: 'Palmer', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-07-01T12:00:00Z' }),
+      invRow({ customerId: 'palvern', customerName: 'Palvern', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-07-01T12:00:00Z' }),
     ]
     const promise = (ymd: string): Record<string, PromisedPayDate> => ({ jp: { promisedYmd: ymd, markedByName: 'Malachi' } })
     // Promise 3 days past — red chip on the board, but NOT re-queued yet.
@@ -127,27 +127,27 @@ describe('buildPaymentChaseQueue', () => {
 
   it('an evening bill and an evening call read their own Central day', () => {
     // Billed 7:30 pm CDT on Jul 1 (PostgREST's +00:00 shape): the card says billed Jul 1, and net 30 lands Jul 31.
-    const rows = [invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T00:30:00+00:00' })]
+    const rows = [invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T00:30:00+00:00' })]
     const q = buildPaymentChaseQueue(rows, speeds, null, [], TODAY)
     expect(q.due[0]?.bills[0]?.billedYmd).toBe('2026-07-01')
     expect(resolvePromiseDates({ mode: 'billed', days: 30, bills: q.due[0]!.bills, todayYmd: TODAY })?.byInvoice.get('i1')).toBe('2026-07-31')
     // A can't-reach call at 7:30 pm CDT on Aug 18 snoozes 7 days from Aug 18.
-    const snoozed = buildPaymentChaseQueue(rows, speeds, null, [touch({ customerId: 'knight', outcome: 'cant_reach', createdAt: '2026-08-19T00:30:00+00:00', snoozeDays: 7 })], TODAY)
+    const snoozed = buildPaymentChaseQueue(rows, speeds, null, [touch({ customerId: 'kestrin', outcome: 'cant_reach', createdAt: '2026-08-19T00:30:00+00:00', snoozeDays: 7 })], TODAY)
     expect(snoozed.waiting[0]?.waitReason).toMatchObject({ kind: 'snoozed', untilYmd: '2026-08-25' })
     // 6:30 pm CST on Dec 1 reads Dec 1; noon UTC reads its own day.
-    const winter = buildPaymentChaseQueue([invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-12-02T00:30:00Z' })], speeds, null, [], '2027-01-15')
+    const winter = buildPaymentChaseQueue([invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-12-02T00:30:00Z' })], speeds, null, [], '2027-01-15')
     expect(winter.due[0]?.bills[0]?.billedYmd).toBe('2026-12-01')
-    const noon = buildPaymentChaseQueue([invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T12:00:00Z' })], speeds, null, [], TODAY)
+    const noon = buildPaymentChaseQueue([invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-02T12:00:00Z' })], speeds, null, [], TODAY)
     expect(noon.due[0]?.bills[0]?.billedYmd).toBe('2026-07-02')
   })
 
   it("can't-reach snoozes the customer for its window; quiet period holds recent touches", () => {
     const rows = [
-      invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
+      invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
     ]
     const snoozed = buildPaymentChaseQueue(
       rows, speeds, null,
-      [touch({ customerId: 'knight', outcome: 'cant_reach', createdAt: '2026-08-18T15:00:00Z', snoozeDays: 7 })],
+      [touch({ customerId: 'kestrin', outcome: 'cant_reach', createdAt: '2026-08-18T15:00:00Z', snoozeDays: 7 })],
       TODAY,
     )
     expect(snoozed.due).toHaveLength(0)
@@ -156,14 +156,14 @@ describe('buildPaymentChaseQueue', () => {
     // A snooze that has run out returns the customer to the queue.
     const returned = buildPaymentChaseQueue(
       rows, speeds, null,
-      [touch({ customerId: 'knight', outcome: 'cant_reach', createdAt: '2026-08-10T15:00:00Z', snoozeDays: 7 })],
+      [touch({ customerId: 'kestrin', outcome: 'cant_reach', createdAt: '2026-08-10T15:00:00Z', snoozeDays: 7 })],
       TODAY,
     )
     expect(returned.due).toHaveLength(1)
     // A plain note 1 day ago holds the customer in the quiet period.
     const quiet = buildPaymentChaseQueue(
       rows, speeds, null,
-      [touch({ customerId: 'knight', outcome: 'note', createdAt: '2026-08-20T15:00:00Z' })],
+      [touch({ customerId: 'kestrin', outcome: 'note', createdAt: '2026-08-20T15:00:00Z' })],
       TODAY,
     )
     expect(quiet.due).toHaveLength(0)
@@ -172,15 +172,15 @@ describe('buildPaymentChaseQueue', () => {
 
   it('an unresolved dispute holds its bill out of the ask queue and lists it under disputes', () => {
     const rows = [
-      invRow({ customerId: 'palmer', customerName: 'Palmer', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-07-01T12:00:00Z' }),
+      invRow({ customerId: 'palvern', customerName: 'Palvern', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-07-01T12:00:00Z' }),
     ]
     const disputeTouch = touch({
-      customerId: 'palmer', outcome: 'dispute', createdAt: '2026-08-15T15:00:00Z', jobId: 'jp', note: 'CO not approved',
+      customerId: 'palvern', outcome: 'dispute', createdAt: '2026-08-15T15:00:00Z', jobId: 'jp', note: 'CO not approved',
     })
     const q = buildPaymentChaseQueue(rows, speeds, null, [disputeTouch], TODAY)
     expect(q.due).toHaveLength(0)
     expect(q.disputes).toHaveLength(1)
-    expect(q.disputes[0]).toMatchObject({ customerName: 'Palmer' })
+    expect(q.disputes[0]).toMatchObject({ customerName: 'Palvern' })
     expect(q.disputes[0]?.bill?.open).toBe(4100)
     // Resolved dispute → bill back in the ask queue.
     const resolved = buildPaymentChaseQueue(
@@ -195,8 +195,8 @@ describe('buildPaymentChaseQueue', () => {
   it('not-late open bills ride along on the customer card without joining the queue', () => {
     const q = buildPaymentChaseQueue(
       [
-        invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
-        invRow({ customerId: 'knight', customerName: 'Knight', jobId: 'j3', invoiceId: 'i3', amount: 1980, billedAt: '2026-08-18T12:00:00Z' }),
+        invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j1', invoiceId: 'i1', amount: 3600, billedAt: '2026-07-01T12:00:00Z' }),
+        invRow({ customerId: 'kestrin', customerName: 'Kestrin', jobId: 'j3', invoiceId: 'i3', amount: 1980, billedAt: '2026-08-18T12:00:00Z' }),
       ],
       speeds, null, [], TODAY,
     )
@@ -207,13 +207,13 @@ describe('buildPaymentChaseQueue', () => {
 
   it('counts past promised touches as broken-promise history for the escalation nudge', () => {
     const rows = [
-      invRow({ customerId: 'palmer', customerName: 'Palmer', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-06-01T12:00:00Z' }),
+      invRow({ customerId: 'palvern', customerName: 'Palvern', jobId: 'jp', invoiceId: 'ip', amount: 4100, billedAt: '2026-06-01T12:00:00Z' }),
     ]
     const q = buildPaymentChaseQueue(
       rows, speeds, null,
       [
-        touch({ customerId: 'palmer', outcome: 'promised', createdAt: '2026-07-01T15:00:00Z', promisedYmd: '2026-07-15' }),
-        touch({ customerId: 'palmer', outcome: 'promised', createdAt: '2026-07-20T15:00:00Z', promisedYmd: '2026-08-01' }),
+        touch({ customerId: 'palvern', outcome: 'promised', createdAt: '2026-07-01T15:00:00Z', promisedYmd: '2026-07-15' }),
+        touch({ customerId: 'palvern', outcome: 'promised', createdAt: '2026-07-20T15:00:00Z', promisedYmd: '2026-08-01' }),
       ],
       TODAY,
     )

@@ -42,8 +42,8 @@ vi.mock('../../hooks/useLegalFirmMapCases', () => ({
   useLegalFirmMapCases: () => ({
     loading: false,
     cases: [
-      { id: 'c:tle|live', key: 'c:tle', name: 'The Learning Experience', balance: 15781.82, jobLabels: '707 · 717', jobCount: 2, viaGc: false, stand: 'firm', note: 'with Austin Collections Firm since 10/06', lat: 30.3, lng: -97.98, county: 'Travis', countyFrom: 'point' },
-      { id: 'c:rmc|live', key: 'c:rmc', name: 'RMC- Dudley Mason', balance: 1712.5, jobLabels: '790', jobCount: 1, viaGc: true, stand: 'eyes', note: 'needs a dev’s eyes', lat: 29.47, lng: -98.45, county: 'Bexar', countyFrom: 'point' },
+      { id: 'c:tle|live', key: 'c:tle', name: 'The Reading Corner', balance: 15781.82, jobLabels: '707 · 717', jobCount: 2, viaGc: false, stand: 'firm', note: 'with Austin Collections Firm since 10/06', lat: 30.3, lng: -97.98, county: 'Travis', countyFrom: 'point' },
+      { id: 'c:rlc|live', key: 'c:rlc', name: 'RLC- Dunmere Mallin', balance: 1712.5, jobLabels: '790', jobCount: 1, viaGc: true, stand: 'eyes', note: 'needs a dev’s eyes', lat: 29.47, lng: -98.45, county: 'Bexar', countyFrom: 'point' },
     ],
   }),
 }))
@@ -100,7 +100,7 @@ describe('LegalFirmSettingsBlock', () => {
     // PR 1b: the dots, the contents card, the hold, the zoom.
     const dots = container.querySelectorAll('circle[data-case]')
     expect(dots).toHaveLength(2)
-    expect(container.querySelector('circle[data-case="c:rmc|live"]')?.getAttribute('data-stand')).toBe('eyes')
+    expect(container.querySelector('circle[data-case="c:rlc|live"]')?.getAttribute('data-stand')).toBe('eyes')
     // the last county click above (Travis, the held one) put the card on Travis
     expect(container.querySelector('[data-legal-county-card="Travis"]')).toBeTruthy()
     fireEvent.pointerEnter(container.querySelector('path[data-county="Comal"]')!)
@@ -110,8 +110,8 @@ describe('LegalFirmSettingsBlock', () => {
     expect(container.querySelector('[data-legal-county-card="Travis"]')?.textContent).toContain('Austin Collections Firm')
     expect(container.querySelector('[data-legal-county-case="c:tle|live"] a')?.getAttribute('href')).toBe('/jobs?tab=stages&legal=c%3Atle')
     // a dot click holds its case on the card, and colors nothing
-    fireEvent.click(container.querySelector('circle[data-case="c:rmc|live"]')!)
-    await waitFor(() => expect(container.querySelector('[data-legal-county-card="Bexar"] [data-legal-county-case="c:rmc|live"]')?.getAttribute('data-held')).toBe('1'))
+    fireEvent.click(container.querySelector('circle[data-case="c:rlc|live"]')!)
+    await waitFor(() => expect(container.querySelector('[data-legal-county-card="Bexar"] [data-legal-county-case="c:rlc|live"]')?.getAttribute('data-held')).toBe('1'))
     expect(screen.getByText('Nothing to save.')).toBeTruthy()
     fireEvent.pointerEnter(container.querySelector('path[data-county="Travis"]')!)
     expect(container.querySelector('[data-legal-county-card="Bexar"]')).toBeTruthy()

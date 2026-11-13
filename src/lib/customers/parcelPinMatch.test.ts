@@ -11,7 +11,7 @@ function pin(over: Partial<GeocodePrecision> = {}): GeocodePrecision {
 
 describe('typedHouseNumber and streetCore', () => {
   it('reads the house number that starts a line and nothing when a word does', () => {
-    expect(typedHouseNumber('415 Springtown Way, San Marcos, TX 78666')).toBe('415')
+    expect(typedHouseNumber('415 Stonewick Way, San Marcos, TX 78666')).toBe('415')
     expect(typedHouseNumber('123A Main St')).toBe('123a')
     expect(typedHouseNumber('Lot 5 FM 1234, Kyle, TX')).toBe('')
     expect(typedHouseNumber('')).toBe('')
@@ -20,7 +20,7 @@ describe('typedHouseNumber and streetCore', () => {
   it('keeps the street name alone: no number, unit, directional or suffix word', () => {
     expect(streetCore('123 N Main St, Taylor, TX')).toBe('main')
     expect(streetCore(DOWNTOWN_SITUS)).toBe('main')
-    expect(streetCore('415 Springtown Way')).toBe('springtown')
+    expect(streetCore('415 Stonewick Way')).toBe('stonewick')
     expect(streetCore('1000 S Old Hwy 81 Ste 4, Kyle, TX')).toBe('old 81')
     expect(streetCore('FM 1234')).toBe('1234')
     expect(streetCore('County Road 123')).toBe('123')
@@ -71,7 +71,7 @@ describe('parcelSitusHold', () => {
   })
 
   it('accepts the same lot spelled the roll’s way', () => {
-    expect(parcelSitusHold('415 Springtown Way, San Marcos, TX 78666', { situsAddress: '415 SPRINGTOWN WAY, SAN MARCOS, TX 78666' })).toBeNull()
+    expect(parcelSitusHold('415 Stonewick Way, San Marcos, TX 78666', { situsAddress: '415 STONEWICK WAY, SAN MARCOS, TX 78666' })).toBeNull()
     expect(parcelSitusHold('412 Gruene Rd, New Braunfels, TX', { situsAddress: '412 GRUENE ROAD' })).toBeNull()
     expect(parcelSitusHold('313 N Main St, Taylor, TX', { situsAddress: DOWNTOWN_SITUS })).toBeNull()
     expect(parcelSitusHold('100 FM 1234, Kyle, TX', { situsAddress: '100 F M 1234' })).toBeNull()
@@ -101,8 +101,8 @@ describe('parcelSitusHold', () => {
   })
 
   it('accepts Bexar’s situs line that carries the city with no comma, and still holds another street (v2.6537)', () => {
-    expect(parcelSitusHold('150 E Sonterra Blvd 200B, San Antonio, TX 78258', { situsAddress: '150 E SONTERRA BLVD SAN ANTONIO, TX 78258' })).toBeNull()
-    expect(parcelSitusHold('628 Terrell Rd, San Antonio, TX 78209', { situsAddress: '628 TERRELL RD TERRELL HILLS, TX 78209' })).toBeNull()
+    expect(parcelSitusHold('150 E Sonmere Blvd 200B, San Antonio, TX 78258', { situsAddress: '150 E SONMERE BLVD SAN ANTONIO, TX 78258' })).toBeNull()
+    expect(parcelSitusHold('628 Tarrow Rd, San Antonio, TX 78209', { situsAddress: '628 TARROW RD TARROW HILLS, TX 78209' })).toBeNull()
     expect(parcelSitusHold('123 Oak St, San Antonio, TX', { situsAddress: '123 MAIN ST SAN ANTONIO, TX 78209' })?.kind).toBe('situs_mismatch')
     expect(parcelSitusHold(TAYLOR, { situsAddress: '123 MAIN ST TAYLOR, TX 76574' })?.kind).toBe('situs_mismatch')
   })

@@ -8,7 +8,7 @@ import {
 } from '../../../supabase/functions/_shared/portalBillMembership'
 import { buildPortalBills, type PortalJobRow } from '../../../supabase/functions/_shared/portalMergedBills'
 
-const VIEWER = 'cust-knight'
+const VIEWER = 'cust-kestrin'
 
 function job(over: Partial<PortalJobRow> & { id: string }): PortalJobRow {
   return {

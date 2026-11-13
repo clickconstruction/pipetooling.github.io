@@ -20,8 +20,8 @@ describe('robotLeftToYou', () => {
   })
 
   it('the words: the tooltip names the project, the label the bid, the two sentences one state each', () => {
-    expect(robotLeftTitle('AutoZone New Braunfels')).toBe('Left to you. Robots leave AutoZone New Braunfels alone. Tap to let the robot back in.')
-    expect(robotLeftLabel({ bid_number: '510', project_name: ' AutoZone New Braunfels ' })).toBe('b510 · AutoZone New Braunfels')
+    expect(robotLeftTitle('TireBarn New Braunfels')).toBe('Left to you. Robots leave TireBarn New Braunfels alone. Tap to let the robot back in.')
+    expect(robotLeftLabel({ bid_number: '510', project_name: ' TireBarn New Braunfels ' })).toBe('b510 · TireBarn New Braunfels')
     expect(robotLeftLabel({ bid_number: null, project_name: null })).toBe('b? · bid')
     expect(ROBOT_LEFT_SHEET_SENTENCES[0]).toMatch(/^Left to you means /)
     expect(ROBOT_LEFT_SHEET_SENTENCES[1]).toMatch(/^Let the robot back in means /)

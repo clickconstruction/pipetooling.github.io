@@ -25,12 +25,12 @@ import {
 
 const job: TestReportJobInfo = {
   jobNumber: '1014',
-  jobName: 'Johnson Pretest',
-  jobAddress: '112 Seidel St, Marion, TX 78124',
-  customerName: 'Anna & Jeffrey Johnson',
-  customerEmail: 'johnson@example.com',
+  jobName: 'Jarrow Pretest',
+  jobAddress: '112 Sedlow St, Marion, TX 78124',
+  customerName: 'Anna & Jeffrey Jarrow',
+  customerEmail: 'jarrow@example.com',
   customerPhone: '(830) 351-4600',
-  customerCompany: 'Done Right Foundation Repair',
+  customerCompany: 'Dead Level Foundation Repair',
 }
 
 function sewerPass(): TestReportData {
@@ -56,20 +56,20 @@ describe('names', () => {
   })
 
   it('writes the invoice service description with the street only', () => {
-    expect(testReportServiceDescription('pre_test', '112 Seidel St, Marion, TX 78124')).toBe('Preleveling Hydrostatic Test at 112 Seidel St')
-    expect(testReportServiceDescription('post_test', '112 Seidel St\nMarion TX')).toBe('Postleveling Hydrostatic Test at 112 Seidel St')
+    expect(testReportServiceDescription('pre_test', '112 Sedlow St, Marion, TX 78124')).toBe('Preleveling Hydrostatic Test at 112 Sedlow St')
+    expect(testReportServiceDescription('post_test', '112 Sedlow St\nMarion TX')).toBe('Postleveling Hydrostatic Test at 112 Sedlow St')
     expect(testReportServiceDescription('pinpoint', '')).toBe('Pinpoint Hydrostatic Test')
     expect(testReportServiceDescription('gas', '4419 Duval Rd')).toBe('Gas Test at 4419 Duval Rd')
   })
 
   it('splits an address at the newline first, then the first comma', () => {
-    expect(splitTestReportAddress('112 Seidel St, Marion, TX 78124')).toEqual({ street: '112 Seidel St', rest: 'Marion, TX 78124' })
-    expect(splitTestReportAddress('112 Seidel St\nMarion TX 78124')).toEqual({ street: '112 Seidel St', rest: 'Marion TX 78124' })
+    expect(splitTestReportAddress('112 Sedlow St, Marion, TX 78124')).toEqual({ street: '112 Sedlow St', rest: 'Marion, TX 78124' })
+    expect(splitTestReportAddress('112 Sedlow St\nMarion TX 78124')).toEqual({ street: '112 Sedlow St', rest: 'Marion TX 78124' })
     expect(splitTestReportAddress('  ')).toEqual({ street: '', rest: '' })
   })
 
   it('names the file from the street, the type and the date', () => {
-    expect(testReportPdfFilename(job, sewerPass())).toBe('Test-Report-Sewer-Pre-Test-112-Seidel-St-2026-09-10.pdf')
+    expect(testReportPdfFilename(job, sewerPass())).toBe('Test-Report-Sewer-Pre-Test-112-Sedlow-St-2026-09-10.pdf')
     expect(testReportPdfFilename({ jobNumber: null, jobAddress: '', customerName: 'A & B' }, { testType: 'gas', system: null, testDateYmd: '' })).toBe('Test-Report-Gas-Test-A-B.pdf')
   })
 
@@ -148,7 +148,7 @@ describe('blocks', () => {
     const cols = blocks[1]
     if (cols?.kind !== 'columns') throw new Error('columns')
     expect(cols.left.rows.map((r) => r.label)).toEqual(['Name', 'Phone', 'Email', 'Company'])
-    expect(cols.right.lines).toEqual(['112 Seidel St', 'Marion, TX 78124'])
+    expect(cols.right.lines).toEqual(['112 Sedlow St', 'Marion, TX 78124'])
     expect(cols.right.rows).toEqual([]) // the date sits in Test details for hydrostatic tests
     const kv = blocks[3]
     if (kv?.kind !== 'kv') throw new Error('kv')
@@ -169,7 +169,7 @@ describe('blocks', () => {
     expect(blocks.map((b) => b.kind)).toEqual(['letterhead', 'columns', 'section', 'kv', 'section', 'section', 'certification'])
     const cols = blocks[1]
     if (cols?.kind !== 'columns') throw new Error('columns')
-    expect(cols.left.rows).toEqual([{ label: 'Name', value: 'Anna & Jeffrey Johnson' }])
+    expect(cols.left.rows).toEqual([{ label: 'Name', value: 'Anna & Jeffrey Jarrow' }])
     const lh = blocks[0]
     if (lh?.kind !== 'letterhead') throw new Error('letterhead')
     expect(lh.jobLabel).toBeNull()
@@ -255,8 +255,8 @@ describe('send blockers', () => {
 
 describe('draft from the field report', () => {
   it('reads the type from the job name and the verdict from the tech wording', () => {
-    expect(inferTestReportDraft('Johnson Pretest', 'Hydrostatic test passed.')).toEqual({ testType: 'pre_test', result: 'pass', reason: 'Pre-Test from the job name, PASS from the report' })
-    expect(inferTestReportDraft('Montolongo Post Test', 'Test passed ,no hydrostatic loss detected')).toMatchObject({ testType: 'post_test', result: 'pass' })
+    expect(inferTestReportDraft('Jarrow Pretest', 'Hydrostatic test passed.')).toEqual({ testType: 'pre_test', result: 'pass', reason: 'Pre-Test from the job name, PASS from the report' })
+    expect(inferTestReportDraft('Montelby Post Test', 'Test passed ,no hydrostatic loss detected')).toMatchObject({ testType: 'post_test', result: 'pass' })
     expect(inferTestReportDraft('Diagnostic (Residential) Hydrostatic Test POST', 'No hydrostatic loss detected. Test passed')).toMatchObject({ testType: 'post_test', result: 'pass' })
     expect(inferTestReportDraft('Diagnostic (Residential) Hydrostatic Test PRE', 'Failed - lost 2 inches of water')).toMatchObject({ testType: 'pre_test', result: 'fail' })
     expect(inferTestReportDraft('Scarbrough Pretest', 'Hydrostatic- passed')).toMatchObject({ testType: 'pre_test', result: 'pass' })
@@ -264,9 +264,9 @@ describe('draft from the field report', () => {
 
   it('leaves the verdict open when the wording does not say, and never guesses on ordinary jobs', () => {
     expect(inferTestReportDraft('Vasquez Pretest', 'Set up the test, waiting on the 60 minutes')).toEqual({ testType: 'pre_test', result: null, reason: 'Pre-Test from the job name' })
-    expect(inferTestReportDraft('Peterson Pinpoint', 'Break at the second wye')).toMatchObject({ testType: 'pinpoint', result: null })
+    expect(inferTestReportDraft('Pettlow Pinpoint', 'Break at the second wye')).toMatchObject({ testType: 'pinpoint', result: null })
     expect(inferTestReportDraft('Salinas Gas Test', 'Held at 8 oz')).toMatchObject({ testType: 'gas', result: null })
-    expect(inferTestReportDraft('Take 5 Seguin', 'Rough-in complete, passed inspection')).toBeNull()
+    expect(inferTestReportDraft('Tune 5 Seguin', 'Rough-in complete, passed inspection')).toBeNull()
     expect(inferTestReportDraft('Office', 'Walmart and office')).toBeNull()
   })
 

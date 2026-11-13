@@ -41,7 +41,7 @@ function harness(customerEmail: string | null = 'ap@structura.example') {
     },
   }
   let rows: FillInRow[] = contractMissingFillInRows({
-    jobs: [{ id: 'j-7', bid_id: null, status: 'working', revenue: 249_716, hcp_number: '1007', click_number: null, job_name: 'SPACEX BA-02N', customer_name: 'Structura, Inc.', job_address: '1 Rocket Rd', customer_email: customerEmail }],
+    jobs: [{ id: 'j-7', bid_id: null, status: 'working', revenue: 249_716, hcp_number: '1007', click_number: null, job_name: 'SKYLAB BA-02N', customer_name: 'Structura, Inc.', job_address: '1 Rocket Rd', customer_email: customerEmail }],
     contracts: [],
     estimates: [],
     now: NOW,
@@ -89,7 +89,7 @@ describe('NeedsYouFillInDeck · contracts missing', () => {
     const h = harness()
     h.render()
     await settle()
-    expect(screen.getByText('#1007 SPACEX BA-02N · Structura, Inc. · $249,716 · no contract on file')).toBeTruthy()
+    expect(screen.getByText('#1007 SKYLAB BA-02N · Structura, Inc. · $249,716 · no contract on file')).toBeTruthy()
     expect(screen.getByText('Working · $249,716 of work on no signed agreement.')).toBeTruthy()
     expect(screen.getByText(/press Send it from the sweep/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Save and next' }) as HTMLButtonElement).disabled).toBe(true)

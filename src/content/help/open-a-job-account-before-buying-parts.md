@@ -24,7 +24,7 @@ Only houses that expect job accounts appear. So most jobs show one to three chip
 
 The sheet gives you the three things the counter asks for:
 
-- **Tell the counter** is one sentence. It reads *Click Plumbing and Electrical · job account for 4114 Pond Hill Rd, Bldg 2 · ref JA-4114*. {{button:outline|Copy for the counter}} puts it on your clipboard. Your PO code still goes on the ticket as usual.
+- **Tell the counter** is one sentence. It reads *Click Plumbing and Electrical · job account for 4114 Pen Moor Rd, Bldg 2 · ref JA-4114*. {{button:outline|Copy for the counter}} puts it on your clipboard. Your PO code still goes on the ticket as usual.
 - **Reference** is the house's own number when they gave one. Otherwise the house keys it on the address.
 - **Rep** is who opened it and their number. {{button:outline|Call Curly}} dials them if the counter cannot find the account.
 
@@ -41,7 +41,7 @@ The chip turns {{chip:purple|requested}}. Dispatch gets the ask with the rep's n
 You may rather call the rep yourself. The number is on the sheet. The office still has to mark it opened, so send the ask too.
 
 :::example What the office sees
-**Open a job account at Reece for 951 · Shearer Pinpoint — asked from the counter, buying now** · Abraham · 1:40 PM · *"Rough-in for the slab, ~$1,800"* · **Reece** rep Curly Conley · 210-344-4950 {{button:outline|Call Curly}} {{button:green|Mark opened…}} {{button:outline|Send the packet}}
+**Open a job account at Reece for 951 · Shellan Pinpoint — asked from the counter, buying now** · Abraham · 1:40 PM · *"Rough-in for the slab, ~$1,800"* · **Reece** rep Curly Conmere · 210-344-4950 {{button:outline|Call Curly}} {{button:green|Mark opened…}} {{button:outline|Send the packet}}
 :::
 
 ## For the office: when the job is made
@@ -54,8 +54,8 @@ Another job at the same address may already have an open account at a house. The
 
 Most parts runs start with a PO code minted by the office. A PO is a purchase order. You mint it at **Materials → PO Generator**, or on the **PO** tab in Dispatch Mode on a phone. Once the job and the supply house are picked, the status sits right under the house:
 
-- Amber reads *No job account at Ferguson for 964 · Pondhill demo yet. Ferguson expects one per property. Curly Conley opens them: 210-344-4950.* It comes with {{button:outline|Call Curly}}, {{button:green|Mark opened…}}, {{button:outline|Send the packet}} and *Not needed for this job*. You make the call, mark it opened, then mint the code.
-- Teal reads *Ferguson job account open · ref JA-4114 · Sep 2 · by phone · rep Curly Conley*. You mint the code.
+- Amber reads *No job account at Ferguson for 964 · Penmoor demo yet. Ferguson expects one per property. Curly Conmere opens them: 210-344-4950.* It comes with {{button:outline|Call Curly}}, {{button:green|Mark opened…}}, {{button:outline|Send the packet}} and *Not needed for this job*. You make the call, mark it opened, then mint the code.
+- Teal reads *Ferguson job account open · ref JA-4114 · Sep 2 · by phone · rep Curly Conmere*. You mint the code.
 
 A tech's open ask shows here too. It reads *asked Sep 14 from the counter — not open yet*. So marking it opened from the PO tab closes their request and sends their push. The code always mints. This is a signal, never a gate.
 

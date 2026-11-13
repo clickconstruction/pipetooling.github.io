@@ -127,7 +127,7 @@ describe('the window envelope on the PDF (the Docsmit train, PR 4)', () => {
     const { WINDOW_QR_MM, WINDOW_ZONE_MM } = await import('../mail/windowEnvelope')
     await filingDocPdfBlob([
       { kind: 'letterhead', company: 'Click Plumbing', licenseLine: 'M-12345', contactLines: ['(512) 360-0599'] },
-      { kind: 'windowAddress', lines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
+      { kind: 'windowAddress', lines: ['AXO Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
       { kind: 'qrLink', png: 'data:image/png;base64,QUJD', svg: null, display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to see and pay the bills this notice is about.' },
       { kind: 'paragraph', text: 'Dear owner,' },
     ])

@@ -16,7 +16,7 @@ Under the chips sit three filters. **All** shows every job in the stage. **Needs
 ## A job is two lines and one chip
 
 :::example A row
-**1040** Iannotti PRV · Sal Iannotti
+**1040** Ilmotti PRV · Sal Ilmotti
 NEXT Thu Sep 24 1–4 PM · Abraham · ✍ Signed · estimate #146 {{chip:gray|›}}
 :::
 
@@ -41,7 +41,7 @@ You **tap the chip** to open the fix. That can be the line items, the job's Note
 No row has a live status button. You **swipe a row to the right** and the stage's next move slides out. A Waiting job shows {{button:green|Move to Working ✓}}. A Working job shows {{button:green|Ready to Bill ✓}}. A Ready to Bill job shows {{button:green|Bill Customer ✓}}. A Billed job shows {{button:green|Mark Paid ✓}}. You let go and it **always asks first**:
 
 :::example Ready to bill
-**Ready to Bill · 1040 Iannotti PRV**
+**Ready to Bill · 1040 Ilmotti PRV**
 Working → Ready to bill · $600 capable · ✍ Signed · estimate #146 · Abraham's block Thu stays on the schedule
 ☑ I have reported all the Job Parts I've used
 ☐ The customer knows the work is done and is satisfied

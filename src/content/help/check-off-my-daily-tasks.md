@@ -63,6 +63,8 @@ Some tasks have a place, like *Pump house*. The place's name sits under the task
 
 Tap the task to open it. Under its details you see a small picture of the spot from above. Tap the picture to open the map full size, where you can drag and zoom.
 
+The person who gave the task may have added a photo of the spot. The photo sits beside the picture from above. Tap the photo to see it full size.
+
 - {{button:blue|Directions}} opens your phone's maps app at the spot. Off a road, the maps app gets you to the nearest road. The picture does the rest.
 - {{button:outline|How far am I?}} asks your phone where it is and answers, like *250 ft north-east of you*. The answer also says how sure your phone is.
 

@@ -163,6 +163,7 @@
     "forms:preview": "vite-node scripts/forms/preview.ts",
     "forms:author": "vite-node scripts/forms/author/index.ts",
     "sessions": "vite-node scripts/sessions-status.ts",
+    "mail:backfill": "vite-node scripts/mail-backfill.ts",
     "test": "vitest run",
     "e2e": "playwright test",
     "walk": "vite-node scripts/walk/start.ts",

@@ -79,7 +79,7 @@ describe('the room\'s rows, counts and headline', () => {
 })
 
 describe('the GC calls each part (2026-10-01)', () => {
-  // WC-1, WC-2 on SpaceX: the four parts in National Wholesale's file, the seat order only here for the test.
+  // WC-1, WC-2 on SkyLab: the four parts in National Wholesale's file, the seat order only here for the test.
   const part = (id: string, label: string, seq: number, extra: Partial<RoomPartSource> = {}): RoomPartSource => ({ id, item_id: 'wc', sequence_order: seq, label, quantity: 1, on_submittal: true, review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_at: null, ...extra })
   const bowl = part('bowl', 'TOTO CT728CUVG#01 TORNADO FLUSH COMMERCIAL FLUSHOMETER WALL MOUNTED TOILET', 1)
   const valve = part('valve', 'TOTO TET2LBI31#SS ECOPOWER 1.28 GPF FLUSHOMETER VALVE', 2)

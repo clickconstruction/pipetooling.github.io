@@ -64,7 +64,7 @@ describe('payerForJob', () => {
     expect(payerForJob(job)).toEqual({ key: 'c:gc-1', customerId: 'gc-1', name: 'Big GC', viaGc: true })
   })
   it('falls back to a name key when the job has no customer record', () => {
-    expect(payerForJob(makeJob({ customer_id: null, customer_name: 'Bryan Herber' }))).toEqual({ key: 'n:bryan herber', customerId: null, name: 'Bryan Herber', viaGc: false })
+    expect(payerForJob(makeJob({ customer_id: null, customer_name: 'Bryan Helbrow' }))).toEqual({ key: 'n:bryan helbrow', customerId: null, name: 'Bryan Helbrow', viaGc: false })
   })
 })
 
@@ -85,31 +85,31 @@ describe('jobOpenBalance / invoiceReachedCustomer', () => {
 
 describe('groupCollectionsByPayer + sortAccountsByNet', () => {
   it('folds two jobs for one customer into one account and ages from the first bill or the flag', () => {
-    const j1 = collectionsJob({ customer_id: 'tle', customer_name: 'The Learning Experience', invoices: [billedInvoice('i1', 7502, '2026-04-17')] })
-    const j2 = collectionsJob({ customer_id: 'tle', customer_name: 'The Learning Experience', invoices: [billedInvoice('i2', 1480, '2026-04-17')] })
-    const j3 = collectionsJob({ customer_id: null, customer_name: 'Bryan Herber', revenue: 1239, invoices: [] })
+    const j1 = collectionsJob({ customer_id: 'tle', customer_name: 'The Reading Corner', invoices: [billedInvoice('i1', 7502, '2026-04-17')] })
+    const j2 = collectionsJob({ customer_id: 'tle', customer_name: 'The Reading Corner', invoices: [billedInvoice('i2', 1480, '2026-04-17')] })
+    const j3 = collectionsJob({ customer_id: null, customer_name: 'Bryan Helbrow', revenue: 1239, invoices: [] })
     const accounts = groupCollectionsByPayer([j3, j1, j2], new Map(), TODAY)
     expect(accounts.map((a) => [a.name, a.jobs.length, a.balance])).toEqual([
-      ['The Learning Experience', 2, 8982],
-      ['Bryan Herber', 1, 1239],
+      ['The Reading Corner', 2, 8982],
+      ['Bryan Helbrow', 1, 1239],
     ])
     expect(accounts[0]?.oldestDays).toBe(daysBetweenYmd('2026-04-17', TODAY))
     expect(accounts[1]?.oldestDays).toBe(daysBetweenYmd('2026-08-20', TODAY))
     expect(accounts[0]?.reviewDays).toBe(daysBetweenYmd('2026-08-20', TODAY))
     const byNet = sortAccountsByNet(accounts, (a) => quickNet(a.balance))
-    expect(byNet[0]?.name).toBe('The Learning Experience')
+    expect(byNet[0]?.name).toBe('The Reading Corner')
     expect(quickNet(1239)).toBeCloseTo(1239 - 1239 * 0.33 - 350, 2)
   })
 })
 
 describe('buildLegalPacket', () => {
   const tleJobA = collectionsJob({
-    id: 'job-a', hcp_number: '717', job_name: 'The Learning Experience', customer_id: 'tle', customer_name: 'The Learning Experience', customer_email: 'aaron@tle.test',
+    id: 'job-a', hcp_number: '717', job_name: 'The Reading Corner', customer_id: 'tle', customer_name: 'The Reading Corner', customer_email: 'aaron@tle.test',
     collections_note: 'Customer is engaging in theft of service.', collections_by: 'u-taunya',
     invoices: [billedInvoice('inv-a', 7502, '2026-04-17')],
   })
   const tleJobB = collectionsJob({
-    id: 'job-b', hcp_number: '718', job_name: 'The Learning Experience', customer_id: 'tle', customer_name: 'The Learning Experience', collections_note: null,
+    id: 'job-b', hcp_number: '718', job_name: 'The Reading Corner', customer_id: 'tle', customer_name: 'The Reading Corner', collections_note: null,
     invoices: [billedInvoice('inv-b', 1480, '2026-04-17')],
     payments: [{ id: 'p1', invoice_id: 'inv-b', amount: 200, paid_on: '2026-06-02', payment_type: 'check', reference_number: '1044' }],
   })
@@ -124,7 +124,7 @@ describe('buildLegalPacket', () => {
   it('assembles the account: contacts, ledger in date order, totals, aging, primary invoice', () => {
     const packet = buildLegalPacket(
       baseInput(account, {
-        customer: { id: 'tle', name: 'The Learning Experience', address: '15054 State Hwy 71, Bee Cave, TX', contact_info: { phone: '512-555-0100' }, customer_type: 'commercial', payment_terms: 'no_new_work_past_promise', payment_terms_note: null },
+        customer: { id: 'tle', name: 'The Reading Corner', address: '15054 State Hwy 71, Bee Cave, TX', contact_info: { phone: '512-555-0100' }, customer_type: 'commercial', payment_terms: 'no_new_work_past_promise', payment_terms_note: null },
         contacts: [{ name: 'Aaron', email: 'aaron@tle.test', phone: null, note: null }],
         users: [{ id: 'u-taunya', name: 'Taunya' }],
       }),
@@ -315,7 +315,7 @@ describe('buildLegalPacket', () => {
     expect(withLines.claimLines).toEqual(typed)
     expect(withLines.fee).toBeCloseTo(5848.5 * 0.33, 2)
     expect(buildLegalPacket(baseInput(live)).worth).toEqual(expect.objectContaining({ claimTyped: 0, claimLines: [], retainageHeldByJob: { 'job-l': 1678.04 } }))
-    const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Herber', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
+    const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Helbrow', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
     const hp = buildLegalPacket(baseInput(broke))
     expect(hp.worth.flags).toContain('“no money” note')
     expect(hp.worth.verdict).toBe('not worth it')
@@ -363,7 +363,7 @@ describe('buildLegalPacket', () => {
   it('the first bill, the aging and the collections flag read their instants on the company calendar', () => {
     // Billed 7:30 pm CDT on Apr 16 (Apr 17 in UTC); flagged for collections 6:30 pm CST on Dec 1.
     const evening = collectionsJob({
-      id: 'job-e', hcp_number: '719', customer_id: 'tle', customer_name: 'The Learning Experience', collections_note: 'Moved after the third call.',
+      id: 'job-e', hcp_number: '719', customer_id: 'tle', customer_name: 'The Reading Corner', collections_note: 'Moved after the third call.',
       collections_at: '2026-12-02T00:30:00Z',
       invoices: [billedInvoice('inv-e', 500, '2026-04-17', { billed_at: '2026-04-17T00:30:00+00:00' })],
     })
@@ -405,7 +405,7 @@ describe('buildLegalPacket', () => {
   })
 
   it('a sent demand with a passed deadline shows on Paper; an open deadline warns; voided letters never count', () => {
-    const sent: JobDemandLetterRow = { id: 'd1', job_id: 'job-a', amount: 7502, created_at: '2026-08-12T00:00:00Z', created_by: null, deadline_date: '2026-08-26', fields: {}, invoice_ids: ['inv-a'], exhibits: [], debtor_party: '', recipient_address: '', recipient_email: 'aaron@tle.test', recipient_name: 'The Learning Experience', sent_at: '2026-08-12T16:00:00Z', sent_method: 'certified_mail', tracking_number: '9407 1118 9922', voided_at: null }
+    const sent: JobDemandLetterRow = { id: 'd1', job_id: 'job-a', amount: 7502, created_at: '2026-08-12T00:00:00Z', created_by: null, deadline_date: '2026-08-26', fields: {}, invoice_ids: ['inv-a'], exhibits: [], debtor_party: '', recipient_address: '', recipient_email: 'aaron@tle.test', recipient_name: 'The Reading Corner', sent_at: '2026-08-12T16:00:00Z', sent_method: 'certified_mail', tracking_number: '9407 1118 9922', voided_at: null }
     const packet = buildLegalPacket(baseInput(account, { demandLetters: [sent] }))
     expect(packet.paper.demandLetters).toEqual([expect.objectContaining({ jobLabel: '717', method: 'Certified mail', deadlinePassed: true, sentYmd: '2026-08-12' })])
     expect(packet.gaps.map((g) => g.key)).not.toContain('demand')

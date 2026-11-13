@@ -209,7 +209,7 @@ describe('buildCountCard openOnBills — what is billed and not paid', () => {
     const over = job({ id: 'j1109', status: 'working', revenue: 1000, pct_complete: 150 })
     const under = job({ id: 'j1110', status: 'working', revenue: 1000, payments_made: 900, pct_complete: 10 })
     const card = buildCountCard('openOnBills', inputs({ members: { bids: [], jobs: [paidJob, ready, workingJob, olderWorkingJob, over, under] } }))
-    // Money is left on the open jobs, so the head says what is not yet billed (the Gun Dog spike, 2026-11-02).
+    // Money is left on the open jobs, so the head says what is not yet billed (the Gray Fox spike, 2026-11-02).
     expect(card.head).toMatch(/^\$[\d,]+ not yet billed$/)
     expect(card.headMeta).toBe('nothing billed is unpaid · what is nearest a bill')
     expect(card.groups.map((g) => [g.label, g.state, g.rows.length])).toEqual([['Billed, not yet paid', 'none', 0], ['Ready to bill', '1 job', 1], ['Working, toward a bill', '4 jobs', 4], ['Waiting, not yet billed', 'none', 0]])
@@ -221,7 +221,7 @@ describe('buildCountCard openOnBills — what is billed and not paid', () => {
     expect(empty.groups.map((g) => g.state)).toEqual(['none', 'none', 'none', 'none'])
   })
 
-  it('the waiting jobs with money left sit in their own group, biggest first, and the head sums every open job (the Gun Dog spike, 2026-11-02)', () => {
+  it('the waiting jobs with money left sit in their own group, biggest first, and the head sums every open job (the Gray Fox spike, 2026-11-02)', () => {
     const small = job({ id: 'j1111', job_name: 'Leak', status: 'waiting', revenue: 990 })
     const big = job({ id: 'j1112', job_name: 'Mobilizations', status: 'waiting', revenue: 112122.95 })
     const partly = job({ id: 'j1113', status: 'waiting', revenue: 1000, payments_made: 1000 })

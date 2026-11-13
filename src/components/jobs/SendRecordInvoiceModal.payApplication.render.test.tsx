@@ -17,8 +17,8 @@ const io = vi.hoisted(() => ({ apps: [] as SavedPayApplication[], loads: 0, tieF
 const tieSpy = vi.hoisted(() => vi.fn())
 
 const draft = makeInvoice({ id: 'inv-draft', job_id: 'job-978', amount: 2630, is_primary_rtb_bundle: true })
-const detailJob = makeJob({ id: 'job-978', hcp_number: '978', status: 'ready_to_bill', revenue: 2630, payments_made: 0, customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: 'ap@knight.test', invoices: [draft] })
-const JOB = { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: 'ap@knight.test' }
+const detailJob = makeJob({ id: 'job-978', hcp_number: '978', status: 'ready_to_bill', revenue: 2630, payments_made: 0, customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test', invoices: [draft] })
+const JOB = { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test' }
 
 const app = (o: Partial<SavedPayApplication> & Pick<SavedPayApplication, 'id' | 'applicationNumber'>): SavedPayApplication =>
   ({ jobId: 'job-978', periodTo: '2026-09-30', applicationDate: '2026-10-01', currentPaymentDue: 1000, deletedAt: null, invoiceId: null, ...o }) as SavedPayApplication

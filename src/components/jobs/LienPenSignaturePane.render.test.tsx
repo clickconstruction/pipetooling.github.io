@@ -21,8 +21,8 @@ const recordSpy = vi.fn(async (args: { itemId: string; signedAtIso: string; how:
 vi.mock('../../lib/jobs/lienDeskSignIo', () => ({ recordLienPenSignature: (args: { itemId: string; signedAtIso: string; how: string }) => recordSpy(args) }))
 
 const NOTICES = [
-  { itemId: '4c2e91aa-0000-4000-8000-000000000001', jobNumber: '878', label: '878 · Take 5 - Seguin', amount: 38625, fields: { a: 1 } },
-  { itemId: '4c2e91aa-0000-4000-8000-000000000002', jobNumber: '258', label: '258 · Dudley Mason', amount: 9810, fields: { a: 2 } },
+  { itemId: '4c2e91aa-0000-4000-8000-000000000001', jobNumber: '878', label: '878 · Tune 5 - Seguin', amount: 38625, fields: { a: 1 } },
+  { itemId: '4c2e91aa-0000-4000-8000-000000000002', jobNumber: '258', label: '258 · Dunmere Mallin', amount: 9810, fields: { a: 2 } },
 ]
 
 describe('LienPenSignaturePane', () => {
@@ -37,7 +37,7 @@ describe('LienPenSignaturePane', () => {
     expect(screen.getByText('L878-4C2E91')).toBeTruthy()
     const btn = screen.getByTestId('lien-pen-record') as HTMLButtonElement
     expect(btn.textContent).toContain('Record 2 pen signatures')
-    fireEvent.click(screen.getByLabelText('258 · Dudley Mason signed with a pen'))
+    fireEvent.click(screen.getByLabelText('258 · Dunmere Mallin signed with a pen'))
     expect(btn.textContent).toContain('Record 1 pen signature ▸')
     fireEvent.click(screen.getByLabelText('He told me he signed'))
     fireEvent.click(btn)
@@ -61,8 +61,8 @@ describe('LienPenSignaturePane', () => {
     expect(screen.getByTestId('lien-pen-problems').textContent).toMatch(/printed 2026-10-09/)
     fireEvent.change(day, { target: { value: '2026-10-10' } })
     expect(screen.queryByTestId('lien-pen-problems')).toBeNull()
-    fireEvent.click(screen.getByLabelText('878 · Take 5 - Seguin signed with a pen'))
-    fireEvent.click(screen.getByLabelText('258 · Dudley Mason signed with a pen'))
+    fireEvent.click(screen.getByLabelText('878 · Tune 5 - Seguin signed with a pen'))
+    fireEvent.click(screen.getByLabelText('258 · Dunmere Mallin signed with a pen'))
     expect(screen.getByTestId('lien-pen-problems').textContent).toBe('Tick at least one notice.')
   })
 })

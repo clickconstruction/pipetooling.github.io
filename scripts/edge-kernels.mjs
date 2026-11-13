@@ -65,6 +65,7 @@ export const IMPORTERS = [
   'photo-save',
   'quo-send',
   'quo-webhook',
+  'receipt-link',
   'remind-bid-followups',
   'send-checklist-notification',
   'send-estimate-to-customer',

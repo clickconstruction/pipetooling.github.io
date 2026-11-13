@@ -165,3 +165,29 @@ describe('TallyOnSiteTab · past one job (punch list #304)', () => {
     expect(screen.getByRole('dialog', { name: /manifest/i })).toBeTruthy()
   })
 })
+
+describe('TallyOnSiteTab · Add a part offers the names the job already has (punch list #330)', () => {
+  it('a name already on this job comes first as the person types, and a pick adds to that same line', async () => {
+    const storeMock = await import('../../lib/materials/onSiteStore')
+    vi.mocked(storeMock.addMovement).mockClear()
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a part to A2' }))
+    expect(screen.queryByTestId('add-part-already')).toBeNull()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'zz elbows' } })
+    const already = screen.getByTestId('add-part-already')
+    expect(already.textContent).toContain('Already on this job')
+    expect(already.textContent).toContain('ZZ test elbow')
+    expect(already.textContent).toContain('8 in A2')
+    fireEvent.click(within(already).getByRole('button', { name: /ZZ test elbow/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 to A2' }))
+    expect(vi.mocked(storeMock.addMovement)).toHaveBeenCalledWith(expect.objectContaining({ reason: 'delivered', partName: 'ZZ test elbow', partId: null, quantity: 1, toContainerId: 'a2' }))
+  })
+
+  it('words no name holds offer nothing, and the typed name is still a press', () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a part to A2' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
+    expect(screen.queryByTestId('add-part-already')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Use “wax ring” as typed' })).toBeTruthy()
+  })
+})

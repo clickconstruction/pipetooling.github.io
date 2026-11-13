@@ -51,6 +51,7 @@ A roadmap task can have a place, like *Pump house*. The Add task window has a ro
 
 - Tap a place you have used before, or tap **＋ New place** to set a new one. [Say where it is](/help/give-someone-a-task#say-where-it-is) shows how.
 - On the task's card each tap saves itself. There is no Save button.
+- The task's card also has **Photo of the spot**. A picture you take there saves itself too.
 - The place stays with the roadmap task. The person sees the place on their checklist once the task reaches it.
 
 ## Tasks run in order

@@ -136,8 +136,8 @@ describe('a touch made in the evening counts on the company calendar', () => {
 
 function rollupRow() {
   const items: FinancialItem[] = [
-    { key: 'a', label: '273 · Dudley (Lennox)', sublabel: 'Billed invoice', amount: 13420, dateYmd: '2026-03-16', jobId: 'j1', address: '9703 Lenox Hl', customerId: 'c1', customerName: 'RMC- Dudley Mason' },
-    { key: 'b', label: '258 · Dudley Mason', sublabel: 'Billed invoice', amount: 9800, dateYmd: '2026-08-20', jobId: 'j2', address: null, customerId: 'c1', customerName: 'RMC- Dudley Mason' },
+    { key: 'a', label: '273 · Dunmere (Linmoor)', sublabel: 'Billed invoice', amount: 13420, dateYmd: '2026-03-16', jobId: 'j1', address: '9703 Linmor Hl', customerId: 'c1', customerName: 'RLC- Dunmere Mallin' },
+    { key: 'b', label: '258 · Dunmere Mallin', sublabel: 'Billed invoice', amount: 9800, dateYmd: '2026-08-20', jobId: 'j2', address: null, customerId: 'c1', customerName: 'RLC- Dunmere Mallin' },
   ]
   const speeds: PaySpeedData = {
     company: { medianDays: 6, samples: 100 },
@@ -153,7 +153,7 @@ function rollupRow() {
 describe('arCallOpener', () => {
   it('names the late count, the pace, and the oldest bill', () => {
     expect(arCallOpener(rollupRow())).toBe(
-      '1 bill past their ~35d — oldest 169d: 273 · Dudley (Lennox), $13,420. $23,220 open on 2 bills.',
+      '1 bill past their ~35d — oldest 169d: 273 · Dunmere (Linmoor), $13,420. $23,220 open on 2 bills.',
     )
   })
 })
@@ -162,9 +162,9 @@ describe('buildArCallSummary', () => {
   it('lists every bill with its line items indented under it', () => {
     const lines = new Map([['j1', [{ label: 'Job total (migrated)', amount: 52200 }]]])
     const text = buildArCallSummary(rollupRow(), lines)
-    expect(text).toContain('RMC- Dudley Mason — $23,220.00 open on 2 bills')
-    expect(text).toContain('• 273 · Dudley (Lennox) — $13,420.00 (169d waiting)')
+    expect(text).toContain('RLC- Dunmere Mallin — $23,220.00 open on 2 bills')
+    expect(text).toContain('• 273 · Dunmere (Linmoor) — $13,420.00 (169d waiting)')
     expect(text).toContain('  - Job total (migrated): $52,200.00')
-    expect(text).toContain('• 258 · Dudley Mason — $9,800.00 (12d waiting)')
+    expect(text).toContain('• 258 · Dunmere Mallin — $9,800.00 (12d waiting)')
   })
 })

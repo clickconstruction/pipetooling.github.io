@@ -7,9 +7,9 @@ const INVITATION = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invi
 <body style="background: url(https://t.example/bg.png); margin: 0" onload="alert(1)">
 <div id="root" class="btn" style="font-family: Arial; position: fixed; top: 0">
 <p>Wendi,</p>
-<p>We at <b>Maxx Builders</b> invite you to bid. <a href="https://maxxbuilders.box.example/s/vzgc9sp8" target="_self" onclick="steal()">Link to Plans</a></p>
+<p>We at <b>Marrex Builders</b> invite you to bid. <a href="https://maxxbuilders.box.example/s/vzgc9sp8" target="_self" onclick="steal()">Link to Plans</a></p>
 <table width="600" style="border-collapse: collapse" background="https://t.example/tbl.png"><tr><td style="padding: 4px; background-image: url(https://t.example/cell.png)">Scope</td><td>Plumbing</td></tr></table>
-<img src="https://maxxbuilders.example/logo.png" width="200" height="60" alt="Maxx Builders" srcset="https://maxxbuilders.example/logo@2x.png 2x">
+<img src="https://maxxbuilders.example/logo.png" width="200" height="60" alt="Marrex Builders" srcset="https://maxxbuilders.example/logo@2x.png 2x">
 <img src="https://track.example/o.gif?id=42" width="1" height="1" alt="">
 <img src="https://track.example/spacer.gif" style="display:none">
 <img src="cid:sig@sender" width="120" height="40" alt="signature">
@@ -33,7 +33,7 @@ describe('sanitizeRichMail: DOMPurify with the house rules (#259)', () => {
     const td = doc.querySelector('td')!
     expect(td.getAttribute('style')).toBe('padding: 4px')
     expect(td.textContent).toBe('Scope')
-    expect(html).toContain('<b>Maxx Builders</b>')
+    expect(html).toContain('<b>Marrex Builders</b>')
     const wrap = doc.querySelector('div')!
     expect(wrap.getAttribute('style')).toBe('font-family: Arial; top: 0')
     expect(wrap.hasAttribute('id')).toBe(false)
@@ -68,7 +68,7 @@ describe('sanitizeRichMail: DOMPurify with the house rules (#259)', () => {
       expect(img.hasAttribute('src')).toBe(false)
       expect(img.hasAttribute('data-picture-off')).toBe(true)
     }
-    expect(imgs[0]!.getAttribute('alt')).toBe('Maxx Builders')
+    expect(imgs[0]!.getAttribute('alt')).toBe('Marrex Builders')
     expect(imgs[0]!.getAttribute('width')).toBe('200')
   })
 

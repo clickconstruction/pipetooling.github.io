@@ -34,19 +34,19 @@ describe('buildArCustomerRollup', () => {
   it('groups bills by customer and sums open dollars', () => {
     const rollup = buildArCustomerRollup(
       [
-        item({ key: 'a', amount: 100, customerId: 'c1', customerName: 'Dudley', dateYmd: '2026-08-25' }),
-        item({ key: 'b', amount: 50, customerId: 'c1', customerName: 'Dudley', dateYmd: '2026-08-30' }),
-        item({ key: 'c', amount: 25, customerId: 'c2', customerName: 'Take 5', dateYmd: '2026-08-31' }),
+        item({ key: 'a', amount: 100, customerId: 'c1', customerName: 'Dunmere', dateYmd: '2026-08-25' }),
+        item({ key: 'b', amount: 50, customerId: 'c1', customerName: 'Dunmere', dateYmd: '2026-08-30' }),
+        item({ key: 'c', amount: 25, customerId: 'c2', customerName: 'Tune 5', dateYmd: '2026-08-31' }),
       ],
       speeds(),
       TODAY,
     )
     expect(rollup.customerCount).toBe(2)
     expect(rollup.billCount).toBe(3)
-    const dudley = rollup.rows.find((r) => r.customerId === 'c1')!
-    expect(dudley.open).toBe(150)
-    expect(dudley.oldestWaitDays).toBe(7)
-    expect(dudley.bills.map((b) => b.item.key)).toEqual(['a', 'b'])
+    const dunmere = rollup.rows.find((r) => r.customerId === 'c1')!
+    expect(dunmere.open).toBe(150)
+    expect(dunmere.oldestWaitDays).toBe(7)
+    expect(dunmere.bills.map((b) => b.item.key)).toEqual(['a', 'b'])
   })
 
   it('uses the customer median from their first payment (v2.4376), else the company median', () => {
@@ -144,17 +144,17 @@ describe('sortArCustomerRows', () => {
 describe('filterArCustomerRows', () => {
   const rows = buildArCustomerRollup(
     [
-      item({ key: 'a', amount: 10, customerId: 'c1', customerName: 'Dudley Mason', label: '273 · Lennox', address: '9703 Lenox Hl' }),
-      item({ key: 'b', amount: 20, customerId: 'c2', customerName: 'Take 5', label: '878 · Seguin', address: '380 TX-123' }),
+      item({ key: 'a', amount: 10, customerId: 'c1', customerName: 'Dunmere Mallin', label: '273 · Linmoor', address: '9703 Linmor Hl' }),
+      item({ key: 'b', amount: 20, customerId: 'c2', customerName: 'Tune 5', label: '878 · Seguin', address: '410 TX-123' }),
     ],
     speeds(),
     TODAY,
   ).rows
 
   it('matches customer name or any bill label/address, keeping all bills', () => {
-    expect(filterArCustomerRows(rows, 'dudley').map((r) => r.customerId)).toEqual(['c1'])
+    expect(filterArCustomerRows(rows, 'dunmere').map((r) => r.customerId)).toEqual(['c1'])
     expect(filterArCustomerRows(rows, '878').map((r) => r.customerId)).toEqual(['c2'])
-    expect(filterArCustomerRows(rows, 'lenox').map((r) => r.customerId)).toEqual(['c1'])
+    expect(filterArCustomerRows(rows, 'linmor').map((r) => r.customerId)).toEqual(['c1'])
     expect(filterArCustomerRows(rows, '')).toHaveLength(2)
   })
 })

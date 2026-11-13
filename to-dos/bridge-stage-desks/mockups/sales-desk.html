@@ -128,13 +128,13 @@
 
 <script>
 const ROWS = [
-  { id:'summit', who:'Summit GC', meta:'2 bids · GC', open:640, openT:'$640k', wins:'2 of 5 · 22%', pace:'answers in ~19d', exp:141, expT:'$141k', state:'12d past pace', cls:'s-risk',
-    story:'Auto Zone Kyle, $410k, 31 days out — 12 past their pace. Pecan St, $230k, 18 days.', say:'Deciding Auto Zone alone moves $90k of expected.',
-    move:'Call Summit about Auto Zone Kyle.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
-  { id:'burd', who:'Burd & Assoc.', meta:'3 bids · GC', open:1240, openT:'$1.24M', wins:'1 of 7 · 9%', pace:'answers in ~24d', exp:104, expT:'~$104k', state:'34d past pace', cls:'s-risk',
-    story:'Take 5 Georgetown, $890k, sent Aug 29 — 34 days past their pace. Two more at $350k, 22 and 31 days out.', say:'Biggest open dollars on the desk, but at 9% they buy half of Summit’s expected.',
-    move:'Call Burd about Take 5 Georgetown.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
-  { id:'ati', who:'ATI Schertz', meta:'4 bids · GC', open:410, openT:'$410k', wins:'3 of 11 · 18%', pace:'answers in ~35d', exp:74, expT:'$74k', state:'inside pace', cls:'s-ok',
+  { id:'selwick', who:'Selwick GC', meta:'2 bids · GC', open:640, openT:'$640k', wins:'2 of 5 · 22%', pace:'answers in ~19d', exp:141, expT:'$141k', state:'12d past pace', cls:'s-risk',
+    story:'Tire Barn Kyle, $410k, 31 days out — 12 past their pace. Pecan St, $230k, 18 days.', say:'Deciding Tire Barn alone moves $90k of expected.',
+    move:'Call Selwick about Tire Barn Kyle.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
+  { id:'brund', who:'Brund & Assoc.', meta:'3 bids · GC', open:1240, openT:'$1.24M', wins:'1 of 7 · 9%', pace:'answers in ~24d', exp:104, expT:'~$104k', state:'34d past pace', cls:'s-risk',
+    story:'Tune 5 Georgetown, $890k, sent Aug 29 — 34 days past their pace. Two more at $350k, 22 and 31 days out.', say:'Biggest open dollars on the desk, but at 9% they buy half of Selwick’s expected.',
+    move:'Call Brund about Tune 5 Georgetown.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
+  { id:'axo', who:'AXO Schertz', meta:'4 bids · GC', open:410, openT:'$410k', wins:'3 of 11 · 18%', pace:'answers in ~35d', exp:74, expT:'$74k', state:'inside pace', cls:'s-ok',
     story:'All four inside their 35-day pace; the oldest went out Oct 14.', say:'An answer takes about five weeks here. Calling early spends goodwill.',
     move:'Leave them.', door:'Open the bids ›', route:'/bids?tab=bid-board' },
   { id:'mk', who:'MK Builders', meta:'1 bid · GC', open:230, openT:'$230k', wins:'1 of 3 · 31%', pace:'answers in ~29d', exp:71, expT:'$71k', state:'15d past pace', cls:'s-risk',
@@ -146,7 +146,7 @@ const ROWS = [
   { id:'est', who:'The estimates', meta:'17 customers', open:52.8, openT:'$52.8k', wins:'37% by value', pace:'small, many', exp:20, expT:'~$20k', state:'aging daily', cls:'s-dying',
     story:'Sent and not answered; the oldest is 21 days. Small asks win on speed: answered the same day they accept about three times as often.', say:'',
     move:'Answer today’s two the same day.', door:'Open Estimates ›', route:'/estimates' },
-  { id:'knight', who:'Knight Contracting', meta:'2 bids · GC', open:290, openT:'$290k', wins:'0 of 6 · never answered', pace:'', exp:0, expT:'$0', state:'dead weight', cls:'s-dead',
+  { id:'kestrin', who:'Kestrin Contracting', meta:'2 bids · GC', open:290, openT:'$290k', wins:'0 of 6 · never answered', pace:'', exp:0, expT:'$0', state:'dead weight', cls:'s-dead',
     story:'Taylor plant, $200k, 77 days. Hutto shell, $90k, 52 days. Six asks these twelve months, no answer on any.', say:'Not a bid call — a relationship call. Are we ever in the running, or are we pricing their paperwork?',
     move:'Decide the relationship, not the bid.', door:'Their bids, all six ›', route:'/bids?tab=bid-board' },
 ]
@@ -175,7 +175,7 @@ function render() {
       </div>
     </div>`).join('')
   document.getElementById('sortnote').textContent = sortByOpen
-    ? 'By open dollars Burd leads. The 9% win share says otherwise — press again.'
+    ? 'By open dollars Brund leads. The 9% win share says otherwise — press again.'
     : ''
 }
 function toggle(id) { openId = openId === id ? null : id; render() ; if (openId) document.getElementById('row-'+id)?.querySelector('.rowhead')?.focus() }
