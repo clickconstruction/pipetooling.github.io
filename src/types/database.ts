@@ -19101,6 +19101,42 @@ export type Database = {
           },
         ]
       }
+      invoice_payer_acceptances: {
+        Row: {
+          accepted_on: string
+          invoice_id: string
+          marked_at: string
+          marked_by: string | null
+        }
+        Insert: {
+          accepted_on: string
+          invoice_id: string
+          marked_at?: string
+          marked_by?: string | null
+        }
+        Update: {
+          accepted_on?: string
+          invoice_id?: string
+          marked_at?: string
+          marked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payer_acceptances_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payer_acceptances_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_activity_events: {
         Row: {
           actor_user_id: string | null
@@ -46512,6 +46548,10 @@ export type Database = {
       }
       set_first_look_job: {
         Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
+      }
+      set_invoice_payer_accepted_on: {
+        Args: { p_accepted_on: string; p_invoice_id: string }
         Returns: Json
       }
       set_job_collections_flag: {
