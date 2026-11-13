@@ -34,7 +34,7 @@ describe('supabasePaperIo.loadForInvoices', () => {
     const papers = await supabasePaperIo(client).loadForInvoices(billIds(30))
     expect(papers.size).toBe(30)
     for (const id of billIds(30)) expect(papers.get(id)?.lines).toHaveLength(50)
-    expect(papers.get('bill-29')?.lines.at(-1)?.lineNo).toBe(50)
+    expect(papers.get('bill-29')?.lines[49]?.lineNo).toBe(50)
     const lineReads = calls.filter((c) => c.table === 'supply_paper_lines')
     expect(lineReads.map((c) => c.range)).toEqual([[0, 999], [1000, 1999]])
   })
