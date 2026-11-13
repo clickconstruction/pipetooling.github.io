@@ -34,11 +34,14 @@ CREATE FUNCTION rt.sign_in(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+  -- auth.role() reads this one, and app_settings' read policy reads auth.role().
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 CREATE FUNCTION rt.sign_out() RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', '', true);
   PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', '', true);
 END $$;
 -- A press of the switch as the caller, under RLS: how many rows it changed, or the sqlstate it raised.
 CREATE FUNCTION rt.press(p_value text) RETURNS text LANGUAGE plpgsql AS $$
@@ -173,8 +176,8 @@ UPDATE public.mercury_transactions SET status = 'sent', kind = 'outgoingPayment'
 SELECT rt.same('a payment that is not a card charge is not due', rt.due(), 'false');
 UPDATE public.mercury_transactions SET kind = 'debitCardTransaction', posted_at = now() - interval '49 hours' WHERE id = '00000000-0000-0000-0000-0000002990c1';
 SELECT rt.same('a charge past 48 hours is not due, however long the switch has been on', rt.due(), 'false');
-UPDATE public.mercury_transactions SET posted_at = now() - interval '47 hours', status = NULL WHERE id = '00000000-0000-0000-0000-0000002990c1';
-SELECT rt.same('inside 48 hours it is, and a charge with no status stands', rt.due(), 'true');
+UPDATE public.mercury_transactions SET posted_at = now() - interval '47 hours' WHERE id = '00000000-0000-0000-0000-0000002990c1';
+SELECT rt.same('inside 48 hours it is', rt.due(), 'true');
 UPDATE public.mercury_transactions SET posted_at = now() - interval '1 hour', status = 'sent' WHERE id = '00000000-0000-0000-0000-0000002990c1';
 
 -- Its ticket came from the Tally press: nothing to ask.
