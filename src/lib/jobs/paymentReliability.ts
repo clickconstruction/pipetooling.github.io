@@ -105,14 +105,21 @@ export function buildReliabilityLine(
   record: CustomerPromiseRecord | null | undefined,
   /** v2.4328: the payer's returned checks, already in words ("2 checks came back · Apr"). */
   bounced?: string | null,
+  /**
+   * The payer's Pay calendar in a few words (punch list #323, `payCalendarShort`): "In by month end, paid the 10th".
+   * It takes the place of *Pays in 12–68d*, a range that reads as an erratic payer when the spread is the
+   * calendar's doing: a bill sent early in the month waits longer than one sent late.
+   */
+  calendarWords?: string | null,
 ): ReliabilityLine {
   const spread = paySpeedSpread(receipts)
-  const paysIn = formatPaysIn(spread)
+  const paysIn = calendarWords?.trim() || formatPaysIn(spread)
   const kept = record ? formatKeptRecord(record) : null
   const slip = record ? formatUsualSlip(record) : null
   const parts = [paysIn, kept, slip, bounced ?? null].filter((x): x is string => x != null)
   const titleParts: string[] = []
-  if (spread) titleParts.push(`Days from bill to money over their last ${spread.samples} measurable payments (last 12 months): typically ${spread.loDays}–${spread.hiDays}, median ${spread.medianDays}.`)
+  if (calendarWords?.trim()) titleParts.push('They pay on a calendar, so days from bill to money swing with the day of the month a bill went in.')
+  else if (spread) titleParts.push(`Days from bill to money over their last ${spread.samples} measurable payments (last 12 months): typically ${spread.loDays}–${spread.hiDays}, median ${spread.medianDays}.`)
   if (record && record.decided > 0) titleParts.push(`Promises: ${record.kept} kept, ${record.late} late, ${record.broken} broken${record.open ? `, ${record.open} open` : ''}${record.usualSlipDays != null && record.usualSlipDays >= 1 ? ` — money usually lands ~${Math.round(record.usualSlipDays)} days after the date they give` : ''}.`)
   else if (record && record.open > 0) titleParts.push(`${record.open} promise${record.open === 1 ? '' : 's'} open, none decided yet.`)
   if (bounced) titleParts.push(`Checks from them the bank sent back in the last year: ${bounced.replace(/ · /, ', the last in ')}.`)

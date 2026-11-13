@@ -49,11 +49,11 @@ export function isBidsPagePath(pathname: string): boolean {
 /**
  * The header's **Bid** press: New Bid, on the Bids page alone (v2.6839; from any page since
  * v2.6167, and the owner, 2026-11-10: *I would only like for it to be visible on the bids page*).
- * Every role that can make a bid has it there, and Farm Mode (the checklist-only lens) hides it
+ * Every role that can make a bid has it there, and Task Mode (the checklist-only lens) hides it
  * with the header's other presses. The Bids page reads the same rule: below its wide header its
  * own New Bid used to wrap onto a row of its own under the trades, so with the header's press on,
  * the page draws none of its own there.
  */
-export function showHeaderNewBidButton(role: UserRole | null, farmModeActive: boolean, pathname: string): boolean {
-  return isBidsPagePath(pathname) && !farmModeActive && canOpenBids(role) && role !== 'primary'
+export function showHeaderNewBidButton(role: UserRole | null, taskModeActive: boolean, pathname: string): boolean {
+  return isBidsPagePath(pathname) && !taskModeActive && canOpenBids(role) && role !== 'primary'
 }

@@ -8,7 +8,7 @@
  * Dashboard quick bar and Settings management don't gate on this.
  *
  * Storage uses one key per user so a shared device with multiple accounts
- * doesn't leak the toggle. Mirrors `farmModeToggle.ts`.
+ * doesn't leak the toggle. Mirrors `taskModeToggle.ts`.
  */
 
 const PREFIX = 'pin_mode'

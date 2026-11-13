@@ -62,7 +62,7 @@ export interface ThreadSlots {
   /** The header's corner, beside ☎ ⋯: cut 2's who-has-it pill. Folded, the window puts it before ☎. */
   headerRight?: (c: Contact, look?: ThreadLook) => ReactNode
   /** The status row after the move strip: cut 2's back pill, cut 8's portal pill. */
-  statusRow?: (c: Contact) => ReactNode
+  statusRow?: (c: Contact, lines?: readonly ThreadMessage[]) => ReactNode
   /** Over the lines, under the header: residential R7's sort card, while the person waits in the New lane. */
   aboveLines?: (c: Contact, acts: AboveLinesActs) => ReactNode
   /** Rows for ⋯ after the window's own: cut 2's No reply needed, Remind me Monday, Reopen. */

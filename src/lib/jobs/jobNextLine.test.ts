@@ -110,6 +110,12 @@ describe('jobNextLine — the chip, first match wins', () => {
     expect(jobNextLine(base({ quietDays: 6 })).chip).toMatchObject({ label: 'quiet 6 d', tone: 'amber', action: 'notes' })
     expect(jobNextLine(base({ quietDays: 15 })).chip).toMatchObject({ label: 'quiet 15 d', tone: 'red' })
   })
+  it("a bill past the day its payer's Pay calendar makes it due is amber, though its money is not expected yet (punch list #323)", () => {
+    expect(jobNextLine(base({ stage: 'billed', expectedPay: { state: 'upcoming', daysLate: 0, daysPastDue: 2, title: 'Due Nov 10.' } })).chip).toMatchObject({ label: '2 d past due', tone: 'amber', action: 'bill-row', title: 'Due Nov 10.' })
+    // Past the expected day too: later than this payer usually is, which says more.
+    expect(jobNextLine(base({ stage: 'billed', expectedPay: { state: 'late', daysLate: 27, daysPastDue: 33, title: 't' } })).chip).toMatchObject({ label: '27 d past expected' })
+    expect(jobNextLine(base({ stage: 'billed', expectedPay: { state: 'upcoming', daysLate: 0, daysPastDue: 0, title: 't' } })).chip?.label).not.toBe('0 d past due')
+  })
   it('a late bill, then a missing contract, are amber; a signed one is a fact on the line', () => {
     expect(
       jobNextLine(base({ stage: 'billed', expectedPay: { expectedYmd: '2026-09-10', state: 'late', source: 'customer', medianDays: 30, samples: 4, payers: 0, daysLate: 12, paceWords: 'pays in ~30d', label: '12d past expected', title: 't' } })).chip,

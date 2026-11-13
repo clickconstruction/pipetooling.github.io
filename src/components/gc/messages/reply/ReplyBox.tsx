@@ -701,6 +701,64 @@ export function ReplyBox({
     }
   }
 
+  // The kinds row and the three presses, drawn together at the top of the box (below).
+  const kindsRow =
+    offered.length > 1 ? (
+      <div role="radiogroup" aria-label="Reply as" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {offered.map((k) => (
+          <button
+            key={k.kind}
+            type="button"
+            role="radio"
+            aria-checked={shown === k.kind}
+            aria-disabled={settling.active || undefined}
+            onClick={() => {
+              if (settling.active) return
+              setKind(k.kind)
+              setWoke(true)
+            }}
+            style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: settling.active ? 'not-allowed' : 'pointer', ...(shown === k.kind ? RING : null) }}
+          >
+            {k.label}
+          </button>
+        ))}
+        {(shown === 'note' || shown === 'call') && (
+          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{(shown === 'call' ? CALL_ASIDE : NOTE_ASIDE).join(' · ')}</span>
+        )}
+      </div>
+    ) : null
+  const pressesRow = pressesShown ? (
+    <div data-send-presses role="group" aria-label={sendPressesHead(contact.kind === 'unknown' ? null : first)} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+      <span style={{ color: 'var(--text-muted)' }}>{sendPressesHead(contact.kind === 'unknown' ? null : first)}</span>
+      {(
+        [
+          { key: 'photos', label: SEND_PRESSES.photos, tip: SEND_PRESSES.photosTip, run: () => askRef.current() },
+          { key: 'estimate', label: SEND_PRESSES.estimate, tip: SEND_PRESSES.estimateTip, run: () => pressWord('estimate') },
+          { key: 'bill', label: SEND_PRESSES.bill, tip: SEND_PRESSES.billTip, run: () => pressWord('bill') },
+        ] as const
+      ).map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          data-send-press={p.key}
+          disabled={Boolean(blocked)}
+          title={blocked || p.tip}
+          onClick={p.run}
+          style={{
+            border: '1px solid var(--border-strong)',
+            borderRadius: 999,
+            padding: '0.2rem 0.65rem',
+            font: 'inherit',
+            fontWeight: 600,
+            ...(blocked ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : { background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }),
+          }}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  ) : null
+
   return (
     <div
       ref={rootRef}
@@ -717,29 +775,16 @@ export function ReplyBox({
         position: 'relative',
       }}
     >
-      {offered.length > 1 && (
-        <div role="radiogroup" aria-label="Reply as" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {offered.map((k) => (
-            <button
-              key={k.kind}
-              type="button"
-              role="radio"
-              aria-checked={shown === k.kind}
-              aria-disabled={settling.active || undefined}
-              onClick={() => {
-                if (settling.active) return
-                setKind(k.kind)
-                setWoke(true)
-              }}
-              style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: settling.active ? 'not-allowed' : 'pointer', ...(shown === k.kind ? RING : null) }}
-            >
-              {k.label}
-            </button>
-          ))}
-          {(shown === 'note' || shown === 'call') && (
-            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{(shown === 'call' ? CALL_ASIDE : NOTE_ASIDE).join(' · ')}</span>
-          )}
+      {/* The kinds, with the three presses on the same row at the right (the owner's side, 2026-11-12): the box is one
+          row shorter. A narrow window wraps the presses under the kinds, still at the right. Folded, the kinds stand
+          alone beside the one-line box, as before. */}
+      {pressesRow ? (
+        <div data-reply-top-row style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 1rem' }}>
+          {kindsRow}
+          {pressesRow}
         </div>
+      ) : (
+        kindsRow
       )}
 
       {textWaits && (
@@ -823,37 +868,6 @@ export function ReplyBox({
         />
       )}
 
-      {pressesShown && (
-        <div data-send-presses role="group" aria-label={sendPressesHead(contact.kind === 'unknown' ? null : first)} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>{sendPressesHead(contact.kind === 'unknown' ? null : first)}</span>
-          {(
-            [
-              { key: 'photos', label: SEND_PRESSES.photos, tip: SEND_PRESSES.photosTip, run: () => askRef.current() },
-              { key: 'estimate', label: SEND_PRESSES.estimate, tip: SEND_PRESSES.estimateTip, run: () => pressWord('estimate') },
-              { key: 'bill', label: SEND_PRESSES.bill, tip: SEND_PRESSES.billTip, run: () => pressWord('bill') },
-            ] as const
-          ).map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              data-send-press={p.key}
-              disabled={Boolean(blocked)}
-              title={blocked || p.tip}
-              onClick={p.run}
-              style={{
-                border: '1px solid var(--border-strong)',
-                borderRadius: 999,
-                padding: '0.2rem 0.65rem',
-                font: 'inherit',
-                fontWeight: 600,
-                ...(blocked ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : { background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }),
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {!textWaits && (
         <div style={{ position: 'relative', ...(folded ? { flex: '1 1 14rem', minWidth: 0 } : null) }}>

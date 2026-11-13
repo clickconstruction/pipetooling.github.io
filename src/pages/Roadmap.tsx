@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
 import { useRoleGate } from '../hooks/useRoleGate'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
-import { FARM_MODE_HOME } from '../lib/farmModeToggle'
+import { TASK_MODE_HOME } from '../lib/taskModeToggle'
 import { canSeeTaskCosts } from '../lib/checklistCostEstimate'
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 import { ChecklistGoalsSection } from '../components/checklist/ChecklistGoalsSection'
@@ -27,7 +27,7 @@ import { ChecklistGoalsSection } from '../components/checklist/ChecklistGoalsSec
  * and old `/checklist?tab=roadmap` bookmarks all resolve here).
  *
  * Refusals follow the #29 convention (`useRoleGate`): a role without the door
- * lands on Today and is told why (helpers land quietly). Farm Mode is handled
+ * lands on Today and is told why (helpers land quietly). Task Mode is handled
  * by Layout's bounce before this page mounts; the effect below is the belt to
  * that suspender.
  */
@@ -37,19 +37,19 @@ export default function Roadmap() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [error, setError] = useState<string | null>(null)
-  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+  const [taskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
   const { bounce } = useRoleGate(role, authUser?.id)
-  const allowed = canOpenRoadmap(role, farmModeEnabled)
+  const allowed = canOpenRoadmap(role, taskModeEnabled)
 
   useEffect(() => {
     if (authLoading || role === null || allowed) return
-    if (farmModeEnabled) {
-      navigate(FARM_MODE_HOME, { replace: true })
+    if (taskModeEnabled) {
+      navigate(TASK_MODE_HOME, { replace: true })
       return
     }
     const { to } = bounce('roadmap', `${location.pathname}${location.search}`)
     navigate(to, { replace: true })
-  }, [authLoading, role, allowed, farmModeEnabled, bounce, navigate, location.pathname, location.search])
+  }, [authLoading, role, allowed, taskModeEnabled, bounce, navigate, location.pathname, location.search])
 
   /** The tech tree's picker / the GOALS "Open roadmap →" — select a roadmap on this page. */
   const onRoadmapUrlParamChange = useCallback(

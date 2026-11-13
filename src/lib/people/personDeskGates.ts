@@ -25,12 +25,12 @@ export function canOpenPersonDesk(role: string | null | undefined): boolean {
 
 /**
  * The `/` quick sheet (journey-map Tier-2 #41, J30): the Desk gate AND not
- * Farm Mode. Farm Mode is "one page, the daily list" — before this gate an
+ * Task Mode. Task Mode is "one page, the daily list" — before this gate an
  * office account in the mode could still press `/` and open the people
  * directory over the checklist, the one office surface the mode forgot.
  */
-export function canOpenPersonQuickSheet(role: string | null | undefined, farmModeEnabled: boolean): boolean {
-  return !farmModeEnabled && canOpenPersonDesk(role)
+export function canOpenPersonQuickSheet(role: string | null | undefined, taskModeEnabled: boolean): boolean {
+  return !taskModeEnabled && canOpenPersonDesk(role)
 }
 
 /** Role, service types, sign-in email, set password — the account edge functions hard-check dev. */

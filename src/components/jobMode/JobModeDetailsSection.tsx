@@ -18,6 +18,7 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
+import { JobFirstLookStrip } from '../firstLook/JobFirstLookStrip'
 import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 
@@ -271,6 +272,8 @@ export default function JobModeDetailsSection({
         gap: '0.75rem',
       }}
     >
+      {/* What the customer sent before the visit (punch list #319 PR 6): a First look's photos, video and words. Nothing for a job with none. */}
+      <JobFirstLookStrip jobId={jobId} />
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
       <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} />
       {/* Equipment pre-use check (punch list #270): a line per machine on the job, under the stage checklists */}

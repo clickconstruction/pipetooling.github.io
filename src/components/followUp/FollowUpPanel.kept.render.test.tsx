@@ -165,6 +165,8 @@ function fakeIo(): FollowUpIo {
     takeIt: none,
     handTo: none,
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
+    loadDoneFold: vi.fn(async () => ({ said: [], filed: [] })),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: none,

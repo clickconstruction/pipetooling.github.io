@@ -499,7 +499,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   }}
                 >
                   {court && <Chip tone={COURT_TONE[court.side]}>{court.word}</Chip>}
-                  {slots.statusRow?.(contact)}
+                  {slots.statusRow?.(contact, allLines)}
                   {header.stampsOneLine && stampsLine && (
                     <span data-thread-stamps title={stampsWords} style={{ ...ONE_LINE, flex: '1 1 14rem', color: 'var(--text-600)' }}>
                       {stampsLine}
