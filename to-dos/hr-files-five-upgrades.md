@@ -11,12 +11,12 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106
-next: Upgrade 2 PR 2, the numbers on the screen and the Case view with its mock-up, then the seat's plan_case. Then upgrade 3.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107
+next: Upgrade 2 PR 3, the seat's reads of the numbers and plan_case. Then upgrade 3, drawn in the mock-up.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
-mockup: not required — each screen change before upgrade 3 is a chip or a door on a view that exists; the approvals list (upgrade 3) and the Case view (upgrade 2b) get a mock-up beside this card before their screen PRs
+mockup: hr-files-five-upgrades-case-and-approvals.html — the Case view as built (upgrade 2) and Waiting on you as proposed (upgrade 3), drawn before upgrade 3's screen PR; every other screen change is a chip or a door on a view that exists
 ---
 
 # HR files: five upgrades (#315)
