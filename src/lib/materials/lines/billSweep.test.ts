@@ -12,6 +12,7 @@ import {
   foldNumber,
   holdDue,
   joinPapers,
+  lineOfStoredRow,
   matchRows,
   numberWithSuffix,
   pageRanges,
@@ -21,11 +22,14 @@ import {
   probePick,
   probeWords,
   readPapersAnswer,
+  recheckStored,
+  recheckWords,
   seenKey,
   statusWords,
   sweepPlan,
   sweepWords,
   type FilePaper,
+  type StoredLineRow,
   type SweepHold,
   type SweepInvoice,
 } from './billSweep'
@@ -453,5 +457,79 @@ describe('the words', () => {
     )
     expect(sweepWords(EMPTY_SWEEP_RUN, status)).toMatch(/^Nothing to read\. /)
     expect(sweepWords({ ...EMPTY_SWEEP_RUN, capped: true }, status)).toContain(`its ${BILL_SWEEP_DAILY_CAP} reads for the day`)
+  })
+})
+
+// PR 1c (v2.7103): a paper held off under older rules is checked again from the lines on file.
+describe('one more check under new rules', () => {
+  const stored = (over: Partial<StoredLineRow> & { line_no: number }): StoredLineRow => ({ line_kind: 'part', house_code: '', mfr_number: '', description: '', unit: 'EA', qty_ordered: null, qty_shipped: null, qty_backordered: null, unit_price: null, pricing_unit: 'each', extended_cents: null, ...over })
+
+  it('reads a row back as a line, a numeric as a string or a number', () => {
+    expect(lineOfStoredRow(stored({ line_no: 3, line_kind: 'charge', house_code: null, description: 'SHIPPING', qty_shipped: '2.000', unit_price: '3.1270', extended_cents: 625 }))).toEqual({
+      lineNo: 3,
+      lineKind: 'charge',
+      houseCode: '',
+      mfrNumber: '',
+      description: 'SHIPPING',
+      unit: 'EA',
+      qtyOrdered: null,
+      qtyShipped: 2,
+      qtyBackordered: null,
+      unitPrice: 3.127,
+      pricingUnit: 'each',
+      extendedCents: 625,
+    })
+  })
+
+  it('stamps the paper a first read writes with the rules it was checked under', () => {
+    const row = paperRowOf({ houseId: 'house-1', fileId: FILE_A, model: 'claude-sonnet-5-5', readId: null, readAt: '2026-11-13T12:00:00.000Z', paper: papersOf([rawPaper()])[0]!, invoice: inv({ id: 'a' }), text: { text: null, layer: null } })
+    expect(row.paper.check_rules).toBe(2)
+  })
+
+  it('turns a paper green that only a rounded price held off, and writes no line', () => {
+    const lines = [stored({ line_no: 1, house_code: '48370', unit: 'FT', qty_shipped: 200, unit_price: 3.127, extended_cents: 62547 })].map(lineOfStoredRow)
+    const again = recheckStored({ paper: { kind: 'invoice', lines, subtotalCents: 62547, taxCents: 5160, freightCents: null, totalCents: 67707 }, rowAmountCents: 67707 })
+    expect(again.paper).toEqual({ check_state: 'adds_up', check_note: '', check_rules: 2 })
+    expect(again.lineFixes).toEqual([])
+  })
+
+  it('writes the line the subtotal turned, by its number, before the paper counts', () => {
+    const lines = [stored({ line_no: 1, description: '20V DRILL KIT', qty_shipped: 1, unit_price: 219, extended_cents: 21900 }), stored({ line_no: 2, description: 'TOOL INSTANT REBATE $30', qty_shipped: 1, unit_price: 30, extended_cents: 3000 })].map(lineOfStoredRow)
+    const again = recheckStored({ paper: { kind: 'invoice', lines, subtotalCents: 18900, taxCents: 0, freightCents: null, totalCents: 18900 }, rowAmountCents: 18900 })
+    expect(again.paper.check_state).toBe('adds_up')
+    expect(again.lineFixes).toEqual([{ line_no: 2, qty_shipped: 1, unit_price: 30, extended_cents: -3000 }])
+  })
+
+  it('writes a line ordered and not shipped as 0 shipped, and a price that was not read as empty', () => {
+    const lines = [
+      stored({ line_no: 1, qty_ordered: 2, qty_shipped: 2, unit_price: 14.5, extended_cents: 2900 }),
+      stored({ line_no: 2, qty_ordered: 3, unit_price: 88.4012, extended_cents: 0 }),
+      stored({ line_no: 3, qty_shipped: 4, unit_price: 0, extended_cents: 24400 }),
+    ].map(lineOfStoredRow)
+    const again = recheckStored({ paper: { kind: 'invoice', lines, subtotalCents: 27300, taxCents: 0, freightCents: null, totalCents: 27300 }, rowAmountCents: 27300 })
+    expect(again.paper.check_state).toBe('adds_up')
+    expect(again.lineFixes).toEqual([
+      { line_no: 2, qty_shipped: 0, unit_price: 88.4012, extended_cents: 0 },
+      { line_no: 3, qty_shipped: 4, unit_price: null, extended_cents: 24400 },
+    ])
+  })
+
+  it('leaves a paper off that the new rules do not explain, with its note, and stamps it all the same', () => {
+    const lines = [stored({ line_no: 1, qty_shipped: 2, unit_price: 14.5, extended_cents: 2900 })].map(lineOfStoredRow)
+    const again = recheckStored({ paper: { kind: 'invoice', lines, subtotalCents: 2900, taxCents: 0, freightCents: null, totalCents: 2900 }, rowAmountCents: 5900 })
+    expect(again.paper).toEqual({ check_state: 'off', check_note: "The printed total is $30.00 short of the amount on the bill's row", check_rules: 2 })
+  })
+
+  it('holds the part codes to the PDF\'s text when the caller has it', () => {
+    const lines = [stored({ line_no: 1, house_code: '48370', unit: 'FT', qty_shipped: 200, unit_price: 3.127, extended_cents: 62547 })].map(lineOfStoredRow)
+    const paper = { kind: 'invoice' as const, lines, subtotalCents: 62547, taxCents: 0, freightCents: null, totalCents: 62547 }
+    expect(recheckStored({ paper, rowAmountCents: 62547, text: 'PRODUCT 48370 PEX 1X100 COIL' }).paper.check_state).toBe('adds_up')
+    expect(recheckStored({ paper, rowAmountCents: 62547, text: 'PRODUCT 48870 PEX 1X100 COIL' }).paper.check_state).toBe('off')
+  })
+
+  it('says the recheck in one line, and nothing when none was due', () => {
+    expect(recheckWords(6, 4)).toBe('Checked 6 bills again under the new rules: 4 now add up.')
+    expect(recheckWords(1, 1)).toBe('Checked 1 bill again under the new rules: 1 now adds up.')
+    expect(recheckWords(0, 0)).toBe('')
   })
 })
