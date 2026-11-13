@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimelineFromWindow, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienWindowDeskNotice } from './lienTimelineDesk'
 import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobWorkMonths } from './forecastWorkMonths'
@@ -86,5 +86,52 @@ describe('an evening instant keeps its day on the timeline (v2.4468)', () => {
     expect(lienTimelineMonthsFromDesk('j1', [], [noted], TODAY, 'non_residential')).toMatchObject([{ key: '2026-06', outcome: 'missed', at: '2026-12-01' }])
     const noon = { ...sent, sent_at: '2026-09-16T12:00:00Z' } as LienDeskItemRow
     expect(lienTimelineMonthsFromDesk('j1', [row], [noon], TODAY)[0]!.at).toBe('2026-09-16')
+  })
+})
+
+describe('the Lien window’s header names the desk’s step on a notice in work (v2.7077, punch list #325, PR 6)', () => {
+  // A commercial sub job worked in July: the notice by Oct 15, 22 days out.
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-07', '2026-10-15', 22)], totalHours: 20, sessionCount: 3, pendingSessions: 0, lastMonthKey: '2026-07', affidavitDue: '2026-11-16' }
+  const src = { workMonths: wm, filings: [], job: { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-07-20' }, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY }
+  const entry = (pile: string, hold_until: string | null = null) => ({ pile, item: hold_until ? { hold_until } : null }) as never
+
+  it('with no word from the desk the header reads Draft, as before', () => {
+    const t = buildLienTimelineFromWindow(src)
+    expect(t.next.words).toBe('Draft the Jul notice — 22 days.')
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the notice to be drafted and mailed' })
+    expect(buildLienTimelineFromWindow({ ...src, deskNotice: null }).next.words).toBe(t.next.words)
+  })
+
+  it.each([
+    ['needs_owner', 'Find the owner, then send the Jul notice — 22 days.', 'the owner’s name for the notice', '22 days · owner of record missing'],
+    ['to_draft', 'Draft the Jul notice — 22 days.', 'the notice to be drafted and mailed', '22 days · to draft'],
+    ['awaiting', 'Approve the Jul notice — 22 days.', 'the leader’s approval of the notice', '22 days · awaiting approval'],
+    ['ready', 'Send the Jul notice — 22 days.', 'the notice to be mailed', '22 days · ready to send'],
+    ['printed', 'Record the mailing of the Jul notice — 22 days.', 'the envelope’s certified number to be typed in', '22 days · in the mail · tracking owed'],
+  ])('a notice on the %s pile: %s', (pile, next, waiting, stepWords) => {
+    const t = buildLienTimelineFromWindow({ ...src, deskNotice: lienWindowDeskNotice(entry(pile)) })
+    expect(t.next.kind).toBe('notice')
+    expect(t.next.words).toBe(next)
+    expect(t.waitingOn).toEqual({ who: 'ours', words: waiting })
+    expect(t.steps.find((s) => s.key === 'notice:2026-07')!.words).toBe(stepWords)
+  })
+
+  it('a held notice says when it asks again', () => {
+    const t = buildLienTimelineFromWindow({ ...src, deskNotice: lienWindowDeskNotice(entry('held', '2026-10-05')) })
+    expect(t.next.words).toBe('Held — the Jul notice re-asks Oct 5; mail by Oct 15.')
+    expect(t.waitingOn?.words).toBe('the hold to lift')
+  })
+
+  it('a job with no desk entry, or one on a pile that is no step, hands over nothing', () => {
+    expect(lienWindowDeskNotice(null)).toBeNull()
+    expect(lienWindowDeskNotice(undefined)).toBeNull()
+    expect(lienWindowDeskNotice(entry('missed'))).toBeNull()
+    expect(lienWindowDeskNotice(entry('printed'))).toEqual({ state: 'printed', holdUntil: null })
+  })
+
+  it('the desk’s word never reaches a job that sends no notice: an original contractor still reads File the affidavit', () => {
+    const direct = buildLienTimelineFromWindow({ ...src, isSub: false, deskNotice: { state: 'awaiting', holdUntil: null } })
+    expect(direct.next.kind).toBe('affidavit')
+    expect(direct.next.words.startsWith('File the affidavit')).toBe(true)
   })
 })

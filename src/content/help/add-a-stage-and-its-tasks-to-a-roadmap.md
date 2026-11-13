@@ -2,7 +2,7 @@
 title: add a stage and its tasks to a roadmap
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button, crew, team, assignees
+keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button, crew, team, assignees, place, where, spot
 order: 42
 ---
 On **Roadmap → Map** every box is a **stage**, a numbered group of tasks. The lines between boxes say which stage must finish before the next unlocks.
@@ -44,6 +44,14 @@ Above the assignee list, the dialog shows a **crew chip** for every team on **Pe
 :::example Two taps, four assignees
 Tap **Farm crew** and all four members are ticked; untick the one who's out this week and the chip goes dashed to show a partial crew.
 :::
+
+## Say where a task is
+
+A roadmap task can have a place, like *Pump house*. The Add task window has a row called **Place**. So does the task's card.
+
+- Tap a place you have used before, or tap **＋ New place** to set a new one. [Say where it is](/help/give-someone-a-task#say-where-it-is) shows how.
+- On the task's card each tap saves itself. There is no Save button.
+- The place stays with the roadmap task. The person sees the place on their checklist once the task reaches it.
 
 ## Tasks run in order
 

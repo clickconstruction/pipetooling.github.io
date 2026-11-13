@@ -150,15 +150,15 @@ describe('useOwnMailboxThreadSlots: the strip above the box (punch list #207, v2
     const rows = within(list).getAllByRole('listitem')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.textContent).toContain('Re: Bid request')
-    expect(within(rows[0]!).getByRole('button', { name: 'Tag it' })).toBeTruthy()
+    expect(within(rows[0]!).getByRole('button', { name: 'Save it' })).toBeTruthy()
     expect(rows[1]!.textContent).toContain('already on the thread')
-    expect(within(rows[1]!).queryByRole('button', { name: 'Tag it' })).toBeNull()
+    expect(within(rows[1]!).queryByRole('button', { name: 'Save it' })).toBeNull()
 
-    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Tag it' }))
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Save it' }))
     await waitFor(() => expect(io.tag).toHaveBeenCalledWith('t-1', { kind: 'bid', id: 'b-oak' }))
     await waitFor(() => expect(reread).toHaveBeenCalledTimes(1))
-    expect(within(above).getByRole('status').textContent).toBe('Tagged onto the job. Their move now.')
-    expect(within(above).queryByRole('button', { name: 'Tag it' })).toBeNull()
+    expect(within(above).getByRole('status').textContent).toBe('Saved to the job. Their move now.')
+    expect(within(above).queryByRole('button', { name: 'Save it' })).toBeNull()
   })
 
   it('shows the function\'s refusal in its own words and keeps the hand record, and says so when nothing was found', async () => {

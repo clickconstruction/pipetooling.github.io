@@ -61,8 +61,11 @@ class FakeJsPDF {
   getImageProperties() {
     return { width: 400, height: 100 }
   }
-  addImage(data: string, type: string, x: number, y: number, w: number, h: number) {
+  /** How each picture was stored, beside `images` (v2.7090): a code is a few flat colours and compresses to almost nothing. */
+  imageCompression: Array<string | undefined> = []
+  addImage(data: string, type: string, x: number, y: number, w: number, h: number, _alias?: string, compression?: string) {
     this.images.push({ data, type, x, y, w, h })
+    this.imageCompression.push(compression)
   }
   /** The blob names the drawing it came from, so a test can tell which of several drawings was kept. */
   output() {
@@ -82,6 +85,8 @@ describe('the pay page in PDF', () => {
     const pdf = FakeJsPDF.last!
     expect(pdf.rects.filter((r) => r.style === 'FD')).toHaveLength(1)
     expect(pdf.images).toEqual([{ data: 'data:image/png;base64,AAA', type: 'PNG', x: 22, y: expect.any(Number), w: 32, h: 32 }])
+    // Stored compressed (v2.7090): uncompressed, one code's picture is about 690 KB of a PDF that is emailed or mailed.
+    expect(pdf.imageCompression).toEqual(['FAST'])
     expect(pdf.rects.filter((r) => r.style === undefined && r.w === 32 && r.h === 32)).toHaveLength(1)
     expect(pdf.texts).toContain('INVOICE #273-1, MAY 5, 2026')
     expect(pdf.texts).toContain('Still owed: $13,420.00')
