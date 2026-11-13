@@ -184,7 +184,7 @@ As soon as the work is done and the steps are taken. The 15th dates are the last
 
 **Counsel has not read this.** Filing while still on the job, for months already finished, is the app's reading. Counsel has not confirmed it.
 
-**What you do.** On a sub job, send the month's notice first. Then file the affidavit as soon as the four facts are in hand. On a direct job there is no notice to wait for. File as soon as the four facts are in hand. The Lien desk's timeline prints each paper's first day as *open since*. [Open the Affidavits list](/lien-desk?tab=affidavits).
+**What you do.** On a sub job, send the month's notice first. Then file the affidavit as soon as the facts it needs are in hand. On a direct job there is no notice to wait for. File as soon as the facts it needs are in hand. The Lien desk's timeline prints each paper's first day as *open since*. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.056*
 

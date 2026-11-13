@@ -24,3 +24,5 @@ Engagement history: what a person was to the company over time. The roster row s
 Held by `npm run test:pg:person-engagements` (`supabase/tests/person_engagements/`, in `scripts/sql-beds.txt`): 37 checks. Before the PR the scenario ran on a local Postgres 15 with stand-in tables and the migration applied twice; four mutants each failed it (a guard that allows an overlap, a door with no dev gate, a table left writable, a reply that carries an id the run made).
 
 Deploy order: push this migration. No client reads the table and no function is redeployed.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

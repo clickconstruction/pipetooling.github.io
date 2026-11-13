@@ -365,6 +365,9 @@ function settingsDoors(): Door[] {
       ;(group as { words: readonly string[] }).words = [...group.words, ...words]
       continue
     }
+    // A card drawn for fewer roles than its tab (v2.7139): the door opens for the roles that see the card.
+    const tabGate = settingsTabVisible(entry.tabId)
+    const seenBy = entry.seenBy
     doors.push({
       id: `settings:${entry.tabId}:${slug(entry.label)}`,
       kind: 'settings',
@@ -372,7 +375,7 @@ function settingsDoors(): Door[] {
       where: `Settings · ${tabLabel}`,
       words,
       to: settingsEntryTo(entry),
-      gate: settingsTabVisible(entry.tabId),
+      gate: seenBy ? (v) => tabGate(v) && seenBy(v.role) : tabGate,
     })
   }
   return doors

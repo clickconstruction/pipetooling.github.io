@@ -27,3 +27,5 @@ Two helpers, executable by nobody but the functions above: `person_file_thing(ki
 Held by `npm run test:pg:person-file-amendments` (`supabase/tests/person_file_amendments/`, in `scripts/sql-beds.txt`): 33 checks. Before the PR the scenario ran on a local Postgres 15 with stand-in tables and the migration applied twice; three mutants each failed it (no seat policy, a guard without the one-person rule, a reply carrying an id the run made).
 
 Deploy order: push this migration. No client reads the table yet and no function is redeployed.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

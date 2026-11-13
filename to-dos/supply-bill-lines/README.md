@@ -723,7 +723,7 @@ bills read add up and 21 are off**, the read-only measure's own numbers. Walked 
 reads green on a case priced by the piece (*Line 12 is priced by the piece, 24 to a pack.*) and on a shipping charge
 under the subtotal (*A charge of $50.00 is printed outside the subtotal.*). Two small leftovers, for whoever next
 touches the sweep: the run's log line runs the status into the re-check words with no full stop between them, and
-`supply_papers.check_rules` waits for the next types regeneration.
+`supply_papers.check_rules` waited for a types regeneration, which carried it on 2026-11-13 (#7927).
 
 **PR 2 (v2.6882) is on main, its migration pushed and its functions deployed** (2026-11-10). The
 edge function `bill-lines-sweep` opens the Drive file a bill's row links as the service account,

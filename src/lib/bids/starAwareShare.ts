@@ -8,6 +8,7 @@
  * of its arguments.
  */
 import type { PackageRowInput } from '../buildBidPricingPackageHtml'
+import type { ComputeBidPricingRowsResult } from '../bidPricingRowCalculations'
 import type { PricingPrintContext } from '../bidDocuments/pricingPage'
 import type { ScenarioInputs } from './loadScenarioInputs'
 import { scenarioPackageRows, scenarioPricingRows } from './scenarioPricingRows'
@@ -68,13 +69,25 @@ export function pricingPrintContextFor(ctx: PricingPrintContext, pricingId: stri
   }
 }
 
+/**
+ * The rows the share window reads: the one projection (`scenarioPackageRows`, which maps row
+ * for row) with each row's fixed-price flag laid on, for the share text (v2.7136). The flag is
+ * added here and not in the projection, because the projection's file is copied to the edge
+ * for the dev seat (`npm run gen:edge-kernels`) and a field only this window reads should not
+ * change a deployed bundle.
+ */
+export function sharePackageRows(result: ComputeBidPricingRowsResult): { rows: PackageRowInput[]; totalRevenue: number } {
+  const pkg = scenarioPackageRows(result)
+  return { ...pkg, rows: pkg.rows.map((r, i) => ({ ...r, isFixedPrice: result.rows[i]?.isFixedPrice === true })) }
+}
+
 /** Same math as `useBidPricingRows.pricingPackageSource`, for an arbitrary scenario's inputs — the one kernel (v2.3853). */
 export function scenarioPackageFromInputs(
   pricingId: string,
   inputs: ScenarioInputs,
   costs: Pick<PricingShareInputs, 'countRows' | 'laborRows' | 'materialTotalRoughIn' | 'materialTotalTopOut' | 'materialTotalTrimSet' | 'laborRate' | 'taxPercent' | 'fixtureMaterialsFromTakeoff'>,
 ): { rows: PackageRowInput[]; totalRevenue: number } {
-  return scenarioPackageRows(
+  return sharePackageRows(
     scenarioPricingRows({
       scenarioId: pricingId,
       countRows: inputs.countRows ?? costs.countRows,
