@@ -122,6 +122,20 @@ A label from a retired box says so and offers **Scan another label**. Open prts.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 
+## Change a box's name or kind
+
+A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. The office page has the same **Edit** press on each box.
+
+- **Its name** takes a new name. A name another box on the job carries is refused.
+- **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
+- **Where exactly** says where it stands, such as on a pallet by the north door.
+
+The press says what it will do, such as **Rename to G70** or **Save G70**.
+
+A label printed with the old name still opens the box, because its code never changes. Only the large words are old. Print the label again to show the new name.
+
+Rename a box only when the same things are inside. For different things, retire the box and add a new one. Last week's count then still means what it meant.
+
 ## Retire a box
 
 When a cage or box leaves the job, open it and press **Retire G4** under Done with this box. The app refuses while parts are still in it. Move them or mark them used first.

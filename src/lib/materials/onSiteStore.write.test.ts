@@ -187,4 +187,19 @@ describe('an on-site press through the store', () => {
     expect(tables.job_container_moves).toHaveLength(1)
     expect(tables.job_container_moves![0]).toMatchObject({ container_id: 'a1', to_place_id: 'p1', by_name: 'Mateo' })
   })
+
+  it('an edit with no signal is on the screen at once and lands with only what changed', async () => {
+    signal.online = false
+    const b = await bench()
+    const before = { ...tables.job_containers![0]! }
+    b.store.editContainer('a1', { label: 'R70', kind: 'loose' })
+    b.store.editContainer('a1', {})
+    await settle()
+    expect(b.outbox.presses()).toHaveLength(1)
+    expect(b.store.listContainers('j1')[0]).toMatchObject({ label: 'R70', kind: 'loose' })
+    expect(tables.job_containers![0]).toEqual(before)
+    signal.online = true
+    await b.replay()
+    expect(tables.job_containers![0]).toEqual({ ...before, label: 'R70', kind: 'loose' })
+  })
 })
