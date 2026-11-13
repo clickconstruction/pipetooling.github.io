@@ -44,6 +44,8 @@ A charge with no receipt gets one reminder. The reminder goes in the evening, at
 
 A charge that already has its ticket gets no text. Money back to the card gets no text.
 
+[Answer the text about a charge on your card](/help/answer-the-text-about-a-charge-on-your-card) is the guide for the person who gets the text.
+
 ## Turn it off
 
 Press the {{button:green|On}} switch. No more receipt texts go. A link that was already sent still opens until its last day.
