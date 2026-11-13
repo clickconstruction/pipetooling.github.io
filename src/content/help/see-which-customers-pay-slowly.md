@@ -23,6 +23,28 @@ The strip is a door. You click anywhere on the strip. The link at the strip's ri
 The Comm median says ~25d — but the breakdown shows that's Knight Contracting at ~25d with $16,893 open, while TF Harper runs ~44d with $2,918 open. One number was hiding two very different customers.
 :::
 
+## A customer on a pay calendar
+
+Some customers pay on a set day of the month. A count of days cannot judge them. A bill in on the 1st and a bill in on the 30th are paid the same day.
+
+So **Money waiting** reads their bills against the calendar.
+
+- The row leads with how far past expected their worst bill is, like *37d past expected*.
+- The small line under it reads *pay calendar · lands ~6d after the pay day*.
+- Each bill names its due day, like *due Oct 10 · 37d past expected*.
+
+A bill is green until its expected day. The expected day is the due day plus how late they usually run. A bill past it is amber. A bill 30 days past it has missed a whole pay run, and is red.
+
+A customer with every bill still ahead of its expected day is on pace. Their bills fold into the quiet line at the bottom.
+
+:::example The same three bills, read two ways
+Larkfield Construction pays the 10th of the next month. Their money usually lands 6 days after.
+By the wait, a bill in on Oct 20 looks 33 days slow on Nov 22.
+**By the calendar it is due Nov 30, and nothing is late.**
+:::
+
+You set the calendar on the customer. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
+
 ## More on pay speed
 
 - A median is explained in [see when a customer will pay](/help/see-when-a-customer-will-pay#reading-the-expected-row). Which payments count is in the same guide, under [Where the speed number comes from](/help/see-when-a-customer-will-pay#where-the-speed-number-comes-from).

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   PAY_CALENDAR_DEFAULT,
+  PAY_CALENDAR_MISSED_RUN_DAYS,
+  calendarBasisWords,
+  calendarBillRead,
+  calendarBillWords,
   calendarFor,
   cutoffWordsFor,
   dueDayFor,
@@ -294,5 +298,37 @@ describe('the cutoff on a job still being worked (PR 5)', () => {
   it('says Bill by in place of Send by', () => {
     expect(payCutoffLine('2026-11-22', TENTH, 'Bill')).toMatchObject({ sendBy: 'Bill by Nov 30 to be due Dec 10.', after: 'After that, Jan 10.', daysLeft: 8 })
     expect(cutoffWordsFor(nextCutoff('2026-11-12', BY_25TH)!, 'Bill').sendBy).toBe('Bill by Nov 25 to be due Dec 30.')
+  })
+})
+
+describe('one open bill against the calendar, for the waiting lists (v2.7127)', () => {
+  const six = latenessAgainst([{ billedYmd: '2026-09-03', paidYmd: '2026-10-16' }], TENTH)
+
+  it('is fine until its expected day, amber once past it, and red once a whole run was missed', () => {
+    // In Nov 3, due Dec 10, expected Dec 16.
+    expect(calendarBillRead('2026-11-03', TENTH, six, '2026-11-22')).toEqual({ dueYmd: '2026-12-10', expectedYmd: '2026-12-16', daysPastDue: 0, daysPastExpected: 0, tone: 'ok' })
+    // Past due, and still inside how late this payer usually runs.
+    expect(calendarBillRead('2026-11-03', TENTH, six, '2026-12-14')).toMatchObject({ daysPastDue: 4, daysPastExpected: 0, tone: 'ok' })
+    expect(calendarBillRead('2026-11-03', TENTH, six, '2026-12-17')).toMatchObject({ daysPastDue: 7, daysPastExpected: 1, tone: 'warn' })
+    expect(calendarBillRead('2026-11-03', TENTH, six, '2027-01-14')).toMatchObject({ daysPastExpected: 29, tone: 'warn' })
+    expect(calendarBillRead('2026-11-03', TENTH, six, '2027-01-15')).toMatchObject({ daysPastExpected: PAY_CALENDAR_MISSED_RUN_DAYS, tone: 'late' })
+  })
+
+  it('reads the due day as the expected day with no payment on record, and nothing with no usable day', () => {
+    expect(calendarBillRead('2026-11-03', TENTH, null, '2026-12-11')).toMatchObject({ expectedYmd: '2026-12-10', daysPastExpected: 1, tone: 'warn' })
+    expect(calendarBillRead(null, TENTH, six, '2026-11-22')).toBeNull()
+    expect(calendarBillRead('not a day', TENTH, six, '2026-11-22')).toBeNull()
+  })
+
+  it('says the due day, and how far past it or past expected the bill is', () => {
+    expect(calendarBillWords(calendarBillRead('2026-11-03', TENTH, six, '2026-11-22')!)).toBe('due Dec 10')
+    expect(calendarBillWords(calendarBillRead('2026-11-03', TENTH, six, '2026-12-14')!)).toBe('due Dec 10 · 4d past due')
+    expect(calendarBillWords(calendarBillRead('2026-11-03', TENTH, six, '2026-12-28')!)).toBe('due Dec 10 · 12d past expected')
+  })
+
+  it('says what a calendar payer is measured against', () => {
+    expect(calendarBasisWords(six)).toBe('pay calendar · lands ~6d after the pay day')
+    expect(calendarBasisWords(latenessAgainst([{ billedYmd: '2026-10-06', paidYmd: '2026-11-09' }], TENTH))).toBe('pay calendar · lands by the pay day')
+    expect(calendarBasisWords(null)).toBe('pay calendar · no payment on record yet')
   })
 })
