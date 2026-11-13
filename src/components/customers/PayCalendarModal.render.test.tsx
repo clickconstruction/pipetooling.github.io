@@ -36,7 +36,7 @@ vi.mock('../../lib/jobs/payCalendarIo', () => io)
 vi.mock('../../utils/dateUtils', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../utils/dateUtils')>()), todayYmdInAppTz: () => '2026-11-12' }))
 
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
-import PayCalendarModal, { type PayCalendarJob } from './PayCalendarModal'
+import PayCalendarModal, { type PayCalendarInitial, type PayCalendarJob, type PayCalendarJobToBe } from './PayCalendarModal'
 
 installDomShims()
 
@@ -57,10 +57,10 @@ const STORED: PayCalendarRow = {
   setAt: '2026-11-03T18:00:00Z',
 }
 
-function open(props: { onClose?: () => void; onSaved?: () => void; job?: PayCalendarJob; initial?: { clause?: string; words?: string }; zIndex?: number } = {}) {
+function open(props: { onClose?: () => void; onSaved?: () => void; job?: PayCalendarJob; jobToBe?: PayCalendarJobToBe; initial?: PayCalendarInitial; zIndex?: number } = {}) {
   const onClose = props.onClose ?? vi.fn()
   const onSaved = props.onSaved ?? vi.fn()
-  renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" job={props.job} initial={props.initial} zIndex={props.zIndex} onClose={onClose} onSaved={onSaved} />)
+  renderWithProviders(<PayCalendarModal payerId="payer-1" payerName="Larkfield Construction" job={props.job} jobToBe={props.jobToBe} initial={props.initial} zIndex={props.zIndex} onClose={onClose} onSaved={onSaved} />)
   return { onClose, onSaved }
 }
 
@@ -325,5 +325,49 @@ describe('PayCalendarModal', () => {
       expect(screen.queryByLabelText(/Also set on the other/)).toBeNull()
       expect(io.loadDevelopmentJobIds).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('PayCalendarModal opened on terms an estimator read (punch list #323)', () => {
+  const READ = { cutoffDay: 25, payDay: 30, monthsAfter: 1, payWhenPaid: false, clause: '§ 7.1', words: '' }
+  const JOB_1431: PayCalendarJob = { id: 'job-2', label: '1431 · Larkfield medical office', developmentId: null, developmentName: null }
+
+  it('starts on the terms and on this job, says where they came from, and replays the record against them', async () => {
+    open({ job: JOB_1431, initial: { calendar: READ, scope: 'job', from: 'Dana Whitfield’s draft' } })
+    await waitFor(() => expect(record()).toContain('Their last 4 payments all landed by the due day.'))
+    expect(screen.getByTestId('pay-calendar-offered').textContent).toBe('Filled in from Dana Whitfield’s draft. Check it, then save.')
+    expect(screen.getByRole('radio', { name: 'Only 1431 · Larkfield medical office' }).getAttribute('aria-checked')).toBe('true')
+    expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('25')
+    expect((screen.getByLabelText('Clause number') as HTMLInputElement).value).toBe('§ 7.1')
+  })
+
+  it('keeps the terms when the office moves them to every job the payer pays, over what is stored', async () => {
+    io.loadPayerPayCalendars.mockResolvedValue([STORED])
+    open({ job: JOB_1431, initial: { calendar: { ...READ, payDay: 15 }, scope: 'job', from: 'Dana Whitfield’s draft' } })
+    await waitFor(() => expect(record()).toContain('Their record against this.'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Every job Larkfield Construction pays' }))
+    expect((screen.getByLabelText('They pay on the') as HTMLSelectElement).value).toBe('15')
+  })
+
+  it('for a job not made yet, hands the calendar back and writes nothing', async () => {
+    const onUse = vi.fn()
+    const { onClose, onSaved } = open({ jobToBe: { label: 'Larkfield Medical Office', onUse }, initial: { calendar: READ, scope: 'job', from: 'Dana Whitfield’s draft' } })
+    await waitFor(() => expect(record()).toContain('Their record against this.'))
+    expect(screen.getByRole('radio', { name: 'Only Larkfield Medical Office' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Use for this job' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(onUse).toHaveBeenCalledWith(READ)
+    expect(io.savePayCalendar).not.toHaveBeenCalled()
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('for a job not made yet, a calendar for every job the payer pays saves there and then', async () => {
+    const onUse = vi.fn()
+    const { onSaved } = open({ jobToBe: { label: 'Larkfield Medical Office', onUse }, initial: { calendar: READ, scope: 'payer', from: 'Dana Whitfield’s draft' } })
+    await waitFor(() => expect(record()).toContain('Their record against this.'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save pay calendar' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(io.savePayCalendar).toHaveBeenCalledWith(expect.anything(), { payerId: 'payer-1', calendar: READ })
+    expect(onUse).not.toHaveBeenCalled()
   })
 })

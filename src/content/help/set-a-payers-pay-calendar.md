@@ -1,8 +1,8 @@
 ---
 title: set a payer's pay calendar
 category: Billing & Money
-roles: dev, master_technician, assistant, controller, primary
-keywords: pay calendar, cutoff, pay day, due, due date, pay application, 10th of the month, contract terms, payer, general contractor, GC, pay when paid, net 30, expected payment
+roles: dev, master_technician, assistant, controller, primary, estimator
+keywords: pay calendar, pay terms, estimator, won bid, send to dispatch, check and use, cutoff, pay day, due, due date, pay application, 10th of the month, contract terms, payer, general contractor, GC, pay when paid, net 30, expected payment
 ---
 Some customers pay on a set day of the month. You record that once on the customer, and the app keeps both days.
 
@@ -122,6 +122,50 @@ A job in a development offers one more tick, like *Also set on the other 12 jobs
 
 To undo it, open the same window on the job and press {{button:outline|Follow Larkfield Construction again}}. The button carries the customer's own name.
 
+## Pay terms an estimator read on a won bid
+
+An estimator reads the general contractor's contract when a bid is won. An estimator cannot set a pay calendar. They write the terms down, and the office sets the calendar.
+
+The estimator does this on the sheet they already send to Dispatch.
+
+:::steps
+1. Press {{button:green|Send to Dispatch}} on the won bid.
+2. Press *+ Add their pay terms* under the general contractor.
+3. Pick **Only this job** or the choice that names every job they pay.
+4. Pick the cutoff and the pay day. Type the clause number.
+5. Press {{button:outline|Done}}. The terms close to one line.
+6. Press **Send to Dispatch**.
+:::
+
+Pick **Only this job** when this job's contract says it. Pick every job when their standard subcontract says it. The estimator sees the dates said back. The estimator never sees the customer's payments.
+
+Leave the line alone for a customer who pays some days after each bill.
+
+The office meets the terms in New Job. Dispatch presses {{button:outline|Open the job}} on the won bid's row, as always.
+
+:::steps
+1. Find the line that starts *Pay terms from* above the customer.
+2. Press *Check and use*.
+3. Read the amber box. The box checks the terms against how they have paid.
+4. Press {{button:blue|Use for this job}}, or pick every job they pay and press {{button:blue|Save pay calendar}}.
+5. Finish New Job and press **Create Job**.
+:::
+
+:::example The line in New Job
+Pay terms from Dana Whitfield's draft: **In by the 25th, paid the 10th** sets with the job
+:::
+
+Terms for this job alone are saved when the job is created. Terms for every job they pay are saved at once.
+
+You can skip the line. The terms stay with the job. The job's **Pay calendar** row on its **Edit** tab then reads *From Dana Whitfield's draft* with *Check and use* beside it. The offer stays until you use it, or tick **This job has no pay calendar**.
+
+Sometimes the job is already open, or the signed contract comes later. The estimator's won bid then shows *+ Send their pay terms to the office* beside the job's chip. Dispatch gets a row with two buttons.
+
+- {{button:outline|Open the pay calendar}} opens the window on that job, filled in. Saving it closes the row.
+- {{button:outline|Not a calendar payer}} closes the row and sets nothing.
+
+The estimator is told the answer either way.
+
 ## When they accepted a bill later
 
 A calendar counts from the day the customer accepts a bill. The app only knows the day the bill went in. Most of the time that is the same month, and nothing needs doing.
@@ -178,6 +222,8 @@ A customer with no calendar reads exactly as before. So does a job with **This j
 ## Who can set one
 
 Developers, master technicians, assistants and the controller set a pay calendar. A primary can open the window and read it.
+
+An estimator cannot set one or read one. An estimator writes down the terms on a won bid, and the office sets the calendar. See [Pay terms an estimator read on a won bid](#pay-terms-an-estimator-read-on-a-won-bid).
 
 ## Remove one
 
