@@ -245,6 +245,12 @@ describe('newTaskSentence', () => {
     expect(say({ assigneeIds: ['rosa'], tellOtherName: 'Imani' }).text).toMatch(/Imani hears when it is done\.$/)
   })
 
+  it('names the giver on an edit by someone else', () => {
+    expect(say({ giverName: 'Rosa' }).text).toMatch(/Rosa hears when it is done\.$/)
+    expect(say({ giverName: 'Rosa', tellOtherName: 'Imani' }).text).toMatch(/Rosa and Imani hear when it is done\.$/)
+    expect(say({ giverName: 'Rosa', tellMe: false }).text).toBe('Theo gets it today. It stays until it is done.')
+  })
+
   it('keeps every shape of the sentence to plain words', () => {
     const shapes: Array<Partial<NewTaskSentenceInput>> = [
       {},

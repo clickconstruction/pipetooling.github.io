@@ -16,6 +16,10 @@ type Props = {
   /** What went wrong on the last Send, or null. */
   error: string | null
   sendRef?: RefObject<HTMLButtonElement>
+  /** The words on Send while it works. *Sending…* unless the window saves an edit. */
+  busyLabel?: string
+  /** The bell's words. *Tell me* unless the giver is someone else, whom it then names. */
+  tellLabel?: string
   onSendKeyDown?: KeyboardEventHandler<HTMLButtonElement>
 }
 
@@ -24,7 +28,7 @@ type Props = {
  * do, where the eye ends, and its button names who gets the task. The only solid blue in the
  * window is this button. The bell beside it is *Tell me when it's done*, lit by default.
  */
-export function TaskSendBar({ sentence, dead, label, submitting, onSend, tellMe, onTellMe, error, sendRef, onSendKeyDown }: Props) {
+export function TaskSendBar({ sentence, dead, label, submitting, onSend, tellMe, onTellMe, error, sendRef, onSendKeyDown, busyLabel = 'Sending…', tellLabel = 'Tell me' }: Props) {
   const held = dead || submitting
   return (
     <div data-testid="new-task-bar" style={{ display: 'grid', gap: 8 }}>
@@ -41,8 +45,8 @@ export function TaskSendBar({ sentence, dead, label, submitting, onSend, tellMe,
           <button
             type="button"
             aria-pressed={tellMe}
-            aria-label="Tell me when it's done"
-            title={tellMe ? 'You hear when it is done. Press to turn that off.' : 'You do not hear when it is done. Press to turn that on.'}
+            aria-label={`${tellLabel} when it's done`}
+            title={tellMe ? 'A note goes out when it is done. Press to turn that off.' : 'No note goes out when it is done. Press to turn that on.'}
             onClick={() => onTellMe(!tellMe)}
             style={{
               flex: 'none',
@@ -59,7 +63,7 @@ export function TaskSendBar({ sentence, dead, label, submitting, onSend, tellMe,
               whiteSpace: 'nowrap',
             }}
           >
-            <span aria-hidden>{tellMe ? '🔔' : '🔕'}</span> Tell me
+            <span aria-hidden>{tellMe ? '🔔' : '🔕'}</span> {tellLabel}
           </button>
         )}
         <button
@@ -87,7 +91,7 @@ export function TaskSendBar({ sentence, dead, label, submitting, onSend, tellMe,
             whiteSpace: 'nowrap',
           }}
         >
-          {submitting ? 'Sending…' : label}
+          {submitting ? busyLabel : label}
         </button>
       </div>
     </div>
