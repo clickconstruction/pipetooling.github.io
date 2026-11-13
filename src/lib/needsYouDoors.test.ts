@@ -77,6 +77,11 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouSecondaryDoor({ key: 'tally-self' }, 'snooze')).toBeNull()
   })
 
+  it('receipts-to-chase opens the Team queue on both hosts (punch list #299)', () => {
+    expect(needsYouDoor({ key: 'receipts-to-chase' }, { role: 'assistant' }, 'dashboard')).toEqual({ kind: 'href', href: '/tally?tab=transactions' })
+    expect(needsYouDoor({ key: 'receipts-to-chase' }, { role: 'assistant' }, 'quickfill')).toEqual({ kind: 'href', href: '/tally?tab=transactions' })
+  })
+
   it('in-kind-credit-due opens the oldest month on the customer’s page, and the customers list when the customer is gone (punch list #301)', () => {
     const first = { customerId: 'c1', arrangementId: 'a1', month: '2026-11-01' }
     expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev', inKindCreditFirst: first }, 'dashboard')).toEqual({ kind: 'href', href: '/customers/c1?inKind=a1&month=2026-11-01' })
