@@ -10,12 +10,14 @@ import type { HeldBillsIo } from '../../lib/materials/lines/heldBillsIo'
 import { heldBills } from '../../lib/materials/lines/heldBills'
 import { defaultSpan, dollarsWords, monthWords, priceWords, quantityWords, timesWords, WHAT_WE_BUY_FOOT, whatWeBuy, type BuyFilters, type BuyRow, type BuySort } from '../../lib/materials/lines/whatWeBuy'
 import { PriceOverTime } from './PriceOverTime'
+import { WhatToStock } from './WhatToStock'
 
-/** The tab's own views: the sums, and one row's price bill by bill (punch list #298 PR 4b). */
-type BuyView = 'buy' | 'price'
+/** The tab's own views: the sums, one row's price bill by bill (PR 4b), and what the company keeps going back for (PR 4c). */
+type BuyView = 'buy' | 'price' | 'stock'
 const VIEWS: { key: BuyView; label: string }[] = [
   { key: 'buy', label: 'What we buy' },
   { key: 'price', label: 'Price over time' },
+  { key: 'stock', label: 'What to stock' },
 ]
 
 /** Rows drawn before the press that shows the rest. */
@@ -186,6 +188,21 @@ export function WhatWeBuyTab({ io, heldIo }: { io: PurchaseLinesIo; /** For the 
       <div data-testid="what-we-buy">
         {viewStrip}
         <PriceOverTime data={data} io={io} rows={allRows} rowKey={priceKey} onPick={setPriceKey} />
+      </div>
+    )
+  }
+
+  if (viewKey === 'stock') {
+    return (
+      <div data-testid="what-we-buy">
+        {viewStrip}
+        <WhatToStock
+          data={data}
+          onOpenPrice={(key) => {
+            setPriceKey(key)
+            setViewKey('price')
+          }}
+        />
       </div>
     )
   }
