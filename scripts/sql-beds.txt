@@ -114,3 +114,4 @@ person-file-numbers
 person-engagements
 dev-seat-kept-plans
 receipt-texts
+painted-maps
