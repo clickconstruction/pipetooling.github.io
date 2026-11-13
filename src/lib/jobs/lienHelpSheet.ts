@@ -117,24 +117,26 @@ export function lienHelpChecks(f: {
   return checks
 }
 
+/**
+ * The notary's part of the paper as one line (the owner, 2026-11-13, working from a printed batch): the signature, the
+ * printed name and the seal are the notarial certificate, where the sheets counted a signature blank and a seal blank.
+ */
+export const LIEN_HELP_CERTIFICATE_BLANK: readonly [string, string] = ['The notarial certificate.', 'The notary signs and stamps.']
+
 /** What is left to the reader once the app has answered its own checks. */
 export const LIEN_HELP_YOUR_CHECK = 'Read every name, address and amount on the paper. If one is wrong, stop. Fix it in the app and print again. A signed paper is never fixed by hand.'
 
 /** Above the reader's check when the app has a question about this paper. */
 export const LIEN_HELP_ASK_FIRST = 'Do not sign this one yet. Ask the attorney about the line marked with an exclamation mark.'
 
-/** The four things written on a paper whose counties are printed. */
+/** The three things written on a paper whose counties are printed. The last is the notary's whole part, one line. */
 export const LIEN_HELP_BLANKS_PRINTED_COUNTY: ReadonlyArray<readonly [string, string]> = [
   ['The signature line.', 'The signer signs in front of the notary, and not before.'],
   ['The day, the month and the year.', 'The day it is signed.'],
-  ['The notary’s signature and printed name.', 'Both lines.'],
-  ['The notary’s seal.', 'In ink, dark enough to show on a copy. A paper with no seal goes back.'],
+  LIEN_HELP_CERTIFICATE_BLANK,
 ]
 
-/**
- * The batch sheet's list on a paper whose counties are printed: three things to write. The notary's signature, printed
- * name and seal are one line, the notarial certificate (the owner, 2026-11-13, working from a printed batch).
- */
+/** The same three in a few words each, for the batch sheet. */
 export const LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT: ReadonlyArray<readonly [string, string]> = [
   ['Signature:', 'in front of the notary.'],
   ['Day, month, year:', 'the day it is signed.'],
@@ -151,20 +153,18 @@ export type LienHelpLeftOut = { jobLabel: string; reason: string }
 
 export const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-/** The six blanks on a short-form affidavit, in the order the pen meets them. `[bold lead, the rest]`. */
+/** The five blanks on a short-form affidavit, in the order the pen meets them. `[bold lead, the rest]`. */
 export const LIEN_HELP_BLANKS: ReadonlyArray<readonly [string, string]> = [
   ['COUNTY OF, at the top.', 'The notary writes the county you are standing in when you sign. It is not the property’s county.'],
   ['The signature line.', 'The signer signs in front of the notary, and not before.'],
   ['COUNTY OF, in the notary’s block.', 'The same county as the first blank.'],
   ['The day, the month and the year.', 'The day it is signed.'],
-  ['The notary’s signature and printed name.', 'Both lines.'],
-  ['The notary’s seal.', 'In ink, dark enough to show on a copy. A paper with no seal goes back.'],
+  LIEN_HELP_CERTIFICATE_BLANK,
 ]
 
 /**
- * The batch sheet's list, where the room goes to the rows: five blanks in a few words each. The cover sheet's six count
- * the notary's signature and the seal apart; here they are one line, the notarial certificate, and the picture beside
- * the list carries one number for both (the owner, 2026-11-13). Each name is on its own line, its words under it.
+ * The batch sheet's list, where the room goes to the rows: the same five in a few words each, each name on its own
+ * line with its words under it (the owner, 2026-11-13).
  */
 export const LIEN_HELP_BLANKS_SHORT: ReadonlyArray<readonly [string, string]> = [
   ['COUNTY OF, at the top:', 'where you sign. Not the property’s county.'],
@@ -180,6 +180,12 @@ export function lienHelpBatchBlanksTitle(printedCounty: boolean): string {
 }
 
 const COUNT_WORDS: Readonly<Record<number, string>> = { 3: 'three', 4: 'four', 5: 'five', 6: 'six' }
+
+/** The cover sheet's heading over its list when the counties are printed, from the count of the list itself. */
+export function lienHelpCoverPrintedCountyTitle(): string {
+  const word = COUNT_WORDS[LIEN_HELP_BLANKS_PRINTED_COUNTY.length] ?? ''
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} things to write. Nothing else is written on the paper.`
+}
 
 /** When to stop before signing. Each is one thing the office does not decide alone. */
 export const LIEN_HELP_STOPS: ReadonlyArray<string> = [
@@ -365,10 +371,10 @@ const pictureNum = (n: number): string => `<span class="lien-help-num">${n}</spa
 /**
  * A small picture of the paper with a numbered spot where each thing is written (the best-we-can-do pass, change 6):
  * words like *the signature line* make a first-timer hunt for the place. The numbers are the list's own, in the order
- * the pen meets them: six on a paper whose counties are blank, four when they are printed. With `certificateAsOne`, the
- * batch sheet's picture, the notary's signature and seal share one number: five, or three.
+ * the pen meets them: five on a paper whose counties are blank, three when they are printed. The notary's signature and
+ * seal share one number, the notarial certificate.
  */
-export function lienHelpPictureHtml(printedCounty: string, certificateAsOne = false): string {
+export function lienHelpPictureHtml(printedCounty: string): string {
   const printed = printedCounty.trim().replace(/\s+county$/i, '').toUpperCase()
   let n = 0
   const next = () => pictureNum(++n)
@@ -382,7 +388,7 @@ export function lienHelpPictureHtml(printedCounty: string, certificateAsOne = fa
     `<div style="text-align:right;margin-top:4pt">______________ ${next()}</div>` +
     `<div style="margin-top:4pt">COUNTY OF ${printed ? esc(printed) : `______ ${next()}`}</div>` +
     `<div>on this ____ day of ________ ${next()}</div>` +
-    `<div style="margin-top:4pt">______________ ${certificateAsOne ? next() : `${next()} ${next()}`}</div>` +
+    `<div style="margin-top:4pt">______________ ${next()}</div>` +
     `<div>Notary Public · Printed name: ________</div>` +
     `</div>`
   )
@@ -422,7 +428,7 @@ export function lienHelpCoverSheetHtml(p: LienHelpPaper, printedOn: string, extr
     `</div>` +
     (checks && checks.length > 0 ? checksBlock('What the app checked on this paper', checks, ask) : stopBox('Do not sign. Call the office first if any of these is true.', LIEN_HELP_STOPS)) +
     (printedCounty
-      ? blanksBox('Four things to write. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS_PRINTED_COUNTY, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty))
+      ? blanksBox(lienHelpCoverPrintedCountyTitle(), p.signer, LIEN_HELP_BLANKS_PRINTED_COUNTY, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty))
       : blanksBox('The blanks. Nothing else is written on the paper.', p.signer, LIEN_HELP_BLANKS, '', lienHelpPictureHtml(''))) +
     `<div class="lien-help-box" style="overflow:hidden"><h3>After it is signed</h3><ol>${after.map((s, i) => `<li>${i === after.length - 1 ? recordCodeBlock(recordCode, '') : ''}<span class="lien-help-tick"></span> ${s}</li>`).join('')}</ol><div class="lien-help-two" style="margin-top:5pt">${copies}</div></div>` +
     foot(`Help sheet for ${p.jobLabel}${ask && !(p.checks && p.checks.length > 0) ? ` · ${ask}` : ''}`, extras?.recordFollows ? LIEN_HELP_FOOT_RECORD_NEXT : LIEN_HELP_FOOT_PAPER_NEXT) +
@@ -620,8 +626,8 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
     band('Help sheet · do not file this page', count === 1 ? 'Lien affidavit: this batch of 1' : `Lien affidavits: this batch of ${count}`, [input.printedOn ? `Printed ${input.printedOn}` : '', fileBys.length === 1 ? `All due ${fileBys[0]}` : ''], input.extras) +
     `<div class="lien-help-two">` +
     (printedCounty
-      ? blanksBox(lienHelpBatchBlanksTitle(true), '', LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty, true), true)
-      : blanksBox(lienHelpBatchBlanksTitle(false), '', LIEN_HELP_BLANKS_SHORT, '', lienHelpPictureHtml('', true), true)) +
+      ? blanksBox(lienHelpBatchBlanksTitle(true), '', LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty), true)
+      : blanksBox(lienHelpBatchBlanksTitle(false), '', LIEN_HELP_BLANKS_SHORT, '', lienHelpPictureHtml(''), true)) +
     (checked
       ? `<div class="lien-help-box" data-lien-help-batch-checks><h3>What the app checked</h3><p><strong>${esc(lienHelpBatchSummary({ papers: papers.length, asks: asks.size, leftOut: leftOut.length }))}</strong></p><p style="margin-top:3pt">On each paper it read the owner, the homestead mark and the notice behind each month. ${asks.size > 0 ? 'A row marked <strong>Ask first</strong> waits for the attorney. ' : ''}</p><p style="margin-top:3pt"><strong>Your check.</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${oneAsk ? ` <strong data-lien-help-ask-who>${esc(oneAsk)}</strong>` : ''}</p></div>`
       : stopBox('Call the office first', LIEN_HELP_STOPS_SHORT)) +
@@ -662,8 +668,7 @@ export function lienHelpMarkPaper(paperHtml: string): { html: string; marks: num
   mark(2, /<div style="border-bottom:1px solid currentColor;height:1\.6em"><\/div>/, (m) => `${m}${num(2)}`)
   mark(3, /STATE OF TEXAS<br\/>COUNTY OF _+<\/p>/, (m) => m.replace('</p>', `${num(3)}</p>`))
   mark(4, /SWORN TO AND SUBSCRIBED BEFORE ME on this[^<]*<\/p>/, (m) => m.replace('</p>', `${num(4)}</p>`))
-  mark(5, /_{20,}<br\/>Notary Public, State of Texas<\/p>/, (m) => m.replace('</p>', `${num(5)}${num(6)}</p>`))
-  if (marks.includes(5)) marks.push(6)
+  mark(5, /_{20,}<br\/>Notary Public, State of Texas<\/p>/, (m) => m.replace('</p>', `${num(5)}</p>`))
   mark(7, /The owner or reputed owner is[^<]*<\/p>/, (m) => m.replace('</p>', `${num(7)}</p>`))
   mark(7, /under a contract with the owner,[^<]*<\/p>/, (m) => m.replace('</p>', `${num(7)}</p>`))
   mark(8, /Payment is requested for work done[^<]*<\/p>/, (m) => m.replace('</p>', `${num(8)}</p>`))
@@ -680,8 +685,7 @@ export const LIEN_HELP_MARK_NOTES: Readonly<Record<number, string>> = {
   2: 'The signer signs here, in front of the notary.',
   3: 'The same county as mark 1.',
   4: 'The day it is signed.',
-  5: 'The notary signs, and prints a name on the line under it.',
-  6: 'The seal goes beside the notary’s signature, in ink that shows on a copy.',
+  5: 'The notarial certificate. The notary signs and stamps.',
   7: 'A person or a company. Never ATTN, never a city, never someone who lives in the house.',
   8: 'Every month has a notice mailed on time, to the owner and to the contractor.',
 }
@@ -697,7 +701,7 @@ export function lienHelpGuideCopyHtml(paperHtml: string, p: Pick<LienHelpPaper, 
   const shown = new Map(landed.marks.map((n, i) => [n, i + 1]))
   const marked = { marks: landed.marks, html: landed.html.replace(/<span class="lien-help-num">(\d+)<\/span>/g, (m, n: string) => (shown.has(Number(n)) ? num(shown.get(Number(n)) as number) : m)) }
   const note = (n: number) => (shown.has(n) ? `<p>${num(shown.get(n) as number)}${esc(LIEN_HELP_MARK_NOTES[n] ?? '')}</p>` : '')
-  const blanks = [1, 2, 3, 4, 5, 6].map(note).join('')
+  const blanks = [1, 2, 3, 4, 5].map(note).join('')
   const reads = [7, 8].map(note).join('')
   const bandWords = 'Guide copy · do not sign or file this page'
   return (
