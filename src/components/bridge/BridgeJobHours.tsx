@@ -24,8 +24,8 @@ export function BridgeJobHoursWindow({ jobLabel, hours, dayLabel, onClose, onSet
   const days = allDays ? hours.days : hours.days.slice(0, JOB_HOURS_DAYS_SHOWN)
   const anyWaiting = hours.waitingHours > 0
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 770, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} data-testid="bridge-job-hours-backdrop">
-      <div role="dialog" aria-modal="true" aria-label={`Hours on ${jobLabel}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', width: 'min(560px, 100%)', maxHeight: '86vh', overflowY: 'auto', padding: '1rem 1.1rem 1.1rem' }} data-testid="bridge-job-hours">
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 770, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px' }} data-testid="bridge-job-hours-backdrop">
+      <div role="dialog" aria-modal="true" aria-label={`Hours on ${jobLabel}`} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', width: 'min(560px, 100%)', maxHeight: 'min(86vh, 100%)', overflowY: 'auto', padding: '1rem 1.1rem 1.1rem' }} data-testid="bridge-job-hours">
         <div style={head}>Hours on this job</div>
         <div style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1.3, margin: '4px 0 6px' }}>{jobLabel}</div>
         <div style={{ display: 'grid', gap: 2, fontSize: '0.86rem', color: 'var(--text-700)' }} data-testid="bridge-job-hours-lead">
