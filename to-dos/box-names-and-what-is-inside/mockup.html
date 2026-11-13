@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Box names: a letter and a number, with what is inside on its own line</title>
+<style>
+  /* Punch list #351. A standard name for a cage or box, and a line for what is inside. Drawn 2026-11-13, with that day
+     as today. Nothing here is built. Every name, job, number and count is made up: the site is a made-up development
+     called Juniper Ridge whose boxes are painted R, Marcus Reyes adds boxes on site, Priya Nair counts later and Dana
+     Whitfield works the office page. The QR squares are random dots and open nothing. No live box, job or person is here. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 400px; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; }
+  .pick p.b { font-weight: 600; color: var(--text-strong); }
+
+  /* her case, as four steps */
+  .steps { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .steps .n { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--copper); }
+  .steps .big { font-size: 22px; font-weight: 800; color: var(--text-strong); line-height: 1.2; margin: 2px 0; }
+  .steps p { margin: 0; font-size: 13px; }
+
+  /* drawn app pieces */
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .hdr b { color: var(--text-strong); font-size: 14px; }
+  .hdr .x { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 10px; font-weight: 600; color: var(--text-strong); background: var(--surface); }
+  .sheet { background: var(--surface); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; padding: 14px 12px 12px; display: grid; gap: 10px; }
+  .sheet h4 { margin: 0; font-size: 17px; color: var(--text-strong); }
+  .sub { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .lab { font-weight: 600; font-size: 13px; color: var(--text-strong); }
+  .btn { min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 6px 12px; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; min-height: 50px; }
+  .btn.quiet { border: 0; background: none; color: var(--text-link); min-height: 30px; padding: 0; justify-content: flex-start; }
+  .btn.dash { border-style: dashed; background: transparent; color: var(--text-700); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { min-height: 32px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg .btn { font-size: 13px; }
+  .seg .on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .field { min-height: 46px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); padding: 8px 12px; display: flex; align-items: center; font-size: 14px; }
+  .field.big { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+  .field.ph { color: var(--text-muted); }
+  .num { display: inline-block; font: 700 12px/1.5 var(--mono); padding: 0 7px; border-radius: 6px; border: 1px solid var(--new); color: var(--new); background: var(--new-tint); white-space: nowrap; }
+  .none { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--border-amber); color: var(--text-amber-800); background: var(--bg-amber-tint); white-space: nowrap; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .box.sel { border: 2px solid #2563eb; background: var(--bg-blue-tint); }
+  .box .t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 800; font-size: 15px; color: var(--text-strong); }
+  .box .t span.k { font-weight: 500; color: var(--text-muted); font-size: 13px; }
+  .box .m { color: var(--text-muted); font-size: 12.5px; }
+  .grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+  .line { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .line b { color: var(--text-strong); }
+  .sum { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-size: 13.5px; }
+  .sum b { color: var(--text-strong); }
+  .bar { height: 8px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--new); }
+  .ok { background: var(--bg-green-tint); border: 1px solid var(--border-green); color: var(--text-green-700); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+  .wait { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+  .hist { font-size: 12.5px; color: var(--text-muted); border-left: 2px solid var(--border-strong); padding-left: 8px; }
+  ol.moves { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+
+  /* paper: a strip, a run of strips, a sheet. Paper stays light in both themes. */
+  .paperbg { background: #d9dde3; padding: 12px; display: grid; gap: 8px; justify-items: start; }
+  .strip { background: #fff; color: #000; border: 1px solid #9aa1ab; border-radius: 3px; display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; padding: 5px 8px 5px 5px; width: 100%; max-width: 250px; }
+  .strip svg { width: 58px; height: 58px; display: block; background: #fff; }
+  .strip .big { font-size: 28px; font-weight: 900; line-height: 1; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .big.s { font-size: 21px; }
+  .strip .ad { font: 9px/1.3 var(--mono); margin-top: 4px; }
+  .strip .w { font-size: 9px; line-height: 1.2; }
+  .roll { display: grid; gap: 0; width: 100%; max-width: 250px; }
+  .roll .strip { border-radius: 0; border-bottom: 1px dashed #9aa1ab; }
+  .roll .strip + .strip { border-top: 0; }
+  .more { font-size: 12px; color: #374151; }
+  .page { background: #fff; border: 1px solid #9aa1ab; width: 100%; max-width: 250px; aspect-ratio: 8.5 / 11; padding: 5% 3%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(10, 1fr); gap: 1px 4px; }
+  .page .cell { border: 1px dotted #b5bbc4; border-radius: 2px; display: grid; grid-template-columns: 34% 1fr; align-items: center; gap: 3px; padding: 1px 2px; min-width: 0; overflow: hidden; }
+  .page .cell svg { width: 100%; aspect-ratio: 1; display: block; }
+  .page .cell b { font: 800 9px/1 var(--font); color: #000; }
+
+  /* the camera */
+  .cam { background: #0b0f17; border-radius: 12px; aspect-ratio: 16 / 10; position: relative; display: grid; place-items: center; overflow: hidden; }
+  .cam .strip { max-width: 190px; transform: rotate(-3deg); grid-template-columns: 46px 1fr; }
+  .cam .strip svg { width: 46px; height: 46px; }
+  .cam .strip .big { font-size: 22px; }
+  .cam i { position: absolute; width: 22px; height: 22px; border: 3px solid #fff; opacity: .9; }
+  .cam i.a { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+  .cam i.b { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+  .cam i.c { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+  .cam i.d { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+  /* mistakes and calls: cards, so nothing scrolls sideways */
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .card p { margin: 0; font-size: 13px; }
+  .card .scr { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text-strong); }
+  .card .rec { border-left: 3px solid var(--new); padding-left: 8px; }
+  .card .rec b { color: var(--new); }
+  .card .alt { border-left: 3px solid var(--border-strong); padding-left: 8px; color: var(--text-muted); }
+  .train { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+  .train > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .train b { display: block; color: var(--text-strong); font-size: 14px; }
+  .train .sz { font: 700 11px var(--mono); color: var(--copper); }
+  .train .stop { background: var(--new-tint); border: 2px solid var(--new); }
+  /* this card's own pieces */
+  .seg3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .plate { display: grid; grid-template-columns: minmax(64px, .7fr) minmax(0, 1.3fr) 46px 46px; gap: 6px; align-items: stretch; }
+  .plate .field { justify-content: center; font-size: 26px; font-weight: 900; letter-spacing: .02em; min-height: 54px; padding: 4px 8px; }
+  .plate .field small { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-left: 6px; }
+  .plate .btn { min-height: 54px; font-size: 22px; padding: 0; }
+  .rowb { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; display: grid; gap: 1px; }
+  .rowb .t { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .rowb .t b { font-size: 18px; font-weight: 800; color: var(--text-strong); letter-spacing: .02em; }
+  .rowb .t i { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+  .rowb .d { font-size: 14px; color: var(--text-strong); }
+  .rowb .m { font-size: 12.5px; color: var(--text-muted); }
+  .rowb.gone { opacity: .6; }
+  .auto { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+  .desk { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  .desk > div { display: grid; gap: 2px; font-size: 11px; font-weight: 600; color: var(--text-strong); min-width: 0; }
+  .desk .field { min-height: 36px; font-size: 13px; padding: 4px 10px; }
+  .tidy { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr); gap: 4px 10px; align-items: center; font-size: 13.5px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .tidy .old { color: var(--text-muted); text-decoration: line-through; overflow-wrap: anywhere; }
+  .tidy .to b { color: var(--text-strong); font-size: 15px; }
+  .tidy .to span { color: var(--text-700); }
+  .try { background: var(--surface); border: 2px solid var(--new); border-radius: 12px; padding: 14px; display: grid; gap: 10px; max-width: 520px; margin-top: 14px; }
+  .try input { font: inherit; font-size: 18px; font-weight: 700; min-height: 50px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 6px 12px; background: var(--surface); color: var(--text-strong); width: 100%; text-transform: uppercase; }
+  .try .out { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 14px; align-items: baseline; }
+  .try .out span { color: var(--text-muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .try .out b { color: var(--text-strong); font-size: 20px; }
+  .try .ex { display: flex; flex-wrap: wrap; gap: 6px; }
+  .try .ex button { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .strip .w.d { font-weight: 800; font-size: 10px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #351 · a decision mock-up · nothing here is built · every name and number is made up</p>
+    <h1>Box names: a letter and a number</h1>
+    <p><b>My recommendation:</b> split the one name field into two things. The <b>name</b> is a letter and a number, like R89, and the app fills in the next free one so nobody types it. <b>What is in it</b> is its own line. The app writes that line from the box's parts, and a person can say it better at any time. Words typed into the name are not refused. They move to the line below.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#today">What is here today</a>
+  <a href="#flow">The flow at the cage</a>
+  <a href="#try">Try the name field</a>
+  <a href="#shows">Where the line shows</a>
+  <a href="#tidy">The old names</a>
+  <a href="#calls">Your calls</a>
+  <a href="#train">The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>Today</h3>
+    <ul>
+      <li>One field, <b>The stencil</b>, takes any 24 characters.</li>
+      <li>The phone offers <b>A1</b> on every site, whatever letter the site paints.</li>
+      <li>There is no place to say what is in a box, so people type it into the name.</li>
+      <li>A name is checked against one job. A site with two jobs can hold two R4s.</li>
+      <li>The office page adds every box as a cage. It has no kind to pick.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>A name is <b>one to three letters and a number from 1 to 999</b>.</li>
+      <li>The app offers the <b>next free name on the site</b>. One press accepts it.</li>
+      <li><b>What is in it</b> is a line of its own. It fills in from the parts.</li>
+      <li>A name is one of a kind across the <b>whole site</b>.</li>
+      <li>Both pages ask <b>how it sits</b> and remember the last answer.</li>
+    </ul>
+    <p class="b">A new box is one press when the defaults are right.</p>
+  </div>
+</div>
+<div class="steps">
+  <div><div class="n">Read on one real site</div><div class="big">4 in 5</div><p>names were already a letter and a number. The rule matches what the crew does.</p></div>
+  <div><div class="n">The same site</div><div class="big">1 in 7</div><p>names carried words: what was inside, or that there was no box at all.</p></div>
+  <div><div class="n">The same site</div><div class="big">3</div><p>boxes were added as A1 or A2, the sheet's own offer, and retired minutes later.</p></div>
+  <div><div class="n">The same site</div><div class="big">Every one</div><p>was saved as a cage, pallets and piles included.</p></div>
+</div>
+<p class="note">Those four figures are rounded from a read of one development on 2026-11-13. Everything drawn below is made up.</p>
+
+<h2 id="today">What is here today <small>drawn from the app as it is</small></h2>
+<p class="lede">Two screens make a box. Neither holds the name to a shape, and neither has a line for what is inside.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">The phone · Add a container</div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> · Juniper Ridge</div>
+      <div class="sheet">
+        <h4>Add a container</h4>
+        <p class="sub">The stencil on the steel is its name. Say where it stands so the next crew finds it.</p>
+        <div class="seg seg3"><div class="btn on">Cage</div><div class="btn">Box</div><div class="btn">Loose pile</div></div>
+        <div class="lab">The stencil</div>
+        <div class="field big">A1</div>
+        <div class="lab">Which place on site</div>
+        <div class="chips"><span class="chip on">Arena</span><span class="chip">Yard</span></div>
+        <div class="field ph">Or a new place: Laydown yard</div>
+        <div class="lab">Where exactly, if it helps</div>
+        <div class="field ph">by the north stair</div>
+        <div class="btn pri">Add A1</div>
+      </div>
+    </div>
+    <p class="say">The offer is always A1, A2, A3. On a site painted R it is wrong every time, so the name is typed by hand for every box.</p>
+  </div>
+  <div class="col">
+    <div class="cap">The office · Add a container</div>
+    <div class="frame" style="max-width:none">
+      <div class="pad">
+        <div class="desk">
+          <div>The stencil<div class="field" style="width:76px;font-weight:800">A1</div></div>
+          <div>Which place<div class="field">Arena ▾</div></div>
+          <div>Or a new place<div class="field ph">Laydown yard</div></div>
+          <div>Where exactly<div class="field ph">by the north stair</div></div>
+          <div class="btn pri" style="min-height:36px">Add A1</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">No kind to pick. A box added here is a cage. No line for what is in it.</p>
+    <div class="cap" style="margin-top:10px">The names that came out</div>
+    <div class="frame"><div class="pad">
+      <div class="rowb"><div class="t"><b>R12</b><i>cage</i></div><div class="m">1 part · counted 12 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R24B</b><i>cage</i></div><div class="m">1 part · counted 12 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R70 NO CONTAINER</b><i>cage</i></div><div class="m">2 parts · counted 12 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R76 TOILETS</b><i>cage</i></div><div class="m">1 part · counted 11 days ago</div></div>
+      <div class="rowb"><div class="t"><b>CONCRETE MIX</b><i>cage</i></div><div class="m">1 part · counted 11 days ago</div></div>
+      <div class="rowb gone"><div class="t"><b>A1</b><i>cage · retired</i></div><div class="m">added and retired within a minute</div></div>
+    </div></div>
+  </div>
+  <div class="col">
+    <div class="cap">Where a name is read</div>
+    <div class="frame"><div class="paperbg">
+      <div class="strip"><svg class="qr" data-seed="7"></svg><div><div class="big">R12</div><div class="ad">PRTS.CO/B/7D75-9246</div><div class="w">Scan for what is inside</div></div></div>
+      <div class="strip"><svg class="qr" data-seed="8"></svg><div><div class="big s" style="font-size:15px">R70 NO CONTAINER</div><div class="ad">PRTS.CO/B/5691-3199</div><div class="w">Scan for what is inside</div></div></div>
+    </div></div>
+    <p class="say">The label prints the name large. A long name prints small, and it is the one thing that cannot change without a new print.</p>
+    <div class="frame"><div class="pad">
+      <div class="lab">Print labels</div>
+      <div class="chips"><span class="chip on">CONCRETE MIX</span><span class="chip on">R12</span><span class="chip on">R24B</span><span class="chip on">R70 NO CONTAINER</span><span class="chip on">R76 TOILETS</span></div>
+    </div></div>
+    <p class="say">The words help here. A chip that reads R76 TOILETS tells the office which label it is printing. The suggestion keeps that, without putting it in the name.</p>
+  </div>
+</div>
+
+<h2 id="flow">The flow at the cage <small>Marcus adds a box, then Priya opens it a week later</small></h2>
+<p class="lede">Four moments. The name is never typed unless the paint says something else, and the line for what is inside never has to be typed at all.</p>
+<div class="two">
+  <div class="col sug">
+    <div class="cap">1 · Add a box <span class="tag">new</span></div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> · Juniper Ridge</div>
+      <div class="sheet">
+        <h4>Add a box</h4>
+        <p class="sub">The next free name on this site is ready. Change it only if the paint says something else.</p>
+        <div class="lab">Its name</div>
+        <div class="plate new"><div class="field">R<small>▾</small></div><div class="field">89</div><div class="btn">−</div><div class="btn">+</div></div>
+        <p class="sub">R1 to R88 are on Juniper Ridge already.</p>
+        <div class="lab">How it sits</div>
+        <div class="seg seg3"><div class="btn on">Cage</div><div class="btn">Box</div><div class="btn">Loose pile</div></div>
+        <div class="lab">Which place on site</div>
+        <div class="chips"><span class="chip on">Arena</span><span class="chip">Yard</span><span class="chip">New place…</span></div>
+        <div class="lab">What is in it <span class="tag">new</span></div>
+        <div class="field ph new">You can say later</div>
+        <p class="sub">Add a part and this line fills in by itself.</p>
+        <div class="btn pri">Add R89</div>
+      </div>
+    </div>
+    <p class="say">One press when the defaults are right. The kind and the place are the ones Marcus used on his last box.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">2 · He types words into the name <span class="tag">new</span></div>
+    <div class="frame">
+      <div class="hdr"><b>On site</b> · Juniper Ridge</div>
+      <div class="sheet">
+        <h4>Add a box</h4>
+        <div class="lab">Its name</div>
+        <div class="plate"><div class="field">R<small>▾</small></div><div class="field">90</div><div class="btn">−</div><div class="btn">+</div></div>
+        <div class="ok">The name is R90. “Toilets” moved to the line below.</div>
+        <div class="lab">How it sits</div>
+        <div class="seg seg3"><div class="btn">Cage</div><div class="btn">Box</div><div class="btn on">Loose pile</div></div>
+        <div class="lab">What is in it</div>
+        <div class="field new">Toilets</div>
+        <div class="btn pri">Add R90</div>
+      </div>
+    </div>
+    <p class="say">He typed <b>R90 TOILETS</b>, as people do today. Nothing is refused and nothing is lost. The letter and the number stay in the name, and the words go where they belong.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">3 · The box, after one part is added <span class="tag">new</span></div>
+    <div class="frame">
+      <div class="hdr"><b>‹</b> <b>R89</b> · loose pile <span class="x">Edit</span></div>
+      <div class="pad">
+        <div class="rowb new"><div class="d"><b>Kohler toilets · 24</b><span class="auto">from its parts</span></div><div class="m">At Arena · counted today by Marcus</div></div>
+        <div class="line"><span>Kohler toilets</span><b>24</b></div>
+        <div class="btn">Add a part to R89</div>
+      </div>
+    </div>
+    <p class="say">Nobody typed the line. A box that holds one kind of part says that part and its count. On the real site that is most boxes.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">4 · A mixed box, a week later <span class="tag">new</span></div>
+    <div class="frame">
+      <div class="hdr"><b>‹</b> <b>R83</b> · cage <span class="x">Edit</span></div>
+      <div class="pad">
+        <div class="rowb new"><div class="d"><b>7 parts: 1-1/2 coupling, 2 inch 90 and 5 more</b><span class="auto">from its parts</span></div><div class="m">At Arena · counted 11 days ago</div><div class="btn quiet">Say it better</div></div>
+        <div class="rowb"><div class="d"><b>PVC fittings, mixed</b></div><div class="m">Said by Priya, Nov 20. The parts under it still count.</div></div>
+      </div>
+    </div>
+    <p class="say">A mixed box gets a fair first line by itself. <b>Say it better</b> takes Priya's own words, and from then on her words show. <b>Edit</b> holds the same line.</p>
+  </div>
+</div>
+
+<h2 id="try">Try the name field <small>this one works</small></h2>
+<p class="lede">Type what a person might type. The rule is one to three letters, then a number from 1 to 999. The next free name on this made-up site is R89.</p>
+<div class="try">
+  <input id="tryIn" type="text" autocomplete="off" autocapitalize="characters" aria-label="Type a name" placeholder="R90 TOILETS">
+  <div class="ex" role="group" aria-label="Examples">
+    <button type="button" data-ex="r90 toilets">r90 toilets</button>
+    <button type="button" data-ex="R24B">R24B</button>
+    <button type="button" data-ex="concrete mix">concrete mix</button>
+    <button type="button" data-ex="g007">g007</button>
+    <button type="button" data-ex="T8678">T8678</button>
+    <button type="button" data-ex="R12">R12</button>
+    <button type="button" data-ex="">nothing typed</button>
+  </div>
+  <div class="out">
+    <span>Its name</span><b id="tryName">R89</b>
+    <span>What is in it</span><div id="tryDesc" class="sub">You can say later</div>
+  </div>
+  <div id="trySay" class="ok">Nothing typed. The next free name is offered.</div>
+  <div class="btn pri" id="tryBtn">Add R89</div>
+</div>
+
+<h2 id="shows">Where the line shows <small>the same box, today and after</small></h2>
+<p class="lede">The line goes wherever the name alone does not tell a person which box it is.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Today · the phone's list</div>
+    <div class="frame"><div class="pad">
+      <div class="rowb"><div class="t"><b>R76 TOILETS</b><i>cage</i></div><div class="m">1 part · counted 11 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R12</b><i>cage</i></div><div class="m">1 part · counted 12 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R83</b><i>cage</i></div><div class="m">7 parts · counted 11 days ago</div></div>
+    </div></div>
+    <p class="say">R12 and R83 say nothing about what they hold until they are opened.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">Suggested · the phone's list <span class="tag">new</span></div>
+    <div class="frame"><div class="pad">
+      <div class="rowb"><div class="t"><b>R76</b><i>loose pile</i></div><div class="d">Kohler toilets · 24</div><div class="m">counted 11 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R12</b><i>cage</i></div><div class="d">2 inch 90 · 94</div><div class="m">counted 12 days ago</div></div>
+      <div class="rowb"><div class="t"><b>R83</b><i>cage</i></div><div class="d">PVC fittings, mixed</div><div class="m">7 parts · counted 11 days ago</div></div>
+    </div></div>
+    <p class="say">Every row reads. The search finds R76 by “toilet” as well as by its name.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Today · Print labels</div>
+    <div class="frame"><div class="pad">
+      <div class="chips"><span class="chip on">R12</span><span class="chip on">R76 TOILETS</span><span class="chip on">R83</span></div>
+    </div><div class="paperbg">
+      <div class="strip"><svg class="qr" data-seed="21"></svg><div><div class="big s">R76 TOILETS</div><div class="ad">PRTS.CO/B/49E6-CCC9</div><div class="w">Scan for what is inside</div></div></div>
+    </div></div>
+  </div>
+  <div class="col sug">
+    <div class="cap">Suggested · Print labels <span class="tag">new</span></div>
+    <div class="frame"><div class="pad">
+      <div class="chips"><span class="chip on">R12 · 2 inch 90</span><span class="chip on">R76 · Kohler toilets</span><span class="chip on">R83 · PVC fittings, mixed</span></div>
+    </div><div class="paperbg">
+      <div class="strip"><svg class="qr" data-seed="21"></svg><div><div class="big">R76</div><div class="ad">PRTS.CO/B/49E6-CCC9</div><div class="w d">Kohler toilets</div></div></div>
+      <div class="strip"><svg class="qr" data-seed="22"></svg><div><div class="big">R12</div><div class="ad">PRTS.CO/B/7D75-9246</div><div class="w">Scan for what is inside</div></div></div>
+    </div></div>
+    <p class="say">The name prints large on every label. A loose pile's label sits on the thing itself, so it also prints what the thing is. A cage's label does not, because a cage gets refilled. That is call 4.</p>
+  </div>
+</div>
+
+<h2 id="tidy">The old names <small>one window on the office page</small></h2>
+<p class="lede">The rule holds new names. Old names keep working until someone tidies them, and the tidy is one window. Nothing typed is thrown away: the words move to the line.</p>
+<div class="two">
+  <div class="col sug">
+    <div class="cap">Tidy the names <span class="tag">new</span></div>
+    <div class="frame" style="max-width:520px"><div class="pad">
+      <div class="lab">6 names on Juniper Ridge are not a letter and a number</div>
+      <div class="tidy"><span class="old">R70 NO CONTAINER</span><span>→</span><span class="to"><b>R70</b> <span>· loose pile</span></span></div>
+      <div class="tidy"><span class="old">R76 TOILETS</span><span>→</span><span class="to"><b>R76</b> <span>· Toilets</span></span></div>
+      <div class="tidy"><span class="old">R84 GAS VALVES</span><span>→</span><span class="to"><b>R84</b> <span>· Gas valves</span></span></div>
+      <div class="tidy"><span class="old">CONCRETE MIX</span><span>→</span><span class="to"><b>R89</b> <span>· Concrete mix</span></span></div>
+      <div class="tidy"><span class="old">R24B</span><span>→</span><span class="to"><b>R90</b> <span>· the next free name</span></span></div>
+      <div class="tidy"><span class="old">T8678</span><span>→</span><span class="to"><span class="none">held</span> <span>four digits. Pick a name, or retire it.</span></span></div>
+      <div class="btn pri">Tidy 5 names</div>
+      <p class="sub">1 is held and stays as it is. Labels already printed still open their boxes. Print the 5 again to show the new names.</p>
+    </div></div>
+  </div>
+  <div class="col">
+    <div class="cap">What the tidy does to each</div>
+    <div class="card"><h3>A letter, a number and words</h3><p>The letter and number stay as the name. The words become the line. <i>No container</i> and <i>pile</i> set the kind to Loose pile instead.</p></div>
+    <div class="card"><h3>Words alone</h3><p>The box takes the next free name on the site. The words become the line.</p></div>
+    <div class="card"><h3>A name with a letter after the number</h3><p>R24B takes the next free name. That is call 1. The other way keeps R24B as it is.</p></div>
+    <div class="card"><h3>Anything else</h3><p>Held, with its reason and the press that settles it. The rest still go.</p></div>
+  </div>
+</div>
+
+<h2 id="calls">Your calls <small>six, each with my pick</small></h2>
+<div class="cards">
+  <div class="card"><h3>1 · The shape of a name</h3><p class="rec"><b>My pick:</b> one to three letters, then 1 to 999. No letter after the number, no zeros in front. R7, not R007.</p><p class="alt">Also possible: allow one letter after the number, so R24B stays a name.</p><p>A second thing at the same spot is a second box, and the next free number says so without a rule to learn.</p></div>
+  <div class="card"><h3>2 · One of a kind across what</h3><p class="rec"><b>My pick:</b> the whole site. A name is offered and checked against every job of the development.</p><p class="alt">Also possible: one job, as today.</p><p>The real site holds the same name twice, on two jobs. A person at the cage reads one site.</p></div>
+  <div class="card"><h3>3 · Who writes the line</h3><p class="rec"><b>My pick:</b> the app writes it from the parts until a person says it better. It is never asked for.</p><p class="alt">Also possible: always typed, and empty until someone types it.</p><p>Most boxes hold one kind of part, so the app's line is right without a keystroke.</p></div>
+  <div class="card"><h3>4 · The line on a printed label</h3><p class="rec"><b>My pick:</b> on a loose pile's label only. A cage or a box prints its name and the code.</p><p class="alt">Also possible: on every label, or on none.</p><p>Printed words go stale when a cage is refilled. On a pallet of toilets they never do.</p></div>
+  <div class="card"><h3>5 · The old names</h3><p class="rec"><b>My pick:</b> the Tidy window, pressed by the office when it suits. Old names work until then.</p><p class="alt">Also possible: leave them, and hold only new names to the rule.</p></div>
+  <div class="card"><h3>6 · The site's letter</h3><p class="rec"><b>My pick:</b> the app offers the letter most boxes on the site already carry. The first box on a new site asks once.</p><p class="alt">Also possible: a letter for each place on the site, such as A for Arena.</p><p>One letter a site keeps the next number obvious. A second letter is still one tap away.</p></div>
+</div>
+
+<h2 id="train">The plan <small>four small PRs, each useful alone</small></h2>
+<div class="train">
+  <div><span class="sz">1 · M</span><b>The name</b>The rule, the next free name across the site, words moved out of the name. Add on both pages, with the kind on the office page. Edit's name field. A guard in the database.</div>
+  <div><span class="sz">2 · M</span><b>What is in it</b>One new column. The line from the parts, and a person's own words over it. The box's screen, both lists, the search, the scanned page, the Print labels chips.</div>
+  <div class="stop"><span class="sz">then</span><b>Stop and use it</b>Add ten boxes on a real site. See whether the app's line reads right.</div>
+  <div><span class="sz">3 · S</span><b>Tidy the old names</b>The window above. It acts on what is clean and holds the rest with a reason.</div>
+  <div><span class="sz">4 · S</span><b>The line on a label</b>Only if call 4 says to print it.</div>
+</div>
+<p class="note"><b>What I would not build:</b> a line that must be typed before a box can be added. A code for each single item on a pallet. A free-text name kept as a setting, since one site that opts out brings every problem back.</p>
+</div>
+<script>
+  // The squares are random dots with the three corner marks of a QR code. They open nothing.
+  function drawQr(svg) {
+    var n = 25, s = (Number(svg.dataset.seed) || 1) * 2654435761 % 4294967296, d = '';
+    function rnd() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }
+    function corner(x, y) {
+      var cx = x < 8 ? x : x - (n - 7), cy = y < 8 ? y : y - (n - 7);
+      if (cx < 0 || cx > 6 || cy < 0 || cy > 6) return false;
+      return cx === 0 || cx === 6 || cy === 0 || cy === 6 || (cx >= 2 && cx <= 4 && cy >= 2 && cy <= 4);
+    }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      var inCorner = (x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8);
+      var dark = inCorner ? corner(x, y) : rnd() < 0.48;
+      if (dark) d += 'M' + (x + 2) + ' ' + (y + 2) + 'h1v1h-1z';
+    }
+    svg.setAttribute('viewBox', '0 0 ' + (n + 4) + ' ' + (n + 4));
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="' + d + '"/>';
+  }
+  document.querySelectorAll('svg.qr').forEach(drawQr);
+
+  var buttons = document.querySelectorAll('.themes button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === t)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.dataset.set); }); });
+  var wanted = new URLSearchParams(location.search).get('theme');
+  if (wanted === 'dark' || wanted === 'light') setTheme(wanted);
+
+  // The name field that works. The made-up site holds R1 to R88, so R89 is the next free name.
+  var NEXT = 'R89';
+  function sentence(words) { var w = words.toLowerCase(); return w.charAt(0).toUpperCase() + w.slice(1); }
+  function readName(raw) {
+    var t = raw.trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!t) return { name: NEXT, desc: '', tone: 'ok', say: 'Nothing typed. The next free name is offered.', dead: false };
+    var m = /^([A-Z]{1,3}) ?(\d+)([A-Z](?= |$))? ?(.*)$/.exec(t);
+    if (!m) return { name: NEXT, desc: sentence(t), tone: 'ok', say: 'No letter and number in that. The next free name is ' + NEXT + ', and “' + sentence(t) + '” is the line.', dead: false };
+    var letters = m[1], num = parseInt(m[2], 10), rest = m[4] ? sentence(m[4]) : '';
+    if (num < 1 || num > 999) return { name: NEXT, desc: rest, tone: 'wait', say: 'A number runs from 1 to 999. The next free name is offered.', dead: false };
+    if (m[3]) return { name: NEXT, desc: rest, tone: 'wait', say: 'A name has no letter after its number. ' + letters + num + m[3] + ' takes the next free name, ' + NEXT + '.', dead: false };
+    var name = letters + num;
+    if (letters === 'R' && num <= 88) return { name: name, desc: rest, tone: 'wait', say: name + ' is already on Juniper Ridge. Pick another name, or take ' + NEXT + '.', dead: true };
+    var said = 'The name is ' + name + '.';
+    if (String(num) !== m[2]) said = 'Zeros in front are dropped. ' + said;
+    if (rest) said += ' “' + rest + '” moved to the line below.';
+    return { name: name, desc: rest, tone: 'ok', say: said, dead: false };
+  }
+  var tryIn = document.getElementById('tryIn');
+  function showName() {
+    var r = readName(tryIn.value);
+    document.getElementById('tryName').textContent = r.name;
+    var d = document.getElementById('tryDesc');
+    d.textContent = r.desc || 'You can say later';
+    d.className = r.desc ? '' : 'sub';
+    var s = document.getElementById('trySay');
+    s.textContent = r.say;
+    s.className = r.tone;
+    var b = document.getElementById('tryBtn');
+    b.textContent = 'Add ' + r.name;
+    b.style.opacity = r.dead ? '0.45' : '1';
+  }
+  tryIn.addEventListener('input', showName);
+  document.querySelectorAll('.try .ex button').forEach(function (b) {
+    b.addEventListener('click', function () { tryIn.value = b.dataset.ex; showName(); });
+  });
+  showName();
+</script>
+</body>
+</html>

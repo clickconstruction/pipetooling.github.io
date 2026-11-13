@@ -12,7 +12,7 @@ import { getPhotoBlob } from '../../lib/materials/photoBlobs'
 import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
 import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
-import { sendBoxPhoto } from '../../lib/materials/photoUpload'
+import { BoxPhotoNotKeptError, sendBoxPhoto } from '../../lib/materials/photoUpload'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 export function CameraGlyph({ size = 14 }: { size?: number }) {
@@ -61,8 +61,13 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
         addPhoto({ ...note, storagePath: sent.storagePath })
         onToast(`Photo of ${containerLabel} is on its way to the job's folder, ${bytesWords(shot.blob.size)}.`, 'success')
       } catch (err) {
-        addPhoto({ ...note, status: 'on-phone' })
-        onToast(`${formatErrorMessage(err)} The photo is kept on this phone: press Send now when there is one.`, 'info')
+        if (err instanceof BoxPhotoNotKeptError) {
+          // Nothing holds the shot: no note is made for a photo that is nowhere, and the words do not say it is kept.
+          onToast(`${formatErrorMessage(err)} This phone could not keep the photo either. Take it again when there is signal.`, 'error')
+        } else {
+          addPhoto({ ...note, status: 'on-phone' })
+          onToast(`${formatErrorMessage(err)} The photo is kept on this phone. Press Send now when there is signal.`, 'info')
+        }
       }
     } catch (err) {
       onToast(`The photo could not be taken: ${formatErrorMessage(err)}`, 'error')

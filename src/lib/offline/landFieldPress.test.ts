@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, landBidPhotos, landCounterTicket, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landBidPhotos, landCounterTicket, landJobPhotos, landOnSitePress, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket', 'bid-photos': 'bid_photos' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo', 'counter-ticket': 'counter_ticket', 'bid-photos': 'bid_photos', 'on-site-press': 'on_site_press' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -182,5 +182,25 @@ describe('landCounterTicket', () => {
     expect(lost.kind).toBe('failed')
     const refused = await landCounterTicket(press, { row: async () => undefined, land: async () => Promise.reject(new DatabaseError('Failed to save the ticket: Your account is in training mode.', '42501', undefined, { kind: 'server', status: 403, operationName: 'save the ticket', serverMessage: 'Your account is in training mode.' })) })
     expect(refused).toEqual({ kind: 'refused', refusal: { message: 'Your account is in training mode.', code: '42501' } })
+  })
+})
+
+describe('landOnSitePress', () => {
+  const write = { table: 'job_material_movements', op: 'insert' as const, id: 'm1', row: { id: 'm1', job_id: 'j1', part_name: 'ZZ test elbow', quantity: 4, reason: 'used', from_container_id: 'a1' } }
+  const press = newPress({ id: 'p', seq: 1, kind: 'on-site-press', userId: 'u', pressedAt: T, payload: { jobId: 'j1', what: '4 ZZ test elbow', writes: [write] } })
+
+  it('hands the press’s rows to the tables and answers with the job and the rows', async () => {
+    const seen: unknown[] = []
+    const out = await landOnSitePress(press, { land: async (w) => void seen.push(...w) })
+    expect(seen).toEqual([write])
+    expect(out).toEqual({ kind: 'landed', result: { job_id: 'j1', row_ids: ['m1'] } })
+    expect(rpcPayload(press)).toEqual({ job_id: 'j1', row_ids: ['m1'] })
+  })
+
+  it('a lost signal fails and waits, and the office’s no keeps its reason', async () => {
+    const failed = await landOnSitePress(press, { land: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(failed.kind).toBe('failed')
+    const refused = await landOnSitePress(press, { land: async () => Promise.reject(new DatabaseError('Failed to save the press: new row violates row-level security policy', '42501', undefined, { kind: 'server', status: 403, serverMessage: 'new row violates row-level security policy' })) })
+    expect(refused).toEqual({ kind: 'refused', refusal: { message: 'new row violates row-level security policy', code: '42501' } })
   })
 })

@@ -4,29 +4,40 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { TodoCard } from './callTodoState'
 
 /**
- * The read behind `callTodoState.ts` (punch list #334, PR 9): the to-do cards whose links carry one of the Bridge's
- * tagged addresses, with the people on each and the day each was finished. The owner and a dev read every card.
+ * The read behind `callTodoState.ts` (punch list #334, PR 9): the to-do cards made for one of the Bridge's things,
+ * with the people on each and the day each was finished. A card is found by its own tag (`source_tag`, PR 12), and
+ * by a link that carries one of the Bridge's tagged addresses, for a card made before the tag had a column. The owner and a dev read every card.
  * Reads only; a card is made and changed in the app's own task windows.
  */
 
-/** Addresses asked for in one request: the list rides in the query, so it is kept short. */
+/** Addresses or tags asked for in one request: the list rides in the query, so it is kept short. */
 const LINKS_PER_READ = 20
 
-type ItemRow = { id: string; title: string; links: string[] | null; created_at: string | null; due_date: string | null }
+type ItemRow = { id: string; title: string; links: string[] | null; created_at: string | null; due_date: string | null; source_tag?: string | null }
 type InstanceRow = { id: string; checklist_item_id: string; completed_at: string | null; completed_by_user_id: string | null }
 type AssigneeRow = { checklist_item_id: string; user_id: string; display_order: number }
 
 /**
- * `links` are the full tagged addresses, as the cards store them. `toYmd` turns a timestamp into the viewer's day.
- * `names` is who the page already knows by account; anyone missing is read once.
+ * `tags` are the things' own keys. `links` are the full tagged addresses, as the cards store them. `toYmd` turns a
+ * timestamp into a day. `names` is who the page already knows by account; anyone missing is read once.
  */
-export async function loadTodoCards(db: SupabaseClient<Database>, links: ReadonlyArray<string>, toYmd: (iso: string) => string, names: ReadonlyMap<string, string>): Promise<TodoCard[]> {
-  if (links.length === 0) return []
-  const chunks: string[][] = []
-  for (let i = 0; i < links.length; i += LINKS_PER_READ) chunks.push(links.slice(i, i + LINKS_PER_READ))
-  const found = await Promise.all(chunks.map((chunk) => withSupabaseRetry(async () => db.from('checklist_items').select('id, title, links, created_at, due_date').overlaps('links', chunk), 'bridge to-do cards') as Promise<ItemRow[] | null>))
+export async function loadTodoCards(db: SupabaseClient<Database>, tags: ReadonlyArray<string>, links: ReadonlyArray<string>, toYmd: (iso: string) => string, names: ReadonlyMap<string, string>): Promise<TodoCard[]> {
+  if (tags.length === 0 && links.length === 0) return []
+  const chunked = (list: ReadonlyArray<string>): string[][] => {
+    const out: string[][] = []
+    for (let i = 0; i < list.length; i += LINKS_PER_READ) out.push(list.slice(i, i + LINKS_PER_READ))
+    return out
+  }
+  // The column is younger than the generated types; the types PR after the push removes the unknown step.
+  const cards = db.from('checklist_items') as unknown as { select: (cols: string) => { in: (col: string, values: string[]) => PromiseLike<{ data: ItemRow[] | null; error: { message: string } | null }> } }
+  const [byTag, byLink] = await Promise.all([
+    // By the card's own tag. A read that fails here (the column not there yet) leaves the cards to their links.
+    Promise.all(chunked(tags).map(async (chunk) => (await cards.select('id, title, links, created_at, due_date, source_tag').in('source_tag', chunk)).data)).catch(() => [] as Array<ItemRow[] | null>),
+    Promise.all(chunked(links).map((chunk) => withSupabaseRetry(async () => db.from('checklist_items').select('id, title, links, created_at, due_date').overlaps('links', chunk), 'bridge to-do cards') as Promise<ItemRow[] | null>)),
+  ])
   const items = new Map<string, ItemRow>()
-  for (const rows of found) for (const r of rows ?? []) items.set(r.id, r)
+  // The read by tag wins: its row carries the tag.
+  for (const rows of [...byLink, ...byTag]) for (const r of rows ?? []) items.set(r.id, r)
   const ids = [...items.keys()]
   if (ids.length === 0) return []
   const [instances, assignees] = (await Promise.all([
@@ -47,6 +58,7 @@ export async function loadTodoCards(db: SupabaseClient<Database>, links: Readonl
     return {
       itemId: id,
       title: item.title,
+      tag: item.source_tag ?? null,
       links: item.links ?? [],
       madeYmd: item.created_at ? toYmd(item.created_at) : '',
       dueYmd: item.due_date,

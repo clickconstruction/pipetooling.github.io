@@ -26,7 +26,7 @@ mockup: not required — each row is a fix to a screen that exists, found on a w
 Punch list #331 closed on 2026-11-13 on the owner's word. Its last step was a walk of **New task**,
 **Edit task** and the roadmap's **Add task** in the iOS Simulator: an iPhone 17 Pro on iOS 26.4,
 Safari, the on-screen keyboard up. The walk and its fix are in
-[docs/recent-features/v2.7155.md](../docs/recent-features/v2.7155.md), with two pictures.
+[docs/recent-features/v2.7155.md](../docs/recent-features/v2.7155.md).
 
 The walk also saw the rows below. None was a reason to keep #331 open, and none has a home
 without this card. Every one was seen on the simulator, not on a phone in a hand.
@@ -58,8 +58,8 @@ without this card. Every one was seen on the simulator, not on a phone in a hand
 
 ### PR 3 · Words (XS)
 
-6. **The roadmap's sentence doubles a full stop.** A stage named *Concrete the upper bridge.*
-   reads "It joins the stage Concrete the upper bridge.. Nobody has it yet."
+6. **The roadmap's sentence doubles a full stop.** A stage named *North fence.*
+   reads "It joins the stage North fence.. Nobody has it yet."
    (`roadmapTaskSentence` in `src/lib/tasks/newTaskWindow.ts`). Drop the stage name's own last
    full stop before the sentence adds one.
 7. **Edit task tells a one-time task about days to come.** Every Edit task shows "Saving reshapes

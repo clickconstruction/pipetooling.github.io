@@ -16,7 +16,8 @@ import { TODO_TAG_PARAM, type CallTodo } from './callTodo'
  *
  * A customer's card covers its projects: a project under it reads *covered* and its press shows the customer's card.
  *
- * The page finds a card again by the tag its first link carries (`todoLinkPaths`). Pure: no React, no Supabase.
+ * The page finds a card again by its own tag (`source_tag`, since PR 12), and by the tag its first link carries
+ * (`todoLinkPaths`) for a card made before that. Pure: no React, no Supabase.
  */
 
 /** Days a card may wait before its check turns amber, when it has no due day of its own. */
@@ -28,6 +29,8 @@ export const TODO_DONE_SHOWN_DAYS = 14
 export type TodoCard = {
   itemId: string
   title: string
+  /** The card's own tag (`checklist_items.source_tag`, punch list #334, PR 12); null or absent on a card made before the column. */
+  tag?: string | null
   links: string[]
   madeYmd: string
   dueYmd: string | null
@@ -67,6 +70,21 @@ export function todoKeyOfLink(link: string): string | null {
   return key && key.trim() ? key.trim() : null
 }
 
+/**
+ * The things a card is about: its own tag first, which stays when a person takes the link off the card, then the
+ * tag any of its links carries, for a card made before the tag had a column.
+ */
+export function cardKeys(card: Pick<TodoCard, 'tag' | 'links'>): string[] {
+  const keys = new Set<string>()
+  const own = card.tag?.trim()
+  if (own) keys.add(own)
+  for (const link of card.links) {
+    const key = todoKeyOfLink(link)
+    if (key) keys.add(key)
+  }
+  return [...keys]
+}
+
 /** Where one card stands today. */
 function stateOf(card: TodoCard, todayYmd: string): TodoState {
   const open = card.instances.length === 0 || card.instances.some((i) => i.doneYmd == null)
@@ -88,9 +106,7 @@ export function todoStates(cards: ReadonlyArray<TodoCard>, todayYmd: string): Ma
   for (const card of cards) {
     const state = stateOf(card, todayYmd)
     if (state.kind === 'none') continue
-    for (const link of card.links) {
-      const key = todoKeyOfLink(link)
-      if (!key) continue
+    for (const key of cardKeys(card)) {
       const had = out.get(key)
       if (!had || rank(state) > rank(had) || (rank(state) === rank(had) && made(state) > made(had))) out.set(key, state)
     }
