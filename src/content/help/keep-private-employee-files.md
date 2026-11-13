@@ -49,6 +49,19 @@ Picked the wrong entry? Press ✕ beside the link on the new entry. Say why the 
 
 In the narrative's Jump to list, a count turns amber when an entry that cites the section was corrected since. Read the section again before you rely on it.
 
+## See when a section last changed
+
+A summary or a narrative is rewritten one section at a time. The date on the document says only that something moved.
+
+1. Open **Documents** on the person's file.
+2. Press *When each section last changed* under the summary or the narrative.
+
+Each section shows the day it took the words it has now. It also shows how many entries were written since that day.
+
+An amber count means one of those entries cites the section. Read that section again before you rely on it.
+
+Some sections read *not changed since before* a day. Those words are older than the earliest version the file kept.
+
 ## See what someone signed
 
 The strip at the top of the file counts their papers. {{chip:green|1 paper signed}} counts the papers they signed in the app. {{chip:yellow|3 papers owed}} counts the papers made for them and never sent.
