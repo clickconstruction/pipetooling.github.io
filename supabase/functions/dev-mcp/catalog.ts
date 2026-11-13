@@ -2012,6 +2012,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "quo-send",
   "quo-webhook",
   "receipt-link",
+  "receipt-request",
   "record-stripe-invoice-out-of-band-payment",
   "recurring-job-report-dispatch",
   "recurring-job-report-preview",

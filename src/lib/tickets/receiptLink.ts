@@ -35,17 +35,8 @@ export {
 
 export const RECEIPT_COMPANY = 'Click Plumbing'
 
-/**
- * The host a receipt link rides. Null until the short host's Worker (`portal-link-shell`, the Cloudflare dashboard)
- * answers `my.clickplumbing.com/r/<code>` with a 301 to the app's `/r/:code`, as it does for `/e/` and `/pay/`; until
- * then the link is the app's own address.
- */
-export const RECEIPT_SHORT_ORIGIN: string | null = null
-
-/** `https://clicktooling.com/r/<code>`, or the short host's once it forwards. */
-export function receiptLinkUrl(code: string, origin: string = RECEIPT_SHORT_ORIGIN ?? 'https://clicktooling.com'): string {
-  return `${origin.replace(/\/$/, '')}/r/${encodeURIComponent(code.trim().toLowerCase())}`
-}
+// Where a link points lives beside the text's words since PR 2, so the sweep on the edge builds the same address.
+export { RECEIPT_SHORT_ORIGIN, receiptLinkUrl } from '../../../supabase/functions/_shared/receiptText'
 
 /** *$228.58 at Ridgeway Supply*, or *$41.17 back from Cedar Bend Hardware* for money that came back. */
 export function receiptChargeWords(c: Pick<ReceiptPageCharge, 'amount' | 'store' | 'moneyBack'>): string {

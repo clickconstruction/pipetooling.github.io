@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
+keywords: team purchases, follow-up, texted, no text, receipt text, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
 where: /tally?tab=transactions
 order: 60
 ---
@@ -91,7 +91,23 @@ The photo lands on the charge. The line then wears a green chip, like {{chip:gre
 
 The link opens for 14 days. The page shows that charge and nothing else. A charge with a ticket on it has no **Copy the receipt link**.
 
-The app sends no text by itself. You send the link.
+## What a line says about the text
+
+The app can text the card's holder by itself when a charge posts. The owner turns those texts on in Settings. [Turn on receipt texts for card charges](/help/turn-on-receipt-texts-for-card-charges) shows how.
+
+A charge that was texted wears a blue chip, like {{chip:blue|Texted 6:14 PM}}. The line under the charge says *No receipt yet.* After the reminder, the line also says when the reminder went.
+
+A charge that could not be texted wears a yellow chip, {{chip:yellow|No text}}. The line under the charge gives the reason and what to do.
+
+- *The card is tied to no one.* Tie the card to its holder on Banking.
+- *Jordan has no cell on file.* Add the cell on People.
+- *Jordan has left.* Tie the card to the person who holds it now.
+- *Jordan replied STOP.* Ask for the receipt another way.
+- *The text did not go.* Press **Copy the receipt link** and send the link yourself.
+
+Fixing the reason does not text that charge again. The next charge on the card texts the holder.
+
+With receipt texts off, the app sends no text. You send the link.
 
 A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
 

@@ -121,6 +121,9 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
   // owner turns a step on. The same text, opt-out line and thread as the office's own.
   { kind: 'sender', ref: 'messages-nudge-dispatch', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('rating-text')] },
+  // Punch list #299, PR 2: the receipt text goes to a card's holder on the team, from the company number, off until the
+  // owner turns it on. No customer is texted by it.
+  { kind: 'sender', ref: 'receipt-request', audience: 'staff', exempt: 'Texts a card holder on the team a receipt link when a charge posts to their card (punch list #299); no customer sees it.' },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },

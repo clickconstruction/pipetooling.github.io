@@ -3,6 +3,7 @@ import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { tallyHistoryMadeAt, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import { ticketAskWords, ticketChipWords } from '../../lib/tickets/ticketOffice'
+import type { ReceiptLine } from '../../lib/tickets/receiptText'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
 import { tallyUndoLineFromWindowRow, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
 import type { TallyChoice, TallyLineSuggestion, TallySuggestion } from '../../lib/tally/tallySortSuggestion'
@@ -50,6 +51,8 @@ export type TallyTeamDayCardProps = {
   onCopyReceiptLink?: (row: StaleStaffRow) => void
   /** The charge whose receipt link is being made. */
   receiptLinkBusyId?: string | null
+  /** Receipt texts (#299 PR 2): what the text did for a charge with no ticket yet, by charge id. */
+  receiptLineByCharge?: ReadonlyMap<string, ReceiptLine>
 }
 
 const money = (n: number) =>
@@ -176,6 +179,7 @@ export function TallyTeamDayCard({
   onAddTicket,
   onCopyReceiptLink,
   receiptLinkBusyId,
+  receiptLineByCharge,
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
@@ -224,6 +228,7 @@ export function TallyTeamDayCard({
           const error = lineErrors.get(charge.id)
           const ticketOn = ticketByCharge?.get(charge.id) ?? null
           const asked = ticketOn ? null : (asksByCharge?.get(charge.id) ?? null)
+          const receiptLine = ticketOn ? null : (receiptLineByCharge?.get(charge.id) ?? null)
           const options: TallySuggestion[] = [...(line?.own ?? []), ...card.suggestion.chips]
           const seen = new Set<string>()
           const uniqueOptions = options.filter((o) => {
@@ -255,11 +260,36 @@ export function TallyTeamDayCard({
                       {ticketChipWords(ticketOn.jobLabel, ticketOn.ticket.source)}
                     </button>
                   ) : null}
+                  {receiptLine ? (
+                    <span
+                      data-testid="tally-team-receipt-chip"
+                      data-tone={receiptLine.tone}
+                      style={{
+                        marginLeft: 6,
+                        background: receiptLine.tone === 'held' ? 'var(--bg-amber-100)' : 'var(--bg-blue-200)',
+                        color: receiptLine.tone === 'held' ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
+                        borderRadius: 999,
+                        padding: '0.05rem 0.5rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {receiptLine.chip}
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                   {charge.amount > 0 ? `${money(charge.amount)} back` : money(charge.amount)}
                 </div>
               </div>
+
+              {receiptLine ? (
+                <div data-testid="tally-team-receipt-line" data-tone={receiptLine.tone} style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                  <span style={{ fontWeight: receiptLine.tone === 'held' ? 600 : 400 }}>{receiptLine.words}</span>
+                  {receiptLine.next ? <span style={{ color: 'var(--text-muted)' }}> {receiptLine.next}</span> : null}
+                </div>
+              ) : null}
 
               {asked ? (
                 <div data-testid="tally-team-ticket-ask" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
