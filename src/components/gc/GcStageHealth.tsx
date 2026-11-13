@@ -469,7 +469,7 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
                         {w.marks.length > 0 && (
                           <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 1, display: 'flex', gap: 2, justifyContent: 'center' }}>
                             {w.marks.slice(0, 3).map((k, i) => (
-                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: k === 'good' ? TILE.good : '#fff', border: k === 'bad' ? `1px solid ${SQUARE_DUE}` : 'none' }} />
+                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: k === 'good' ? TILE.good : 'var(--surface)', border: k === 'bad' ? `1px solid ${SQUARE_DUE}` : 'none' }} />
                             ))}
                           </span>
                         )}

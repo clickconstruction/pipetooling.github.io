@@ -274,7 +274,7 @@ function ColumnDropZone({ columnId, children }: ColumnDropZoneProps) {
       style={{
         minHeight: 120,
         flex: 1,
-        background: isOver ? '#eff6ff' : undefined,
+        background: isOver ? 'var(--bg-blue-tint)' : undefined,
         borderRadius: 4,
         padding: '0.25rem',
       }}

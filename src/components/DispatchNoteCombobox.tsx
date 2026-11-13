@@ -172,7 +172,7 @@ export function DispatchNoteCombobox({
                 padding: '0.4rem 0.6rem',
                 fontSize: '0.8125rem',
                 cursor: 'pointer',
-                background: idx === activeIndex ? '#eff6ff' : undefined,
+                background: idx === activeIndex ? 'var(--bg-blue-tint)' : undefined,
                 color: 'var(--text-gray-800)',
               }}
             >

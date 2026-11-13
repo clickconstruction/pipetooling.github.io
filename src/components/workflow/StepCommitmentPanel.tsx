@@ -339,7 +339,7 @@ export function StepCommitmentPanel({
                     borderLeftWidth: i === 0 ? 1 : 0,
                     borderRadius: i === 0 ? '999px 0 0 999px' : i === rail.length - 1 ? '0 999px 999px 0' : 0,
                     background: seg.state === 'done' ? 'var(--bg-green-tint)' : seg.state === 'now' ? 'var(--bg-orange-tint)' : 'var(--surface)',
-                    color: seg.state === 'done' ? '#059669' : seg.state === 'now' ? '#E87600' : 'var(--text-faint)',
+                    color: seg.state === 'done' ? 'var(--text-green-600)' : seg.state === 'now' ? '#E87600' : 'var(--text-faint)',
                     whiteSpace: 'nowrap',
                   }}
                 >
