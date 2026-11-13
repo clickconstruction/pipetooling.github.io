@@ -125,16 +125,29 @@ function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: num
   return null
 }
 
+/**
+ * One icon per look, kept (punch list #328): react-leaflet swaps a marker's element whenever its `icon`
+ * is a new object, and this canvas re-renders on a press (the wheel gate marks the map clicked on
+ * pointerdown). A fresh icon each render replaced the disc between the press and its release, so the
+ * first press on a numbered pin was lost. The same look now hands back the same icon, and the element stays.
+ */
+const labelledPinIcons = new Map<string, L.DivIcon>()
+
 /** v2.3756: a pin with a badge (the clocked-in map's head count) is a disc with the text on it; the selected one wears the link-blue ring. */
 function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean): L.DivIcon {
+  const key = [p.color, p.ringColor ?? '', p.label ?? '', selected ? 1 : 0, isMobile ? 1 : 0].join('|')
+  const kept = labelledPinIcons.get(key)
+  if (kept) return kept
   const r = selected ? 12 : isMobile ? 12 : 11
   const stroke = selected ? MAP_CANVAS_SELECTED_COLOR : (p.ringColor ?? 'var(--surface)')
-  return L.divIcon({
+  const icon = L.divIcon({
     className: 'pins-map-labelled',
     html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${p.color};opacity:${selected ? 0.95 : 0.88};border:${selected || p.ringColor ? 3 : 2}px solid ${stroke};box-sizing:border-box;display:grid;place-items:center;color:${pinLabelInk(p.color)};font:800 11px system-ui,sans-serif;line-height:1;">${p.label ?? ''}</div>`,
     iconSize: [r * 2, r * 2],
     iconAnchor: [r, r],
   })
+  labelledPinIcons.set(key, icon)
+  return icon
 }
 
 export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {

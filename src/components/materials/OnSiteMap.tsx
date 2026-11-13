@@ -89,7 +89,7 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
     )
   }
   return (
-    <div style={{ position: 'relative', height, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)' }}>
+    <div className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', height, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)' }}>
       <MapContainer center={[start.lat, start.lng]} zoom={first ? 19 : (startZoom ?? 18)} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still} touchZoom={!still} boxZoom={!still} keyboard={!still}>
         <TileLayer
           key={layer}
