@@ -37,7 +37,7 @@ describe('tags from a takeoff fixture name', () => {
 })
 
 describe('the product under a fixture (v2.4292: its pieces, trim off by name)', () => {
-  // BP375 SPACEX BA-02N as its takeoff carries them on 2026-10-01 — the three fixtures one line named wrong.
+  // BP375 SKYLAB BA-02N as its takeoff carries them on 2026-10-01 — the three fixtures one line named wrong.
   const bp = new Map([
     ['ladena', { name: '2215-0 LADENA WHITE', partTypeName: null }],
     ['faucet', { name: 'T25S51E#CP', partTypeName: null }],
@@ -224,7 +224,7 @@ describe('parts, not assemblies (2026-10-01): an assembly line opens into the pa
     ['tank', { name: 'AMTROL 2.0GAL ST-5 THERM-X-TROL EXPANSION TANK', manufacturer: 'AMTROL', partTypeName: 'Other' }],
     ['pump', { name: '60B0B1001', manufacturer: 'B&G', partTypeName: null }],
   ])
-  const templates = new Map([['t-lav1', 'LAV 1 assembly SPACEX'], ['t-dwh', 'DWH1 & ET assembly SPACEX'], ['t-trim', 'LAV trim kit'], ['t-loop', 'loop']])
+  const templates = new Map([['t-lav1', 'LAV 1 assembly SKYLAB'], ['t-dwh', 'DWH1 & ET assembly SKYLAB'], ['t-trim', 'LAV trim kit'], ['t-loop', 'loop']])
   const item = (id: string, partId: string | null, sequenceOrder: number, quantity = 1, nestedTemplateId: string | null = null) => ({ id, partId, nestedTemplateId, quantity, sequenceOrder })
   const assemblies = new Map([
     ['t-lav1', [item('i-tsl', 'tsl', 1), item('i-faucet', 'faucet', 2), item('i-supply', 'supply', 3, 2), item('i-grid', 'grid', 4), item('i-trap', 'trap', 5), item('i-stop', 'stop', 6), item('i-flange', 'flange', 7), item('i-soap', 'soap', 8)]],
@@ -246,7 +246,7 @@ describe('parts, not assemblies (2026-10-01): an assembly line opens into the pa
       ['MAINLINE ML90105 POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', true, 1],
       ['BOBRICK B-8236', false, 1],
     ])
-    expect(pieces.every((p) => p.assembly === 'LAV 1 assembly SPACEX' && p.lineId === 'l-lav1')).toBe(true)
+    expect(pieces.every((p) => p.assembly === 'LAV 1 assembly SKYLAB' && p.lineId === 'l-lav1')).toBe(true)
     expect(pieces[0]!.key).toBe('i-tsl')
     expect(productFromPieces(pieces, defaultProductKeys(pieces)).product).toBe('TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES + TOTO T25S51E#CP + BOBRICK B-8236')
   })
@@ -257,7 +257,7 @@ describe('parts, not assemblies (2026-10-01): an assembly line opens into the pa
       line({ id: 'l-pump', countRowId: 'dwh', sequenceOrder: 2, partId: 'pump', sourceMaterialPartPriceId: 'pr-m' }),
     ]
     const pieces = productPiecesOf('dwh', lines, bp, templates, moore, assemblies)
-    expect(pieces.map((p) => [p.key, p.houseName, p.assembly])).toEqual([['i-heater', null, 'DWH1 & ET assembly SPACEX'], ['i-tank', null, 'DWH1 & ET assembly SPACEX'], ['l-pump', 'Moore Supply', null]])
+    expect(pieces.map((p) => [p.key, p.houseName, p.assembly])).toEqual([['i-heater', null, 'DWH1 & ET assembly SKYLAB'], ['i-tank', null, 'DWH1 & ET assembly SKYLAB'], ['l-pump', 'Moore Supply', null]])
   })
 
   it('a nested assembly opens with its quantities multiplied through; a loop stops; an unread assembly stays one piece', () => {
@@ -265,7 +265,7 @@ describe('parts, not assemblies (2026-10-01): an assembly line opens into the pa
     const pieces = productPiecesOf('x', [line({ id: 'l-x', countRowId: 'x', sourceTemplateId: 't-outer', quantity: 2 })], bp, new Map([...templates, ['t-outer', 'outer']]), new Map(), nested)
     expect(pieces.map((p) => [p.key, p.quantity])).toEqual([['o-tsl', 2], ['n-supply', 12], ['n-stop', 6]])
     expect(productPiecesOf('y', [line({ countRowId: 'y', sourceTemplateId: 't-loop' })], bp, templates, new Map(), assemblies).map((p) => p.label)).toEqual(['loop'])
-    expect(productPiecesOf('z', [line({ id: 'l-z', countRowId: 'z', sourceTemplateId: 't-lav1' })], bp, templates).map((p) => [p.key, p.label])).toEqual([['l-z', 'LAV 1 assembly SPACEX']])
+    expect(productPiecesOf('z', [line({ id: 'l-z', countRowId: 'z', sourceTemplateId: 't-lav1' })], bp, templates).map((p) => [p.key, p.label])).toEqual([['l-z', 'LAV 1 assembly SKYLAB']])
   })
 
   it('a stored choice that named the whole assembly line stands for its parts the GC sees by default', () => {

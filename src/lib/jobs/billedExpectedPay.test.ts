@@ -16,7 +16,7 @@ import { buildMoneyWaitingFromPayload } from '../../../supabase/functions/_share
 const data: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
   customers: {
-    knight: { medianDays: 35, samples: 12 },
+    kestrin: { medianDays: 35, samples: 12 },
     thin: { medianDays: 2, samples: PAY_SPEED_MIN_SAMPLES - 1 },
   },
   segments: { residential: null, commercial: null },
@@ -51,7 +51,7 @@ describe('parsePaySpeedsRpc', () => {
       company: { medianDays: 11, samples: 5 },
       customers: {},
       receipts: {
-        knight: [
+        kestrin: [
           { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
           { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 30.6 },
           { billedYmd: 'bad', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
@@ -63,7 +63,7 @@ describe('parsePaySpeedsRpc', () => {
       },
     })
     expect(parsed?.receipts).toEqual({
-      knight: [
+      kestrin: [
         { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
         { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31, jobId: null, jobName: null, address: null },
       ],
@@ -158,7 +158,7 @@ describe('daysBetweenYmd / formatYmdMonthDay', () => {
 })
 
 describe('billedExpectedPayModel', () => {
-  const row = { billedAtIso: '2026-08-04T15:22:00Z', estBillYmd: null, customerId: 'knight' }
+  const row = { billedAtIso: '2026-08-04T15:22:00Z', estBillYmd: null, customerId: 'kestrin' }
 
   it('upcoming: bill date + customer median', () => {
     const m = billedExpectedPayModel(row, data, '2026-08-20')
@@ -171,7 +171,7 @@ describe('billedExpectedPayModel', () => {
   })
 
   it('an evening bill counts its expected date from its own day', () => {
-    const m = billedExpectedPayModel({ billedAtIso: '2026-10-03T00:30:00Z', estBillYmd: null, customerId: 'knight' }, data, '2026-10-03')!
+    const m = billedExpectedPayModel({ billedAtIso: '2026-10-03T00:30:00Z', estBillYmd: null, customerId: 'kestrin' }, data, '2026-10-03')!
     expect(m.expectedYmd).toBe('2026-11-06') // Oct 2 + 35
     expect(m.title).toContain('Billed Oct 2 +')
   })
@@ -204,7 +204,7 @@ describe('billedExpectedPayModel', () => {
 
   it('no data / no reference date → no chip', () => {
     expect(billedExpectedPayModel(row, null, '2026-08-20')).toBeNull()
-    expect(billedExpectedPayModel({ billedAtIso: null, estBillYmd: null, customerId: 'knight' }, data, '2026-08-20')).toBeNull()
+    expect(billedExpectedPayModel({ billedAtIso: null, estBillYmd: null, customerId: 'kestrin' }, data, '2026-08-20')).toBeNull()
   })
 
   it('a promise overrides the estimate — even with no pay-speed data or bill date', () => {
@@ -231,20 +231,20 @@ describe('billedExpectedPayModel reads the Collect desk’s pace order (v2.6034,
   const TODAY = '2026-10-25'
   const pile: PaySpeedData = {
     company: { medianDays: 7, samples: 286 },
-    customers: { 'c-rmc': { medianDays: 35, samples: 4 }, 'c-harper': { medianDays: 74, samples: 1 }, 'c-knight': { medianDays: 30, samples: 31 } },
+    customers: { 'c-rlc': { medianDays: 35, samples: 4 }, 'c-halden': { medianDays: 74, samples: 1 }, 'c-kestrin': { medianDays: 30, samples: 31 } },
     segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-    customerTypes: { 'c-structura': 'commercial', 'c-rmc': 'commercial', 'c-harper': 'commercial', 'c-knight': 'commercial', 'c-acme': 'commercial', 'c-tom': 'residential' },
+    customerTypes: { 'c-structura': 'commercial', 'c-rlc': 'commercial', 'c-halden': 'commercial', 'c-kestrin': 'commercial', 'c-acme': 'commercial', 'c-tom': 'residential' },
     receipts: {},
     quality: null,
   }
-  const facts = { gcPayerIds: new Set(['c-rmc', 'c-harper', 'c-knight', 'c-southern']), payAppJobIds: new Set(['j-spacex']) }
-  const ctx = paceContextFor({ facts, paySpeeds: pile, payerIds: ['c-structura', 'c-rmc', 'c-harper', 'c-knight', 'c-tom'] })
-  // SpaceX: Structura's pay application, marked billed by hand Sep 24; Structura is the job's customer, not a GC by record.
+  const facts = { gcPayerIds: new Set(['c-rlc', 'c-halden', 'c-kestrin', 'c-southern']), payAppJobIds: new Set(['j-skylab']) }
+  const ctx = paceContextFor({ facts, paySpeeds: pile, payerIds: ['c-structura', 'c-rlc', 'c-halden', 'c-kestrin', 'c-tom'] })
+  // SkyLab: Structura's pay application, marked billed by hand Sep 24; Structura is the job's customer, not a GC by record.
   const structura = { billedAtIso: '2026-09-24T15:00:00Z', estBillYmd: null, customerId: 'c-structura', payerName: 'Structura, Inc.' }
 
   it('Structura’s $103k pay application reads 35 days at the GC pace, due Oct 29, not 7 at the company’s', () => {
     expect(ctx).toMatchObject({ gcPace: { medianDays: 35, samples: 36 }, gcPacePayers: 3 })
-    const m = billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-spacex', sentFromHere: false }, pile))!
+    const m = billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-skylab', sentFromHere: false }, pile))!
     expect(m).toMatchObject({ source: 'gc', medianDays: 35, samples: 36, payers: 3, expectedYmd: '2026-10-29', state: 'upcoming', daysLate: 0 })
     expect(m.paceWords).toBe('the GC pace ~35d over 3 payers')
     expect(m.label).toBe('Expect pay ~Oct 29 · the GC pace ~35d over 3 payers')
@@ -252,7 +252,7 @@ describe('billedExpectedPayModel reads the Collect desk’s pace order (v2.6034,
   })
 
   it('a pay application alone makes the payer a GC, so does a commercial payer’s hand-marked bill, and a sent bill on a plain job does not', () => {
-    expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-spacex', sentFromHere: true }, pile))?.source).toBe('gc')
+    expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-skylab', sentFromHere: true }, pile))?.source).toBe('gc')
     expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-other', sentFromHere: false }, pile))?.source).toBe('gc')
     expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-other', sentFromHere: true }, pile))).toMatchObject({ source: 'segment', medianDays: 12, expectedYmd: '2026-10-06', state: 'late', daysLate: 19 })
   })
@@ -267,14 +267,14 @@ describe('billedExpectedPayModel reads the Collect desk’s pace order (v2.6034,
   })
 
   it('a payer with history keeps its own pace whatever the facts say', () => {
-    const harper = billedExpectedPayModel({ billedAtIso: '2026-09-16T15:00:00Z', estBillYmd: null, customerId: 'c-harper', payerName: 'TF Harper' }, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-harper', jobId: 'j-h', sentFromHere: false }, pile))!
-    expect(harper).toMatchObject({ source: 'customer', medianDays: 74, samples: 1, payers: 0, expectedYmd: '2026-11-29', paceWords: 'pays in ~74d' })
-    expect(harper.title).toBe("Billed Sep 16 + TF Harper's median pay speed (~74 days over 1 payment, last 12 months) → expected Nov 29")
+    const halden = billedExpectedPayModel({ billedAtIso: '2026-09-16T15:00:00Z', estBillYmd: null, customerId: 'c-halden', payerName: 'TF Halden' }, pile, TODAY, null, paceInputFor(ctx, { payerId: 'c-halden', jobId: 'j-h', sentFromHere: false }, pile))!
+    expect(halden).toMatchObject({ source: 'customer', medianDays: 74, samples: 1, payers: 0, expectedYmd: '2026-11-29', paceWords: 'pays in ~74d' })
+    expect(halden.title).toBe("Billed Sep 16 + TF Halden's median pay speed (~74 days over 1 payment, last 12 months) → expected Nov 29")
   })
 
   it('without the facts a GC with no history reads its segment, and the company only with no segment on record', () => {
     expect(billedExpectedPayModel(structura, pile, TODAY)).toMatchObject({ source: 'segment', medianDays: 12 })
-    expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(null, { payerId: 'c-structura', jobId: 'j-spacex' }, pile))).toMatchObject({ source: 'segment' })
+    expect(billedExpectedPayModel(structura, pile, TODAY, null, paceInputFor(null, { payerId: 'c-structura', jobId: 'j-skylab' }, pile))).toMatchObject({ source: 'segment' })
     const untyped = billedExpectedPayModel({ billedAtIso: '2026-10-23T15:00:00Z', estBillYmd: null, customerId: 'c-nobody' }, pile, TODAY)!
     expect(untyped).toMatchObject({ source: 'company', medianDays: 7, samples: 286, paceWords: 'company avg' })
     expect(untyped.label).toBe('Expect pay ~Oct 30 · company avg')
@@ -282,12 +282,12 @@ describe('billedExpectedPayModel reads the Collect desk’s pace order (v2.6034,
   })
 
   it('the rule is an input: with gcPaceForNewGc off a first-job GC reads its segment', () => {
-    const off = paceInputFor(paceContextFor({ facts, paySpeeds: pile, payerIds: ['c-rmc', 'c-harper', 'c-knight'], rules: { gcPaceForNewGc: false } }), { payerId: 'c-structura', jobId: 'j-spacex' }, pile)
+    const off = paceInputFor(paceContextFor({ facts, paySpeeds: pile, payerIds: ['c-rlc', 'c-halden', 'c-kestrin'], rules: { gcPaceForNewGc: false } }), { payerId: 'c-structura', jobId: 'j-skylab' }, pile)
     expect(billedExpectedPayModel(structura, pile, TODAY, null, off)).toMatchObject({ source: 'segment', medianDays: 12 })
   })
 
   it('a promise still wins, and carries the new fields empty', () => {
-    const m = billedExpectedPayModel(structura, pile, TODAY, { promisedYmd: '2026-10-30', markedByName: 'Taunya' }, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-spacex' }, pile))!
+    const m = billedExpectedPayModel(structura, pile, TODAY, { promisedYmd: '2026-10-30', markedByName: 'Taunya' }, paceInputFor(ctx, { payerId: 'c-structura', jobId: 'j-skylab' }, pile))!
     expect(m).toMatchObject({ source: 'promised', samples: 0, payers: 0, paceWords: 'promised', expectedYmd: '2026-10-30' })
   })
 })
@@ -316,8 +316,8 @@ describe('Money waiting email (moneyWaitingCore)', () => {
     const mw = buildMoneyWaitingFromPayload({
       generated_at: '2026-10-12T14:00:00Z',
       today: '2026-10-12',
-      rows: [{ invoice_id: 'i1', job_id: 'j1', display_number: '1041', job_name: 'Rough-in', job_address: null, customer_id: 'knight', customer_name: 'Knight', billed_at: '2026-10-03T00:30:00+00:00', est_bill_ymd: null, remaining: 500 }],
-      pay_speeds: { company: { medianDays: 5, samples: 40 }, customers: { knight: { medianDays: 5, samples: 9 } }, segments: { residential: null, commercial: null }, customerTypes: {} },
+      rows: [{ invoice_id: 'i1', job_id: 'j1', display_number: '1041', job_name: 'Rough-in', job_address: null, customer_id: 'kestrin', customer_name: 'Kestrin', billed_at: '2026-10-03T00:30:00+00:00', est_bill_ymd: null, remaining: 500 }],
+      pay_speeds: { company: { medianDays: 5, samples: 40 }, customers: { kestrin: { medianDays: 5, samples: 9 } }, segments: { residential: null, commercial: null }, customerTypes: {} },
     })!
     const bill = mw.rows[0]!.bills[0]!
     expect(bill.billedYmd).toBe('2026-10-02')

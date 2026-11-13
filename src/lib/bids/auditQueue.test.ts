@@ -25,7 +25,7 @@ describe('jobNameFromShell — the row is named for the job, not the robot’s c
   it('drops the ZZ prefix and the backtest / shadow suffix', () => {
     expect(jobNameFromShell('ZZ Twin MPH CASA LINDA (backtest R2)')).toBe('MPH CASA LINDA')
     expect(jobNameFromShell('ZZ Twin BONILLA LAW FIRM (backtest)')).toBe('BONILLA LAW FIRM')
-    expect(jobNameFromShell('ZZ Shadow Galloway Park')).toBe('Galloway Park')
+    expect(jobNameFromShell('ZZ Shadow Gallenby Park')).toBe('Gallenby Park')
     expect(jobNameFromShell('Plain name')).toBe('Plain name')
     expect(jobNameFromShell(null)).toBe('Unknown project')
   })
@@ -103,7 +103,7 @@ describe('parking a slate (the owner’s call of 2026-10-09)', () => {
   const aug31 = (id: string, over: Partial<AuditQueueItem> = {}) => item({ id, shellName: `ZZ Twin ${id} (backtest)`, requestedAt: '2026-08-31T15:00:00Z', ...over })
   const items = [
     item({ id: 'casa', openQuestions: 10 }),
-    item({ id: 'galloway', shellName: 'ZZ Shadow Galloway Park', openQuestions: 9 }),
+    item({ id: 'gallenby', shellName: 'ZZ Shadow Gallenby Park', openQuestions: 9 }),
     aug31('schertz', { openQuestions: 2 }),
     item({ id: 'tye' }),
     aug31('garcia'),
@@ -126,12 +126,12 @@ describe('parking a slate (the owner’s call of 2026-10-09)', () => {
 
   it('Skip this slate: the whole slate leaves Up next and the count, questions and all, and waits in Parked in stake order', () => {
     const q = buildAuditQueue(items, 'casa', new Set(['slate Aug 31']))
-    expect(q.upNext.map((i) => i.id)).toEqual(['galloway', 'tye'])
+    expect(q.upNext.map((i) => i.id)).toEqual(['gallenby', 'tye'])
     expect(q.upNextSlates).toEqual([{ key: 're-bid Sep 5', count: 1 }])
     expect(q.parked.map((s) => [s.key, s.items.map((i) => i.id)])).toEqual([['slate Aug 31', ['schertz', 'garcia', 'livarg']]])
     expect([q.nowPosition, q.workableCount]).toEqual([1, 3])
     expect(q.sealed.map((i) => i.id)).toEqual(['sealed-1'])
-    expect(finishLabel(q)).toBe('Finish audit → next: Galloway Park')
+    expect(finishLabel(q)).toBe('Finish audit → next: Gallenby Park')
   })
 
   it('a parked row opened from the fold is Now, with no position, and leaves its group', () => {
@@ -139,13 +139,13 @@ describe('parking a slate (the owner’s call of 2026-10-09)', () => {
     expect(q.now?.id).toBe('garcia')
     expect(q.nowPosition).toBeNull()
     expect(q.parked[0]!.items.map((i) => i.id)).toEqual(['schertz', 'livarg'])
-    expect(q.upNext.map((i) => i.id)).toEqual(['casa', 'galloway', 'tye'])
+    expect(q.upNext.map((i) => i.id)).toEqual(['casa', 'gallenby', 'tye'])
   })
 
   it('Bring it back: the rows return to Up next in their old places', () => {
     const before = buildAuditQueue(items, 'casa').upNext.map((i) => i.id)
     const back = buildAuditQueue(items, 'casa', new Set()).upNext.map((i) => i.id)
     expect(back).toEqual(before)
-    expect(back).toEqual(['galloway', 'schertz', 'tye', 'garcia', 'livarg'])
+    expect(back).toEqual(['gallenby', 'schertz', 'tye', 'garcia', 'livarg'])
   })
 })

@@ -11,16 +11,16 @@ describe('composeCombineNoteBody', () => {
     // Pinned against what the RPC's format()/to_char produces — the two
     // composers are a contract; change them together.
     expect(
-      composeCombineNoteBody({ jobName: 'Johnny Ingram', number: '877', status: 'ready_to_bill', pctComplete: 100 }),
-    ).toBe('Combined "Johnny Ingram" (Job #877) into this job — source was Ready to bill at 100%')
+      composeCombineNoteBody({ jobName: 'Johnny Inglow', number: '877', status: 'ready_to_bill', pctComplete: 100 }),
+    ).toBe('Combined "Johnny Inglow" (Job #877) into this job — source was Ready to bill at 100%')
   })
 
   it('omits the pct when unknown, and the whole suffix when status is unknown', () => {
-    expect(composeCombineNoteBody({ jobName: 'Wayne Lai', number: 'C-1042', status: 'working', pctComplete: null })).toBe(
-      'Combined "Wayne Lai" (Job #C-1042) into this job — source was Working',
+    expect(composeCombineNoteBody({ jobName: 'Wayne Lorn', number: 'C-1042', status: 'working', pctComplete: null })).toBe(
+      'Combined "Wayne Lorn" (Job #C-1042) into this job — source was Working',
     )
-    expect(composeCombineNoteBody({ jobName: 'Wayne Lai', number: '901', status: null, pctComplete: 40 })).toBe(
-      'Combined "Wayne Lai" (Job #901) into this job',
+    expect(composeCombineNoteBody({ jobName: 'Wayne Lorn', number: '901', status: null, pctComplete: 40 })).toBe(
+      'Combined "Wayne Lorn" (Job #901) into this job',
     )
   })
 
@@ -39,17 +39,17 @@ describe('composeCombineNoteBody', () => {
 
 describe('parseCombineNoteBody', () => {
   it('round-trips the composed body', () => {
-    const body = composeCombineNoteBody({ jobName: 'Johnny Ingram', number: '877', status: 'ready_to_bill', pctComplete: 100 })
+    const body = composeCombineNoteBody({ jobName: 'Johnny Inglow', number: '877', status: 'ready_to_bill', pctComplete: 100 })
     expect(parseCombineNoteBody(body)).toEqual({
-      sourceJobName: 'Johnny Ingram',
+      sourceJobName: 'Johnny Inglow',
       sourceNumber: '877',
       sourceWas: 'Ready to bill at 100%',
     })
   })
 
   it('parses a body without the status suffix', () => {
-    expect(parseCombineNoteBody('Combined "Wayne Lai" (Job #901) into this job')).toEqual({
-      sourceJobName: 'Wayne Lai',
+    expect(parseCombineNoteBody('Combined "Wayne Lorn" (Job #901) into this job')).toEqual({
+      sourceJobName: 'Wayne Lorn',
       sourceNumber: '901',
       sourceWas: null,
     })

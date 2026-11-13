@@ -17,7 +17,7 @@ import {
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../physicalInvoiceDocumentForBilledInvoice'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-const bill = (over: Partial<ArCaseFeeBill>): ArCaseFeeBill => ({ invoice_id: 'b1', job_id: 'j878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Take 5- Seguin', ...over })
+const bill = (over: Partial<ArCaseFeeBill>): ArCaseFeeBill => ({ invoice_id: 'b1', job_id: 'j878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Tune 5- Seguin', ...over })
 const feeRow = (over: Partial<ArCaseFeeRow>): ArCaseFeeRow => ({ case_id: 'tx-sp', fee_amount: null, fee_invoice_id: null, fee_added_at: null, fee_added_by: null, bills: [bill({})], ...over })
 const BANK = { source: 'bank' as const }
 
@@ -85,7 +85,7 @@ describe('the bill’s own fee lines (jobs_ledger_invoices.fee_lines)', () => {
 
   it('the reprinted bill shows the fee as its own row, inside the bill’s amount, not spread over the work', () => {
     const inv = { id: 'b1', job_id: 'j878', amount: 13710, status: 'billed', sequence_order: 0, billed_at: '2026-09-02T15:00:00Z', sent_to_customer_at: '2026-09-02T15:00:00Z', estimated_bill_date: null, stripe_invoice_memo: 'Rough-in and top-out', external_send_note: '', stripe_invoice_footer: null, fee_lines: [{ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount: 30 }] }
-    const job = { id: 'j878', job_name: 'Take 5- Seguin', customer_name: 'Southern Post', hcp_number: '878', click_number: '', job_address: '1 Main St', revenue: 38655, payments_made: 0, last_work_date: '2026-08-20', fixtures: [], materials: [], payments: [], invoices: [inv], team_members: [] } as unknown as JobWithDetails
+    const job = { id: 'j878', job_name: 'Tune 5- Seguin', customer_name: 'Southern Pine', hcp_number: '878', click_number: '', job_address: '1 Main St', revenue: 38655, payments_made: 0, last_work_date: '2026-08-20', fixtures: [], materials: [], payments: [], invoices: [inv], team_members: [] } as unknown as JobWithDetails
     const doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv as never)!
     expect(doc.serviceLines[doc.serviceLines.length - 1]).toEqual({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', qty: 1, unitPrice: 30, amount: 30 })
     expect(doc.serviceLines.slice(0, -1).reduce((t, l) => t + l.amount, 0)).toBeCloseTo(13680, 2)

@@ -211,7 +211,7 @@ export function payPageWords(line: BidMoneyLine): string | null {
   const bill = line.bills.find((b) => b.open && b.payUrl)
   if (!bill) return null
   const fills = paperFills(bill)
-  // A job with no number yet reads "your bill for SPACEX", not a blank the person must fill before it sends.
+  // A job with no number yet reads "your bill for SKYLAB", not a blank the person must fill before it sends.
   const words = fills.number ? PAPER_LINES.openBill : PAPER_LINES.openBill.replace(' {number}', '')
   return fillLine(words, { bill: fills.bill, amount: fills.amount, number: fills.number, job: fills.job || line.job.name || null }).text
 }

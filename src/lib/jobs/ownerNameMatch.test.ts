@@ -3,19 +3,19 @@ import { foldOwnerName, ownerNameLetterMatch } from '../../../supabase/functions
 
 describe('the owner’s name, letter for letter', () => {
   it('folds case, spaces, punctuation and accents', () => {
-    expect(foldOwnerName('Umar  Khan')).toBe('umarkhan')
-    expect(foldOwnerName('umar-khan')).toBe('umarkhan')
+    expect(foldOwnerName('Ulric  Karrow')).toBe('ulrickarrow')
+    expect(foldOwnerName('ulric-karrow')).toBe('ulrickarrow')
     expect(foldOwnerName('José Peña, Jr.')).toBe('josepenajr')
     expect(foldOwnerName('   ')).toBe('')
   })
   it('matches the roll’s name or a second allowed name, and nothing shorter', () => {
-    const allowed = ['Umar Khan', 'Bangash Shazmeena']
-    expect(ownerNameLetterMatch('UMAR KHAN', allowed)).toBe(true)
-    expect(ownerNameLetterMatch('umar-khan', allowed)).toBe(true)
-    expect(ownerNameLetterMatch('Bangash Shazmeena', allowed)).toBe(true)
-    expect(ownerNameLetterMatch('U. Khan', allowed)).toBe(false)
-    expect(ownerNameLetterMatch('Umar Khan Jr', allowed)).toBe(false)
+    const allowed = ['Ulric Karrow', 'Barrowby Shelmina']
+    expect(ownerNameLetterMatch('ULRIC KARROW', allowed)).toBe(true)
+    expect(ownerNameLetterMatch('ulric-karrow', allowed)).toBe(true)
+    expect(ownerNameLetterMatch('Barrowby Shelmina', allowed)).toBe(true)
+    expect(ownerNameLetterMatch('U. Karrow', allowed)).toBe(false)
+    expect(ownerNameLetterMatch('Ulric Karrow Jr', allowed)).toBe(false)
     expect(ownerNameLetterMatch('', allowed)).toBe(false)
-    expect(ownerNameLetterMatch('Umar Khan', [''])).toBe(false)
+    expect(ownerNameLetterMatch('Ulric Karrow', [''])).toBe(false)
   })
 })

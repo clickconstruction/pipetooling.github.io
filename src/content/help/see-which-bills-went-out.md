@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, record it as sent, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -17,6 +17,16 @@ You do nothing to fill it. A line appears when someone sends a bill from the app
 On a phone you can add the page to your home screen. The list opens to the newest day.
 
 You can also reach it from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
+
+## Put a button on your Dashboard
+
+1. Turn on Pin Mode. See [turn on Pin Mode to pin pages](/help/pin-mode).
+2. Open [Bills sent](/bills-sent).
+3. Press {{button:outline|Pin}} in the footer at the bottom of the page.
+
+A **Bills sent** button now sits in the pinned row on your Dashboard. One tap opens the list.
+
+The owner and developers can pin the page for someone else. Press the small button beside **Pin** in the same footer. Pick the person, then press **Pin for**.
 
 ## Read a line
 
@@ -91,6 +101,18 @@ Type in the box at the top. You can type a job, a customer, an address or a bill
 
 Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}} and {{chip:gray|Housecall Pro}}. Press {{chip:gray|All}} to see every send again.
 
+## Print the list or save it as a spreadsheet
+
+Narrow the list first if you want only part of it. Use the search box or a chip.
+
+Press {{button:outline|Print}} to print what the list shows. The page keeps the days, the totals and each line's words.
+
+Press {{button:outline|Download CSV}} to save what the list shows as a spreadsheet file. Each send is one row.
+
+The file has a column that says whether a row is in its day's total. Add only those rows to get the same totals as the screen.
+
+The bills with no send on record come along in both. Those bills are last in the file and first on the printed page.
+
 ## Bills with no send on record
 
 A yellow box sits above the days when a bill was made and never sent from the app. The box reads like *3 bills are billed with no send on record*.
@@ -102,6 +124,22 @@ The app cannot see a bill handed over on site. The app cannot see a bill sent fr
 Press **Show all** to see every open bill in the box. Press **Show them** to see the bills that were paid with no send.
 
 Press {{chip:yellow|No send on record}} to see the box alone. The yellow tile at the top counts the open bills in the box.
+
+## Say how a bill went
+
+Do this when you know how a bill in the yellow box went out.
+
+1. Press **Say how it went…** on the bill's row.
+2. Pick how the bill went. The choices are handed over, mailed, emailed from a person's own mailbox, and sent from Housecall Pro.
+3. Type who the bill went to. Add an address if you have one.
+4. Pick the day the bill went.
+5. Press {{button:blue|Record how it went}}.
+
+The bill leaves the yellow box. The bill now has a line on the day you picked.
+
+The line says *Recorded by hand*, with your name and the day you recorded it. The line has no copy, because the app sent nothing.
+
+A record made by hand cannot be changed once saved. Check the day and the name before you press.
 
 ## Sends that kept no copy
 
@@ -115,6 +153,6 @@ Some lines have no **Copy as sent**. Each one says what the app does not have.
 
 A bill handed over on site leaves no record. A bill emailed from a person's own mailbox leaves none either.
 
-Those bills show in the yellow box until the bill is paid.
+Those bills show in the yellow box until someone says how the bill went.
 
 To find other papers we sent, see [find a copy of what we sent someone](/help/find-a-copy-of-what-we-sent).

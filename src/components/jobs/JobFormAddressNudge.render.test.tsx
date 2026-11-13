@@ -15,8 +15,8 @@ describe('JobFormAddressNudge', () => {
   })
 
   it('well-formed address: street + quiet city with a check, no chip', () => {
-    render(<JobFormAddressNudge address="1200 Kenney Fort Blvd, Round Rock, TX 78665" onApply={() => {}} />)
-    expect(screen.getByText('1200 Kenney Fort Blvd')).toBeTruthy()
+    render(<JobFormAddressNudge address="1200 Kelby Fort Blvd, Round Rock, TX 78665" onApply={() => {}} />)
+    expect(screen.getByText('1200 Kelby Fort Blvd')).toBeTruthy()
     expect(screen.getByText('Round Rock, TX 78665')).toBeTruthy()
     expect(screen.getByText('✓')).toBeTruthy()
     expect(screen.queryByText('Add comma')).toBeNull()
@@ -24,11 +24,11 @@ describe('JobFormAddressNudge', () => {
 
   it('missing comma: warns, offers the fix, applies it on tap', () => {
     const onApply = vi.fn()
-    render(<JobFormAddressNudge address="1200 Kenney Fort Blvd Round Rock, TX 78665" onApply={onApply} />)
+    render(<JobFormAddressNudge address="1200 Kelby Fort Blvd Round Rock, TX 78665" onApply={onApply} />)
     expect(screen.getByText('city is stuck in the street')).toBeTruthy()
-    expect(screen.getByText('1200 Kenney Fort Blvd, Round Rock, TX 78665')).toBeTruthy()
+    expect(screen.getByText('1200 Kelby Fort Blvd, Round Rock, TX 78665')).toBeTruthy()
     fireEvent.click(screen.getByText('Add comma'))
-    expect(onApply).toHaveBeenCalledWith('1200 Kenney Fort Blvd, Round Rock, TX 78665')
+    expect(onApply).toHaveBeenCalledWith('1200 Kelby Fort Blvd, Round Rock, TX 78665')
   })
 
   it('ignore dismisses the chip but keeps the preview', () => {

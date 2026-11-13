@@ -5,7 +5,7 @@ import type { CostEstimateLaborRow } from './bidPricingEngineTypes'
 const row = (id: string, fixture: string, count: number, hrs: [number, number, number], is_fixed = false, extra: Partial<CostEstimateLaborRow> = {}): CostEstimateLaborRow =>
   ({ id, cost_estimate_id: 'ce', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed, kind: is_fixed ? 'task' : 'fixture', unit: 'each', source: null, source_note: null, sequence_order: 0, created_at: null, ...extra }) as CostEstimateLaborRow
 
-// B375 SPACEX, a slice: 10 toilets, 6 lavs, 719.46 ft of ½" water at 4 h per 100 ft (entered as 0.04/ft), one fixed sawcut.
+// B375 SKYLAB, a slice: 10 toilets, 6 lavs, 719.46 ft of ½" water at 4 h per 100 ft (entered as 0.04/ft), one fixed sawcut.
 const rows = [
   row('wc', 'WC 1&2', 10, [1, 1, 1]),
   row('lav', 'LAV2', 6, [0.5, 0.5, 0.5]),

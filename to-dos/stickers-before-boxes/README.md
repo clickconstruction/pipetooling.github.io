@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, is built (v2.7072, #7849) and waits for its merge, the push and the box-read deploy · PRs 2 to 6 not built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, LIVE 2026-11-13 (v2.7072, #7849; migration 20261113020000 pushed, box-read deployed, types #7874) · PRs 2 to 6 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,9 +14,10 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 1's merge with the push right after it and the box-read deploy, then PR 2 (print a run) in its own session, PR 3 and a stop to walk the site.
-size: L as a train of six (M · M · M · S · M · S); PRs 1 to 3 are the whole loop, then a stop to use it on the site
-blocker: none. The seven calls are answered; PR 1's migration is pushed right after its merge, with the person who pushes at hand.
+next: PR 2 (print a run) in its own session once Grace says to build again, then PR 3 and a stop to walk the site.
+size: L as a train of six (M · M · M · S · M · S); left: PRs 2 to 6 (M · M · S · M · S), PRs 2 and 3 close the loop
+blocker: Grace's go for PR 2. Her rule of 2026-11-13 holds new screens back while sessions run on Opus 5.5; they only finish what is open.
+ver: v2.7072
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
 ---
 
@@ -394,3 +395,13 @@ Left by PR 1, each for a later PR to weigh:
 - A number typed into **Scan a label** finds a sticker only for someone on its run's job or its box's
   job. A leftover on another site is found by its scan. A wider read by number is a call for Grace.
 - A lost sticker takes no further act. Whether one can be found again is PR 4's question.
+
+2026-11-13: **PR 1 is live.** #7849 merged at 04:40 UTC. The migration `20261113020000_box_stickers`
+is on prod's ledger, and the types regeneration #7874 merged at 06:25 UTC. The edge function drift
+check, run from main's tip, read all 187 functions current on prod, `box-read` with them. PR 1's
+session walked a label's box page signed out on clicktooling.com, and signed in on a local copy
+against prod. The dev seat reads no run and no sticker on prod yet, since no screen prints a run
+before PR 2.
+
+**PR 2 waits on Grace's go.** Her rule of 2026-11-13: while sessions run on Opus 5.5 they build no
+new screens. They only get what is open onto main, and write what should change on a card.

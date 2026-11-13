@@ -65,7 +65,7 @@ export function ArBilledLineOption({ parts, amountMatch }: { parts: ArBilledLine
   )
 }
 
-/** The closed trigger after a pick: `$250.00 · 1015 · Montolongo Post Test` with the Stripe tag. */
+/** The closed trigger after a pick: `$250.00 · 1015 · Montelby Post Test` with the Stripe tag. */
 export function ArBilledLineTrigger({ parts }: { parts: ArBilledLineRowParts }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' }}>

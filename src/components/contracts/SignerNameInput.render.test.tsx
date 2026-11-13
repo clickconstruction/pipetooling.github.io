@@ -33,13 +33,13 @@ describe('SignerNameInput', () => {
     const box = screen.getByLabelText('Full name') as HTMLInputElement
     // AutoFill: the value lands, no event fires.
     act(() => {
-      box.value = 'Kimberly Coe'
+      box.value = 'Kimberly Corl'
     })
     fireEvent.click(screen.getByLabelText('I agree'))
-    expect(box.value).toBe('Kimberly Coe')
+    expect(box.value).toBe('Kimberly Corl')
     expect(screen.getByTestId('state').textContent).toBe('')
     fireEvent.click(screen.getByText('Submit'))
-    expect(submitted).toEqual(['Kimberly Coe'])
+    expect(submitted).toEqual(['Kimberly Corl'])
   })
 
   it('blur syncs a silently filled value into state', () => {

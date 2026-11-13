@@ -725,13 +725,13 @@ describe('JobsStagesTab render smoke', () => {
 describe('JobsStagesTab — the round cards read through useGcStatementRound (v2.5075)', () => {
   const WEEK = gcReviewWeekStartYmd()
   const SIX_WEEKS_BACK = trailingWeekStarts(WEEK, 6)[0]!
-  const KNIGHT = { id: 'gc-knight', name: 'Knight Contracting' }
-  const knightJob = () => {
-    const j = makeJob({ job_name: 'Palomino Trail', status: 'billed', revenue: 26000, gcCustomer: KNIGHT, gc_customer_id: KNIGHT.id, bill_to_party: 'gc' })
-    return { ...j, invoices: [{ id: 'inv-knight', job_id: j.id, amount: 26000, status: 'billed', sequence_order: 0, billed_at: '2026-07-01T00:00:00Z', estimated_bill_date: null }] } as typeof j
+  const KESTRIN = { id: 'gc-kestrin', name: 'Kestrin Contracting' }
+  const kestrinJob = () => {
+    const j = makeJob({ job_name: 'Palomino Trail', status: 'billed', revenue: 26000, gcCustomer: KESTRIN, gc_customer_id: KESTRIN.id, bill_to_party: 'gc' })
+    return { ...j, invoices: [{ id: 'inv-kestrin', job_id: j.id, amount: 26000, status: 'billed', sequence_order: 0, billed_at: '2026-07-01T00:00:00Z', estimated_bill_date: null }] } as typeof j
   }
-  const checkedThisWeek = { week_start: WEEK, gc_customer_id: KNIGHT.id, certified_by_name: 'Taunya', certified_at: `${WEEK}T15:00:00Z`, job_count: 1, total: 26000, snapshot: null, note: '' }
-  const mark = (week: string, over: Record<string, unknown>) => ({ gc_customer_id: KNIGHT.id, week_start: week, acted_by: 'u-taunya', acted_by_name: 'Taunya', acted_at: `${week}T16:00:00Z`, channel: 'call', note: null, temperature: null, expected_pay_by: null, ...over })
+  const checkedThisWeek = { week_start: WEEK, gc_customer_id: KESTRIN.id, certified_by_name: 'Taunya', certified_at: `${WEEK}T15:00:00Z`, job_count: 1, total: 26000, snapshot: null, note: '' }
+  const mark = (week: string, over: Record<string, unknown>) => ({ gc_customer_id: KESTRIN.id, week_start: week, acted_by: 'u-taunya', acted_by_name: 'Taunya', acted_at: `${week}T16:00:00Z`, channel: 'call', note: null, temperature: null, expected_pay_by: null, ...over })
   /** A word weeks ago with a pay date already past: only the six weeks of marks carry it. */
   const brokenPromise = mark(SIX_WEEKS_BACK, { action: 'contacted', note: 'Said the 25th', temperature: 'warm', expected_pay_by: '2026-09-25' })
   const READS = [listGcReviewCertifications, listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders]
@@ -770,7 +770,7 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
   })
 
   it('an office role reads the week, six weeks of marks and the GCs’ senders, and the card counts from them', async () => {
-    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()] })} />)
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [kestrinJob()] })} />)
     const card = await screen.findByTestId('pipeline-round-ready-card')
     expect(card.textContent).toContain('Statements to send')
     expect(card.textContent).toContain('$26,000')
@@ -780,18 +780,18 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
     expect(vi.mocked(listGcReviewCertifications)).toHaveBeenCalledWith(WEEK)
     expect(vi.mocked(listGcStatementRoundMarks)).toHaveBeenCalledWith(WEEK)
     expect(vi.mocked(listGcStatementRoundMarksSince)).toHaveBeenCalledWith(SIX_WEEKS_BACK)
-    expect(vi.mocked(listGcStatementSenders)).toHaveBeenCalledWith([KNIGHT.id])
+    expect(vi.mocked(listGcStatementSenders)).toHaveBeenCalledWith([KESTRIN.id])
   })
 
   it('a role outside the office reads none of it and gets no card', async () => {
-    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()], authRole: 'superintendent', myRole: 'superintendent' })} />)
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [kestrinJob()], authRole: 'superintendent', myRole: 'superintendent' })} />)
     await settle()
     expect(reads()).toEqual([0, 0, 0, 0])
     expect(screen.queryByTestId('pipeline-round-ready-card')).toBeNull()
   })
 
   it('closing GC Review reads the round again, so a GC sent inside it leaves the card', async () => {
-    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()] })} />)
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [kestrinJob()] })} />)
     const card = await screen.findByTestId('pipeline-round-ready-card')
     await settle()
     const before = reads()
@@ -808,17 +808,17 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
   })
 
   // The Email… dialog's transport is lib/sendGcStatementEmail (v2.5099, the map's step 7); the board keeps the toast and the last-sent read.
-  const sendKnightStatement = async (showToast: ReturnType<typeof vi.fn>) => {
-    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()], showToast })} />)
+  const sendKestrinStatement = async (showToast: ReturnType<typeof vi.fn>) => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [kestrinJob()], showToast })} />)
     fireEvent.click(within(await screen.findByTestId('pipeline-round-ready-card')).getByRole('button', { name: 'Open the list →' }))
     const review = within(await screen.findByRole('dialog', { name: /^GC Review/ }))
     await settle()
-    const knightRow = review.getAllByTestId('gc-worklist-row').find((el) => within(el).queryByText(KNIGHT.name))!
-    fireEvent.click(within(knightRow).getByRole('button', { name: 'Send' }))
-    const dialog = within(await screen.findByRole('dialog', { name: `Email statement to ${KNIGHT.name}` }))
+    const kestrinRow = review.getAllByTestId('gc-worklist-row').find((el) => within(el).queryByText(KESTRIN.name))!
+    fireEvent.click(within(kestrinRow).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: `Email statement to ${KESTRIN.name}` }))
     fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
-    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
-    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@kestrin.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@kestrin\.example/ }))
     const lastSentReads = () => vi.mocked(supabase.from).mock.calls.filter(([t]) => (t as string) === 'gc_statement_emails').length
     const before = lastSentReads()
     fireEvent.click(dialog.getByRole('button', { name: 'Send statement' }))
@@ -840,16 +840,16 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
   it('Send statement goes to send-gc-statement-email; the board toasts and reads the last-sent dates again', async () => {
     const invoke = spyOnSend({ data: { success: true, reply_to: null }, error: null })
     const showToast = vi.fn()
-    const { lastSentReadsSinceSend } = await sendKnightStatement(showToast)
-    expect(invoke).toHaveBeenCalledWith('send-gc-statement-email', { body: expect.objectContaining({ gc_customer_id: KNIGHT.id, gc_name: KNIGHT.name, to_email: 'ap@knight.example', total: 26000, job_count: 1 }) })
-    expect(showToast).toHaveBeenCalledWith('Statement emailed to ap@knight.example.', 'success')
+    const { lastSentReadsSinceSend } = await sendKestrinStatement(showToast)
+    expect(invoke).toHaveBeenCalledWith('send-gc-statement-email', { body: expect.objectContaining({ gc_customer_id: KESTRIN.id, gc_name: KESTRIN.name, to_email: 'ap@kestrin.example', total: 26000, job_count: 1 }) })
+    expect(showToast).toHaveBeenCalledWith('Statement emailed to ap@kestrin.example.', 'success')
     expect(lastSentReadsSinceSend()).toBe(1)
   })
 
   it('a send the function refuses shows its words in the dialog, with no toast and no re-read', async () => {
     spyOnSend({ data: { error: 'No email on file for this GC' }, error: null })
     const showToast = vi.fn()
-    const { dialog, lastSentReadsSinceSend } = await sendKnightStatement(showToast)
+    const { dialog, lastSentReadsSinceSend } = await sendKestrinStatement(showToast)
     expect(await dialog.findByText('No email on file for this GC')).toBeTruthy()
     expect(showToast).not.toHaveBeenCalledWith(expect.stringMatching(/^Statement emailed/), 'success')
     expect(lastSentReadsSinceSend()).toBe(0)

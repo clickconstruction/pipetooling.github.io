@@ -14,7 +14,7 @@ describe('WindowTextCell', () => {
   it('shows the dates as a link, the office caption with Change, and a read-only not-shown chip (the eye lives on Edit Job → Stages)', () => {
     const onOpenDates = vi.fn()
     const onChange = vi.fn()
-    render(<WindowTextCell window={win} windowBy="office" gc={{ state: 'offer', gcName: 'Summit General' }} onOpenDates={onOpenDates} onChange={onChange} />)
+    render(<WindowTextCell window={win} windowBy="office" gc={{ state: 'offer', gcName: 'Selwick General' }} onOpenDates={onOpenDates} onChange={onChange} />)
     const dates = screen.getByRole('button', { name: 'Window Sep 22 – Oct 2' })
     expect(dates.textContent).toBe('Sep 22 – Oct 2')
     expect(dates.style.textDecoration).toContain('underline')
@@ -30,7 +30,7 @@ describe('WindowTextCell', () => {
   it('strikes our dates through on an open GC ask and puts their dates, Accept, Answer… and the reason beneath', () => {
     const onAccept = vi.fn()
     const onAnswer = vi.fn()
-    render(<WindowTextCell window={win} windowBy="office" ask={{ span: { start: '2026-09-29', end: '2026-10-10' }, note: 'framing slipped' }} gc={{ state: 'asked', gcName: 'Summit General' }} onAccept={onAccept} onAnswer={onAnswer} />)
+    render(<WindowTextCell window={win} windowBy="office" ask={{ span: { start: '2026-09-29', end: '2026-10-10' }, note: 'framing slipped' }} gc={{ state: 'asked', gcName: 'Selwick General' }} onAccept={onAccept} onAnswer={onAnswer} />)
     const dates = screen.getByRole('button', { name: 'Window Sep 22 – Oct 2, the GC asked for other dates' })
     expect(dates.style.textDecoration).toContain('line-through')
     expect(screen.getByText('Sep 29 – Oct 10 ·')).toBeTruthy()

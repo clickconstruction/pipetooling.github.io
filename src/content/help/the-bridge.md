@@ -5,29 +5,42 @@ roles: dev, master_technician
 keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the three numbers at the top. They are what the field made last week, cash's low point, and the slowest step.
+1. Read the numbers at the top. They are what the field made last week, the slowest step, and your two balances.
 2. Read the card under them. It names the slowest step and the moves for this week.
 3. Press {{button:blue|Make Build this week's call}} to record it. The button names the step the page reads today.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
+The line beside the page's name says today's date and the pay week. That line also says the window the page reads: the last 8 weeks, since the day it names.
+
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## The first screen
 
-The page opens on three numbers.
+The page opens on four numbers.
 
 - **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
-- **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
 - **Slowest step** is the stage the page reads as the weakest link.
+- **Cash balance** is cash on hand today. The number is green while the next eight weeks stay over your floor. The number is amber when cash goes under the floor on a later day, and the line names that day. The number is red when cash is under the floor today.
+- **Accrual balance** is cash, plus what customers owe you, less what you owe. What you owe is the supply bills, the payroll owed and the sub labor owed. Bills in collections are left out. Press the accrual balance to open **Money owed** behind Money.
 
-Under the three numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the three numbers. In a week cash comes first, a phone shows it under the card.
+A line under each balance says its runway in days. Runway is how long that balance lasts with nothing coming in. Runway counts payroll and overhead only. One line under both balances says what payroll and overhead come to a day.
+
+:::example Reading the balances
+
+Cash balance $21.0k, 14 days of runway. Accrual balance $60.7k, 40 days of runway. Runway counts payroll and overhead, $1.5k a day.
+
+:::
+
+On a phone, the first two numbers share a row and the balances sit under them.
+
+Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
 
 Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
-An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
+An amber line under the cash balance names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
-When cash goes under your floor, cash comes first. The cash tile takes the top row and the card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
+When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
 
 Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
 
@@ -133,21 +146,64 @@ A bid counts as won or lost only when it is marked. A job made from a bid does n
 
 ## Build, broken down
 
-Press **Break it down** on the Build card. A window opens on the last 14 days of every open job. The headline says how many hours went in and how much work came out. Work out is each job's change in percent times its contract. One bold line names the week: the jobs that ate hours and moved nothing, and the jobs that saw nobody. Under it sit the card's two paces. Three tiles follow. Moved is the jobs where the hours and the percent agree. Ate hours is the jobs with hours and no movement. Stalled is the sold money on jobs with no field hours in 14 days. Then every open job gets a row, worst first. The row shows the hours, the percent from and to, the money moved and a chip that names its group. Press a row to read why. A stalled row says how long nobody has been on it and what the Schedule shows. A row with no price says its hours earned $0 on paper. A moving row says how many hours it expects. A finished row says the work is Bill's now. Each row ends in its doors. **Open the job** opens the job window. **Open the Schedule** opens the Schedule. **Price the job** opens the job window too. **Bill it** opens Billing. **Set the %** opens the percent window the crews use. Saving files a status report, and the desk recomputes. More than three moving jobs fold under one line. Press the line to show them. The foot of the window says how it reads. The week's call stays on the link desk above. Esc closes the window.
+Press Build's row on the pipe, or **Break it down** on the Build card. A window opens on the last 14 days of every open job. The headline says how many hours the field put in, and how much work shows as done. Work done is how far a job's percent rose, times its price. One line under the headline says where most of the gap is.
+
+Three short lists follow, each named by what to do. Each row is one job with one press.
+
+- **Hours went in, the percent did not move** lists jobs with hours and the same percent. Press **Set the percent** on a row. The row opens to why the job is listed, its crew and its doors. Press **Open the percent window ›** to set the percent as the crews do. Saving files a status report, and the window reads again.
+- **Hours on a job with no price** lists hours that earn nothing until the job has a price. Press **Set a price** to open the job.
+- **Sold, and nobody on it** lists the jobs nobody clocked on in 14 days. Press **Schedule it** to open the row. **Open the Schedule ›** and **Open the job ›** sit under the row.
+
+A list shows its first rows. Press **Show all** under a list for the rest.
+
+Three presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Every open job** holds the whole list, worst first, under three tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
+
+The week's call stays on the link desk above. Esc closes the window.
 
 ## Bill, broken down
 
-Press **Break it down** on the Bill card. A window opens on one question. When the work finishes, does the bill go out that day? The headline is the money the reads can prove will not bill itself. One bold line under it says how much the office already called done waits on a send. The next line carries the card's two paces and its weeks. The pipe strip reads the window in five cells. Finished by the field, finished with no bill yet, billed, billed and not yet paid, and paid. This desk owns the first gap. The second gap is Collect's. Bills marked billed by hand with no send on file sit under their own line, apart from the leaks. The meter also says how many days of the cash in the bank the pile is.
+Press Bill's row on the pipe, or **Break it down** on the Bill card. A window opens on the finished work that has no bill. The headline says how many dollars that is. One line under the headline says what the office bills a week. The same line says how many weeks of work the pile is.
 
-The leaks are rows no page finds alone. Each row crosses two reads. A job reads 100% and its bills cover nothing. A job billed part of its finished share and the rest has no bill. A job has field hours and no contract price. A bill was marked billed by hand with no send on file. Each row says the amount, how long it has sat, and which job. Press a row to open the read that proves it and its door. **Bill it** and **Bill the rest** open Billing. **Price the job** opens the job window. **Open the bill** opens Billing. A row the office clears disappears on its own.
+**Do this week** lists up to four things, each with one press.
 
-**Billable today** lists the jobs the office marked ready to bill. Each row says how many days the job has sat since that day. The row also says what the bills or payments already cover, and the remainder. The whole remainder counts on a ready job. **Bill it** opens Billing.
+- The first row counts the jobs the office marked ready to bill. Press **Open Billing**.
+- The next rows name the two largest jobs with finished work and no bill. **Bill it** opens Billing for a job never billed. **Open the bill** opens Billing for a job billed in part.
+- The last row counts the jobs with hours and no price. Press **Set prices** to list those jobs under the row. Each job has **Price the job ›**, which opens the job window.
 
-**The rule, lately** folds under one line. Press it. Eight cells show how many bills went out the day their job finished, per pay week. The table under them lists every bill of the window, newest first. Each row shows the ready day, the billed day, the lag, who sent it, and the cash-days. Cash-days is the lag times the bill. A bill with no ready day on record shows a dash. The meter under it says what one more week of sitting costs. The footnote names every read the figures rest on. The desk records nothing. The week's call stays with the lit link desk above. Press {{button:outline|×}} or the Escape key to close it.
+**Did the customer get these?** counts the bills marked billed by hand with no send on record. Press the row's button to list those bills under the row. Press a bill for the read that proves it and its door.
+
+One line under the lists says how many bills went out the day their job finished.
+
+Four presses at the foot open the rest.
+
+- **Every leak** lists each leak, the biggest first. Press a row for the read that proves it and its door.
+- **The pipe, this window** reads the window in five cells, from finished by the field to paid.
+- **What waiting costs** says what one more week of sitting costs. **Billable today** lists the ready jobs there. **The rule, lately** opens the table of every bill and its lag.
+- **How this is counted** gives the rules.
+
+**Open Billing ›** sits at the bottom. Nothing records here. The week's call stays with the lit link desk above. Press {{button:outline|×}} or the Escape key to close the window.
 
 ## Collect, broken down
 
-Press the Collect card. Under Today's reading, press **Break it down**. A window opens on the pile. It reads each bill by where it stands against its payer's own pace. Not yet due, promised, past a promise, late with no date, or doubtful. Collections sits apart. Three tiles say how much waits on a call, who holds it, and where the pile goes left alone. Each payer that holds the pile gets a row. The row says what is open, the oldest bill, how fast they pay, and why the window thinks so. It says where the account stands: the promise, the bills marked billed by hand, the last call, the lien paper. Everyone else is one line. Each row ends with the one move that lands the money soonest, and the words to say. Beside it sits the lien paper and a field for the owner and the day. A red strip names what only you can decide. The third tile is a guess, stated as one: what half of the ask lands in three weeks. The tile starts from the card's weeks, on what is already late. **After the call** on a row opens four answers. Money is in the bank, they named a date, no date, or they dispute it. Each becomes the record the app already keeps. A mailed check is a promise dated by the mail. Then the sheet keeps its word. A call that named no date waits three days off the sheet. A promise waits for its day. A dispute leaves the sheet for the red strip. A second miss on an account puts the owner on the next call. **Record this as the week's plan** writes the moves into the week's call. Once a plan is recorded, a green card sits above the rows. It says what landed, how many calls ended with a date, and whether the notices went out. It says what Monday carries. **Copy the call sheet** puts the rows on the clipboard. **Show the facts** opens what slows Collect before any call. Esc closes the window.
+Press Collect's row on the pipe, or **Break it down** on the Collect card. A window opens on the money billed and not yet paid. The headline says how much is late, and how many customers hold most of it. A bar under the headline splits the pile three ways: not yet due, late and doubtful.
+
+**Call this week** lists the customers who hold the pile, the ones on the call sheet first. Each row names the customer, what is open, and the one move that lands the money soonest. Under the row sit the words to say, the lien paper, and a field for the owner and the day. The list shows two rows. Press **Show all** for the rest.
+
+- Press **Where it stands** on a row to open it. The row shows the bills, the oldest one, how fast they pay, and the promise.
+- Press **Record the answer** after a call. Four answers follow. Money is in the bank, they named a date, no date, or they dispute it. Each becomes the record the app already keeps. A mailed check is a promise dated by the mail.
+- A row with no call to make has **Send the statement** or **Open the customer**.
+
+Then the sheet keeps its word. A call that named no date waits three days off the sheet. A promise waits for its day. A dispute leaves the sheet for **Only you can decide**. A second miss on an account puts the owner on the next call.
+
+**Only you can decide** names what waits on the owner. Each row has one press to its door.
+
+Three presses under the lists open the rest.
+
+- **What if half of it lands** is a guess, stated as one. The guess starts from the card's weeks, on what is already late.
+- **What is in the pile** holds two tiles and the bar by where each bill stands. Everyone else is one line there, above what slows Collect before any call.
+- **How this is counted** gives the rules for a customer's pace, and for late and doubtful.
+
+One line at the foot says what the sheet asks for, and what Friday asks of it. **Record this as the week's plan** writes the moves into the week's call. Once a plan is recorded, a green card sits above that line. The card says what landed, how many calls ended with a date, and whether the notices went out. The card also says what Monday carries. **Copy the call sheet** puts the rows on the clipboard. **Open Billing** opens Billing. Esc closes the window.
 
 ## The dial
 

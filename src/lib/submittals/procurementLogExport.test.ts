@@ -30,7 +30,7 @@ describe('the procurement log as a spreadsheet (v2.4113)', () => {
     const lines = tsv.split('\n')
     expect(lines).toHaveLength(4)
     expect(lines[2]).toBe('BFP-1\tWatts 909 RPZ, 2"\t\tFerguson\tRough-in\tApproved 09/17\t2026-09-17\t2026-09-28\t118\t2 wk\t2026-10-20\thouse\t2026-10-06\t−14 d\t\tFerguson: 10/20 earliest\tyes')
-    expect(procurementLogFileName('B375 · SPACEX BA-02N Architectural', '2026-09-29')).toBe('procurement-log_B375-SPACEX-BA-02N-Architectural_2026-09-29.csv')
+    expect(procurementLogFileName('B375 · SKYLAB BA-02N Architectural', '2026-09-29')).toBe('procurement-log_B375-SKYLAB-BA-02N-Architectural_2026-09-29.csv')
   })
 
   it('2026-10-01 · a part’s line carries how many to order, and a part bought as order only says it is not the GC’s', () => {

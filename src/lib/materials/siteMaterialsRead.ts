@@ -2,7 +2,7 @@
  * The material location report's read (punch list #268): the ledger's three tables over a site's
  * job ids, read when the window opens and never with the Development page. Every read is chunked
  * over the ids and paged (`fetchAllRowsChunkedIn`, four chunks at a time): PostgREST cuts an
- * un-ranged answer at 1,000 rows without a word, and Gun Dog's 24 jobs are never 24 round trips.
+ * un-ranged answer at 1,000 rows without a word, and Gray Fox's 24 jobs are never 24 round trips.
  * The rows come back in the store's shapes, so the kernel and the screens read one thing. The
  * gate is the tables' own, `on_site_can_touch_job`: a job the reader may not touch returns no row.
  */

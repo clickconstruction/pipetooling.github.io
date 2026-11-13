@@ -25,10 +25,10 @@ let handoffRequest: { id: string; createdAt: string | null; senderName: string |
 vi.mock('../../lib/bids/jobDraftIo', () => ({
   supabaseJobDraftIo: {
     load: async () => ({
-      bid: { id: 'bid-6', bid_number: '166', project_name: 'Take 5 Oil Change Seguin', address: '380 TX-123, Seguin, TX 78155', service_type_id: 'st-plumb', agreed_value: null },
-      options: [{ key: '', customerId: null, name: 'Southern Post', sentOn: '2026-04-20', value: 38625, outcome: null, sharedLetter: false }],
+      bid: { id: 'bid-6', bid_number: '166', project_name: 'Tune 5 Oil Change Seguin', address: '410 TX-123, Seguin, TX 78155', service_type_id: 'st-plumb', agreed_value: null },
+      options: [{ key: '', customerId: null, name: 'Southern Pine', sentOn: '2026-04-20', value: 38625, outcome: null, sharedLetter: false }],
       serviceTypes: [{ id: 'st-plumb', name: 'Plumbing' }],
-      draft: { v: 1, jobName: 'Take 5 Oil Change Seguin', address: '380 TX-123, Seguin, TX 78155', gcKey: '', gcName: 'Southern Post', carry: 38625, serviceTypeId: 'st-plumb', wantedBy: null, note: null },
+      draft: { v: 1, jobName: 'Tune 5 Oil Change Seguin', address: '410 TX-123, Seguin, TX 78155', gcKey: '', gcName: 'Southern Pine', carry: 38625, serviceTypeId: 'st-plumb', wantedBy: null, note: null },
     }),
   },
 }))
@@ -128,7 +128,7 @@ describe('BidWonJobActions', () => {
     expect(askDispatchToOpenJob).toHaveBeenCalledTimes(1)
     const [, , bidId, opts] = askDispatchToOpenJob.mock.calls[0]!
     expect(bidId).toBe('bid-6')
-    expect((opts as { draft: unknown }).draft).toMatchObject({ jobName: 'Take 5 Oil Change Seguin', gcName: 'Southern Post', carry: 38625, serviceTypeId: 'st-plumb', wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' })
+    expect((opts as { draft: unknown }).draft).toMatchObject({ jobName: 'Tune 5 Oil Change Seguin', gcName: 'Southern Pine', carry: 38625, serviceTypeId: 'st-plumb', wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' })
   })
   it('v2.5659: while Dispatch has it the estimator reads "Sent to Dispatch … · waiting"; once a job exists, its chip', async () => {
     role = 'estimator'

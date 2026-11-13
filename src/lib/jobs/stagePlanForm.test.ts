@@ -98,8 +98,8 @@ describe('discount rows (v2.3252+)', () => {
 })
 
 describe('Still to bill counts money billed by amount (v2.4303)', () => {
-  // Job 1059, Seaver Pretest: one ◆ line, $250, billed as a plain $250 bill that names no line.
-  const seaver = stagePlanFromForm({
+  // Job 1059, Sevrin Pretest: one ◆ line, $250, billed as a plain $250 bill that names no line.
+  const sevrin = stagePlanFromForm({
     fixtures: [row({ id: 'pre', name: 'Pretest', stage_kind: 'any', line_unit_price: 250 })],
     windows: [],
     orders: [],
@@ -115,17 +115,17 @@ describe('Still to bill counts money billed by amount (v2.4303)', () => {
   })
 
   it('a line the bills already cover to the cent leaves the list', () => {
-    expect(upcomingDrawRows(seaver).map((r) => r.fixtureId)).toEqual(['pre'])
-    expect(upcomingDrawRows(seaver, covered({ pre: 250 }, { pre: 250 }))).toEqual([])
+    expect(upcomingDrawRows(sevrin).map((r) => r.fixtureId)).toEqual(['pre'])
+    expect(upcomingDrawRows(sevrin, covered({ pre: 250 }, { pre: 250 }))).toEqual([])
   })
 
   it('a line covered in part stays, for what is left, and says how much is billed', () => {
-    const rows = upcomingDrawRows(seaver, covered({ pre: 100 }, { pre: 250 }))
+    const rows = upcomingDrawRows(sevrin, covered({ pre: 100 }, { pre: 250 }))
     expect(rows.map((r) => [r.fixtureId, r.amount, r.coveredDollars, r.leftDollars])).toEqual([['pre', 250, 100, 150]])
   })
 
   it('with no coverage every row is left in full', () => {
-    expect(upcomingDrawRows(seaver).map((r) => [r.coveredDollars, r.leftDollars])).toEqual([[0, 250]])
+    expect(upcomingDrawRows(sevrin).map((r) => [r.coveredDollars, r.leftDollars])).toEqual([[0, 250]])
   })
 
   it('a passed stage no longer waits on a stage above it that the bills cover', () => {

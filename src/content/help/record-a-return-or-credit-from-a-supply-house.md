@@ -20,7 +20,7 @@ You open **Materials → Supply houses**, open the house and press {{button:blue
 6. Under **Credits invoice…**, pick the invoice this credit takes money off. The list shows this house's invoices, newest first. Leave it on *Not paired yet* if you do not know which one it is.
 
 :::example The form, filled in
-**Reece · Credit # S124460299.001 · 09/04/2026 · − $888.10**, purchase order *Return*, job **J878 Take 5 Seguin**, status *Open — still on the account*.
+**Reece · Credit # S124460299.001 · 09/04/2026 · − $888.10**, purchase order *Return*, job **J878 Tune 5 Seguin**, status *Open — still on the account*.
 :::
 
 ## The credit and its invoice

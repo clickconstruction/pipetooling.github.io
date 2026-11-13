@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPipelineStageBar, estimateChipsPx, fitStageChips, segmentLabel, stageBarAvailable, stageShortLabel, type PipelineStageBarFixture, type StageChip } from './pipelineStageBar'
 
-// J892 Megan Connell's real line items: Rough In $15,098 · Top Out $15,098 · Trim Set $7,549 (40 / 40 / 20).
+// J892 Megan Corbray's real line items: Rough In $15,098 · Top Out $15,098 · Trim Set $7,549 (40 / 40 / 20).
 const fx = (over: Partial<PipelineStageBarFixture & { stage_kind: string | null; progress_pct: number | null }> & { id: string; name: string }) => ({
   count: 1,
   line_unit_price: null,
@@ -65,7 +65,7 @@ describe('buildPipelineStageBar', () => {
     expect(buildPipelineStageBar({ fixtures: [fx({ id: 'a', name: 'x', stage_kind: null })], invoices: [], payments: [], pctComplete: 40, todayYmd: today })).toBeNull()
   })
 
-  it('v2.3417 — J931 Heron: Rough In · Top Out · Trim Set, every row kind `any`, is recognized as three stages', () => {
+  it('v2.3417 — J931 Hadlow: Rough In · Top Out · Trim Set, every row kind `any`, is recognized as three stages', () => {
     // 2026-09-14: the generator's preset, never touched on the Bill tab — the way every split job in prod looks.
     const anyRows = j892.map((f) => ({ ...f, stage_kind: 'any' }))
     expect(stageBarAvailable(anyRows)).toBe(true)

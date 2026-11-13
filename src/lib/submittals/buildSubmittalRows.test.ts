@@ -38,7 +38,7 @@ const prevItem = (tag: string, extra: Partial<PreviousItem> = {}): PreviousItem 
   ...extra,
 })
 
-/** The SpaceX-like package: a wall-hung bowl, a superseded flush valve, an alternate water heater, a PRV nobody quoted, carriers on the quote with no tag. */
+/** The SkyLab-like package: a wall-hung bowl, a superseded flush valve, an alternate water heater, a PRV nobody quoted, carriers on the quote with no tag. */
 const specified: SpecifiedInput[] = [
   spec('WC-1', 'Water closet', 'TOTO', 'CT708UVG#01'),
   spec('WC-2', 'Water closet', 'TOTO', 'CT708UVG#01'),

@@ -28,7 +28,7 @@ vi.mock('../../lib/supabase', async () => {
                   job_name: 'Lot 7 rough-in',
                   job_address: '12 Elm St',
                   status: 'working',
-                  customer_name: 'Knight Contracting',
+                  customer_name: 'Kestrin Contracting',
                 },
               ]
             : null

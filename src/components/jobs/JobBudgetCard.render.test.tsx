@@ -41,12 +41,12 @@ function state(over: Partial<JobBudgetState> = {}): JobBudgetState {
 
 function renderCard(budget: JobBudgetState, over: Partial<Parameters<typeof JobBudgetCard>[0]> = {}) {
   const resolved = resolveJobBudget({ row: budget.row, priceUsd: 123_600, targetMarginPct: 35 })
-  return render(<JobBudgetCard jobId="j1" jobLabel="Mission Hill Park" priceUsd={123_600} pctDone={77} inputs={inputs} budget={budget} resolved={resolved} companyRate={31.23} canWrite currentUserId="u1" linkedBid={null} {...over} />)
+  return render(<JobBudgetCard jobId="j1" jobLabel="Mission Flat Park" priceUsd={123_600} pctDone={77} inputs={inputs} budget={budget} resolved={resolved} companyRate={31.23} canWrite currentUserId="u1" linkedBid={null} {...over} />)
 }
 
 describe('JobBudgetCard · Frame A', () => {
   it('reads the source line, the rows in hours-first order, and the why sentence off a bid snapshot', async () => {
-    renderCard(state({ row: bidRow as never, linkedBreakdown: { bid_id: 'b66', bid_number: '66', project_name: 'Mission Hill Park', bid_value: 123_600, agreed_value: null, has_estimate: true, labor_hours: 1180, labor_rate: 38, labor_usd: 44_840, materials_usd: 31_200, subs_usd: 6_500, other_usd: 2_900, total_direct_usd: 85_440, completeness: { rows_total: 26, rows_with_hours: 23, rate_set: true, materials_source: 'takeoff', usable: false } } }))
+    renderCard(state({ row: bidRow as never, linkedBreakdown: { bid_id: 'b66', bid_number: '66', project_name: 'Mission Flat Park', bid_value: 123_600, agreed_value: null, has_estimate: true, labor_hours: 1180, labor_rate: 38, labor_usd: 44_840, materials_usd: 31_200, subs_usd: 6_500, other_usd: 2_900, total_direct_usd: 85_440, completeness: { rows_total: 26, rows_with_hours: 23, rate_set: true, materials_source: 'takeoff', usable: false } } }))
     await settle()
     const card = screen.getByTestId('job-budget-card')
     expect(within(card).getByText('◆ Budget from bid B66')).toBeTruthy()
@@ -70,7 +70,7 @@ describe('JobBudgetCard · Frame A', () => {
 
 describe('JobBudgetCard · Frame B', () => {
   it('names the assumption, lists the ranked candidates with Link, and takes a typed budget', async () => {
-    const s = state({ candidates: [{ bid_id: 'b375', bid_number: '375', project_name: 'SPACEX BA-02N Architectural', bid_value: 249_715.66, agreed_value: null, outcome: 'won', customer_name: 'Structura, Inc.', rank: 1, reason: "matches the job's price to the dollar", has_estimate: true, estimate_hours: 0, linked_jobs: 0 }] })
+    const s = state({ candidates: [{ bid_id: 'b375', bid_number: '375', project_name: 'SKYLAB BA-02N Architectural', bid_value: 249_715.66, agreed_value: null, outcome: 'won', customer_name: 'Structura, Inc.', rank: 1, reason: "matches the job's price to the dollar", has_estimate: true, estimate_hours: 0, linked_jobs: 0 }] })
     renderCard(s)
     await settle()
     const banner = screen.getByTestId('job-budget-banner')
@@ -79,7 +79,7 @@ describe('JobBudgetCard · Frame B', () => {
     expect(within(banner).getByText('No bid is linked to this job — its hours and materials will not reach the labor book until it is.')).toBeTruthy()
     expect(within(banner).getByText('One bid matches this job:')).toBeTruthy()
     const cand = within(banner).getByTestId('budget-candidate')
-    expect(within(cand).getByText('B375 SPACEX BA-02N Architectural')).toBeTruthy()
+    expect(within(cand).getByText('B375 SKYLAB BA-02N Architectural')).toBeTruthy()
     expect(cand.textContent).toContain("matches the job's price to the dollar")
     expect(cand.textContent).toContain('estimate without hours')
     fireEvent.click(within(cand).getByRole('button', { name: 'Link this bid' }))
@@ -93,10 +93,10 @@ describe('JobBudgetCard · Frame B', () => {
     expect(s.setTyped).toHaveBeenCalledWith({ laborHours: 2400, laborRate: 31.23, materialsUsd: 68_000, subsUsd: 12_500 })
   })
   it('a linked bid without a snapshot offers to take its estimate', async () => {
-    renderCard(state({ linkedBreakdown: { bid_id: 'b375', bid_number: '375', project_name: 'SPACEX', bid_value: 249_715.66, agreed_value: null, has_estimate: false, labor_hours: 0, labor_rate: null, labor_usd: 0, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 0, completeness: { rows_total: 0, rows_with_hours: 0, rate_set: false, materials_source: 'none', usable: false } } }), { linkedBid: { id: 'b375', bid_number: '375', project_name: 'SPACEX' } })
+    renderCard(state({ linkedBreakdown: { bid_id: 'b375', bid_number: '375', project_name: 'SKYLAB', bid_value: 249_715.66, agreed_value: null, has_estimate: false, labor_hours: 0, labor_rate: null, labor_usd: 0, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 0, completeness: { rows_total: 0, rows_with_hours: 0, rate_set: false, materials_source: 'none', usable: false } } }), { linkedBid: { id: 'b375', bid_number: '375', project_name: 'SKYLAB' } })
     await settle()
     const linked = screen.getByTestId('budget-linked-no-snapshot')
-    expect(linked.textContent).toContain('Linked to B375 SPACEX · no cost estimate yet')
+    expect(linked.textContent).toContain('Linked to B375 SKYLAB · no cost estimate yet')
     expect(within(linked).getByRole('button', { name: 'Take its estimate as the budget' })).toBeTruthy()
   })
   it('read-only roles see the candidates but no Link or typed form', async () => {

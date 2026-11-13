@@ -12,7 +12,7 @@ Some jobs are billed to the GC, while the customer is the property owner. There,
 
 Rest the pointer on the eye, or move the keyboard focus to it. A card opens under it. The card says what the owner's page shows and why. The card names what is open to the GC. The card ends with a door, like {{button:blue|Show Nia the bills ›}}. Press Escape to close the card. On a phone, tap the eye instead.
 
-You click the eye, or press the card's door. The app reads **every job at that property** with the same owner. The app asks *Show Umar Khan the bills at 9703 Lenox Hl?* The prompt lists each job, its open bills and what is open. A job not billed yet reads *no bill yet — shows once billed*.
+You click the eye, or press the card's door. The app reads **every job at that property** with the same owner. The app asks *Show Ulric Karrow the bills at 9703 Linmor Hl?* The prompt lists each job, its open bills and what is open. A job not billed yet reads *no bill yet — shows once billed*.
 
 {{button:blue|Show them}} puts every open bill the GC pays on the owner's portal, for their records. Those bills show no Pay button, and never count in the owner's balance. Every bill after that shows too. The eye opens and turns blue. Its card now reads *Nia Okafor sees this job's bills on their page*, with what is open. The same click again offers {{button:dark|Stop showing}}. Stop showing takes the open bills back off. Paid ones stay in their history.
 

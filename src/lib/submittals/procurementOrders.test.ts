@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { groupDateWords, orderBySoon, orderSections, rowsToMark, tagsOf, theyWrote } from './procurementOrders'
-import { row, spacexLater as later, spacexToday as today } from './procurementSpacex.fixtures'
+import { row, skylabLater as later, skylabToday as today } from './procurementSkylab.fixtures'
 
 describe('orderSections', () => {
   it('today: nothing to order; five parts sent back with their notes, fourteen fixtures waiting, the carriers on site under their PO', () => {

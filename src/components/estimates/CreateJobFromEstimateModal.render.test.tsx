@@ -92,34 +92,34 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
-        estimate={estimateRow({ title: 'Estimate for Kimberly Coe' })}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
+        estimate={estimateRow({ title: 'Estimate for Kimberly Corl' })}
       />,
     )
     await settle()
-    expect(jobNameInput().value).toBe('Kimberly Coe')
+    expect(jobNameInput().value).toBe('Kimberly Corl')
   })
 
   it('adds the work when the estimate has one specific line (v2.3766)', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
         estimate={estimateRow({
-          title: 'Estimate for Kimberly Coe',
+          title: 'Estimate for Kimberly Corl',
           line_items_snapshot: [{ line_item: 'Pretest', description: '', quantity: 1, unit_price_cents: 25000, amount_cents: 25000 }],
         })}
       />,
     )
     await settle()
-    expect(jobNameInput().value).toBe('Kimberly Coe — Pretest')
+    expect(jobNameInput().value).toBe('Kimberly Corl — Pretest')
   })
 
   it('keeps a title someone typed for the work', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
-        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
+        linkedCustomerPrefill={{ name: 'Kimberly Corl', address: '9614 Legislation Drive' }}
         estimate={estimateRow({ title: 'Second-floor rough-in' })}
       />,
     )

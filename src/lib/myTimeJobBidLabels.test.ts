@@ -52,7 +52,7 @@ describe('jobLabelsForIds', () => {
     id: JOB_A,
     hcp_number: '523',
     click_number: '',
-    job_name: 'Mission Hills',
+    job_name: 'Mission Flats',
     job_address: '123 Main',
     service_type_id: null,
   }
@@ -60,9 +60,9 @@ describe('jobLabelsForIds', () => {
   it('labels a loaded job with its ledger summary line', () => {
     const out = jobLabelsForIds([JOB_A], [row], {})
     expect(out).toEqual({
-      [JOB_A]: formatJobLedgerSummaryLine({}, null, '523', 'Mission Hills', '123 Main', ''),
+      [JOB_A]: formatJobLedgerSummaryLine({}, null, '523', 'Mission Flats', '123 Main', ''),
     })
-    expect(out[JOB_A]).toContain('Mission Hills - 123 Main')
+    expect(out[JOB_A]).toContain('Mission Flats - 123 Main')
   })
 
   it('labels a job whose row did not come back by its id', () => {

@@ -49,6 +49,8 @@ import type { TicketMatch } from '../../lib/tickets/ticketMatch'
 import { answerTicketNo, answerTicketYes, listOfficeTickets, markTicketUsed, markTicketsUsedByCharge, matchChargeFromStaffRow, matchChargeFromWindowRow, mergeMatchCharges, runTicketMatches, setTicketPaidOther } from '../../lib/tickets/ticketMatchIo'
 import { loadJobsForTicketPick, loadTicketJobFacts } from '../../lib/tickets/ticketSheetIo'
 import { ticketScreensIo } from '../../lib/tickets/ticketScreensIo'
+import { receiptCopiedWords } from '../../lib/tickets/receiptLink'
+import { copyReceiptLinkFor } from '../../lib/tickets/receiptLinkIo'
 import { useTicketCapture } from '../../hooks/useTicketCapture'
 import { useNavigate } from 'react-router-dom'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
@@ -114,6 +116,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const [openTicket, setOpenTicket] = useState<TicketWithPages | null>(null)
   const [ticketBusy, setTicketBusy] = useState<string | null>(null)
   const [pickJobFor, setPickJobFor] = useState<TicketWithPages | null>(null)
+  const [receiptLinkBusyId, setReceiptLinkBusyId] = useState<string | null>(null)
   const [pickJobs, setPickJobs] = useState<ChooseJobRow[] | null>(null)
   /** + Ticket (PR 4): the desk's scan of a paper handed in, tied to the charge it was pressed on. */
   const deskCapture = useTicketCapture()
@@ -204,6 +207,24 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deskCapture.pages])
+
+  // Copy the receipt link (punch list #299): the charge's own page, no sign-in, where its holder photographs the receipt.
+  const copyReceiptLink = useCallback(
+    async (row: StaleStaffRow) => {
+      const about = `${formatTallyCurrency(Math.abs(Number(row.amount)))} at ${row.counterparty_name ?? 'the store'}`
+      setReceiptLinkBusyId(row.mercury_transaction_id)
+      try {
+        const out = await copyReceiptLinkFor(row.mercury_transaction_id)
+        if (out.copied) showToast(receiptCopiedWords(about, out.closesOn), 'success')
+        else showToast(`This browser did not copy it. The receipt link for ${about} is ${out.url}`, 'warning')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The receipt link was not made.'), 'error')
+      } finally {
+        setReceiptLinkBusyId(null)
+      }
+    },
+    [showToast],
+  )
 
   const ticketJobByCharge = useMemo(() => ticketJobByChargeOf(tickets), [tickets])
   const queue = useMemo(
@@ -670,6 +691,8 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
                     deskForRef.current = row
                     deskCapture.openFiles()
                   }}
+                  onCopyReceiptLink={(row) => void copyReceiptLink(row)}
+                  receiptLinkBusyId={receiptLinkBusyId}
                 />
               ))}
             </div>

@@ -11,7 +11,7 @@ import { lienStatusText } from '../../../supabase/functions/_shared/lienDeskStat
 const TODAY = '2026-10-01'
 const NOW = '2026-10-01T19:14:00.000Z'
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-const GC = { SP: 'gc-sp', RMC: 'gc-rmc', LOB: 'gc-lob', HOL: 'gc-hol' }
+const GC = { SP: 'gc-sp', RLC: 'gc-rlc', LOB: 'gc-lob', HOL: 'gc-hol' }
 
 function row(job: number, month: string, deadline: string, gc: string, owed: number, hasOwner = true): LienNoticeMonthRow {
   return { job_id: id(job), work_month: month, approved_hours: 8, deadline, noticed: false, open_balance: owed, customer_id: gc, gc_customer_id: gc, property_kind: 'non_residential', has_owner: hasOwner, desk_item_id: null, desk_status: null, desk_months: null }
@@ -40,16 +40,16 @@ const rows: LienNoticeMonthRow[] = [
   row(878, '2026-07', '2026-10-15', GC.SP, 38625),
   row(878, '2026-08', '2026-11-16', GC.SP, 38625),
   // 273 · awaiting, the paper names a closed June as well
-  row(273, '2026-06', '2026-09-15', GC.RMC, 17585),
-  row(273, '2026-07', '2026-10-15', GC.RMC, 17585),
+  row(273, '2026-06', '2026-09-15', GC.RLC, 17585),
+  row(273, '2026-07', '2026-10-15', GC.RLC, 17585),
   // 650 · a stale June draft; July is what is open now
   row(650, '2026-07', '2026-10-15', GC.LOB, 15722),
   // 927 · no owner of record
   row(927, '2026-08', '2026-10-15', GC.HOL, 7429, false),
   // 801 · printed, tracking owed · 802 · approved for the run · 803 · only a closed month
-  row(801, '2026-08', '2026-10-15', GC.RMC, 1000),
-  row(802, '2026-08', '2026-10-15', GC.RMC, 2000),
-  row(803, '2026-06', '2026-09-15', GC.RMC, 300),
+  row(801, '2026-08', '2026-10-15', GC.RLC, 1000),
+  row(802, '2026-08', '2026-10-15', GC.RLC, 2000),
+  row(803, '2026-06', '2026-09-15', GC.RLC, 300),
 ]
 const items: LienDeskItemRow[] = [
   item(878, 'awaiting_approval', ['2026-07', '2026-08'], { submitted_at: '2026-09-24T15:00:00Z' }),
@@ -60,7 +60,7 @@ const items: LienDeskItemRow[] = [
 ]
 const affidavitRows: LienAffidavitRow[] = [
   { job_id: id(838), last_month: '2026-06', deadline: '2026-10-15', is_sub: false, noticed: false, filed: false, open_balance: 350, customer_id: 'c-838', gc_customer_id: null, property_kind: 'residential', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null },
-  { job_id: id(881), last_month: '2026-07', deadline: '2026-10-15', is_sub: true, noticed: false, filed: false, open_balance: 1050, customer_id: GC.RMC, gc_customer_id: GC.RMC, property_kind: 'residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null },
+  { job_id: id(881), last_month: '2026-07', deadline: '2026-10-15', is_sub: true, noticed: false, filed: false, open_balance: 1050, customer_id: GC.RLC, gc_customer_id: GC.RLC, property_kind: 'residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null },
   { job_id: id(700), last_month: '2026-05', deadline: '2026-09-15', is_sub: false, noticed: false, filed: true, open_balance: 900, customer_id: 'c-700', gc_customer_id: null, property_kind: 'residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null },
 ]
 
@@ -73,21 +73,21 @@ const data = {
   summary: summarizeLienDeskForNeedsYou(queue),
   affidavits: buildLienAffidavitQueue(affidavitRows, [], TODAY),
   retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
-  jobsById: Object.fromEntries([job(878, 'Take 5- Seguin'), job(273, 'Dudley (Lennox)'), { ...job(650, 'ATI Schertz'), customer_address_id: 'addr-650' }, job(927, 'Mike Holub- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Bruce Hall'), job(881, 'Dudley Mason')].map((j) => [j.id, j])),
-  // ATI Schertz is commercial: its houses' windows run on the 3rd month (a kind not set would date them a month earlier, v2.5031).
+  jobsById: Object.fromEntries([job(878, 'Tune 5- Seguin'), job(273, 'Dunmere (Linmoor)'), { ...job(650, 'AXO Schertz'), customer_address_id: 'addr-650' }, job(927, 'Mike Holmby- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Bruce Hall'), job(881, 'Dunmere Mallin')].map((j) => [j.id, j])),
+  // AXO Schertz is commercial: its houses' windows run on the 3rd month (a kind not set would date them a month earlier, v2.5031).
   addressesById: { 'addr-650': { id: 'addr-650', property_kind: 'non_residential' } },
   gcsById: {
-    [GC.SP]: { id: GC.SP, name: 'Southern Post Construction' },
-    [GC.RMC]: { id: GC.RMC, name: 'RMC- Dudley Mason' },
-    [GC.LOB]: { id: GC.LOB, name: 'Loberg Contracting' },
-    [GC.HOL]: { id: GC.HOL, name: 'Michael Holub' },
+    [GC.SP]: { id: GC.SP, name: 'Southern Pine Construction' },
+    [GC.RLC]: { id: GC.RLC, name: 'RLC- Dunmere Mallin' },
+    [GC.LOB]: { id: GC.LOB, name: 'Lowbeck Contracting' },
+    [GC.HOL]: { id: GC.HOL, name: 'Michael Holmby' },
   },
 } as unknown as LienDeskData
 
 function cal(n: number, gcId: string | null, owed: number, state: string, kindAssumed = false): LienCalendarJob {
   return { jobId: id(n), number: String(n), name: '', customer: '', gcId, gcName: null, address: '', openBalance: owed, isSub: gcId != null, runway: { state, kindAssumed } } as unknown as LienCalendarJob
 }
-const calendarRows = [cal(927, GC.HOL, 7429, 'notice_due', true), cal(977, GC.RMC, 15406, 'notice_due', true), cal(186, GC.RMC, 6200, 'closed'), cal(102, null, 5355, 'closed'), cal(560, null, 400, 'filed', true)]
+const calendarRows = [cal(927, GC.HOL, 7429, 'notice_due', true), cal(977, GC.RLC, 15406, 'notice_due', true), cal(186, GC.RLC, 6200, 'closed'), cal(102, null, 5355, 'closed'), cal(560, null, 400, 'filed', true)]
 
 describe('buildLienStatusPayload — the desk folded into the message (v2.4311)', () => {
   const p = buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: 'all' })
@@ -118,7 +118,7 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
   it('carries the affidavits still to file and what each needs', () => {
     // The Affidavits tab's own order: soonest first, then the most money.
     expect(p.liens).toEqual([
-      { number: '881', name: 'Dudley Mason', gc: 'RMC- Dudley Mason', owed: 1050, byYmd: '2026-10-15', needs: ['notice'] },
+      { number: '881', name: 'Dunmere Mallin', gc: 'RLC- Dunmere Mallin', owed: 1050, byYmd: '2026-10-15', needs: ['notice'] },
       { number: '838', name: 'Bruce Hall', gc: '', owed: 350, byYmd: '2026-10-15', needs: ['owner', 'legal'] },
     ])
   })
@@ -139,17 +139,17 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
   it('renders through the shared text without a gap', () => {
     const text = lienStatusText(p)
     expect(text).toContain('We are about to send lien notices on 5 jobs.')
-    expect(text).toContain('• Take 5- Seguin, Southern Post Construction, $38,625')
+    expect(text).toContain('• Tune 5- Seguin, Southern Pine Construction, $38,625')
     expect(text).toContain('Approved for the next run: 1 notice, $2,000.')
     expect(text).toContain('Type the tracking number on 1 mailed notice.')
   })
 })
 
 describe('one GC', () => {
-  const p = buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: GC.RMC })
+  const p = buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: GC.RLC })
 
   it('keeps only that GC’s notices, liens and Calendar rows', () => {
-    expect(p.gc).toBe('RMC- Dudley Mason')
+    expect(p.gc).toBe('RLC- Dunmere Mallin')
     expect(p.jobs.map((j) => j.number).sort()).toEqual(['273', '802'])
     expect(p.trackingOwed).toBe(1)
     expect(p.liens.map((l) => l.number)).toEqual(['881'])
@@ -161,9 +161,9 @@ describe('one GC', () => {
 describe('lienShareScopeOptions — the Which liens menu', () => {
   it('the whole desk first, then each GC with a notice, most money first', () => {
     const opts = lienShareScopeOptions(data)
-    expect(opts.map((o) => o.name)).toEqual(['Everything on the desk', 'Southern Post Construction', 'RMC- Dudley Mason', 'Loberg Contracting', 'Michael Holub'])
+    expect(opts.map((o) => o.name)).toEqual(['Everything on the desk', 'Southern Pine Construction', 'RLC- Dunmere Mallin', 'Lowbeck Contracting', 'Michael Holmby'])
     expect(opts[0]).toMatchObject({ key: 'all', jobs: 5, owed: 38625 + 17585 + 15722 + 7429 + 2000, firstYmd: '2026-10-15', waiting: 2, needOwner: 1 })
-    expect(opts[2]).toMatchObject({ key: GC.RMC, jobs: 2, owed: 19585, waiting: 1 })
+    expect(opts[2]).toMatchObject({ key: GC.RLC, jobs: 2, owed: 19585, waiting: 1 })
   })
 
   it('offers only the whole desk before the desk loads', () => {
@@ -173,11 +173,11 @@ describe('lienShareScopeOptions — the Which liens menu', () => {
 
 describe('lienShareJobName', () => {
   it('drops a trailing (HCP n) that repeats the number the line leads with, and nothing else', () => {
-    expect(lienShareJobName('858', 'Service Visit — 9703 Lenox Hl (HCP 858)')).toBe('Service Visit — 9703 Lenox Hl')
+    expect(lienShareJobName('858', 'Service Visit — 9703 Linmor Hl (HCP 858)')).toBe('Service Visit — 9703 Linmor Hl')
     expect(lienShareJobName('858', 'Service Visit (HCP 859)')).toBe('Service Visit (HCP 859)')
-    expect(lienShareJobName('922', 'Michael Palmer (Ivan Kopecky)')).toBe('Michael Palmer (Ivan Kopecky)')
+    expect(lienShareJobName('922', 'Michael Palvern (Ivan Koplin)')).toBe('Michael Palvern (Ivan Koplin)')
     expect(lienShareJobName('1046 PLUM', 'Pretest (#1046 PLUM)')).toBe('Pretest')
-    expect(lienShareJobName('', ' Dudley Mason ')).toBe('Dudley Mason')
+    expect(lienShareJobName('', ' Dunmere Mallin ')).toBe('Dunmere Mallin')
   })
 })
 
@@ -207,7 +207,7 @@ describe('the houses choice — lien jobs where a supply house is also owed (v2.
     expect(houses.map((h) => h.number).sort()).toEqual(['650', '977'])
     const j650 = houses.find((h) => h.number === '650')!
     // Two houses owed; Reece's July window is the one still open.
-    expect(j650).toMatchObject({ name: 'ATI Schertz', gc: 'Loberg Contracting', owed: 15722, housesOwed: 10500, houses: 2, house: 'Reece', byYmd: '2026-10-15', jobAccount: false })
+    expect(j650).toMatchObject({ name: 'AXO Schertz', gc: 'Lowbeck Contracting', owed: 15722, housesOwed: 10500, houses: 2, house: 'Reece', byYmd: '2026-10-15', jobAccount: false })
     // A Calendar-only job takes its words from its row.
     // 977 has no property kind (the Calendar assumes residential): its house's August window closes Oct 15, as the Calendar reads it (v2.5031).
     expect(houses.find((h) => h.number === '977')).toMatchObject({ owed: 15406, housesOwed: 700, houses: 1, house: 'Winn Supply', byYmd: '2026-10-15', jobAccount: true })

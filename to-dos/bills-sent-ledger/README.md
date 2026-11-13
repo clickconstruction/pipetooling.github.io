@@ -1,21 +1,21 @@
 ---
 name: "Bills sent: one list of every bill that left, to whom, and the minute it went"
 number: 327
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's and the master's calls
+group: close
+status: built 2026-11-12 and 2026-11-13 on Grace's word · live at /bills-sent with the list, the sends with no copy, the no-send strip, delivered and bounced, one bill's record, print and CSV · open: #7827 say how it went, #7912 the Dashboard pin, #7917 the phone layout · left: the master's own look, and the notes under What should change next
 summary: >
   The master asked for a ledger he can open at any time that shows which bills have gone out, to
-  whom, and when exactly. The app already keeps that record for every bill it emails: the time to
-  the second, the person who pressed send, each address, a copy of the email with the bill, and
-  whether it arrived. It sits in Documents under Sent copies, mixed with every other paper, with no
-  amount, no address on the line, no total and no word about a bill that never went. So the card
-  proposes no new ledger table. It proposes one screen, Bills sent, with its own address, that
-  reads the records the app keeps, one line each time a bill leaves, and shows a billed bill with
-  no send on record at the top instead of leaving it out.
-next: Grace's and the master's calls (eight, at the foot of the card), then PR 1 (the screen, for the sends that have the full record).
-size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
-blocker: Grace's go, and the master's word on what a line is and where the door goes.
-opinion: build — the record is already kept and open to him; what is missing is one place that reads it as the day's billing, and PR 1 needs no database change
+  whom, and when exactly. The app already kept that record for every bill it emails, scattered and
+  without amounts. Built as one screen, Bills sent at /bills-sent, that reads the records the app
+  keeps and writes no second record: one line each time a bill leaves, with the minute, the job,
+  the amount, the address, who sent it and whether it arrived, a band per day with its total, one
+  bill's whole record, print and CSV, and a strip of bills that were made and have no send on
+  record. What is left is written below as notes, not built.
+next: The master opens /bills-sent and finds the bill that made him ask. The open PRs #7827, #7912 and #7917 reach main and are walked live. The notes under What should change next wait for Grace's word.
+size: L as a train of seven (M · M · S · M · S · M · S), built; left: notes only (the Pipeline doors S, the Monday email block S, the holes at the send M, the kernel split XS)
+blocker: Nothing for the open PRs but the merge queue. The notes are new behavior or a refactor, so they wait for Grace's word (no major changes on Opus 5.5, 2026-11-13).
+opinion: your call — the list is live and answers the ask; what is left is doors and depth, none of it urgent
+ver: v2.7049 · v2.7052 · v2.7053 · v2.7055 · v2.7056
 ---
 
 # Bills sent (#327)
@@ -196,4 +196,35 @@ One thing only the master has: which bill made him ask.
 
 ## Where it stands
 
-2026-11-12: the card and the mock-up. Nothing is built and nothing was written to the database.
+Built 2026-11-12 and 2026-11-13, on Grace's word: *build the PR train and let me know when it is live and the link for a master to access it*. The link is `https://clicktooling.com/bills-sent`.
+
+The calls were taken as recommended, since she said build: one screen over the records the app keeps, every send its own line, the gap strip shown, the four office roles, a record made by hand offered. For the main door she asked for a button on the leaders' Dashboard; the answer is the Dashboard's pinned row (#7912), so the button goes to the people who want it.
+
+| Step | What | State |
+|---|---|---|
+| 1 | The screen at `/bills-sent`: a line a send, day bands and totals, the search, the copy one press away. A door in the header search and a line under Documents → Sent copies → Bills. | v2.7049, live |
+| 2 | The sends that kept no copy (an older email with no address, a Housecall Pro day, a text with the pay link) and the strip **No send on record**. | v2.7052, live |
+| 3 | *Delivered*, *Opened*, *Bounced* on each email, *Paid* and the day, the tile **Did not arrive**. One read function, `bill_send_marks` (migration `20261113030000`, pushed). | v2.7053, live |
+| 4 | One bill's record at `/bills-sent?bill=<id>`, with **Print this record**. | v2.7055, live |
+| 5 | **Print** and **Download CSV** of what the list shows. | v2.7056, live |
+| 6 | **Say how it went…** on a bill with no send on record: a record made by hand. | #7827, in the merge queue |
+| | Bills sent can be pinned to the Dashboard (Pin, and Pin for someone). | #7912, in the merge queue |
+| | The phone layout: the list first, a short card a send whose whole face opens the record, presses a thumb can hit. | #7917, waits on #7827 |
+
+What the live reads showed, counts only: 349 lines back to the spring under 101 days, 128 of them older emails that say the address was not kept, 24 open bills with no send on record and 58 more paid behind the press. Of the 69 emailed bills with a kept copy, 62 read *Delivered*, 6 have no answer from the mail server yet, and none bounced. The CSV's rows match the screen's lines, and the rows marked as in the day total add up to the screen's day totals.
+
+The walks ran on the same build as the live site, against the live data, through a local copy with every write refused. Nobody signed in to clicktooling.com to walk it.
+
+Left, and only the master can do it: find the bill that made him ask, and read him its line.
+
+## What should change next
+
+Notes, not built. Each is new behavior, a schema change or a refactor, so each waits for Grace's word.
+
+1. **The doors on the Pipeline.** A **Bills sent** press in the Billed header beside Payment forecast, and the billed row's stamp (*Resend · Email sent …*) opening that bill's record at `/bills-sent?bill=<id>`. They edit `JobsStagesTab.tsx` and `StagesJobCellActivityFooter.tsx`. (S)
+2. **One block in the Monday Bridge email.** Last week's bills sent, the count, the total and what did not arrive, with a link to the list. It belongs with the Bridge rework (#318). (S)
+3. **The holes at the send itself.** When Stripe emails a bill for us, `send-stripe-invoice` files no sent copy, so the address is lost. The bill's number and amount are not filed with its copy, so a line reads today's amount and an older line has no number to search by. A statement does not file the bills it listed. All three live in `_shared/sentCopyEmail.ts`, which rides in every email function's bundle, so the fix is a full redeploy. (M)
+4. **Keep every delivery event.** `resend-webhook` writes over `email_send_log.last_event`, so a line shows one word, not a history. Only if counsel asks. (S, one table)
+5. **Split the path and the gate out of the kernel.** `src/lib/search/doors.ts` and `DocumentsSentLedger.tsx` import `BILLS_SENT_PATH` and `canOpenBillsSent` from `src/lib/billing/billsSent.ts`, so the whole kernel, about 1,000 lines, rides in the app's entry bundle on every page. Moving those two exports to a small file of their own takes it out. (XS, a refactor)
+
+One for the office, not code: once **Say how it went…** is live, the 24 open bills with no send on record can be cleared by saying how each went. Sixteen of them date from September.

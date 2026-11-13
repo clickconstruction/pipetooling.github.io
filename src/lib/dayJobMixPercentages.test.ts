@@ -88,7 +88,7 @@ describe('sessionsToMixRows', () => {
   })
 
   it('counts an open session up to now', () => {
-    const rows = sessionsToMixRows([strip('o', '2026-09-01T19:30:00.000Z', null, { bid_id: 'B1', bids: { bid_number: 'b404', project_name: 'Hyper Kidz', address: null, service_type_id: null, customers: null } })], NOW, prefixMap)
+    const rows = sessionsToMixRows([strip('o', '2026-09-01T19:30:00.000Z', null, { bid_id: 'B1', bids: { bid_number: 'b404', project_name: 'Jumpy Kidz', address: null, service_type_id: null, customers: null } })], NOW, prefixMap)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ key: 'bid:B1', seconds: 1800, pct: 1 })
     expect(rows[0]!.label).toContain('404')

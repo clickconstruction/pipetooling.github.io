@@ -99,7 +99,7 @@ const badgeStyle: CSSProperties = {
 /** The chip on line two (v2.3822): a door of its own. Red and amber are the desk's tones; `quiet` is a caveat, dashed. */
 /**
  * `fact` (v2.4054): the part of the chip that must never be cut. The label shrinks
- * and takes the ellipsis; the fact keeps its width — "≈ J922 Michael Palmer (Ivan Ko… · 56% spent at 30% done".
+ * and takes the ellipsis; the fact keeps its width — "≈ J922 Michael Palvern (Ivan Ko… · 56% spent at 30% done".
  */
 function OpportunityChip({ label, fact, tone = 'plain', title, onClick, testId }: { label: string; fact?: string; tone?: 'red' | 'amber' | 'plain' | 'quiet'; title?: string; onClick?: () => void; testId?: string }) {
   const c =

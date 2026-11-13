@@ -18,21 +18,21 @@ const io = vi.hoisted(() => ({
 vi.mock('../../lib/machines/checksIo', () => io)
 vi.mock('../../lib/materials/photoShrink', () => ({ shrinkPhoto: async (file: File) => ({ blob: file, width: 1, height: 1, shrunk: false }) }))
 
-const machine: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't1', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Tovi Pinpoint', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
+const machine: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't1', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Tavin Pinpoint', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const questions: MachineQuestion[] = [
   { id: 'q1', templateId: null, machineId: null, words: 'Hydraulic hoses and cylinders, no leaks', holdsMachine: true, when: 'pre' },
   { id: 'q2', templateId: null, machineId: null, words: 'Lights, horn and the backup alarm work', holdsMachine: false, when: 'pre' },
   { id: 'q3', templateId: null, machineId: null, words: 'Nothing new broken or leaking since the morning', holdsMachine: true, when: 'post' },
 ]
 const today = todayDay()
-const open: MachineCheck = { id: 'c1', kind: 'pre', machineId: 'm1', jobId: 'j1', jobWords: '972 · Tovi Pinpoint', day: today, byName: 'Mateo Ruiz', startedAt: new Date().toISOString(), signedAt: null, verdict: 'unfinished', answers: [], levels: {}, hours: null, photos: [], leftWhere: null, runAnyway: null, dispatchedAt: null }
+const open: MachineCheck = { id: 'c1', kind: 'pre', machineId: 'm1', jobId: 'j1', jobWords: '972 · Tavin Pinpoint', day: today, byName: 'Mateo Ruiz', startedAt: new Date().toISOString(), signedAt: null, verdict: 'unfinished', answers: [], levels: {}, hours: null, photos: [], leftWhere: null, runAnyway: null, dispatchedAt: null }
 
 describe('the pre-use check sheet', () => {
   afterEach(() => cleanup())
 
   it('walks one question at a time, writes each pick, and the sign press names the verdict', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[open]} jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={onClose} />)
+    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[open]} jobId="j1" jobWords="972 · Tavin Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={onClose} />)
     expect(screen.getByText('Pre-use check · E-12')).toBeTruthy()
     expect(document.querySelector('[data-machine-progress]')?.textContent).toContain('0 of 2 answered')
     expect(screen.getByText('2 left on the walk')).toBeTruthy()
@@ -48,7 +48,7 @@ describe('the pre-use check sheet', () => {
   })
 
   it('a No on a holding question holds the machine and the sign tells Dispatch', async () => {
-    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[open]} jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[open]} jobId="j1" jobWords="972 · Tavin Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
     fireEvent.click(screen.getByText('No'))
     fireEvent.click(screen.getByText('Close this one'))
     fireEvent.click(screen.getByText('Yes'))
@@ -58,7 +58,7 @@ describe('the pre-use check sheet', () => {
   })
 
   it('the leaving check asks where it is tonight before it signs', () => {
-    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[{ ...open, id: 'c2', kind: 'post' }]} kind="post" jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    renderWithProviders(<MachineCheckSheet machine={machine} questions={questions} checks={[{ ...open, id: 'c2', kind: 'post' }]} kind="post" jobId="j1" jobWords="972 · Tavin Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
     expect(screen.getByText('Leaving it · E-12')).toBeTruthy()
     fireEvent.click(screen.getByText('Yes'))
     expect(screen.getByText('Say where it is tonight')).toBeTruthy()
@@ -70,7 +70,7 @@ describe('the pre-use check sheet', () => {
   it('a rental with no agreement yet opens with the agreement stop, and the sign press waits for the photo (punch list #271)', async () => {
     const rental: Machine = { ...machine, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: today, dueBack: '' } }
     io.addCheckPhoto.mockResolvedValue({ id: 'p1', shot: 'agreement', fileName: 'agreement.jpg', src: 'blob:agreement', driveFileId: null, filedAt: null, failWhy: null })
-    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c3', machineId: 'r1' }]} jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c3', machineId: 'r1' }]} jobId="j1" jobWords="972 · Tavin Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
     expect(document.querySelector('[data-rental-line]')?.textContent).toContain('agreement not in yet')
     expect(screen.getByText('The rental agreement')).toBeTruthy()
     const press = screen.getByText('Photo of the agreement first') as HTMLButtonElement
@@ -90,7 +90,7 @@ describe('the pre-use check sheet', () => {
 
   it('the leaving check of a rental offers the return slip tile and never waits for the agreement', () => {
     const rental: Machine = { ...machine, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: today, dueBack: '' } }
-    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c4', kind: 'post', machineId: 'r1' }]} kind="post" jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c4', kind: 'post', machineId: 'r1' }]} kind="post" jobId="j1" jobWords="972 · Tavin Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
     expect(document.querySelector('[data-agreement-stop]')).toBeNull()
     expect(document.querySelector('[data-machine-shot="return_slip"]')?.textContent).toContain('Return slip')
     expect(screen.getByText('Say where it is tonight')).toBeTruthy()

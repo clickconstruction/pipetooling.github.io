@@ -30,12 +30,12 @@ describe('the conditional release enclosed with a notice (v2.4729)', () => {
   })
 
   it('fills the form from the notice: the claimant releases, the GC is the check’s maker, the claim is the amount, the signature waits', () => {
-    const f = noticeReleaseFields({ claimantName: 'Click Plumbing', gcName: 'RMC- Dudley Mason', jobName: 'Dudley (Lennox)', jobAddress: '1021 Lennox Hill, San Antonio, TX', claim: '17585.00', months: ['2026-07', '2026-08'], signerName: 'Robert Douglas', signerTitle: 'Owner · Responsible Master Plumber' })
+    const f = noticeReleaseFields({ claimantName: 'Click Plumbing', gcName: 'RLC- Dunmere Mallin', jobName: 'Dunmere (Linmoor)', jobAddress: '1021 Linmoor Hill, San Antonio, TX', claim: '17585.00', months: ['2026-07', '2026-08'], signerName: 'Robert Douglas', signerTitle: 'Owner · Responsible Master Plumber' })
     expect(f).toEqual({
       companyName: 'Click Plumbing',
-      checkFrom: 'RMC- Dudley Mason',
+      checkFrom: 'RLC- Dunmere Mallin',
       amount: '17585.00',
-      projectDescription: 'Dudley (Lennox), 1021 Lennox Hill, San Antonio, TX',
+      projectDescription: 'Dunmere (Linmoor), 1021 Linmoor Hill, San Antonio, TX',
       throughDate: '2026-08-31',
       signedDate: '',
       signerName: 'Robert Douglas',
@@ -55,11 +55,11 @@ describe('the conditional release enclosed with a notice (v2.4729)', () => {
   })
 
   it('reads a row back as the run carries it, and refuses an unconditional one', () => {
-    const row = { id: 'rel-1', form_type: 'conditional_progress', amount: 17585, through_date: '2026-08-31', fields: { companyName: 'Click Plumbing', checkFrom: 'RMC- Dudley Mason', amount: '17585.00', projectDescription: 'Dudley (Lennox), 1021 Lennox Hill', throughDate: '2026-08-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' } }
+    const row = { id: 'rel-1', form_type: 'conditional_progress', amount: 17585, through_date: '2026-08-31', fields: { companyName: 'Click Plumbing', checkFrom: 'RLC- Dunmere Mallin', amount: '17585.00', projectDescription: 'Dunmere (Linmoor), 1021 Linmoor Hill', throughDate: '2026-08-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' } }
     const r = noticeReleaseFromRow(row, null)!
     expect(r.id).toBe('rel-1')
     expect(r.formType).toBe('conditional_progress')
-    expect(r.fields.checkFrom).toBe('RMC- Dudley Mason')
+    expect(r.fields.checkFrom).toBe('RLC- Dunmere Mallin')
     expect(r.amount).toBe(17585)
     expect(noticeReleaseEnclosureWords(r)).toBe(', and a conditional release of lien')
     expect(noticeReleaseFromRow({ ...row, form_type: 'unconditional_progress' }, null)).toBeNull()
@@ -73,11 +73,11 @@ describe('the conditional release enclosed with a notice (v2.4729)', () => {
       formType: 'conditional_progress',
       amount: 17585,
       signature: null,
-      fields: { companyName: 'Click Plumbing', checkFrom: 'RMC- Dudley Mason', amount: '17585.00', projectDescription: 'Dudley (Lennox), 1021 Lennox Hill', throughDate: '2026-08-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' },
+      fields: { companyName: 'Click Plumbing', checkFrom: 'RLC- Dunmere Mallin', amount: '17585.00', projectDescription: 'Dunmere (Linmoor), 1021 Linmoor Hill', throughDate: '2026-08-31', signedDate: '', signerName: 'Robert Douglas', signerTitle: '' },
     }
     const html = noticeReleasePageHtml(r, { letterhead: { company: 'Click Plumbing', licenseLine: 'M-12345', contactLines: ['Bulverde, TX', '(512) 360-0599'] } })
     expect(html).toContain('Conditional Waiver and Release on Progress Payment')
-    expect(html).toContain('a check from RMC- Dudley Mason in the sum of $17,585.00 payable to Click Plumbing')
+    expect(html).toContain('a check from RLC- Dunmere Mallin in the sum of $17,585.00 payable to Click Plumbing')
     expect(html).toContain('through: August 31, 2026')
     expect(html).toContain('Signed ______________________')
     expect(html).toContain('Bulverde, TX')

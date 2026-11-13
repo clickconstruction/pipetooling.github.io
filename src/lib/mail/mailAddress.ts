@@ -28,7 +28,7 @@ export function mailPartyName(name: string): Pick<MailParty, 'firstName' | 'last
   if (!n) return { firstName: '', lastName: '', organization: '' }
   const words = n.split(' ')
   if (ORG_WORDS.test(n) || /\d/.test(n) || words.length > 4 || words.length === 1) return { firstName: '', lastName: '', organization: n }
-  // "Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima" has the & and goes whole; "John A. Backham" splits on the last space.
+  // "Rilvo Sorn Zelmar & Kestmere Quillan Fenna" has the & and goes whole; "John A. Brackley" splits on the last space.
   return { firstName: words.slice(0, -1).join(' '), lastName: words[words.length - 1]!, organization: '' }
 }
 

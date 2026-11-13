@@ -18,7 +18,7 @@ const s = (id: string, inIso: string, outIso: string | null, extra: Partial<Cloc
   ...extra,
 })
 const jobs = new Map([['J1', 'Smith residence']])
-const bids = new Map([['B1', 'Hyper Kidz']])
+const bids = new Map([['B1', 'Jumpy Kidz']])
 const PAST_DAY = '2026-09-01'
 const NOW = new Date('2026-09-10T18:30:00.000Z').getTime() // 13:30 CDT
 const TODAY = denverCalendarDayKey(NOW)
@@ -26,7 +26,7 @@ const TODAY = denverCalendarDayKey(NOW)
 describe('associationLabel', () => {
   it('prefers the job, then the bid, then "No job"', () => {
     expect(associationLabel(s('a', '', null, { job_ledger_id: 'J1', bid_id: 'B1' }), jobs, bids)).toBe('Smith residence')
-    expect(associationLabel(s('a', '', null, { bid_id: 'B1' }), jobs, bids)).toBe('Hyper Kidz')
+    expect(associationLabel(s('a', '', null, { bid_id: 'B1' }), jobs, bids)).toBe('Jumpy Kidz')
     expect(associationLabel(s('a', '', null, { job_ledger_id: 'unknown' }), jobs, bids)).toBe('No job')
     expect(associationLabel(s('a', '', null), jobs, bids)).toBe('No job')
   })

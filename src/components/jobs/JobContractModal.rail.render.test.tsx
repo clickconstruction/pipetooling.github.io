@@ -23,7 +23,7 @@ afterEach(cleanup)
 
 const withEmail = makeJob({ id: 'j1', hcp_number: '1053', job_name: 'Water heater', customer_name: 'Sam Sample', customer_email: 'sam@example.com', customer_phone: '', revenue: 2200, gc_customer_id: null, customer_id: 'c1' })
 const noContact = makeJob({ id: 'j2', hcp_number: '1054', job_name: 'Repipe', customer_name: 'Pat Paper', customer_email: null, customer_phone: null, revenue: 900, gc_customer_id: null, customer_id: 'c2' })
-const builders = makeJob({ id: 'j3', hcp_number: '1055', job_name: 'Rough-in', customer_name: 'Summit GC', customer_email: 'pm@summit.example', revenue: 50000, gc_customer_id: 'gc1', customer_id: 'c3', gcCustomer: { id: 'gc1', name: 'Summit GC' } })
+const builders = makeJob({ id: 'j3', hcp_number: '1055', job_name: 'Rough-in', customer_name: 'Selwick GC', customer_email: 'pm@selwick.example', revenue: 50000, gc_customer_id: 'gc1', customer_id: 'c3', gcCustomer: { id: 'gc1', name: 'Selwick GC' } })
 
 describe('JobContractModal — the rail', () => {
   it('a customer with an email opens on Send a link, with the address filled and the sentence saying so; the pill reads draft', async () => {
@@ -68,7 +68,7 @@ describe('JobContractModal — the rail', () => {
   it("a builder's job leads with File their subcontract and keeps our ways behind Send ours anyway", async () => {
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={builders} />)
     const rail = await screen.findByTestId('contract-rail')
-    expect(within(rail).getByTestId('contract-way-file_theirs').textContent).toContain("File Summit GC's subcontract")
+    expect(within(rail).getByTestId('contract-way-file_theirs').textContent).toContain("File Selwick GC's subcontract")
     expect(within(rail).queryByTestId('contract-way-link')).toBeNull()
     expect(within(rail).getByTestId('contract-way-go').textContent).toBe('File their subcontract')
     fireEvent.click(within(rail).getByTestId('contract-send-ours'))

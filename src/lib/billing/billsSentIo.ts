@@ -14,10 +14,13 @@
  * PR 3 adds whether each email arrived and the day its bill was paid: `bill_send_marks`, one definer read over the
  * mail log for the copies the caller can read. Before its migration is on the database the call is refused and the
  * lines draw with no word about arriving.
+ *
+ * PR 6 adds the one write: `recordBillByHand` files a person's word that a bill went (a `sent_documents` row with no
+ * copy body, through the table's own insert policy and stamp). It throws its reason, so the form can say it.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
-import { parseSentCopy } from '../sent/sentCopies'
+import { parseSentCopy, sentDocumentInsert, type SentFiling } from '../sent/sentCopies'
 import { payLinkRef } from './payLink'
 import {
   BILLS_SENT_KIND_PREFIX,
@@ -79,6 +82,17 @@ async function rows(read: () => PromiseLike<{ data: unknown; error: unknown }>):
   } catch {
     return []
   }
+}
+
+/**
+ * File a record made by hand: one row, no copy. The database stamps who and when. Throws when the row is refused
+ * (a training-mode account, a lost signal), so the caller shows the reason and nothing is half saved.
+ */
+export async function recordBillByHand(filing: SentFiling): Promise<void> {
+  const row = sentDocumentInsert(crypto.randomUUID(), filing, null)
+  if (!row) throw new Error('The record could not be built.')
+  const { error } = await supabase.from('sent_documents').insert(row as never)
+  if (error) throw error
 }
 
 /** Copy ids per call of the marks read. */
@@ -201,7 +215,7 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
     ),
     inChunks<BillsSentEarlier>(
       copies.length >= cap ? billIds : [],
-      (chunk) => supabase.from('sent_documents').select('source_id, sent_at, kind').eq('source_table', 'jobs_ledger_invoices').in('source_id', chunk).neq('kind', 'bill_copy'),
+      (chunk) => supabase.from('sent_documents').select('source_id, sent_at, kind').eq('source_table', 'jobs_ledger_invoices').in('source_id', chunk).not('kind', 'in', '(bill_copy,bill_by_hand)'),
       (r) => (text(r.source_id) && text(r.sent_at) && text(r.kind).startsWith(BILLS_SENT_KIND_PREFIX) ? { billId: text(r.source_id), atIso: text(r.sent_at) } : null),
     ),
     readMarks(copies.map((c) => c.id)),

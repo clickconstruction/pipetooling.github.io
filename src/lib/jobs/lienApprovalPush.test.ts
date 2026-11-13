@@ -5,13 +5,13 @@ import { plainWordsFailures } from '../plainWords'
 
 describe('the leader’s push (v2.4872)', () => {
   it('is one line: the job, the money, the mail-by day; the tap lands on the job in the awaiting pile', () => {
-    const p = lienApprovalPush({ jobLabel: '891 · Take 5 Liberty Hill', jobId: 'j891', claim: 27_198.65, gcName: 'Burd & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya Smith' })
+    const p = lienApprovalPush({ jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', claim: 27_198.65, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya Smith' })
     expect(p.title).toBe('Approve a lien notice')
-    expect(p.body).toBe('891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days')
+    expect(p.body).toBe('891 · Tune 5 Liberty Hill · $27,199 owed by Brund & Assoc. · mail by Oct 15 · 8 days')
     expect(p.url).toBe('/lien-desk?tab=notices&job=j891&pile=awaiting')
     expect(p.tag).toBe('lien-approval-j891')
-    expect(p.subject).toBe('Approve a lien notice · 891 · Take 5 Liberty Hill')
-    expect(p.emailText).toBe('Taunya sent a lien notice for your approval.\n\n891 · Take 5 Liberty Hill\n$27,199 owed by Burd & Assoc.\nMail by Oct 15, 8 days from now.\n\nOpen the Lien desk to approve it or hold it.')
+    expect(p.subject).toBe('Approve a lien notice · 891 · Tune 5 Liberty Hill')
+    expect(p.emailText).toBe('Taunya sent a lien notice for your approval.\n\n891 · Tune 5 Liberty Hill\n$27,199 owed by Brund & Assoc.\nMail by Oct 15, 8 days from now.\n\nOpen the Lien desk to approve it or hold it.')
     expect(lienApprovalUrl('a b')).toBe('/lien-desk?tab=notices&job=a%20b&pile=awaiting')
   })
 
@@ -35,7 +35,7 @@ describe('the leader’s push (v2.4872)', () => {
   })
 
   it('every sentence the leader or the office reads passes the plain-words rule', () => {
-    const p = lienApprovalPush({ jobLabel: '891 · Take 5 Liberty Hill', jobId: 'j891', claim: 27_199, gcName: 'Burd & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya' })
+    const p = lienApprovalPush({ jobLabel: '891 · Tune 5 Liberty Hill', jobId: 'j891', claim: 27_199, gcName: 'Brund & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya' })
     for (const line of p.emailText.split('\n').filter((l) => /[a-z]{3}/i.test(l) && !/^\d/.test(l))) expect(plainWordsFailures(line), line).toEqual([])
     for (const w of [leaderToldWords({ pushSent: 1, emailSent: false, leaderName: 'Malachi' }), leaderToldWords({ pushSent: 0, emailSent: true, leaderName: 'Malachi' }), leaderToldWords(null)]) expect(plainWordsFailures(w), w).toEqual([])
   })

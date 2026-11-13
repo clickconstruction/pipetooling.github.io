@@ -2,7 +2,7 @@
 title: record a supply-house bill from its PDF
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: supply house, bill, invoice, PDF, scan, counter ticket, photo, fill, autofill, read, credit memo, record this bill, bills to record, thread, messages, drive link, lines, line items, adds up, look, count it as read, what we buy
+keywords: supply house, bill, invoice, PDF, scan, counter ticket, photo, fill, autofill, read, credit memo, record this bill, bills to record, thread, messages, drive link, lines, line items, adds up, look, count it as read, what we buy, bill lines, held, need a person, gap, no PDF
 ---
 A supply-house bill comes as a PDF in the mail, or as a photo of the counter ticket. The Add invoice window can read that file and fill its own fields. You check the fields beside the paper and press Save, as you always have.
 
@@ -87,5 +87,35 @@ A bill stays at *No lines yet* when the app cannot open its link. It also stays 
 :::
 
 A line whose own arithmetic fails is marked with an exclamation point. Fix its quantity, its price or its extension.
+
+### What the check allows
+
+Some papers are right and still look off. The check knows these cases.
+
+- Pipe sold by the stick prints a price a foot, rounded. The line may miss its extension by a few cents.
+- A box or a case may be priced by the piece. The strip then says *Line 7 is priced by the piece, 50 to a pack.*
+- A shipping charge may be printed under the subtotal. The strip then says *A charge of $45.00 is printed outside the subtotal.*
+- A rebate among the parts takes money off. Type its extension with a minus sign, such as *-30.00*.
+- A line that was ordered and not shipped has no extension. The check leaves that line out of the arithmetic.
+
+## The bills that need a person
+
+One line under **Accounts payable** says where every bill's lines stand. It reads like *Lines read on 496 of 543 bills · 475 add up · 47 need a person*.
+
+Press {{button:outline|Show the 47}}. The **Bill lines** window lists each reason a bill waits. Each reason has its count and what opens it.
+
+:::steps
+
+1. Press {{button:outline|Show the 12}} beside a reason. Its bills open under it, the newest first.
+
+2. Press {{button:outline|Look}} on a bill whose sums are off. The paper opens beside its lines.
+
+3. Press {{button:outline|Open the bill}} on a bill whose link, number or amount is wrong. The bill's own window opens. Fix the field and save.
+
+:::
+
+The app reads a bill again by itself after you fix its link or its number. Nothing in this window starts a read.
+
+Some reasons have nothing to press. A statement has no lines of its own. A read that failed is tried again by itself.
 
 If you have checked the paper and the gap is the paper's own, press {{button:outline|Count it as read anyway}}. Confirm with {{button:blue|Count it as read}}. The lines then count, and the gap stays beside them with your name.

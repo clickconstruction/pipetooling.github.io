@@ -52,7 +52,7 @@ import {
 } from './costEstimatePage'
 
 const bid = (over: Partial<BidWithBuilder> = {}): BidWithBuilder =>
-  ({ id: 'bid-1', project_name: 'Hyper Kidz', materials_model: 'rough', distance_from_office: '40', ...over }) as unknown as BidWithBuilder
+  ({ id: 'bid-1', project_name: 'Jumpy Kidz', materials_model: 'rough', distance_from_office: '40', ...over }) as unknown as BidWithBuilder
 const laborRow = (fixture: string, count: number, rough: number, top: number, trim: number, is_fixed = false): CostEstimateLaborRow =>
   ({ fixture, count, rough_in_hrs_per_unit: rough, top_out_hrs_per_unit: top, trim_set_hrs_per_unit: trim, is_fixed }) as unknown as CostEstimateLaborRow
 const countRow = (id: string, fixture: string, count: number): BidCountRow => ({ id, fixture, count }) as unknown as BidCountRow
@@ -114,7 +114,7 @@ describe('printCostEstimatePage — rough materials model', () => {
     expect(stepArgs(table('material_templates')[0]!, 'in')).toEqual(['id', ['t1']])
 
     const input = buildRough.mock.calls[0]![0] as Record<string, unknown>
-    expect(input.title).toBe('Hyper Kidz — Labor')
+    expect(input.title).toBe('Jumpy Kidz — Labor')
     expect(input.rows).toEqual([
       { fixture: 'Toilet', count: 4, roughPerUnit: 1, topPerUnit: 0.5, trimPerUnit: 0.5, totalHrs: 8 },
       { fixture: 'Trip charge', count: 1, roughPerUnit: 2, topPerUnit: 0, trimPerUnit: 0, totalHrs: 2 },
@@ -195,13 +195,13 @@ describe('sub sheets', () => {
     printTopOutSubSheet(ctx({ laborRateInput: '' }))
     printTrimSetSubSheet(ctx({ laborRateInput: 'x' }))
     expect(buildSub.mock.calls.map((c) => c[0])).toEqual([
-      { bidName: 'Hyper Kidz', stageLabel: 'Rough In', stage: 'rough_in', rows: LABOR, rate: 72.5 },
-      { bidName: 'Hyper Kidz', stageLabel: 'Top Out', stage: 'top_out', rows: LABOR, rate: 0 },
-      { bidName: 'Hyper Kidz', stageLabel: 'Trim Set', stage: 'trim_set', rows: LABOR, rate: 0 },
+      { bidName: 'Jumpy Kidz', stageLabel: 'Rough In', stage: 'rough_in', rows: LABOR, rate: 72.5 },
+      { bidName: 'Jumpy Kidz', stageLabel: 'Top Out', stage: 'top_out', rows: LABOR, rate: 0 },
+      { bidName: 'Jumpy Kidz', stageLabel: 'Trim Set', stage: 'trim_set', rows: LABOR, rate: 0 },
     ])
     expect(printHtml).toHaveBeenCalledTimes(3)
     printAllSubSheets(ctx({ laborRateInput: '85' }))
-    expect(buildAllSubs).toHaveBeenCalledWith({ bidName: 'Hyper Kidz', rows: LABOR, rate: 85 })
+    expect(buildAllSubs).toHaveBeenCalledWith({ bidName: 'Jumpy Kidz', rows: LABOR, rate: 85 })
     expect(printHtml).toHaveBeenLastCalledWith('<subs/>')
   })
 })

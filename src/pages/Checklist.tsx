@@ -74,8 +74,10 @@ import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
 import { useTaskPlaces } from '../hooks/useTaskPlaces'
+import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
-import { taskPlaceDots, taskPlaceFarShort } from '../lib/tasks/taskPlace'
+import { taskPlaceDots, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
+import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
 type UserRole =
@@ -483,10 +485,12 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
   const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
   // Punch list #328: the places of the tasks on this tab, read beside the day and never inside it.
   const taskPlaces = useTaskPlaces([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
+  // PR 6: the giver's photo of the spot, by task. Its own read, as the places are.
+  const spotPhotos = useTaskSpotPhotos([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
   // Where my tasks are (PR 4): the open tasks in the order they are listed, today's first and then the outstanding
   // ones. A task done today leaves the map. The numbers the dots wear are the ones the cards wear.
   const mapTasks = useMemo<TaskPlacesMapTask[]>(() => {
-    const titleOf = (i: ChecklistInstance) => (i.checklist_items as { title?: string } | null)?.title ?? 'Task'
+    const titleOf = (i: ChecklistInstance) => taskTitlePlain((i.checklist_items as { title?: string } | null)?.title)
     return [
       ...todayInstances.filter((i) => !i.completed_at).map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: false })),
       ...outstandingInstances.map((i) => ({ id: i.id, title: titleOf(i), place: taskPlaces.placeFor(i.checklist_item_id), overdue: true })),
@@ -905,6 +909,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   placeNumber={placeNumbers.get(inst.id) ?? null}
                   placeFar={placeFarFor(inst)}
                   openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
+                  spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -1000,6 +1005,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         placeNumberFor={(inst) => placeNumbers.get(inst.id) ?? null}
         placeFarFor={(inst) => placeFarFor(inst as ChecklistInstance)}
         openInstance={shownTask}
+        spotPhotoUrlFor={(inst) => spotPhotos.urlFor((inst as ChecklistInstance).checklist_item_id)}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)
@@ -2609,6 +2615,12 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   }
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
+  // Where the open tasks are (#328, PR 7): the board's own rows with their places, by person and in the board's order.
+  const boardPlaces = useTaskPlaces(byUser.flatMap((u) => u.instances.map((i) => i.checklist_item_id)))
+  const teamMapPeople = useMemo<TaskPlacesTeamPerson[]>(
+    () => byUser.map((u) => ({ userId: u.userId, name: u.name, tasks: u.instances.map((i) => ({ id: i.id, title: taskTitlePlain(i.checklist_items?.title), place: boardPlaces.placeFor(i.checklist_item_id) })) })),
+    [byUser, boardPlaces],
+  )
   /** Review tiles (v2.2194): centered, tappable, captioned; the tile whose list is showing stays lit. */
   const reviewTile = (
     label: string,
@@ -2793,6 +2805,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
         </div>
       </div>
       <div ref={outstandingBoardRef} style={{ marginBottom: '1.5rem', scrollMarginTop: 70 }}>
+        <TaskPlacesTeamMapCard people={teamMapPeople} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0 }}>Outstanding by person</h3>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', marginLeft: 'auto' }}>

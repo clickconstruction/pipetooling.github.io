@@ -153,6 +153,7 @@ Every bill that customer pays reads the calendar.
 - The line under the row says when their money usually lands.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
+- **Money waiting** and the Dashboard's Accounts Receivable judge them by each bill's expected day. See [A customer on a pay calendar](/help/see-which-customers-pay-slowly#a-customer-on-a-pay-calendar).
 
 A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
 

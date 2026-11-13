@@ -17,7 +17,7 @@ const DEPOSITS = [
   {
     mercury_transaction_id: 'mtx-1',
     amount: -0, // unused by the modal's math paths under test
-    counterparty_name: 'WEISS SERVICES LLC',
+    counterparty_name: 'WELBY SERVICES LLC',
     note: null,
     external_memo: null,
     posted_at: '2026-08-28T15:00:00Z',
@@ -65,7 +65,7 @@ function billedJob(): JobWithDetails {
     click_number: null,
     job_name: 'American Eagle',
     job_address: '4015 S I-35, San Marcos, TX',
-    customer_name: 'Weiss Services LLC',
+    customer_name: 'Welby Services LLC',
     revenue: 1625,
     payments_made: 0,
     materials: [],
@@ -100,7 +100,7 @@ describe('BankPaymentsModal (render smoke)', () => {
     // "Remaining … pick a bill"). The empty allocation row only exists once the
     // reset has run, so wait for it before touching the chips.
     await screen.findByTestId('ar-allocation-row')
-    expect(screen.getByText('Weiss Services LLC')).toBeTruthy()
+    expect(screen.getByText('Welby Services LLC')).toBeTruthy()
     // AR refresh PR 1 (v2.3379): the header counts the pile; the row wears the sweep's verdict.
     expect(screen.getByTestId('ar-summary').textContent).toMatch(/1 deposit to match · \$1,625\.00 unapplied/)
     expect(screen.getByTestId('ar-deposit-state').getAttribute('data-state')).toBe('exact')
@@ -122,12 +122,12 @@ describe('BankPaymentsModal (render smoke)', () => {
     expect(bar.textContent).toContain('$1,625.00')
     fireEvent.click(screen.getByRole('button', { name: /Review & apply…/ }))
     const panel = await screen.findByRole('dialog', { name: 'Review exact deposit matches' })
-    expect(panel.textContent).toContain('WEISS SERVICES LLC')
+    expect(panel.textContent).toContain('WELBY SERVICES LLC')
     expect(panel.textContent).toContain('876 · American Eagle')
     expect(screen.getByRole('button', { name: /Apply 1 deposit/ })).toBeTruthy()
 
     // Un-ticking the pair disables Apply.
-    fireEvent.click(screen.getByRole('checkbox', { name: /Include 1,625\.00 from WEISS SERVICES LLC/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Include 1,625\.00 from WELBY SERVICES LLC/ }))
     expect((screen.getByRole('button', { name: /Apply 0 deposits/ }) as HTMLButtonElement).disabled).toBe(true)
   })
 
