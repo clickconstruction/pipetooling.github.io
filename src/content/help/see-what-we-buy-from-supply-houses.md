@@ -2,7 +2,7 @@
 title: see what we buy from supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: what we buy, purchases, bill lines, line items, parts, spend, quantity, how often, how many, supply house, by month, last paid, price, stock, charges, freight, code, no part yet
+keywords: what we buy, purchases, bill lines, line items, parts, spend, quantity, how often, how many, supply house, by month, last paid, price, price over time, price history, cheapest, chart, stock, charges, freight, code, no part yet
 ---
 Every supply house bill is read line by line. **What we buy** adds those lines up. The page shows which parts the company buys, how often, how many and for how much.
 
@@ -41,6 +41,21 @@ Each row under the figures is one thing the company buys.
 :::
 
 Press *Clear the filters* at the foot of the page to go back to every house and every job.
+
+## See a part's price over time
+
+Press a row's name. **Price over time** opens on that row. You can also press {{button:outline|Price over time}} at the top and find a part by its name or its code.
+
+Every purchase is a point. The point's height is what was paid for one. Hold the pointer on a point to read its day, its house, its price and its quantity.
+
+- Each of the three biggest houses has its own colour. Every other house shares the grey point.
+- The dashed line is the book's price, with the day it was last checked.
+- **Last paid** under the chart is the newest price at each house. The line under it says how the price moved since the purchase before.
+- *cheapest these 90 days* marks the house with the lowest last price, when two or more houses sold it in that time.
+
+Every purchase is also a row under the chart, with its bill, its quantity and its job.
+
+A return is not a price paid. Price over time leaves returns out.
 
 ## A row with no part yet
 
