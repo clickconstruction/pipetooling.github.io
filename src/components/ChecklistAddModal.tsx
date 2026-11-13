@@ -249,7 +249,7 @@ export default function ChecklistAddModal({
       const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
       setLinesText(presetLines.join('\n'))
       // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
-      if (presetLines.length > 0) setAddOpen('lines')
+      if (presetLines.length > 0) setRowsOpen('lines')
       setAsksForPhotoPick(preset?.asksForPhoto ?? null)
     }
   }, [
