@@ -116,10 +116,11 @@ describe('the AR row’s lien chip (v2.5488)', () => {
   it('the other moves read in the desk’s words, amber beyond a week and red inside it', () => {
     const e = entry({ pile: 'needs_owner', severity: 'amber', daysLeft: 12, earliestDeadline: '2026-10-25' })
     const owner = lienArChipFor(input({ nextUp: [row({ sub: 'Needs the owner of record', action: 'find_owner', severity: 'amber', dueOn: '2026-10-25', daysLeft: 12, group: 'coming', target: { open: 'notices', jobId: 'j273', pile: 'needs_owner' } })], entry: e }))!
-    expect(owner.words).toBe('Needs the owner · by Oct 25 · 12d')
+    // v2.7048: a chip that asks for a step says it in the act's words, the ones the Pipeline's billed row prints.
+    expect(owner.words).toBe('Find the owner · by Oct 25 · 12d')
     expect(owner.tone).toBe('amber')
     const draft = lienArChipFor(input({ nextUp: [row({ sub: 'Notice to draft', action: 'draft' })], entry: entry({ pile: 'to_draft' }) }))!
-    expect(draft.words).toBe('Notice to draft · by Oct 15 · 2d')
+    expect(draft.words).toBe('Draft the notice · by Oct 15 · 2d')
     expect(draft.tone).toBe('red')
     const held = lienArChipFor(input({ nextUp: [row({ sub: 'Held', action: 'review_hold', severity: 'quiet', group: 'coming' })], entry: entry({ pile: 'held', item: { hold_reason: 'promised', hold_until: '2026-10-12' } as never }) }))!
     expect(held.words).toBe('Held · they promised · asks again Oct 12')
@@ -128,7 +129,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'In the mail · tracking owed' })
     expect(printed.sentence).toContain('printed with the run Oct 9')
     const late = lienArChipFor(input({ nextUp: [row({ sub: 'Late notice to draft · the window closed, the affidavit is still open', action: 'draft_late', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber', group: 'coming' })], entry: entry({ pile: 'missed', dueMonths: [] }) }))!
-    expect(late.words).toBe('Late notice to draft · by Nov 16 · 34d')
+    expect(late.words).toBe('Draft the late notice · by Nov 16 · 34d')
     expect(late.tone).toBe('red')
   })
 
@@ -138,7 +139,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor(input({ jobId: 'j8', nextUp: [run] }))).toBeNull()
     const ready = row({ key: 'run:gc1', jobId: null, action: 'send_run', sub: '2 notices approved · ready to send', target: { open: 'run', gcId: 'gc1' } })
     const chip = lienArChipFor(input({ nextUp: [ready], entry: entry({ pile: 'ready' }) }))!
-    expect(chip.words).toBe('Approved · ready to send · by Oct 15 · 2d')
+    expect(chip.words).toBe('Send the notice · by Oct 15 · 2d')
     expect(chip.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'notice', pile: 'ready' })
     expect(lienArChipFor(input({ nextUp: [ready], entry: entry({ pile: 'ready', gcCustomerId: 'gc2' }) }))).toBeNull()
   })
@@ -218,10 +219,10 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     const aff = { kind: 'affidavit' as const, key: 'affidavit:j273', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber' as const, target: { open: 'affidavits' as const, jobId: 'j273' } }
     // It read "Affidavit · Notice to draft": the move's words were the notice's.
     const draft = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'draft', sub: 'Affidavit to draft' })] }))!
-    expect(draft).toMatchObject({ words: 'Affidavit to draft · by Nov 16 · 34d', lead: 'Affidavit to draft', action: 'draft', paper: 'affidavit' })
+    expect(draft).toMatchObject({ words: 'Draft the affidavit · by Nov 16 · 34d', lead: 'Draft the affidavit', action: 'draft', paper: 'affidavit' })
     // It read "Affidavit · Waiting on the leader": the name sat behind the paper's own lead-in.
     const waiting = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on Robert · since Oct 7' })] }))!
-    expect(waiting).toMatchObject({ words: 'Affidavit · Waiting on Robert · by Nov 16 · 34d', lead: 'Affidavit · Waiting on Robert' })
+    expect(waiting).toMatchObject({ words: 'Waiting on Robert · by Nov 16 · 34d', lead: 'Waiting on Robert' })
     // It read "Affidavit · Approve the notice".
     const mine = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'approve', sub: 'Affidavit · waiting on your approval' })] }))!
     expect(mine).toMatchObject({ words: 'Approve the affidavit · by Nov 16 · 34d', lead: 'Approve the affidavit' })
@@ -237,8 +238,10 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     const gates = (keys: string[]) => ({ jobId: 'j273', pile: 'needs_property', deadline: '2026-11-16', gates: ['owner', 'legal', 'contractor', 'notice', 'homestead_answer'].map((key) => ({ key, ok: !keys.includes(key), label: key })) }) as never
     const held = lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the property record is not complete' })], affidavit: gates(['homestead_answer']) }))!
     expect(held.act).toMatchObject({ words: 'Answer the homestead question', dated: true })
-    // Its own words still say the pile's; the act is beside them for a reader that leads with it.
-    expect(held.words).toBe('Affidavit · fix the property · by Nov 16 · 34d')
+    // Since v2.7048 the chip's own words are the act's: the fact that holds the affidavit, not the pile's name.
+    expect(held.words).toBe('Answer the homestead question · by Nov 16 · 34d')
+    // No lien attaches to public property, so that chip carries no day to race.
+    expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond' })] }))!.words).toBe('Public property, no lien')
     expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · the property record is not complete' })], affidavit: gates(['owner', 'legal']) }))!.act?.words).toBe('Fix the property record')
     // With no affidavit entry in hand the desk's own row still says which hold it is.
     expect(lienArChipFor(input({ nextUp: [row({ ...aff, action: 'fix_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond' })] }))!.act).toMatchObject({ words: 'Public property, no lien', dated: false })
