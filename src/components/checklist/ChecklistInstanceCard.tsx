@@ -15,6 +15,7 @@ import type { TaskPhotoView } from '../../hooks/useTaskPhotos'
 import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
+import { TaskPlaceAddHere } from './TaskPlaceAddHere'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -93,6 +94,11 @@ type ChecklistInstanceCardProps = {
   openSignal?: number
   /** The giver's photo of the spot (PR 6), a signed address: beside the place's map when the card is open, or by itself. */
   spotPhotoUrl?: string | null
+  /**
+   * The person doing the task may add its missing place from where they stand (PR 8). Passed only where that is true:
+   * an open card with no place then offers one quiet line. Called once the place has landed.
+   */
+  onPlaceAdded?: () => void
 }
 
 /**
@@ -129,6 +135,7 @@ export function ChecklistInstanceCard({
   placeFar = null,
   openSignal = 0,
   spotPhotoUrl = null,
+  onPlaceAdded,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   useEffect(() => {
@@ -587,6 +594,7 @@ export function ChecklistInstanceCard({
           <TaskSpotPhotoView url={spotPhotoUrl} />
         </div>
       ) : null}
+      {threadOpen && !place && !isCompleted && onPlaceAdded && variant === 'card' ? <TaskPlaceAddHere instanceId={instance.id} onAdded={onPlaceAdded} /> : null}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity
