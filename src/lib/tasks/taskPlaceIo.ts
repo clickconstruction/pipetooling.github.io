@@ -141,3 +141,26 @@ export async function saveRoadmapTaskPlace(taskId: string, place: TaskPlaceDraft
     return formatErrorMessage(e, 'The place did not save.')
   }
 }
+
+/**
+ * The person doing a task adds its missing place from a reading their phone just took (PR 8). One
+ * call to `add_task_place_from_the_spot`, which holds every rule: who may, how sure the phone must
+ * be, and never over a place that is already there. Null when it landed, the reason in words when it
+ * did not. The function is younger than the generated types, hence the cast.
+ */
+export async function addTaskPlaceFromTheSpot(instanceId: string, fix: { lat: number; lng: number; accuracyM: number | null }, name: string): Promise<string | null> {
+  try {
+    // Written as a plain `supabase.rpc('name' …)` on purpose: `check:calls-ahead` reads this form, and holds the deploy
+    // until the migration that creates the function is pushed.
+    const { error } = await supabase.rpc('add_task_place_from_the_spot' as never, {
+      p_instance_id: instanceId,
+      p_lat: fix.lat,
+      p_lng: fix.lng,
+      p_accuracy_m: fix.accuracyM == null ? null : Math.round(fix.accuracyM),
+      p_name: name.trim() || null,
+    } as never)
+    return error ? formatErrorMessage(error, 'The place did not save.') : null
+  } catch (e) {
+    return formatErrorMessage(e, 'The place did not save.')
+  }
+}

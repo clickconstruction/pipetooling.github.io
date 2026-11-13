@@ -28549,6 +28549,63 @@ export type Database = {
           },
         ]
       }
+      on_site_part_ties: {
+        Row: {
+          a_key: string
+          a_name: string
+          at: string
+          b_key: string
+          b_name: string
+          by_name: string
+          by_user_id: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          verdict: string
+        }
+        Insert: {
+          a_key: string
+          a_name?: string
+          at?: string
+          b_key: string
+          b_name?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          verdict: string
+        }
+        Update: {
+          a_key?: string
+          a_name?: string
+          at?: string
+          b_key?: string
+          b_name?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "on_site_part_ties_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_part_ties_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_defaults: {
         Row: {
           key: string
@@ -45950,6 +46007,11 @@ export type Database = {
         }
         Returns: string
       }
+      on_site_can_read_ties: {
+        Args: { p_development_id: string; p_job_id: string }
+        Returns: boolean
+      }
+      on_site_can_tie_parts: { Args: never; Returns: boolean }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
       on_site_carry_job: {
         Args: { p_from: string; p_to: string }

@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133 · both walked live on clicktooling.com on 2026-11-13 in headless Chrome at phone width, each test photo taken back, two filed copies left in the ZZ Test bid's Drive folder
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -462,8 +462,15 @@ v2.6929 (2026-11-11):
   shot on any screen, as the Job photos window does: the words there say *this device*.
 - *Walked*: a local copy at 375 wide, headless Chrome, the ZZ Test bid, with every write refused and the bid photo
   writes answered by the walk itself. The network cut in the browser, a closed tab and a signal that carries nothing
-  each kept the photo; three photos went up once each when the writes were let through. **Nothing was written to the
-  bid, so there is no test photo to take back.** The brief's own walk, a real photo filed by the sweep, was not made.
+  each kept the photo; three photos went up once each when the writes were let through.
+- *Walked live* (clicktooling.com, 2026-11-13, headless Chrome at 375 wide as the dev login, on the ZZ Test bid,
+  nothing refused): v2.7097 with the network cut, a photo, *Add 1 photo*, the tab closed and opened again with no
+  signal, then the signal back: sent by itself once, the camera 6 → 7, filed by the sweep within 30 seconds. v2.7133
+  with the first upload's answer dropped: the tile read *Kept on this phone.*, and the next try answered *The resource
+  already exists*, wrote the row and added the photo once. Each test photo was taken back (its row stamped removed; the
+  sweep had already deleted its bucket copy). **Left in Drive**: the two filed copies, *ZZ Test no signal walk* and
+  *ZZ Test lost answer walk*, in the ZZ Test bid's Team only › Photos, since nothing can trash a Drive file until PR 4.
+  The window never shows them again: each carries its row's id.
 - *Fixed after* (v2.7133, 2026-11-13): the send uploaded with an upsert and the bucket has no update policy, so a resend
   whose first upload had landed was refused every try. It now uploads with no upsert and goes on to the row.
 - *Left for a real phone*: the phone's own camera with no signal on iOS and Android, a photo kept through a lock and a
@@ -525,6 +532,11 @@ What it did not fix, and is the owner's:
   The fixed column landed with grey for every missing link (PR 5, v2.6914), in the same grey. The owner may want it fainter.
 
 ## Found in passing, not fixed
+
+- **The Bids page with no signal says *You do not have access to Bids.*** Seen in PR 8's live walk, 2026-11-13: a tab
+  opened on `/bids` with the network cut draws the No signal strip, then that sentence, since the page's gate cannot
+  read the role offline. A crew member on a site walk would read it as a refusal. The words or the gate are a later
+  change, not built here.
 
 - **A superintendent and the Bid Board.** `canOpenBids` lets the role open the page, and no policy
   on `bids` names it. What the board shows them was not walked live.

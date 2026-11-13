@@ -48,7 +48,6 @@ import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
 import { useWhileOff } from './useWhileOff'
 import { useMailSavedForYou } from './useMailSavedForYou'
-import { useBridgeMoves } from './useBridgeMoves'
 import { useClauseNeeds } from './useClauseNeeds'
 import { useRobotBacklogNudge } from './useRobotBacklogNudge'
 import { useRobotSilenceNudge } from './useRobotSilenceNudge'
@@ -216,9 +215,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job.
   const mailSavedEnabled = on('mailSaved')
   const mailSaved = useMailSavedForYou(mailSavedEnabled, authUserId)
-  // The week's call (punch list #303 PR 4): the Bridge's moves that carry the viewer's own account.
-  const bridgeMovesEnabled = on('bridgeMoves')
-  const bridgeMoves = useBridgeMoves(bridgeMovesEnabled, authUserId)
   // The day back (punch list #256 PR 9): an Away note's countdown has ended and the office asked to be told.
   const awayBackDayEnabled = on('awayBackDay')
   const awayBackDay = useAwayBackDay(awayBackDayEnabled)
@@ -327,8 +323,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     whileOff: whileOff.need,
     mailSavedEnabled,
     mailSaved: mailSaved.need,
-    bridgeMovesEnabled,
-    bridgeMoves: bridgeMoves.need,
     awayBackDayEnabled,
     awayBackDay: awayBackDay.need,
     lowRatingsEnabled,
@@ -418,7 +412,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
     whileOffFirst: whileOff.need?.first ?? null,
     lookAlikeCity: lookAlikes?.city ?? null,
-    bridgeMoveDoor: bridgeMoves.need?.door?.to ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
     materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
@@ -463,8 +456,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       claimDev,
       robotBacklogNudge,
       robotSilenceNudge,
-      /** The week's call (punch list #303 PR 4): the Done press on the viewer's first move. */
-      markBridgeMoveDone: bridgeMoves.markFirstDone,
     },
   }
 }
