@@ -124,7 +124,7 @@ To undo it, open the same window on the job and press {{button:outline|Follow La
 
 ## Pay terms an estimator read on a won bid
 
-An estimator reads the general contractor's contract when a bid is won. An estimator cannot set a pay calendar. They write the terms down, and the office sets the calendar.
+An estimator reads the general contractor's contract when a bid is won. An estimator cannot set a pay calendar. The estimator writes the terms down, and the office sets the calendar.
 
 The estimator does this on the sheet they already send to Dispatch.
 

@@ -1,3 +1,4 @@
+import { payCalendarFieldStyle, payCalendarLabelStyle } from './payCalendarFieldStyles'
 import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_WORDS_MAX, ordinalDay, type PayCalendar } from '../../lib/jobs/payCalendar'
 
 /**
@@ -10,9 +11,6 @@ import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_WORDS_MA
 const CUTOFF_DAYS = Array.from({ length: PAY_CALENDAR_CUTOFF_MAX }, (_, i) => i + 1)
 const PAY_DAYS = Array.from({ length: 30 }, (_, i) => i + 1)
 const MONTH_CHOICES = ['the same month', 'the next month', 'the month after that'] as const
-
-export const payCalendarLabelStyle = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', margin: '0.8rem 0 4px' } as const
-export const payCalendarFieldStyle = { padding: '0.45rem 0.6rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', fontWeight: 400, minHeight: 36 } as const
 
 export default function PayCalendarFields({ form, onChange, disabled = false, clauseLabel = 'Where the contract says it' }: { form: PayCalendar; onChange: (patch: Partial<PayCalendar>) => void; disabled?: boolean; clauseLabel?: string }) {
   const labelStyle = payCalendarLabelStyle

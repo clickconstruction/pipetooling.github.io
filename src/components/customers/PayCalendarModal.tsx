@@ -26,7 +26,8 @@ import {
   type PayCalendarRow,
 } from '../../lib/jobs/payCalendar'
 import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
-import PayCalendarFields, { payCalendarLabelStyle } from './PayCalendarFields'
+import PayCalendarFields from './PayCalendarFields'
+import { payCalendarLabelStyle } from './payCalendarFieldStyles'
 
 /**
  * Pay calendar · <payer> (punch list #323): the day bills must be in by, the day they pay, and

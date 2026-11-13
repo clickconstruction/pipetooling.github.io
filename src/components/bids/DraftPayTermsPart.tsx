@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import PayCalendarFields, { payCalendarLabelStyle } from '../customers/PayCalendarFields'
+import PayCalendarFields from '../customers/PayCalendarFields'
+import { payCalendarLabelStyle } from '../customers/payCalendarFieldStyles'
 import { PAY_CALENDAR_DEFAULT, payCalendarPreview, payCalendarShort, payCalendarWords, type PayCalendar } from '../../lib/jobs/payCalendar'
 import { DRAFT_PAY_TERMS_SCOPE_DEFAULT, draftPayTermsScopeHint, draftPayTermsScopeWords, type DraftPayTerms, type DraftPayTermsScope } from '../../lib/jobs/draftPayTerms'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
