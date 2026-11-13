@@ -12,12 +12,13 @@ import { TaskWindowShell } from './TaskWindowShell'
 type Listener = () => void
 
 function installViewport(height: number) {
-  const heard: Record<string, Set<Listener>> = { resize: new Set(), scroll: new Set() }
+  const heard = { resize: new Set<Listener>(), scroll: new Set<Listener>() }
+  const of = (type: string) => (type === 'resize' || type === 'scroll' ? heard[type] : undefined)
   const vv = {
     height,
     offsetTop: 0,
-    addEventListener: (type: string, fn: Listener) => heard[type]?.add(fn),
-    removeEventListener: (type: string, fn: Listener) => heard[type]?.delete(fn),
+    addEventListener: (type: string, fn: Listener) => of(type)?.add(fn),
+    removeEventListener: (type: string, fn: Listener) => of(type)?.delete(fn),
   }
   Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true })
   return {
