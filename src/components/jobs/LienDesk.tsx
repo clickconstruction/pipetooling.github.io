@@ -84,7 +84,8 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
@@ -512,6 +513,8 @@ export default function LienDesk({
     if (initialJobId && next !== prev) {
       setKind(initialKind ?? 'notice')
       setMobileListShown(false)
+      // A door onto the Affidavits list names its paper too (v2.7180: the leader's push for one affidavit).
+      if (initialKind === 'affidavit') setAffSelectedJobId(initialJobId)
     }
   }, [initialJobId, initialKind, aimKey])
   // All filings (punch list #82, PR 5; All paper until v2.4630): the four lists share one view; it reopens on the list last looked at.
@@ -566,7 +569,8 @@ export default function LienDesk({
   const [legendOpen, setLegendOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
-  const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
+  // The address can name the affidavit to open on (v2.7180), as it names a notice: `/lien-desk?tab=affidavits&job=…`.
+  const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(initialKind === 'affidavit' ? (initialJobId ?? null) : null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
   // a loop the Affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
@@ -1621,10 +1625,14 @@ export default function LienDesk({
     if (!(await confirmDialog({ title: affSendWords.title, message: affSendWords.message, confirmLabel: affSendWords.confirmLabel }))) return
     setAffSendBusy(true)
     try {
-      const result = await submitLienAffidavits(affSendPlan.ready.flatMap((r) => (r.entry.item ? [{ jobId: r.entry.jobId, itemId: r.entry.item.id, outcome: r.outcome }] : [])))
+      const sent = affSendPlan.ready.flatMap((r) => (r.entry.item ? [{ jobId: r.entry.jobId, itemId: r.entry.item.id, outcome: r.outcome, dueYmd: r.entry.deadline }] : []))
+      const result = await submitLienAffidavits(sent)
       const outcome = lienAffidavitSendOutcome(result.done.length, result.failed.length)
       setAffSendFailed(result.failed)
-      showToast(outcome.line, outcome.tone)
+      // The leader is told once of every paper that now waits for him (punch list #305, v2.7180): one call, so twelve papers are one message. Best effort, after the writes.
+      const asked = lienAffidavitTellPapers(sent, result.done)
+      const told = asked.length > 0 ? await tellLeaderOfLienAffidavits(asked) : null
+      showToast([outcome.line, lienAffidavitBatchToldWords(told, asked.length)].filter(Boolean).join(' '), told && !told.ok && outcome.tone === 'success' ? 'warning' : outcome.tone)
       if (result.done.length > 0) onChanged()
     } finally {
       setAffSendBusy(false)

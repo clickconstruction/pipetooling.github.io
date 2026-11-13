@@ -33532,6 +33532,8 @@ export type Database = {
           no_text_why: string | null
           opened_at: string | null
           reminded_at: string | null
+          text_fail_why: string | null
+          text_tries: number
           texted_at: string | null
           ticket_id: string | null
           updated_at: string
@@ -33550,6 +33552,8 @@ export type Database = {
           no_text_why?: string | null
           opened_at?: string | null
           reminded_at?: string | null
+          text_fail_why?: string | null
+          text_tries?: number
           texted_at?: string | null
           ticket_id?: string | null
           updated_at?: string
@@ -33568,6 +33572,8 @@ export type Database = {
           no_text_why?: string | null
           opened_at?: string | null
           reminded_at?: string | null
+          text_fail_why?: string | null
+          text_tries?: number
           texted_at?: string | null
           ticket_id?: string | null
           updated_at?: string
@@ -41651,23 +41657,6 @@ export type Database = {
       box_sticker_caller_name: { Args: never; Returns: string }
       box_sticker_facts: { Args: { p_sticker_id: string }; Returns: Json }
       box_sticker_number_words: { Args: { p_number: number }; Returns: string }
-      bridge_mark_my_move_done: {
-        Args: { p_call_id: string; p_idx: number }
-        Returns: Json
-      }
-      bridge_my_moves: {
-        Args: never
-        Returns: {
-          call_id: string
-          called_by_name: string
-          called_on: string
-          idx: number
-          link: string
-          move_key: string
-          title: string
-          week_start: string
-        }[]
-      }
       bulk_apply_tally_payroll_rule_flags: {
         Args: { p_rows: Json }
         Returns: number
@@ -46609,6 +46598,8 @@ export type Database = {
           no_text_why: string | null
           opened_at: string | null
           reminded_at: string | null
+          text_fail_why: string | null
+          text_tries: number
           texted_at: string | null
           ticket_id: string | null
           updated_at: string
@@ -46620,6 +46611,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      receipt_texts_due: { Args: never; Returns: boolean }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
         Args: { p_job_id: string }

@@ -71,7 +71,7 @@ Every line under a move has a check at its right edge.
 
 A customer's line counts how many of its projects are handed out. A project under a customer whose own task is open reads as with that person.
 
-The page finds a task again by a tag in its first link. Keep that link on the task.
+The page finds a task again by a tag kept on the task itself. A task made before November 13 is found by its first link, so keep that link on it.
 
 ## The doors
 
