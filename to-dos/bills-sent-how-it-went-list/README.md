@@ -1,8 +1,8 @@
 ---
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
-group: gated
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166 · PR 3 (the chips and the window) next
+group: close
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166 · PR 3 (the chips and the window) in v2.7167 · left: the migration's push, a walk on the live page, and his calls 6 to 8
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,11 +11,11 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: PR 3, the chips with ＋ Add a way and Edit list, and the window. Then the owner's calls 6 to 8 on the form's own fixes.
+next: Push migration `20261113170000` right after PR 2 merges, then walk the live page: add a way, record a bill with it, rename it, and read the older line. Then the owner's calls 6 to 8 on the form's own fixes.
 size: M as a train of three (S · M · M), then up to three small ones for the form's own fixes (S each)
-blocker: None to build. PR 2's migration `20261113170000` is pushed right after its merge; until then the form offers the four ways kept in code.
-opinion: build PR 3 as drawn — the calls are answered and the list's table is in
-ver: v2.7145 · v2.7166
+blocker: The push of migration `20261113170000`. Until then the form offers the four ways kept in code and draws no ＋ Add a way or Edit list.
+opinion: walk it live once the migration is pushed, then take R1 first — a wrong day on a record cannot be fixed
+ver: v2.7145 · v2.7166 · v2.7167
 ---
 
 # Bills sent: the list under *How the bill went* (#340)
@@ -118,7 +118,7 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 |---|---|---|---|
 | 1 | **A record keeps its words.** `byHandFiling` writes `how_label`. `billsSentLines` reads it first (`byHandWordsOf`). Kernel tests. **Built, v2.7145** | S | none |
 | 2 | **The list in the database.** `20261113170000_bill_hand_ways.sql`: the table, its policies and guard, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readBillHandWays` with the fall-back to the four in code. The form reads the live list. **Built, v2.7166** | M | one |
-| 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, a render smoke, the guide's new section, the glossary line | M | none |
+| 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, the screen's tests, the guide's new section, the glossary line. **Built, v2.7167** | M | none |
 | 4 to 6 | R1, R2, R3, each alone, in the order he wants them | S each | none |
 
 PR 2's client reads a table only the migration creates, so it is pushed right after the merge and merges when the person who pushes is at hand.

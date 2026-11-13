@@ -5,12 +5,13 @@
  * that fails saying so with Retry. Every name and number is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
+import type { BillHandWay } from '../../lib/billing/billHandWays'
 import { BillsSentLedger } from './BillsSentLedger'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, refuse: null as null | Error, fail: null as null | Error, phone: false }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
@@ -23,6 +24,26 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     return io.data
   },
   readBillHandWays: async () => io.ways,
+  addBillHandWay: async (label: string) => {
+    if (io.wayRefuse) throw io.wayRefuse
+    io.wayCalls.push(['add', label])
+    const way = { id: 'w-new', key: 'w_new0000001', label, sentHow: 'other', sortOrder: 99, retiredAtIso: null, retiredByName: '', createdByName: 'Priya', createdAtIso: '2026-11-13T18:00:00Z' }
+    io.ways = [...((io.ways as unknown[]) ?? []), way]
+    return way
+  },
+  renameBillHandWay: async (id: string, label: string) => {
+    if (io.wayRefuse) throw io.wayRefuse
+    io.wayCalls.push(['rename', id, label])
+    io.ways = (io.ways as Array<{ id: string }>).map((w) => (w.id === id ? { ...w, label } : w))
+  },
+  setBillHandWayOnList: async (id: string, on: boolean) => {
+    io.wayCalls.push(['on', id, on])
+    io.ways = (io.ways as Array<{ id: string }>).map((w) => (w.id === id ? { ...w, retiredAtIso: on ? null : '2026-11-13T19:00:00Z', retiredByName: on ? '' : 'Priya' } : w))
+  },
+  moveBillHandWays: async (moves: Array<{ id: string; sortOrder: number }>) => {
+    io.wayCalls.push(['move', moves])
+    io.ways = (io.ways as Array<{ id: string }>).map((w) => ({ ...w, ...(moves.find((m) => m.id === w.id) ? { sortOrder: moves.find((m) => m.id === w.id)!.sortOrder } : {}) }))
+  },
   recordBillByHand: async (filing: unknown) => {
     if (io.refuse) throw io.refuse
     io.filed.push(filing)
@@ -74,6 +95,8 @@ beforeEach(() => {
   io.saved = []
   io.filed = []
   io.ways = null
+  io.wayCalls = []
+  io.wayRefuse = null
   io.refuse = null
   io.fail = null
   io.phone = false
@@ -237,7 +260,10 @@ describe('BillsSentLedger', () => {
     expect((screen.getByLabelText('Who it went to') as HTMLInputElement).value).toBe('Sable Ridge Builders')
     expect(save.disabled).toBe(true)
     expect(form.textContent).toContain('Pick how the bill went.')
-    fireEvent.change(screen.getByLabelText('How the bill went'), { target: { value: 'handed' } })
+    // The list could not be read, so the four in code are offered and there is no list to change.
+    const picker = screen.getByRole('group', { name: 'How the bill went' })
+    expect(within(picker).getAllByRole('button').map((b) => b.textContent)).toEqual(['Handed over', 'Mailed', 'Emailed from a person\u2019s own mailbox', 'Sent from Housecall Pro'])
+    fireEvent.click(within(picker).getByRole('button', { name: 'Handed over' }))
     fireEvent.change(screen.getByLabelText('The day it went'), { target: { value: '2026-11-09' } })
     expect(save.disabled).toBe(false)
     // A refusal says its reason and keeps the form.
@@ -254,25 +280,110 @@ describe('BillsSentLedger', () => {
     await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
   })
 
-  it('offers the office\u2019s own list of ways, and files the way picked with its words', async () => {
-    const GAP = 'dddddddd-4444-4444-8444-444444444444'
-    io.data = { ...data([copy({})]), unsent: [{ billId: GAP, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
-    const row = (over: Record<string, unknown>) => ({ id: 'w1', key: 'handed', label: 'Handed over', sent_how: 'hand', sort_order: 1, retired_at: null, retired_by_name: '', created_by_name: '', created_at: '2026-11-13T15:00:00Z', ...over })
-    io.ways = [
-      row({ id: 'w3', key: 'w_3f9a1c2e77', label: 'Uploaded to the builder\u2019s pay portal', sent_how: 'other', sort_order: 3, created_by_name: 'Priya' }),
-      row({}),
-      row({ id: 'w2', key: 'mailed', label: 'Mailed', sent_how: 'mail', sort_order: 2, retired_at: '2026-11-13T16:00:00Z', retired_by_name: 'Marcus' }),
-    ].map((r) => ({ id: r.id, key: r.key, label: r.label, sentHow: r.sent_how, sortOrder: r.sort_order, retiredAtIso: r.retired_at, retiredByName: r.retired_by_name, createdByName: r.created_by_name, createdAtIso: r.created_at }))
+  const GAP_BILL = 'dddddddd-4444-4444-8444-444444444444'
+  const way = (over: Partial<BillHandWay>): BillHandWay => ({ id: 'w1', key: 'handed', label: 'Handed over', sentHow: 'hand', sortOrder: 1, retiredAtIso: null, retiredByName: '', createdByName: '', createdAtIso: '2026-11-13T15:00:00Z', ...over })
+  const officeList = (): BillHandWay[] => [
+    way({ id: 'w3', key: 'w_3f9a1c2e77', label: 'Uploaded to the builder’s pay portal', sentHow: 'other', sortOrder: 3, createdByName: 'Priya', createdAtIso: '2026-11-11T18:00:00Z' }),
+    way({}),
+    way({ id: 'w2', key: 'mailed', label: 'Mailed', sentHow: 'mail', sortOrder: 2, retiredAtIso: '2026-11-09T16:00:00Z', retiredByName: 'Marcus' }),
+  ]
+  const openForm = async () => {
+    io.data = { ...data([copy({})]), unsent: [{ billId: GAP_BILL, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
     renderWithProviders(<BillsSentLedger />)
     await screen.findByTestId('bills-sent-gap')
     fireEvent.click(screen.getByRole('button', { name: 'Say how it went…' }))
-    const how = screen.getByLabelText('How the bill went') as HTMLSelectElement
-    // The list's own order, and a way taken off is not offered.
-    await waitFor(() => expect(Array.from(how.options).map((o) => o.textContent)).toEqual(['Pick one', 'Handed over', 'Uploaded to the builder\u2019s pay portal']))
-    fireEvent.change(how, { target: { value: 'w_3f9a1c2e77' } })
+    await screen.findByRole('button', { name: '＋ Add a way' })
+    return screen.getByRole('group', { name: 'How the bill went' })
+  }
+  const chips = (picker: HTMLElement) => within(picker).getAllByRole('button').map((b) => b.textContent)
+
+  it('offers the office’s own list as chips, and files the way picked with its words', async () => {
+    io.ways = officeList()
+    const picker = await openForm()
+    // The list's own order, a way taken off is not offered, and the two presses that change the list follow.
+    expect(chips(picker)).toEqual(['Handed over', 'Uploaded to the builder’s pay portal', '＋ Add a way', 'Edit list'])
+    const portal = within(picker).getByRole('button', { name: 'Uploaded to the builder’s pay portal' })
+    fireEvent.click(portal)
+    expect(portal.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Record how it went' }))
     await waitFor(() => expect(io.filed).toHaveLength(1))
-    expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'other', sourceSnapshot: { how: 'w_3f9a1c2e77', how_label: 'Uploaded to the builder\u2019s pay portal' } })
+    expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'other', sourceSnapshot: { how: 'w_3f9a1c2e77', how_label: 'Uploaded to the builder’s pay portal' } })
+  })
+
+  it('adds a way where the person stands: typed, refused with its reason, then on the list and picked', async () => {
+    io.ways = officeList()
+    const picker = await openForm()
+    fireEvent.click(within(picker).getByRole('button', { name: '＋ Add a way' }))
+    const adder = screen.getByTestId('bill-hand-way-adder')
+    const box = within(adder).getByLabelText('The new way') as HTMLInputElement
+    const add = within(adder).getByRole('button', { name: 'Add to the list' }) as HTMLButtonElement
+    // Nothing typed: the press is dead and the line says who gets the new way and how full the list is.
+    expect(add.disabled).toBe(true)
+    expect(adder.textContent).toContain('Everyone who opens Bills sent gets the new way. 2 of 12.')
+    // Words already on the list are refused before the database is asked. A way taken off has freed its words.
+    fireEvent.change(box, { target: { value: '  handed OVER ' } })
+    expect(add.disabled).toBe(true)
+    expect(adder.textContent).toContain('That way is already on the list.')
+    fireEvent.change(box, { target: { value: ' Left at   the front desk ' } })
+    expect(add.disabled).toBe(false)
+    // A refusal from the database keeps the typed words.
+    io.wayRefuse = Object.assign(new Error('Training mode is read only.'), { code: '42501' })
+    fireEvent.click(add)
+    await waitFor(() => expect(add.disabled).toBe(false))
+    expect(io.wayCalls).toEqual([])
+    expect(box.value).toBe(' Left at   the front desk ')
+    io.wayRefuse = null
+    fireEvent.click(add)
+    await waitFor(() => expect(io.wayCalls).toEqual([['add', 'Left at the front desk']]))
+    // The new way is a chip, picked, and the adder is gone.
+    const made = await within(picker).findByRole('button', { name: 'Left at the front desk' })
+    await waitFor(() => expect(made.getAttribute('aria-pressed')).toBe('true'))
+    expect(screen.queryByTestId('bill-hand-way-adder')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Record how it went' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('edits the list in its window: rename, move, take off, bring back, and the last way stays', async () => {
+    io.ways = officeList()
+    const picker = await openForm()
+    fireEvent.click(within(picker).getByRole('button', { name: 'Edit list' }))
+    const win = await screen.findByTestId('bill-hand-ways-window')
+    const rows = () => within(win).getAllByTestId('bill-hand-way-row').map((r) => r.textContent)
+    expect(rows()[1]).toContain('Added by Priya on Wed, Nov 11')
+    expect(screen.getByTestId('bill-hand-ways-count').textContent).toContain('A bill already recorded keeps the words it was recorded with. 2 of 12.')
+    // Rename: the window says an older record keeps its words, and refuses words already on the list.
+    fireEvent.click(within(win).getByRole('button', { name: 'Rename Handed over' }))
+    const name = within(win).getByLabelText('New name for Handed over') as HTMLInputElement
+    expect(win.textContent).toContain('Was: Handed over. A bill already recorded as Handed over still reads Handed over.')
+    fireEvent.change(name, { target: { value: 'uploaded to the builder’s pay portal' } })
+    expect((within(win).getByRole('button', { name: 'Save the name' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(name, { target: { value: 'Handed over on site' } })
+    fireEvent.click(within(win).getByRole('button', { name: 'Save the name' }))
+    await waitFor(() => expect(io.wayCalls).toEqual([['rename', 'w1', 'Handed over on site']]))
+    await waitFor(() => expect(rows()[0]).toContain('Handed over on site'))
+    // The form behind it follows: the chip reads the new words.
+    expect(chips(picker)[0]).toBe('Handed over on site')
+    // Move: the two rows trade places. The top row cannot go up.
+    expect((within(win).getByRole('button', { name: 'Move Handed over on site up' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(within(win).getByRole('button', { name: 'Move Handed over on site down' }))
+    await waitFor(() => expect(io.wayCalls[1]).toEqual(['move', [{ id: 'w1', sortOrder: 3 }, { id: 'w3', sortOrder: 1 }]]))
+    await waitFor(() => expect(rows()[0]).toContain('Uploaded to the builder’s pay portal'))
+    // Take off: it leaves the list and waits under Taken off, with who and when. The last way cannot go.
+    fireEvent.click(within(win).getByRole('button', { name: 'Take Handed over on site off the list' }))
+    await waitFor(() => expect(rows()).toHaveLength(1))
+    expect((within(win).getByRole('button', { name: 'Take Uploaded to the builder’s pay portal off the list' }) as HTMLButtonElement).disabled).toBe(true)
+    const gone = within(win).getByTestId('bill-hand-ways-gone')
+    expect(gone.textContent).toContain('Taken off (2)')
+    fireEvent.click(within(gone).getByRole('button', { name: 'Show' }))
+    expect(gone.textContent).toContain('Taken off by Marcus on Mon, Nov 9')
+    // Bring back: Mailed returns to the list and to the form, at the place it had.
+    fireEvent.click(within(gone).getByRole('button', { name: 'Bring Mailed back' }))
+    await waitFor(() => expect(io.wayCalls.at(-1)).toEqual(['on', 'w2', true]))
+    await waitFor(() => expect(chips(picker)).toEqual(['Uploaded to the builder\u2019s pay portal', 'Mailed', '＋ Add a way', 'Edit list']))
+    // Done only closes the window.
+    const calls = io.wayCalls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByTestId('bill-hand-ways-window')).toBeNull())
+    expect(io.wayCalls).toHaveLength(calls)
   })
 
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {

@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { BILL_HAND_WAYS_BUILT_IN, BILL_HAND_WAYS_CAP, billHandWaysOrBuiltIn, liveBillHandWays, parseBillHandWay, retiredBillHandWays } from './billHandWays'
+import {
+  BILL_HAND_WAYS_BUILT_IN,
+  BILL_HAND_WAYS_CAP,
+  billHandWaysOrBuiltIn,
+  cleanHandWayLabel,
+  handWayAddProblem,
+  handWayAddedWords,
+  handWayBringBackProblem,
+  handWayCountWords,
+  handWayMove,
+  handWayNameProblem,
+  handWayTakeOffProblem,
+  handWayTakenOffWords,
+  liveBillHandWays,
+  parseBillHandWay,
+  retiredBillHandWays,
+  type BillHandWay,
+} from './billHandWays'
 
 /** The ways a bill can go when the app did not send it (punch list #340). Every name is made up. */
 const row = (over: Record<string, unknown> = {}) => ({ id: 'w1', key: 'handed', label: 'Handed over', sent_how: 'hand', sort_order: 1, retired_at: null, retired_by_name: '', created_by_name: '', created_at: '2026-11-13T15:00:00Z', ...over })
@@ -59,5 +76,57 @@ describe('the list the form offers', () => {
       ['housecall_pro', 'Sent from Housecall Pro', 'email'],
     ])
     expect(BILL_HAND_WAYS_CAP).toBe(12)
+  })
+})
+
+describe('editing the list — what each press says and refuses', () => {
+  const way = (id: string, label: string, sortOrder: number, over: Partial<BillHandWay> = {}): BillHandWay => ({ id, key: `k_${id}`, label, sentHow: 'other', sortOrder, retiredAtIso: null, retiredByName: '', createdByName: '', createdAtIso: null, ...over })
+  const ways = [way('a', 'Handed over', 1), way('b', 'Mailed', 2), way('c', 'Their own email', 3), way('x', 'Faxed', 9, { retiredAtIso: '2026-11-09T16:00:00Z', retiredByName: 'Marcus' })]
+  const full = Array.from({ length: BILL_HAND_WAYS_CAP }, (_, i) => way(`f${i}`, `Way ${i + 1}`, i + 1))
+
+  it('keeps typed words tidy and says how full the list is', () => {
+    expect(cleanHandWayLabel('  Left at   the\tfront desk ')).toBe('Left at the front desk')
+    expect(handWayCountWords(ways)).toBe('3 of 12')
+  })
+
+  it('refuses a name that is blank, too long or already on the list, and lets a way keep its own name', () => {
+    expect(handWayNameProblem('   ', ways)).toBe('Type the way in a few words.')
+    expect(handWayNameProblem('x'.repeat(61), ways)).toBe('Keep it to 60 characters. This is 61.')
+    expect(handWayNameProblem(' MAILED ', ways)).toBe('That way is already on the list.')
+    expect(handWayNameProblem('Mailed', ways, 'b')).toBe('')
+    // A way taken off has freed its words.
+    expect(handWayNameProblem('Faxed', ways)).toBe('')
+  })
+
+  it('refuses a 13th way, and a new way with nothing typed', () => {
+    expect(handWayAddProblem('', ways)).toBe('Type the new way in a few words.')
+    expect(handWayAddProblem('Left at the front desk', ways)).toBe('')
+    expect(handWayAddProblem('Left at the front desk', full)).toBe('The list is full at 12 ways. Take one off first.')
+  })
+
+  it('keeps one way on the list, and brings one back only when there is room and its words are free', () => {
+    expect(handWayTakeOffProblem(ways[0]!, ways)).toBe('')
+    expect(handWayTakeOffProblem(ways[0]!, [ways[0]!, ways[3]!])).toBe('The list needs one way. Add another before you take this one off.')
+    expect(handWayBringBackProblem(ways[3]!, ways)).toBe('')
+    expect(handWayBringBackProblem(ways[3]!, [...full, ways[3]!])).toBe('The list is full at 12 ways. Take one off first.')
+    expect(handWayBringBackProblem(ways[3]!, [...ways, way('y', 'faxed', 4)])).toBe('A way with these words is on the list now. Rename that one first.')
+  })
+
+  it('moves a way one place: two rows trade places, a tie is numbered again, the ends stay', () => {
+    expect(handWayMove(ways, 'b', 'up')).toEqual([{ id: 'b', sortOrder: 1 }, { id: 'a', sortOrder: 2 }])
+    expect(handWayMove(ways, 'b', 'down')).toEqual([{ id: 'b', sortOrder: 3 }, { id: 'c', sortOrder: 2 }])
+    expect(handWayMove(ways, 'a', 'up')).toBeNull()
+    expect(handWayMove(ways, 'c', 'down')).toBeNull()
+    // A way off the list has no place to move from.
+    expect(handWayMove(ways, 'x', 'up')).toBeNull()
+    const tied = [way('a', 'Alpha', 5), way('b', 'Bravo', 5), way('c', 'Charlie', 6)]
+    expect(handWayMove(tied, 'a', 'down')).toEqual([{ id: 'b', sortOrder: 1 }, { id: 'a', sortOrder: 2 }, { id: 'c', sortOrder: 3 }])
+  })
+
+  it('says who added a way and who took one off, with the day', () => {
+    expect(handWayAddedWords(way('n', 'Portal', 5, { createdByName: 'Priya', createdAtIso: '2026-11-11T18:00:00Z' }))).toBe('Added by Priya on Wed, Nov 11')
+    expect(handWayAddedWords(ways[0]!)).toBe('')
+    expect(handWayTakenOffWords(ways[3]!)).toBe('Taken off by Marcus on Mon, Nov 9')
+    expect(handWayTakenOffWords(ways[0]!)).toBe('')
   })
 })

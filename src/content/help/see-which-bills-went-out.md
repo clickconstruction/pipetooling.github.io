@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, record it as sent, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, handed over, mailed, by hand, say how it went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -148,7 +148,7 @@ Press {{chip:yellow|No send on record}} to see the box alone. The yellow tile at
 Do this when you know how a bill in the yellow box went out.
 
 1. Press **Say how it went…** on the bill's row.
-2. Pick how the bill went. The choices are handed over, mailed, emailed from a person's own mailbox, and sent from Housecall Pro.
+2. Press the chip that says how the bill went. The pressed chip turns dark.
 3. Type who the bill went to. Add an address if you have one.
 4. Pick the day the bill went.
 5. Press {{button:blue|Record how it went}}.
@@ -158,6 +158,37 @@ The bill leaves the yellow box. The bill now has a line on the day you picked.
 The line says *Recorded by hand*, with your name and the day you recorded it. The line has no copy, because the app sent nothing.
 
 A record made by hand cannot be changed once saved. Check the day and the name before you press.
+
+No chip may fit how the bill went. Then add a way to the list. See [Change the list of ways](#change-the-list-of-ways).
+
+## Change the list of ways
+
+The chips under *How the bill went* are a list your office keeps. Everyone who opens Bills sent picks from the same list.
+
+To add a way:
+
+1. Press **＋ Add a way**.
+2. Type the new way in a few words.
+3. Press {{button:blue|Add to the list}}.
+
+The new way shows as a chip. The app picks the new chip for you.
+
+To change the list, press **Edit list**. A window opens with every way on the list.
+
+- Press **Rename** to change the words of a way. Then press {{button:blue|Save the name}}.
+- Press ▲ or ▼ to move a way up or down.
+- Press **Take off** to take a way off the form.
+- Press **Show** beside *Taken off* to see the ways taken off. Press **Bring back** to return one.
+
+Each change saves when you press it. Press {{button:blue|Done}} to close the window.
+
+A bill already recorded keeps the words it was recorded with. A new name changes the chip and no older line.
+
+The list holds 12 ways at most. The list always keeps one way.
+
+Every way counts under the **Recorded by hand** chip, whatever its words.
+
+You may see no **＋ Add a way** chip. Then the list did not load. Open the page again.
 
 ## Sends that kept no copy
 
