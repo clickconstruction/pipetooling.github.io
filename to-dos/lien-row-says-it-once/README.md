@@ -1,8 +1,8 @@
 ---
 name: "Pipeline: a billed row's lien line says it once, and names the next act"
 number: 325
-group: ready
-status: asked 2026-11-12 · Grace took all four picks, asked for a second pass (five changes), then said build the entire train · PRs 1 to 4 are v2.7042, v2.7043, v2.7046 and v2.7047 · PR 5 stacked behind them
+group: close
+status: asked 2026-11-12 · Grace took all four picks, asked for a second pass (five changes), then said build the entire train · all five PRs built the same day as a stack (v2.7042, v2.7043, v2.7046, v2.7047, v2.7048) · a live walk of the train found the window's header reading Draft on a notice in work, and Grace said build it: PR 6 (v2.7077)
 summary: >
   A row in Billed Awaiting Payment or Collections prints two lien lines in its Progress & payment
   column, and they often say one thing twice: File the lien by Nov 16, 4d, then File the affidavit,
@@ -11,9 +11,9 @@ summary: >
   whose words are the next act on the lien path and whose day is the legal last day that act
   protects, a second line only for paper that is already out, a line under the rule that speaks of
   money alone, and a press that opens the Lien window on the right paper.
-next: PR 5, then each PR armed when the one under it has merged.
-size: M as a train of five (S · M · S · M · S); PR 1 alone removes the repeat
-blocker: None. The train is being built.
+next: See PRs 5 and 6 merge, look at a billed row and its Lien window on the live site, then Grace's word to close the card or take up what is left. The owner's call on a last day of work set by hand is listed under Seen.
+size: M as a train of six (S · M · S · M · S · S), all built; left: the look on the live site (XS) and the follow-ups listed under Seen
+blocker: The merge queue, then a live walk.
 opinion: build — PR 1 is small and safe, and PR 2 fixes the cause, a bold line that asks for an act the job is not ready for
 ---
 
@@ -217,6 +217,8 @@ together by a test. A full merge is a larger job than this fault deserves today.
    Touches the runway, so the Lien calendar, the phone chip and the Dashboard's card are walked.
 5. **One table everywhere (S).** The Accounts Receivable chip, the desk's rows and the window's header
    read `lienActWords.ts`. A test holds the four together.
+6. **The window's header names the step a notice is on (S).** Added after the live walk. The Pipeline and
+   the Lien desk hand the window the job's desk entry, and a printed notice becomes its own step.
 
 ## How to verify
 
@@ -241,7 +243,37 @@ Answered 2026-11-12: "I like all of your suggestions." All four picks stand.
    window says a late notice can still go, the owner's reading of 2026-10-06. My pick: the row follows
    the window. No row is in that state today.
 
+## Where it stands (2026-11-12)
+
+All five PRs are built and open as a stack: #7810 (PR 1, armed), #7812, #7813, #7814 and the last for PR 5.
+Each is armed only after the one under it has merged. Walked read-only on the live board with PR 2's code: 61
+billed rows and 10 in Collections, no row repeating itself and nothing cut to dots.
+
+What PR 5 did not do, against the plan above: the Lien window's header still reads *File the affidavit* for an
+affidavit that is not drafted, since the window cannot see the desk's record, and the Lien desk's Do now rows
+keep a state beside a button that names the act. `lienOneReading.test.ts` holds the row, the chip, the act
+table and the window's header to one step where they can be compared.
+
+The whole train was then walked read-only on the live board from the top of the stack (2026-11-12, 61 billed
+rows and 10 in Collections). No row repeats itself and nothing is cut to dots. One press on each kind of line
+opened the Lien window on the tab of the paper the line names. The Accounts Receivable chips read in the row's
+words. The walk also found two places where the window and the row still part, both under *Seen, not in this
+card*: the header on a notice in work, and a last day of work set by hand.
+
+Grace said to build the first of the two. PR 6 (v2.7077) hands the Lien window the job's desk entry from the
+Pipeline and from the Lien desk, so its header names the step the notice is on.
+
 ## Seen, not in this card
+
+- The Lien window's header still reads *File the affidavit* for an affidavit that is not drafted or approved.
+  The path has no sentence for those steps yet. PR 6 (v2.7077) did the notice: the header now reads *Find
+  the owner, then send the Sep notice*, *Approve*, *Send* or *Record the mailing of the Sep notice* when the
+  window is opened from the Pipeline or the Lien desk. A window opened from a job's Documents tab has no desk
+  queue to read and keeps *Draft*.
+- Two rules disagree on a last day of work set by hand that is earlier than later clock hours. The row's clock
+  counts from the hand day alone (`buildLienPayRunway`, v2.4830). The Lien window takes the later of the two
+  (`lienWindowLastMonth`, v2.4676). One live row reads *Lien gone* while its window gives the affidavit 95 more
+  days. Which rule is right is the owner's call, then one of the two readers changes.
 
 - The Lien window's third tab is named *Mechanic's lien*. The row, the header and the desk call that
   paper the affidavit. A rename is its own small card.

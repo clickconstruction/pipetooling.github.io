@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -32,11 +32,40 @@ Press **Copy as sent** to open the email as the customer read it. The bill is at
 
 Press the green job name to open the job.
 
+## Did the email arrive
+
+An email line says what the mail service last reported.
+
+- *Delivered* and a time means their mail server took the email.
+- *Opened* and a time means someone opened the email after it was delivered.
+- *Bounced. It did not arrive.* means their mail server refused the email. The line has a red border.
+- *Sent. Their mail server has not answered yet.* means the answer is still to come.
+
+Delivered does not mean someone read the email. Opened is the stronger word.
+
+A red tile at the top reads **Did not arrive** with a count. The tile counts sends that did not arrive on a bill that is still open.
+
+Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
+
+A line whose bill was paid says *Paid* and the day.
+
 ## A bill sent more than once
 
 Every send is its own line. A second send reads *Email, sent again*.
 
 A second send also says which send it is and the day of the first one. The words read like *2nd send. First sent Tue, Nov 3.*
+
+## See every send of one bill
+
+Press the bill's name on a line. The name is underlined.
+
+The bill's record opens. The record lists every send of that bill, newest first.
+
+Each send shows the day and time, who sent it, who it went to and whether it arrived. Press **Copy as sent** on a send to open that email.
+
+Press {{button:outline|Print this record}} to print the record as one page. The page is for your file or for counsel.
+
+The address of the record is a link you can save or paste. Press **← All bills sent** to go back to the list.
 
 ## Read a day
 

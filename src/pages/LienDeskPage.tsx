@@ -36,6 +36,7 @@ import { lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../l
 import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
 import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
+import { lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -320,6 +321,8 @@ export default function LienDeskPage() {
         invoice={null}
         initialTab={lienWindow?.initialTab}
         noticeMonths={lienWindow?.noticeMonths ?? null}
+        // v2.7077: the window's header names the step the desk's row names.
+        deskNotice={lienWindowDeskNotice(lienWindow ? data?.queue.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {

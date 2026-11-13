@@ -5,10 +5,15 @@ import {
   billsSentGapHeading,
   billsSentGaps,
   billsSentAgainWords,
+  billsSentByWords,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
   billsSentLines,
+  billsSentPaidWords,
+  billsSentRecord,
+  billsSentRecordHtml,
+  billsSentRecordPath,
   billsSentSumWords,
   billsSentTiles,
   canOpenBillsSent,
@@ -297,5 +302,117 @@ describe('billsSentGaps (PR 2)', () => {
     const { open } = billsSentGaps(data, [])
     expect(billsSentGapFilter(open, 'juniper').map((g) => g.billId)).toEqual([BILL_A])
     expect(billsSentGapFilter(open, 'larkfield')).toEqual([])
+  })
+})
+
+describe('billsSent — whether a send arrived (PR 3)', () => {
+  const mark = (id: string, lastEvent: string | null, lastEventAtIso: string | null, over: Partial<{ emailType: string; paidOn: string; paidHow: string }> = {}) =>
+    [id, { id, lastEvent, lastEventAtIso, emailType: over.emailType ?? 'stripe_bill', paidOn: over.paidOn ?? null, paidHow: over.paidHow ?? null }] as const
+
+  it('says what the mail service last said, in the line\u2019s words', () => {
+    const copies = [
+      copy({ id: 'd1', sentAt: '2026-11-12T15:28:00.000Z' }),
+      copy({ id: 'o1', sentAt: '2026-11-10T15:28:00.000Z' }),
+      copy({ id: 'w1', sentAt: '2026-11-09T15:28:00.000Z' }),
+      copy({ id: 'n1', sentAt: '2026-11-08T15:28:00.000Z' }),
+    ]
+    const marks = new Map([mark('d1', 'delivered', '2026-11-12T15:28:20.000Z'), mark('o1', 'opened', '2026-11-11T14:12:00.000Z'), mark('w1', 'sent', '2026-11-09T15:28:00.000Z'), mark('n1', null, null)])
+    const lines = billsSentLines(input(copies, { marks }))
+    expect(lines.map((l) => [l.id, l.delivery, l.deliveryTone, l.stillMissed])).toEqual([
+      ['d1', 'Delivered 9:28 AM', 'ok', false],
+      ['o1', 'Opened Wed, Nov 11 at 8:12 AM', 'ok', false],
+      ['w1', 'Sent. Their mail server has not answered yet.', 'quiet', false],
+      ['n1', '', '', false],
+    ])
+  })
+
+  it('marks a bounce on an open bill until a later send arrives', () => {
+    const bounced = copy({ id: 'b1', sentAt: '2026-11-11T22:47:00.000Z' })
+    const marks = new Map([mark('b1', 'bounced', '2026-11-11T22:47:05.000Z')])
+    const [alone] = billsSentLines(input([bounced], { marks }))
+    expect(alone).toMatchObject({ delivery: 'Bounced. It did not arrive.', deliveryTone: 'bad', stillMissed: true })
+
+    const again = copy({ id: 'b2', sentAt: '2026-11-12T15:28:00.000Z' })
+    const lines = billsSentLines(input([again, bounced], { marks: new Map([...marks, mark('b2', 'delivered', '2026-11-12T15:28:10.000Z')]) }))
+    expect(lines.map((l) => [l.id, l.deliveryTone, l.stillMissed])).toEqual([
+      ['b2', 'ok', false],
+      ['b1', 'bad', false],
+    ])
+    expect(billsSentFilter(billsSentLines(input([bounced], { marks })), 'missed', '').map((l) => l.id)).toEqual(['b1'])
+    expect(billsSentFilter(lines, 'missed', '')).toEqual([])
+    expect(billsSentDayExtras(billsSentDays(lines, '2026-11-12')[1]!)).toBe('1 did not arrive')
+  })
+
+  it('does not chase a bounce on a bill that is paid', () => {
+    const [line] = billsSentLines(input([copy({ id: 'p1', sourceId: BILL_B, jobIds: [JOB_B] })], { marks: new Map([mark('p1', 'bounced', '2026-11-12T15:28:05.000Z', { paidOn: '2026-11-09', paidHow: 'card' })]) }))
+    expect(line).toMatchObject({ deliveryTone: 'bad', stillMissed: false, paidOn: '2026-11-09' })
+    expect(billsSentPaidWords(line!)).toBe('Paid Nov 9')
+  })
+
+  it('says a paid bill is paid when the day is not known, and nothing for an open one', () => {
+    expect(billsSentPaidWords({ paid: true, paidOn: null })).toBe('Paid since')
+    expect(billsSentPaidWords({ paid: false, paidOn: null })).toBe('')
+  })
+
+  it('says a statement on the schedule went by the app', () => {
+    const statement = copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', sourceTable: '', sourceId: null, jobIds: [], sentByName: 'Marcus' })
+    const [line] = billsSentLines(input([statement], { marks: new Map([mark('s1', 'delivered', '2026-11-12T15:28:05.000Z', { emailType: 'gc_statement_scheduled' })]) }))
+    expect(billsSentByWords(line!)).toBe('by the app, on Marcus’s schedule')
+    expect(billsSentByWords({ by: 'Priya', bySchedule: false })).toBe('by Priya')
+    expect(billsSentByWords({ by: '', bySchedule: true })).toBe('by the app, on a schedule')
+    expect(billsSentByWords({ by: '', bySchedule: false })).toBe('')
+  })
+
+  it('reads a text Quo could not deliver as a send that did not arrive', () => {
+    const data = input([], { texts: [{ id: 't1', atIso: '2026-11-12T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: '', by: 'Priya', delivery: 'failed' }] })
+    expect(billsSentLines(data)[0]).toMatchObject({ delivery: 'Not delivered', deliveryTone: 'bad', stillMissed: true })
+  })
+})
+
+describe('billsSentRecord (PR 4)', () => {
+  const data = input(
+    [copy({ id: 'c2', sentAt: '2026-11-12T17:02:00.000Z' }), copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' }), copy({ id: 'x1', sourceId: BILL_B, jobIds: [JOB_B] })],
+    {
+      bills: new Map([
+        [BILL_A, { id: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed', billedAtIso: '2026-11-03T22:38:00.000Z' }],
+        [BILL_B, { id: BILL_B, jobId: JOB_B, amount: 9750, status: 'paid' }],
+      ]),
+      texts: [{ id: 't1', atIso: '2026-11-10T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: 'Hal Jensen', by: 'Priya', delivery: 'delivered' }],
+      marks: new Map([
+        ['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-12T17:02:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+        ['c1', { id: 'c1', lastEvent: 'opened', lastEventAtIso: '2026-11-04T14:12:00.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+      ]),
+    },
+  )
+  const lines = billsSentLines(data)
+
+  it('puts every send of one bill in order, newest first, with who it went to and whether it arrived', () => {
+    const record = billsSentRecord(BILL_A, lines, data)!
+    expect(record).toMatchObject({ what: 'Bill 1412-0002', jobWords: 'J1412 · Sable Ridge Lot 14', payer: 'Sable Ridge Builders', amount: 4860, stateWords: 'Not paid', madeWords: 'Bill made Tue, Nov 3 at 4:38 PM.' })
+    expect(record.events.map((e) => [e.when, e.head, e.detail])).toEqual([
+      ['Thu, Nov 12 · 11:02 AM', 'Emailed again by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Delivered 11:02 AM.'],
+      ['Tue, Nov 10 · 2:14 PM', 'Texted the pay link by Priya', 'To Hal Jensen, (512) 555-0142. Delivered.'],
+      ['Tue, Nov 3 · 4:41 PM', 'Emailed by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Opened Wed, Nov 4 at 8:12 AM.'],
+    ])
+    expect(billsSentRecordPath(BILL_A)).toBe(`/bills-sent?bill=${BILL_A}`)
+  })
+
+  it('still has a record for a bill with no send, and none for a bill the page does not know', () => {
+    const bare = billsSentRecord(BILL_A, [], data)!
+    expect(bare.events).toEqual([])
+    expect(bare).toMatchObject({ what: 'Bill', jobWords: 'J1412 · Sable Ridge Lot 14', stateWords: 'Not paid' })
+    expect(billsSentRecord('ffffffff-0000-4000-8000-000000000000', lines, data)).toBeNull()
+    expect(billsSentRecord(BILL_B, lines, data)).toMatchObject({ stateWords: 'Paid', madeWords: '' })
+  })
+
+  it('prints as one page, with the words escaped and what Delivered means', () => {
+    const record = billsSentRecord(BILL_A, lines, data)!
+    const html = billsSentRecordHtml({ ...record, payer: 'Sable <Ridge> & Co' }, '2026-11-12T21:00:00.000Z')
+    expect(html).toContain('<h1>Bill 1412-0002 · J1412 · Sable Ridge Lot 14</h1>')
+    expect(html).toContain('Sable &lt;Ridge&gt; &amp; Co · $4,860.00 · Not paid')
+    expect(html).toContain('<td class="when">Thu, Nov 12 · 11:02 AM</td><td><b>Emailed again by Priya</b>')
+    expect(html).toContain('Delivered means their mail server took the email.')
+    expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
+    expect(billsSentRecordHtml({ ...record, events: [] }, '2026-11-12T21:00:00.000Z')).toContain('No send of this bill is on record.')
   })
 })

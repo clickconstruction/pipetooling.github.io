@@ -15,8 +15,15 @@
  * (`jobs_ledger_invoice_stripe_email_sends`: the time, no address), a bill entered from Housecall Pro (the invoice's
  * own stamp: the day only) and a text that carried the pay link (`messages`). It also adds the gaps: a bill that was
  * made and has no send of any kind on record (`billsSentGaps`), shown above the days so a missing send is seen.
+ *
+ * PR 3 adds whether a send arrived. An email's last word from the mail service (`bill_send_marks`, over
+ * `email_send_log`) reads *Delivered 9:28 AM*, *Opened 9:41 AM* or *Bounced. It did not arrive.* A line whose send did
+ * not arrive, on a bill still open with no later send that did, is `stillMissed`: the red tile counts those.
+ *
+ * PR 4 adds one bill's record (`billsSentRecord`): every send of that bill in order, newest first, each with who it
+ * went to and whether it arrived, and the paper it prints as (`billsSentRecordHtml`).
  */
-import { companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
+import { companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
@@ -45,6 +52,8 @@ export interface BillsSentBill {
   jobId: string | null
   amount: number | null
   status: string
+  /** When the bill was made, for its record. Absent on a read that did not ask. */
+  billedAtIso?: string | null
 }
 
 /** A job's words and what the search box can find it by. */
@@ -103,6 +112,19 @@ export interface BillsSentUnsent {
   billedAtIso: string
 }
 
+/** What the mail service last said of one sent copy, and the day its bill was paid (`bill_send_marks`). */
+export interface BillsSentMark {
+  id: string
+  /** sent, delivered, delivery_delayed, bounced, complained, opened or clicked. Null when not known. */
+  lastEvent: string | null
+  lastEventAtIso: string | null
+  /** The email's type on the log: `gc_statement_scheduled` is a statement the app sent on a schedule. */
+  emailType: string | null
+  /** YYYY-MM-DD, for a copy of a paid bill. */
+  paidOn: string | null
+  paidHow: string | null
+}
+
 export interface BillsSentInput {
   copies: ReadonlyArray<BillsSentCopy>
   bills: ReadonlyMap<string, BillsSentBill>
@@ -114,6 +136,8 @@ export interface BillsSentInput {
   stamps?: ReadonlyArray<BillsSentStamp>
   texts?: ReadonlyArray<BillsSentText>
   unsent?: ReadonlyArray<BillsSentUnsent>
+  /** By sent copy id. Absent before the read function is on the database: the lines then say nothing of arriving. */
+  marks?: ReadonlyMap<string, BillsSentMark>
 }
 
 /** How it left, as the chips sort it. */
@@ -122,14 +146,18 @@ export type BillsSentRoute = 'email' | 'text' | 'printed' | 'statement' | 'house
 /** The name the tile, the chip and the strip give a bill that has no send of any kind on record. */
 export const BILLS_SENT_GAP_LABEL = 'No send on record'
 
-/** The chips: every route, then the bills with no send on record (`gap`), which are not lines. */
-export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentRoute | 'all' | 'gap'; label: string }> = [
+/** A chip's key: a route, every line, the sends that did not arrive, or the bills with no send on record. */
+export type BillsSentChip = BillsSentRoute | 'all' | 'missed' | 'gap'
+
+/** The chips: every route, the sends that did not arrive, then the bills with no send on record (`gap`), which are not lines. */
+export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentChip; label: string }> = [
   { key: 'all', label: 'All' },
   { key: 'email', label: 'Email' },
   { key: 'text', label: 'Text' },
   { key: 'printed', label: 'Printed' },
   { key: 'statement', label: 'Statement' },
   { key: 'housecall_pro', label: 'Housecall Pro' },
+  { key: 'missed', label: 'Did not arrive' },
   { key: 'gap', label: BILLS_SENT_GAP_LABEL },
 ]
 
@@ -169,8 +197,16 @@ export interface BillsSentLine {
   firstAtIso: string | null
   /** What the app cannot know or wants said: under a print, under a statement. '' otherwise. */
   note: string
-  /** A text's answer in words: *Delivered*, *Not delivered*. '' on every other line and before Quo answers. */
+  /** Whether it arrived, in words: *Delivered 9:28 AM*, *Opened 9:41 AM*, *Bounced. It did not arrive.*, a text's *Delivered* or *Not delivered*. '' when not known. */
   delivery: string
+  /** How the words read: it arrived, it did not, or the mail service has not said. '' with no words. */
+  deliveryTone: '' | 'ok' | 'bad' | 'quiet'
+  /** True when this send did not arrive, the bill is not paid, and no later send of the bill arrived. */
+  stillMissed: boolean
+  /** The day the bill was paid, YYYY-MM-DD, when the read knows it. */
+  paidOn: string | null
+  /** True for a statement the app sent on a schedule: `by` is then whose schedule it is. */
+  bySchedule: boolean
   /** The copy the line opens; null on a send that kept none, whose note says so. */
   copy: BillsSentCopy | null
   /** The copies to the copy list that went with this send, to open beside it. */
@@ -339,11 +375,17 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     const payer = copy.recipientName || (job?.customer_name ?? '').trim()
     const copyTo = [...new Set(rode.flatMap((r) => r.recipientEmails))].filter((a) => !copy.recipientEmails.includes(a))
     const what = whatOf(copy)
+    const mark = input.marks?.get(copy.id)
+    const arrival = arrivalOf(mark, copy.sentAt)
     return {
       id: copy.id,
       atIso: copy.sentAt,
       dayOnly: false,
-      delivery: '',
+      delivery: arrival.words,
+      deliveryTone: arrival.tone,
+      stillMissed: false,
+      paidOn: mark?.paidOn ?? null,
+      bySchedule: mark?.emailType === 'gc_statement_scheduled',
       route,
       routeWords: routeWordsOf(copy, route, nth),
       what,
@@ -406,6 +448,10 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       atIso: o.atIso,
       dayOnly: o.dayOnly ?? false,
       delivery: o.delivery ?? '',
+      deliveryTone: o.delivery === 'Delivered' ? 'ok' : o.delivery ? 'bad' : '',
+      stillMissed: false,
+      paidOn: null,
+      bySchedule: false,
       route: o.route,
       routeWords: o.routeWords(nth),
       what,
@@ -473,7 +519,54 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     }),
   )
 
-  return [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
+  const lines = [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
+  // A send that did not arrive still wants someone when its bill is open and nothing sent after it arrived.
+  for (const line of lines) {
+    if (line.deliveryTone !== 'bad' || line.paid) continue
+    line.stillMissed = !lines.some((other) => other !== line && !!line.billId && other.billId === line.billId && other.deliveryTone === 'ok' && ms(other.atIso) > ms(line.atIso))
+  }
+  return lines
+}
+
+/**
+ * What the mail service last said of an email, in the line's words. The service keeps only its last word: *opened*
+ * means it was delivered and then opened. A send with no word yet says nothing, never that it did not arrive.
+ */
+function arrivalOf(mark: BillsSentMark | undefined, sentAtIso: string): { words: string; tone: BillsSentLine['deliveryTone'] } {
+  const event = mark?.lastEvent ?? ''
+  if (!event) return { words: '', tone: '' }
+  const at = mark?.lastEventAtIso ?? ''
+  const sameDay = at && calendarYmdInAppTzFromIso(at) === calendarYmdInAppTzFromIso(sentAtIso)
+  const when = !at ? '' : sameDay ? ` ${billsSentTime(at)}` : ` ${formatWorkDateYmdWeekdayShortFriendly(calendarYmdInAppTzFromIso(at))} at ${billsSentTime(at)}`
+  switch (event) {
+    case 'delivered':
+      return { words: `Delivered${when}`, tone: 'ok' }
+    case 'opened':
+    case 'clicked':
+      return { words: `Opened${when}`, tone: 'ok' }
+    case 'bounced':
+      return { words: 'Bounced. It did not arrive.', tone: 'bad' }
+    case 'complained':
+      return { words: 'Delivered. The reader marked it as spam.', tone: 'quiet' }
+    case 'delivery_delayed':
+      return { words: 'Delayed by their mail server.', tone: 'quiet' }
+    case 'sent':
+      return { words: 'Sent. Their mail server has not answered yet.', tone: 'quiet' }
+    default:
+      return { words: '', tone: '' }
+  }
+}
+
+/** Who sent it, as the line writes it: *by Priya*, or *by the app, on Marcus’s schedule* for a statement on a schedule. */
+export function billsSentByWords(line: Pick<BillsSentLine, 'by' | 'bySchedule'>): string {
+  if (line.bySchedule) return line.by ? `by the app, on ${line.by}’s schedule` : 'by the app, on a schedule'
+  return line.by ? `by ${line.by}` : ''
+}
+
+/** A paid bill's word on its lines: *Paid Nov 9* when the day is known, *Paid since* when only the fact is. '' when not paid. */
+export function billsSentPaidWords(line: Pick<BillsSentLine, 'paid' | 'paidOn'>): string {
+  if (line.paidOn) return `Paid ${formatWorkDateYmdMonthDayShort(line.paidOn)}`
+  return line.paid ? 'Paid since' : ''
 }
 
 /** A bill with no send on record, as the strip above the days draws it. */
@@ -583,6 +676,8 @@ export interface BillsSentDay {
   /** Lines that are a second or later send. */
   again: number
   statements: number
+  /** Lines whose send did not arrive. */
+  missed: number
 }
 
 const sumOf = (lines: ReadonlyArray<BillsSentLine>): BillsSentSum => {
@@ -602,19 +697,21 @@ export function billsSentDays(lines: ReadonlyArray<BillsSentLine>, todayYmd: str
       continue
     }
     const day = ymd ? formatWorkDateYmdWeekdayShortFriendly(ymd) : 'No date'
-    out.push({ ymd, label: ymd === todayYmd ? `Today · ${day}` : ymd === yesterday ? `Yesterday · ${day}` : day, lines: [line], sum: { bills: 0, total: 0 }, again: 0, statements: 0 })
+    out.push({ ymd, label: ymd === todayYmd ? `Today · ${day}` : ymd === yesterday ? `Yesterday · ${day}` : day, lines: [line], sum: { bills: 0, total: 0 }, again: 0, statements: 0, missed: 0 })
   }
   for (const d of out) {
     d.sum = sumOf(d.lines)
     d.again = d.lines.filter((l) => l.nth > 1).length
     d.statements = d.lines.filter((l) => l.route === 'statement').length
+    d.missed = d.lines.filter((l) => l.deliveryTone === 'bad').length
   }
   return out
 }
 
 /** A day band's small words after its total: *2 sent again · 1 statement*. '' when there are neither. */
-export function billsSentDayExtras(day: Pick<BillsSentDay, 'again' | 'statements'>): string {
+export function billsSentDayExtras(day: Pick<BillsSentDay, 'again' | 'statements'> & { missed?: number }): string {
   const parts: string[] = []
+  if (day.missed && day.missed > 0) parts.push(`${day.missed} did not arrive`)
   if (day.again > 0) parts.push(`${day.again} sent again`)
   if (day.statements > 0) parts.push(plural(day.statements, 'statement'))
   return parts.join(' · ')
@@ -636,13 +733,137 @@ export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: st
 }
 
 /** The lines a route chip and the search box leave. Every typed word must be found. */
-export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: BillsSentRoute | 'all' | 'gap', typed: string): BillsSentLine[] {
+export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: BillsSentChip, typed: string): BillsSentLine[] {
   if (route === 'gap') return []
   const words = typed.toLowerCase().split(/\s+/).filter(Boolean)
-  return lines.filter((l) => (route === 'all' || l.route === route) && words.every((w) => l.haystack.includes(w)))
+  return lines.filter((l) => (route === 'all' || (route === 'missed' ? l.stillMissed : l.route === route)) && words.every((w) => l.haystack.includes(w)))
 }
 
 /** The words a copy's window is headed with. */
 export function billsSentCopyLabel(line: Pick<BillsSentLine, 'what' | 'jobWords' | 'routeWords'>): string {
   return ['Copy as it went out', line.what, line.jobWords, line.routeWords].filter(Boolean).join(' · ')
+}
+
+
+/** One send on a bill's record. */
+export interface BillsSentRecordEvent {
+  id: string
+  /** *Thu, Nov 12 · 11:02 AM*, or the day alone when the record holds no time. */
+  when: string
+  /** *Emailed again by Marcus*. */
+  head: string
+  /** *To Accounts Payable, ap@larkfield.example. Delivered 11:02 AM.* */
+  detail: string
+  line: BillsSentLine
+}
+
+/** Every send of one bill, as its record draws it. */
+export interface BillsSentRecord {
+  billId: string
+  /** *Bill 1398-0003*. */
+  what: string
+  jobWords: string
+  jobTo: string | null
+  payer: string
+  amount: number | null
+  /** *Not paid*, *Paid Nov 9*, *Paid*. */
+  stateWords: string
+  /** Newest first. Empty for a bill with no send on record. */
+  events: BillsSentRecordEvent[]
+  /** *Bill made Tue, Nov 3 at 4:38 PM.* '' when the read does not know. */
+  madeWords: string
+}
+
+const dayAndTime = (iso: string, dayOnly: boolean): string => {
+  const ymd = Number.isFinite(Date.parse(iso)) ? calendarYmdInAppTzFromIso(iso) : ''
+  if (!ymd) return ''
+  const day = formatWorkDateYmdWeekdayShortFriendly(ymd)
+  return dayOnly ? day : `${day} · ${billsSentTime(iso)}`
+}
+
+function recordHead(line: BillsSentLine): string {
+  const by = billsSentByWords(line)
+  const verb =
+    line.route === 'email'
+      ? line.nth > 1
+        ? 'Emailed again'
+        : 'Emailed'
+      : line.route === 'text'
+        ? 'Texted the pay link'
+        : line.route === 'printed'
+          ? 'Printed'
+          : line.route === 'housecall_pro'
+            ? 'Sent from Housecall Pro'
+            : line.routeWords
+  return by ? `${verb} ${by}` : verb
+}
+
+function recordDetail(line: BillsSentLine): string {
+  const parts: string[] = []
+  const to = [line.toName, line.toAddresses.join(', ')].filter(Boolean).join(', ')
+  if (to) parts.push(`To ${to}.`)
+  if (line.copyTo.length > 0) parts.push(`Copy to ${line.copyTo.join(', ')}.`)
+  if (line.delivery) parts.push(/[.!?]$/.test(line.delivery) ? line.delivery : `${line.delivery}.`)
+  if (line.note) parts.push(line.note)
+  return parts.join(' ')
+}
+
+/**
+ * One bill's record from the lines on the page: every send of it, newest first. A bill with no line (a gap) still
+ * has a record, with no events. Null when the page knows nothing of the bill.
+ */
+export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLine>, input: Pick<BillsSentInput, 'bills' | 'jobs'>): BillsSentRecord | null {
+  const own = lines.filter((l) => l.billId === billId)
+  const bill = input.bills.get(billId)
+  if (own.length === 0 && !bill) return null
+  const first = own[0]
+  const jobId = bill?.jobId ?? null
+  const job = jobId ? input.jobs.get(jobId) : undefined
+  const paidLine = own.find((l) => l.paidOn)
+  const paid = bill?.status === 'paid' || own.some((l) => l.paid)
+  const madeYmd = bill?.billedAtIso && Number.isFinite(Date.parse(bill.billedAtIso)) ? calendarYmdInAppTzFromIso(bill.billedAtIso) : ''
+  return {
+    billId,
+    what: own.find((l) => l.what !== 'Bill')?.what ?? first?.what ?? 'Bill',
+    jobWords: first?.jobWords || (jobId ? sentCopyJobLabel(jobId, job) : ''),
+    jobTo: first?.jobTo ?? (jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null),
+    payer: first?.payer || (job?.customer_name ?? '').trim(),
+    amount: bill?.amount ?? first?.amount ?? null,
+    stateWords: paid ? (paidLine ? billsSentPaidWords(paidLine) : 'Paid') : 'Not paid',
+    events: own.map((line) => ({ id: line.id, when: dayAndTime(line.atIso, line.dayOnly), head: recordHead(line), detail: recordDetail(line), line })),
+    madeWords: madeYmd ? `Bill made ${formatWorkDateYmdWeekdayShortFriendly(madeYmd)} at ${billsSentTime(bill!.billedAtIso!)}.` : '',
+  }
+}
+
+/** The record's address: the list's own, with the bill in it. */
+export function billsSentRecordPath(billId: string): string {
+  return `${BILLS_SENT_PATH}?bill=${encodeURIComponent(billId)}`
+}
+
+const esc = (v: string): string => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * The record as a page to print: the bill, then each send with who it went to and whether it arrived, then what
+ * *Delivered* means. Our own reading of the record for a file or for counsel, so it is not itself a send.
+ */
+export function billsSentRecordHtml(record: BillsSentRecord, printedAtIso: string): string {
+  const title = [record.what, record.jobWords].filter(Boolean).join(' · ')
+  const rows = record.events
+    .map((e) => `<tr><td class="when">${esc(e.when)}</td><td><b>${esc(e.head)}</b><br>${esc(e.detail)}</td></tr>`)
+    .join('')
+  const none = '<p>No send of this bill is on record. The app sent no email, text or print for it.</p>'
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} · record of sends</title><style>
+body{font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:32px}
+h1{font-size:18px;margin:0 0 2px}p{margin:4px 0}.sub{color:#444}
+table{border-collapse:collapse;width:100%;margin-top:14px}td{border-top:1px solid #bbb;padding:7px 8px 7px 0;vertical-align:top}
+td.when{white-space:nowrap;width:1%;padding-right:16px;font-weight:600}.foot{margin-top:16px;color:#444;font-size:12px}
+</style></head><body>
+<h1>${esc(title)}</h1>
+<p class="sub">${esc([record.payer, record.amount != null ? billsSentMoney(record.amount) : '', record.stateWords].filter(Boolean).join(' · '))}</p>
+<p class="sub">Record of sends, newest first. All times are Central.</p>
+${record.events.length ? `<table>${rows}</table>` : none}
+${record.madeWords ? `<p class="foot">${esc(record.madeWords)}</p>` : ''}
+<p class="foot">Delivered means their mail server took the email. It does not mean someone read it. Each time is the app's own record of the send.</p>
+<p class="foot">Printed ${esc(dayAndTime(printedAtIso, false))}.</p>
+</body></html>`
 }

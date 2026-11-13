@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   BILLS_SENT_GAP_LABEL,
+  BILLS_SENT_PATH,
   BILLS_SENT_ROUTE_CHIPS,
   billsSentAgainWords,
+  billsSentByWords,
   billsSentCopyLabel,
   billsSentDayExtras,
   billsSentDays,
@@ -15,17 +17,24 @@ import {
   billsSentGaps,
   billsSentLines,
   billsSentMoney,
+  billsSentPaidWords,
+  billsSentRecord,
+  billsSentRecordHtml,
+  billsSentRecordPath,
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
+  type BillsSentRecord,
   type BillsSentRoute,
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
 import { readBillsSent } from '../../lib/billing/billsSentIo'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -42,6 +51,12 @@ import { EmptyState } from '../EmptyState'
  * PR 2: a send that kept no copy is still a line and says what it lacks (an older email with no address, a bill
  * entered from Housecall Pro with the day only, a text with the pay link). Above the days sits the strip of bills
  * that were made and have no send on record, so a bill that never went is seen and not left off the list.
+ *
+ * PR 3: an email line says whether it arrived (*Delivered 9:28 AM*, *Opened*, *Bounced. It did not arrive.*), a paid
+ * bill says the day, and a red tile counts the sends that did not arrive on a bill still open.
+ *
+ * PR 4: a bill's name on a line opens that bill's record, every send of it in order, at `?bill=<id>`, so the
+ * address is the link to keep or paste. **Print this record** prints it as one page.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -73,6 +88,8 @@ const strong: CSSProperties = { color: 'var(--text-strong)', fontWeight: 700 }
 const money: CSSProperties = { ...strong, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const press: CSSProperties = { font: 'inherit', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--text-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
 const jobLink: CSSProperties = { color: 'var(--text-green-700)', fontWeight: 600, textDecoration: 'none' }
+/** A bill's name as a press: the underline alone marks it, in the words' own colour. */
+const billLink: CSSProperties = { ...strong, textDecoration: 'underline', textUnderlineOffset: 2 }
 
 const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color: string }>> = {
   email: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
@@ -115,13 +132,22 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
   const time = line.dayOnly ? 'Day only' : billsSentTime(line.atIso)
   const span: CSSProperties = phone ? { gridColumn: '1 / -1', minWidth: 0 } : { gridColumn: '2 / -1', minWidth: 0 }
   const kept = !!line.copy?.copyPath
+  const by = billsSentByWords(line)
+  const paid = billsSentPaidWords(line)
+  const toneColor = line.deliveryTone === 'ok' ? 'var(--text-green-700)' : line.deliveryTone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)'
   // The payer is on the line above: the name is said again only when the copy went to someone else, or names no address.
   const toName = line.toAddresses.length > 0 && line.toName === line.payer ? '' : line.toName
   return (
-    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto' }}>
+    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto', ...(line.stillMissed ? { borderColor: 'var(--text-red-700)' } : {}) }}>
       <div style={phone ? { ...strong, gridColumn: '1 / -1', fontVariantNumeric: 'tabular-nums' } : { ...strong, gridRow: '1 / span 3', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{time}</div>
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <b style={strong}>{line.what}</b>
+        {line.billId ? (
+          <Link to={billsSentRecordPath(line.billId)} style={billLink} title="Open every send of this bill">
+            {line.what}
+          </Link>
+        ) : (
+          <b style={strong}>{line.what}</b>
+        )}
         {line.jobWords ? (
           <>
             {' · '}
@@ -153,10 +179,10 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
       {line.note ? <div style={{ ...span, color: 'var(--text-700)' }}>{line.note}</div> : null}
       <div style={{ ...span, display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.5rem', alignItems: 'center', color: 'var(--text-muted)' }}>
         <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
-        {line.by ? <span>by {line.by}</span> : null}
+        {by ? <span>{by}</span> : null}
         {again ? <span>{again}</span> : null}
-        {line.delivery ? <span style={{ color: line.delivery === 'Delivered' ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 600 }}>{line.delivery}</span> : null}
-        {line.paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>Paid since</span> : null}
+        {line.delivery ? <span style={{ color: toneColor, fontWeight: line.deliveryTone === 'quiet' ? 500 : 600 }}>{line.delivery}</span> : null}
+        {paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{paid}</span> : null}
         {kept ? (
           <button type="button" style={press} onClick={() => onOpen(line)} title="Open the copy as it went out">
             {line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
@@ -179,7 +205,9 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <b style={strong}>Bill</b>
+        <Link to={billsSentRecordPath(gap.billId)} style={billLink} title="Open this bill's record">
+          Bill
+        </Link>
         {gap.jobWords ? (
           <>
             {' · '}
@@ -238,10 +266,67 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
   )
 }
 
+/** One bill's record: every send of it, newest first, with the copy of each and a print of the whole. */
+function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void }) {
+  return (
+    <div data-testid="bills-sent-record" style={{ ...lineBox, display: 'block', padding: '0.7rem 0.8rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.6rem', alignItems: 'baseline' }}>
+        <h2 style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+          {record.what}
+          {record.jobWords ? (
+            <>
+              {' · '}
+              {record.jobTo ? (
+                <Link to={record.jobTo} style={jobLink}>
+                  {record.jobWords}
+                </Link>
+              ) : (
+                record.jobWords
+              )}
+            </>
+          ) : null}
+        </h2>
+        <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? billsSentMoney(record.amount) : ''}</span>
+      </div>
+      <p style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>{[record.payer, record.stateWords].filter(Boolean).join(' · ')}</p>
+      {record.events.length === 0 ? (
+        <p style={{ margin: '0.4rem 0', color: 'var(--text-amber-800)' }} data-testid="bills-sent-record-none">
+          This bill has no send on record. The app sent no email, text or print for it.
+        </p>
+      ) : (
+        record.events.map((e) => (
+          <div key={e.id} data-testid="bills-sent-record-event" style={{ borderTop: '1px solid var(--border)', padding: '0.4rem 0' }}>
+            <div>
+              <b style={strong}>{e.when}</b> · {e.head}
+            </div>
+            <div style={{ color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+              {e.detail}{' '}
+              {e.line.copy?.copyPath ? (
+                <button type="button" style={press} onClick={() => onOpen(e.line)}>
+                  {e.line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))
+      )}
+      {record.madeWords ? <p style={{ margin: '0.4rem 0 0', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>{record.madeWords}</p> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.6rem' }}>
+        <button type="button" onClick={onPrint} style={{ ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }}>
+          Print this record
+        </button>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Delivered means their mail server took it. It does not mean someone read it.</span>
+      </div>
+    </div>
+  )
+}
+
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
-  const [route, setRoute] = useState<BillsSentRoute | 'all' | 'gap'>('all')
+  const [params] = useSearchParams()
+  const billParam = params.get('bill')
+  const [route, setRoute] = useState<BillsSentChip>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
   const [data, setData] = useState<BillsSentInput | null>(null)
@@ -275,6 +360,7 @@ export function BillsSentLedger() {
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])
+  const missed = useMemo(() => lines.filter((l) => l.stillMissed).length, [lines])
   const gaps = useMemo(() => (data ? billsSentGaps(data, lines) : { open: [], paid: [] }), [data, lines])
   const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
@@ -293,11 +379,42 @@ export function BillsSentLedger() {
     [showToast],
   )
 
+  const record = useMemo(() => (billParam && data ? billsSentRecord(billParam, lines, data) : null), [billParam, data, lines])
+  const printRecord = () => {
+    if (record && !openHtmlPrintWindow(billsSentRecordHtml(record, new Date().toISOString()))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+
+  if (billParam) {
+    return (
+      <section aria-label="One bill's record" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div>
+          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
+            ← All bills sent
+          </Link>
+        </div>
+        {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
+        {data == null && !failure ? (
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
+        ) : record ? (
+          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} />
+        ) : data != null ? (
+          <EmptyState main="That bill is not on this list." next={{ label: 'See all bills sent', to: BILLS_SENT_PATH }} />
+        ) : null}
+      </section>
+    )
+  }
+
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
+        {missed > 0 ? (
+          <div style={{ ...tile, background: 'var(--bg-red-tint)', borderColor: 'var(--text-red-700)' }} data-testid="bills-sent-tile-missed">
+            <span style={{ ...tileSmall, color: 'var(--text-red-700)' }}>Did not arrive</span>
+            <b style={{ color: 'var(--text-red-700)', fontSize: '0.9375rem' }}>{missed}</b>
+          </div>
+        ) : null}
         {gaps.open.length > 0 ? (
           <div style={{ ...tile, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
             <span style={{ ...tileSmall, color: 'var(--text-amber-800)' }}>{BILLS_SENT_GAP_LABEL}</span>
@@ -353,7 +470,7 @@ export function BillsSentLedger() {
       ) : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
-          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then.
+          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
         </p>
       ) : null}
     </section>

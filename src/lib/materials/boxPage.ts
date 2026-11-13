@@ -17,6 +17,7 @@ export {
   boxPageNoun,
   boxPageOfficePhone,
   boxPagePhotoUrl,
+  boxPageStickerAnswer,
   buildBoxPagePayload,
   compareStencils,
   parseBoxPageFindResponse,
@@ -28,6 +29,8 @@ export {
   type BoxPagePayload,
   type BoxPagePhoto,
   type BoxPageRefusal,
+  type BoxPageStickerAnswer,
+  type BoxPageStickerRow,
 } from '../../../supabase/functions/_shared/boxPage'
 import { boxPageCodeWords, boxPageKind, boxPageNoun, parseBoxPageFindResponse, parseBoxPageResponse, type BoxPageFindPayload, type BoxPageKind, type BoxPagePayload } from '../../../supabase/functions/_shared/boxPage'
 import { portalFailureCause, type PortalFailureCause } from '../portal/portalFailure'
@@ -41,11 +44,29 @@ export type BoxPageView =
   /** A retired box: the day it left, and since v2.6874 its stencil, its kind and the office's number when the function answers them. */
   | { kind: 'retired'; retiredOn: string | null; stencil: string | null; boxKind: BoxPageKind | null; phone: string | null }
   | { kind: 'locked' }
+  /** A sticker on no box yet (v2.7072, punch list #329): its number and nothing else. */
+  | { kind: 'sticker_blank'; number: number }
+  /** A sticker that was marked lost: its number and the day. */
+  | { kind: 'sticker_lost'; number: number; lostOn: string | null }
   /** The box did not open: its class or the function's own known sentence, never other text. */
   | { kind: 'error'; failure: PortalFailureCause }
 
+/** A sticker's answer read off the body: its number when the body names that refusal, else null. */
+function stickerNumberOf(body: unknown, refusal: 'sticker_blank' | 'sticker_lost'): number | null {
+  if (!body || typeof body !== 'object') return null
+  const b = body as { error?: unknown; number?: unknown }
+  return b.error === refusal && typeof b.number === 'number' && Number.isInteger(b.number) && b.number > 0 ? b.number : null
+}
+
 export function boxPageView(status: number, body: unknown): BoxPageView {
-  if (status === 404) return { kind: 'not_found' }
+  if (status === 404) {
+    const number = stickerNumberOf(body, 'sticker_blank')
+    return number ? { kind: 'sticker_blank', number } : { kind: 'not_found' }
+  }
+  if (status === 410 && stickerNumberOf(body, 'sticker_lost')) {
+    const lostOn = (body as { lostOn?: unknown }).lostOn
+    return { kind: 'sticker_lost', number: stickerNumberOf(body, 'sticker_lost')!, lostOn: typeof lostOn === 'string' && lostOn.trim() ? lostOn.trim() : null }
+  }
   if (status === 410) {
     const b = body && typeof body === 'object' ? (body as { retiredOn?: unknown; stencil?: unknown; kind?: unknown; phone?: unknown }) : {}
     const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)

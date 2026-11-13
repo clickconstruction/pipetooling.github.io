@@ -27,7 +27,7 @@ const noMap: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--te
  * the dot wears the task's number once the list has a map over it. A task with no place draws
  * nothing: no empty line, no nudge.
  */
-export function TaskPlaceLine({ place, number, overdue }: { place: TaskPlace; number?: number | null; overdue?: boolean }) {
+export function TaskPlaceLine({ place, number, overdue, far }: { place: TaskPlace; number?: number | null; overdue?: boolean; /** `250 ft north-east`, once the person asked where they are. */ far?: string | null }) {
   return (
     <span data-task-place-line style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600, minWidth: 0 }}>
       <span
@@ -41,6 +41,7 @@ export function TaskPlaceLine({ place, number, overdue }: { place: TaskPlace; nu
         {number != null ? number : ''}
       </span>
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</span>
+      {far ? <span data-task-place-line-far style={{ flex: 'none', fontWeight: 500, color: 'var(--text-muted)' }}>· {far}</span> : null}
     </span>
   )
 }

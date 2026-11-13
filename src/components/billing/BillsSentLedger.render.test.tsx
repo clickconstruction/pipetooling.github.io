@@ -146,6 +146,52 @@ describe('BillsSentLedger', () => {
     expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
   })
 
+  it('says whether an email arrived, counts the ones that did not, and narrows to them', async () => {
+    io.data = {
+      ...data([copy({ id: 'c2', sentAt: '2026-11-05T17:02:00.000Z', recipientEmails: ['old@sableridge.example'] }), copy({ id: 'c1' })]),
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }]]),
+      marks: new Map([
+        ['c2', { id: 'c2', lastEvent: 'bounced', lastEventAtIso: '2026-11-05T17:02:04.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+        ['c1', { id: 'c1', lastEvent: 'delivered', lastEventAtIso: '2026-11-03T22:41:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    const lines = await screen.findAllByTestId('bills-sent-line')
+    expect(lines[0]?.textContent).toContain('Bounced. It did not arrive.')
+    expect(lines[1]?.textContent).toContain('Delivered 4:41 PM')
+    expect(screen.getByTestId('bills-sent-tile-missed').textContent).toBe('Did not arrive1')
+    expect(screen.getAllByTestId('bills-sent-day')[0]?.textContent).toContain('1 did not arrive')
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
+    expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Delivered means their mail server took it.')
+  })
+
+  it('opens one bill\u2019s record from its address, every send in order, and prints it', async () => {
+    const printed: string[] = []
+    const opener = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (h: string) => printed.push(h), close: () => {}, images: [] }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    io.data = data([copy({ id: 'c2', sentAt: '2026-11-05T17:02:00.000Z' }), copy({ id: 'c1' })])
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    const record = await screen.findByTestId('bills-sent-record')
+    expect(record.textContent).toContain('Bill 1412-0002 · J1412 · Sable Ridge Lot 14')
+    expect(record.textContent).toContain('Sable Ridge Builders · Not paid')
+    expect(screen.getAllByTestId('bills-sent-record-event').map((e) => e.textContent?.replace(/\d{1,2}:\d\d [AP]M/, 'T'))).toEqual([
+      'Thu, Nov 5 · T · Emailed again by PriyaTo Sable Ridge Builders, hal@sableridge.example. Copy as sent',
+      'Tue, Nov 3 · T · Emailed by PriyaTo Sable Ridge Builders, hal@sableridge.example. Copy as sent',
+    ])
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    expect(screen.getByRole('link', { name: '← All bills sent' }).getAttribute('href')).toBe('/bills-sent')
+    fireEvent.click(screen.getByRole('button', { name: 'Print this record' }))
+    expect(printed[0]).toContain('<h1>Bill 1412-0002 · J1412 · Sable Ridge Lot 14</h1>')
+    opener.mockRestore()
+  })
+
+  it('makes a bill\u2019s name on a line the door to its record', async () => {
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    expect(screen.getByRole('link', { name: 'Bill 1412-0002' }).getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
+  })
+
   it('says what fills an empty list, and offers the Pipeline', async () => {
     renderWithProviders(<BillsSentLedger />)
     const empty = await screen.findByTestId('bills-sent-empty')
