@@ -4,6 +4,7 @@ import { taskPlaceDraft, type TaskPlace, type TaskPlaceDraft } from '../../lib/t
 import { loadTaskSpotPhotoPath, putTaskSpotPhoto, removeTaskSpotPhotoFile, saveTaskSpotPhotoPath, taskSpotPhotoUrls } from '../../lib/tasks/taskSpotPhotoIo'
 import { TaskPlaceBlock, TaskSpotPhotoView } from './TaskPlaceBlock'
 import { TaskPlaceRow } from './TaskPlaceRow'
+import { ROADMAP_TASK_PICKER_Z } from '../../lib/windowLayers'
 import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './TaskSpotPhotoField'
 
 type Props = {
@@ -118,7 +119,7 @@ export function RoadmapTaskPlaceSection({ taskId, canEdit, userId, nameOf }: Pro
 
   return (
     <div data-roadmap-task-place style={{ padding: '2px 16px 12px', borderBottom: '1px solid var(--border)' }}>
-      <TaskPlaceRow value={draft} onChange={change} />
+      <TaskPlaceRow value={draft} onChange={change} sheetZIndex={ROADMAP_TASK_PICKER_Z} />
       <TaskSpotPhotoField value={photo} onChange={changePhoto} busy={photoBusy} />
       {error ? (
         <p role="alert" style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
