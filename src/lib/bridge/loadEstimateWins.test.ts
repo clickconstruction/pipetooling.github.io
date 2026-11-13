@@ -24,7 +24,7 @@ describe('isZzEstimate', () => {
 
 describe('loadEstimatesSent: a ZZ test estimate leaves the won rate (punch list #334, PR 3)', () => {
   // Made-up customers and dollars.
-  const row = (id: string, title: string, customer: string | null, status = 'sent') => ({ id, title, customers: customer == null ? null : { name: customer }, sent_at: '2026-10-05T15:00:00+00:00', status, total_cents: 240_000, doc_kind: 'estimate', customer_id: customer == null ? null : `c-${id}`, customer_email: null, for_address: '12 Elm St', acceptor_consented_at: null, updated_at: '2026-10-06T15:00:00+00:00' })
+  const row = (id: string, title: string, customer: string | null, status = 'sent') => ({ id, estimate_number: 41, title, customers: customer == null ? null : { name: customer }, sent_at: '2026-10-05T15:00:00+00:00', status, total_cents: 240_000, doc_kind: 'estimate', customer_id: customer == null ? null : `c-${id}`, customer_email: null, for_address: '12 Elm St', acceptor_consented_at: null, updated_at: '2026-10-06T15:00:00+00:00' })
   const rows = {
     estimates: [row('real', 'Estimate for Maple Homes', 'Maple Homes', 'customer_accepted'), row('zzCustomer', 'Kitchen repipe', 'ZZ Test Walk', 'declined'), row('zzTitle', 'Estimate for ZZ Walk Press', null)],
   }
@@ -33,6 +33,8 @@ describe('loadEstimatesSent: a ZZ test estimate leaves the won rate (punch list 
     const { db } = makeProxyFakeSupabase(rows)
     const sent = await loadEstimatesSent(db, { leftOut: [], zzTestJobIds: new Set<string>() })
     expect(sent.map((e) => [e.status, e.usd])).toEqual([['customer_accepted', 2_400]])
+    // Each estimate carries its own id, number and title, for a list that names it (PR 4).
+    expect(sent.map((e) => [e.id, e.number, e.name])).toEqual([['real', 41, 'Estimate for Maple Homes']])
   })
 
   it('keeps them for a dev who shows tests, and when no switch is handed in', async () => {
