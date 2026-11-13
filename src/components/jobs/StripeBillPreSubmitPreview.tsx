@@ -35,6 +35,11 @@ export type StripeBillPreSubmitPreviewProps = {
   onLineDescriptionClick?: (args: { lineIndex: number; source: StripeInvoiceLineSource | undefined }) => void
   /** True when Bill Customer "Line on bill" (`stripeLineDescription`) is non-empty — enables `single_line` row edit. */
   stripeLineOverrideActive?: boolean
+  /**
+   * The words over the box. Bill Customer draws this box as one of three faces under *What Dana will get* (punch list
+   * #343, PR 2) and names it for what it is, the bill; a caller that passes nothing keeps *What the customer will see:*.
+   */
+  heading?: string
 }
 
 const metaLabel: CSSProperties = {
@@ -171,7 +176,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
           textAlign: 'center',
         }}
       >
-        What the customer will see:
+        {p.heading ?? 'What the customer will see:'}
         {p.stripePreviewLoading && sp ? (
           <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Updating…</span>
         ) : null}
