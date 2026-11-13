@@ -51,6 +51,7 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
+import { MAIL_SAVED_WORDS, type MailSavedNeed } from './myMail/savedForYou'
 import { MY_MOVES_WORDS, type MyMovesNeed } from './bridge/callPeople'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
@@ -116,6 +117,7 @@ export type NeedsYouItem = {
     | 'customer-messages'
     | 'todays-sends'
     | 'while-off'
+    | 'mail-saved'
     | 'bridge-moves'
     | 'rating-low'
     | 'gc-review-weekly'
@@ -235,6 +237,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'todays-sends': 40,
   // The same tier: the pushes the viewer's own Push me hours held while they were off (v2.6060, punch list #141 PR 4).
   'while-off': 40,
+  // The owner is told (v2.7068): news with nothing to do, so it sits below everything that asks for a press.
+  'mail-saved': 90,
   // The week's one decision, handed to this person (punch list #303 PR 4): beside the hard weekly deadline.
   'bridge-moves': 20,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
@@ -416,7 +420,7 @@ export type NeedsYouInputs = {
   teamReviewCadenceDays: number
   /**
    * Roadmap "needs a person" nudges (v2.2489). The hook self-gates (empty
-   * unless `canSeeRoadmapNeedsYou` — dev, not Farm Mode — or under the
+   * unless `canSeeRoadmapNeedsYou` — dev, not Task Mode — or under the
    * min-count threshold); the builder drops the item for non-dev roles anyway
    * (`kind: 'roadmap'`, Tier-2 #41).
    */
@@ -763,6 +767,9 @@ export type NeedsYouInputs = {
    */
   bridgeMovesEnabled?: boolean
   bridgeMoves?: MyMovesNeed | null
+  /** The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job. */
+  mailSavedEnabled?: boolean
+  mailSaved?: MailSavedNeed | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1487,6 +1494,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       actionLabel: b.door ? b.door.label : MY_MOVES_WORDS.markDone,
       // With a page to open, Done is the link beside the button; with none, Done is the button.
       ...(b.door ? { secondary: [{ key: 'done', label: MY_MOVES_WORDS.done }] } : {}),
+    })
+  }
+
+  // The owner is told (v2.7068): someone else saved the viewer's mail onto a job. Blue: news, with nothing to do.
+  if (inputs.mailSavedEnabled && inputs.mailSaved && inputs.mailSaved.count > 0) {
+    const m = inputs.mailSaved
+    items.push({
+      key: 'mail-saved',
+      severity: 'blue',
+      kicker: MAIL_SAVED_WORDS.kicker,
+      title: m.title,
+      detail: m.detail,
+      figure: m.count > 99 ? '99+' : String(m.count),
+      actionLabel: MAIL_SAVED_WORDS.action,
     })
   }
 

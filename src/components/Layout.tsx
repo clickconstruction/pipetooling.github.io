@@ -70,9 +70,9 @@ import { doorsOnlyHeaderSearchEligible, fieldJobLookupEligible, headerSearchElig
 import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
-import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
-import { FARM_MODE_EXIT_CONTROL, farmModeBounceTarget } from '../lib/farmModeToggle'
-import { FarmModeChip } from './FarmModeChip'
+import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
+import { TASK_MODE_EXIT_CONTROL, taskModeBounceTarget, taskModeToggleTip } from '../lib/taskModeToggle'
+import { TaskModeChip } from './TaskModeChip'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
@@ -158,10 +158,10 @@ export default function Layout() {
   // Role-aware (v2.2877): absent key ⇒ ON for sub-like roles, OFF otherwise; a stored value wins.
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
-  // Farm Mode: checklist-only lens, any role. Wins over the Dispatch/Job Mode
+  // Task Mode: checklist-only lens, any role. Wins over the Dispatch/Job Mode
   // shells while on; their toggles keep their stored state for when it's off.
-  const [farmModeEnabled, setFarmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
-  const farmModeActive = farmModeEnabled && !!authUser?.id
+  const [taskModeEnabled, setTaskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
+  const taskModeActive = taskModeEnabled && !!authUser?.id
   // Pin Mode (v2.1972): whether the page-bottom pin footer renders. Existing
   // pins (Dashboard quick bar, Settings management) work regardless.
   const [pinModeEnabled, setPinModeEnabled] = usePinModeEnabled(authUser?.id ?? null)
@@ -173,7 +173,7 @@ export default function Layout() {
   // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
   // them the toggle rendered a footer of dead tabs (they keep /schedule-dispatch editing itself).
   const dispatchModeMenuEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !farmModeActive
+  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !taskModeActive
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) and
   // city→county extras (property legal panels) — hydrate once per session.
@@ -188,7 +188,7 @@ export default function Layout() {
   // and only from `/` or `/dashboard`, so a deep link is never bounced.
   useAssistantDispatchLanding(dispatchModeActive)
   const jobModeFooterActive =
-    jobModeEnabled && jobModeMenuEligible && !dispatchModeActive && !farmModeActive
+    jobModeEnabled && jobModeMenuEligible && !dispatchModeActive && !taskModeActive
   // Job Mode header "Contact:" row — the dispatch line phone plus the three task
   // buttons spelled out; falls back to the icon buttons (with the phone kept on
   // the left) when the viewport is too narrow to fit the labels.
@@ -256,7 +256,7 @@ export default function Layout() {
   // resizing the window. `role` is the big one — it is null on cold load and
   // flips ~0.5s later, bringing the rest of the links with it. Nothing here may
   // depend on `isMobile`, which is derived from this hook's own answer.
-  const navContentKey = `${role ?? ''}|${impersonating ? 1 : 0}|${jobModeFooterActive ? 1 : 0}|${farmModeActive ? 1 : 0}`
+  const navContentKey = `${role ?? ''}|${impersonating ? 1 : 0}|${jobModeFooterActive ? 1 : 0}|${taskModeActive ? 1 : 0}`
   const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow, navContentKey)
   const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
@@ -312,7 +312,7 @@ export default function Layout() {
         ...(dispatchModeActive && dispatchModePoRoleAllowed
           ? [{ key: 'po', label: 'PO tab', on: dispatchModePoEnabled, onToggle: () => writeDispatchModePoEnabled(authUser.id, !dispatchModePoEnabled) }]
           : []),
-        { key: 'farm', label: 'Farm Mode', on: farmModeEnabled, onToggle: () => setFarmModeEnabled(!farmModeEnabled) },
+        { key: 'task', label: 'Task Mode', on: taskModeEnabled, onToggle: () => setTaskModeEnabled(!taskModeEnabled) },
         { key: 'pin', label: 'Pin Mode', on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
         { key: 'dark', label: 'Dark Mode', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
       ]
@@ -349,23 +349,23 @@ export default function Layout() {
   // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail —
   // with the guides for their role; the estimator, primary and superintendent get the
   // pages, Settings cards and guides alone (go anywhere, punch list #181, PR 4).
-  const fieldJobLookup = fieldJobLookupEligible(role, farmModeActive)
-  const doorsOnlySearch = doorsOnlyHeaderSearchEligible(role, farmModeActive)
-  const headerSearchEligible = headerSearchEligibleForRole(role, farmModeActive)
+  const fieldJobLookup = fieldJobLookupEligible(role, taskModeActive)
+  const doorsOnlySearch = doorsOnlyHeaderSearchEligible(role, taskModeActive)
+  const headerSearchEligible = headerSearchEligibleForRole(role, taskModeActive)
 
-  // Farm Mode is a hard lens: whatever route the user lands on (post-login
+  // Task Mode is a hard lens: whatever route the user lands on (post-login
   // default, deep link, stale bookmark), bounce to the checklist. The landing
-  // is honest (Tier-2 #41): the FarmModeChip above the page says the mode is on
+  // is honest (Tier-2 #41): the TaskModeChip above the page says the mode is on
   // and carries the Exit; the gear toggle stays reachable too.
   useEffect(() => {
-    if (!farmModeActive) return
-    const to = farmModeBounceTarget(location.pathname)
+    if (!taskModeActive) return
+    const to = taskModeBounceTarget(location.pathname)
     if (to) navigate(to, { replace: true })
-  }, [farmModeActive, location.pathname, navigate])
-  const exitFarmMode = useCallback(() => {
-    recordNavClick(authUser?.id, role, FARM_MODE_EXIT_CONTROL, location.pathname)
-    setFarmModeEnabled(false)
-  }, [authUser?.id, role, location.pathname, setFarmModeEnabled])
+  }, [taskModeActive, location.pathname, navigate])
+  const exitTaskMode = useCallback(() => {
+    recordNavClick(authUser?.id, role, TASK_MODE_EXIT_CONTROL, location.pathname)
+    setTaskModeEnabled(false)
+  }, [authUser?.id, role, location.pathname, setTaskModeEnabled])
   const navSearchOverlayBg = impersonating && isMobile ? 'var(--bg-amber-100)' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
@@ -508,7 +508,7 @@ export default function Layout() {
   )
 
   const canShowMaterialsNav =
-    !farmModeActive &&
+    !taskModeActive &&
     !isSubcontractorLikeRole(role) &&
     (role === null ||
       role === 'estimator' ||
@@ -518,10 +518,10 @@ export default function Layout() {
       isAssistantLike(role) ||
       role === 'superintendent')
 
-  // Farm Mode: the trimmed nav already carries the Checklist text link, so the
+  // Task Mode: the trimmed nav already carries the Checklist text link, so the
   // header icon duplicate hides with the rest of the icon cluster.
   const canShowChecklistNav =
-    !farmModeActive &&
+    !taskModeActive &&
     (role === null ||
       role === 'dev' ||
       role === 'master_technician' ||
@@ -531,16 +531,16 @@ export default function Layout() {
       role === 'superintendent' ||
       isSubcontractorLikeRole(role))
 
-  // Roadmap (Tier-2 #41): the RLS edit set — dev / master / assistant-like / primary — never under Farm Mode.
+  // Roadmap (Tier-2 #41): the RLS edit set — dev / master / assistant-like / primary — never under Task Mode.
   // Its door is the gear menu's row above Partnerships (v2.6258); the header lost the link.
-  const canShowRoadmapNav = canOpenRoadmap(role, farmModeActive)
+  const canShowRoadmapNav = canOpenRoadmap(role, taskModeActive)
 
   const canShowMapNav =
     (role === 'dev' ||
       role === 'master_technician' ||
       isAssistantLike(role) ||
       role === 'estimator') &&
-    !farmModeActive
+    !taskModeActive
 
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -618,7 +618,7 @@ export default function Layout() {
   )
 
   function renderMobileHeaderLinks() {
-    if (farmModeActive) return null
+    if (taskModeActive) return null
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
       display: 'inline-flex' as const,
       alignItems: 'center',
@@ -650,7 +650,7 @@ export default function Layout() {
   function renderNavLinks(onNavClick?: () => void, excludeHeaderLinks?: boolean) {
     const linkStyle = onNavClick ? dropdownLinkStyle : navStyle
     const dashboardContent = dashboardIcon
-    if (farmModeActive) {
+    if (taskModeActive) {
       return (
         <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
       )
@@ -1086,7 +1086,7 @@ export default function Layout() {
               </svg>
             </a>
           )}
-          {showTaskDispatchButton(role) && !farmModeActive && jobModeContactRowFits && (
+          {showTaskDispatchButton(role) && !taskModeActive && jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -1107,7 +1107,7 @@ export default function Layout() {
               dispatch
             </button>
           )}
-          {showEstimatorInboxButton(role) && !farmModeActive && jobModeContactRowFits && (
+          {showEstimatorInboxButton(role) && !taskModeActive && jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -1143,7 +1143,7 @@ export default function Layout() {
               teammate
             </button>
           )}
-          {showTaskDispatchButton(role) && !farmModeActive && !jobModeContactRowFits && (
+          {showTaskDispatchButton(role) && !taskModeActive && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -1161,7 +1161,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showEstimatorInboxButton(role) && !farmModeActive && !jobModeContactRowFits && (
+          {showEstimatorInboxButton(role) && !taskModeActive && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -1198,7 +1198,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showHeaderNewBidButton(role, farmModeActive, location.pathname) && (
+          {showHeaderNewBidButton(role, taskModeActive, location.pathname) && (
             <button
               type="button"
               onClick={() => navigate('/bids?new=true')}
@@ -1267,7 +1267,7 @@ export default function Layout() {
             {checklistNavIcon}
           </NavLink>
           )}
-          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !farmModeActive && !phoneDockActive && (
+          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !taskModeActive && !phoneDockActive && (
             <>
               {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
                 <NavLink
@@ -1497,12 +1497,12 @@ export default function Layout() {
                   <button
                     type="button"
                     onClick={() => {
-                      setFarmModeEnabled(!farmModeEnabled)
+                      setTaskModeEnabled(!taskModeEnabled)
                       setGearOpen(false)
                     }}
-                    title={farmModeEnabled ? 'Turn Farm Mode off' : 'Turn Farm Mode on — checklist only'}
-                    aria-label="Toggle Farm Mode"
-                    aria-pressed={farmModeEnabled}
+                    title={taskModeToggleTip(taskModeEnabled)}
+                    aria-label="Toggle Task Mode"
+                    aria-pressed={taskModeEnabled}
                     style={{
                       display: 'flex',
                       width: '100%',
@@ -1518,10 +1518,10 @@ export default function Layout() {
                       color: 'inherit',
                       borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
-                      fontWeight: farmModeEnabled ? 600 : 400,
+                      fontWeight: taskModeEnabled ? 600 : 400,
                     }}
                   >
-                    <span>Farm Mode</span>
+                    <span>Task Mode</span>
                     <span
                       aria-hidden="true"
                       style={{
@@ -1532,13 +1532,13 @@ export default function Layout() {
                         justifyContent: 'center',
                         borderRadius: 3,
                         border: '1px solid var(--border-400)',
-                        background: farmModeEnabled ? '#65a30d' : 'var(--surface)',
+                        background: taskModeEnabled ? '#65a30d' : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,
                       }}
                     >
-                      {farmModeEnabled ? '✓' : ''}
+                      {taskModeEnabled ? '✓' : ''}
                     </span>
                   </button>
                 )}
@@ -1679,7 +1679,7 @@ export default function Layout() {
                     Roadmap
                   </NavLink>
                 )}
-                {role === 'dev' && !farmModeActive && (
+                {role === 'dev' && !taskModeActive && (
                   <NavLink
                     to="/partnerships"
                     onClick={() => setGearOpen(false)}
@@ -1708,7 +1708,7 @@ export default function Layout() {
                   role === 'dev' ||
                   role === 'master_technician' ||
                   isAssistantLike(role)) &&
-                  !farmModeActive && (
+                  !taskModeActive && (
                   <NavLink
                     to="/documents"
                     onClick={() => setGearOpen(false)}
@@ -1796,7 +1796,7 @@ export default function Layout() {
                     Map
                   </NavLink>
                 )}
-                {canAccessBanking(role) && !farmModeActive && (
+                {canAccessBanking(role) && !taskModeActive && (
                   <NavLink
                     to="/banking"
                     onClick={() => setGearOpen(false)}
@@ -1818,7 +1818,7 @@ export default function Layout() {
                     Banking
                   </NavLink>
                 )}
-                {!farmModeActive && (
+                {!taskModeActive && (
                 <NavLink
                   to="/calendar"
                   onClick={() => setGearOpen(false)}
@@ -1840,7 +1840,7 @@ export default function Layout() {
                   Calendar
                 </NavLink>
                 )}
-                {!farmModeActive && ownLogbookShown && (
+                {!taskModeActive && ownLogbookShown && (
                 <NavLink
                   to="/my-logbook"
                   onClick={() => setGearOpen(false)}
@@ -1863,7 +1863,7 @@ export default function Layout() {
                   My logbook
                 </NavLink>
                 )}
-                {!farmModeActive && (
+                {!taskModeActive && (
                 <NavLink
                   to="/help"
                   onClick={() => setGearOpen(false)}
@@ -1885,7 +1885,7 @@ export default function Layout() {
                   Help
                 </NavLink>
                 )}
-                {!farmModeActive && (
+                {!taskModeActive && (
                 <NavLink
                   to="/settings"
                   onClick={() => setGearOpen(false)}
@@ -2006,7 +2006,7 @@ export default function Layout() {
               : undefined,
         }}
       >
-        {farmModeActive ? <FarmModeChip onExit={exitFarmMode} /> : null}
+        {taskModeActive ? <TaskModeChip onExit={exitTaskMode} /> : null}
         <AssistantReadyToBillBanner />
         <div
           style={{
@@ -2308,7 +2308,7 @@ export default function Layout() {
       authUserId={authUser?.id ?? null}
       navOverlayBackground={navSearchOverlayBg}
       isMobile={isMobile}
-      farmModeActive={farmModeActive}
+      taskModeActive={taskModeActive}
     >
       {layoutBody}
     </HeaderGlobalSearchProvider>

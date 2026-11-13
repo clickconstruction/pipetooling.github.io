@@ -57,6 +57,34 @@ import {
   myMailTagEventKey,
   myMailTagEventRow,
   myMailTagEventWords,
+  tagAllFiled,
+  myMailTaggedBy,
+  MAIL_SAVED_BODY,
+  MAIL_SAVED_BATCH_MINUTES,
+  MAIL_SAVED_CHANNEL,
+  MAIL_SAVED_TEMPLATE,
+  mailSavedBatchSince,
+  mailSavedFacts,
+  mailSavedTitle,
+  MY_MAIL_TAGGED_PAGE,
+  inAskedBoxes,
+  taggedNextToken,
+  taggedOffset,
+  LABEL_CLEANUP_PER_RUN,
+  LABEL_CLEANUP_TRIES,
+  labelCleanupCounts,
+  labelCleanupDue,
+  labelCleanupMarked,
+  labelCleanupReason,
+  oldLabelId,
+  onWorkspace,
+  readLabelCleanup,
+  SEAT_UNTAG_WORDS,
+  seatMayUntag,
+  seatTagRecord,
+  seatTagsOf,
+  untagHeldWhy,
+  untagPlanPreview,
   myMailTagRecord,
   myMailTeam,
   neverRead,
@@ -69,6 +97,7 @@ import {
   placedByAppWords,
   placedLineWords,
   planUntag,
+  planUntagSweep,
   sentFollowQuery,
   sentPlacement,
   sentSince,
@@ -172,12 +201,28 @@ describe('parseMyMailRequest: what the tab may ask', () => {
 describe('myMailQuery: the Gmail search a page reads', () => {
   const FENCE = '-in:drafts -in:spam -in:trash -in:chats'
 
-  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats; Tagged reads the tag’s label, and To tag reads past it', () => {
-    // A label left behind (an untag that could not take it off, a job deleted with its tag) never hides a mail from
-    // To tag: `viewRows` hides a tagged conversation by the database's own record.
+  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats, and no view names a label of the app’s', () => {
+    // A tag puts no label on a mail (v2.7035): what is tagged is the database's own record alone, in every view.
     expect(myMailQuery({ view: 'toTag' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
     expect(myMailQuery({ view: 'all' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
-    expect(myMailQuery({ view: 'tagged' })).toBe(`(in:inbox OR in:sent) ${FENCE} label:"Tagged in ClickTooling"`)
+    expect(myMailQuery({ view: 'tagged', q: 'water heater' })).toBe(`(in:inbox OR in:sent) ${FENCE} (water heater)`)
+    for (const view of ['toTag', 'tagged', 'all'] as const) expect(myMailQuery({ view })).not.toContain('ClickTooling')
+  })
+
+  it('pages Tagged by a count of our own, a page of conversations at a time', () => {
+    expect([taggedOffset(undefined), taggedOffset(null), taggedOffset(''), taggedOffset('15'), taggedOffset('page-2'), taggedOffset('-3'), taggedOffset('1234567')]).toEqual([0, 0, 0, 15, 0, 0, 0])
+    expect(taggedNextToken(0, MY_MAIL_TAGGED_PAGE)).toBe(String(MY_MAIL_TAGGED_PAGE))
+    expect(taggedNextToken(15, MY_MAIL_TAGGED_PAGE)).toBe(String(15 + MY_MAIL_TAGGED_PAGE))
+    expect(taggedNextToken(15, MY_MAIL_TAGGED_PAGE - 1)).toBeNull()
+    expect(taggedNextToken(0, 0)).toBeNull()
+  })
+
+  it('shows every mail of a tagged conversation, an archived one too, unless one box alone is asked for', () => {
+    expect(inAskedBoxes([], undefined)).toBe(true)
+    expect(inAskedBoxes(['CATEGORY_PERSONAL'], ['INBOX', 'SENT'])).toBe(true)
+    expect(inAskedBoxes(['INBOX'], ['SENT'])).toBe(false)
+    expect(inAskedBoxes(['SENT', 'IMPORTANT'], ['SENT'])).toBe(true)
+    expect(inAskedBoxes(undefined, ['INBOX'])).toBe(false)
   })
 
   it('reads one box when one is asked for, and leaves out each label the person named, once, its quotes dropped', () => {
@@ -487,11 +532,11 @@ describe('the Sent side with no press (punch list #263 PR B)', () => {
   const mill: MyMailJobChip = { kind: 'pipeline', id: MILL, key: `pipeline:${MILL}`, num: 'JP1090', name: '7 Mill Rd' }
   const dale = { name: 'Dale Okafor', address: 'dale@ridgeway.example' }
 
-  it('searches the person’s Sent since the cursor, by the second, never the tag’s label or a label they leave out', () => {
+  it('searches the person’s Sent since the cursor, by the second, never a label they leave out, and names no label of the app’s', () => {
     expect(sentFollowQuery('2026-11-01T00:00:00.000Z', ['Personal', ' personal ', 'Say "hi"'])).toBe(
-      'in:sent after:1793491200 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling" -label:"Personal" -label:"Say hi"',
+      'in:sent after:1793491200 -in:drafts -in:spam -in:trash -in:chats -label:"Personal" -label:"Say hi"',
     )
-    expect(sentFollowQuery('not a time')).toBe('in:sent after:0 -in:drafts -in:spam -in:trash -in:chats -label:"Tagged in ClickTooling"')
+    expect(sentFollowQuery('not a time')).toBe('in:sent after:0 -in:drafts -in:spam -in:trash -in:chats')
     expect(sentSince({ at: '2026-11-01T00:00:00.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(true)
     expect(sentSince({ at: '2026-10-31T23:59:59.000Z' }, '2026-11-01T00:00:00.000Z')).toBe(false)
     expect(sentSince({ at: null }, '2026-11-01T00:00:00.000Z')).toBe(true)
@@ -646,6 +691,226 @@ describe('what a tag writes', () => {
   })
 })
 
+describe('the owner is told that someone else saved their mail (v2.7068)', () => {
+  const row = (by: string | null, job: string, over: Record<string, unknown> = {}) => ({ tagged_by: by, bid_id: null, project_id: null, jobs_ledger_id: job, person_id: null, ...over })
+  const names = { 'u-dev': 'Nadia Reyes', 'u-dev-2': 'Omar Diaz' }
+  const elm = { key: `pipeline:${ELM}`, words: 'JP1077 4 Elm Ct' }
+
+  it('stands on one kind, shown in the app only, with a batch of half an hour', () => {
+    expect([MAIL_SAVED_TEMPLATE, MAIL_SAVED_CHANNEL, MAIL_SAVED_BATCH_MINUTES]).toEqual(['mail_saved_for_you', 'app', 30])
+    expect(mailSavedBatchSince('2026-11-12T21:30:00.000Z')).toBe('2026-11-12T21:00:00.000Z')
+  })
+
+  it('counts only what someone else saved onto a job: never the owner’s own tag, and never an HR file’s row', () => {
+    const facts = mailSavedFacts(
+      [row('u-dev', ELM), row('u-dev', ELM), row('u-dev', HARBOR), row(MARISOL, MILL), row(null, MILL), row('u-dev', ELM, { jobs_ledger_id: null, person_id: 'p-1' }), row('u-dev', ELM, { jobs_ledger_id: null })],
+      MARISOL,
+      names,
+      elm,
+    )
+    expect(facts).toEqual({ savers: ['Nadia Reyes'], conversations: 3, jobs: 2, job: null })
+    expect(mailSavedFacts([], MARISOL, names, elm)).toEqual({ savers: [], conversations: 0, jobs: 0, job: null })
+  })
+
+  it('says one save by its job, and a batch as one line with its counts', () => {
+    const one = mailSavedFacts([row('u-dev', ELM)], MARISOL, names, elm)
+    expect(mailSavedTitle(one)).toBe('Nadia Reyes saved a conversation from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev', ELM), row('u-dev', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes saved 3 conversations from your mail to JP1077 4 Elm Ct.')
+    // Seventeen saves onto seven jobs in two minutes read as one line.
+    const jobs = [ELM, HARBOR, CLUB, CLINIC, MILL, '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a06', '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a07']
+    const batch = mailSavedFacts(Array.from({ length: 17 }, (_, i) => row('u-dev', jobs[i % 7]!)), MARISOL, names, elm)
+    expect(mailSavedTitle(batch)).toBe('Nadia Reyes saved 17 conversations from your mail to 7 jobs.')
+    // Two people, a job that is not the one in hand, and nobody named.
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev-2', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes and Omar Diaz saved 2 conversations from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', HARBOR)], MARISOL, names, elm))).toBe('Nadia Reyes saved a conversation from your mail to a job.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-gone', ELM)], MARISOL, names, elm))).toBe('A developer saved a conversation from your mail to JP1077 4 Elm Ct.')
+    for (const words of [mailSavedTitle(batch), mailSavedTitle(one), MAIL_SAVED_BODY]) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+
+describe('the old Gmail label’s one-time clean-up (v2.7035)', () => {
+  const NOW = '2026-11-12T20:00:00.000Z'
+  const start = readLabelCleanup(null)
+
+  it('reads its record, and anything unreadable as a clean start', () => {
+    expect(start).toEqual({ boxes: {}, finished_at: null })
+    expect(readLabelCleanup('not json')).toEqual(start)
+    expect(readLabelCleanup(JSON.stringify({ boxes: { a: { at: NOW, outcome: 'deleted', tries: 1 }, b: { at: NOW, outcome: 'bogus', tries: 1 }, c: { outcome: 'none' } }, finished_at: NOW }))).toEqual({
+      boxes: { a: { at: NOW, outcome: 'deleted', tries: 1 } },
+      finished_at: NOW,
+    })
+  })
+
+  it('finds the label by its exact name, and no other', () => {
+    expect(oldLabelId([{ id: 'INBOX', name: 'INBOX' }, { id: 'Label_9', name: 'Tagged in ClickTooling' }])).toBe('Label_9')
+    expect(oldLabelId([{ id: 'Label_3', name: 'tagged in clicktooling' }, { id: 'Label_4', name: 'In ClickTooling' }])).toBeNull()
+    expect(oldLabelId(undefined)).toBeNull()
+  })
+
+  it('covers the addresses on the Workspace’s own domain, and every address when the domain is not known', () => {
+    expect(onWorkspace(' Marisol@ClickPlumbing.example ', 'clickplumbing.example')).toBe(true)
+    expect(onWorkspace('robert@douglasmining.example', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace('marisol@notclickplumbing.example', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace('robert@douglasmining.example', null)).toBe(true)
+    expect(onWorkspace('', 'clickplumbing.example')).toBe(false)
+    expect(onWorkspace(null, null)).toBe(false)
+  })
+
+  it('settles a box on an answer, counts the tries of one Google will not open, and leaves it after the last', () => {
+    let state = labelCleanupMarked(start, 'a', { outcome: 'deleted' }, NOW)
+    state = labelCleanupMarked(state, 'b', { outcome: 'none' }, NOW)
+    state = labelCleanupMarked(state, 'c', { outcome: 'failed', reason: 'Google refused dana@example-plumbing.test:\n no such user' }, NOW)
+    expect(state.boxes).toEqual({ a: { at: NOW, outcome: 'deleted', tries: 1 }, b: { at: NOW, outcome: 'none', tries: 1 }, c: { at: NOW, outcome: 'failed', tries: 1, reason: 'Google refused (an address) no such user' } })
+    // Still due: the one never asked, first, then the one that failed. The settled two are never asked again.
+    expect(labelCleanupDue(state, ['a', 'b', 'c', 'd', 'd'])).toEqual(['d', 'c'])
+    expect(labelCleanupCounts(state, ['a', 'b', 'c', 'd'])).toEqual({ mailboxes: 4, checked: 3, deleted: 1, none: 1, failed: 1, left: 2 })
+    for (let i = 1; i < LABEL_CLEANUP_TRIES; i++) state = labelCleanupMarked(state, 'c', { outcome: 'failed', reason: 'still refused' }, NOW)
+    expect(state.boxes.c).toMatchObject({ outcome: 'failed', tries: LABEL_CLEANUP_TRIES })
+    expect(labelCleanupDue(state, ['a', 'b', 'c'])).toEqual([])
+    expect(labelCleanupCounts(state, ['a', 'b', 'c'])).toEqual({ mailboxes: 3, checked: 3, deleted: 1, none: 1, failed: 1, left: 0 })
+    // A box that failed and then opened is settled by its answer.
+    expect(labelCleanupMarked(labelCleanupMarked(start, 'e', { outcome: 'failed', reason: 'x' }, NOW), 'e', { outcome: 'deleted' }, NOW).boxes.e).toEqual({ at: NOW, outcome: 'deleted', tries: 2 })
+  })
+
+  it('takes a run’s worth at a time, and keeps a reason to one short line with no address', () => {
+    const ids = Array.from({ length: LABEL_CLEANUP_PER_RUN + 4 }, (_, i) => `u-${i}`)
+    expect(labelCleanupDue(start, ids)).toEqual(ids.slice(0, LABEL_CLEANUP_PER_RUN))
+    const reason = labelCleanupReason(`Delegation denied for <olive@clickplumbing.example> ${'x'.repeat(400)}`)
+    expect(reason.startsWith('Delegation denied for <(an address)> ')).toBe(true)
+    expect(reason).toHaveLength(160)
+  })
+})
+
+describe('the seat’s untag: only a tag the seat made, and nothing left that shows who was written to', () => {
+  const BOX = 'marisol@clickplumbing.example'
+  const call = (over: Record<string, unknown> = {}, at = '2026-11-09T21:05:00.000Z', dev: string | null = 'u-dev') => ({
+    user_id: dev,
+    created_at: at,
+    args: { tag: { account: BOX, thread_id: 't-elm', job: { jobs_ledger_id: ELM }, ...over }, plan_hash: 'abc' },
+  })
+  const onElm = { bid_id: null, project_id: null, jobs_ledger_id: ELM, placed_by_app: false }
+
+  it('reads the seat’s tags of one conversation off its call log, newest first, by box and thread alone', () => {
+    const tags = seatTagsOf(
+      [
+        call(),
+        call({ job: { bid_id: CLUB.toUpperCase() } }, '2026-11-10T09:00:00.000Z', 'u-dev-2'),
+        // Another conversation, another box, a tag onto an HR file, a job that is no uuid, and a call with no tag at all.
+        call({ thread_id: 't-other' }),
+        call({ account: 'rosa@clickplumbing.example' }),
+        call({ job: undefined, person: { person_id: '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d' } }),
+        call({ job: { jobs_ledger_id: 'not-a-uuid' } }),
+        { user_id: 'u-dev', created_at: null, args: null },
+      ],
+      ` ${BOX.toUpperCase()} `,
+      't-elm',
+    )
+    expect(tags).toEqual([
+      { jobKey: `bid:${CLUB}`, devId: 'u-dev-2', at: '2026-11-10T09:00:00.000Z' },
+      { jobKey: `pipeline:${ELM}`, devId: 'u-dev', at: '2026-11-09T21:05:00.000Z' },
+    ])
+    expect(seatTagsOf([call()], '', 't-elm')).toEqual([])
+  })
+
+  it('lets the seat untag only a conversation its own tag put on the job it is on now', () => {
+    const tags = seatTagsOf([call()], BOX, 't-elm')
+    expect(seatMayUntag(onElm, tags)).toEqual({ ok: true, devId: 'u-dev' })
+    // No row, a person's own tag (nothing in the log), one the person moved to another job since, and one the app placed.
+    expect(seatMayUntag(null, tags)).toEqual({ ok: false, words: SEAT_UNTAG_WORDS.notTagged })
+    expect(seatMayUntag(onElm, [])).toEqual({ ok: false, words: SEAT_UNTAG_WORDS.notTheSeats })
+    expect(seatMayUntag({ ...onElm, jobs_ledger_id: HARBOR }, tags)).toEqual({ ok: false, words: SEAT_UNTAG_WORDS.notTheSeats })
+    expect(seatMayUntag({ ...onElm, placed_by_app: true }, tags)).toEqual({ ok: false, words: SEAT_UNTAG_WORDS.placedByApp })
+    for (const w of Object.values(SEAT_UNTAG_WORDS)) expect(plainWordsFailures(w), w).toEqual([])
+  })
+
+  it('reads a row tagged before the dev was stamped as the dev’s, so the lines the seat tied come off', () => {
+    const old = { tied: ['m-seat'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }
+    const line = { id: 'm-seat', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: 'u-dev' }
+    expect(isTagTie(line, old, MARISOL)).toBe(false)
+    expect(seatTagRecord(old, MARISOL, 'u-dev')).toEqual({ ...old, taggedBy: 'u-dev' })
+    expect(isTagTie(line, seatTagRecord(old, MARISOL, 'u-dev'), MARISOL)).toBe(true)
+    // A row that already names someone else keeps them, and so does one with no dev on record.
+    expect(seatTagRecord({ ...old, taggedBy: 'u-dev-2' }, MARISOL, 'u-dev')).toEqual({ ...old, taggedBy: 'u-dev-2' })
+    expect(seatTagRecord(old, MARISOL, null)).toBe(old)
+    expect(seatTagRecord(null, MARISOL, 'u-dev')).toBeNull()
+  })
+
+  const TAGGED = '2026-11-09T21:05:00.000Z'
+  const tie = (id: string, contact: string, over: Record<string, unknown> = {}) => ({ id, contact_id: contact, bid_id: null, project_id: null, jobs_ledger_id: ELM, is_default: false, created_at: '2026-11-09T21:05:02.000Z', ...over })
+
+  it('clears the ties and the unknown contacts the tag made once they keep no line, and counts what it leaves', () => {
+    const sweep = planUntagSweep({
+      jobKey: `pipeline:${ELM}`,
+      taggedAt: TAGGED,
+      contacts: [
+        { id: 'c-new', kind: 'unknown', created_at: '2026-11-09T21:05:01.000Z' },
+        { id: 'c-dale', kind: 'customer', created_at: '2026-03-01T00:00:00.000Z' },
+        { id: 'c-old-unknown', kind: 'unknown', created_at: '2026-10-01T00:00:00.000Z' },
+        { id: 'c-named-since', kind: 'trade', created_at: '2026-11-09T21:05:01.000Z' },
+        { id: 'c-busy', kind: 'unknown', created_at: '2026-11-09T21:05:01.000Z' },
+      ],
+      ties: [
+        tie('j-new', 'c-new'),
+        tie('j-dale', 'c-dale'),
+        // Made before the tag, and the person's star: both stay, though the person keeps no line on the job.
+        tie('j-old', 'c-old-unknown', { created_at: '2026-10-01T00:00:00.000Z' }),
+        tie('j-star', 'c-named-since', { is_default: true }),
+        // Another job's tie is never the tag's to take, and a person who keeps a line on the job keeps the tie.
+        tie('j-harbor', 'c-dale', { jobs_ledger_id: HARBOR, is_default: true, created_at: '2026-03-01T00:00:00.000Z' }),
+        tie('j-busy', 'c-busy'),
+      ],
+      onJob: { 'c-busy': 1 },
+      lines: { 'c-dale': 40, 'c-busy': 1 },
+    })
+    expect(sweep).toEqual({ ties: ['j-dale', 'j-new'], tiesLeft: 2, contacts: ['c-new'], contactsLeftEmpty: 2 })
+  })
+
+  it('takes the clock’s slack before the tag and no further, and takes nothing when the tag has no time', () => {
+    const one = (taggedAt: string | null, made: string) =>
+      planUntagSweep({ jobKey: `pipeline:${ELM}`, taggedAt, contacts: [{ id: 'c-new', kind: 'unknown', created_at: made }], ties: [tie('j-new', 'c-new', { created_at: made })], onJob: {}, lines: {} })
+    expect(one(TAGGED, '2026-11-09T21:04:30.000Z')).toEqual({ ties: ['j-new'], tiesLeft: 0, contacts: ['c-new'], contactsLeftEmpty: 0 })
+    expect(one(TAGGED, '2026-11-09T21:03:59.000Z')).toEqual({ ties: [], tiesLeft: 1, contacts: [], contactsLeftEmpty: 1 })
+    expect(one(null, '2026-11-09T21:05:01.000Z')).toEqual({ ties: [], tiesLeft: 1, contacts: [], contactsLeftEmpty: 1 })
+    // A contact whose only tie on another job stays is never taken.
+    expect(
+      planUntagSweep({ jobKey: `pipeline:${ELM}`, taggedAt: TAGGED, contacts: [{ id: 'c-new', kind: 'unknown', created_at: TAGGED }], ties: [tie('j-harbor', 'c-new', { jobs_ledger_id: HARBOR })], onJob: {}, lines: {} }),
+    ).toEqual({ ties: [], tiesLeft: 0, contacts: [], contactsLeftEmpty: 1 })
+  })
+
+  it('reads the plan back in one order, each held line with the first thing that holds it', () => {
+    const kept = { promised: ['m-2'], highlighted: ['m-2', 'm-3'], owed: ['m-4'] }
+    expect(['m-2', 'm-3', 'm-4', 'm-1'].map((id) => untagHeldWhy(id, kept))).toEqual(['promise', 'highlight', 'owed', null])
+    const sweep = { ties: ['j-new'], tiesLeft: 0, contacts: ['c-new'], contactsLeftEmpty: 1 }
+    expect(
+      untagPlanPreview({ threadId: 't-elm', account: BOX, jobKey: `pipeline:${ELM}`, taggedAt: TAGGED, plan: { remove: ['m-9', 'm-1'], keep: ['m-4', 'm-2'], untie: ['m-box-2', 'm-box-1'] }, kept, files: 3, keptForMatter: 1, greyLine: true, sweep }),
+    ).toEqual({
+      ok: true,
+      plan: true,
+      threadId: 't-elm',
+      account: BOX,
+      jobKey: `pipeline:${ELM}`,
+      taggedAt: TAGGED,
+      remove: ['m-1', 'm-9'],
+      held: [
+        { id: 'm-2', why: 'promise' },
+        { id: 'm-4', why: 'owed' },
+      ],
+      untie: ['m-box-1', 'm-box-2'],
+      files: 3,
+      keptForMatter: 1,
+      greyLine: true,
+      sweep,
+    })
+  })
+
+  it('takes the seat’s `as` and `plan` on an untag, and nothing else in them', () => {
+    expect(parseMyMailRequest({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', as: ` ${BOX.toUpperCase()} `, plan: true })).toEqual({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', plan: true, as: BOX })
+    expect(parseMyMailRequest({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', as: BOX, plan: false })).toEqual({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', as: BOX })
+    expect(parseMyMailRequest({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', plan: 'yes' })).toBeNull()
+    expect(parseMyMailRequest({ action: 'untag', threadId: '18c2f0a9b3d4e5f6', as: 'nobody' })).toBeNull()
+  })
+})
+
 describe('planUntag: what an untag removes', () => {
   const boxLine = (id: string, over: Partial<MyMailLine> = {}): MyMailLine => ({ id, bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: MARISOL, ...over })
 
@@ -672,6 +937,17 @@ describe('planUntag: what an untag removes', () => {
     expect(planUntag({ userId: MARISOL, record: { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, own: [], tied: [byHand] }).untie).toEqual([])
     expect(isTagTie(byHand, { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, MARISOL)).toBe(false)
     expect(isTagTie(byHand, { tied: ['m-box-by-hand'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, MARISOL)).toBe(true)
+  })
+
+  it('unties what the dev seat tied for the person and what the person tied since, and never a line a third person placed', () => {
+    // The dev tagged the conversation from Marisol's box through the seat: the row names the dev, the box stays hers.
+    const record = { tied: ['m-seat', 'm-hers', 'm-rosa'], jobKey: `pipeline:${ELM}`, taggedBy: 'u-dev' }
+    const lines = [boxLine('m-seat', { tied_by: 'u-dev' }), boxLine('m-hers'), boxLine('m-rosa', { tied_by: 'u-rosa' })]
+    expect(lines.map((l) => isTagTie(l, record, MARISOL))).toEqual([true, true, false])
+    expect(planUntag({ userId: MARISOL, record, own: [], tied: lines }).untie).toEqual(['m-seat', 'm-hers'])
+    // A row whose tagger is gone falls back on the box's person alone.
+    expect(isTagTie(boxLine('m-seat', { tied_by: 'u-dev' }), { ...record, taggedBy: null }, MARISOL)).toBe(false)
+    expect(isTagTie(boxLine('m-hers'), { ...record, taggedBy: null }, MARISOL)).toBe(true)
   })
 
   it('keeps a line the office keeps something on, a promise or a highlight, and removes the rest', () => {
@@ -722,6 +998,54 @@ describe('the tag’s grey line on the thread', () => {
       project_id: null,
       jobs_ledger_id: ELM,
     })
+  })
+
+  it('says the mail is old and nobody was asked when every mail the tag wrote was filed (v2.7027, punch list #324)', () => {
+    const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
+    const dev = { name: 'Nadia Reyes', email: 'nadia@clickplumbing.example' }
+    const own = myMailTagEventWords(marisol, null, true)
+    expect(own).toBe('Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
+    const seat = myMailTagEventWords(marisol, dev, true)
+    expect(seat).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
+    for (const words of [own, seat]) expect(plainWordsFailures(words)).toEqual([])
+    expect(myMailTagEventRow({ tagRowId: 'r1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: 'j1' }, filed: true }).body).toBe(own)
+    expect(tagAllFiled({ lines: 3, filed: 3 })).toBe(true)
+    expect(tagAllFiled({ lines: 3, filed: 2 })).toBe(false)
+    expect(tagAllFiled({ lines: 0, filed: 0 })).toBe(false)
+  })
+
+  it('names the dev and the dev seat when the tag came through the seat, never the person as the one who tagged', () => {
+    const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
+    const dev = { name: ' Nadia Reyes ', email: 'nadia@clickplumbing.example' }
+    const words = myMailTagEventWords(marisol, dev)
+    expect(words).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
+    expect(plainWordsFailures(words)).toEqual([])
+    // No names: the addresses. The dev's own box through the seat: their mail, and still the seat.
+    expect(myMailTagEventWords({ name: '', email: marisol.email }, { name: '', email: dev.email })).toBe(
+      "nadia@clickplumbing.example tagged this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
+    )
+    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes tagged this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
+    // A person's own press reads as it always has, with no seat or a null one.
+    expect(myMailTagEventWords(marisol, null)).toBe(myMailTagEventWords(marisol))
+    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.')
+    // The row carries the seat's words, and the app's own words still win when it placed the conversation itself.
+    const row = { tagRowId: 'tag-1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: ELM } }
+    expect(myMailTagEventRow({ ...row, seat: dev }).body).toBe(words)
+    expect(myMailTagEventRow({ ...row, seat: dev, words: 'The app put it here.' }).body).toBe('The app put it here.')
+  })
+
+  it('stamps whoever made the tag, and keeps the first tagger on a second tag onto the same job', () => {
+    const onElm = { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }
+    // A first tag: the person on their own press, the dev through the seat.
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: null, placedByApp: false })).toBe(MARISOL)
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: null, placedByApp: false })).toBe('u-dev')
+    // The same job again, by either: the first tagger stays, as the grey line keeps its words.
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: onElm, placedByApp: false })).toBe(MARISOL)
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: { ...onElm, taggedBy: 'u-dev' }, placedByApp: false })).toBe('u-dev')
+    // Another job, a row the app placed by itself, or a row whose tagger is gone: the new tagger.
+    expect(myMailTaggedBy('u-dev', `pipeline:${HARBOR}`, { record: onElm, placedByApp: false })).toBe('u-dev')
+    expect(myMailTaggedBy('u-dev', `pipeline:${ELM}`, { record: onElm, placedByApp: true })).toBe('u-dev')
+    expect(myMailTaggedBy(MARISOL, `pipeline:${ELM}`, { record: { ...onElm, taggedBy: null }, placedByApp: false })).toBe(MARISOL)
   })
 
   it('names the address when the person has no name, and says it in plain words', () => {

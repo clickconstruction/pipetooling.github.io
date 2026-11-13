@@ -194,7 +194,7 @@ export function holdersFromRows(rows: readonly HolderRow[], userNames: Readonly<
  * A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), its
  * job, and the box it came through and whether a person tied it (the New lane's).
  */
-export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto'>
+export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto' | 'history'>
 
 /** The lines as Follow up reads them, with a note's day in words and when it was dealt with. */
 export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ctx: MessageLoadContext = {}): FollowUpLine[] {

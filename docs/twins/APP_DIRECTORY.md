@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -26,7 +26,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Ask the GC a plans question (RFI) / see what's unanswered → `/bids?tab=rfi`
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
-- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Farm Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
+- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Task Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
 - Search a bid's plans, ask the robot what they say and make an RFI of what they do not → the **Plans** button at the end of the bid tabs' row while a bid is picked (`&plans=1` on the Followup tab opens it; v2.5736, v2.5737; guide `search-the-plans-on-a-bid`)
 - Everything new for an estimator in two minutes: the robots' ring, the Plans button, the Dashboard's lines and Messages → `/help?g=use-the-robots-and-the-new-bid-tools-as-an-estimator`
 
@@ -367,6 +367,9 @@ The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.
 ### /first-looks — First looks, the desk (the owner and the developers)
 A spike (v2.6981, punch list #319). **Make a link** makes a First look's link, shown once with a QR, **Copy the link** and **Copy the ask**. Under it, every look with its photos, its video in a player, the customer's place and words, and how each upload went. **Close the link** stops it taking files. **Remove this look…** deletes it and its files. `?contact=<a Messages contact's id>` ties the new link to that person. Nothing is texted from the page.
 
+### /first-look/:id — One First look, for the tech it was asked of
+The link on the task the office sends with **Ask a tech…** on a look's card (v2.7006, punch list #319 PR 7). It shows that one look: the customer's photos, their video in a player, where the problem is and their words, and nothing else of the thread. The person it was asked of picks **I can price it from this** or **Needs a visit to price**, adds a note and presses **Send my answer**, which lands on the customer's thread as a team note. The office can open and answer it too, and so can the crew of the job made from the look. Anyone else reads *This look is not yours to see, or it is gone.* Guide: `/help?g=read-a-customers-photos-before-a-job-is-booked`.
+
 ### /show/:code — A First look's link (public)
 The page a First look's link opens with no sign-in (v2.6981, punch list #319): *Show us the problem*, **Take a photo**, **Take a video**, **Choose from your phone**, then **Send** with its count. Files are kept on the phone and sent when there is signal. It shows who asked and a count, never a name, an address, a price or a picture. A link is ten letters, made on `/first-looks`, and takes files for 7 days. Since v2.7007 a customer's phone never loads the app for it: `index.html`'s first script sends `/show/<code>` to the page’s own small entry (the file show.html, with the code after a #), which is React and the page and nothing else.
 
@@ -383,6 +386,9 @@ Mercury account with Mercury's own name, its numbers and its newest lines (a dev
 
 ### /accounts-receivable — AR
 Outstanding billed jobs by customer; collections flags. The bank deposits modal leads a deposit's pane with a customer's word that they paid when the deposit fits it (**They said they paid**, v2.5650; guide `match-bank-deposits-to-bills`). Roles: dev, master, assistant, controller.
+
+### /bills-sent — Bills sent
+Every bill that left the company, newest first under a band per day, one line each time a bill goes (punch list #327, v2.7049): the time, the bill's number, the job, the amount, the address it went to, how it went and who pressed send, with **Copy as sent** opening the email as the payer read it. A second send is its own line and says the day of the first; a day's total counts each bill once; a statement to a GC is listed and never added. A search box (a job, a customer, an address, a bill number) and the chips All · Email · Text · Printed · Statement · Housecall Pro · No send on record. Since v2.7052 a yellow strip above the days lists every bill that was made and has no send on record, and the list holds the sends that kept no copy, each saying what it lacks: an email before 2026-10-05 (the time, no address), a bill entered from Housecall Pro (the day only), a text with the pay link. Read from the records the app keeps; it writes nothing. Also reached from `/documents?tab=sent` under the Bills chip. Roles: dev, master, assistant, controller. Guide: help?g=see-which-bills-went-out.
 
 ### /in-kind — In kind
 Every arrangement where a customer pays finished work with something other than money (punch list #301, v2.6836): one row a partner with what is given, how far along, what is left and which way, and what is next; a row opens the deal on its customer's page, where the ledger, **Add a line** and a month's credit live; **Set up paying in kind** finds a customer by name. Reached from Accounts Receivable's header. Guide `keep-track-of-work-paid-in-kind`. Roles: dev, master_technician, assistant, controller.

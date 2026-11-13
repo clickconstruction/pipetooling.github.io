@@ -118,7 +118,7 @@ vi.mock('../lib/followUp/followUpIo', async (orig) => {
     heard: [],
     owed: [],
   }
-  const io = { loadQueue: vi.fn(() => Promise.resolve(rows)), loadHighlights: vi.fn(() => Promise.resolve([])), count: vi.fn(() => Promise.resolve(3)) }
+  const io = { loadQueue: vi.fn(() => Promise.resolve(rows)), loadHighlights: vi.fn(() => Promise.resolve([])), loadDoneFold: vi.fn(() => Promise.resolve({ said: [], filed: [] })), count: vi.fn(() => Promise.resolve(3)) }
   return { ...actual, supabaseFollowUpIo: () => io }
 })
 

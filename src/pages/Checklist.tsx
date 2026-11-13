@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
-import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -73,6 +73,7 @@ import { useTaskLines } from '../hooks/useTaskLines'
 import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
+import { useTaskPlaces } from '../hooks/useTaskPlaces'
 
 type UserRole =
   | 'dev'
@@ -279,18 +280,18 @@ export default function Checklist() {
     })
   }, [authUser?.id])
 
-  // Farm Mode (checklist-only lens): the page keeps just Today + History; the
+  // Task Mode (checklist-only lens): the page keeps just Today + History; the
   // office tabs hide and their deep links bounce to Today until the mode is off.
-  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+  const [taskModeEnabled] = useTaskModeEnabled(authUser?.id ?? null)
 
   // The Roadmap is its own page now (Tier-2 #41). This page keeps the door
   // (Review/Manage "Open roadmap →", `?tab=roadmap` redirects) for the roles
   // that can open it — dev / master / assistant-like / primary, the RLS edit set.
-  const canSeeRoadmap = canOpenRoadmap(role, farmModeEnabled)
+  const canSeeRoadmap = canOpenRoadmap(role, taskModeEnabled)
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (farmModeEnabled && (tab === 'review' || tab === 'manage' || tab === 'roadmap')) {
+    if (taskModeEnabled && (tab === 'review' || tab === 'manage' || tab === 'roadmap')) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'today')
@@ -321,7 +322,7 @@ export default function Checklist() {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
-        !farmModeEnabled && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
+        !taskModeEnabled && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
           ? 'review'
           : 'today'
       setSearchParams((p) => {
@@ -330,10 +331,10 @@ export default function Checklist() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, role, canSeeRoadmap, farmModeEnabled, navigate, setSearchParams])
+  }, [searchParams, role, canSeeRoadmap, taskModeEnabled, navigate, setSearchParams])
 
   const canManageChecklists =
-    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeEnabled
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !taskModeEnabled
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
   const canEditTechTree =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
@@ -477,6 +478,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
   )
   // PR 4b: the cards' photos, one read for the day's cards and the outstanding ones.
   const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
+  // Punch list #328: the places of the tasks on this tab, read beside the day and never inside it.
+  const taskPlaces = useTaskPlaces([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -870,6 +873,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   asksForPhoto={cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })}
                   photos={taskPhotos.photosFor(inst.id)}
                   onPhotoAdded={taskPhotos.add}
+                  place={taskPlaces.placeFor(inst.checklist_item_id)}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -961,6 +965,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         }}
         photosFor={(inst) => taskPhotos.photosFor(inst.id)}
         onPhotoAdded={taskPhotos.add}
+        placeFor={(inst) => taskPlaces.placeFor((inst as ChecklistInstance).checklist_item_id)}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)

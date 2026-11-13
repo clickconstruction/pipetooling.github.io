@@ -1,8 +1,8 @@
 ---
 name: "Messages: old mail lands for the record, and a thread can be closed in plain sight"
 number: 324
-group: gated
-status: proposed 2026-11-12 on the dev's ask · nothing built · card and mock-up only, waiting on his eight calls
+group: close
+status: built 2026-11-12 as five PRs, all merged and live · the migration pushed, gmail-mine and dev-mcp deployed · left: the first tag a person presses in My email, and the dev's call on the batch of 2026-11-09
 summary: >
   On 2026-11-09 a batch of old email conversations was tagged from a teammate's own mailbox onto
   jobs through the dev seat. Every mail landed at its own date, months back, and Messages read each
@@ -15,10 +15,11 @@ summary: >
   nobody's move; the age decides and a person overrules in one press; No reply needed and the
   thread's state sit in plain sight, on New's cards too; and a fold lists what was done with no
   reply this week, each with Reopen. No new lane, no new state, no third word.
-next: The dev's eight calls (the table under The calls). Then PR 1, the rule itself, which fixes the cause for every door at once.
-size: M as a train of four (S · S · S · S)
-blocker: The dev's calls. PR 1 and PR 4 touch the tag's grey line and the seat's arguments, which PR 7778 is changing now, so they start after it merges.
-opinion: build PR 1 and PR 2 — PR 1 removes the cause and PR 2 removes the reason he thought no exit existed; PR 3 and PR 4 are worth it but can wait on use
+next: Watch the first tag an office person presses in Messages → My email, and read the line the green bar prints after it. Then the dev's call 2, whether the batch of 2026-11-09 stays on its jobs. Delete the folder after both.
+size: M as a train of five (S · S · S · S · S), all built; left: a look at one real press (XS)
+blocker: Nobody in the office has tagged by their own press yet, so the line after a tag is unproven by use.
+ver: v2.7026 · 7027 · 7029 · 7030 · 7032
+opinion: built — the cause is gone and the exit is in sight; watch one real press, then close the card
 ---
 
 # Messages: old mail lands for the record, and a thread can be closed in plain sight
@@ -37,6 +38,20 @@ Mock-up: [`mockup.html`](./mockup.html). One spot at a time, **Now** against **M
 4. **A fold, not a seventh lane.** *N done with no reply this week*, under the queue, each row with **Reopen**.
 
 Keep the words the app has: **Done** for the state, **No reply needed** for the press. Do not add *Closed*.
+
+## Final changes, from the second look (2026-11-12)
+
+The dev asked for one more pass, *is this the best we can do?*, before the build. Reading the plan against the code again changed five things. Where a section below disagrees with this list, this list stands.
+
+1. **The age rule belongs to the tag, not to the writer.** The first plan stamped the mark inside `email_write_line`, which every mail writer calls. A reader of a company box that fell 15 days behind (a revoked token, an outage) would then have filed real customer mail in silence. Mail in a person's own box was seen by that person when it came. Mail in the team box was seen by nobody until the app read it. So only `gmail-mine` decides, and the company boxes' readers never file.
+2. **A filed mail of ours still counts as our answer.** A customer writes to the team box, a teammate answers from their own mail, and three weeks later tags the conversation. The first plan made filed mail nobody's move both ways, which would have left that thread open. Now a filed mail of theirs asks nobody, and a filed mail of ours still answers, as any late line of ours does today.
+3. **Reopen takes the mark off.** A reopened thread with only filed mail would have read Open with *Nothing waits* and no row in New. `set_state` now un-files the thread's mail on Reopen, since a person has said it is live.
+4. **The migration clears the four stale threads.** Marking the old lines without closing the threads they opened would have left four Open rows with no words. The migration closes a thread only filed mail opened and nobody holds. The four presses in section 6 are not needed.
+5. **The move line reads the state.** Today a thread that is Done after a note or after **No reply needed** still says *Our move · 2 d* in its header, the same confusion from the other side. A Done thread whose last word is theirs says *Nothing waits*.
+
+Two smaller ones. **No reply needed** needs no new function: it calls `set_state` and then `follow_up_event`, as Heard back does. The card said its grey line would stop an old mail reopening the thread. It does not, and it does not need to: the mark does that. And `set_state` never cleared a tech's hold on close, so **No reply needed** on a held thread was refused. Fixed in PR 1.
+
+The train is five PRs, not four: the migration goes first and alone, because the client reads the new column by name.
 
 ## What happened, measured
 
@@ -108,7 +123,7 @@ Two things follow. The batch left four wrong rows, not dozens, and New sorts the
 
 - **On the thread.** **No reply needed** sits beside *We owe them…* while the thread is Open. When it is Done the same spot shows a grey chip, *Done · no reply needed · Rosa, Nov 12*, and **Reopen**. The ⋯ rows stay.
 - **On New.** The sort card and the Sort desk gain **No reply needed**. The sender stays unnamed until they write again.
-- **A trace.** The press writes one grey line through `follow_up_event`: *Rosa said on Nov 12 that no reply is needed.* It mirrors Heard back's line. It gives the chip and the fold their who and when, and it stops an old mail from reopening the thread, since the trigger can then see it was answered.
+- **A trace.** The press writes one grey line through `follow_up_event`: *Rosa said on Nov 12 that no reply is needed.* It mirrors Heard back's line. It gives the chip and the fold their who and when.
 - **Where closed threads are seen.** A fold under the queue lanes, built like New's *notices set aside this week* (`setAsideFold.ts`): **5 done with no reply this week**. Each row names the person, how it was done (*No reply needed · Rosa, Tue* or *Old mail filed Mon · 6 mails*) and offers **Reopen**. Not a seventh segment: the strip is already tight on a phone, and a lane with a count reads as work.
 - **The word.** **Done** is the state's word and **No reply needed** is the press. The fold says *done with no reply*. *Closed* or *Settled* would be a third word for the same thing. *Filed for the record* is new because the fact is new: nobody decided anything, the app filed it.
 
@@ -164,6 +179,8 @@ No script and no seat verb. Four rows cost eight presses. A prod script costs a 
 
 ## The calls
 
+Taken as picked on 2026-11-12, when the dev said to build the train. Call 2 is still his.
+
 | # | Call | My pick |
 |---|---|---|
 | 1 | The age a mail is filed at: 7, 14 or 30 days | **14** |
@@ -192,12 +209,13 @@ No script and no seat verb. Four rows cost eight presses. A prod script costs a 
 
 ## The plan
 
-Four PRs, each shippable alone, smallest first.
+Five PRs, each shippable alone, smallest first.
 
-1. **PR 1 (S): old mail lands for the record.** One migration: the column, `email_write_line`'s stamp, the trigger's early return, and on call 7 one `UPDATE` marking late email lines already there. The kernels skip a filed line. The chip, *Nothing waits*, and the grey line's two sentences. Tests: an old mail on a new sender opens nothing; an old mail on a Done thread leaves it Done; a new mail after filed ones opens it; a mixed conversation opens on its newest. Push the migration, redeploy `gmail-mine`. Guide: the My email guide gains a short section.
-2. **PR 2 (S): No reply needed in plain sight.** The status row's press and the Done chip with Reopen. The grey line a press writes. The press on New's card and the Sort desk. Guides: `answer-everyone-waiting-on-us-from-one-page` and `reply-to-a-person-from-their-thread`.
-3. **PR 3 (S): the fold.** *N done with no reply this week* with **Reopen**, under the queue lanes.
-4. **PR 4 (S): the overrule.** The after-tag line in My email with its one press. The seat's `for_record` and the plan's per-mail word, with `dev-mcp` redeployed. After PR 7778.
+1. **PR 1 (S): the migration, alone.** `20261112180000_messages_history.sql`: the column, `email_write_line` keeping the mark, the trigger, `set_state`, and the mail already there. The bed `messages-follow-up` gains section 18. Push it before PR 2 merges.
+2. **PR 2 (S): the tag files old mail, and the app reads the mark.** `planTag` marks a mail more than 14 days old. The kernels that ask whose move it is skip a filed mail of theirs. The chip, *Nothing waits*, the grey line's two sentences, and the plan's word for each mail. Redeploy `gmail-mine`. Guide: the My email guide gains a short section.
+3. **PR 3 (S): No reply needed in plain sight.** The status row's press and the Done chip with Reopen. The grey line a press writes. The press on New's card and the Sort desk. Guides: `answer-everyone-waiting-on-us-from-one-page` and `reply-to-a-person-from-their-thread`.
+4. **PR 4 (S): the fold.** *N done with no reply this week* with **Reopen**, under the queue lanes.
+5. **PR 5 (S): the overrule.** The after-tag line in My email with its one press. The seat's `for_record`, with `dev-mcp` redeployed.
 
 ## How to verify
 
@@ -207,4 +225,22 @@ Four PRs, each shippable alone, smallest first.
 
 ## Where it stands
 
-2026-11-12: card and mock-up only. Nothing built, nothing written to prod. The four stale threads are still open; clearing them is four presses by a person, today, whatever the calls.
+2026-11-13: built and live. Five PRs merged on 2026-11-12 and 11-13 (UTC): v2.7026 the migration, v2.7027 the tag files old mail, v2.7029 No reply needed in plain sight, v2.7030 the fold, v2.7032 the line after a tag and the seat's `for_record`. Each `docs/recent-features/v2.NNNN.md` says how.
+
+**On prod.** The migration was pushed on 2026-11-12 after a dry run inside a transaction that rolled back. It marked 38 lines and set 4 threads to Done, as measured, and left no thread open on filed mail alone. `gmail-mine` and `dev-mcp` were deployed from `main` twice, after v2.7027 and after v2.7032. The seat answers as server 0.80.0.
+
+**Checked live, with nothing written.**
+
+- The site serves the new words of all five PRs.
+- A read-only walk of the stack against prod on 2026-11-12: the fold read *5 done with no reply this week*, and a thread of filed mail showed the *filed Nov 9* chip, *Nothing waits* and *Done · old mail, filed Nov 9* with **Reopen**. The walk found one defect, fixed in v2.7029: the header said *They have not written yet* on a thread of filed mail.
+- The seat's dry run on a ZZ Test job. A mail from August would be filed (`lands: record`). Three mails from the same day would land on Follow up (`lands: followUp`). With `for_record: true` all three would be filed, and the commitment carries the flag.
+
+**Not built.** The thread's **No answer needed** for when our word is last (section 4). The thread's read carries no line keys, so it would show on threads Waiting on them had already cleared. The lane's **Heard back ▾** stays the way.
+
+**Left.**
+
+- The first tag a person in the office presses in My email. Every tag so far came through the seat, so the green bar's line and its press have run only in tests.
+- No apply has run with this code: the live checks were plans. The first real apply is the seat's or a person's next tag.
+- Call 2, the batch of 2026-11-09: it stays on its jobs until the dev says otherwise. Its threads are Done and read as filed either way.
+
+**Found, not fixed.** At 375 px wide the Messages page measured about 1,000 px wide in headless Chrome, on `main` before this train as well. It was seen with the page's writes refused and needs a look on a real phone.

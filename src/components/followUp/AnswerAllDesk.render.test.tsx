@@ -125,6 +125,8 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     takeIt: vi.fn(async () => undefined),
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
+    loadDoneFold: vi.fn(async () => ({ said: [], filed: [] })),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: vi.fn(async () => undefined),
@@ -231,7 +233,7 @@ describe('Answer all', { timeout: 20_000 }, () => {
     expect(progress()).toEqual(['Needs a reply', '2 to answer', '2 of 3'])
     await waitFor(() => expect(io.loadQueue).toHaveBeenCalledTimes(2))
     fireEvent.click(desk().getByRole('button', { name: 'No reply needed' }))
-    await waitFor(() => expect(io.setState).toHaveBeenCalledWith('priya', 'done'))
+    await waitFor(() => expect(io.noReplyNeeded).toHaveBeenCalledWith('priya', 'Robert'))
     await waitFor(() => expect(cardFor()).toBe('dana'))
     fireEvent.click(desk().getByRole('button', { name: 'Open the thread' }))
     expect(doors.onOpenThread).toHaveBeenCalledWith('dana', 'm-dana', undefined)
@@ -243,7 +245,7 @@ describe('Answer all', { timeout: 20_000 }, () => {
     const { io } = renderPage(followUpIo(one, one))
     await openDesk()
     fireEvent.click(desk().getByRole('button', { name: 'No reply needed' }))
-    await waitFor(() => expect(io.setState).toHaveBeenCalledWith('priya', 'done'))
+    await waitFor(() => expect(io.noReplyNeeded).toHaveBeenCalledWith('priya', 'Robert'))
     expect(await desk().findByText('All answered.')).toBeTruthy()
     expect(document.querySelector('[data-answer-all-tally]')?.textContent).toBe('1 no reply needed went.')
     expect(await desk().findByText('1 person went quiet on us after our last word.')).toBeTruthy()

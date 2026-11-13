@@ -15,7 +15,7 @@ On Bids → Pricing with a bid open, you tap {{button:green|Share with a teammat
 
 - **Job address** is the bid's address with an {{button:gray|Open in Maps}} button. The recipient's copy gets the same thing. Tapping the address in the email opens it straight in Google Maps. So does the Map link in a text.
 - **Job plans** and **CountTooling Plans** are the links on the bid. Each link opens right from the window.
-- **Pricing preview** shows the four columns the recipient will see: Fixture or Tie-in, Count, Sale Price and Revenue. Hidden rows stay hidden. The total still matches the Pricing tab.
+- **Pricing preview** shows the four columns the recipient will see: Fixture or Tie-in, Count, Sale Price and Revenue. Hidden rows stay hidden. The total still matches the Pricing tab. Each amount shows its cents in smaller type, so the dollars read first.
 
 No address on the bid? The package still sends without one. If the crew will need directions, you use **Edit bid** in that section to add it first.
 
@@ -25,10 +25,25 @@ You pick a recipient. Leaders appear as one-tap chips. Then you choose:
 
 - With {{button:blue|Send for me}}, ClickTooling emails the package now and logs the send.
 - {{button:gray|Send via my mail}} opens your own mail app with the text version. The table is copied to your clipboard to paste in.
-- {{button:gray|Copy for text}} copies a summary that suits a text message, for Messages or WhatsApp. The summary includes the address and map link.
+- {{button:gray|Copy for text}} copies a summary that suits a text message, for Messages or WhatsApp. The summary includes the address and map link. Its amounts are in whole dollars.
 
 :::example Getting a leader to a new job
 Wendi opens BP376's pricing, taps {{button:green|Share with a teammate}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
+:::
+
+## Whole dollars in the text
+
+The text from {{button:gray|Copy for text}} shows no cents. It is a quick look for a teammate on a phone. The email still shows cents, in smaller type. The Pricing tab shows them as before.
+
+- Each line's total is the true amount, rounded to the nearest dollar.
+- The total is the bid's true total, rounded the same way. Add the lines up yourself and you can land a dollar or two away.
+- A count is never rounded. A run of 61.37 feet stays 61.37.
+- A price for one keeps its cents when the line would not add up without them. A rate of $12.50 a foot stays $12.50.
+
+:::example Three lines from one text
+LAV-A — 3 × $2,900 = $8,700
+ft of copper — 180.4 × $12.50 = $2,255
+Tie-ins — 1 × $6,413 = $6,413
 :::
 
 ## Send both prices

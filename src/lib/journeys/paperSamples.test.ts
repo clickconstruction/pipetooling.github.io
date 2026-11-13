@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { PAPER_IDS, SAMPLE_JOB, SAMPLE_OWNER, paperSample, sampleBillDocument, sampleDemandLetterFields, sampleHazmatInputs, sampleLienReleaseInputs, sampleOwnerNoticeInputs } from './paperSamples'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from '../customerSample'
 import { customerJourneys } from '../customerJourneys'
+import { sampleLienDays } from './lienLetterSamples'
 
 const TODAY = '2026-09-16'
 
@@ -15,7 +16,9 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
       expect(typeof p.pdf).toBe('function')
     }
     const paperSteps = customerJourneys().flatMap((j) => j.steps).filter((s) => s.render.kind === 'paper')
-    expect(paperSteps.length).toBe(5)
+    // Five until the lien letters (punch list #326): seven steps of that group are papers, and its demand letter is the homeowner's paper again.
+    expect(paperSteps.length).toBe(12)
+    expect(new Set(paperSteps.map((s) => (s.render as { paper: string }).paper)).size).toBe(PAPER_IDS.length)
     for (const s of paperSteps) expect(PAPER_IDS).toContain((s.render as { paper: string }).paper)
   })
 
@@ -52,7 +55,8 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
   it('the notice to the owner of record names the builder as original contractor and the project', () => {
     const { fields } = sampleOwnerNoticeInputs(TODAY)
     expect(fields.originalContractorName).toBe(SAMPLE_GC.company)
-    expect(fields.noticeDate).toBe(TODAY)
+    // Dated the day the sample job's notice went, not today: the cover letter in front of it names that day.
+    expect(fields.noticeDate).toBe(sampleLienDays(TODAY).noticeSentOn)
     const p = paperSample('owner-notice', TODAY)
     expect(p.html).toContain('53.056')
     expect(p.html).toContain(SAMPLE_OWNER.project)

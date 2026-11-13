@@ -14,6 +14,9 @@ import { nudgeLine } from '../flows/nudgeDispatch'
 import { SEED_FLOWS } from '../flows/seed'
 import { stepById } from '../flows/state'
 import { DEFAULT_LINES, tellFills, tellWords } from '../tellCustomer/tellCustomer'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { SAMPLE_GC } from '../customerSample'
+import { SAMPLE_OWNER, sampleCourtesyText } from './lienLetterSamples'
 
 /** Our company as a sample text names it: the GC's name, with a made-up number and mailbox. */
 export const SAMPLE_TEXT_COMPANY: ComposeCompany = {
@@ -21,6 +24,9 @@ export const SAMPLE_TEXT_COMPANY: ComposeCompany = {
   phone: '(210) 555-0100',
   mailbox: 'bids@clickconstruction.example',
 }
+
+/** The day a sample text counts its dates from when the caller gives none. */
+export const SAMPLE_TEXT_DAY = '2026-11-02'
 
 /** One bubble: ours from the company number or theirs, with the office's note under it. */
 export interface SampleTextBubble {
@@ -38,8 +44,25 @@ export interface SampleText {
 }
 
 /** A sample text, by its id on the journey step. */
-export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TEXT_COMPANY): SampleText {
+export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TEXT_COMPANY, todayYmd: string = SAMPLE_TEXT_DAY): SampleText {
   const from = `${company.name} · ${company.phone}`
+  if (id === 'text-lien-courtesy-owner' || id === 'text-lien-courtesy-gc') {
+    // Lien letters (punch list #326): the courtesy notice's text as the Lien desk writes it, from the plumbing company
+    // the notice names. `quo-send` adds the opt-out line to a first text, as `textToSend` does here.
+    const who = id === 'text-lien-courtesy-owner' ? 'owner' : 'original_contractor'
+    const us: ComposeCompany = { ...company, name: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone }
+    return {
+      from: `${us.name} · ${us.phone}`,
+      to: who === 'owner' ? `${SAMPLE_OWNER.name} · (512) 555-0140` : `${SAMPLE_GC.contact}, ${SAMPLE_GC.company} · (512) 555-0150`,
+      bubbles: [
+        {
+          side: 'ours',
+          text: textToSend({ body: sampleCourtesyText(who, todayYmd), reason: 'first', company: us }).text,
+          note: who === 'owner' ? 'The owner did not hire us, so the text asks them to hold the money back and call. It never asks them to pay without the builder’s written okay.' : 'The builder’s text carries the pay page’s address. A paid bill ends the reminder and the lien.',
+        },
+      ],
+    }
+  }
   if (id === 'text-customer') {
     return {
       from,

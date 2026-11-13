@@ -10,6 +10,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
 import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
+import { formerHelpGuideSlugs } from './src/lib/helpGuideFormerSlugs'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
 import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
 import { parseThemeTokens } from './src/lib/lens/lensTokens'
@@ -176,6 +177,7 @@ function helpSharePagesPlugin() {
       }
       let count = 0
       let cards = 0
+      let formerPages = 0
       for (const g of guides) {
         const dir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), g.slug)
         mkdirSync(dir, { recursive: true })
@@ -189,11 +191,19 @@ function helpSharePagesPlugin() {
             console.warn(`help-share-pages: card for ${g.slug} failed (${String(e).split('\n')[0]}) — site card`)
           }
         }
-        writeFileSync(join(dir, 'index.html'), helpSharePageHtml({ slug: g.slug, title: g.title, category: g.category, description: helpShareDescription(g.body), origin: 'https://clicktooling.com', image }))
+        const html = helpSharePageHtml({ slug: g.slug, title: g.title, category: g.category, description: helpShareDescription(g.body), origin: 'https://clicktooling.com', image })
+        writeFileSync(join(dir, 'index.html'), html)
         count += 1
+        // A renamed guide's old share address (v2.7050): the same page, so a link sent under the old name shows the guide's card and opens the guide.
+        for (const former of formerHelpGuideSlugs(g.slug)) {
+          const formerDir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), former)
+          mkdirSync(formerDir, { recursive: true })
+          writeFileSync(join(formerDir, 'index.html'), html)
+          formerPages += 1
+        }
       }
       await browser?.close()
-      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}`)
+      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}${formerPages > 0 ? `, and ${formerPages} at a renamed guide's old address` : ''}`)
     },
   }
 }
@@ -337,6 +347,9 @@ export default defineConfig({
     // Punch list #319 PR 4: a First look's page is an entry of its own (`show.html` over `src/showEntry.tsx`), so a
     // customer's phone on a weak signal loads React and the page, never the app. `index.html`'s first script sends a
     // `/show/<code>` address there, and the service worker leaves `/show.html` to the network (`src/sw.ts`).
-    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), show: resolve(__dirname, 'show.html') } },
+    // The app's entry keeps the name `index`: the build names an entry's script after its key, and the deploy's own
+    // check, the live-site checks and the docs all look for `assets/index-<hash>.js`. Named `main` (v2.7007), every
+    // deploy failed its *Verify build output* step until v2.7027.
+    rollupOptions: { input: { index: resolve(__dirname, 'index.html'), show: resolve(__dirname, 'show.html') } },
   },
 })
