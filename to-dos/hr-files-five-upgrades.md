@@ -11,7 +11,7 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111, v2.7122
 next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884, #7886 then push its migration). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
@@ -128,7 +128,8 @@ words, and the agent plans again.
 document's file), since the bytes are not kept; every verb that is not about a person's file; and the
 right to apply in the session on his word, as today.
 
-- **PR 3a (first, M):** the table, `keep`, the list verb, and the list on the tab as words only.
+- **PR 3a, the database half (v2.7122, built):** migration `20261113120000`, the table, the two doors (`dev_kept_plan_keep`, `dev_kept_plan_decide`), the kernel, the bed. A plan with a file's bytes, a counsel-only plan and a change to a counsel-only document are refused at the door.
+- **PR 3a, the rest:** the list on the tab as words only; then `keep` and the list verb on the seat, which need the pushed migration in the catalog.
 - **3b:** Apply and Drop from the tab. **3c:** evidence by Drive link and the case-item verbs join.
 - **His calls:** who may press Apply (any dev, or him alone); whether a kept plan expires.
 

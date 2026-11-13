@@ -161,6 +161,7 @@
     "test:pg:pay-calendar": "bash scripts/pgtest-pay-calendar.sh",
     "test:pg:person-file-numbers": "bash scripts/pgtest-person-file-numbers.sh",
     "test:pg:person-engagements": "bash scripts/pgtest-person-engagements.sh",
+    "test:pg:dev-seat-kept-plans": "bash scripts/pgtest-dev-seat-kept-plans.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
