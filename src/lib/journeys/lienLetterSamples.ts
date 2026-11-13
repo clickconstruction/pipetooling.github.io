@@ -114,13 +114,13 @@ export function sampleOwnerNoticeInputs(todayYmd: string): { fields: LienNoticeF
   }
 }
 
-function paper(title: string, subject: string, blocks: FilingDocBlock[], filename: string, footer?: string, opts?: Parameters<typeof filingDocPrintHtml>[3]): PaperSample {
+function paper(title: string, subject: string, blocks: FilingDocBlock[], filename: string, footer?: string, opts?: Parameters<typeof filingDocPrintHtml>[3], fit?: 'one-page'): PaperSample {
   return {
     title,
     subject,
     html: filingDocPrintHtml(blocks, title, footer, opts),
     filename,
-    pdf: async () => (await import('../jobsDocuments/lienFilingDocuments')).filingDocPdfBlob(blocks, footer ? { footer } : undefined),
+    pdf: async () => (await import('../jobsDocuments/lienFilingDocuments')).filingDocPdfBlob(blocks, footer || fit ? { footer, fit } : undefined),
   }
 }
 
@@ -168,7 +168,7 @@ function coverBlocks(letter: string, days: SampleLienDays, noticeDate: string): 
 export function sampleLienCoverLetter(todayYmd: string): PaperSample {
   const days = sampleLienDays(todayYmd)
   const letter = defaultGcNoticeCoverLetter({ gcName: SAMPLE_GC.company, claimantName: PORTAL_COMPANY.name, kind: 'commercial' })
-  return paper('Cover letter with the notice of claim', `Notice of claim — ${SAMPLE_OWNER.project}`, coverBlocks(letter, days, days.noticeSentOn), 'Notice-cover-letter-sample.pdf')
+  return paper('Cover letter with the notice of claim', `Notice of claim — ${SAMPLE_OWNER.project}`, coverBlocks(letter, days, days.noticeSentOn), 'Notice-cover-letter-sample.pdf', undefined, { leading: 'tight' }, 'one-page')
 }
 
 export const LETTER_TWO_SAMPLE_TITLES: Record<LetterTwoKind, string> = {
@@ -180,7 +180,7 @@ export const LETTER_TWO_SAMPLE_TITLES: Record<LetterTwoKind, string> = {
 export function sampleLetterTwo(kind: LetterTwoKind, todayYmd: string): PaperSample {
   const days = sampleLienDays(todayYmd)
   const letter = letterTwoTemplate(kind, { gcName: SAMPLE_GC.company, claimantName: PORTAL_COMPANY.name })
-  return paper(LETTER_TWO_SAMPLE_TITLES[kind], `Notice of claim — ${SAMPLE_OWNER.project}`, coverBlocks(letter, days, days.letterTwoOn), `Attorneys-letter-${kind === 'paid_out' ? 'paid-out' : 'not-answering'}-sample.pdf`)
+  return paper(LETTER_TWO_SAMPLE_TITLES[kind], `Notice of claim — ${SAMPLE_OWNER.project}`, coverBlocks(letter, days, days.letterTwoOn), `Attorneys-letter-${kind === 'paid_out' ? 'paid-out' : 'not-answering'}-sample.pdf`, undefined, { leading: 'tight' }, 'one-page')
 }
 
 /** Beside the ladder: the § 53.057 form for money the builder holds back. */
