@@ -63,6 +63,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
   // #319: a First look's link, the page where a caller adds photos and a video of the problem. On the tab since v2.7017, with the ask that carries it.
   { kind: 'route', ref: '/show/:code', audience: 'homeowner', steps: [H('first-look-page'), H('first-look-thanks')] },
+  // #345 (v2.7223): a painted map, shared: the way in and what is where, for a customer or a driver.
+  { kind: 'route', ref: '/way/:code', audience: 'homeowner', steps: [H('painted-map-page')] },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },

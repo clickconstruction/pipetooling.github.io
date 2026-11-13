@@ -77,6 +77,7 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasDot, PaintedCanvasDraft } from './PaintedMapCanvas'
+import { PaintedMapShareSheet } from './PaintedMapShareSheet'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
 import { PaintedWalkReview } from './PaintedWalkReview'
@@ -176,6 +177,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
   const [viewing, setViewing] = useState<string | null>(null)
   const [pickedPlace, setPickedPlace] = useState<string | null>(null)
+  const [sharing, setSharing] = useState(false)
   // The middle of what the map is showing: where a new dot starts.
   const viewCenter = useRef<PaintedPoint | null>(null)
   const [draft, setDraft] = useState<DraftLine>(() => emptyDraftLine())
@@ -718,7 +720,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         {mode === 'walk' && walk.state ? (
           // The bar is red for every second the phone is being read, and at no other time.
           <div data-painted-bar={painting ? 'painting' : 'paused'} role="status" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: painting ? '#b91c1c' : '#4b5563', color: '#fff', fontWeight: 700 }}>
-            <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', boxShadow: '0 0 0 4px rgba(255,255,255,.3)', flex: 'none' }} />
+            <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 0 4px rgba(255,255,255,.3)', flex: 'none' }} />
             <span>{painting ? 'Painting' : 'Paused'} · {clockWords(walkPaintedMs(walk.state, walk.nowMs))}</span>
             <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: '0.8125rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{painting ? title : 'The phone is not being read'}</span>
             <button type="button" onClick={leave} aria-label="Close the painted map" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
@@ -880,6 +882,10 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                     {directions ? (
                       <button type="button" style={press} onClick={() => openInExternalBrowser(directions)}>Directions to the start</button>
                     ) : null}
+                    {/* A link is its maker's and the office's to hand out, and a map with nothing on it has nothing to show. */}
+                    {saved && canChangeMap && (lines.length > 0 || places.length > 0) ? (
+                      <button type="button" data-painted-share style={press} onClick={() => setSharing(true)}>Share</button>
+                    ) : null}
                   </div>
 
                   {lines.length === 0 && places.length === 0 ? (
@@ -1000,6 +1006,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         onCancel={() => setConfirm(null)}
       />
     ) : null}
+    {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} onClose={() => setSharing(false)} /> : null}
     {viewing ? (
       <div role="dialog" aria-modal="true" aria-label="The photo of the place" data-painted-photo-view style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }} onClick={() => setViewing(null)}>
         <img src={viewing} alt="The place" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
