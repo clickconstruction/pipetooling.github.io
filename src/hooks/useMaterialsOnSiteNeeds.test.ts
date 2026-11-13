@@ -36,6 +36,7 @@ vi.mock('../lib/materials/onSiteStore', () => ({
   },
   getVersion: () => store.version,
   priceOf: (key: string) => (key === 'id:p1' ? 20 : null),
+  priceOfJob: (_jobId: string, key: string) => (key === 'id:p1' ? 20 : null),
   serverSummary: () => null,
 }))
 const zz = vi.hoisted(() => ({ ids: new Set<string>() }))

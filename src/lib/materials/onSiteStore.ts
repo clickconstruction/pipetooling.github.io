@@ -21,6 +21,10 @@ import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from '
 import type { PhotoNote, PhotoStatus } from './photo'
 import { loadPartPriceRows } from './partPrices'
 import { bookPartIds, bookPriceRow, priceLookup, type BookPriceRow, type PricePick } from './bookPrice'
+import { tieCanon, type PartTie } from './partTies'
+import type { TieScope } from './partTiesIo'
+import { latestSitePrices, sitePriceLookup, type SitePrice } from './sitePrices'
+import { deleteSitePrice, fetchAllSameTies, fetchAllSitePrices, fetchJobScopes, insertSitePrice, scopeKeyOf, type SitePriceInput } from './sitePricesIo'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -160,6 +164,7 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       c.moves = moves.map((r) => moveOf(r, jobId))
       c.loadedAt = Date.now()
       void loadBookPrices(bookPartIds(c.movements))
+      void loadSitePricing([jobId])
     } catch (e) {
       c.error = formatErrorMessage(e, 'The boxes on this job did not load.')
       c.raw = e
@@ -578,5 +583,141 @@ export function rememberPrice(key: string, price: number): void {
   } catch {
     /* a private window keeps it for the page */
   }
+  bump()
+}
+
+// ---------------------------------------------------------------------------
+// A site's own prices and its ties (punch list #342, PR 2): `on_site_prices` and the `same` rows of
+// `on_site_part_ties`, read once beside the first job's load, and each job's site. `priceForJob` is the one
+// rule with them in it (`sitePriceLookup`): a job's Missing table, the desk's missing money and a site's Worth
+// read the same price. A reader the table gives nothing to (a field role) gets the old rule's answer.
+// ---------------------------------------------------------------------------
+
+const scopeOfJob = new Map<string, string>()
+const scopesAsked = new Set<string>()
+const sitePriceRows = new Map<string, SitePrice[]>()
+const siteTies = new Map<string, PartTie[]>()
+const latestCache = new Map<string, Map<string, SitePrice>>()
+const canonCache = new Map<string, (key: string) => string>()
+let sitePricingRead: Promise<void> | null = null
+let sitePricingOk = false
+
+/** The site's-own-prices table was read: false before its migration is pushed, or for a role it gives nothing to. */
+export function sitePricingAvailable(): boolean {
+  return sitePricingOk
+}
+
+function tiedPartIds(ties: ReadonlyArray<PartTie>): string[] {
+  const ids = new Set<string>()
+  for (const t of ties) for (const k of [t.aKey, t.bKey]) if (k.startsWith('id:')) ids.add(k.slice(3))
+  return [...ids]
+}
+
+/** Each job's site, and every site's prices and ties, the ones not read yet. Never throws: a refused read leaves the old rule standing. */
+export function loadSitePricing(jobIds: ReadonlyArray<string>): Promise<void> {
+  const fresh = jobIds.filter((id) => id && !scopesAsked.has(id))
+  for (const id of fresh) scopesAsked.add(id)
+  const scopes = fresh.length
+    ? fetchJobScopes(fresh)
+        .then((m) => {
+          for (const [job, scope] of m) scopeOfJob.set(job, scope)
+        })
+        .catch(() => {
+          for (const id of fresh) scopesAsked.delete(id)
+        })
+    : Promise.resolve()
+  if (!sitePricingRead) {
+    sitePricingRead = (async () => {
+      const [prices, ties] = await Promise.allSettled([fetchAllSitePrices(), fetchAllSameTies()])
+      if (prices.status === 'fulfilled') {
+        sitePriceRows.clear()
+        for (const [scope, rows] of prices.value) sitePriceRows.set(scope, rows)
+        latestCache.clear()
+        sitePricingOk = true
+      } else {
+        // Asked again with the next job: the table may not be there yet.
+        sitePricingRead = null
+      }
+      if (ties.status === 'fulfilled') {
+        for (const [scope, rows] of ties.value) {
+          // A screen that holds the site's ties itself (`setScopeTies`) is newer than this read.
+          if (!siteTies.has(scope)) siteTies.set(scope, rows)
+          void loadBookPrices(tiedPartIds(rows))
+        }
+        canonCache.clear()
+      }
+    })()
+  }
+  return Promise.all([scopes, sitePricingRead]).then(() => bump())
+}
+
+function latestOf(scopeKey: string): Map<string, SitePrice> {
+  let latest = latestCache.get(scopeKey)
+  if (!latest) {
+    latest = latestSitePrices(sitePriceRows.get(scopeKey) ?? [])
+    latestCache.set(scopeKey, latest)
+  }
+  return latest
+}
+
+function canonOf(scopeKey: string): (key: string) => string {
+  let canon = canonCache.get(scopeKey)
+  if (!canon) {
+    canon = tieCanon(siteTies.get(scopeKey) ?? [])
+    canonCache.set(scopeKey, canon)
+  }
+  return canon
+}
+
+/** The price a line reads on one site, by its part key. `canon` is the site's ties when the caller holds them fresher than the store. */
+export function priceForScope(scopeKey: string, key: string, canon?: (key: string) => string): PricePick | null {
+  const latest = latestOf(scopeKey)
+  return sitePriceLookup({ book: (id) => bookPrices.get(id) ?? [], invoice: (k) => readPrices()[k] ?? null, site: (k) => latest.get(k), canon: canon ?? canonOf(scopeKey), today: todayYmdInAppTz() })(key)
+}
+
+/** The price a job's line reads: through its site's prices and ties once they were read, the old rule until then. */
+export function priceForJob(jobId: string, key: string): PricePick | null {
+  const scope = scopeOfJob.get(jobId)
+  return scope ? priceForScope(scope, key) : priceFor(key)
+}
+
+/** The number alone, for a job's sums. */
+export function priceOfJob(jobId: string, key: string): number | null {
+  return priceForJob(jobId, key)?.price ?? null
+}
+
+/** Every answer given about a site's rows, oldest first. */
+export function listSitePrices(scope: TieScope): SitePrice[] {
+  return sitePriceRows.get(scopeKeyOf(scope)) ?? []
+}
+
+/** One answer: a price accepted for a row, or the row left out. Throws the table's refusal. */
+export async function addSitePrice(scope: TieScope, input: SitePriceInput, byName: string): Promise<SitePrice> {
+  const row = await insertSitePrice(scope, input, byName)
+  const key = scopeKeyOf(scope)
+  sitePriceRows.set(key, [...(sitePriceRows.get(key) ?? []), row])
+  latestCache.delete(key)
+  bump()
+  return row
+}
+
+/** Take one answer back: the row reads what it read before. Throws the table's refusal. */
+export async function removeSitePrice(scope: TieScope, id: string): Promise<void> {
+  await deleteSitePrice(id)
+  const key = scopeKeyOf(scope)
+  sitePriceRows.set(key, (sitePriceRows.get(key) ?? []).filter((r) => r.id !== id))
+  latestCache.delete(key)
+  bump()
+}
+
+/** A site's screen holds its ties itself and hands them over, so a job's page prices a tied name the same way at once. */
+export function setScopeTies(scope: TieScope, ties: ReadonlyArray<PartTie>): void {
+  const key = scopeKeyOf(scope)
+  const same = ties.filter((t) => t.verdict === 'same')
+  const before = siteTies.get(key)
+  if (before && before.length === same.length && before.every((t, i) => t.id === same[i]!.id)) return
+  siteTies.set(key, same)
+  canonCache.delete(key)
+  void loadBookPrices(tiedPartIds(same))
   bump()
 }
