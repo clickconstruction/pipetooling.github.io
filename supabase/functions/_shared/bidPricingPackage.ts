@@ -138,7 +138,7 @@ export function buildBidPricingPackageTableHtml(args: {
     '<thead><tr>' +
     th('Fixture or Tie-in') +
     th('Count', 'center') +
-    th('Unit price', 'right') +
+    th('Sale Price', 'right') +
     th('Revenue', 'right') +
     '</tr></thead>' +
     `<tbody>${bodyRows}${footer}</tbody>` +
@@ -247,7 +247,7 @@ function plainTextTableLines(
   totalRevenue: number,
 ): string[] {
   const lines: string[] = []
-  const HDR = ['Fixture or Tie-in', 'Count', 'Unit price', 'Revenue']
+  const HDR = ['Fixture or Tie-in', 'Count', 'Sale Price', 'Revenue']
   const body = externalRows.map((r) => [
     r.fixture || '',
     String(r.count),

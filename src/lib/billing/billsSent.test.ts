@@ -4,12 +4,16 @@ import {
   billsSentGapFilter,
   billsSentGapHeading,
   billsSentGaps,
+  BILLS_SENT_CSV_HEAD,
   billsSentAgainWords,
   billsSentByWords,
+  billsSentCsv,
+  billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
   billsSentLines,
+  billsSentListHtml,
   billsSentPaidWords,
   billsSentRecord,
   billsSentRecordHtml,
@@ -414,5 +418,46 @@ describe('billsSentRecord (PR 4)', () => {
     expect(html).toContain('Delivered means their mail server took the email.')
     expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
     expect(billsSentRecordHtml({ ...record, events: [] }, '2026-11-12T21:00:00.000Z')).toContain('No send of this bill is on record.')
+  })
+})
+
+describe('billsSent — out of the app (PR 5)', () => {
+  const data = input(
+    [
+      copy({ id: 'c2', sentAt: '2026-11-12T17:02:00.000Z', recipientName: '=Sable, "Ridge" Builders' }),
+      copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' }),
+    ],
+    {
+      stamps: [{ billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' }],
+      unsent: [{ billId: 'dddddddd-4444-4444-8444-444444444444', jobId: JOB_B, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+      marks: new Map([['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-12T17:02:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }]]),
+    },
+  )
+  const lines = billsSentLines(data)
+  const gaps = billsSentGaps(data, lines)
+
+  it('writes the lines as a spreadsheet a column of amounts can add, then the bills with no send', () => {
+    const rows = billsSentCsv(lines, gaps.open).trimEnd().split('\r\n')
+    expect(rows[0]).toBe(BILLS_SENT_CSV_HEAD.join(','))
+    expect(rows).toHaveLength(5)
+    // A second send: not in the day total, with which send it is. A name that opens like a formula is led with an apostrophe, and its comma and quotes are held.
+    expect(rows[1]).toBe('2026-11-12,11:02 AM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,"\'=Sable, ""Ridge"" Builders",4860.00,no,"\'=Sable, ""Ridge"" Builders",hal@sableridge.example,,"Email, sent again",Priya,2,Delivered 11:02 AM,,')
+    // A Housecall Pro day: no time, and what the app does not have.
+    expect(rows[2]).toBe('2026-11-11,,Bill,J1398 · Larkfield Clinic,Larkfield Construction,9750.00,yes,,,,Housecall Pro,,1,,Paid since,"Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy."')
+    expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,,')
+    expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
+    expect(billsSentCsvFileName('2026-11-12')).toBe('bills-sent-2026-11-12.csv')
+  })
+
+  it('prints what the list shows under its days, with the gaps first', () => {
+    const html = billsSentListHtml(billsSentDays(lines, '2026-11-12'), gaps.open, { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.' })
+    expect(html).toContain('<h1>Bills sent</h1>')
+    expect(html).toContain('<h2>1 bill is billed with no send on record</h2>')
+    expect(html).toContain('<b>Today · Thu, Nov 12</b> <span>0 bills · 1 sent again</span>')
+    expect(html).toContain('<td class="when">11:02 AM</td><td><b>Bill 1412-0002</b> · J1412 · Sable Ridge Lot 14 · =Sable, &quot;Ridge&quot; Builders')
+    expect(html).toContain('Email, sent again · by Priya · 2nd send. First sent Tue, Nov 3. · Delivered 11:02 AM')
+    expect(html).toContain('<td class="when">Day only</td>')
+    expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
+    expect(html.indexOf('no send on record')).toBeLessThan(html.indexOf('Today · Thu, Nov 12'))
   })
 })

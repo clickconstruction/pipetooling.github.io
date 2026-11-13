@@ -2,7 +2,7 @@
  * send-bid-pricing-package
  *
  * Resend-backed delivery of a bid's external Pricing package (Job Plans link + the 4-column
- * external pricing table: Fixture/Tie-in, Count, Unit price, Revenue).
+ * external pricing table: Fixture/Tie-in, Count, Sale Price, Revenue).
  *
  * Caller flow (Bids → Pricing tab → "Package and send" modal → "Send for me"):
  *   POST { bid_id, price_book_version_id, recipient_user_id, also_price_book_version_id? }
