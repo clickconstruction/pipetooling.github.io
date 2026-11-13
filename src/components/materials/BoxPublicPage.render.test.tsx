@@ -258,4 +258,61 @@ describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
     await screen.findByTestId('box-page-title')
     expect(JSON.parse(localStorage.getItem('pt.boxPage.last') ?? '{}')).toMatchObject({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' })
   })
+
+  // v2.7072 (punch list #329): a code may be a sticker's.
+  it('a blank sticker says its number, offers the sign-in and nothing else', async () => {
+    answer(404, { error: 'sticker_blank', number: 147 })
+    mount('9B1C0D2E')
+    const page = await screen.findByTestId('box-page-sticker-blank')
+    expect(page.textContent).toBe('Sticker 0147 is not on a box yet' + 'Sign in to say what it is.' + 'Sign in')
+    expect(document.title).toBe('Sticker 0147 · Click Plumbing & Electrical')
+    // no search, no site, no office number, and not the words of a wrong code
+    expect(screen.queryByTestId('box-page-not-found')).toBeNull()
+    expect(screen.queryByTestId('box-page-find-form')).toBeNull()
+    expect(screen.queryByTestId('box-page-last-site')).toBeNull()
+    expect(screen.queryByTestId('box-page-text-office')).toBeNull()
+    fireEvent.click(screen.getByTestId('box-page-sticker-sign-in'))
+    expect(await screen.findByTestId('sign-in-page')).toBeTruthy()
+    expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/b/9b1c0d2e')
+  })
+
+  it('a blank sticker opened on the search still shows only its page', async () => {
+    answer(404, { error: 'sticker_blank', number: 147 })
+    render(
+      <MemoryRouter initialEntries={['/b/9B1C0D2E?find=1']}>
+        <Routes>
+          <Route path="/b/:code" element={<BoxPublicPage code="9B1C0D2E" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByTestId('box-page-sticker-blank')).toBeTruthy()
+    expect(screen.queryByTestId('box-page-find')).toBeNull()
+  })
+
+  it('a lost sticker says so with its day and offers another scan', async () => {
+    answer(410, { error: 'sticker_lost', number: 147, lostOn: '2026-11-07' })
+    mount('9B1C0D2E')
+    const page = await screen.findByTestId('box-page-sticker-lost')
+    expect(page.textContent).toContain('Sticker 0147 was marked lost')
+    expect(page.textContent).toContain('Someone marked it lost on Saturday, Nov 7. It no longer opens a box.')
+    expect(screen.queryByTestId('box-page-retired')).toBeNull()
+    fireEvent.click(screen.getByTestId('box-page-scan-another'))
+    expect(await screen.findByTestId('scan-page')).toBeTruthy()
+  })
+
+  it('a sticker on a box draws that box as a label does, with the sticker\'s number by the code', async () => {
+    answer(200, { ...box, box: { ...box.box, code: '9B1C0D2E', stickerNumber: 147 } })
+    mount('9B1C0D2E')
+    expect((await screen.findByTestId('box-page-title')).textContent).toBe('Cage B3')
+    expect(screen.getByTestId('box-page-sticker').textContent).toBe('Sticker 0147, ')
+    expect(screen.getByTestId('box-page-code').textContent).toBe('Sticker 0147, 9B1C-0D2E')
+    expect(screen.getByTestId('box-page-lines').textContent).toContain('Mueller')
+  })
+
+  it('a label\'s own code draws no sticker number', async () => {
+    answer(200, box)
+    mount()
+    await screen.findByTestId('box-page-title')
+    expect(screen.queryByTestId('box-page-sticker')).toBeNull()
+  })
 })

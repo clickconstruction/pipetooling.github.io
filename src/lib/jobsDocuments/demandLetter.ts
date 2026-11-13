@@ -700,9 +700,40 @@ const PAGE_MARGIN = 20
 const MAX_TEXT_WIDTH_MM = 176
 const PAGE_CONTENT_MAX_Y = 264
 
+/** How the letter's running text is set in the PDF: the type size (pt), the line height, the gap under a paragraph and the room left for the ink (mm). */
+export type DemandLetterSet = { size: number; line: number; gap: number; ink: number }
+
+/** The usual setting: 11 pt Times on a 5.4 mm line. */
+export const DEMAND_LETTER_SET: DemandLetterSet = { size: 11, line: 5.4, gap: 1.8, ink: 11 }
+
+/**
+ * Tighter settings, tried in order when the letter would run onto a second page (v2.7080): the first
+ * that holds it on one page is the one drawn. The first step keeps the type size and closes the lines;
+ * the floor is 10 pt, the lien letters' own. A letter no step holds on one page keeps the usual setting.
+ */
+export const DEMAND_LETTER_FIT_STEPS: readonly DemandLetterSet[] = [
+  { size: 11, line: 5, gap: 1.5, ink: 9 },
+  { size: 10.5, line: 4.8, gap: 1.4, ink: 9 },
+  { size: 10, line: 4.6, gap: 1.3, ink: 8 },
+]
+
 export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): Promise<Blob> {
   const JsPDF = await loadJsPDF()
+  const blocks = buildDemandLetterModel(f, todayYmd, opts)
+  const usual = drawDemandLetterPdf(JsPDF, blocks, f, DEMAND_LETTER_SET)
+  if (usual.getNumberOfPages() <= 1) return usual.output('blob')
+  // A page that holds only the end of the letter (the signature, often) is a page nobody needed.
+  for (const step of DEMAND_LETTER_FIT_STEPS) {
+    const tighter = drawDemandLetterPdf(JsPDF, blocks, f, step)
+    if (tighter.getNumberOfPages() <= 1) return tighter.output('blob')
+  }
+  return usual.output('blob')
+}
+
+function drawDemandLetterPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: readonly DemandLetterBlock[], f: Pick<DemandLetterFields, 'businessName' | 'businessPhone'>, set: DemandLetterSet) {
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
+  /** The signature and the address sit a hair closer than the running text, as they always have. */
+  const closeLine = set.line - 0.2
   const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
   let y = PAGE_MARGIN + 4
 
@@ -733,7 +764,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     ink()
   }
 
-  for (const b of buildDemandLetterModel(f, todayYmd, opts)) {
+  for (const b of blocks) {
     switch (b.kind) {
       case 'senderBlock': {
         const contactH = b.contactLines.length * 3.7
@@ -763,13 +794,13 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
       }
       case 'addressBlock': {
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         doc.text(b.date, rightX, y, { align: 'right' })
         for (const l of b.recipient) {
           const wrapped = doc.splitTextToSize(l, MAX_TEXT_WIDTH_MM - 50) as string[]
           for (const line of wrapped) {
             doc.text(line, PAGE_MARGIN, y)
-            y += 5.2
+            y += closeLine
           }
         }
         y += 5.5
@@ -863,30 +894,30 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         break
       case 'paragraph':
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
-        writeWrapped(b.text, 5.4)
-        y += 1.8
+        doc.setFontSize(set.size)
+        writeWrapped(b.text, set.line)
+        y += set.gap
         break
       case 'listItem':
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         if (b.lead) {
           // Two columns: the day, then what happened on it.
-          ensureRoom(5.4)
+          ensureRoom(set.line)
           doc.text(b.lead, PAGE_MARGIN, y)
-          writeWrapped(b.text, 5.4, { indent: 46 })
-        } else writeWrapped(b.text, 5.4, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
+          writeWrapped(b.text, set.line, { indent: 46 })
+        } else writeWrapped(b.text, set.line, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
         y += 0.8
         break
       case 'signature':
-        // "Sincerely," — then room for the ink — then who signed.
-        ensureRoom(18 + b.lines.length * 5.2)
+        // "Sincerely," — then room for the ink — then who signed. The block asks for the room it uses, so it never starts a page it did not need.
+        ensureRoom(5 + set.ink + b.lines.length * closeLine)
         y += 5
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         b.lines.forEach((l, i) => {
-          writeWrapped(l, 5.2)
-          if (i === 0) y += 11
+          writeWrapped(l, closeLine)
+          if (i === 0) y += set.ink
         })
         break
       case 'statement': {
@@ -1000,8 +1031,8 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
       case 'notarial':
         y += 8
         doc.setFont('times', 'normal')
-        doc.setFontSize(10.5)
-        for (const l of NOTARIAL_TEXT_LINES) writeWrapped(l, 5.4)
+        doc.setFontSize(Math.min(10.5, set.size))
+        for (const l of NOTARIAL_TEXT_LINES) writeWrapped(l, set.line)
         break
     }
   }
@@ -1019,7 +1050,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     if (footerLeft) doc.text(footerLeft, PAGE_MARGIN, 274)
     doc.text(`Page ${p} of ${pages}`, rightX, 274, { align: 'right' })
   }
-  return doc.output('blob')
+  return doc
 }
 
 // ---------- Exhibit C: the delivery record (v2.3429) ----------

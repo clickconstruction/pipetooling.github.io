@@ -67,9 +67,9 @@ export function payLinkRefInText(body: string): { kind: 'id' | 'code'; value: st
 }
 
 type BillRow = BillsSentBill & { payCode: string | null }
-const BILL_COLS = 'id, job_id, amount, status, pay_code'
+const BILL_COLS = 'id, job_id, amount, status, pay_code, billed_at, created_at'
 const billOf = (r: Record<string, unknown>): BillRow | null =>
-  text(r.id) ? { id: text(r.id), jobId: text(r.job_id) || null, amount: numberOrNull(r.amount), status: text(r.status), payCode: text(r.pay_code) || null } : null
+  text(r.id) ? { id: text(r.id), jobId: text(r.job_id) || null, amount: numberOrNull(r.amount), status: text(r.status), payCode: text(r.pay_code) || null, billedAtIso: text(r.billed_at) || text(r.created_at) || null } : null
 
 /** A list read that answers no rows when it fails: the lines it would add are left out, and the rest still draw. */
 async function rows(read: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<Array<Record<string, unknown>>> {
@@ -153,7 +153,7 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
     rows(() =>
       supabase
         .from('jobs_ledger_invoices')
-        .select(`${BILL_COLS}, billed_at, created_at`)
+        .select(BILL_COLS)
         .in('status', ['billed', 'paid'])
         .is('sent_to_customer_at', null)
         .eq('external_send_channel', 'stripe')
