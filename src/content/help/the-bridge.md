@@ -7,7 +7,7 @@ order: 62
 ---
 1. Read the numbers at the top. The numbers are what the field made last week, the slowest step, and your two balances.
 2. Read the card under the numbers. The card names the slowest step and the moves that would change it.
-3. Press a move to open the page where its work is done.
+3. Press a line under a move to act on that one thing.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
@@ -44,7 +44,17 @@ An amber line under the cash balance names any account you left out of cash on h
 
 When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move.
 
-Under the numbers, **What to do now** names the slowest step and the moves that would change it. Press a move to open the page where the work is done. The card shows the first three moves, or two on a phone.
+Under the numbers, **What to do now** names the slowest step and the moves that would change it. The card shows the first three moves, or two on a phone.
+
+Each move names the things behind it, as a small table. A table shows three lines. Press **Show all** to see the rest.
+
+- **Chase the late invoices** lists the customers to call. Each line says what is late, how old the oldest bill is, and the pay date they named. Press a customer's name to open the Collect window on that customer. Press **2 projects** on a line to see each open bill under it. Press **Set a pay date** on a bill to write down the day they named. Press **See who to call ›** to open the Collect window as it is.
+- **Bill the finished jobs** lists the jobs with finished work and no bill. Press a job to open it. Press **See what to bill ›** to open the Bill window.
+- **Set a percent** lists the jobs with no percent. Press **Set the percent** on a line to set it right there. The line stays on the list for the visit and says what you set.
+- **Price the jobs** lists the jobs with no price. Press a job to open it.
+- **Ask the supply houses for more days** lists the supply houses with bills due that day. Press a supply house to open its bills on that day. Press **See the bills ›** to open the list behind Money.
+
+On a phone a line is its name and its figure, with the rest under it.
 
 The card is a reading of today. The card records nothing and hands nothing to a person. The card changes when the numbers change.
 
