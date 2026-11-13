@@ -617,7 +617,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
-          <EditBoxForm touch container={sheet.container} containers={containers} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
+          <EditBoxForm touch container={sheet.container} containers={containers} places={places} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
         </Sheet>
       ) : null}
       {sheet?.kind === 'retire' ? (

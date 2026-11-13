@@ -128,11 +128,12 @@ A box can also carry a manifest, a laminated page that lists what is in it. Unde
 
 ## Change a box's name or kind
 
-A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. The office page has the same **Edit** press on each box.
+A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. On the office page, press a box's name or the **Edit** press beside it.
 
 - **Its name** takes a new name. A name another box on the job carries is refused.
 - **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
 - **Where exactly** says where it stands, such as on a pallet by the north door.
+- **Which place on site** moves the box to another place, or to a new one you type.
 
 The press says what it will do, such as **Rename to G70** or **Save G70**.
 
