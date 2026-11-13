@@ -79,7 +79,7 @@ export function formatBidLedgerNumberLabel(prefix: string, bidNumber: string | n
   return `${pref}${n}`
 }
 
-/** "JP523 · Mission Hills - 123 Main" */
+/** "JP523 · Mission Flats - 123 Main" */
 export function formatJobLedgerSummaryLine(
   map: LedgerPrefixMap,
   serviceTypeId: string | null | undefined,
@@ -108,7 +108,7 @@ export function formatBidLedgerSummaryLine(
   return `${num} · ${pn} - ${ad}`
 }
 
-/** "JP523 · Mission Hills" (no address) */
+/** "JP523 · Mission Flats" (no address) */
 export function formatJobLedgerShortLine(
   map: LedgerPrefixMap,
   serviceTypeId: string | null | undefined,
@@ -133,7 +133,7 @@ export function formatBidLedgerShortLine(
   return `${num} · ${pn}`
 }
 
-/** Document-style "JP523 | Mission Hills" */
+/** Document-style "JP523 | Mission Flats" */
 export function formatJobLedgerDocTitle(
   map: LedgerPrefixMap,
   serviceTypeId: string | null | undefined,

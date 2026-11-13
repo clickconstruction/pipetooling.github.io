@@ -18,7 +18,7 @@ import { ageStateForDays, HOURS_APPROVAL_AGE, type AgeState } from '../ageState'
 
 /**
  * A closed punch shorter than this reads as a mis-tap (one minute). Not 15 —
- * the office's Update-Focus habit produces real 3–10 minute sessions ("Palmer
+ * the office's Update-Focus habit produces real 3–10 minute sessions ("Palvern
  * invoices", "SAWS auto coi") that are fine to approve; the sub-minute ones
  * with blank notes are the double-taps.
  */

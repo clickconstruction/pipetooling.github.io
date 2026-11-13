@@ -120,7 +120,7 @@ export function arLastTouchLine(touches: ChaseTouch[] | null, customerId: string
 
 /**
  * The call opener: what to say first. "3 bills past their ~35d — oldest 169d:
- * 273 · Dudley (Lennox), $13,420. $56,021 open on 14 bills."
+ * 273 · Dunmere (Linmoor), $13,420. $56,021 open on 14 bills."
  */
 export function arCallOpener(row: ArCustomerRow): string {
   const money = (n: number) =>

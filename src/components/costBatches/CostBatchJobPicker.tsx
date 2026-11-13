@@ -1,7 +1,7 @@
 /**
  * Cost batches: the job search the Move cost window uses for the job the rows move to, and
  * Banking → Cost batches for the job whose batches are listed. The app's own `search_jobs_ledger`
- * behind a box, the results as the ledger lines read everywhere else (`JP523 · Mission Hills - 123 Main`).
+ * behind a box, the results as the ledger lines read everywhere else (`JP523 · Mission Flats - 123 Main`).
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'

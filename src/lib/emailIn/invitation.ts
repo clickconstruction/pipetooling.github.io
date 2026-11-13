@@ -12,7 +12,7 @@
  * 2:00 PM*); the platform's page by its host. A plain email that names none of it reads as none.
  *
  * Since v2.6647 the kernel also says whose star may take the line (`starTakes`): the reader's last fallback is the
- * sender's starred job, and a known GC's new invitation so landed on their old bid asked nothing (Rusty Cottar's TPWD
+ * sender's starred job, and a known GC's new invitation so landed on their old bid asked nothing (Rusty Cotterby's TPWD
  * request, 2026-11-06, filed under bid 536; its subject *Bid Request: …* matched no cue, so the body's *addenda* in
  * passing read it as an addendum, and *bid request* is a cue since). An invitation or a solicitation is a new job, so the star never takes
  * it and the line sits on the person until the card ties it; an addendum or a pre-bid notice is about a bid already

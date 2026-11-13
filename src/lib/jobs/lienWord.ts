@@ -117,8 +117,8 @@ export type LienFyiSend = { jobLabel: string; by: 'word' | 'rule'; gcName?: stri
  * The leader's FYI list in the desk's title bar (v2.5028; the owner's call of 2026-10-09). *Sent on your
  * word* names the notices the office sent on his spoken word, and also the ones a GC's standing rule
  * approved and sent ("Send notices without asking"), marked as that GC's rule — so the rule's promise,
- * "you see each send in your FYI list", holds: `Sent on your word: 650 · by Loberg Contracting’s rule: 702, 715`.
- * With no word sends the rule's part leads: `Sent by Loberg Contracting’s rule: 702`. '' when nothing went.
+ * "you see each send in your FYI list", holds: `Sent on your word: 650 · by Lowbeck Contracting’s rule: 702, 715`.
+ * With no word sends the rule's part leads: `Sent by Lowbeck Contracting’s rule: 702`. '' when nothing went.
  */
 export function lienFyiStrip(sends: readonly LienFyiSend[]): string {
   const word = sends.filter((s) => s.by === 'word').map((s) => s.jobLabel)

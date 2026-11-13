@@ -5,7 +5,7 @@
  * the desk's Map lens (PR 3: pins, the legend's counts, the uncovered flag) read the same
  * answers and never disagree.
  *
- * The venue follows the job, not the customer (Burd & Assoc.'s office is in Amarillo, its
+ * The venue follows the job, not the customer (Brund & Assoc.'s office is in Amarillo, its
  * job is at Liberty Hill, Williamson County): the county is the property record's when
  * the record names one, else the county the geocode falls in. An account with several
  * jobs sits at its first job's address.
@@ -237,7 +237,7 @@ export function lensSummaryWords(cases: ReadonlyArray<LegalMapCase>): string {
   return `${cases.length} ${cases.length === 1 ? 'account' : 'accounts'} · ${jobs} ${jobs === 1 ? 'job' : 'jobs'} · ${money(open)} open`
 }
 
-/** The flag above the lens: `2 cases in a county no firm covers · Burd & Assoc. (Williamson) · …`, or null. */
+/** The flag above the lens: `2 cases in a county no firm covers · Brund & Assoc. (Williamson) · …`, or null. */
 export function uncoveredWords(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, bridgeFirmId: string | null = null): string | null {
   const off = cases.filter((c) => effectiveStand(c, assignments, bridgeFirmId) === 'none')
   if (off.length === 0) return null

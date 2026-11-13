@@ -342,7 +342,7 @@ export function diffPartDrafts(
   return { deletes, updates, inserts }
 }
 
-/** "from LAV 1 assembly SPACEX" when every part from an assembly came from the same one; "" otherwise. */
+/** "from LAV 1 assembly SKYLAB" when every part from an assembly came from the same one; "" otherwise. */
 export function assemblyLine(parts: ReadonlyArray<Pick<SubmittalPartRow, 'assembly'>>): string {
   const names = [...new Set(parts.map((p) => p.assembly?.trim()).filter((x): x is string => !!x))]
   return names.length === 1 ? `from ${names[0]}` : names.length > 1 ? `from ${names.join(' and ')}` : ''

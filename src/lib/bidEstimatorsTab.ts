@@ -236,7 +236,7 @@ export const BID_ESTIMATORS_PROJECT_CLIP_MAX = 10
 
 /**
  * Trims a bid project name and clips to `max` characters with an ellipsis (`…` is **NOT** used —
- * the spec calls for three ASCII dots: `Take 5 Oil...`). Empty / nullish input → empty string.
+ * the spec calls for three ASCII dots: `Tune 5 Oil...`). Empty / nullish input → empty string.
  * Names of length ≤ max are returned without an ellipsis.
  */
 export function formatBidEstimatorsProjectNameClip(

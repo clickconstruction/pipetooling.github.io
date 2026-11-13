@@ -26,7 +26,7 @@ export type ClockSessionStripActionsPayload = {
   assignmentLabel: string | null
   /** Compact label for density; may match assignmentLabel. */
   assignmentShortLabel: string | null
-  /** Modal: first line (e.g. J523 · Mission Hills); second line is address when present. */
+  /** Modal: first line (e.g. J523 · Mission Flats); second line is address when present. */
   assignmentModalLine1: string | null
   assignmentModalLine2: string | null
   jobEditHref: string | null

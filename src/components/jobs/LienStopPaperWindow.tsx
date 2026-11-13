@@ -23,7 +23,7 @@ const LienRulesModal = lazy(() => import('./LienRulesModal'))
 export interface LienStopPaper {
   /** The pages, as the packet prints them; empty when the stop has none to show. */
   pages: ReadonlyArray<LienStopPaperPage>
-  /** `To JBI LIBERTY HILL LLC and Burd & Assoc. by certified mail · courtesy PDF to …`; null when nothing is mailed. */
+  /** `To JBI LIBERTY HILL LLC and Brund & Assoc. by certified mail · courtesy PDF to …`; null when nothing is mailed. */
   envelope: string | null
   /** What must be true before the paper can go — the gates not yet clear. */
   before: ReadonlyArray<{ key: string; words: string }>
@@ -87,7 +87,7 @@ type Props = {
   index: number
   onIndex: (index: number) => void
   onClose: () => void
-  /** `891 · Take 5- Liberty Hill` */
+  /** `891 · Tune 5- Liberty Hill` */
   jobLabel: string
   paperFor: (step: LienTimelineStep) => LienStopPaper
 }

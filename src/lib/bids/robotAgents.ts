@@ -94,7 +94,7 @@ export type RobotAgentView = {
   /** "1 bid sealed, 1 parked. 88 rounds found nothing to do." */
   today: string | null
   /**
-   * What today's last check-in said about the queue (v2.5753): "Passed over 2 bids. b516 Take 5,
+   * What today's last check-in said about the queue (v2.5753): "Passed over 2 bids. b516 Tune 5,
    * made over 30 days ago and nobody asked. …", and "Its last check-in saw 3 bids ready to claim."
    * when the robot has not acted on a ready count. Null with nothing to say.
    */

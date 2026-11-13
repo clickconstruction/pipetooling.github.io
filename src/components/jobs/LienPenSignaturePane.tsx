@@ -15,7 +15,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 export type PenPaneNotice = {
   itemId: string
   jobNumber: string
-  /** "650 · ATI Schertz" */
+  /** "650 · AXO Schertz" */
   label: string
   amount: number
   /** The row's `fields` as saved: the hash binds the record to the paper as printed. */
