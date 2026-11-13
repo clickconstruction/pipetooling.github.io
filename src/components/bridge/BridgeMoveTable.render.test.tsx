@@ -29,8 +29,8 @@ const facts: DiveFacts = {
   ],
   billJobs: [],
   noPctJobs: [
-    { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' } },
-    { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, pctJob: { id: 'j302', hcpNumber: '302', jobName: 'Spruce Hall', label: '302 · Spruce Hall' }, setPct: 60 },
+    { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' }, hoursLine: '24 hours by Dana and Sam', hoursCell: { text: '24', phone: '24 hours', by: 'Dana and Sam' } },
+    { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, pctJob: { id: 'j302', hcpNumber: '302', jobName: 'Spruce Hall', label: '302 · Spruce Hall' }, setPct: 60, hoursLine: 'No hours yet', hoursCell: { text: '0', phone: 'No hours yet', by: '' } },
   ],
   noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk' }],
   supplyBills: [{ houseId: 'h-north', name: 'Northside Supply', usd: 7_200, dueYmd: '2026-03-04', bills: 4 }],
@@ -76,13 +76,16 @@ describe('BridgeMoveTable at a desk', () => {
     expect(onDive).toHaveBeenLastCalledWith({ kind: 'desk', stage: 'collect', payerKey: 'c1' })
   })
 
-  it('draws the jobs with no percent, Set the percent as a word, and a job set on this visit saying so', () => {
+  it('draws the jobs with their hours as the press that opens them, Set the percent as a word, and a job set on this visit saying so', () => {
     const onDive = vi.fn()
     renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow={false} onDive={onDive} />)
-    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Contract'])
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Hours', 'Contract', 'Worked by'])
     const rows = screen.getAllByTestId('bridge-week-dive-item')
-    expect(texts(rows[0]!)).toEqual(['301 · Pine Row', '', '$30.0k', '', 'Set the percent', ''])
-    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '', '', 'Set to 60% just now', 'Change the percent', ''])
+    expect(texts(rows[0]!)).toEqual(['301 · Pine Row', '24', '$30.0k', 'Dana and Sam', 'Set the percent', ''])
+    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '0', '', 'Set to 60% just now', 'Change the percent', ''])
+    // The hours are a press of their own: who worked them and when.
+    fireEvent.click(screen.getByRole('button', { name: 'See the hours on 301 · Pine Row: 24 hours by Dana and Sam' }))
+    expect(onDive).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'hours', jobId: 'j301', jobLabel: '301 · Pine Row' }))
     fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Set the percent' }))
     expect(onDive).toHaveBeenLastCalledWith({ kind: 'pct', job: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' } })
     // A grey check makes the to-do for that one job. A job set on this visit has no check: it needs no card.
@@ -128,8 +131,8 @@ describe('BridgeMoveTable on a phone', () => {
     renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow />)
     expect(screen.queryByRole('columnheader')).toBeNull()
     const rows = screen.getAllByTestId('bridge-week-dive-item')
-    expect(rows[0]!.textContent).toBe('301 · Pine Row$30.0k contractSet the percent')
-    expect(rows[1]!.textContent).toBe('302 · Spruce HallSet to 60% just nowChange the percent')
+    expect(rows[0]!.textContent).toBe('301 · Pine Row24 hours$30.0k contract · Dana and SamSet the percent')
+    expect(rows[1]!.textContent).toBe('302 · Spruce HallNo hours yetSet to 60% just nowChange the percent')
     // A word press is tall enough for a thumb.
     expect((within(rows[0]!).getByRole('button', { name: 'Set the percent' }) as HTMLButtonElement).style.minHeight).toBe('44px')
     expect(within(rows[0]!).getByTestId('bridge-week-dive-todo').style.height).toBe('44px')

@@ -67,6 +67,8 @@ import type { TodoLinesRead } from '../components/bridge/BridgeTodoCheck'
 import { BridgeTodoOpen } from '../components/bridge/BridgeTodoOpen'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { APP_ORIGIN } from '../lib/appOrigin'
+import { NO_JOB_HOURS, jobHoursByJob, jobHoursCell, jobHoursLine, type JobHoursSession } from '../lib/bridge/jobHours'
+import { BridgeJobHoursWindow } from '../components/bridge/BridgeJobHours'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
 import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
@@ -912,6 +914,32 @@ export default function Bridge() {
   // The real things behind each move on the card (punch list #334, PR 8; `callDive.ts`), from what the page has
   // already read: nothing here is a new count.
   const supplyDueYmd = weekInput?.supplyDue?.ymd ?? null
+  // The hours behind each job with no percent, and whose they are (punch list #334, PR 10; `jobHours.ts`). One read
+  // for those jobs, again after a refresh.
+  const noPctKey = data ? [...data.earned.assumedHalfJobs].sort().join(',') : ''
+  const [jobHoursSessions, setJobHoursSessions] = useState<JobHoursSession[] | null>(null)
+  const [hoursFor, setHoursFor] = useState<{ jobId: string; jobLabel: string; pctJob: DivePctJob | null } | null>(null)
+  useEffect(() => {
+    if (!noPctKey) {
+      setJobHoursSessions([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { loadJobHours } = await import('../lib/bridge/jobHoursIo')
+        const rows = await loadJobHours(supabase, noPctKey.split(','), NO_NAMES)
+        if (!cancelled) setJobHoursSessions(rows)
+      } catch {
+        // An extra reading: a read that fails leaves the lines as they were, with no hours on them.
+        if (!cancelled) setJobHoursSessions(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [noPctKey, refreshKey])
+  const jobHours = useMemo(() => (jobHoursSessions ? jobHoursByJob(jobHoursSessions) : null), [jobHoursSessions])
   const callDives = useMemo<DiveFacts | null>(() => {
     if (!data) return null
     const jobById = new Map(data.jobs.map((j) => [j.id, j]))
@@ -952,6 +980,8 @@ export default function Bridge() {
           revenueUsd: j.revenueUsd,
           pctJob: pctPrompt?.rows.find((r) => r.id === j.id)?.modalJob ?? { id: j.id, hcpNumber: j.label, jobName: j.label, label: j.label },
           setPct: pctSetThisVisit.get(j.id) ?? null,
+          hoursLine: jobHours ? jobHoursLine(jobHours.get(j.id)) : null,
+          hoursCell: jobHours ? jobHoursCell(jobHours.get(j.id)) : null,
         })),
       noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
@@ -967,7 +997,7 @@ export default function Bridge() {
       ].sort((a, b) => b.usd - a.usd),
       dayLabel: md,
     }
-  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit])
+  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours])
   // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
   // cards whose links carry one of its own tagged addresses, and reads again after a card is made or changed here.
   const todoList = useMemo(() => {
@@ -1434,6 +1464,8 @@ export default function Bridge() {
                 else if (target.kind === 'todo') addTask?.openAddModal({ preset: { title: target.todo.title, links: todoLinkPaths(target.todo).map((p) => `${APP_ORIGIN}${p}`), doneWhen: target.todo.doneWhen, asksForPhoto: false }, onSaved: () => setTodoTick((t) => t + 1) })
                 // A job's percent: the app's own percent window, where the reader stands.
                 else if (target.kind === 'pct') setPctFor(target.job)
+                // A job's hours: who worked them and when, with the percent window one press on.
+                else if (target.kind === 'hours') setHoursFor({ jobId: target.jobId, jobLabel: target.jobLabel, pctJob: target.pctJob })
                 // A project's pay date: the app's own sheet for a customer's word.
                 else if (target.kind === 'promise') setPromiseFor({ jobId: target.jobId, jobLabel: target.jobLabel, ymd: target.ymd, context: target.context })
               }}
@@ -1794,6 +1826,24 @@ export default function Bridge() {
           {/* The desks open over the page from the stage cards and the link's desk. */}
           {/* A blue check's window, and from it the app's own task window. The checks are read again when a card is saved or closed. */}
           <BridgeTodoOpen seen={todoSeen} onSeenClose={() => setTodoSeen(null)} todayYmd={data.todayYmd} dayLabel={md} readLines={readTodoLines} role={role} setError={setError} onChanged={() => setTodoTick((t) => t + 1)} />
+          {hoursFor && (
+            <BridgeJobHoursWindow
+              jobLabel={hoursFor.jobLabel}
+              hours={jobHours?.get(hoursFor.jobId) ?? NO_JOB_HOURS}
+              dayLabel={md}
+              jobHref={`/jobs?tab=stages&edit=${hoursFor.jobId}`}
+              onClose={() => setHoursFor(null)}
+              onSetPct={
+                hoursFor.pctJob
+                  ? () => {
+                      const job = hoursFor.pctJob
+                      setHoursFor(null)
+                      if (job) setPctFor(job)
+                    }
+                  : undefined
+              }
+            />
+          )}
           {/* From the card What to do now: the app's own percent window and its sheet for a customer's word. */}
           {pctFor && <FieldPctUpdateModal job={pctFor} onClose={() => setPctFor(null)} onSaved={(pct) => savePct(pctFor.id, pct)} />}
           {promiseFor && (
