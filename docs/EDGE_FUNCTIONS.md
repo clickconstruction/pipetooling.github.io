@@ -249,6 +249,7 @@ when_to_read:
    - [pay-link](#pay-link)
    - [box-read](#box-read)
    - [first-look](#first-look)
+   - [receipt-link](#receipt-link)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [ar-returned-checks](#ar-returned-checks)
@@ -5894,6 +5895,23 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the desk caller's own client), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional).
 
 **Implementation**: [`supabase/functions/first-look/index.ts`](../supabase/functions/first-look/index.ts); the pure part — the code, the caps, the first-bytes check, a look's state, every word — in [`_shared/firstLook.ts`](../supabase/functions/_shared/firstLook.ts), re-exported by [`src/lib/firstLook/look.ts`](../src/lib/firstLook/look.ts) and tested from `src/lib/firstLook/look.test.ts`. The tables and the bucket are `docs/migrations/20261112060000_first_looks.md`. **Deploy**: `supabase functions deploy first-look` after the migration is pushed.
+
+### receipt-link
+
+**Purpose** (punch list #299, PR 1, **v2.7101**): a receipt link for a card charge. The page at `/r/<code>` ([`src/pages/ReceiptLink.tsx`](../src/pages/ReceiptLink.tsx)) opens one charge, or the few a text folds together, with no sign-in, and takes a photo of the receipt. The photo is a counter ticket (#295) with `source = link`, already on its charge with `match_kind = link`. This function is the only thing that writes a `receipt_requests` row, a `receipt_links` row, or a ticket made through a link. `verify_jwt = false`: the page's asks carry the link's ten-letter code, which is the capability, and the office's ask carries a JWT the function checks itself. It sends no text.
+
+**The page's asks** (no sign-in):
+- `GET ?code=<ten letters>` → `{ ok, charges: [{ id, store, amount, moneyBack, when, cardOf, dead, sortedJob, ticket, dayJobs }], closesOn }`. `id` is the request's id; the bank's id never leaves the server. `cardOf` is the holder's first name. `sortedJob` is where the office sorted the charge. `ticket` is the live ticket on the charge, from any door, with its pages' ids and whether the page may still change its job or add a page. `dayJobs` is at most six of the holder's jobs around the day of the swipe, in Sort mode's order (`_shared/dayJobsOrder.ts`), offered only while nobody has said the job. The first open stamps `opened_at` on the link and its requests (not with `&preview=1`). **404** for a code that opens nothing, counted as a miss through the estimate link's guard (`recordEstimateLinkMiss`), **429** `locked` past 20 in the hour; **410** `closed` past the link's fourteen days.
+- `GET ?code=<code>&page=<page id>` → the bytes of one page, only a page of a ticket on one of the link's charges, from the `counter-tickets` bucket.
+- `POST { code, action: "page", charge, pageId, data, width?, height?, originalBytes?, job?, replace? }` → `{ ok, charge, kept }`. `data` is the page as base64, at most 8 MB decoded (**413**); its first bytes must be a JPEG, a PNG, a WebP or a PDF (`receiptSniff`, **415**). The first page inserts the ticket on the charge (the holder as its taker, `taken_at_from = none`, `added_at` and the match stamped; the one-ticket-a-charge index settles two doors writing at once); a charge with its ticket already takes the page on that ticket. Eight pages a ticket (**409**). A second try with the same `pageId` writes nothing twice. `replace` names the page a Retake takes the place of, on a ticket made through a link: an unfiled page is deleted with its object, a page the sweep has filed in Drive is kept, the new shot is added and `kept` is true. `job` is the chip tapped, `{ jobId }` or `{ noOneJob: true }`, read through `receiptTicketJob`: the office's sort wins, and a job that is not one of the day's jobs is dropped. A charge the bank failed or took back answers **409**.
+- `POST { code, action: "job", charge, job }` → `{ ok, charge }`: the chip tapped after the upload, on a ticket made through a link that the office has not used, on a charge not yet sorted; else **409** with the words.
+
+**The office's ask** (signed in, `is_office_staff()`; an archived account and a training account are refused):
+- `POST { action: "desk.mint", chargeId }` → `{ ok, code, closesOn }`: the charge's request through `receipt_request_ensure`, and a new code handed out once, with only its SHA-256 kept. An earlier code stays open until its own day. **400** for a charge that is not in the feed or is not a card charge, **409** for one the bank took back.
+
+**Rate limit**: 60 calls a minute per client address and 600 across the isolate, in memory → 429.
+
+**Implementation**: [`supabase/functions/receipt-link/index.ts`](../supabase/functions/receipt-link/index.ts); the pure part — the code, the caps, the first-bytes check, what the page is told, the job a ticket carries, the refusals' words — in [`_shared/receiptLink.ts`](../supabase/functions/_shared/receiptLink.ts), re-exported by [`src/lib/tickets/receiptLink.ts`](../src/lib/tickets/receiptLink.ts) and tested from `src/lib/tickets/receiptLink.test.ts`. It reads job labels through the kernel copy (`ledgerDisplayPrefixes.ts`), so it is in `IMPORTERS`. The tables are `docs/migrations/20261113061500_receipt_requests.md`. **Deploy**: `supabase functions deploy receipt-link` after the migration is pushed.
 
 ### sync-mercury-transactions
 
