@@ -237,6 +237,37 @@ export function taskPlaceHowFarWords(from: TaskPlacePoint & { accuracyM?: number
   return { lead: `${taskPlaceDistanceWords(meters)} ${taskPlaceDirection(from, place)} of you.`, sure: tail }
 }
 
+/** Why the phone gave no reading, as `requestMyFix` reports it. */
+export type TaskPlaceNoFix = 'none' | 'refused' | 'failed'
+
+/**
+ * What the doer reads when How far am I? gets no answer. A refusal costs one thing, the distance:
+ * the map and Directions never needed the phone's own reading, and the words say so.
+ */
+export function taskPlaceNoFixWords(why: TaskPlaceNoFix): string {
+  if (why === 'refused') return 'Location is off for this app. The map and Directions still work. To see how far you are, allow location in the phone’s settings.'
+  if (why === 'none') return 'This device gives no location. The map and Directions still work.'
+  return 'Could not find you. Try again in the open, or use Directions.'
+}
+
+/** What the card says where its map should be when the tiles did not come. */
+export const TASK_PLACE_NO_MAP_WORDS = 'The map did not load. There is no signal here.'
+/** Where a doer's reading goes: nowhere. Said beside the press that asks for it. */
+export const TASK_PLACE_PRIVACY_WORDS = 'Your location stays on this phone.'
+
+/**
+ * Who set the place and when, so a place that has gone stale can be judged: a machine moves, a
+ * gate is rebuilt. The caller hands in the name and the day already in the app's words.
+ */
+export function taskPlacedByWords(byName: string | null | undefined, dayWords: string | null | undefined): string | null {
+  const by = (byName ?? '').trim()
+  const day = (dayWords ?? '').trim()
+  if (by && day) return `Placed by ${by} on ${day}.`
+  if (by) return `Placed by ${by}.`
+  if (day) return `Placed on ${day}.`
+  return null
+}
+
 export type TaskPlaceDot = TaskPlacePoint & {
   /** The task's id, or the first task's when several share the dot. */
   id: string

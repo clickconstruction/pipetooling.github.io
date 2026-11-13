@@ -14,6 +14,8 @@ import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
 import type { TaskPhotoView } from '../../hooks/useTaskPhotos'
 import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
+import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type ChecklistInstanceCardInstance = {
@@ -77,6 +79,14 @@ type ChecklistInstanceCardProps = {
   asksForPhoto?: boolean
   photos?: TaskPhotoView[]
   onPhotoAdded?: (row: TaskPhotoRow) => void
+  /**
+   * The task's place (punch list #328, PR 3). The card variant wears its name under the title and, opened, draws the
+   * map, Directions and How far am I?. A task with no place passes nothing and draws nothing.
+   */
+  place?: TaskPlace | null
+  /** The dot's number, once the list has a map over it (PR 4). */
+  placeNumber?: number | null
+  placeOverdue?: boolean
 }
 
 /**
@@ -107,6 +117,9 @@ export function ChecklistInstanceCard({
   asksForPhoto = false,
   photos,
   onPhotoAdded,
+  place = null,
+  placeNumber = null,
+  placeOverdue = false,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -486,6 +499,7 @@ export function ChecklistInstanceCard({
           >
             {title}
           </div>
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} /> : null}
           {statusStrip}
           {reopenedCallout}
           {linesBlock}
@@ -554,6 +568,7 @@ export function ChecklistInstanceCard({
       )}
       {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}{photoStrip}</div> : null}
       {ringSheet}
+      {threadOpen && place && variant === 'card' ? <TaskPlaceBlock place={place} placedByName={place.setBy ? (nameById[place.setBy] ?? null) : null} /> : null}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity

@@ -9,6 +9,8 @@ import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskLinesList } from './TaskLinesList'
 import { TaskPhotoStrip } from './TaskPhotoStrip'
+import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
 
 /**
@@ -44,6 +46,8 @@ export function ChecklistOutstandingSection({
   photosFor,
   onPhotoAdded,
   onPostComment,
+  placeFor,
+  placeNumberFor,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -66,6 +70,10 @@ export function ChecklistOutstandingSection({
   photosFor?: (inst: LedgerInstance) => TaskPhotoView[]
   onPhotoAdded?: (row: TaskPhotoRow) => void
   onPostComment?: (inst: LedgerInstance, body: string) => Promise<boolean>
+  /** The task's place (punch list #328, PR 3): its name on the row and, opened, the map, Directions and How far am I?. */
+  placeFor?: (inst: LedgerInstance) => TaskPlace | null
+  /** The dot's number, once the list has a map over it (PR 4). */
+  placeNumberFor?: (inst: LedgerInstance) => number | null
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -129,6 +137,12 @@ export function ChecklistOutstandingSection({
             photos={photosFor?.(inst) ?? []}
             onPhotoAdded={onPhotoAdded}
             onPostComment={onPostComment ? (body) => onPostComment(inst, body) : undefined}
+            place={placeFor?.(inst) ?? null}
+            placeNumber={placeNumberFor?.(inst) ?? null}
+            placedByName={(() => {
+              const by = placeFor?.(inst)?.setBy
+              return by && nameById?.[by] ? nameById[by]! : null
+            })()}
           />
         ))}
       </ul>
@@ -158,6 +172,9 @@ function OutstandingRow({
   photos,
   onPhotoAdded,
   onPostComment,
+  place,
+  placeNumber,
+  placedByName,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -180,6 +197,9 @@ function OutstandingRow({
   photos: TaskPhotoView[]
   onPhotoAdded?: (row: TaskPhotoRow) => void
   onPostComment?: (body: string) => Promise<boolean>
+  place: TaskPlace | null
+  placeNumber: number | null
+  placedByName: string | null
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
   const sheets = useTaskCardSheets({
@@ -233,6 +253,7 @@ function OutstandingRow({
           }}
         >
           <span style={{ display: 'block', fontSize: '0.9375rem' }}>{title}</span>
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue /> : null}
           {(() => {
             // Due-aware line (v2.2351): red means LATE — a task inside
             // its start→due window is calm, amber on the due day.
@@ -271,6 +292,11 @@ function OutstandingRow({
           {photos.length > 0 ? (
             <div style={{ marginBottom: '0.6rem' }}>
               <TaskPhotoStrip photos={photos} />
+            </div>
+          ) : null}
+          {place ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskPlaceBlock place={place} placedByName={placedByName} />
             </div>
           ) : null}
           <ChecklistItemActivity
