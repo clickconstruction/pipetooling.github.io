@@ -57,9 +57,17 @@ The window shows parts from the parts book whose names hold every word of the ro
 
 Press an offer to use that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
 
-Under **What a bill paid** the window shows what a supply house charged for a line that fits. You can read that price. You cannot press it yet.
+An offer marked **a bill** is what a supply house charged for a line that fits. Press it to use that price for one piece. The offer names the house, the day and the unit the bill sold it by. A bill may sell pipe by the foot, so read the unit first.
+
+When nothing fits, type a price for one piece in the box and press {{button:blue|Save $3.12 for one}}. The button shows the price you typed.
+
+Some rows are not a part to price, such as scrap, tools or a mixed box. Press **Not a part** or the **N** key. The row leaves the count, and **Worth** says how many lines were left out.
 
 The foot of the window names your last answer. Press **Undo** there to take it back. Press **Done for now** to close the window. The rows you priced have left the list.
+
+To change an answer later, press the row on the list to open it. **Priced here** lists each answer with who gave it. Press **Undo** beside a price. Press **Bring back** beside a row that was left out.
+
+A price you accept here belongs to this site. Every device reads it, and so does the job's **Missing** table. A price older than 90 days stays and turns amber, as a parts-book price does.
 
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 

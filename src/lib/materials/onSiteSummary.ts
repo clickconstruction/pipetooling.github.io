@@ -4,7 +4,7 @@
  * the store's `priceOf` (the parts book's price, the invoice's past 90 days — `bookPrice.ts`).
  */
 import { containerLines, countDiffs, countIsDue, lastCountedAt, missingMoney, partKey, type Container, type Movement } from './onSite'
-import { listContainers, listMovements, priceOf, serverSummary } from './onSiteStore'
+import { listContainers, listMovements, priceOf as storePriceOf, priceOfJob, serverSummary } from './onSiteStore'
 import { jobMaterialsSummaryFromServer } from './onSiteServerSummary'
 
 export type JobMaterialsSummary = {
@@ -16,7 +16,7 @@ export type JobMaterialsSummary = {
   credits: number
 }
 
-export function jobMaterialsSummary(containers: Container[], movements: Movement[], now: Date): JobMaterialsSummary {
+export function jobMaterialsSummary(containers: Container[], movements: Movement[], now: Date, priceOf: (partKey: string) => number | null = storePriceOf): JobMaterialsSummary {
   const live = containers.filter((c) => !c.retiredAt)
   const lines = containerLines(movements)
   const onSite = lines.filter((l) => l.onHand > 0 && live.some((c) => c.id === l.containerId))
@@ -44,8 +44,10 @@ export function jobMaterialsSummary(containers: Container[], movements: Movement
  */
 export function jobMaterialsSummaryFor(jobId: string, now: Date): JobMaterialsSummary {
   const s = serverSummary(jobId)
+  // The job's own prices (punch list #342): its site's answers and ties are in the rule.
+  const priceOf = (key: string) => priceOfJob(jobId, key)
   if (s) return jobMaterialsSummaryFromServer(listContainers(jobId), s, now, priceOf)
-  return jobMaterialsSummary(listContainers(jobId), listMovements(jobId), now)
+  return jobMaterialsSummary(listContainers(jobId), listMovements(jobId), now, priceOf)
 }
 
 /** "A2, B1 due a count" on a small site; "28 due a count · A1, A7, A8…" on a big one. */
