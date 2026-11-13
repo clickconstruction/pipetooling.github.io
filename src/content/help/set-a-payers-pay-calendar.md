@@ -114,7 +114,7 @@ You can start from **Jobs → Pipeline** too. Press the calendar's words under t
 
 A row with no calendar reads *Pays in* there. Press it. Then press the pay calendar line in the window that opens.
 
-On the Pipeline a job on its own calendar says so. Its row reads *This job's own* before the calendar's words. A job that was switched off reads *No pay calendar on this job*. Press either one to open the window on that job.
+On the Pipeline a job on its own calendar says so. The job's row reads *This job's own* before the calendar's words. A job that was switched off reads *No pay calendar on this job*. Press either one to open the window on that job.
 
 The customer's own window lists the jobs that do not follow it. Press a job there to open its calendar.
 
