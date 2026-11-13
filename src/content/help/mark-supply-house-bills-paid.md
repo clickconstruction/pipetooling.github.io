@@ -2,27 +2,63 @@
 title: mark supply-house bills paid
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: supply house, pay, payment, paid, make payment, apply payment, receipt, link, invoice, bill, reece, ferguson, morrison
+keywords: supply house, pay, payment, paid, mark paid, mark unpaid, due day, past due, make payment, apply payment, receipt, link, invoice, bill, reece, ferguson, morrison
 ---
-You pay a supply house for several bills at once and mark them paid together. The payment's receipt sits next to each bill, and the invoice itself stays.
+You open a supply house and its bills come first, in groups by the day they fall due. You mark one bill paid on its own row, or you pay several with one payment.
+
+## Read a house's bills
+
+Open **Materials → Supply Houses** and press the house's row. The house's card opens on **Invoices**. The heading says the house's pay day, like *pays on the 15th*.
+
+Up to four numbers lead the card:
+
+- **Open** is everything unpaid, with the count of bills.
+- **Past due** shows in red when a bill is late.
+- The next due day, like **Due Nov 15**, is what falls due first.
+- **Not on a job account** counts the job bills that are ours alone to carry. You see this number only at a house that uses job accounts.
+
+The bills sit under the numbers, in groups. **Past due** is first, oldest day first. Each due day follows, soonest first. **No due date** is last. A group's heading says how many bills are left in it and what they add up to. The largest bill of a day leads its group.
+
+A bill is two lines. The top line is the job. A bill with no job shows its PO's words there. The second line holds the invoice number, the PO, the day it was billed and the lines check. **See the bill ›** opens the invoice.
+
+A date reads month and day, like *10/31*. You see a year only when it is not this year, like *12/5/25*.
+
+:::example A bill's row
+**201 · Maple Lofts** {{chip:green|Job acct}} · S1234567 · PO 4112 · billed 10/31 · 6 lines · adds up · **See the bill ›** · **$412.80** · {{button:outline|Mark paid}}
+:::
+
+**Job accounts** sits under the bills, folded. Press it to see each job's account with this house. The app remembers how you left it.
+
+## Mark one bill paid
+
+1. Find the bill in its group.
+2. Press {{button:outline|Mark paid}} on its row.
+
+The row stays where it is and turns grey. The row reads **Paid today**. The page does not reload, so you keep your place. The group's count and total go down, and so do the numbers at the top.
+
+Pressed the wrong bill? Press {{button:outline|Mark unpaid}} on the same row. The grey row stays listed until you close the house.
+
+Each bill is marked by itself. The card has no tick boxes. To pay several bills with one payment, use **Make Payment** below.
 
 ## Mark several bills paid
 
 1. Open **Materials → Supply Houses**. Open the house and press {{button:green|Make Payment}}.
 2. Tick the bills this payment covers. Only unpaid ones are listed. **Show all invoices** brings in the paid ones too.
 3. You may paste the **Payment or receipt link**. That is the bank confirmation, the house's receipt, or the check image.
-4. Press {{button:green|Apply}}. Each ticked bill turns **Paid**, and its **Paid On** day is stamped today.
+4. Press {{button:green|Apply}}. Each ticked bill turns paid, and its paid day is stamped today.
 
-:::example The bill's row afterwards
-Invoice **S1234567** · Paid ✓ · Paid On **Sep 25, 2026** · **View** · **Receipt**
+Tick **Show paid invoices** at the top of Accounts payable to list the paid bills too. Paid bills sit in a **Paid** group at the bottom of the card.
+
+:::example A paid bill's row
+**201 · Maple Lofts** · paid 9/25 · S1234567 · billed 9/3 · **See the bill ›** · **Receipt ›** · **$412.80** · {{button:outline|Mark unpaid}}
 :::
 
 ## What the two links are
 
-- **View** opens the **invoice**. That is the scan or PDF saved on the bill when it was entered.
-- **Receipt** opens the payment link you pasted in Make Payment. It is saved **beside** the invoice, never over it. Leaving the box blank changes neither link.
+- **See the bill ›** opens the **invoice**. That is the scan or PDF saved on the bill when it was entered.
+- **Receipt ›** opens the payment link you pasted in Make Payment. It is saved **beside** the invoice, never over it. Leaving the box blank changes neither link.
 
-To fix a paid day or unmark one bill, use the pencil on its row. The **Paid** checkbox works too.
+To fix a paid day, use the pencil on the bill's row. To unmark one bill, press {{button:outline|Mark unpaid}} on its row.
 
 ## See the bills inside an aging cell
 

@@ -10,7 +10,9 @@ import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/peop
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
 import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsByEvidenceId, documentsTabCount, recordPickWords, tieToRecordProblem, transcribedRecordWords, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
 import { loadPersonDocument, loadPersonDocuments, savePersonDocument, tieDocumentToEvidence } from '../../../lib/people/personDocumentsIo'
-import { citationsBySection, citedByWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
+import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
+import { amendmentCountWords, amendmentEnds, amendmentIndex, amendmentKey, amendmentKindOfTable, amendmentTargetsProblem, amendmentThingWord, correctedKeys, type AmendmentHow, type AmendmentTarget, type PersonAmendmentRow } from '../../../lib/people/personAmendments'
+import { addAmendments, loadPersonAmendments, withdrawAmendment } from '../../../lib/people/personAmendmentsIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
@@ -243,6 +245,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [draftContent, setDraftContent] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [savingEntry, setSavingEntry] = useState(false)
+  /** Punch list #315: the links that say which entry or record corrects or completes which, the composer's picks, and a link being withdrawn. */
+  const [amendRows, setAmendRows] = useState<PersonAmendmentRow[]>([])
+  const [draftTargets, setDraftTargets] = useState<AmendmentTarget[]>([])
+  const [withdrawingLinkId, setWithdrawingLinkId] = useState<string | null>(null)
+  const [withdrawWhy, setWithdrawWhy] = useState('')
+  const [withdrawBusy, setWithdrawBusy] = useState(false)
   /** A field report being filed or dismissed from its own line, and the dismissal's reason. */
   const [reportBusyId, setReportBusyId] = useState<string | null>(null)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
@@ -320,6 +328,20 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     setSources(null)
     void load()
   }, [load, changeKey])
+
+  /** The links are a source of their own: a read that fails takes only them out, and the entries still draw. */
+  const reloadAmendments = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setAmendRows([])
+      return
+    }
+    const r = await loadPersonAmendments(personId)
+    setAmendRows(r.rows)
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    void reloadAmendments()
+  }, [reloadAmendments, changeKey])
 
   const reloadThemes = useCallback(async () => {
     if (!viewer.isDev || !personId) {
@@ -411,6 +433,31 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     for (const l of lines) if (l.ref.table === 'person_file_entries') m.set(l.ref.id, l)
     return m
   }, [lines])
+  const amendIndex = useMemo(() => amendmentIndex(amendRows), [amendRows])
+  /** The Timeline line a linked thing stands on: an entry's own, a record's own, or the entry a record proves. */
+  const lineByAmendKey = useMemo(() => {
+    const m = new Map<string, PersonTimelineLine>()
+    for (const l of lines) {
+      const kind = amendmentKindOfTable(l.ref.table)
+      if (kind) m.set(amendmentKey(kind, l.ref.id), l)
+    }
+    for (const r of sources?.evidence ?? []) {
+      const key = amendmentKey('hr_evidence', r.id)
+      if (m.has(key) || !r.entry_id) continue
+      const onEntry = m.get(amendmentKey('hr_entry', r.entry_id))
+      if (onEntry) m.set(key, onEntry)
+    }
+    return m
+  }, [lines, sources])
+  /** The lines a live correction points at: what a section of the narrative should not rest on without a flag. */
+  const correctedLineKeys = useMemo(() => {
+    const out = new Set<string>()
+    for (const key of correctedKeys(amendIndex)) {
+      const l = lineByAmendKey.get(key)
+      if (l) out.add(l.key)
+    }
+    return out
+  }, [amendIndex, lineByAmendKey])
 
   const freshness = useMemo(() => {
     if (!sources) return null
@@ -458,14 +505,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       setEntryMark(EMPTY_MARK_DRAFT)
       void reloadThemes()
     }
+    let linkWords = ''
+    if (entryId && draftTargets.length > 0) {
+      // The entry is written first, then one link a thing it corrects or completes; the table's guard refuses a bad pair in words.
+      const lk = await addAmendments({ personId, fromKind: 'hr_entry', fromId: entryId, targets: draftTargets, authUserId: authUser?.id ?? null })
+      if (lk.ok) {
+        linkWords = ` ${amendmentCountWords(lk.made)} made.`
+        setDraftTargets([])
+        void reloadAmendments()
+      } else {
+        showToast(`The entry is on the line, but it was not linked: ${lk.why}`, 'error')
+      }
+    }
     setSavingEntry(false)
-    showToast(`Entry added to the line.${fileWords}${markWords}`, 'success')
+    showToast(`Entry added to the line.${fileWords}${markWords}${linkWords}`, 'success')
     setDraftContent('')
     setDraftDate(todayYmd)
     setComposerOpen(false)
     await load()
     onChanged?.()
-  }, [personId, draftContent, savingEntry, draftDate, draftSource, authUser?.id, pendingFiles, showToast, todayYmd, load, onChanged, entryMark, themeNames, reloadThemes])
+  }, [personId, draftContent, savingEntry, draftDate, draftSource, authUser?.id, pendingFiles, showToast, todayYmd, load, onChanged, entryMark, themeNames, reloadThemes, draftTargets, reloadAmendments])
 
   /** File a waiting report from its line: the same RPC as the queue, so the entry lands dated the day it happened. */
   const fileReport = useCallback(
@@ -592,6 +651,33 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           ))}
         </select>
       </div>
+      {draftTargets.length > 0 ? (
+        <div data-testid="composer-amends" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.5rem' }}>
+          {draftTargets.map((t) => {
+            const on = lineByAmendKey.get(amendmentKey(t.kind, t.id))
+            const thing = amendmentThingWord(t.kind)
+            return (
+              <span key={`${t.kind}:${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                This entry
+                <select
+                  value={t.how}
+                  aria-label={`What this entry does to the ${thing}`}
+                  onChange={(e) => setDraftTargets((prev) => prev.map((x) => (x.kind === t.kind && x.id === t.id ? { ...x, how: e.target.value as AmendmentHow } : x)))}
+                  style={{ padding: '0.15rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--bg-page)', color: 'var(--text-base)' }}
+                >
+                  <option value="corrects">corrects</option>
+                  <option value="completes">completes</option>
+                </select>
+                the {thing} of {on ? dayWordsWithYear(on.ymd) : 'another day'}
+                {on ? <span style={{ color: 'var(--text-base)' }}>{(on.what.split('\n')[0] ?? '').slice(0, 60)}</span> : null}
+                <button type="button" aria-label={`Leave the ${thing} of ${on ? dayWordsWithYear(on.ymd) : 'another day'} out`} onClick={() => setDraftTargets((prev) => prev.filter((x) => !(x.kind === t.kind && x.id === t.id)))} style={{ border: 'none', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.74rem', padding: 0 }}>
+                  ✕
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      ) : null}
       <textarea
         value={draftContent}
         onChange={(e) => setDraftContent(e.target.value)}
@@ -612,7 +698,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         >
           {savingEntry ? 'Adding…' : 'Add entry'}
         </button>
-        <button type="button" onClick={() => { setComposerOpen(false); setDraftContent(''); setPendingFiles([]) }} style={{ padding: '0.4rem 0.7rem', borderRadius: 7, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+        <button type="button" onClick={() => { setComposerOpen(false); setDraftContent(''); setPendingFiles([]); setDraftTargets([]) }} style={{ padding: '0.4rem 0.7rem', borderRadius: 7, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
           Cancel
         </button>
         <label style={{ fontSize: '0.78rem', color: 'var(--text-link)', cursor: 'pointer' }}>
@@ -636,7 +722,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           </span>
         ))}
       </div>
-      <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Entries append and never change. A correction is a new entry that says what it corrects.</p>
+      <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Entries append and never change. A correction is a new entry: press Correct this entry… on the line it corrects.</p>
     </div>
   ) : null
 
@@ -967,6 +1053,109 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
+  /** Open the composer with this line picked as what the new entry corrects (the dev may switch it to completes). */
+  const startAmending = (line: PersonTimelineLine) => {
+    const kind = amendmentKindOfTable(line.ref.table)
+    if (!kind) return
+    const next: AmendmentTarget[] = draftTargets.some((t) => t.kind === kind && t.id === line.ref.id) ? draftTargets : [...draftTargets, { kind, id: line.ref.id, how: 'corrects' }]
+    const problem = amendmentTargetsProblem(next, null)
+    if (problem) {
+      showToast(problem, 'error')
+      return
+    }
+    setDraftTargets(next)
+    setComposerOpen(true)
+    window.setTimeout(() => document.querySelector<HTMLElement>('[data-person-file-composer]')?.scrollIntoView({ block: 'center' }), 50)
+  }
+
+  const withdrawLink = async (id: string) => {
+    if (withdrawBusy) return
+    setWithdrawBusy(true)
+    const r = await withdrawAmendment(id, withdrawWhy, authUser?.id ?? null)
+    setWithdrawBusy(false)
+    if (!r.ok) {
+      showToast(`The link stays: ${r.why}`, 'error')
+      return
+    }
+    showToast('The link is off. Its row stays, with the reason.', 'success')
+    setWithdrawingLinkId(null)
+    setWithdrawWhy('')
+    await reloadAmendments()
+  }
+
+  /** Punch list #315: what corrected or completed this line, what this line corrects or completes, and the press that starts a correction. */
+  const amendBits = (line: PersonTimelineLine) => {
+    if (!viewer.isDev) return null
+    const kind = amendmentKindOfTable(line.ref.table)
+    if (!kind) return null
+    const ends = amendmentEnds(amendmentKey(kind, line.ref.id), amendIndex, (k) => lineByAmendKey.get(k)?.ymd ?? null)
+    if (ends.amendedBy.length === 0 && ends.amends.length === 0 && !canWrite) return null
+    const linkPress: CSSProperties = { font: 'inherit', fontSize: '0.72rem', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }
+    const withdrawing = ends.amends.find((e) => e.link_id === withdrawingLinkId) ?? null
+    return (
+      <span style={{ display: 'block', marginTop: '0.3rem' }} data-testid={`line-amends-${line.key}`}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+          {ends.amendedBy.map((e) => {
+            const to = lineByAmendKey.get(e.key)
+            return (
+              <button key={e.link_id} type="button" disabled={!to} onClick={() => { if (to) openOnTimeline(to.key) }} style={chip(e.how === 'corrects' ? FACT_TONE.amber : FACT_TONE.gray, { cursor: to ? 'pointer' : 'default', fontFamily: 'inherit', fontWeight: 700, border: 'none' })}>
+                {e.words}
+                {to ? ' ›' : ''}
+              </button>
+            )
+          })}
+          {ends.amends.map((e) => {
+            const to = lineByAmendKey.get(e.key)
+            return (
+              <span key={e.link_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <button type="button" disabled={!to} onClick={() => { if (to) openOnTimeline(to.key) }} style={{ ...linkPress, color: to ? 'var(--text-link)' : 'var(--text-muted)', cursor: to ? 'pointer' : 'default' }}>
+                  {e.words}
+                  {to ? ' ›' : ''}
+                </button>
+                {canWrite ? (
+                  <button
+                    type="button"
+                    aria-label={`Withdraw the link: ${e.words}`}
+                    onClick={() => {
+                      setWithdrawingLinkId(withdrawingLinkId === e.link_id ? null : e.link_id)
+                      setWithdrawWhy('')
+                    }}
+                    style={{ ...linkPress, color: 'var(--text-muted)', lineHeight: 1 }}
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </span>
+            )
+          })}
+          {canWrite ? (
+            <button type="button" onClick={() => startAmending(line)} style={{ ...linkPress, color: 'var(--text-faint)' }}>
+              {kind === 'hr_entry' ? 'Correct this entry…' : 'Correct this record…'}
+            </button>
+          ) : null}
+        </span>
+        {withdrawing ? (
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginTop: '0.3rem' }}>
+            <input
+              value={withdrawWhy}
+              onChange={(e) => setWithdrawWhy(e.target.value)}
+              maxLength={200}
+              placeholder="Why the link comes off"
+              aria-label="Why the link comes off"
+              style={{ flex: '1 1 14rem', minWidth: 0, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--bg-page)', color: 'var(--text-base)' }}
+            />
+            <button type="button" disabled={withdrawBusy || withdrawWhy.trim() === ''} onClick={() => void withdrawLink(withdrawing.link_id)} style={smallPress(true)}>
+              Withdraw the link
+            </button>
+            <button type="button" onClick={() => setWithdrawingLinkId(null)} style={smallPress(false)}>
+              Cancel
+            </button>
+          </span>
+        ) : null}
+      </span>
+    )
+  }
+
   const renderLine = (line: PersonTimelineLine, withYear = false) => {
     const look = lineLook(line)
     const faded = line.state === 'dismissed' || line.state === 'draft'
@@ -1021,6 +1210,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           {line.notes ? <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{line.notes}</span> : null}
           {chips.length > 0 ? <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>{chips}</span> : null}
           {themeBits(line)}
+          {amendBits(line)}
           <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.2rem' }}>
             {line.byName ? line.byName : ''}
             {line.byName && line.loggedAt ? ' · ' : ''}
@@ -1541,6 +1731,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                   {headings.map((h) => {
                     const n = kind === 'narrative' ? headingNumber(h.text) : null
                     const cited = n !== null ? (citesBySection.get(n)?.length ?? 0) : 0
+                    const citedCorrected = n !== null ? (citesBySection.get(n) ?? []).filter((l) => correctedLineKeys.has(l.key)).length : 0
                     return (
                     <span key={h.slug} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem' }}>
                     <a
@@ -1554,7 +1745,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                       {h.text}
                     </a>
                     {cited > 0 && n !== null ? (
-                      <button type="button" aria-label={`Section ${n}: ${citedByWords(cited)}`} aria-expanded={citedOpen === n} onClick={() => setCitedOpen((prev) => (prev === n ? null : n))} style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, color: citedOpen === n ? 'var(--text-link)' : 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', lineHeight: 1.5 }}>
+                      <button type="button" aria-label={`Section ${n}: ${citedByWords(cited)}${citedCorrected > 0 ? `, ${citedCorrectedWords(citedCorrected)}` : ''}`} aria-expanded={citedOpen === n} onClick={() => setCitedOpen((prev) => (prev === n ? null : n))} style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, color: citedCorrected > 0 ? 'var(--text-amber-800)' : citedOpen === n ? 'var(--text-link)' : 'var(--text-muted)', background: citedCorrected > 0 ? 'var(--bg-amber-tint)' : 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', lineHeight: 1.5 }}>
                         {cited}
                       </button>
                     ) : null}
@@ -1564,11 +1755,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                 </div>
                 {kind === 'narrative' && citedOpen !== null && (citesBySection.get(citedOpen)?.length ?? 0) > 0 ? (
                   <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }} data-testid="hr-doc-cited-by">
-                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Section {citedOpen} · {citedByWords(citesBySection.get(citedOpen)?.length ?? 0)}. Press one to open the Timeline on it.</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Section {citedOpen} · {citedByWords(citesBySection.get(citedOpen)?.length ?? 0)}{(citesBySection.get(citedOpen) ?? []).some((l) => correctedLineKeys.has(l.key)) ? `, ${citedCorrectedWords((citesBySection.get(citedOpen) ?? []).filter((l) => correctedLineKeys.has(l.key)).length)}` : ''}. Press one to open the Timeline on it.</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
                       {(citesBySection.get(citedOpen) ?? []).map((l) => (
-                        <button key={l.key} type="button" onClick={() => openOnTimeline(l.key)} style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })}>
+                        <button key={l.key} type="button" onClick={() => openOnTimeline(l.key)} style={chip(correctedLineKeys.has(l.key) ? FACT_TONE.amber : FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })}>
                           {dayWords(l.ymd)} · {(l.what.split('\n')[0] ?? '').slice(0, 48)}
+                          {correctedLineKeys.has(l.key) ? ' · corrected since' : ''}
                         </button>
                       ))}
                     </div>
