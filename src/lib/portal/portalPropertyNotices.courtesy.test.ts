@@ -4,9 +4,9 @@ import { parsePortalPayload } from './portalPayload'
 
 /** The owner's portal card says the reminder reached them (punch list #231, PR 3). */
 
-const OWNER = 'umar'
-const job: PortalNoticeJobRow = { id: 'j858', hcp_number: '858', click_number: null, job_address: '9703 Lenox Hl, San Antonio, TX', customer_id: OWNER, gc_customer_id: 'rmc', revenue: 17585, payments_made: 0 }
-const filing: PortalNoticeFilingRow = { id: 'f1', job_id: 'j858', kind: 'notice_53_056', amount: 17585, printed_claim: null, months_covered: ['2026-08'], packet_id: null, created_at: '2026-10-14T15:00:00Z', voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-10-14' }], fields: { claimantName: 'Click', originalContractorName: 'RMC', contactPerson: 'M' } }
+const OWNER = 'ulric'
+const job: PortalNoticeJobRow = { id: 'j858', hcp_number: '858', click_number: null, job_address: '9703 Lenox Hl, San Antonio, TX', customer_id: OWNER, gc_customer_id: 'rlc', revenue: 17585, payments_made: 0 }
+const filing: PortalNoticeFilingRow = { id: 'f1', job_id: 'j858', kind: 'notice_53_056', amount: 17585, printed_claim: null, months_covered: ['2026-08'], packet_id: null, created_at: '2026-10-14T15:00:00Z', voided_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-10-14' }], fields: { claimantName: 'Click', originalContractorName: 'RLC', contactPerson: 'M' } }
 const to = (who: string, ok = true) => ({ who, channel: 'email', address: 'x', ok, id: ok ? 'e' : null, reason: '' })
 
 describe('ownerCourtesyOn', () => {

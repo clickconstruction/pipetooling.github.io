@@ -196,7 +196,7 @@ describe('BidPickerStandardList', () => {
   describe('hide robots', () => {
     const WITH_ROBOTS: BidWithBuilder[] = [
       ...ROWS,
-      bid({ id: 'z1', bid_number: '499', project_name: 'ZZ Shadow SPACEX BA02' }),
+      bid({ id: 'z1', bid_number: '499', project_name: 'ZZ Shadow SKYLAB BA02' }),
       bid({ id: 'z2', bid_number: '498', project_name: 'ZZ Twin MPH STAGE', bid_date_sent: '2026-09-20' }),
       bid({ id: 'z3', bid_number: '398', project_name: 'ZZ Test' }),
     ]
@@ -244,7 +244,7 @@ describe('BidPickerStandardList', () => {
       resetBidMarksStoreForTests({ z1: '2026-10-01T10:00:00.000Z' })
       setHideRobotsOffered(true)
       render(<BidPickerStandardList bids={WITH_ROBOTS} prefixMap={{}} onSelectBid={vi.fn()} />)
-      expect(rowButtons('unsent').filter((r) => (r.textContent ?? '').includes('ZZ Shadow SPACEX'))).toHaveLength(1)
+      expect(rowButtons('unsent').filter((r) => (r.textContent ?? '').includes('ZZ Shadow SKYLAB'))).toHaveLength(1)
       expect(screen.getByTestId('bid-picker-hidden-robots').textContent).toContain('2 ZZ bids hidden.')
     })
 

@@ -13,7 +13,7 @@ const summary: PartnerSummary = {
   exists: true,
   partnership_id: 'p1',
   display_name: 'Bryan',
-  company_name: 'Herber Electric',
+  company_name: 'Helbrow Electric',
   started_on: '2026-03-22',
   status: 'active',
   balance: -1008.13,
@@ -33,7 +33,7 @@ const base: PartnerStatementPaperProps = {
   cards: [live, last, older],
   idx: 0,
   fullRows: [],
-  jobs: { costingOn: true, rows: [{ job_id: 'j1', label: '813', job_name: 'Reliant Health', status: 'billed', confirmed_at: '2026-08-22T00:00:00Z', service_type_name: 'Electrical', profit_share: null }] },
+  jobs: { costingOn: true, rows: [{ job_id: 'j1', label: '813', job_name: 'Relwyn Health', status: 'billed', confirmed_at: '2026-08-22T00:00:00Z', service_type_name: 'Electrical', profit_share: null }] },
   isMobile: false,
   todayLabel: 'Aug 23, 2026',
   nowYear: 2026,
@@ -48,7 +48,7 @@ describe('PartnerStatementPaper', () => {
     expect(screen.queryByRole('button', { name: 'Acknowledge statement' })).toBeNull()
     expect(screen.queryByText(/acknowledged/i)).toBeNull()
     expect(screen.getByText('partner since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()
-    expect(screen.getByText(/Partner account · Herber Electric/)).toBeTruthy()
+    expect(screen.getByText(/Partner account · Helbrow Electric/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Costing ›' })).toBeTruthy()
   })
 

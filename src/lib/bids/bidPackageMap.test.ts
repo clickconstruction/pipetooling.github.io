@@ -52,7 +52,7 @@ const revenue: Record<string, number> = { 'p-sub': 50000, 'p-ve': 66931, 'p-idea
 const baseArgs = {
   versions,
   pricings,
-  bidGcName: 'Loberg Contracting',
+  bidGcName: 'Lowbeck Contracting',
   gcNames: { 'gc-planhub': 'PlanHub' },
   latestSends: {},
   bidDateSent: '2026-07-31',
@@ -70,8 +70,8 @@ describe('buildPackageMap', () => {
     expect(map.versionCount).toBe(2)
     expect(map.priceCount).toBe(3)
 
-    const loberg = map.packets.find((p) => p.name === 'Loberg Contracting')!
-    const plans = loberg.versions[0]!
+    const lowbeck = map.packets.find((p) => p.name === 'Lowbeck Contracting')!
+    const plans = lowbeck.versions[0]!
     expect(plans.prices[0]).toMatchObject({ id: 'p-sub', status: 'base', revenue: 50000 })
     expect(plans.prices[0]!.margin).toBeCloseTo(0.8, 5)
 
@@ -113,7 +113,7 @@ describe('buildPackageMap', () => {
     })
     expect(map.gcCount).toBe(2)
     const main = map.packets[0]!
-    expect(main.name).toBe('Loberg Contracting')
+    expect(main.name).toBe('Lowbeck Contracting')
     expect(main.versions[0]!.prices).toHaveLength(3)
     expect(main.versions[0]!.prices[0]).toMatchObject({ id: 'p-sub', status: 'base' })
     expect(map.packets[1]).toMatchObject({ name: 'Extra GC', sharedLetter: true })

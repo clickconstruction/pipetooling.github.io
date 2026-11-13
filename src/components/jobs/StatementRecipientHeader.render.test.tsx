@@ -18,15 +18,15 @@ const malachi = { id: 'u-malachi', name: 'Malachi', email: 'malachi@office.test'
 const roxi = { id: 'u-roxi', name: 'Roxi', email: 'roxi@office.test', role: 'controller' }
 const users = [roxi, taunya, malachi]
 
-function Harness({ scheduled = false, to = 'office@rmc.test' }: { scheduled?: boolean; to?: string }) {
+function Harness({ scheduled = false, to = 'office@rlc.test' }: { scheduled?: boolean; to?: string }) {
   const [toEmail, setTo] = useState(to)
   const [ccText, setCc] = useState('')
   const [replyTo, setReplyTo] = useState(malachi.id)
   const [subject, setSubject] = useState('Click Plumbing open balances: Sep 30, 2026')
   const people = buildRecipientPeople({
-    gcName: 'RMC- Dudley Mason',
-    gcEmail: 'office@rmc.test',
-    contacts: [{ name: 'Accounts payable', email: 'ap@rmc.test', gets_bill_copies: true }],
+    gcName: 'RLC- Dunmere Mallin',
+    gcEmail: 'office@rlc.test',
+    contacts: [{ name: 'Accounts payable', email: 'ap@rlc.test', gets_bill_copies: true }],
     users,
     meId: taunya.id,
     accountManId: malachi.id,
@@ -60,10 +60,10 @@ describe('StatementRecipientHeader', () => {
   it('reads like the email: From, the GC on To, the sender copied on Cc, the account man on Reply to', async () => {
     await open()
     expect(screen.getByText('Click Plumbing and Electrical', { exact: false })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Remove RMC- Dudley Mason from To' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Remove RLC- Dunmere Mallin from To' })).toBeTruthy()
     expect(screen.getByText('copied, since replies go to Malachi')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reply to: Malachi' })).toBeTruthy()
-    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RMC- Dudley Mason. Their reply goes to Malachi. You get a copy.')
+    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RLC- Dunmere Mallin. Their reply goes to Malachi. You get a copy.')
   })
 
   it('the Cc menu leads with the GC’s people, holds whoever is on To, and ticks several', async () => {
@@ -72,8 +72,8 @@ describe('StatementRecipientHeader', () => {
     const menu = within(screen.getByRole('listbox', { name: 'Who is copied' }))
     const rows = menu.getAllByRole('option')
     expect(rows.map((r) => r.textContent)).toEqual([
-      'RMC- Dudley Masonoffice@rmc.teston To',
-      'Accounts payableap@rmc.testgets bill copies',
+      'RLC- Dunmere Mallinoffice@rlc.teston To',
+      'Accounts payableap@rlc.testgets bill copies',
       'Malachimalachi@office.testaccount man',
       'Roxiroxi@office.test',
       '✓Taunya (you)taunya@office.testcopied by Reply to',
@@ -82,24 +82,24 @@ describe('StatementRecipientHeader', () => {
     expect(rows[4]!.getAttribute('aria-selected')).toBe('true')
     fireEvent.click(menu.getByRole('option', { name: /Accounts payable/ }))
     fireEvent.click(menu.getByRole('option', { name: /^Roxi/ }))
-    expect(state().ccText).toBe('ap@rmc.test, roxi@office.test')
-    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RMC- Dudley Mason. Their reply goes to Malachi. Accounts payable, Roxi and you get a copy.')
+    expect(state().ccText).toBe('ap@rlc.test, roxi@office.test')
+    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RLC- Dunmere Mallin. Their reply goes to Malachi. Accounts payable, Roxi and you get a copy.')
     // The menu stays open for another tick; × on the line takes one off.
     fireEvent.click(screen.getByRole('button', { name: 'Remove Roxi from Cc' }))
-    expect(state().ccText).toBe('ap@rmc.test')
+    expect(state().ccText).toBe('ap@rlc.test')
   })
 
   it('a whole address typed in the search is offered as Use…, and lands as its own row', async () => {
     await open()
     fireEvent.click(screen.getByRole('button', { name: 'Change' }))
     const menu = within(screen.getByRole('listbox', { name: 'Who gets the statement' }))
-    fireEvent.change(menu.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'bookkeeper@rmc.test' } })
+    fireEvent.change(menu.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'bookkeeper@rlc.test' } })
     expect(menu.queryByText('No one by that name. Type a whole address to use it.')).toBeNull()
-    fireEvent.click(menu.getByRole('option', { name: /^Use bookkeeper@rmc\.test/ }))
-    expect(state().toEmail).toBe('bookkeeper@rmc.test')
+    fireEvent.click(menu.getByRole('option', { name: /^Use bookkeeper@rlc\.test/ }))
+    expect(state().toEmail).toBe('bookkeeper@rlc.test')
     expect(screen.queryByRole('listbox')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Remove bookkeeper@rmc.test from To' })).toBeTruthy()
-    expect(screen.getByTestId('rcp-readback').textContent).toContain('Goes to bookkeeper@rmc.test.')
+    expect(screen.getByRole('button', { name: 'Remove bookkeeper@rlc.test from To' })).toBeTruthy()
+    expect(screen.getByTestId('rcp-readback').textContent).toContain('Goes to bookkeeper@rlc.test.')
   })
 
   it('picking yourself on Reply to takes the copy off the Cc line', async () => {
@@ -110,7 +110,7 @@ describe('StatementRecipientHeader', () => {
     fireEvent.click(menu.getByRole('option', { name: /Taunya \(you\)/ }))
     expect(state().replyTo).toBe('u-taunya')
     expect(screen.queryByText('copied, since replies go to Malachi')).toBeNull()
-    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RMC- Dudley Mason. Their reply comes to you.')
+    expect(screen.getByTestId('rcp-readback').textContent).toBe('Goes to RLC- Dunmere Mallin. Their reply comes to you.')
   })
 
   it('without a To the line asks for one, and a scheduled send locks Reply to and the subject', async () => {

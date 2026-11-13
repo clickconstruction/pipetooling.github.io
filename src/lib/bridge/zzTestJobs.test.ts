@@ -8,7 +8,7 @@ import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, withoutZzBillDesk
  * loader read the same stage with no rule at all.
  */
 const job = (id: string, jobName: string, customerName: string | null, revenue: number | null = 1000) => ({ id, job_name: jobName, customer_name: customerName, revenue, status: 'ready_to_bill' })
-const readyToBill = [job('real', 'Hill Street remodel', 'Ann Lee', 4000), job('zzJob', 'ZZ TEST ready to bill', 'Ann Lee', 900), job('zzCustomer', 'Walk through', 'ZZ Test Customer', 50), job('pizza', 'Marcos Pizza', 'Jazz Hall', 600)]
+const readyToBill = [job('real', 'Hill Street remodel', 'Ann Lee', 4000), job('zzJob', 'ZZ TEST ready to bill', 'Ann Lee', 900), job('zzCustomer', 'Walk through', 'ZZ Test Customer', 50), job('pizza', 'Marcos Bakery', 'Jazz Hall', 600)]
 /** The shared id read's answer (`loadZzTestJobIds`): every ZZ job the viewer can see. */
 const sharedIds = new Set(['zzJob', 'zzCustomer', 'zzPaid'])
 
@@ -139,7 +139,7 @@ describe('the ZZ jobs a read knows', () => {
     { id: 'real', job_name: 'Hill Street remodel', customer_name: 'Ann Lee' },
     { id: 'zzNew', job_name: 'ZZ TEST seat walk', customer_name: 'Robert Test' },
     { id: 'zzCustomerNew', job_name: 'Walk through', customer_name: 'zz test customer' },
-    { id: 'pizza', job_name: 'Marcos Pizza', customer_name: 'Jazz Hall' },
+    { id: 'pizza', job_name: 'Marcos Bakery', customer_name: 'Jazz Hall' },
   ]
   it('adds the jobs the rows name as ZZ to the shared ids', () => {
     expect([...(bridgeZzJobIds(rows, sharedIds) ?? [])].sort()).toEqual(['zzCustomer', 'zzCustomerNew', 'zzJob', 'zzNew', 'zzPaid'])
@@ -187,7 +187,7 @@ describe('rows keyed to a job by an id alone', () => {
 describe('the ZZ bids', () => {
   const bids = [
     { id: 'b1', project_name: 'Elm Street clinic' },
-    { id: 'b2', project_name: 'ZZ Shadow AUTOZONE - KYLE, TX' },
+    { id: 'b2', project_name: 'ZZ Shadow TIREBARN - KYLE, TX' },
     { id: 'b3', project_name: 'zz twin HEB CSTORE (backtest)' },
     { id: 'b4', project_name: 'ZZZ Corp warehouse' },
     { id: 'b5', project_name: null },

@@ -58,9 +58,9 @@ function row(p: Partial<LienUnconditionalQueueRow> = {}): LienUnconditionalQueue
     releaseId: 'r1',
     jobId: 'job-1',
     jobNumber: '1042',
-    jobName: 'Mission Hills — Bldg C',
+    jobName: 'Mission Flats — Bldg C',
     customerName: 'Harvey Builders',
-    jobAddress: '4410 Mission Hills Dr',
+    jobAddress: '4410 Mission Flats Dr',
     release,
     amount: 408,
     issuedOn: '2026-08-22',
@@ -90,9 +90,9 @@ describe('DashboardLienReleaseQueueModal', () => {
     await settle()
     expect(screen.getByRole('dialog', { name: /conditional releases/i })).toBeTruthy()
     expect(screen.getByText(/2 waiting/)).toBeTruthy()
-    expect(screen.getByText('#1042 · Mission Hills — Bldg C')).toBeTruthy()
+    expect(screen.getByText('#1042 · Mission Flats — Bldg C')).toBeTruthy()
     expect(screen.getByText('Lakeline Medical')).toBeTruthy()
-    expect(screen.getByText(/Harvey Builders · 4410 Mission Hills Dr/)).toBeTruthy()
+    expect(screen.getByText(/Harvey Builders · 4410 Mission Flats Dr/)).toBeTruthy()
     expect(screen.getByText('$408.00')).toBeTruthy()
     expect(screen.getByText(/Cleared Sep 1, 2026/)).toBeTruthy()
     expect(screen.getByText(/Check #4471 · \$408\.00 applied/)).toBeTruthy()

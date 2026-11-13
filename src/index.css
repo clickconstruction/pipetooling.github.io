@@ -6384,7 +6384,7 @@ button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
   color: var(--text-amber-800);
   font-weight: 600;
 }
-/* The Plans look's part picker (the Gun Dog spike, 2026-11-02): one row per job on no part, the tick, the number as the
+/* The Plans look's part picker (the Gray Fox spike, 2026-11-02): one row per job on no part, the tick, the number as the
    door, the name a person picks the part by; a ticked row tints. */
 .developmentPickRow {
   display: grid;
@@ -6764,7 +6764,7 @@ button.developmentCountChip:focus-visible {
   margin-left: 4px;
   vertical-align: 1px;
 }
-/* On a phone the strip is one row with a cell for each look (the Gun Dog spike, 2026-11-02): the look's name over
+/* On a phone the strip is one row with a cell for each look (the Gray Fox spike, 2026-11-02): the look's name over
    one figure, amber when something in it waits on the leader, the look you are in underlined in blue. Pinned like
    the desk's bar, a third of its height. The row names no column count: each cell starts as wide as its words
    and the cells share what is left, so a look added to the strip stays in the row (a five-column grid dropped

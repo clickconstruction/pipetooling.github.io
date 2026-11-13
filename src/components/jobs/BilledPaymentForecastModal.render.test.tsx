@@ -30,12 +30,12 @@ beforeAll(() => {
 
 const speeds: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
-  customers: { knight: { medianDays: 35, samples: 12 } },
+  customers: { kestrin: { medianDays: 35, samples: 12 } },
   segments: {
     residential: { medianDays: 14, samples: 96 },
     commercial: { medianDays: 38, samples: 131 },
   },
-  customerTypes: { knight: 'commercial' },
+  customerTypes: { kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
@@ -45,9 +45,9 @@ function billedRow(): StageRow {
     id: 'j1',
     hcp_number: '964',
     click_number: null,
-    job_name: 'Pondhill demo',
-    customer_name: 'Knight Contracting',
-    customer_id: 'knight',
+    job_name: 'Penmoor demo',
+    customer_name: 'Kestrin Contracting',
+    customer_id: 'kestrin',
     revenue: 3013,
     payments_made: 0,
     payments: [],
@@ -87,7 +87,7 @@ describe('BilledPaymentForecastModal render smoke', () => {
     // Strip "Comm" label + the row's own tag.
     expect(screen.getAllByText('Comm')).toHaveLength(2)
     expect(screen.getAllByText('Res')).toHaveLength(1)
-    expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
+    expect(screen.getByText(/964 · Penmoor demo/)).toBeTruthy()
   })
 
   it('clicking a bucket tile filters the lists to that bucket; clicking again restores all', () => {
@@ -103,7 +103,7 @@ describe('BilledPaymentForecastModal render smoke', () => {
     // The row lands in the following-two-weeks bucket ("Aug 30 – Sep 12").
     fireEvent.click(screen.getByTitle('Show only the Aug 30 – Sep 12 bills'))
     expect(screen.getByRole('status').textContent).toContain('Showing only Aug 30 – Sep 12')
-    expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
+    expect(screen.getByText(/964 · Penmoor demo/)).toBeTruthy()
     // Empty buckets' tiles are disabled while inactive.
     const emptyTiles = screen.getAllByTitle('No bills in this bucket')
     expect(emptyTiles.length).toBeGreaterThan(0)
@@ -125,8 +125,8 @@ describe('BilledPaymentForecastModal render smoke', () => {
     fireEvent.click(screen.getByTitle(/Open the pay-speeds breakdown/))
     const dialog = screen.getByRole('dialog', { name: 'Pay speeds breakdown' })
     expect(dialog.textContent).toContain('By customer — slowest first')
-    // Knight Contracting has its own median (35d, 12 payments) and $3,013 open.
-    expect(dialog.textContent).toContain('Knight Contracting')
+    // Kestrin Contracting has its own median (35d, 12 payments) and $3,013 open.
+    expect(dialog.textContent).toContain('Kestrin Contracting')
     expect(dialog.textContent).toContain('~35d')
     expect(dialog.textContent).toContain('12 pmts')
     expect(dialog.textContent).toContain('$3,013')
@@ -187,7 +187,7 @@ describe('BilledPaymentForecastModal render smoke', () => {
       />,
     )
     expect(screen.queryByText('Pay speeds')).toBeNull()
-    expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
+    expect(screen.getByText(/964 · Penmoor demo/)).toBeTruthy()
     expect(screen.getByText('No pay history')).toBeTruthy()
   })
 })
@@ -199,9 +199,9 @@ function subRow(): StageRow {
     id: 'j650',
     hcp_number: '650',
     click_number: null,
-    job_name: 'ATI Schertz',
-    customer_name: 'ATI Schertz',
-    customer_id: 'ati',
+    job_name: 'AXO Schertz',
+    customer_name: 'AXO Schertz',
+    customer_id: 'axo',
     gc_customer_id: 'gc1',
     revenue: 33500,
     payments_made: 0,
@@ -237,7 +237,7 @@ const workMonths = buildWorkMonthsByJob(
     session('j1', '2026-08-04', 'u1', 8),
   ],
   [
-    // ATI Schertz and Pondhill are commercial: the 3rd-month notice, the 4th-month affidavit.
+    // AXO Schertz and Penmoor are commercial: the 3rd-month notice, the 4th-month affidavit.
     { jobId: 'j650', isSub: true, propertyKind: 'non_residential', noticedMonths: new Set() },
     { jobId: 'j1', isSub: false, propertyKind: 'non_residential', noticedMonths: new Set() },
   ],
@@ -261,10 +261,10 @@ describe('BilledPaymentForecastModal work months', () => {
     expect(screen.getByText('⏱ Jun notice due tomorrow')).toBeTruthy()
     expect(screen.getByRole('note').textContent).toContain('1 work month on 1 sub job has a lien notice closing within 14 days')
     expect(screen.getByRole('note').textContent).toContain('$26,800 open')
-    expect(screen.getByRole('note').textContent).toContain('650 · ATI Schertz Jun 2026 work, notice due tomorrow')
+    expect(screen.getByRole('note').textContent).toContain('650 · AXO Schertz Jun 2026 work, notice due tomorrow')
     // Both rows have sessions → both get a chevron; the direct row has no chip.
-    expect(screen.getByRole('button', { name: 'Show work months for 650 · ATI Schertz' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Show work months for 964 · Pondhill demo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show work months for 650 · AXO Schertz' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show work months for 964 · Penmoor demo' })).toBeTruthy()
     expect(screen.getAllByText(/^⏱ /)).toHaveLength(1)
   })
 
@@ -282,7 +282,7 @@ describe('BilledPaymentForecastModal work months', () => {
       />,
     )
     expect(screen.queryByRole('region', { name: 'Work months' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 650 · ATI Schertz' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 650 · AXO Schertz' }))
     const panel = screen.getByRole('region', { name: 'Work months' })
     expect(panel.textContent).toContain('Jun2026')
     expect(screen.getByTestId('work-month-2026-06').textContent).toContain('2 people · 12 h · 1 day · 43% of hours')
@@ -297,7 +297,7 @@ describe('BilledPaymentForecastModal work months', () => {
     expect(panel.textContent).not.toContain('property kind unknown')
     fireEvent.click(screen.getAllByRole('button', { name: 'Send notice…' })[0]!)
     expect(onOpenLienNotice).toHaveBeenCalledWith('j650')
-    fireEvent.click(screen.getByRole('button', { name: 'Hide work months for 650 · ATI Schertz' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide work months for 650 · AXO Schertz' }))
     expect(screen.queryByRole('region', { name: 'Work months' })).toBeNull()
   })
 
@@ -312,13 +312,13 @@ describe('BilledPaymentForecastModal work months', () => {
         workMonths={workMonths}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 964 · Pondhill demo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 964 · Penmoor demo' }))
     const panel = screen.getByRole('region', { name: 'Work months' })
     expect(panel.textContent).toContain('Direct with owner')
     expect(panel.textContent).toContain('no monthly notice')
     expect(panel.textContent).toContain('one affidavit by Dec 15, 2026')
-    // Knight is commercial: the "set the GC on the job" prompt shows.
-    expect(panel.textContent).toContain('if Knight Contracting is a GC and someone else owns the site')
+    // Kestrin is commercial: the "set the GC on the job" prompt shows.
+    expect(panel.textContent).toContain('if Kestrin Contracting is a GC and someone else owns the site')
     expect(screen.queryByRole('button', { name: 'Send notice…' })).toBeNull()
   })
 
@@ -350,7 +350,7 @@ describe('BilledPaymentForecastModal work months', () => {
 })
 
 describe('BilledPaymentForecastModal with Pay calendars (punch list #323)', () => {
-  const calendars = indexPayCalendars([{ payerCustomerId: 'knight', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null }])
+  const calendars = indexPayCalendars([{ payerCustomerId: 'kestrin', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null }])
 
   it('shows a calendar payer’s due day on its row, amber once it has passed', () => {
     const { rerender } = render(<BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd="2026-08-20" onClose={vi.fn()} onOpenInvoice={vi.fn()} payCalendars={calendars} />)

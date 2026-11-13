@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { docsmitCandidates, docsmitCoverWindow, docsmitPrepareDraft, docsmitPriceWords, docsmitRunDoor, docsmitSendByStrip, docsmitSendOutcome, docsmitSendRecord, mailKindOf, type DocsmitEnvelopeLike } from './runDocsmit'
 
-const owner = { recipient: { key: 'owner' as const }, notice: { itemId: 'it1', jobId: 'j650', jobNumber: '650', kind: 'notice_53_056', label: '650 · ATI' } }
-const gc1 = { recipient: { key: 'original_contractor' as const }, notice: { itemId: 'it1', jobId: 'j650', jobNumber: '650', kind: 'notice_53_056', label: '650 · ATI' } }
-const gc2 = { recipient: { key: 'original_contractor' as const }, notice: { itemId: 'it2', jobId: 'j712', jobNumber: '712', kind: 'notice_53_056', label: '712 · ATI B' } }
+const owner = { recipient: { key: 'owner' as const }, notice: { itemId: 'it1', jobId: 'j650', jobNumber: '650', kind: 'notice_53_056', label: '650 · AXO' } }
+const gc1 = { recipient: { key: 'original_contractor' as const }, notice: { itemId: 'it1', jobId: 'j650', jobNumber: '650', kind: 'notice_53_056', label: '650 · AXO' } }
+const gc2 = { recipient: { key: 'original_contractor' as const }, notice: { itemId: 'it2', jobId: 'j712', jobNumber: '712', kind: 'notice_53_056', label: '712 · AXO B' } }
 const envelopes: DocsmitEnvelopeLike[] = [
-  { key: 'e1', n: 1, label: 'Owner of record', name: 'ATI Schertz Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', method: 'certified_mail', tracking: '', contents: [owner] },
-  { key: 'e2', n: 2, label: 'Original contractor', name: 'Loberg Contracting', address: '4303 Thousand Oaks Dr, San Antonio, TX 78217', method: 'certified_mail', tracking: '', contents: [gc1, gc2] },
+  { key: 'e1', n: 1, label: 'Owner of record', name: 'AXO Schertz Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', method: 'certified_mail', tracking: '', contents: [owner] },
+  { key: 'e2', n: 2, label: 'Original contractor', name: 'Lowbeck Contracting', address: '4303 Thousand Oaks Dr, San Antonio, TX 78217', method: 'certified_mail', tracking: '', contents: [gc1, gc2] },
   { key: 'e3', n: 3, label: 'Owner of record', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd, San Antonio, TX 78228', method: 'hand', tracking: '', contents: [{ ...owner, notice: { ...owner.notice, itemId: 'it3', jobId: 'j688', jobNumber: '688' } }] },
   { key: 'e4', n: 4, label: 'Owner of record', name: 'Someone', address: 'no address yet', method: 'certified_mail', tracking: '', contents: [{ ...owner, notice: { ...owner.notice, itemId: 'it4', jobId: 'j700', jobNumber: '700' } }] },
 ]
@@ -15,8 +15,8 @@ describe('a run that mails through Docsmit, the pure side (the Docsmit train, PR
   it('the candidates are the certified envelopes, with the party, the problems, the one job or none, and the window lines', () => {
     const c = docsmitCandidates(envelopes)
     expect(c.map((x) => x.key)).toEqual(['e1', 'e2', 'e4'])
-    expect(c[0]).toMatchObject({ recipient: 'owner', kind: 'lien_notice_53_056', jobId: 'j650', jobNumber: '650', itemIds: ['it1'], problems: [], windowLines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] })
-    expect(c[0]!.party.organization).toBe('ATI Schertz Holdings LLC')
+    expect(c[0]).toMatchObject({ recipient: 'owner', kind: 'lien_notice_53_056', jobId: 'j650', jobNumber: '650', itemIds: ['it1'], problems: [], windowLines: ['AXO Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] })
+    expect(c[0]!.party.organization).toBe('AXO Schertz Holdings LLC')
     expect(c[1]).toMatchObject({ recipient: 'original_contractor', jobId: null, itemIds: ['it1', 'it2'] })
     expect(c[2]!.problems).toEqual(['a city', 'a two-letter state', 'a ZIP or ZIP+4'])
     // A combined notice (#35 PR 3) stands for every job at the property: each job's desk item is inside (v2.5532).
@@ -47,7 +47,7 @@ describe('a run that mails through Docsmit, the pure side (the Docsmit train, PR
     const d = docsmitPrepareDraft(c, 7, { receipt: 'card', filingIds: ['f1'], random: () => ((n += 0.11) % 1) })
     expect(d.shortCode).toMatch(/^[A-HJ-NP-Z2-9]{8}$/)
     expect(d.envelope).toEqual({ envelope: 'Flat', sheets: 7, problem: null })
-    expect(d.piece).toEqual({ kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', recipient: 'owner', short_code: d.shortCode, name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Return Receipt', envelope: 'Flat', sheets: 7 })
+    expect(d.piece).toEqual({ kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', recipient: 'owner', short_code: d.shortCode, name: '', organization: 'AXO Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Return Receipt', envelope: 'Flat', sheets: 7 })
     expect(docsmitPrepareDraft(c, 60, { receipt: 'electronic', shortCode: 'KX7M2QRT' }).envelope.problem).toMatch(/more than a flat holds/)
     // With no filings yet, the piece names the desk items inside (v2.5532), so the desk knows the send before the record.
     expect(docsmitPrepareDraft(docsmitCandidates(envelopes)[1]!, 4, { receipt: 'electronic', shortCode: 'KX7M2QRT' }).piece.source_ids).toEqual(['it1', 'it2'])

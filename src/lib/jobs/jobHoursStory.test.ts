@@ -75,8 +75,8 @@ describe('summary + print', () => {
       [block({ id: 'k' })],
       true,
     )
-    const text = buildJobHoursSummaryText(days, '707 · The Learning Experience')
-    expect(text).toContain('707 · The Learning Experience')
+    const text = buildJobHoursSummaryText(days, '707 · The Reading Corner')
+    expect(text).toContain('707 · The Reading Corner')
     expect(text).toContain('Michael A: Set tub valves')
     expect(text).toContain('Bryan: Rough-in day (scheduled)')
     expect(text.split('\n')).toHaveLength(3)

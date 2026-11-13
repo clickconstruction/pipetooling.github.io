@@ -66,7 +66,7 @@ Each card says its step under the picture. Press a card to read the letter large
 
 Beside {{button:outline|Sample}} there is a search box. You pick **Customer or builder**, **Subcontractor**, **Supply house** or **Law firm**. You type a name and choose one. Every step on their strips turns into what actually happened for them:
 
-:::example Michael Palmer's agreement lane
+:::example Michael Palvern's agreement lane
 {{chip:yellow|Agreement email · Sent Sep 3 · never opened}} → {{chip:green|Agreement to sign · Signed on paper Sep 4}} → {{chip:gray|Reminder · Not needed}} → {{chip:green|Signed · Filed from paper}} → {{chip:gray|Signed copy · Not emailed}}
 :::
 

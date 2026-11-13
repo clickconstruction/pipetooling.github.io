@@ -6,7 +6,7 @@ const base = {
   amount: 9800,
   sentYmd: '2026-09-04',
   payments: [],
-  billsTo: 'RMC-Dudley Mason',
+  billsTo: 'RLC-Dunmere Mallin',
   drawLabel: null,
   isAutoRemainder: false,
   expected: null,
@@ -52,7 +52,7 @@ describe('invoiceLedgerRow — open bill', () => {
     const r = invoiceLedgerRow({ ...base, status: 'billed', expected: model({}) })
     expect(r).toMatchObject({
       state: 'open',
-      whoLine: 'sent Sep 4 to RMC-Dudley Mason',
+      whoLine: 'sent Sep 4 to RLC-Dunmere Mallin',
       moneyLead: '$9,800 open',
       moneyDetail: '21 d past expected',
       moneyTone: 'late',
@@ -66,6 +66,27 @@ describe('invoiceLedgerRow — open bill', () => {
     expect(r?.moneyTone).toBe('muted')
   })
 
+  it("reads the due day for a payer on a Pay calendar, as the Pipeline row does (punch list #323)", () => {
+    const terms = (over: { state?: 'upcoming' | 'late'; daysLate?: number; daysPastDue?: number; dueYmd?: string; expectedYmd?: string }) => ({
+      ...model({ state: 'upcoming', daysLate: 0, expectedYmd: '2026-12-16', ...over }),
+      source: 'terms' as const,
+      dueYmd: over.dueYmd ?? '2026-12-10',
+      daysPastDue: over.daysPastDue ?? 0,
+      lateness: null,
+      calendar: null,
+      clockYmd: '2026-11-03',
+      clockFrom: 'billed' as const,
+    })
+    const ahead = invoiceLedgerRow({ ...base, status: 'billed', expected: terms({}) })
+    expect([ahead?.moneyDetail, ahead?.moneyTone]).toEqual(['due Dec 10', 'muted'])
+    // Past due under the contract, though their money is not expected yet.
+    const pastDue = invoiceLedgerRow({ ...base, status: 'billed', expected: terms({ dueYmd: '2026-11-10', daysPastDue: 2, expectedYmd: '2026-11-16' }) })
+    expect([pastDue?.moneyDetail, pastDue?.moneyTone]).toEqual(['due Nov 10 · 2 d past', 'late'])
+    // Later than even this payer usually is: that leads, with the due day beside it.
+    const late = invoiceLedgerRow({ ...base, status: 'billed', expected: terms({ state: 'late', daysLate: 27, dueYmd: '2026-10-10', daysPastDue: 33, expectedYmd: '2026-10-16' }) })
+    expect([late?.moneyDetail, late?.moneyTone]).toEqual(['27 d past expected · due Oct 10', 'late'])
+  })
+
   it('a promise replaces the estimate: They said {date}, and names the days past when broken', () => {
     const kept = invoiceLedgerRow({ ...base, status: 'billed', expected: model({ source: 'promised', state: 'upcoming', daysLate: 0, expectedYmd: '2026-09-19' }) })
     expect(kept?.promise).toBe('They said Sep 19')
@@ -75,7 +96,7 @@ describe('invoiceLedgerRow — open bill', () => {
   })
 
   it('without a model or a sent date it still reads', () => {
-    expect(invoiceLedgerRow({ ...base, status: 'billed', sentYmd: null })).toMatchObject({ whoLine: 'bills RMC-Dudley Mason', moneyDetail: null, promise: null })
+    expect(invoiceLedgerRow({ ...base, status: 'billed', sentYmd: null })).toMatchObject({ whoLine: 'bills RLC-Dunmere Mallin', moneyDetail: null, promise: null })
     expect(invoiceLedgerRow({ ...base, status: 'billed', billsTo: null })).toMatchObject({ whoLine: 'sent Sep 4' })
     expect(invoiceLedgerRow({ ...base, status: 'billed', billsTo: null, sentYmd: null })?.whoLine).toBe('sent')
   })
@@ -101,7 +122,7 @@ describe('invoiceLedgerRow — paid bill', () => {
     })
     expect(r).toMatchObject({
       state: 'paid',
-      whoLine: 'sent Aug 12 to RMC-Dudley Mason',
+      whoLine: 'sent Aug 12 to RLC-Dunmere Mallin',
       whoNote: 'Draw 1 · Rough-in',
       moneyLead: '$8,000 paid',
       moneyDetail: 'Aug 26 · 14 days',
@@ -131,8 +152,8 @@ describe('invoiceLedgerRow — paid bill', () => {
 
 describe('invoiceLedgerRow — draft', () => {
   it('reads not sent · bills, to bill, and names the auto remainder', () => {
-    const r = invoiceLedgerRow({ ...base, status: 'ready_to_bill', amount: 17800, sentYmd: null, billsTo: 'Dudley Mason', isAutoRemainder: true })
-    expect(r).toMatchObject({ state: 'draft', whoLine: 'not sent · bills Dudley Mason', whoNote: 'auto remainder', moneyLead: '$17,800 to bill' })
+    const r = invoiceLedgerRow({ ...base, status: 'ready_to_bill', amount: 17800, sentYmd: null, billsTo: 'Dunmere Mallin', isAutoRemainder: true })
+    expect(r).toMatchObject({ state: 'draft', whoLine: 'not sent · bills Dunmere Mallin', whoNote: 'auto remainder', moneyLead: '$17,800 to bill' })
     expect(invoiceLedgerRow({ ...base, status: 'ready_to_bill', billsTo: null, drawLabel: 'Draw 2 · Top-out' })).toMatchObject({ whoLine: 'not sent', whoNote: 'Draw 2 · Top-out' })
   })
 })

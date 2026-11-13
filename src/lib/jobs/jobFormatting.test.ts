@@ -185,7 +185,7 @@ describe('looksLikeRawJobIdName', () => {
   it('detects raw UUID names, with or without suffixes', () => {
     expect(looksLikeRawJobIdName('e4e6647f-a430-42d7-ab51-a37229a015fd - [HCP]')).toBe(true)
     expect(looksLikeRawJobIdName('e4e6647f-a430-42d7-ab51-a37229a015fd')).toBe(true)
-    expect(looksLikeRawJobIdName('Lagan Casita')).toBe(false)
+    expect(looksLikeRawJobIdName('Larrow Casita')).toBe(false)
     expect(looksLikeRawJobIdName('')).toBe(false)
     expect(looksLikeRawJobIdName(null)).toBe(false)
   })

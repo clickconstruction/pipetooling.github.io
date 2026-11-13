@@ -2,7 +2,7 @@
 title: give someone a task
 category: Office
 roles: dev, master_technician, assistant, controller, primary, estimator, subcontractor, helpers
-keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines, place, where, map, spot, use where I am
+keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines, place, where, map, spot, use where I am, photo of the spot, picture
 order: 40
 ---
 The ＋ Task button in the top bar opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it and send it.
@@ -39,6 +39,16 @@ The app asks your phone where it is only when you tap **Use where I am**. That o
 :::example A place in two taps
 "Grease the pump bearings" → tap {{chip:blue|Pump house}} → Send. The person sees the place on the task, with directions. [Find where a task is](/help/check-off-my-daily-tasks#find-where-a-task-is) shows their side.
 :::
+
+## Show what the spot looks like
+
+Under **Place** sits **Photo of the spot**. Tap {{button:outline|＋ Add a photo}}. On a phone the camera opens. Take a picture of the spot, like the valve or the gate.
+
+The person sees your photo on the task, beside the place. A place says where. A photo says what to look for. The two together need no other words.
+
+- **Take another** swaps the picture. **Remove the photo** takes it off.
+- A task needs neither a place nor a photo. Leave both alone and the task is made as before.
+- This photo is yours, the giver's. It does not count as the photo a task can ask for at the finish.
 
 ## When it happens
 

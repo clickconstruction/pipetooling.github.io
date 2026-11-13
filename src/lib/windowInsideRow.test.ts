@@ -9,7 +9,7 @@ import { ignoreWindowsInside, startedInWindowInside } from './windowInsideRow'
 function draw() {
   document.body.innerHTML = `
     <div id="row">
-      <span id="title">Galloway Park</span>
+      <span id="title">Gallenby Park</span>
       <span id="sticky" style="position: sticky; left: 0"><b id="sticky-text">B385</b></span>
       <div id="backdrop" style="position: fixed; inset: 0">
         <div id="panel" role="dialog"><input id="input" /></div>

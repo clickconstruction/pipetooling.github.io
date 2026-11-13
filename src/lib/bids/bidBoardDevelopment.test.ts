@@ -60,7 +60,7 @@ describe('bidMatchesDevelopmentQuery', () => {
   it('matches part of the name without regard to case, never a blank query or a bid with none', () => {
     expect(bidMatchesDevelopmentQuery({ development: harlow }, 'harlow')).toBe(true)
     expect(bidMatchesDevelopmentQuery({ development: harlow }, '  RANCH ')).toBe(true)
-    expect(bidMatchesDevelopmentQuery({ development: harlow }, 'gun dog')).toBe(false)
+    expect(bidMatchesDevelopmentQuery({ development: harlow }, 'gray fox')).toBe(false)
     expect(bidMatchesDevelopmentQuery({ development: harlow }, '')).toBe(false)
     expect(bidMatchesDevelopmentQuery({ development: null }, 'harlow')).toBe(false)
   })

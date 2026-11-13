@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — tested here.
 import { buildPortalWaivers, type PortalWaiverReleaseRow } from '../../../supabase/functions/_shared/portalWaivers'
 
-const GC = 'gc-knight'
+const GC = 'gc-kestrin'
 const OWNER = 'owner-1'
 const job = (id: string, over: Record<string, unknown> = {}) => ({ id, hcp_number: id, click_number: null, job_name: `Job ${id}`, job_address: `${id} St`, customer_id: OWNER, gc_customer_id: GC, bill_to_party: 'gc', ...over })
 const inv = (id: string, job_id: string, n: number, amount: number, over: Record<string, unknown> = {}) => ({ id, job_id, amount, status: 'billed', billed_at: `2026-09-0${n}T15:00:00Z`, sequence_order: n, ...over })

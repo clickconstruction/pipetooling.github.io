@@ -53,8 +53,8 @@ describe('summarizeBankReturnedPayments', () => {
     ['tx-never', { id: 'tx-never', status: 'failed', posted_at: null, amount: 11700, failure_reason: 'There was an issue with this transaction.' }],
   ])
   const jobs = new Map([
-    ['j-878', { id: 'j-878', hcp_number: '878', job_name: 'Take 5 – Seguin', customer_name: 'Southern Post Construction' }],
-    ['j-dud', { id: 'j-dud', hcp_number: null, job_name: null, customer_name: 'Dudley' }],
+    ['j-878', { id: 'j-878', hcp_number: '878', job_name: 'Tune 5 – Seguin', customer_name: 'Southern Pine Construction' }],
+    ['j-dud', { id: 'j-dud', hcp_number: null, job_name: null, customer_name: 'Dunmere' }],
   ])
 
   it('lists the payments whose deposit the bank returned, biggest first, and skips everything else', () => {
@@ -73,8 +73,8 @@ describe('summarizeBankReturnedPayments', () => {
     expect(s.count).toBe(2)
     expect(s.total).toBe(21680)
     expect(s.items.map((i) => i.paymentId)).toEqual(['p-sp', 'p-dud'])
-    expect(s.first).toEqual({ paymentId: 'p-sp', jobId: 'j-878', jobLabel: 'J878 Take 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' })
-    expect(s.items[1]?.jobLabel).toBe('Dudley')
+    expect(s.first).toEqual({ paymentId: 'p-sp', jobId: 'j-878', jobLabel: 'J878 Tune 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' })
+    expect(s.items[1]?.jobLabel).toBe('Dunmere')
   })
 
   it('is empty with nothing linked', () => {
@@ -91,8 +91,8 @@ describe('summarizeBankReturnedPayments', () => {
   })
 
   it('labels a job by number and name, falling back to the customer', () => {
-    expect(jobLabelForBankReturn({ id: 'x', hcp_number: '878', job_name: 'Take 5 – Seguin' })).toBe('J878 Take 5 – Seguin')
-    expect(jobLabelForBankReturn({ id: 'x', hcp_number: ' ', job_name: '', customer_name: 'Dudley' })).toBe('Dudley')
+    expect(jobLabelForBankReturn({ id: 'x', hcp_number: '878', job_name: 'Tune 5 – Seguin' })).toBe('J878 Tune 5 – Seguin')
+    expect(jobLabelForBankReturn({ id: 'x', hcp_number: ' ', job_name: '', customer_name: 'Dunmere' })).toBe('Dunmere')
     expect(jobLabelForBankReturn(null)).toBe('a job')
   })
 })
@@ -117,7 +117,7 @@ describe('the Pipeline row badge (v2.3806)', () => {
 })
 
 describe('v2.4320: a check can come back before it posts', () => {
-  it('a check deposit that failed with a bank reason and no posting date is a return (Peter Garza, Jul 2025)', () => {
+  it('a check deposit that failed with a bank reason and no posting date is a return (Peter Garlen, Jul 2025)', () => {
     expect(mercuryBankReturn({ status: 'failed', posted_at: null, amount: 2700, failureReason: 'Insufficient funds', kind: 'checkDeposit' })).toEqual({ reason: 'Insufficient funds' })
     expect(mercuryBankReturnFromRaw({ status: 'failed', reasonForFailure: 'Stop payment', kind: 'checkDeposit' }, null, 500)).toEqual({ reason: 'Stop payment' })
   })
@@ -153,7 +153,7 @@ describe('v2.4320: a check can come back before it posts', () => {
 describe('v2.4320: a case row → the notice', () => {
   const base: ArReturnCaseRow = {
     mercury_transaction_id: 'tx-1',
-    counterparty_name: 'Loberg',
+    counterparty_name: 'Lowbeck',
     amount: '5622.49',
     kind: 'checkDeposit',
     posted_at: '2026-09-28T22:01:00Z',
@@ -168,7 +168,7 @@ describe('v2.4320: a case row → the notice', () => {
     replaced_by_mercury_transaction_id: null,
     notified_at: null,
     live_payments: [],
-    last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya' },
+    last_job: { job_id: 'job-650', job_number: '650', job_name: 'AXO Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya' },
     recorded_payment: null,
   }
   it('v2.4902: an unbanked case reads as unbanked, whatever else it carries', () => {
@@ -177,7 +177,7 @@ describe('v2.4320: a case row → the notice', () => {
   it('off its job: the last job and the day it came off, on the company calendar (9:19 PM CT Sep 30 is Sep 30)', () => {
     const input = noticeInputFromCase(base, 'https://clicktooling.com')
     expect(input.situation).toBe('off_job')
-    expect(input.lastJob).toEqual({ jobId: 'job-650', jobLabel: 'J650 ATI Schertz — As per plans', offYmd: '2026-09-30' })
+    expect(input.lastJob).toEqual({ jobId: 'job-650', jobLabel: 'J650 AXO Schertz — As per plans', offYmd: '2026-09-30' })
     expect(input.postedYmd).toBe('2026-09-28')
     expect(input.amount).toBe(5622.49)
   })
@@ -186,31 +186,31 @@ describe('v2.4320: a case row → the notice', () => {
       ...base,
       last_job: null,
       live_payments: [
-        { payment_id: 'p1', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1' },
-        { payment_id: 'p2', job_id: 'j977', job_number: '977', job_name: 'Springtown', amount: 11181.48, invoice_id: 'i2' },
-        { payment_id: 'p3', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 1482, invoice_id: 'i3' },
+        { payment_id: 'p1', job_id: 'j963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 2090, invoice_id: 'i1' },
+        { payment_id: 'p2', job_id: 'j977', job_number: '977', job_name: 'Stonewick', amount: 11181.48, invoice_id: 'i2' },
+        { payment_id: 'p3', job_id: 'j963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 1482, invoice_id: 'i3' },
       ],
     }
     const input = noticeInputFromCase(row, 'https://clicktooling.com')
     expect(input.situation).toBe('on_jobs')
     expect(input.jobs.map((j) => [j.jobLabel, j.amount])).toEqual([
-      ['J977 Springtown', 11181.48],
-      ['J963 Knight Springtown Vet', 3572],
+      ['J977 Stonewick', 11181.48],
+      ['J963 Kestrin Stonewick Vet', 3572],
     ])
   })
   it('rejected: the recorded payment it matches', () => {
     const row: ArReturnCaseRow = {
       ...base,
-      counterparty_name: 'Sal Iannotti',
+      counterparty_name: 'Sal Ilmotti',
       amount: 600,
       posted_at: null,
       source: 'rejected',
       last_job: null,
-      recorded_payment: { payment_id: 'p9', job_id: 'job-1040', job_number: '1040', job_name: 'Iannotti PRV', amount: 600, paid_on: '2026-09-29' },
+      recorded_payment: { payment_id: 'p9', job_id: 'job-1040', job_number: '1040', job_name: 'Ilmotti PRV', amount: 600, paid_on: '2026-09-29' },
     }
     const input = noticeInputFromCase(row, 'https://clicktooling.com')
     expect(arReturnCaseSituation(row)).toBe('rejected')
-    expect(input.recorded).toEqual({ jobId: 'job-1040', jobLabel: 'J1040 Iannotti PRV', amount: 600, paidYmd: '2026-09-29' })
+    expect(input.recorded).toEqual({ jobId: 'job-1040', jobLabel: 'J1040 Ilmotti PRV', amount: 600, paidYmd: '2026-09-29' })
     expect(input.postedYmd).toBeNull()
   })
   it('never on a job', () => {

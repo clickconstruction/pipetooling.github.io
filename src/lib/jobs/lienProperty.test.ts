@@ -20,7 +20,7 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
   return {
     id: 'addr-1',
     customer_id: 'cust-1',
-    address: '415 Springtown Way, San Marcos, TX 78666',
+    address: '415 Stonewick Way, San Marcos, TX 78666',
     note: null,
     sequence_order: 0,
     created_at: null,
@@ -55,10 +55,10 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
 describe('resolveLienProperty', () => {
   const legalRow = addressRow({
     county: 'Hays',
-    legal_description: 'Lot 3, Block A, Springtown Commercial Park',
+    legal_description: 'Lot 3, Block A, Stonewick Commercial Park',
     property_kind: 'non_residential',
     owner_mode: 'building_owner',
-    owner_company: 'Springtown Holdings LLC',
+    owner_company: 'Stonewick Holdings LLC',
     owner_mailing_address: 'PO Box 1420, San Marcos, TX 78667',
   })
 
@@ -69,7 +69,7 @@ describe('resolveLienProperty', () => {
     expect(r.propertyKind).toBe('non_residential')
     expect(r.owner.source).toBe('property_record')
     expect(r.owner.mailingAddress).toBe('PO Box 1420, San Marcos, TX 78667')
-    expect(lienPropertyOwnerDisplayName(r.owner)).toBe('Springtown Holdings LLC')
+    expect(lienPropertyOwnerDisplayName(r.owner)).toBe('Stonewick Holdings LLC')
   })
 
   it('the per-job owner override wins over the property record owner', () => {
@@ -96,8 +96,8 @@ describe('resolveLienProperty', () => {
 
   it('the owner’s email and phone come from the source that names the owner, a blank there from the record (v2.6497)', () => {
     // The record carries the columns once migration 20261104163131 lands; the test row carries them as the generated type will.
-    const contactRow = { ...legalRow, owner_email: 'office@springtown.example', owner_phone: '(512) 555-0142' } as CustomerAddressRow
-    expect(resolveLienProperty(contactRow, null).owner).toMatchObject({ source: 'property_record', email: 'office@springtown.example', phone: '(512) 555-0142' })
+    const contactRow = { ...legalRow, owner_email: 'office@stonewick.example', owner_phone: '(512) 555-0142' } as CustomerAddressRow
+    expect(resolveLienProperty(contactRow, null).owner).toMatchObject({ source: 'property_record', email: 'office@stonewick.example', phone: '(512) 555-0142' })
     // The override names the owner and gives its own email: that email, and the record's phone where the override has none.
     const override = { owner_mode: 'building_owner', owner_name: '', company_name: 'Typed Owner LLC', mailing_address: '1 Main St', owner_email: ' typed@owner.example ' }
     expect(resolveLienProperty(contactRow, override).owner).toMatchObject({ source: 'job_override', email: 'typed@owner.example', phone: '(512) 555-0142' })
@@ -158,14 +158,14 @@ describe('lien-ready + gaps', () => {
 
 describe('suggestCustomerAddressForJob', () => {
   const rows = [
-    addressRow({ id: 'a1', address: '415 Springtown Way, San Marcos, TX 78666' }),
+    addressRow({ id: 'a1', address: '415 Stonewick Way, San Marcos, TX 78666' }),
     addressRow({ id: 'a2', address: '112 Hospital Way, San Marcos, TX' }),
   ]
   it('matches the full normalized address', () => {
-    expect(suggestCustomerAddressForJob('  415 springtown  way, san marcos, tx 78666 ', rows)?.id).toBe('a1')
+    expect(suggestCustomerAddressForJob('  415 stonewick  way, san marcos, tx 78666 ', rows)?.id).toBe('a1')
   })
   it('falls back to the street line when city/zip formatting differs', () => {
-    expect(suggestCustomerAddressForJob('415 Springtown Way, San Marcos TX', rows)?.id).toBe('a1')
+    expect(suggestCustomerAddressForJob('415 Stonewick Way, San Marcos TX', rows)?.id).toBe('a1')
   })
   it('no match → null (never guesses)', () => {
     expect(suggestCustomerAddressForJob('9 Elm St, Dallas, TX', rows)).toBeNull()

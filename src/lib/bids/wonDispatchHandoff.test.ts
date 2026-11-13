@@ -22,8 +22,8 @@ describe('labels', () => {
     expect(bidHandoffLabel({ bidNumber: '', projectName: '' })).toBe('this bid')
   })
   it('the title is the to-do, with the winning GC when known', () => {
-    expect(wonHandoffTitle({ bidNumber: '398', projectName: 'ZZ Test', gcName: 'Southern Post Construction' })).toBe(
-      'Open the job for B398 · ZZ Test — won with Southern Post Construction',
+    expect(wonHandoffTitle({ bidNumber: '398', projectName: 'ZZ Test', gcName: 'Southern Pine Construction' })).toBe(
+      'Open the job for B398 · ZZ Test — won with Southern Pine Construction',
     )
     expect(wonHandoffTitle({ bidNumber: '398', projectName: 'ZZ Test', gcName: null })).toBe('Open the job for B398 · ZZ Test — marked Won')
   })

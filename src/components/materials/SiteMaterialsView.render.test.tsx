@@ -7,7 +7,7 @@
  * role that does not read it, and the empty site.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeUseAuthValue, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, Movement, MovementReason, Place } from '../../lib/materials/onSite'
 import { readSiteView } from '../../lib/materials/siteMaterialsViewPrefs'
@@ -38,8 +38,28 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
 }))
 
+// The answers table, in memory (punch list #330, PR 3).
+const tiesDb = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, failRead: false, n: 0 }))
+vi.mock('../../lib/materials/partTiesIo', () => ({
+  fetchPartTies: async () => {
+    if (tiesDb.failRead) throw new Error('relation "on_site_part_ties" does not exist')
+    return [...tiesDb.rows]
+  },
+  insertPartTie: async (_scope: unknown, tie: Record<string, unknown>, byName: string) => {
+    tiesDb.n += 1
+    const row = { id: `t${tiesDb.n}`, ...tie, byName, at: new Date().toISOString() }
+    tiesDb.rows.push(row)
+    return row
+  },
+  deletePartTie: async (id: string) => {
+    tiesDb.rows = tiesDb.rows.filter((r) => r.id !== id)
+  },
+}))
+
 function fill() {
   seq = 0
+  tiesDb.rows = []
+  tiesDb.failRead = false
   store.containers = { ja: [box('r12', 'ja', 'R12', 'ya'), box('r58', 'ja', 'R58', 'ya'), box('r22', 'ja', 'R22', null)], jb: [box('p1', 'jb', 'P1', 'yb')] }
   store.places = { ja: [place('ya', 'ja', 'Laydown yard')], jb: [place('yb', 'jb', 'Laydown yard')] }
   store.movements = {
@@ -70,6 +90,14 @@ function setup(props: Partial<Parameters<typeof SiteMaterialsView>[0]> = {}) {
 afterEach(() => {
   window.localStorage.clear()
 })
+
+/** The Same part? ask, once the answers so far were read. */
+const findAsk = () =>
+  waitFor(() => {
+    const el = document.querySelector('[data-same-part-ask]')
+    if (!el) throw new Error('no ask yet')
+    return el as HTMLElement
+  })
 
 describe('SiteMaterialsView', () => {
   it('draws the figures: how fresh the record is, the boxes, what is on hand, the week', () => {
@@ -147,5 +175,49 @@ describe('SiteMaterialsView', () => {
     expect(screen.getByText('No part is on hand on this site yet.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Back to Materials desk' }))
     expect(onBack).toHaveBeenCalled()
+  })
+
+  it('asks Same part? once for two names that are nearly the same, joins them on a yes, and Undo separates them', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    const ask = await findAsk()
+    expect(ask.textContent).toContain('Same part?')
+    expect(ask.textContent).toContain('2" 90 and 2" 90 pvc')
+    expect(ask.textContent).toContain('One name has one more word.')
+    expect(screen.getByRole('button', { name: 'Same part? · 1' })).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Same part' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(2))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
+    const joined = screen.getByRole('button', { name: /2" 90 pvc.*3 spellings/ })
+    expect(within(joined).getByText('156')).toBeTruthy()
+    fireEvent.click(joined)
+    const list = screen.getByTestId('names-joined-here')
+    expect(list.textContent).toContain('by Dana')
+    fireEvent.click(within(list).getByRole('button', { name: /^Undo joining/ }))
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(tiesDb.rows).toHaveLength(0)
+  })
+
+  it('Different is kept too, so the pair is not asked again and the rows stay apart', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    const ask = await findAsk()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Different' }))
+    await waitFor(() => expect(document.querySelector('[data-same-part-ask]')).toBeNull())
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3)
+    expect(tiesDb.rows[0]).toMatchObject({ verdict: 'different' })
+    expect(screen.queryByRole('button', { name: /^Same part\? ·/ })).toBeNull()
+  })
+
+  it('a role that may not answer is asked nothing, and a read that is refused leaves the same-words rows', async () => {
+    setup()
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
+  })
+
+  it('before the table exists the screen asks nothing and still draws', async () => {
+    fill()
+    tiesDb.failRead = true
+    renderWithProviders(<SiteMaterialsView site={{ id: 'dev1', name: 'Juniper Ridge' }} jobs={jobs} showMoney canTie onBack={() => {}} backLabel="Materials desk" boxHref={() => '/'} />)
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
   })
 })

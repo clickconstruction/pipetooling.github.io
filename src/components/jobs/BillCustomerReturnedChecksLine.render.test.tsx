@@ -18,7 +18,7 @@ vi.mock('../../lib/supabase', async () => {
   const stub = makeSupabaseStub() as Record<string, unknown>
   const baseRpc = stub.rpc as (...args: unknown[]) => unknown
   const thisYear = `${new Date().getFullYear()}-04-13T15:00:00Z`
-  const row = (tx: string) => ({ mercury_transaction_id: tx, came_back_at: thisYear, job_id: 'job-440', job_customer_id: 'cust-poolcorp', job_gc_customer_id: null, job_bill_to_party: 'customer', invoice_bill_to_party: null, invoice_bill_to_email: null })
+  const row = (tx: string) => ({ mercury_transaction_id: tx, came_back_at: thisYear, job_id: 'job-440', job_customer_id: 'cust-poolmark', job_gc_customer_id: null, job_bill_to_party: 'customer', invoice_bill_to_party: null, invoice_bill_to_email: null })
   stub.rpc = (fn: string, ...rest: unknown[]) => {
     if (fn === 'list_ar_returned_check_payers') return Promise.resolve({ data: [row('a'), row('b')], error: null })
     return baseRpc(fn, ...rest)
@@ -28,7 +28,7 @@ vi.mock('../../lib/supabase', async () => {
 
 describe('BillCustomerReturnedChecksLine', () => {
   it('the payer with two returns this year reads them, with the faster ways to pay', async () => {
-    const { loaded } = await renderSettled(<BillCustomerReturnedChecksLine payerCustomerId="cust-poolcorp" />, { loaded: () => screen.findByTestId('bill-customer-returned-checks') })
+    const { loaded } = await renderSettled(<BillCustomerReturnedChecksLine payerCustomerId="cust-poolmark" />, { loaded: () => screen.findByTestId('bill-customer-returned-checks') })
     expect(loaded.textContent).toBe('2 checks came back · Apr. A card or a bank transfer clears faster.')
   })
   it('another payer, or none, shows nothing', async () => {

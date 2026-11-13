@@ -6,16 +6,16 @@ import type { CallLetterFacts } from '../../lib/jobs/lienOwnerCallScript'
 
 afterEach(cleanup)
 
-const letter: CallLetterFacts = { jobLabel: '273 · Dudley (Lennox)', property: '1204 Lennox Dr, Austin, TX', ownerName: 'Dudley Lennox', gcName: 'RMC- Dudley Mason', us: 'Click', instrument: 'notice_53_056', letterKind: 'residential', mailedOn: '2026-09-08', amount: '$17,585.00', months: 'April, June, July and August 2026', signer: 'Malachi Whites, Master Plumber', phone: '(512) 360-0599', affidavitBy: '2026-11-16' }
+const letter: CallLetterFacts = { jobLabel: '273 · Dunmere (Linmoor)', property: '1204 Linmoor Dr, Austin, TX', ownerName: 'Dunmere Linmoor', gcName: 'RLC- Dunmere Mallin', us: 'Click', instrument: 'notice_53_056', letterKind: 'residential', mailedOn: '2026-09-08', amount: '$17,585.00', months: 'April, June, July and August 2026', signer: 'Malachi Whites, Master Plumber', phone: '(512) 360-0599', affidavitBy: '2026-11-16' }
 
 describe('LienCallScriptModal (v2.4731)', () => {
   it('opens with the letter in hand and counsel’s line; a chip shows the next line; Record the call hands to the sheet', () => {
     const onRecord = vi.fn()
-    render(<LienCallScriptModal facts={letter} jobLabel="273 · Dudley (Lennox)" hasLetter us="Click" onRecord={onRecord} onFindJob={() => {}} onPractice={() => {}} onClose={() => {}} />)
+    render(<LienCallScriptModal facts={letter} jobLabel="273 · Dunmere (Linmoor)" hasLetter us="Click" onRecord={onRecord} onFindJob={() => {}} onPractice={() => {}} onClose={() => {}} />)
     expect(screen.getByTestId('lien-call-script').getAttribute('data-has-job')).toBe('yes')
-    expect(screen.getByTestId('lien-call-script-sub').textContent).toBe('273 · Dudley (Lennox) · GC RMC- Dudley Mason · § 53.056 notice mailed Sep 8')
+    expect(screen.getByTestId('lien-call-script-sub').textContent).toBe('273 · Dunmere (Linmoor) · GC RLC- Dunmere Mallin · § 53.056 notice mailed Sep 8')
     expect(screen.getByTestId('lien-call-script-letter').textContent).toContain('mailed Sep 8 · claims $17,585.00 · for April, June, July and August 2026 · affidavit by Nov 16')
-    expect(screen.getByTestId('lien-call-script-open').textContent).toContain('Thanks for calling about the notice on 1204 Lennox Dr.')
+    expect(screen.getByTestId('lien-call-script-open').textContent).toContain('Thanks for calling about the notice on 1204 Linmoor Dr.')
     expect(screen.queryByTestId('lien-call-script-next')).toBeNull()
     fireEvent.click(document.querySelector('[data-lien-call-script-opening="owes"]') as HTMLElement)
     expect(screen.getByTestId('lien-call-script-next').textContent).toContain('hold back $17,585.00')

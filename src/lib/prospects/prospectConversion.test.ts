@@ -190,7 +190,7 @@ describe('markProspectConverted', () => {
 describe('markProspectOnBench (v2.5559)', () => {
   it('flips the status, keeps the company it became, and leaves a converted interaction naming the bench', async () => {
     const { client, calls } = fakeClient()
-    const res = await markProspectOnBench('p-2', 'co-3', 'Bexar Fire Protection', 'u-1', client)
+    const res = await markProspectOnBench('p-2', 'co-3', 'Baxter Fire Protection', 'u-1', client)
     expect(res).toEqual({ ok: true })
     expect(calls).toEqual([
       { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted', converted_gc_company_id: 'co-3' }, eq: ['id', 'p-2'] },
@@ -200,7 +200,7 @@ describe('markProspectOnBench (v2.5559)', () => {
         values: {
           prospect_id: 'p-2',
           created_by: 'u-1',
-          comment_text: 'Added to the bench: Bexar Fire Protection (/gc?view=partners)',
+          comment_text: 'Added to the bench: Baxter Fire Protection (/gc?view=partners)',
           interaction_type: 'converted',
         },
       },
@@ -215,9 +215,9 @@ describe('markProspectOnBench (v2.5559)', () => {
 })
 
 describe('the person we call lands on the customer (v2.5603)', () => {
-  const sub = { company_name: 'Bexar Fire Protection', contact_name: 'Tomás Reyna', contact_title: 'Estimator', contact_phone: '(210) 555-0122', phone_number: '(210) 555-0188', email: 'tomas@example.com', address: '1800 Cibolo Trail', is_person: false, lang: 'es' }
+  const sub = { company_name: 'Baxter Fire Protection', contact_name: 'Tomás Reyna', contact_title: 'Estimator', contact_phone: '(210) 555-0122', phone_number: '(210) 555-0188', email: 'tomas@example.com', address: '1800 Cibolo Trail', is_person: false, lang: 'es' }
   it('a company: Commercial, the cell first, the language, and the person as a contact person with their title', () => {
-    expect(customerDraftFromProspect(sub)).toEqual({ name: 'Bexar Fire Protection', address: '1800 Cibolo Trail', phone: '(210) 555-0122', email: 'tomas@example.com', customerType: 'commercial', language: 'es' })
+    expect(customerDraftFromProspect(sub)).toEqual({ name: 'Baxter Fire Protection', address: '1800 Cibolo Trail', phone: '(210) 555-0122', email: 'tomas@example.com', customerType: 'commercial', language: 'es' })
     expect(contactPersonFromProspect(sub)).toEqual({ name: 'Tomás Reyna', phone: '(210) 555-0122', email: 'tomas@example.com', note: 'Estimator' })
   })
   it('a person on their own: Residential, and no contact person, since the customer is them', () => {

@@ -20,7 +20,7 @@ afterEach(() => cleanup())
 
 function row(over: Partial<BidJobAccountRow>): BidJobAccountRow {
   return {
-    bid_id: 'b398', job_id: 'j1018', job_hcp_number: '1018', job_click_number: null, job_name: 'Pondhill Building 2', job_address: null,
+    bid_id: 'b398', job_id: 'j1018', job_hcp_number: '1018', job_click_number: null, job_name: 'Penmoor Building 2', job_address: null,
     supply_house_id: 'h-ferg', house_name: 'Ferguson', policy: 'per_property', quoted: false, status: null, account_ref: null,
     opened_via: null, opened_at: null, requested_at: null, rep_contact_id: null, rep_name: null, rep_phone: null, rep_email: null,
     ...over,

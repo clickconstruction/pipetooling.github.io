@@ -41,10 +41,10 @@ const bill2 = makeInvoice({ id: 'b2', status: 'billed', amount: 6700, sequence_o
 const job = makeJob({
   id: 'j650',
   hcp_number: '650',
-  job_name: 'ATI Schertz — As per plans',
-  customer_name: 'SCHERTZ STATION LTD',
-  gc_customer_id: 'gc-loberg',
-  gcCustomer: { id: 'gc-loberg', name: 'Loberg Contracting' },
+  job_name: 'AXO Schertz — As per plans',
+  customer_name: 'SAMPLE STATION LTD',
+  gc_customer_id: 'gc-lowbeck',
+  gcCustomer: { id: 'gc-lowbeck', name: 'Lowbeck Contracting' },
   master_user_id: 'master-1',
   invoices: [bill1, bill2],
   revenue: 33500,
@@ -145,7 +145,7 @@ const DRAFT = {
   created_at: '2026-10-01T16:31:20Z',
   minted_at: null,
   signed_at: null,
-  fields: { amount: '9022.49', checkFrom: 'Typed by hand LLC', companyName: 'Click Plumbing and Electrical', projectDescription: 'ATI Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
+  fields: { amount: '9022.49', checkFrom: 'Typed by hand LLC', companyName: 'Click Plumbing and Electrical', projectDescription: 'AXO Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
 }
 const chip = (n: number) => screen.getAllByRole('button').find((b) => b.textContent?.trim().startsWith(`#${n} `))!
 const amountBox = () => (screen.getByLabelText('Amount ($)') as HTMLInputElement).value

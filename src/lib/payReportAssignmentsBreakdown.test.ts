@@ -3,7 +3,7 @@ import { computePayReportAssignmentsBreakdown } from './payReportAssignmentsBrea
 
 /** The pay report's per-day job / bid lines — payroll money, pinned (v2.3874, the People map's Stage A). */
 const jobs = { j1: { hcp_number: '4021', job_name: 'Kitchen rough-in', job_address: '12 Oak St' }, j2: { hcp_number: '', job_name: '', job_address: '9 Elm' } }
-const bids = { b1: { bid_number: 'B482', project_name: 'Galloway Park', address: '' }, b2: { bid_number: '', project_name: '', address: '' } }
+const bids = { b1: { bid_number: 'B482', project_name: 'Gallenby Park', address: '' }, b2: { bid_number: '', project_name: '', address: '' } }
 
 describe('computePayReportAssignmentsBreakdown', () => {
   it('splits a day’s hours across its job and bid assignments by percent, two decimals, in one line', () => {
@@ -15,7 +15,7 @@ describe('computePayReportAssignmentsBreakdown', () => {
       jobs,
       bids,
     )
-    expect(out).toEqual([{ date: '2026-09-21', hours: 8, jobsText: 'Job 4021 (Kitchen rough-in) 6.00 hrs, Bid B482 (Galloway Park) 2.00 hrs' }])
+    expect(out).toEqual([{ date: '2026-09-21', hours: 8, jobsText: 'Job 4021 (Kitchen rough-in) 6.00 hrs, Bid B482 (Gallenby Park) 2.00 hrs' }])
   })
 
   it('labels fall back: number or name, then the address, then the id’s first eight characters', () => {

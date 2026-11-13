@@ -44,7 +44,7 @@ function bookRow(kind: Kind) {
   const row = { job_id: 'j1', work_month: '2026-08', approved_hours: 8, deadline: noticeDeadlineForMonth('2026-08-01', kind), noticed: false, open_balance: 12_400, customer_id: 'c1', gc_customer_id: 'gc1', property_kind: kind, has_owner: true, desk_item_id: null, desk_status: null, desk_months: null } as LienNoticeMonthRow
   const book = buildLienTimelineBook({
     rows: [row], affidavitRows: [], items: [], filingsByJob: {}, policyByCustomer: {}, todayYmd: TODAY,
-    jobs: { j1: { id: 'j1', label: '651 · Palomino Trail', address: '233 Palomino Trail', gcId: 'gc1', gcName: 'Loberg Contracting', propertyKind: kind, homestead: false, county: 'Medina', ownerName: 'Garcia', openBalance: 12_400, lastWorkDate: '2026-08-20', isSub: true } },
+    jobs: { j1: { id: 'j1', label: '651 · Palomino Trail', address: '233 Palomino Trail', gcId: 'gc1', gcName: 'Lowbeck Contracting', propertyKind: kind, homestead: false, county: 'Medina', ownerName: 'Garcia', openBalance: 12_400, lastWorkDate: '2026-08-20', isSub: true } },
   })
   return book.rows[0]!
 }

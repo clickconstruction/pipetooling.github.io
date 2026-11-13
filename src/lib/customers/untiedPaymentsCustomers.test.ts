@@ -80,27 +80,27 @@ describe('the Customer Hub', () => {
 describe('the Customers list and the timeline', () => {
   it("the list's open balance is $16,685", () => {
     const rollup = customersListRollup(
-      [{ id: JOB, customer_id: 'c-umar', status: 'billed', revenue: REVENUE, payments_made: PAID }],
+      [{ id: JOB, customer_id: 'c-ulric', status: 'billed', revenue: REVENUE, payments_made: PAID }],
       BILLS.map((b) => ({ id: b.id, job_id: JOB, status: 'billed', amount: b.amount })),
       UNTIED.map(([amount, paid_on]) => ({ job_id: JOB, invoice_id: null, amount, paid_on })),
     )
-    expect(rollup['c-umar']!.openBalance).toBe(16685)
+    expect(rollup['c-ulric']!.openBalance).toBe(16685)
   })
 
   it('the timeline owes $16,685', () => {
-    const input = emptyCustomerTimelineInput({ id: 'c-umar', name: 'Umar', createdAt: null, dateMet: null })
+    const input = emptyCustomerTimelineInput({ id: 'c-ulric', name: 'Ulric', createdAt: null, dateMet: null })
     const job: TimelineJobInput = {
       id: JOB,
       hcpNumber: '273',
       clickNumber: null,
-      jobName: 'Dudley',
+      jobName: 'Dunmere',
       jobAddress: null,
       status: 'billed',
       revenue: REVENUE,
       paymentsMade: PAID,
       createdAt: '2025-09-01T15:00:00Z',
-      customerId: 'c-umar',
-      customerName: 'Umar',
+      customerId: 'c-ulric',
+      customerName: 'Ulric',
       gcCustomerId: null,
       collectionsAt: null,
       collectionsNote: null,
@@ -115,7 +115,7 @@ describe('the Customers list and the timeline', () => {
 })
 
 describe('the Dashboard: the AR card and the Billed pin', () => {
-  const financialJob: FinancialJobRow = { id: JOB, hcp_number: '273', job_name: 'Dudley', status: 'billed', revenue: REVENUE, payments_made: PAID, last_work_date: '2026-08-26' }
+  const financialJob: FinancialJobRow = { id: JOB, hcp_number: '273', job_name: 'Dunmere', status: 'billed', revenue: REVENUE, payments_made: PAID, last_work_date: '2026-08-26' }
   const invoices = BILLS.map((b) => ({ id: b.id, job_id: JOB, amount: b.amount, status: 'billed', billed_at: b.billed_at, sequence_order: b.sequence_order }))
   const unlinked = UNTIED.map(([amount, paid_on]) => ({ invoice_id: null, amount, paid_on, job_id: JOB }))
 

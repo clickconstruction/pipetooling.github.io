@@ -14,7 +14,7 @@ function row(over: Partial<WorkOrderBoardRow> & { key: string }): WorkOrderBoard
     recordId: null,
     jobId: 'job-1',
     jobNumber: '880',
-    primary: '#880 · Knight',
+    primary: '#880 · Kestrin',
     secondary: null,
     notInPipeline: false,
     subNames: ['Sub'],

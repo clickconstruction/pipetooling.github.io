@@ -23,7 +23,7 @@ The board shows one week at a time. Every job is a row and every day is a column
 The top row, **No job on the session**, is hours clocked with no job or bid at all. Each chip there shows what dispatch had that person doing that day. That is the obvious link.
 
 :::example A Saturday on the board
-JP650 · ATI Schertz · Sat 9/5: Isiah and Malachi both show **plan 8.0 h · 8a–4p · no clock** in red. The top row shows **Isiah 0.72 h · dispatch: JP650 · ATI Schertz 8a–4p** in amber. Reading across: Isiah punched 43 minutes with no job, and dispatch already knows where he was.
+JP650 · AXO Schertz · Sat 9/5: Isiah and Malachi both show **plan 8.0 h · 8a–4p · no clock** in red. The top row shows **Isiah 0.72 h · dispatch: JP650 · AXO Schertz 8a–4p** in amber. Reading across: Isiah punched 43 minutes with no job, and dispatch already knows where he was.
 :::
 
 ## The strip and the drawer
@@ -54,7 +54,7 @@ Some overruns are just the job. {{button:outline|Looks right}} on a ran-long or 
 How far past its block a day has to run before it counts as ran long is a company default. You set it at Settings → Company → **Defaults for everyone** → **Ran long on the Team board**. Gentle is 1.25× and 1 h over. Standard is 1.5× and 1.5 h over. Loose is 2× and 2 h over. Or you turn it off. The board's footer says which rule is in force.
 
 :::example Isiah's Saturday
-Top row · Isiah · 0.72 h · *dispatch: JP650 · ATI Schertz 8a–4p* → {{button:blue|Link to JP650}}. Toast: *Linked 1 session (0.72 h) to JP650 · ATI Schertz — split recomputed from the clock.* The chip moves down onto the ATI Schertz row in green.
+Top row · Isiah · 0.72 h · *dispatch: JP650 · AXO Schertz 8a–4p* → {{button:blue|Link to JP650}}. Toast: *Linked 1 session (0.72 h) to JP650 · AXO Schertz — split recomputed from the clock.* The chip moves down onto the AXO Schertz row in green.
 :::
 
 ## What it is not

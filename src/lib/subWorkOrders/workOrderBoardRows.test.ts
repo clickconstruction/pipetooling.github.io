@@ -4,14 +4,14 @@ import type { WorkOrderRowLike } from './workOrderCoverage'
 
 const TODAY = '2026-09-05'
 const ROSTER = [
-  { id: 'p-tx', name: 'Texas R & A Electrical LLC', kind: 'sub', accountRole: null },
+  { id: 'p-tx', name: 'Texas Q & E Electrical LLC', kind: 'sub', accountRole: null },
   { id: 'p-mig', name: 'Miguel Rodriguez', kind: 'sub', accountRole: null },
-  { id: 'p-cale', name: 'Cale Yarbrough', kind: 'sub', accountRole: null },
+  { id: 'p-cale', name: 'Cale Yarwick', kind: 'sub', accountRole: null },
   { id: 'p-abe', name: 'Abraham', kind: 'sub', accountRole: 'superintendent' },
 ]
 const JOBS = [
-  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Connell', job_address: '582 Curvatura' },
-  { id: 'j-880', hcp_number: '880', customer_name: 'Knight Contracting', job_address: '150 E Sonterra' },
+  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Corbray', job_address: '582 Curvatura' },
+  { id: 'j-880', hcp_number: '880', customer_name: 'Kestrin Contracting', job_address: '150 E Sonmere' },
 ]
 const sheet = (over: Partial<WorkOrderBoardSheet> & { id: string }): WorkOrderBoardSheet => ({
   job_number: '892',
@@ -45,9 +45,9 @@ const board = (sheets: WorkOrderBoardSheet[], commitments: WorkOrderRowLike[] = 
 
 describe('buildWorkOrderBoard — which sheets are rows', () => {
   it('a sub sheet with money open and nothing signed is a no-agreement row with the gap rail', () => {
-    const b = board([sheet({ id: 's1', job_number: '977', address: 'Hospital-415 Springtown Way', assigned_to_name: 'Texas R & A Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] })])
+    const b = board([sheet({ id: 's1', job_number: '977', address: 'Hospital-415 Stonewick Way', assigned_to_name: 'Texas Q & E Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] })])
     expect(b.rows).toHaveLength(1)
-    expect(b.rows[0]).toMatchObject({ key: 'sheet:s1', group: 'no_agreement', notInPipeline: true, primary: '#977', secondary: 'Hospital-415 Springtown Way', open: 40000, sheetDate: '2026-08-20' })
+    expect(b.rows[0]).toMatchObject({ key: 'sheet:s1', group: 'no_agreement', notInPipeline: true, primary: '#977', secondary: 'Hospital-415 Stonewick Way', open: 40000, sheetDate: '2026-08-20' })
     expect(b.rows[0]!.rail.gap).toBe(true)
     expect(b.rows[0]!.next).toMatchObject({ label: 'Get it in writing', button: 'draft' })
     expect(b.tiles).toEqual({ handshakeUsd: 40000, handshakeCount: 1, offersOut: 0, signedThisMonth: 0 })
@@ -66,9 +66,9 @@ describe('buildWorkOrderBoard — which sheets are rows', () => {
     expect(board([sheet({ id: 's1', assigned_to_name: 'Abraham' })], [], [['s1', ['p-abe']]]).rows).toEqual([])
   })
   it('a job-anchored order covers every sheet on the job; a sheet-anchored one covers only its sheet', () => {
-    const b = board([sheet({ id: 's1' }), sheet({ id: 's2', assigned_to_name: 'Cale Yarbrough' })], [order({ id: 'o1', status: 'draft', job_id: 'j-892', amount: null })])
+    const b = board([sheet({ id: 's1' }), sheet({ id: 's2', assigned_to_name: 'Cale Yarwick' })], [order({ id: 'o1', status: 'draft', job_id: 'j-892', amount: null })])
     expect(b.rows.map((r) => r.group)).toEqual(['drafted', 'drafted'])
-    const b2 = board([sheet({ id: 's1' }), sheet({ id: 's2', assigned_to_name: 'Cale Yarbrough' })], [order({ id: 'o1', status: 'offered', labor_job_id: 's1', job_id: 'j-892', offered_at: '2026-09-04T00:00:00Z' })])
+    const b2 = board([sheet({ id: 's1' }), sheet({ id: 's2', assigned_to_name: 'Cale Yarwick' })], [order({ id: 'o1', status: 'offered', labor_job_id: 's1', job_id: 'j-892', offered_at: '2026-09-04T00:00:00Z' })])
     expect(b2.rows.map((r) => [r.sheetId, r.group])).toEqual([['s2', 'no_agreement'], ['s1', 'sent']])
   })
 })
@@ -91,15 +91,15 @@ describe('buildWorkOrderBoard — agreed on a sheet with no items', () => {
 describe('buildWorkOrderBoard — the sub behind a row', () => {
   it('a single junction assignee hands the assembler its sub; a single legacy name resolves through the roster; two names give nothing', () => {
     expect(board([sheet({ id: 's1' })], [], [['s1', ['p-mig']]]).rows[0]!.personId).toBe('p-mig')
-    expect(board([sheet({ id: 's2', assigned_to_name: 'Cale Yarbrough' })]).rows[0]!.personId).toBe('p-cale')
-    expect(board([sheet({ id: 's3', assigned_to_name: 'Miguel Rodriguez | Cale Yarbrough' })], [], [['s3', ['p-mig', 'p-cale']]]).rows[0]!.personId).toBeNull()
+    expect(board([sheet({ id: 's2', assigned_to_name: 'Cale Yarwick' })]).rows[0]!.personId).toBe('p-cale')
+    expect(board([sheet({ id: 's3', assigned_to_name: 'Miguel Rodriguez | Cale Yarwick' })], [], [['s3', ['p-mig', 'p-cale']]]).rows[0]!.personId).toBeNull()
   })
 })
 
 describe('buildWorkOrderBoard — orders with no sheet', () => {
   it('a job-anchored draft on a job with no sheets is its own row', () => {
-    const b = board([], [order({ id: 'o1', status: 'draft', job_id: 'j-880', amount: null, display_name: 'Cale Yarbrough' })])
-    expect(b.rows[0]).toMatchObject({ key: 'order:o1', sheetId: null, jobId: 'j-880', primary: '#880 · Knight Contracting', group: 'drafted', unpriced: true })
+    const b = board([], [order({ id: 'o1', status: 'draft', job_id: 'j-880', amount: null, display_name: 'Cale Yarwick' })])
+    expect(b.rows[0]).toMatchObject({ key: 'order:o1', sheetId: null, jobId: 'j-880', primary: '#880 · Kestrin Contracting', group: 'drafted', unpriced: true })
     expect(b.rows[0]!.next).toMatchObject({ label: 'Price it and send', button: 'price' })
   })
   it('an unanchored order takes the label the component knows', () => {
@@ -120,8 +120,8 @@ describe('buildWorkOrderBoard — order and search', () => {
     const b = board(
       [
         sheet({ id: 'a' }),
-        sheet({ id: 'b', assigned_to_name: 'Cale Yarbrough', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 9000 }] }),
-        sheet({ id: 'c', job_number: '880', assigned_to_name: 'Texas R & A Electrical LLC' }),
+        sheet({ id: 'b', assigned_to_name: 'Cale Yarwick', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 9000 }] }),
+        sheet({ id: 'c', job_number: '880', assigned_to_name: 'Texas Q & E Electrical LLC' }),
       ],
       [order({ id: 'o1', status: 'accepted', labor_job_id: 'a' }), order({ id: 'o2', status: 'offered', labor_job_id: 'c', offered_at: '2026-09-05T00:00:00Z' })],
     )
@@ -131,8 +131,8 @@ describe('buildWorkOrderBoard — order and search', () => {
   it('search matches sub, job number, customer, address and WO number', () => {
     const b = board([sheet({ id: 's1' })], [order({ id: 'o1', status: 'accepted', labor_job_id: 's1', record_id: 'WO-892-01' })])
     const row = b.rows[0]!
-    for (const q of ['miguel', '892', 'connell', 'curvatura', 'wo-892']) expect(workOrderBoardRowMatches(row, q)).toBe(true)
-    expect(workOrderBoardRowMatches(row, 'airfordable')).toBe(false)
+    for (const q of ['miguel', '892', 'corbray', 'curvatura', 'wo-892']) expect(workOrderBoardRowMatches(row, q)).toBe(true)
+    expect(workOrderBoardRowMatches(row, 'airlowe')).toBe(false)
   })
   it('legacy ?wof= words map onto rail groups', () => {
     expect(workOrderBoardFilterFromParam('drafts')).toBe('drafted')
@@ -156,7 +156,7 @@ describe('buildWorkOrderBoard — order and search', () => {
     const linked = board.rows.find((r) => r.sheetId === 's-linked')!
     const byNumber = board.rows.find((r) => r.sheetId === 's-number')!
     expect(linked.jobId).toBe('j-880')
-    expect(linked.primary).toBe('#880 · Knight Contracting')
+    expect(linked.primary).toBe('#880 · Kestrin Contracting')
     expect(linked.notInPipeline).toBe(false)
     expect(byNumber.jobId).toBe('j-892')
   })

@@ -138,7 +138,7 @@ const mountLabels = (input: UseMyTimeJobBidLabelsInput) =>
 describe('useMyTimeJobBidLabels', () => {
   it('loads only what the parent did not label, and keeps the parent’s label', async () => {
     h.rpcResults.get_jobs_ledger_by_ids = {
-      data: [{ id: JOB_B, hcp_number: '523', click_number: '', job_name: 'Mission Hills', job_address: '123 Main', service_type_id: null }],
+      data: [{ id: JOB_B, hcp_number: '523', click_number: '', job_name: 'Mission Flats', job_address: '123 Main', service_type_id: null }],
       error: null,
     }
     h.rpcResults.get_bids_by_ids = {
@@ -146,7 +146,7 @@ describe('useMyTimeJobBidLabels', () => {
       error: null,
     }
     await mountLabels(labelsInput())
-    await waitFor(() => expect(jobs()[JOB_B]).toContain('Mission Hills - 123 Main'))
+    await waitFor(() => expect(jobs()[JOB_B]).toContain('Mission Flats - 123 Main'))
     expect(jobs()[JOB_A]).toBe('J1 · From the parent - 1 Main')
     expect(bids()[BID_C]).toContain('Oak Ridge - 9 Oak')
     // Every read asks for the unlabelled ids only. (The read runs twice on mount — see below.)

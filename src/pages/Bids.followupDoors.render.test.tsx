@@ -48,7 +48,7 @@ vi.mock('../lib/supabase', async () => {
     return build(false)
   }
 
-  const builder = { id: 'gc-knight', name: 'Knight Contracting', master_user_id: SMOKE_AUTH_USER_ID, contact_info: null, address: null }
+  const builder = { id: 'gc-kestrin', name: 'Kestrin Contracting', master_user_id: SMOKE_AUTH_USER_ID, contact_info: null, address: null }
 
   const TABLE_ROWS: Record<string, () => Array<Record<string, unknown>>> = {
     users: () => [{

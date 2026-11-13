@@ -2,7 +2,7 @@
 name: "Bid photos, and a Links column that is always there"
 number: 306
 group: gated
-status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes in work on `claude/bid-photos-second-look`: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words
+status: asked 2026-11-10 with a screenshot of the Bid Board's Unsent / Working table and a red box left of a row's folder icon · the Links column, the job photo path, the Drive functions, the bid-to-job path and the role gates read on main the same day · three directions drawn at desktop and phone width with a second look and a pick · the owner took direction C and PR 1 the same day · PR 1 shipped as v2.6854 and was pushed the same day (the `bid_photos` table and its bucket are live) · the owner answered call 3 the same day: the bid's project folder · PR 2 (the Drive leg) shipped as v2.6856, pushed and its three functions deployed the same day; a live test on the ZZ Test bid filed a photo into Drive · PR 3 (the photos icon and its window) shipped as v2.6860 the same day, with `bid-photos` redeployed for its by-line fix: the ask is answered on the live Bid Board · the owner's two calls of the same day on a bid with a job: keep the bid's and the job's icons apart, lettered B and J, and let estimators see the job's photos; drawn as the mock-up's section 5, not built · a live walk on clicktooling.com the same day and a second look at what shipped, with five fixes shipped as v2.6883: every link icon in its own fixed place, a fresh count, readable names, a drop overlay and plainer words · PR 5 (the column and its Files window) shipped as v2.6914 and PR 7 (set a link in it) as v2.6922 · PR 8 (a photo taken with no signal) built as v2.7097 on 2026-11-12, walked on a local copy at phone width with every write refused; a real phone on a real site has not walked it · a resend the bucket refused found the next morning and fixed as v2.7133
 mockup: to-dos/bid-photos-and-links/mockup.html
 summary: >
   The Bid Board's Links column draws an icon only for a link the bid has, so the icons do not line
@@ -17,10 +17,10 @@ summary: >
   opens the window. Half the plumbing exists: a bid's photo already has a landing folder, the
   Drive door already takes a bid, and a won bid's folder already becomes the job's folder. The
   train is nine small PRs with the photos icon first.
-next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 8, a photo taken with no signal, needs no further word and can start; its brief under The plan is written for a session that starts cold.
-size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; left: PRs 4, 6, 8 and 9 (S · M · S · S)
-blocker: None for PRs 8 and 9. Call 6 gates PR 4 and call 11 gates PR 6.
-opinion: build — the owner's two calls next, since they gate the removal and the job's pair; PR 8 can go meanwhile
+next: The owner's word on who may remove a photo (call 6) before PR 4, and on whether the cameras wear the letters too (call 11) before PR 6. PR 9, the bid's photos after the win, needs no further word. PR 8 wants one walk on a real phone with no signal: a photo on the ZZ Test bid, kept, sent when the signal is back, then taken back.
+size: L as a train of nine (S · M · M · S · M · M · S · S · S); PRs 1 to 3 together are the photos icon and answer the ask, PR 5 is the column with its Files window, and PR 7 sets a link in it; left: PRs 4, 6 and 9 (S · M · S)
+blocker: None for PR 9. Call 6 gates PR 4 and call 11 gates PR 6.
+opinion: build — the owner's two calls next, since they gate the removal and the job's pair; PR 9 can go meanwhile
 ---
 
 # Bid photos, and a Links column that is always there (#306)
@@ -427,8 +427,8 @@ Nine PRs, the photos icon first. Each client PR ships its release note and
   Call 9, whether the window replaces Files & links in the form, stays open: both write the same columns.
 - *Walked*: a link saved and Make the project folder pressed, each on a ZZ Test bid and each put back.
 
-**PR 8 · a photo taken with no signal (S).** Needs no word from the owner. Brief for a session that starts
-here cold, read on main at v2.6929 (2026-11-11):
+**PR 8 · a photo taken with no signal (S). Built, v2.7097, 2026-11-12.** The brief it was built from, read on main at
+v2.6929 (2026-11-11):
 - *What happens today*: on a phone with no signal, a bid photo's tile fails with **Retry**. The photo is not
   kept. `sendBidPhoto` (`src/lib/bids/bidPhotosIo.ts`) already throws `PhotoSendError` with kind `network`.
   But `useBidPhotosPanel` (`src/components/bids/useBidPhotosPanel.tsx`) hands the shot engine
@@ -455,6 +455,21 @@ here cold, read on main at v2.6929 (2026-11-11):
 - *Verify*: in the dev preview at phone width, turn the network off in the pane's devtools, take a photo on
   the ZZ Test bid (BP398), press add, turn it back on, and see the photo filed. Take the test photo back after
   (its row `removed_at`, its Drive file to the trash) and name it in the report.
+- *As built* (`docs/recent-features/v2.7097.md`): the ninth outbox kind, `bid-photos`, as briefed. Three things past
+  the brief. The window counts the bid's photos still on the phone, since on a phone it covers the waiting bar. A
+  window opened with no signal still offers the camera under the read that failed; before, it offered only Retry, so
+  a photo could not be started with no signal at all. And a desk's pick is kept too, since the shot engine keeps any
+  shot on any screen, as the Job photos window does: the words there say *this device*.
+- *Walked*: a local copy at 375 wide, headless Chrome, the ZZ Test bid, with every write refused and the bid photo
+  writes answered by the walk itself. The network cut in the browser, a closed tab and a signal that carries nothing
+  each kept the photo; three photos went up once each when the writes were let through. **Nothing was written to the
+  bid, so there is no test photo to take back.** The brief's own walk, a real photo filed by the sweep, was not made.
+- *Fixed after* (v2.7133, 2026-11-13): the send uploaded with an upsert and the bucket has no update policy, so a resend
+  whose first upload had landed was refused every try. It now uploads with no upsert and goes on to the row.
+- *Left for a real phone*: the phone's own camera with no signal on iOS and Android, a photo kept through a lock and a
+  night, a full phone, and the sweep filing a photo that waited.
+- *Not the best yet*: from the shutter to the blue button the photo is only a tile, so a tab the phone ends in between
+  loses it; and a waiting photo is sent only while the app is open. Both are named in the fragment.
 
 **PR 9 · the bid's photos after the win, and on Documents → Photos (S).**
 - *Migration*: `CREATE OR REPLACE VIEW uploaded_photos` with a `bid_photos` branch (the live

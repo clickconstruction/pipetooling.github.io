@@ -3,7 +3,7 @@ import { buildRobotBidPrompt, robotBidReadiness, type RobotReadinessBidFields } 
 
 const fullBid: RobotReadinessBidFields = {
   bid_number: '393',
-  project_name: 'TAKE 5 CONROE',
+  project_name: 'TUNE 5 CONROE',
   plans_link: 'https://drive.example/plans',
   service_type_id: 'st-1',
   distance_from_office: 44,
@@ -61,7 +61,7 @@ describe('buildRobotBidPrompt', () => {
   it('carries the bid number, name, due date, mileage, external_ref and blind rule', () => {
     const p = buildRobotBidPrompt(fullBid)
     expect(p).toContain('b393')
-    expect(p).toContain('TAKE 5 CONROE')
+    expect(p).toContain('TUNE 5 CONROE')
     expect(p).toContain('due 2026-09-01')
     expect(p).toContain('44 mi from the office')
     expect(p).toContain('external_ref b393')

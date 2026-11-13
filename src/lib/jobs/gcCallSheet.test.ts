@@ -104,10 +104,10 @@ describe('callSheetAnswers', () => {
 
 describe('the printed sheet', () => {
   it('lists each GC with what was last said and room to write', () => {
-    const sheet = buildCallSheet({ group: { ownerUserId: 'u-malachi', rows: [row('late', 30000, { gcName: 'Knight & Sons <LLC>' })] }, boardRowByGc: new Map([['late', board()]]), todayYmd: TODAY })
+    const sheet = buildCallSheet({ group: { ownerUserId: 'u-malachi', rows: [row('late', 30000, { gcName: 'Kestrin & Sons <LLC>' })] }, boardRowByGc: new Map([['late', board()]]), todayYmd: TODAY })
     const html = buildCallSheetPrintHtml(sheet, { ownerName: 'Malachi', dateStr: 'Sep 27, 2026', weekEndsYmd: callSheetWeekEnds('2026-09-21') })
     expect(html).toContain('Call sheet — Malachi')
-    expect(html).toContain('Knight &amp; Sons &lt;LLC&gt;')
+    expect(html).toContain('Kestrin &amp; Sons &lt;LLC&gt;')
     expect(html).toContain('promised Sep 20 — 7 days late')
     expect(html).toContain('“Check run is the 20th.”')
     expect(html).toContain('week ends 2026-09-25')
@@ -134,7 +134,7 @@ describe('the bills behind a total', () => {
 
   it('a row carries its GC’s bills in the statement’s order, each with the date its job was promised', () => {
     const sheet = buildCallSheet({
-      group: { ownerUserId: 'u-malachi', rows: [row('rmc', 16992.8, { group: { rows: bills } as never })] },
+      group: { ownerUserId: 'u-malachi', rows: [row('rlc', 16992.8, { group: { rows: bills } as never })] },
       boardRowByGc: new Map(),
       todayYmd: TODAY,
       promisedPayDates: { j1: { promisedYmd: '2026-09-15' }, j2: { promisedYmd: 'soon' } },
@@ -149,17 +149,17 @@ describe('the bills behind a total', () => {
   })
 
   it('the bills come to the total on the row', () => {
-    const sheet = buildCallSheet({ group: { ownerUserId: null, rows: [row('rmc', 16992.8, { group: { rows: bills } as never })] }, boardRowByGc: new Map(), todayYmd: TODAY })
+    const sheet = buildCallSheet({ group: { ownerUserId: null, rows: [row('rlc', 16992.8, { group: { rows: bills } as never })] }, boardRowByGc: new Map(), todayYmd: TODAY })
     expect(callSheetBillsSummary(sheet.rows[0]!.bills!).total).toBe(sheet.rows[0]!.amount)
   })
 
   it('lists the GC’s Collections bills apart — they are owed, and not in the total', () => {
     const inCollections = [bill('412', 'j9', 1712.5, 200, { inCollections: true })]
     const sheet = buildCallSheet({
-      group: { ownerUserId: null, rows: [row('rmc', 16992.8, { group: { rows: bills } as never }), row('other', 500, { group: { rows: [bill('1', 'j5', 500, 3)] } as never })] },
+      group: { ownerUserId: null, rows: [row('rlc', 16992.8, { group: { rows: bills } as never }), row('other', 500, { group: { rows: [bill('1', 'j5', 500, 3)] } as never })] },
       boardRowByGc: new Map(),
       todayYmd: TODAY,
-      collectionsByGc: new Map([['rmc', inCollections]]),
+      collectionsByGc: new Map([['rlc', inCollections]]),
     })
     expect(sheet.rows[0]?.collections?.map((b) => b.key)).toEqual(['412'])
     expect(sheet.rows[0]?.amount).toBe(16992.8)

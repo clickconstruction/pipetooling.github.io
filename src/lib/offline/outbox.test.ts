@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appTzWallTimeMs, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { plainWordsFailures } from '../plainWords'
-import { COULD_NOT_BE_SENT_WORDS, DEPENDENCY_REFUSED_MESSAGE, GOT_IT_LABEL, NEVER_QUEUES, NEXT_MORNING_HOUR, OUTBOX_KINDS, OUTBOX_SCHEMA, RETRY_DELAYS_MS, SENT_MARK, TRY_NOW_LABEL, WAITED_TOO_LONG_HELP, WAITED_TOO_LONG_WORDS, WAITING_WORDS, dropPress, failureQueues, inOrder, isOutboxKind, markDueNow, markRefused, markSeen, markSending, markSent, markTryFailed, needsAPerson, newPress, nextDueAt, nextSeq, nextToSend, nextTryAt, oldestWaiting, outboxBarWords, outboxDoorSections, outboxHoldsEverything, parseOutboxPress, pressLead, prune, retryDelayMs, settleDependents, waitLimitAt, waitedTooLong, waitingCountWords, type OutboxPress, keptPhotoCount, photosWaitingLine } from './outbox'
+import { COULD_NOT_BE_SENT_WORDS, DEPENDENCY_REFUSED_MESSAGE, GOT_IT_LABEL, NEVER_QUEUES, NEXT_MORNING_HOUR, OUTBOX_KINDS, OUTBOX_SCHEMA, RETRY_DELAYS_MS, SENT_MARK, TRY_NOW_LABEL, WAITED_TOO_LONG_HELP, WAITED_TOO_LONG_WORDS, WAITING_WORDS, dropPress, failureQueues, inOrder, isOutboxKind, markDueNow, markRefused, markSeen, markSending, markSent, markTryFailed, needsAPerson, newPress, nextDueAt, nextSeq, nextToSend, nextTryAt, oldestWaiting, outboxBarWords, outboxDoorSections, outboxHoldsEverything, parseOutboxPress, pressLead, prune, retryDelayMs, settleDependents, waitLimitAt, waitedTooLong, waitingCountWords, type OutboxPress, keptPhotoCount, photosWaitingLine, PHOTO_CARRYING_KINDS } from './outbox'
 
 /** Dale's morning: 7:58 AM on a Thursday in the company's calendar. */
 const DAY = '2026-10-29'
@@ -50,7 +50,7 @@ function clockOut(over: Partial<OutboxPress<'clock-out'>> = {}): OutboxPress<'cl
 
 describe('outbox · what may queue', () => {
   it('eight presses may queue, in this order of names, and nothing else', () => {
-    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket'])
+    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos'])
     expect(isOutboxKind('clock-in')).toBe(true)
     expect(isOutboxKind('payment')).toBe(false)
     expect(isOutboxKind(null)).toBe(false)
@@ -439,6 +439,14 @@ describe('the photos on the bar', () => {
     expect(keptPhotoCount([taskPhoto])).toBe(1)
     expect(photosWaitingLine([taskPhoto])).toEqual(['1 photo with it'])
     expect(pressLead(taskPhoto, () => '3:12 PM')).toBe('Task photo from 3:12 PM')
+    // A bid photos press (punch list #306, PR 8): the bid's shots with their names, counted the same way.
+    const bidShot = (id: string, sent = false) => ({ id, sent, name: 'Meter bank', takenAt: '2026-11-12T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Dana Whitfield' })
+    const bidPhotos = newPress({ id: 'p-bp', seq: 5, kind: 'bid-photos', userId: 'u1', pressedAt: T0, payload: { bidId: 'b1', photos: [bidShot('bp-0'), bidShot('bp-1', true)] } })
+    expect(keptPhotoCount([bidPhotos])).toBe(2)
+    expect(photosWaitingLine([bidPhotos])).toEqual(['2 photos with it'])
+    expect(pressLead(bidPhotos, () => '2:05 PM')).toBe('Bid photos from 2:05 PM')
+    expect(parseOutboxPress(JSON.parse(JSON.stringify(bidPhotos)))).toEqual(bidPhotos)
+    expect(PHOTO_CARRYING_KINDS).toEqual(['field-report', 'job-photos', 'task-photo', 'counter-ticket', 'bid-photos'])
     expect(keptPhotoCount([{ ...withPhotos('a', 2, 1), state: 'sent' }])).toBe(0)
     expect(keptPhotoCount([plain])).toBe(0)
   })

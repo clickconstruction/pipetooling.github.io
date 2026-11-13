@@ -18,7 +18,7 @@ Each row is one property, not one job. The jobs at that address sit under it as 
 The row says what the app already knows. A GC on the job leans commercial. GC means the general contractor. A commercial account leans commercial. A homeowner account leans residential. A word like tenant or suite leans commercial. That half of the switch is outlined and reads looks right. Nothing is saved until you tap.
 
 :::example A row with a hint
-8507 Culebra Road · Culebra Crossing Partners LLC · GC: Ventana Builders · HCP 1211 and 1240, Billed · Looks commercial: a GC on the job · {{button:outline|Residential}} {{button:amber|Commercial · looks right}}
+8507 Calvera Road · Calvera Crossing Partners LLC · GC: Ventana Builders · HCP 1211 and 1240, Billed · Looks commercial: a GC on the job · {{button:outline|Residential}} {{button:amber|Commercial · looks right}}
 :::
 
 ## Picking

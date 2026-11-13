@@ -41,7 +41,7 @@ afterAll(() => {
 const CARD: JobHoverCard = {
   number: 'JP1091',
   name: 'Lot 3 rough-in',
-  address: '14 Gun Dog Trl, Driftwood, TX',
+  address: '14 Gray Fox Trl, Driftwood, TX',
   lines: [
     { label: 'Customer', value: 'Harlow Homes' },
     { label: 'Stage', value: 'Working' },
@@ -91,7 +91,7 @@ describe('JobChip', () => {
     expect(card.getAttribute('role')).toBe('tooltip')
     expect(chip.getAttribute('aria-describedby')).toBe(card.id)
     expect(screen.getByTestId('job-hover-card-name').textContent).toBe('Lot 3 rough-in')
-    expect(screen.getByTestId('job-hover-card-address').textContent).toBe('14 Gun Dog Trl, Driftwood, TX')
+    expect(screen.getByTestId('job-hover-card-address').textContent).toBe('14 Gray Fox Trl, Driftwood, TX')
     expect(screen.getByTestId('job-hover-card-lines').textContent).toBe('CustomerHarlow HomesStageWorkingCrewDana, Mel')
     // It never stands between the pointer and the press.
     expect(card.style.pointerEvents).toBe('none')

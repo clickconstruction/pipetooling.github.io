@@ -37,7 +37,7 @@ So: a **pricing twin** (`twin-pricer-1`) that never bids. Wendi queues a request
 
 ## What the real quote taught the design
 
-National Wholesale Supply quote S6277623 (SpaceX BA-2 Core & Shell, 2026-09-02, revised 2026-09-09) against Wendi's real count rows on b359:
+National Wholesale Supply quote S6277623 (SkyLab BA-2 Core & Shell, 2026-09-02, revised 2026-09-09) against Wendi's real count rows on b359:
 
 - **Fixtures are priced as kits by subtotal.** "Subtotal ------- WC-1 & WC-2 EACH 1010.00" is the fixture price; the bowl, flush valve and seat under it carry **no unit price**. → a `kit` role line holds the $/each; unpriced component lines ride it.
 - **Carriers live on a second sheet keyed by tag** ("SEE THE CARRIER AND DRAIN QUOTE FOR THE CARRIER PRICING" → "WC-1 & WC-2 (CARRIERS)"), with **eight Josam variants** from $298.75 to $713.52. → the pricer follows the pointer, attaches the carrier role to the fixture, and **asks** which variant the plan calls for.

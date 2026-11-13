@@ -66,12 +66,22 @@ So each switch under **What the letter may say** shows its basis. A line that is
 - **Interest at 1.5 % a month** is offered when the bill went out. The bill is the written payment request under the Prompt Payment chapter. The interest runs from the 36th day after the bill was sent.
 - **Interest at 6 % a year** is the legal rate, for a bill that was never sent. It runs from the 30th day after the bill was due. With no sent date and no due date, there is no interest line.
 - *Theft-of-services report (Penal Code § 31.04)* starts off. You may tick it on a job with no payment. It reads {{chip:gray|not applicable}} once anything has been paid on the job. That counts a payment on any bill, or one recorded on the job with no bill. A partial payment defeats it.
-- *Pay codes* puts one code under the amount box for each covered Stripe bill. The debtor scans it with a phone, or types the address printed under it. Either way lands on that bill's own payment page. It starts on. A paper bill with no payment page gets no code. With no such bill, the line is greyed.
+- *Pay codes* puts the bill's code in the box with the amount and the day to pay by. The debtor scans it with a phone, or types the address printed beside it. Either way lands on that bill's own payment page. It starts on. A letter that covers two or more Stripe bills prints one code for each on page 2, above the bills. A paper bill with no payment page gets no code. With no such bill, the line is greyed.
 - *Notarial block (certified mail only)* adds a notary's block at the end of the letter. It starts off.
 
 :::example The lawyer's date
 A letter sent September 14 names September 28 as the pay-by day. It names October 14 as the day fees become recoverable. The Legal desk lists the letter on the account's Paper tab, under Final demand letters. Its Fees & steps tab shows the same October date, as *fees from 2026-10-14*. So a matter referred after that day arrives with the presentment already done.
 :::
+
+## How the letter is laid out
+
+The whole letter is on page 1. It opens with a box that holds the balance due, the day to pay by and the pay code. The demand follows. Then comes the signature.
+
+Page 2 is the account behind the letter. It holds the statement of account, the notice history and the *Enclosures* list.
+
+A long letter sets its lines closer so the signature stays on page 1. The type never goes under 10 point.
+
+A letter recorded before this layout opens the way it was sent.
 
 ## What goes out with it
 
@@ -83,7 +93,7 @@ The letter never goes alone. The **Enclosed** box lists its exhibits. An exhibit
 
 The exhibit letters run in order with no gap. With no agreement, the delivery record is Exhibit B.
 
-Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* list at the foot. The letter opens with a box that holds the balance due and the day to pay by. The preview on the right shows the letter, then each exhibit as the page it will be.
+Every exhibit page is stamped with its letter. The letter names the exhibits under the statement on page 2, and again in an *Enclosures* list at the foot. The preview on the right shows the letter, then each exhibit as the page it will be.
 
 {{button:outline-blue|Print packet}} opens one PDF in a new tab. It holds the letter, then every exhibit. {{button:outline-blue|Download PDF}} saves the same file. That button also counts the documents in the file.
 

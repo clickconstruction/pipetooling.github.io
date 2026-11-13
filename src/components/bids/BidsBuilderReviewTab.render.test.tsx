@@ -19,14 +19,14 @@ vi.mock('../../lib/supabase', () => {
   return { supabase: { from: () => builder, rpc: () => Promise.resolve({ data: [], error: null }) } }
 })
 
-const CUSTOMER = { id: 'c1', name: 'Knight Contracting', address: '4400 Sample Pkwy, Kyle, TX', master_user_id: 'u1' }
+const CUSTOMER = { id: 'c1', name: 'Kestrin Contracting', address: '4400 Sample Pkwy, Kyle, TX', master_user_id: 'u1' }
 const BID = {
   id: 'b1',
   customer_id: 'c1',
   address: '4400 Sample Pkwy, Kyle, TX',
   project_name: 'Sample Pkwy',
   outcome: 'won',
-  customers: { name: 'Knight Contracting' },
+  customers: { name: 'Kestrin Contracting' },
   bids_gc_builders: null,
 } as unknown as BidWithBuilder
 
@@ -71,7 +71,7 @@ describe('BidsBuilderReviewTab — Bid map follows the Map route (v2.4897)', () 
     const canOpenMap = isPathAllowedForRole(role, '/map', false)
     expect(canOpenMap).toBe(shown)
     renderTab(canOpenMap)
-    expect(await screen.findByText('Knight Contracting')).toBeTruthy()
+    expect(await screen.findByText('Kestrin Contracting')).toBeTruthy()
     expect(screen.queryByTitle("See this builder's bids on the map, colored by won / lost / pending") !== null).toBe(shown)
   })
 })
@@ -79,13 +79,13 @@ describe('BidsBuilderReviewTab — Bid map follows the Map route (v2.4897)', () 
 describe('BidsBuilderReviewTab — an empty queue names the next press (punch list #184, sweep C)', () => {
   it('a search with no builder quotes it, and Clear the search brings the queue back', async () => {
     renderTab(true)
-    expect(await screen.findByText('Knight Contracting')).toBeTruthy()
+    expect(await screen.findByText('Kestrin Contracting')).toBeTruthy()
     fireEvent.change(screen.getByPlaceholderText('Search builders...'), { target: { value: 'Hartline' } })
     // The tab holds other lists with their own empty states (the customer notes' *No notes yet.*), so read the queue's by its words.
     const emptyTexts = () => [...document.querySelectorAll('[data-empty-state]')].map((n) => n.textContent ?? '')
     expect(emptyTexts()).toContain('No builders match ‘Hartline’. Clear the search')
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
-    expect(await screen.findByText('Knight Contracting')).toBeTruthy()
+    expect(await screen.findByText('Kestrin Contracting')).toBeTruthy()
     expect(emptyTexts().filter((t) => t.startsWith('No builders match'))).toEqual([])
   })
 

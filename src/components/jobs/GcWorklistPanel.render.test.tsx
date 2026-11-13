@@ -18,12 +18,12 @@ const group = (gcId: string, gcName: string, subtotal: number): GcReviewGroup =>
 const cert = (gcId: string, total: number): GcReviewCertRow => ({ week_start: WEEK, gc_customer_id: gcId, certified_by_name: 'Taunya', certified_at: '2026-09-23T15:00:00Z', job_count: 2, total, snapshot: null, note: '' })
 
 const worklist = buildGcWorklist({
-  groups: [group('knight', 'Knight Contracting', 26000), group('loberg', 'Loberg Contracting', 22000), group('small', 'Small GC', 4000)],
-  certsByGc: new Map([['knight', cert('knight', 26000)]]),
+  groups: [group('kestrin', 'Kestrin Contracting', 26000), group('lowbeck', 'Lowbeck Contracting', 22000), group('small', 'Small GC', 4000)],
+  certsByGc: new Map([['kestrin', cert('kestrin', 26000)]]),
   marks: [],
   senders: new Map([
-    ['knight', 'u-malachi'],
-    ['loberg', 'u-malachi'],
+    ['kestrin', 'u-malachi'],
+    ['lowbeck', 'u-malachi'],
   ]),
   accountMen: new Map(),
   lastSentByGcId: {},
@@ -44,7 +44,7 @@ function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {})
       lastWordByGc={new Map()}
       assignableUsers={[{ id: 'u-malachi', name: 'Malachi' }]}
       assigningGcId={null}
-      expanded={new Set(['knight'])}
+      expanded={new Set(['kestrin'])}
       renderDetail={(r) => <p>bills of {r.gcName}</p>}
       {...handlers}
       {...over}
@@ -68,27 +68,27 @@ describe('GcWorklistPanel', () => {
 
   it('a checked GC offers Send and the word; each opens its own door', () => {
     const h = renderPanel()
-    const knight = within(rowFor('Knight Contracting'))
-    expect(knight.getByText('Checked')).toBeTruthy()
+    const kestrin = within(rowFor('Kestrin Contracting'))
+    expect(kestrin.getByText('Checked')).toBeTruthy()
     // The next step is the row's one button; the same door is on its dot.
-    fireEvent.click(knight.getByRole('button', { name: 'Send' }))
-    fireEvent.click(knight.getByRole('button', { name: 'Send step: next' }))
+    fireEvent.click(kestrin.getByRole('button', { name: 'Send' }))
+    fireEvent.click(kestrin.getByRole('button', { name: 'Send step: next' }))
     expect(h.onSend).toHaveBeenCalledTimes(2)
-    expect(h.onSend).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
+    expect(h.onSend).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'kestrin' }))
     // The word can come in before the statement goes out.
-    fireEvent.click(knight.getByRole('button', { name: 'Word step: to do' }))
-    expect(h.onWord).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
-    fireEvent.click(knight.getByRole('button', { name: 'or mark sent' }))
-    expect(h.onMarkSent).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
+    fireEvent.click(kestrin.getByRole('button', { name: 'Word step: to do' }))
+    expect(h.onWord).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'kestrin' }))
+    fireEvent.click(kestrin.getByRole('button', { name: 'or mark sent' }))
+    expect(h.onMarkSent).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'kestrin' }))
   })
 
   it('an unchecked GC cannot be sent — Check comes first', () => {
-    const h = renderPanel({ expanded: new Set(['knight', 'loberg']) })
-    const loberg = within(rowFor('Loberg Contracting'))
-    expect(loberg.queryByRole('button', { name: /^Send/ })).toBeNull()
-    expect(loberg.queryByRole('button', { name: 'or mark sent' })).toBeNull()
-    fireEvent.click(loberg.getByRole('button', { name: 'Check bills' }))
-    expect(h.onCheck).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'loberg' }))
+    const h = renderPanel({ expanded: new Set(['kestrin', 'lowbeck']) })
+    const lowbeck = within(rowFor('Lowbeck Contracting'))
+    expect(lowbeck.queryByRole('button', { name: /^Send/ })).toBeNull()
+    expect(lowbeck.queryByRole('button', { name: 'or mark sent' })).toBeNull()
+    fireEvent.click(lowbeck.getByRole('button', { name: 'Check bills' }))
+    expect(h.onCheck).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'lowbeck' }))
   })
 
   it('someone who cannot act reads the list and gets no buttons', () => {
@@ -98,7 +98,7 @@ describe('GcWorklistPanel', () => {
     expect(screen.queryByRole('button', { name: /^Word/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Get the word' })).toBeNull()
     // Reading a row's bills is not acting.
-    expect(screen.getByRole('button', { name: 'Hide Knight Contracting’s bills' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Hide Kestrin Contracting’s bills' })).toBeTruthy()
   })
 
   it('offers a call sheet for an account man’s GCs, never for the ones under the line', () => {
@@ -126,35 +126,35 @@ describe('GcWorklistPanel', () => {
 
   it('a row opens onto its statement; the links that were on the row are inside it', () => {
     const h = renderPanel()
-    const knight = within(rowFor('Knight Contracting'))
-    expect(knight.getByText('bills of Knight Contracting')).toBeTruthy()
-    expect(knight.getByText(/account man: Malachi/)).toBeTruthy()
-    expect(knight.getByRole('button', { name: 'change account man' })).toBeTruthy()
+    const kestrin = within(rowFor('Kestrin Contracting'))
+    expect(kestrin.getByText('bills of Kestrin Contracting')).toBeTruthy()
+    expect(kestrin.getByText(/account man: Malachi/)).toBeTruthy()
+    expect(kestrin.getByRole('button', { name: 'change account man' })).toBeTruthy()
     // A closed row shows neither.
-    const loberg = within(rowFor('Loberg Contracting'))
-    expect(loberg.queryByText('bills of Loberg Contracting')).toBeNull()
-    fireEvent.click(loberg.getByRole('button', { name: 'Show Loberg Contracting’s bills' }))
-    expect(h.onToggle).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'loberg' }))
+    const lowbeck = within(rowFor('Lowbeck Contracting'))
+    expect(lowbeck.queryByText('bills of Lowbeck Contracting')).toBeNull()
+    fireEvent.click(lowbeck.getByRole('button', { name: 'Show Lowbeck Contracting’s bills' }))
+    expect(h.onToggle).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'lowbeck' }))
   })
 
   it('a click on the row opens it; a click on a control inside it does not', () => {
     const h = renderPanel()
-    fireEvent.click(within(rowFor('Loberg Contracting')).getByText('Loberg Contracting'))
+    fireEvent.click(within(rowFor('Lowbeck Contracting')).getByText('Lowbeck Contracting'))
     expect(h.onToggle).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
-    fireEvent.click(within(rowFor('Knight Contracting')).getByText('bills of Knight Contracting'))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByRole('button', { name: 'Send' }))
+    fireEvent.click(within(rowFor('Kestrin Contracting')).getByText('bills of Kestrin Contracting'))
     expect(h.onToggle).toHaveBeenCalledTimes(1)
   })
 
   it('says what the statement on screen owes, not only the active bills', () => {
-    renderPanel({ statementByGc: new Map([['knight', { ...group('knight', 'Knight Contracting', 31500), jobCount: 3 }]]) })
-    expect(within(rowFor('Knight Contracting')).getByText(/\$31,500\.00 · 3 jobs · oldest 41d/)).toBeTruthy()
+    renderPanel({ statementByGc: new Map([['kestrin', { ...group('kestrin', 'Kestrin Contracting', 31500), jobCount: 3 }]]) })
+    expect(within(rowFor('Kestrin Contracting')).getByText(/\$31,500\.00 · 3 jobs · oldest 41d/)).toBeTruthy()
   })
 
   it('a stage picked on the track narrows the list to the GCs waiting there', () => {
     const h = renderPanel({ stage: 'send' })
     expect(screen.getAllByTestId('gc-worklist-row')).toHaveLength(1)
-    expect(rowFor('Knight Contracting')).toBeTruthy()
+    expect(rowFor('Kestrin Contracting')).toBeTruthy()
     const line = screen.getByRole('status')
     expect(line.textContent).toContain('1 of 3 GCs — checked and waiting to go out · $26,000.00')
     // The group still says what it holds, not what the filter left of it.

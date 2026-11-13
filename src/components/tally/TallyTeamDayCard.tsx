@@ -46,6 +46,10 @@ export type TallyTeamDayCardProps = {
   onOpenTicket?: (ticket: TicketWithPages) => void
   /** A paper handed in at the desk (PR 4): a scan, a photo or a PDF tied to this charge. */
   onAddTicket?: (row: StaleStaffRow) => void
+  /** A receipt link for this charge (punch list #299): a page with no sign-in where its holder photographs the receipt. */
+  onCopyReceiptLink?: (row: StaleStaffRow) => void
+  /** The charge whose receipt link is being made. */
+  receiptLinkBusyId?: string | null
 }
 
 const money = (n: number) =>
@@ -170,6 +174,8 @@ export function TallyTeamDayCard({
   onAnswerAsk,
   onOpenTicket,
   onAddTicket,
+  onCopyReceiptLink,
+  receiptLinkBusyId,
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
@@ -246,7 +252,7 @@ export function TallyTeamDayCard({
                       onClick={() => onOpenTicket?.(ticketOn.ticket)}
                       style={{ marginLeft: 6, border: 'none', background: 'var(--bg-green-100)', color: 'var(--text-green-700)', borderRadius: 999, padding: '0.05rem 0.5rem', fontSize: '0.6875rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
-                      {ticketChipWords(ticketOn.jobLabel)}
+                      {ticketChipWords(ticketOn.jobLabel, ticketOn.ticket.source)}
                     </button>
                   ) : null}
                 </div>
@@ -318,6 +324,11 @@ export function TallyTeamDayCard({
                 {onAddTicket && !ticketOn ? (
                   <button type="button" style={smallButton} data-testid="tally-team-add-ticket" onClick={() => onAddTicket(row)}>
                     + Ticket
+                  </button>
+                ) : null}
+                {onCopyReceiptLink && !ticketOn ? (
+                  <button type="button" style={smallButton} data-testid="tally-team-receipt-link" disabled={receiptLinkBusyId === charge.id} onClick={() => onCopyReceiptLink(row)}>
+                    {receiptLinkBusyId === charge.id ? 'Making the link…' : 'Copy the receipt link'}
                   </button>
                 ) : null}
               </div>

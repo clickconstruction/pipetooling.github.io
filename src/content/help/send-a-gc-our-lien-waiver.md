@@ -241,7 +241,7 @@ Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with
 
 Click a chip to open the job. The Bill tab's door adds or sends the waiver.
 
-{{gif:send-a-gc-our-lien-waiver-gcreview.gif|GC Review: Knight's bills read grey with no waiver started. Loberg's signed one is amber.}}
+{{gif:send-a-gc-our-lien-waiver-gcreview.gif|GC Review: one GC's bills read grey with no waiver started. Another GC's signed one is amber.}}
 
 ## What the GC sees
 

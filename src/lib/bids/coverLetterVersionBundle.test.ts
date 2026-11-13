@@ -53,12 +53,12 @@ describe('planLetterSections', () => {
   })
   it('adds each OFFERED non-★ scenario as an alternate section priced on its version', () => {
     const sections = planLetterSections(
-      [v({ id: 'burd', name: 'BURD', sort_order: 0, starred_price_book_version_id: 'b-base' })],
-      [p('b-base', 'burd', 0), { ...p('b-sharp', 'burd', 1), include_in_submission: true, name: 'Sharpened' }, { ...p('b-off', 'burd', 2), include_in_submission: false, name: 'Default' }],
+      [v({ id: 'brund', name: 'BRUND', sort_order: 0, starred_price_book_version_id: 'b-base' })],
+      [p('b-base', 'brund', 0), { ...p('b-sharp', 'brund', 1), include_in_submission: true, name: 'Sharpened' }, { ...p('b-off', 'brund', 2), include_in_submission: false, name: 'Default' }],
     )
     expect(sections.map((s) => [s.name, s.isAlternate, s.pricingId, s.offeredPricingId ?? null])).toEqual([
-      ['BURD', false, 'b-base', null],
-      ['BURD · Sharpened', true, 'b-sharp', 'b-sharp'],
+      ['BRUND', false, 'b-base', null],
+      ['BRUND · Sharpened', true, 'b-sharp', 'b-sharp'],
     ])
   })
   it('lists an included version with no prices yet (pricingId null) rather than dropping it', () => {

@@ -25,7 +25,7 @@ function inputs(over: Partial<JobHoverCardInputs> = {}): JobHoverCardInputs {
   }
 }
 
-const lot3 = job({ id: 'j1091', job_name: 'Lot 3 rough-in', job_address: '14 Gun Dog Trl, Driftwood, TX', customer_name: 'Harlow Homes', status: 'working', pct_complete: 40, revenue: 12000, payments_made: 3000, last_work_date: '2026-10-29', last_bill_date: '2026-10-15', created_at: '2026-09-02T15:00:00Z', bid_id: 'b401', prior_numbers: ['HCP 550', 'C# 543'] })
+const lot3 = job({ id: 'j1091', job_name: 'Lot 3 rough-in', job_address: '14 Gray Fox Trl, Driftwood, TX', customer_name: 'Harlow Homes', status: 'working', pct_complete: 40, revenue: 12000, payments_made: 3000, last_work_date: '2026-10-29', last_bill_date: '2026-10-15', created_at: '2026-09-02T15:00:00Z', bid_id: 'b401', prior_numbers: ['HCP 550', 'C# 543'] })
 const phase2 = bid({ id: 'b401', project_name: 'Phase 2 water' })
 const crew = [
   { job_id: 'j1091', user_id: 'u-dana' },
@@ -39,7 +39,7 @@ describe('buildJobHoverCard', () => {
     const card = buildJobHoverCard(lot3, inputs({ teamMembers: crew, bids: [phase2] }))
     expect(card.number).toBe('JP1091')
     expect(card.name).toBe('Lot 3 rough-in')
-    expect(card.address).toBe('14 Gun Dog Trl, Driftwood, TX')
+    expect(card.address).toBe('14 Gray Fox Trl, Driftwood, TX')
     expect(card.lines).toEqual([
       { label: 'Customer', value: 'Harlow Homes' },
       { label: 'Stage', value: 'Working' },

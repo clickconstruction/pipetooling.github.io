@@ -4,7 +4,7 @@ import type { WorkOrderRowLike } from './workOrderCoverage'
 
 const TODAY = '2026-09-05'
 const ROSTER = [
-  { id: 'p-tx', name: 'Texas R & A Electrical LLC', kind: 'sub', accountRole: null },
+  { id: 'p-tx', name: 'Texas Q & E Electrical LLC', kind: 'sub', accountRole: null },
   { id: 'p-mig', name: 'Miguel Rodriguez', kind: 'sub', accountRole: null },
   { id: 'p-edgar', name: 'Edgar', kind: 'sub', accountRole: null },
   { id: 'p-behar', name: 'Behar Kraja', kind: 'sub', accountRole: 'subcontractor' },
@@ -14,8 +14,8 @@ const ROSTER = [
   { id: 'p-taunya', name: 'Misses Taunya TESTING', kind: 'sub', accountRole: null },
 ]
 const JOBS = [
-  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Connell', job_address: '582 Curvatura' },
-  { id: 'j-273', hcp_number: '273', customer_name: 'Dudley', job_address: '9703 Lenox' },
+  { id: 'j-892', hcp_number: '892', customer_name: 'Megan Corbray', job_address: '582 Curvatura' },
+  { id: 'j-273', hcp_number: '273', customer_name: 'Dunmere', job_address: '9703 Lenox' },
 ]
 const sheet = (over: Partial<NeedsWorkOrderSheet> & { id: string }): NeedsWorkOrderSheet => ({
   job_number: '892',
@@ -52,7 +52,7 @@ describe('sheetsNeedingWorkOrder — money is items minus payments, never the pa
   it('an open balance counts, with agreed / paid / open on the row', () => {
     const rows = run([sheet({ id: 's1', job_number: '273', assigned_to_name: 'Edgar', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 8500 }], payments: [{ amount: 500 }] })])
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ sheetId: 's1', jobId: 'j-273', primary: '#273 · Dudley', secondary: '9703 Lenox', agreed: 8500, paid: 500, open: 8000, unpriced: false, subNames: ['Edgar'] })
+    expect(rows[0]).toMatchObject({ sheetId: 's1', jobId: 'j-273', primary: '#273 · Dunmere', secondary: '9703 Lenox', agreed: 8500, paid: 500, open: 8000, unpriced: false, subNames: ['Edgar'] })
   })
   it('an unpriced sheet with nothing paid still counts — it is work with no agreement', () => {
     const rows = run([sheet({ id: 's1', items: [], payments: [] })])
@@ -78,7 +78,7 @@ describe('sheetsNeedingWorkOrder — only roster-sub sheets', () => {
     expect(run([sheet({ id: 's1', assigned_to_name: 'Abraham' })], [], [['s1', ['p-mig']]])).toHaveLength(1)
   })
   it('a legacy sheet with no junction resolves its names against the roster', () => {
-    expect(run([sheet({ id: 's1', assigned_to_name: 'texas r & a electrical llc', job_number: '977' })])).toHaveLength(1)
+    expect(run([sheet({ id: 's1', assigned_to_name: 'texas q & e electrical llc', job_number: '977' })])).toHaveLength(1)
     expect(run([sheet({ id: 's2', assigned_to_name: 'Ryan (Garner HVAC)' })])).toEqual([])
     expect(run([sheet({ id: 's3', assigned_to_name: '' })])).toEqual([])
   })
@@ -109,13 +109,13 @@ describe('sheetsNeedingWorkOrder — coverage', () => {
 
 describe('sheetsNeedingWorkOrder — sheets outside the Pipeline', () => {
   it('labels by the sheet\'s own job number + address and carries no job id', () => {
-    const rows = run([sheet({ id: 's1', job_number: '977', address: 'Hospital-415 Springtown Way', assigned_to_name: 'Texas R & A Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] })])
-    expect(rows[0]).toMatchObject({ jobId: null, jobNumber: '977', primary: '#977', secondary: 'Hospital-415 Springtown Way', open: 40000 })
+    const rows = run([sheet({ id: 's1', job_number: '977', address: 'Hospital-415 Stonewick Way', assigned_to_name: 'Texas Q & E Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] })])
+    expect(rows[0]).toMatchObject({ jobId: null, jobNumber: '977', primary: '#977', secondary: 'Hospital-415 Stonewick Way', open: 40000 })
   })
   it('sorts by open money, then job number', () => {
     const rows = run([
       sheet({ id: 'a', job_number: '892' }),
-      sheet({ id: 'b', job_number: '977', assigned_to_name: 'Texas R & A Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] }),
+      sheet({ id: 'b', job_number: '977', assigned_to_name: 'Texas Q & E Electrical LLC', items: [{ count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 40000 }] }),
       sheet({ id: 'c', job_number: '273', assigned_to_name: 'Edgar' }),
     ])
     expect(rows.map((r) => r.sheetId)).toEqual(['b', 'c', 'a'])
@@ -136,6 +136,6 @@ describe('sheetsNeedingWorkOrder — sheets outside the Pipeline', () => {
       todayYmd: TODAY,
     })
     expect(rows[0]?.jobId).toBe('j-273')
-    expect(rows[0]?.primary).toBe('#273 · Dudley')
+    expect(rows[0]?.primary).toBe('#273 · Dunmere')
   })
 })
