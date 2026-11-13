@@ -41,16 +41,24 @@ class FakeJsPDF {
   }
   line() {}
   rect() {}
-  addImage() {}
+  /** Each picture drawn: its data, the page it is on and its size (v2.7086: the pay code in the amount box). */
+  images: Array<{ data: string; page: number; w: number; h: number }> = []
+  addImage(data: string, _type: string, _x: number, _y: number, w: number, h: number) {
+    this.images.push({ data, page: this.pages, w, h })
+  }
   /** The blob names the drawing it came from, so a test can tell which of several drawings was kept. */
   output() {
     const at = (start: string) => this.texts.findIndex((t) => t.startsWith(start))
-    return new Blob([`pages=${this.pages} body=${this.textSizes[at('Unless payment in full')] ?? 0} signature=${this.textSizes[at('Sincerely,')] ?? 0} signed-on-page=${this.textPages[at('Sincerely,')] ?? 0}`])
+    const account = at('STATEMENT OF ACCOUNT')
+    const codes = this.images.map((i) => `${i.w}mm on page ${i.page}`).join(', ')
+    return new Blob([`pages=${this.pages} body=${this.textSizes[at('Unless payment in full')] ?? 0} signature=${this.textSizes[at('Sincerely,')] ?? 0} signed-on-page=${this.textPages[at('Sincerely,')] ?? 0}${account >= 0 ? ` account-on-page=${this.textPages[account]}` : ''}${codes ? ` codes=${codes}` : ''}`])
   }
 }
 vi.mock('../loadJsPDF', () => ({ loadJsPDF: async () => FakeJsPDF }))
 
 const TODAY = '2026-11-12'
+/** How many address lines put the letter-first letter at each rung, in this stand-in where every text is one line. */
+const PROBE = { fits: 15, closer: 16, smaller: 19, over: 22 }
 
 /** A made-up letter of the short form, as long as its notices. */
 function letter(notices: number): DemandLetterFields {
@@ -115,4 +123,50 @@ describe('the demand letter on one page (v2.7080)', () => {
     expect(await drawn(9)).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=2', made: 4 })
     expect(await drawn(40)).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=2', made: 4 })
   })
+})
+
+describe('letter-first in the PDF (v2.7086, punch list #333)', () => {
+  const bill = (n: number) => ({ invoiceNumber: `#104${n}`, sentYmd: '2026-09-21', dueYmd: '2026-10-05', lines: [{ description: 'Replace a water heater', qty: '1', amount: '1850.00' }], total: '1850.00', paid: '0', balance: '1850.00', invoiceId: `inv-${n}`, payable: true })
+  /** A letter-first letter: `address` lines of recipient set how long the letter is, `notices` how long the account behind it is. */
+  const letterFirst = (o: { address?: number; notices?: number; bills?: number }): DemandLetterFields => ({
+    ...letter(o.notices ?? 1),
+    layout: 'letter-first',
+    statement: Array.from({ length: o.bills ?? 1 }, (_, i) => bill(i + 1)),
+    recipientAddress: Array.from({ length: o.address ?? 2 }, (_, i) => `Line ${i + 1}`).join('\n'),
+  })
+  const assets = { 'inv-1': { svg: '', png: 'data:image/png;base64,ONE' }, 'inv-2': { svg: '', png: 'data:image/png;base64,TWO' } }
+  async function drawnFirst(o: Parameters<typeof letterFirst>[0]): Promise<{ words: string; made: number }> {
+    FakeJsPDF.made = 0
+    const blob = await buildDemandLetterPdfBlob(letterFirst(o), TODAY, { payAssets: assets })
+    return { words: await blob.text(), made: FakeJsPDF.made }
+  }
+
+  it('the letter is signed on page 1 and the account starts page 2; its one code is drawn in the amount box', async () => {
+    expect(await drawnFirst({})).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=1 account-on-page=2 codes=20mm on page 1', made: 1 })
+  })
+
+  it('a long account never tightens the letter: only what runs to the signature is counted', async () => {
+    // Forty notices run the account onto more pages. The letter still fits its own, so it is drawn once at the usual setting.
+    const long = await drawnFirst({ notices: 40 })
+    expect(long.made).toBe(1)
+    expect(long.words).toMatch(/^pages=[3-9] body=11 signature=11 signed-on-page=1 account-on-page=2 /)
+  })
+
+  it('a letter that runs past its page is drawn tighter until the signature is back on page 1', async () => {
+    const fits = await drawnFirst({ address: PROBE.fits })
+    expect([fits.made, fits.words.includes('signed-on-page=1')]).toEqual([1, true])
+    const closer = await drawnFirst({ address: PROBE.closer })
+    expect(closer).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=1 account-on-page=2 codes=20mm on page 1', made: 2 })
+    const smaller = await drawnFirst({ address: PROBE.smaller })
+    expect(smaller.made).toBeGreaterThan(2)
+    expect(smaller.words).toMatch(/^pages=2 body=10(\.5)? signature=10(\.5)? signed-on-page=1 account-on-page=2 /)
+    // Past every step the letter keeps the usual setting and runs on; the account still starts its own page.
+    const over = await drawnFirst({ address: PROBE.over })
+    expect(over).toEqual({ words: 'pages=3 body=11 signature=11 signed-on-page=2 account-on-page=3 codes=20mm on page 1', made: 4 })
+  })
+
+  it('two codes sit above the statement behind the letter, at the band’s own size', async () => {
+    expect(await drawnFirst({ bills: 2 })).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=1 account-on-page=2 codes=22mm on page 2, 22mm on page 2', made: 1 })
+  })
+
 })

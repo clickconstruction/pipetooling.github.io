@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { brandMarkPath, PAY_QR_LEVEL, payQrImageSettings, payQrProps, payQrSheetHtml, payQrSvgMarkup } from './payQr'
+import { brandMarkPath, PAY_QR_LEVEL, payQrImageSettings, payQrProps, payQrSheetHtml, payQrSvgMarkup, withSvgNamespace } from './payQr'
 import { payLinkUrl } from './payLink'
 
 const ID = '8f3c2a1e-6b7d-4c9a-9e21-5d0f7a3b1c44'
@@ -59,5 +59,20 @@ describe('payQr — the half-sheet', () => {
     const html = payQrSheetHtml({ company: 'C', billLabel: 'Bill', jobName: '', amountLabel: '', invoiceId: ID, svg: '' })
     expect(html).not.toContain('class="amt"')
     expect(html).toContain('<div class="what">Bill</div>')
+  })
+})
+
+describe('payQr — the code as a picture (v2.7086)', () => {
+  it('the markup gets the SVG namespace before it is loaded as an image, once', async () => {
+    // The drawing is made for a page and carries no namespace; a browser reading it as an image file refuses it without one.
+    const svg = await payQrSvgMarkup(payLinkUrl(ID), 120, null)
+    expect(svg.startsWith('<svg ')).toBe(true)
+    expect(svg).not.toContain('xmlns=')
+    const named = withSvgNamespace(svg)
+    expect(named.startsWith('<svg xmlns="http://www.w3.org/2000/svg" height="120"')).toBe(true)
+    expect(named.slice('<svg xmlns="http://www.w3.org/2000/svg"'.length)).toBe(svg.slice('<svg'.length))
+    // Markup that already has it is left alone.
+    expect(withSvgNamespace(named)).toBe(named)
+    expect(withSvgNamespace('<svg viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg"></svg>')).toBe('<svg viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg"></svg>')
   })
 })
