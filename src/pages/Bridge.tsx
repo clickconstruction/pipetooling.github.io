@@ -124,6 +124,7 @@ import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
 import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
+import { BridgePunchListLink } from '../components/bridge/BridgePunchListLink'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -1469,6 +1470,7 @@ export default function Bridge() {
         <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
+        <BridgePunchListLink role={role} />
       </div>
       {leftOutRules && (
         <BridgeLeftOut

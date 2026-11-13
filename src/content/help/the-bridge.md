@@ -15,6 +15,8 @@ The line beside the page's name says today's date and the pay week. That line al
 
 The line under it says [what the Bridge leaves out](#what-the-bridge-leaves-out).
 
+Press {{button:outline|Punch list}} at the top right of the page to open the [Punch list](/punch-list). On a phone the button sits under the page's name.
+
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## The first screen
