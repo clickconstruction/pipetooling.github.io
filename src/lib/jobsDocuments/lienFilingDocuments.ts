@@ -59,6 +59,21 @@ export function filingHtmlHasTypedSignature(html: string): boolean {
   return html.includes('data-filing-signed-mode="type"') || html.includes('data-filing-signed-mode="code"')
 }
 
+/**
+ * A paragraph a letter writes as a bullet (v2.7071): `• words`, as counsel's cover letters list the ways a claim ends.
+ * Returns the words behind the mark, or null for any other paragraph. The screen, the print and the PDF draw such a
+ * paragraph indented, the mark hanging in front of the words, so a second line starts under the first and the list
+ * stands apart from the letter's body. The letter's text does not change, and `filingDocText` keeps the line as written.
+ */
+export function filingBulletBody(text: string): string | null {
+  const m = /^•\s+(\S[\s\S]*)$/.exec(text)
+  return m ? m[1]! : null
+}
+/** The bullet's own paragraph on screen and in print: the mark 1.5em in, the words 2.6em in, every line of them. */
+function bulletParagraphHtml(body: string): string {
+  return `<p data-filing-bullet style="margin:0 0 0.75em;padding-left:2.6em;text-indent:-1.1em"><span style="display:inline-block;width:1.1em;text-indent:0">• </span>${esc(body)}</p>`
+}
+
 export type FilingDocBlock =
   | { kind: 'letterhead'; company: string; licenseLine: string; contactLines: string[] }
   | { kind: 'refstrip'; items: string[] }
@@ -277,9 +292,11 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         )
         break
       }
-      case 'paragraph':
-        parts.push(`<p style="margin:0 0 0.75em">${esc(b.text)}</p>`)
+      case 'paragraph': {
+        const bullet = filingBulletBody(b.text)
+        parts.push(bullet === null ? `<p style="margin:0 0 0.75em">${esc(b.text)}</p>` : bulletParagraphHtml(bullet))
         break
+      }
       case 'numbered':
         parts.push(`<p style="margin:0 0 0.75em">${b.n}. ${esc(b.text)}</p>`)
         break
@@ -529,27 +546,62 @@ const MUTED: [number, number, number] = [122, 117, 108]
 const CONTACT: [number, number, number] = [95, 90, 82]
 const RULE: [number, number, number] = [207, 203, 194]
 
+/** How a paper's body (its paragraphs and numbered statements) is set in the PDF: the type in points, a line and the gap under a paragraph in mm. */
+export type FilingBodySet = { size: number; line: number; gap: number }
+/** The body as every paper has been drawn: 11.5 point on 6.2 mm lines. */
+export const FILING_BODY_SET: FilingBodySet = { size: 11.5, line: 6.2, gap: 2.5 }
+/**
+ * The steps a letter asked to fit one page tries, in order (v2.7071): first the lines closer at the same type, then the
+ * type down half a point at a time. It stops at 10 point, the smallest a mailed letter is set in here. The first step
+ * that puts the whole paper on one page is the one drawn.
+ */
+export const FILING_FIT_ONE_PAGE_STEPS: readonly FilingBodySet[] = [
+  { size: 11.5, line: 5.6, gap: 2 },
+  { size: 11, line: 5.3, gap: 1.8 },
+  { size: 10.5, line: 5, gap: 1.6 },
+  { size: 10, line: 4.8, gap: 1.5 },
+]
+/** Where a bullet's mark and its words start in the PDF, in mm from the left margin. */
+const BULLET_MARK_MM = 6
+const BULLET_TEXT_MM = 10
+
 /**
  * The paper as a PDF. A signature travels with the statement above it and the notary's block under it (v2.6810,
  * `filingKeepTogetherRuns`): the paper is drawn, and where a run fell across two pages it is drawn again with the run
  * starting a page. A run taller than a page still splits.
+ *
+ * `opts.fit: 'one-page'` (v2.7071) is for a cover letter: a paper that runs past one page is drawn again down
+ * `FILING_FIT_ONE_PAGE_STEPS` and the first drawing that fits one page is kept. A paper that fits as it is, and one
+ * that no step brings to one page, are drawn as every paper is. Only the body's paragraphs take the step: the
+ * letterhead, the title and the signature keep their size.
  */
-export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer?: string }): Promise<Blob> {
+export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer?: string; fit?: 'one-page' }): Promise<Blob> {
   const JsPDF = await loadJsPDF()
+  const usual = drawFilingDocPdfKept(JsPDF, blocks, FILING_BODY_SET, opts)
+  if (opts?.fit !== 'one-page' || usual.doc.getNumberOfPages() <= 1) return usual.doc.output('blob')
+  for (const step of FILING_FIT_ONE_PAGE_STEPS) {
+    const tighter = drawFilingDocPdfKept(JsPDF, blocks, step, opts)
+    if (tighter.doc.getNumberOfPages() <= 1) return tighter.doc.output('blob')
+  }
+  return usual.doc.output('blob')
+}
+
+/** One drawing of the paper at one body setting, with its keep-together passes. */
+function drawFilingDocPdfKept(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: FilingDocBlock[], body: FilingBodySet, opts?: { footer?: string }) {
   const runs = filingKeepTogetherRuns(blocks)
   const breakBefore = new Set<number>()
-  let drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, opts)
+  let drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, body, opts)
   // Each pass can only push later blocks down, so a run is broken before at most once and the passes end.
   for (let pass = 0; pass < runs.length; pass++) {
     const split = runs.find(([first, last]) => !breakBefore.has(first) && drawn.pageAtStart[first] !== drawn.pageAtEnd[last])
     if (!split) break
     breakBefore.add(split[0])
-    drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, opts)
+    drawn = drawFilingDocPdf(JsPDF, blocks, breakBefore, body, opts)
   }
-  return drawn.doc.output('blob')
+  return drawn
 }
 
-function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: FilingDocBlock[], breakBefore: ReadonlySet<number>, opts?: { footer?: string }) {
+function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: FilingDocBlock[], breakBefore: ReadonlySet<number>, body: FilingBodySet, opts?: { footer?: string }) {
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
   // The page each block starts and ends on, for the keep-together passes.
   const pageAtStart: number[] = []
@@ -644,7 +696,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
       case 'qrLink': {
         const qr = WINDOW_QR_MM
         ensureRoom(qr + 4)
-        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr, undefined, 'FAST')
         else {
           doc.setDrawColor(...RULE)
           doc.rect(PAGE_MARGIN, y, qr, qr)
@@ -697,7 +749,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         doc.setDrawColor(...RULE)
         doc.setLineWidth(0.25)
         doc.line(PAGE_MARGIN, y - 2, RIGHT_EDGE, y - 2)
-        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr, undefined, 'FAST')
         else {
           doc.setDrawColor(...RULE)
           doc.rect(PAGE_MARGIN, y, qr, qr)
@@ -761,13 +813,24 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
         y = underY + 5
         break
       }
-      case 'paragraph':
-        write(b.text, 6.2)
-        y += 2.5
+      case 'paragraph': {
+        const bullet = filingBulletBody(b.text)
+        if (bullet === null) write(b.text, body.line, { size: body.size })
+        else {
+          // The mark hangs in front of the words (v2.7071): it is drawn on the first line, and every line of the words starts at the same indent.
+          ensureRoom(body.line)
+          doc.setFont('times', 'normal')
+          doc.setFontSize(body.size)
+          doc.setTextColor(...INK)
+          doc.text('•', PAGE_MARGIN + BULLET_MARK_MM, y)
+          write(bullet, body.line, { size: body.size, x: PAGE_MARGIN + BULLET_TEXT_MM, width: MAX_TEXT_WIDTH_MM - BULLET_TEXT_MM })
+        }
+        y += body.gap
         break
+      }
       case 'numbered':
-        write(`${b.n}. ${b.text}`, 6.2)
-        y += 2.5
+        write(`${b.n}. ${b.text}`, body.line, { size: body.size })
+        y += body.gap
         break
       case 'signature': {
         if (b.signed) {

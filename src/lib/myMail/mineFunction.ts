@@ -824,9 +824,9 @@ export function tagAllFiled(counts: Pick<MyMailTagPlan['counts'], 'lines' | 'fil
 export function myMailTagEventWords(who: MyMailNamed, seat?: MyMailNamed | null, filed = false): string {
   // Every mail the tag wrote was old (v2.7027, punch list #324): the line says so, and that nobody was asked.
   const later = `${filed ? `${MY_MAIL_FILED_WORDS} ` : ''}Later mail in it lands here by itself.`
-  if (!seat) return `${namedAs(who)} tagged this conversation from their mail. ${later}`
+  if (!seat) return `${namedAs(who)} saved this conversation from their mail. ${later}`
   const own = seat.email.trim() !== '' && seat.email.trim().toLowerCase() === who.email.trim().toLowerCase()
-  return `${namedAs(seat)} tagged this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
+  return `${namedAs(seat)} saved this conversation from ${own ? 'their' : `${namedAs(who)}'s`} mail, through the dev seat. ${later}`
 }
 
 /**
@@ -1361,11 +1361,59 @@ export function placedLineWords(name: string): string {
 
 /** The words of the untag's confirm on such a line, and its press. */
 export const PLACED_LINE_WORDS = {
-  untag: 'Untag',
+  untag: 'Take off the job',
   untagAsk: 'Take this conversation off the job? The lines the app put here go, with their files. The app will not put it back.',
   untagged: 'The conversation is off the job. The app will not put it back.',
-  notUntagged: 'The conversation was not untagged.',
+  notUntagged: 'The conversation was not taken off the job.',
 } as const
+
+// ---------- telling a mailbox's owner that someone else saved their mail (v2.7068) ----------
+
+export { MAIL_SAVED_CHANNEL, MAIL_SAVED_TEMPLATE } from './savedForYouNames'
+/** Saves this close together are one notice: a batch of seventeen reads as one line, not seventeen. */
+export const MAIL_SAVED_BATCH_MINUTES = 30
+
+/** What a batch of saves from one person's mail came to: who made them, how many conversations, onto how many jobs. */
+export interface MailSavedFacts {
+  savers: string[]
+  conversations: number
+  jobs: number
+  /** The job in words, when every conversation went onto the same one. */
+  job: string | null
+}
+
+/**
+ * The facts of a batch, from the owner's `email_tag_threads` rows tagged since the batch began: only rows someone else
+ * tagged onto a job (`tagged_by` not the owner, never an HR file's row), each saver by name once in the order they
+ * first saved. `oneJob` is the job in words for the caller's own save, used when the whole batch went onto it.
+ */
+export function mailSavedFacts(
+  rows: readonly { tagged_by?: string | null; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; person_id?: string | null }[],
+  ownerId: string,
+  names: Readonly<Record<string, string>>,
+  oneJob: { key: string; words: string } | null,
+): MailSavedFacts {
+  const theirs = rows.filter((r) => !r.person_id && r.tagged_by && r.tagged_by !== ownerId && jobKeyOfRow(r) !== null)
+  const savers = [...new Set(theirs.map((r) => (names[r.tagged_by as string] ?? '').trim()).filter(Boolean))]
+  const keys = [...new Set(theirs.map((r) => jobKeyOfRow(r) as string))]
+  return { savers, conversations: theirs.length, jobs: keys.length, job: keys.length === 1 && oneJob && keys[0] === oneJob.key ? oneJob.words.trim() || null : null }
+}
+
+/** The notice's one line: who saved how many conversations from the owner's mail, and onto what. */
+export function mailSavedTitle(facts: MailSavedFacts): string {
+  const who = facts.savers.length === 0 ? 'A developer' : facts.savers.length === 1 ? facts.savers[0]! : `${facts.savers.slice(0, -1).join(', ')} and ${facts.savers[facts.savers.length - 1]}`
+  const what = facts.conversations === 1 ? 'a conversation' : `${facts.conversations} conversations`
+  const where = facts.jobs === 1 ? (facts.job ?? 'a job') : `${facts.jobs} jobs`
+  return `${who} saved ${what} from your mail to ${where}.`
+}
+
+/** The notice's second line: how it was done, where the mail is now, and that the mailbox was not changed. */
+export const MAIL_SAVED_BODY = 'They did it for you, through the dev seat. The mail is on the job in Messages, where the office reads it. Nothing changed in your Gmail.'
+
+/** When the batch a notice belongs to began: `MAIL_SAVED_BATCH_MINUTES` back from now, as an ISO time. */
+export function mailSavedBatchSince(now: string): string {
+  return new Date(Date.parse(now) - MAIL_SAVED_BATCH_MINUTES * 60_000).toISOString()
+}
 
 // ---------- the old Gmail label, taken out of every mailbox once (v2.7035) ----------
 

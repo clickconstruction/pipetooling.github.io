@@ -10,7 +10,7 @@ import { buildSampleEmail } from '../customerSampleEmails'
 import { noticeDeadlineForMonth } from '../jobs/lienDeadlines'
 import { PAPER_IDS, paperSample } from './paperSamples'
 import { sampleText } from './sampleTexts'
-import { SAMPLE_LIEN_JOB, SAMPLE_OWNER, sampleCourtesyEmail, sampleCourtesyFacts, sampleCourtesyText, sampleLetterTwo, sampleLienAffidavit, sampleLienAffidavitFields, sampleLienCoverLetter, sampleLienDays, sampleReleaseOfRecord, sampleRetainageNotice } from './lienLetterSamples'
+import { SAMPLE_LIEN_JOB, SAMPLE_OWNER, sampleCourtesyEmail, sampleCourtesyFacts, sampleCourtesyText, sampleLetterTwo, sampleLienAffidavit, sampleLienAffidavitFields, sampleLienCoverLetter, sampleLienDays, sampleOwnerNoticeInputs, sampleReleaseOfRecord, sampleRetainageNotice } from './lienLetterSamples'
 
 const TODAY = '2026-11-12'
 
@@ -55,6 +55,21 @@ describe('the lien letters, as papers', () => {
     expect(html).toContain(`Call our office at ${PORTAL_COMPANY.phone} before the next payment to ${SAMPLE_GC.company}.`)
     expect(html).toContain('Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056), with invoices.')
     expect(html).toContain(`Re: ${SAMPLE_LIEN_JOB.number} · ${SAMPLE_LIEN_JOB.name}`)
+  })
+
+  it('the notice form names the month and the mailing day every other letter names', () => {
+    const { fields, extras } = sampleOwnerNoticeInputs(TODAY)
+    expect(fields.noticeDate).toBe('2026-10-22')
+    // The three items a real notice's reference line carries. The PDF draws the line unwrapped, so it stays short.
+    expect(extras.refItems).toEqual(['Job #1077', 'Work months August 2026', 'October 22, 2026'])
+    const form = paperSample('owner-notice', TODAY).html
+    expect(form).toContain('October 22, 2026')
+    expect(form).toContain('August 2026')
+    // Neither today's date nor a month of its own, which is how it disagreed with its cover letter until v2.7070.
+    expect(form).not.toContain('November 12, 2026')
+    expect(form).not.toContain('2026-09')
+    expect(sampleLienCoverLetter(TODAY).html.toUpperCase()).toContain('AUGUST 2026')
+    expect(sampleLienAffidavit(TODAY).html).toContain('October 22, 2026')
   })
 
   it('the attorney’s letter comes in counsel’s two kinds', () => {

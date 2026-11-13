@@ -11,6 +11,8 @@ import TheirPaperSheet from './TheirPaperSheet'
 import { theirPaperFromRow, type TheirPaperDraft } from '../../lib/jobs/theirPaper'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
+const openPayCalendar = vi.fn()
+vi.mock('../../contexts/PayCalendarModalContext', () => ({ usePayCalendarModal: () => ({ openPayCalendar, closePayCalendar: () => undefined }) }))
 const saveSpy = vi.fn((_input: { jobId: string; existingId: string | null; draft: TheirPaperDraft }) => Promise.resolve({ row: { id: 'c-new' }, uploadError: null }))
 vi.mock('../../lib/jobs/theirPaperIo', () => ({ saveTheirPaper: (input: { jobId: string; existingId: string | null; draft: TheirPaperDraft }) => saveSpy(input) }))
 
@@ -60,5 +62,22 @@ describe('TheirPaperSheet', () => {
     expect(submit.textContent).toBe('Save the record')
     fireEvent.click(submit)
     await waitFor(() => expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ existingId: 'c-their' })))
+  })
+
+  it('offers the payer’s pay calendar, carrying the paper’s clause, and offers nothing with no payer (punch list #323)', () => {
+    const { unmount } = renderWithProviders(<TheirPaperSheet open onClose={() => undefined} job={{ id: 'j891', num: '891', partyName: 'Harrow Builders' }} existing={null} />)
+    expect(screen.getByLabelText('Pay calendar clause')).toBeTruthy()
+    expect(screen.queryByTestId('their-paper-pay-calendar')).toBeNull()
+    unmount()
+    renderWithProviders(<TheirPaperSheet open onClose={() => undefined} job={{ id: 'j891', num: '891', partyName: 'Harrow Builders' }} payer={{ id: 'gc-1', name: 'Harrow Builders' }} existing={null} overlayZIndex={1400} />)
+    fireEvent.change(screen.getByLabelText('Pay calendar clause'), { target: { value: '§ 5.2' } })
+    fireEvent.change(screen.getByLabelText('Pay calendar'), { target: { value: 'in by the 25th, paid the 30th of the next month' } })
+    const press = screen.getByTestId('their-paper-pay-calendar')
+    expect(press.textContent).toBe('Set Harrow Builders’s pay calendar…')
+    fireEvent.click(press)
+    expect(openPayCalendar).toHaveBeenCalledWith(
+      { id: 'gc-1', name: 'Harrow Builders' },
+      { job: { id: 'j891', label: 'Job 891' }, initial: { clause: '§ 5.2', words: 'in by the 25th, paid the 30th of the next month' }, zIndex: 1410 },
+    )
   })
 })

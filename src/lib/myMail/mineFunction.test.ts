@@ -59,6 +59,13 @@ import {
   myMailTagEventWords,
   tagAllFiled,
   myMailTaggedBy,
+  MAIL_SAVED_BODY,
+  MAIL_SAVED_BATCH_MINUTES,
+  MAIL_SAVED_CHANNEL,
+  MAIL_SAVED_TEMPLATE,
+  mailSavedBatchSince,
+  mailSavedFacts,
+  mailSavedTitle,
   MY_MAIL_TAGGED_PAGE,
   inAskedBoxes,
   taggedNextToken,
@@ -684,6 +691,43 @@ describe('what a tag writes', () => {
   })
 })
 
+describe('the owner is told that someone else saved their mail (v2.7068)', () => {
+  const row = (by: string | null, job: string, over: Record<string, unknown> = {}) => ({ tagged_by: by, bid_id: null, project_id: null, jobs_ledger_id: job, person_id: null, ...over })
+  const names = { 'u-dev': 'Nadia Reyes', 'u-dev-2': 'Omar Diaz' }
+  const elm = { key: `pipeline:${ELM}`, words: 'JP1077 4 Elm Ct' }
+
+  it('stands on one kind, shown in the app only, with a batch of half an hour', () => {
+    expect([MAIL_SAVED_TEMPLATE, MAIL_SAVED_CHANNEL, MAIL_SAVED_BATCH_MINUTES]).toEqual(['mail_saved_for_you', 'app', 30])
+    expect(mailSavedBatchSince('2026-11-12T21:30:00.000Z')).toBe('2026-11-12T21:00:00.000Z')
+  })
+
+  it('counts only what someone else saved onto a job: never the owner’s own tag, and never an HR file’s row', () => {
+    const facts = mailSavedFacts(
+      [row('u-dev', ELM), row('u-dev', ELM), row('u-dev', HARBOR), row(MARISOL, MILL), row(null, MILL), row('u-dev', ELM, { jobs_ledger_id: null, person_id: 'p-1' }), row('u-dev', ELM, { jobs_ledger_id: null })],
+      MARISOL,
+      names,
+      elm,
+    )
+    expect(facts).toEqual({ savers: ['Nadia Reyes'], conversations: 3, jobs: 2, job: null })
+    expect(mailSavedFacts([], MARISOL, names, elm)).toEqual({ savers: [], conversations: 0, jobs: 0, job: null })
+  })
+
+  it('says one save by its job, and a batch as one line with its counts', () => {
+    const one = mailSavedFacts([row('u-dev', ELM)], MARISOL, names, elm)
+    expect(mailSavedTitle(one)).toBe('Nadia Reyes saved a conversation from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev', ELM), row('u-dev', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes saved 3 conversations from your mail to JP1077 4 Elm Ct.')
+    // Seventeen saves onto seven jobs in two minutes read as one line.
+    const jobs = [ELM, HARBOR, CLUB, CLINIC, MILL, '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a06', '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a07']
+    const batch = mailSavedFacts(Array.from({ length: 17 }, (_, i) => row('u-dev', jobs[i % 7]!)), MARISOL, names, elm)
+    expect(mailSavedTitle(batch)).toBe('Nadia Reyes saved 17 conversations from your mail to 7 jobs.')
+    // Two people, a job that is not the one in hand, and nobody named.
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev-2', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes and Omar Diaz saved 2 conversations from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', HARBOR)], MARISOL, names, elm))).toBe('Nadia Reyes saved a conversation from your mail to a job.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-gone', ELM)], MARISOL, names, elm))).toBe('A developer saved a conversation from your mail to JP1077 4 Elm Ct.')
+    for (const words of [mailSavedTitle(batch), mailSavedTitle(one), MAIL_SAVED_BODY]) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+
 describe('the old Gmail label’s one-time clean-up (v2.7035)', () => {
   const NOW = '2026-11-12T20:00:00.000Z'
   const start = readLabelCleanup(null)
@@ -948,7 +992,7 @@ describe('the tag’s grey line on the thread', () => {
       channel: 'event',
       direction: 'team',
       who_text: 'The app',
-      body: 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.',
+      body: 'Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.',
       quo_id: 'mytag:tag-1',
       bid_id: null,
       project_id: null,
@@ -960,9 +1004,9 @@ describe('the tag’s grey line on the thread', () => {
     const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
     const dev = { name: 'Nadia Reyes', email: 'nadia@clickplumbing.example' }
     const own = myMailTagEventWords(marisol, null, true)
-    expect(own).toBe('Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
+    expect(own).toBe('Marisol Vega saved this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
     const seat = myMailTagEventWords(marisol, dev, true)
-    expect(seat).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
+    expect(seat).toBe("Nadia Reyes saved this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
     for (const words of [own, seat]) expect(plainWordsFailures(words)).toEqual([])
     expect(myMailTagEventRow({ tagRowId: 'r1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: 'j1' }, filed: true }).body).toBe(own)
     expect(tagAllFiled({ lines: 3, filed: 3 })).toBe(true)
@@ -974,16 +1018,16 @@ describe('the tag’s grey line on the thread', () => {
     const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
     const dev = { name: ' Nadia Reyes ', email: 'nadia@clickplumbing.example' }
     const words = myMailTagEventWords(marisol, dev)
-    expect(words).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
+    expect(words).toBe("Nadia Reyes saved this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
     expect(plainWordsFailures(words)).toEqual([])
     // No names: the addresses. The dev's own box through the seat: their mail, and still the seat.
     expect(myMailTagEventWords({ name: '', email: marisol.email }, { name: '', email: dev.email })).toBe(
-      "nadia@clickplumbing.example tagged this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
+      "nadia@clickplumbing.example saved this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
     )
-    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes tagged this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
+    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes saved this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
     // A person's own press reads as it always has, with no seat or a null one.
     expect(myMailTagEventWords(marisol, null)).toBe(myMailTagEventWords(marisol))
-    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.')
+    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.')
     // The row carries the seat's words, and the app's own words still win when it placed the conversation itself.
     const row = { tagRowId: 'tag-1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: ELM } }
     expect(myMailTagEventRow({ ...row, seat: dev }).body).toBe(words)
@@ -1006,7 +1050,7 @@ describe('the tag’s grey line on the thread', () => {
 
   it('names the address when the person has no name, and says it in plain words', () => {
     expect(myMailTagEventWords({ name: ' ', email: 'marisol@clickplumbing.example' })).toBe(
-      'marisol@clickplumbing.example tagged this conversation from their mail. Later mail in it lands here by itself.',
+      'marisol@clickplumbing.example saved this conversation from their mail. Later mail in it lands here by itself.',
     )
     expect(plainWordsFailures(myMailTagEventWords({ name: 'Marisol Vega', email: '' }))).toEqual([])
     expect(plainWordsFailures(MY_MAIL_FOLLOW_GONE)).toEqual([])

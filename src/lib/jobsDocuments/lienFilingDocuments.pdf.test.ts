@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { filingDocPdfBlob } from './lienFilingDocuments'
+import { FILING_BODY_SET, FILING_FIT_ONE_PAGE_STEPS, filingDocPdfBlob } from './lienFilingDocuments'
 
 /**
  * The PDF side of the pay page's two blocks (v2.3758): a recording stand-in for jsPDF, as
@@ -21,7 +21,13 @@ class FakeJsPDF {
     FakeJsPDF.made += 1
   }
   setFont() {}
-  setFontSize() {}
+  /** The type size in force, and the size and left edge each text was drawn at, beside `texts` (v2.7071: the bullet and the one-page fit). */
+  size = 0
+  textSizes: number[] = []
+  textXs: number[] = []
+  setFontSize(n: number) {
+    this.size = n
+  }
   setTextColor() {}
   setDrawColor() {}
   setFillColor() {}
@@ -36,9 +42,11 @@ class FakeJsPDF {
   splitTextToSize(t: string) {
     return [t]
   }
-  text(t: string | string[]) {
+  text(t: string | string[], x?: number) {
     this.texts.push(Array.isArray(t) ? t.join('\n') : t)
     this.textPages.push(this.pages)
+    this.textSizes.push(this.size)
+    this.textXs.push(x ?? 0)
   }
   line() {}
   rect(x: number, y: number, w: number, h: number, style?: string) {
@@ -53,11 +61,16 @@ class FakeJsPDF {
   getImageProperties() {
     return { width: 400, height: 100 }
   }
-  addImage(data: string, type: string, x: number, y: number, w: number, h: number) {
+  /** How each picture was stored, beside `images` (v2.7090): a code is a few flat colours and compresses to almost nothing. */
+  imageCompression: Array<string | undefined> = []
+  addImage(data: string, type: string, x: number, y: number, w: number, h: number, _alias?: string, compression?: string) {
     this.images.push({ data, type, x, y, w, h })
+    this.imageCompression.push(compression)
   }
+  /** The blob names the drawing it came from, so a test can tell which of several drawings was kept. */
   output() {
-    return new Blob(['pdf'])
+    const body = this.textSizes[this.texts.findIndex((t) => t.startsWith('Paragraph 1.'))] ?? 0
+    return new Blob([`pdf pages=${this.pages} body=${body}`])
   }
 }
 vi.mock('../loadJsPDF', () => ({ loadJsPDF: async () => FakeJsPDF }))
@@ -72,6 +85,8 @@ describe('the pay page in PDF', () => {
     const pdf = FakeJsPDF.last!
     expect(pdf.rects.filter((r) => r.style === 'FD')).toHaveLength(1)
     expect(pdf.images).toEqual([{ data: 'data:image/png;base64,AAA', type: 'PNG', x: 22, y: expect.any(Number), w: 32, h: 32 }])
+    // Stored compressed (v2.7090): uncompressed, one code's picture is about 690 KB of a PDF that is emailed or mailed.
+    expect(pdf.imageCompression).toEqual(['FAST'])
     expect(pdf.rects.filter((r) => r.style === undefined && r.w === 32 && r.h === 32)).toHaveLength(1)
     expect(pdf.texts).toContain('INVOICE #273-1, MAY 5, 2026')
     expect(pdf.texts).toContain('Still owed: $13,420.00')
@@ -196,5 +211,55 @@ describe('the short lien affidavit on a homestead in PDF (punch list #305)', () 
     expect(pdf.texts[0]).toBe(HOMESTEAD_AFFIDAVIT_NOTICE)
     expect(pdf.texts[1]).toBe("MECHANIC'S AND MATERIALMAN'S LIEN AFFIDAVIT")
     expect(pdf.pages).toBe(1)
+  })
+})
+
+describe('a bullet in PDF (v2.7071)', () => {
+  it('draws the mark in from the margin and the words further in, as two texts, and leaves any other paragraph at the margin', async () => {
+    await filingDocPdfBlob([
+      { kind: 'paragraph', text: 'Any one of these works.' },
+      { kind: 'paragraph', text: '• Have the builder pay us this week.' },
+      { kind: 'paragraph', text: 'Call our office.' },
+    ])
+    const pdf = FakeJsPDF.last!
+    expect(pdf.texts).toEqual(['Any one of these works.', '•', 'Have the builder pay us this week.', 'Call our office.', 'Page 1 of 1'])
+    const [body, mark, words, after] = pdf.textXs
+    expect(mark!).toBeGreaterThan(body!)
+    expect(words!).toBeGreaterThan(mark!)
+    expect(after).toBe(body)
+  })
+})
+
+describe('a letter asked to fit one page in PDF (v2.7071)', () => {
+  const letter = (paragraphs: number): Parameters<typeof filingDocPdfBlob>[0] => Array.from({ length: paragraphs }, (_, i) => ({ kind: 'paragraph' as const, text: `Paragraph ${i + 1}.` }))
+  const kept = async (blob: Blob) => {
+    const [, pages, body] = /pages=(\d+) body=([\d.]+)/.exec(await blob.text())!
+    return { pages: Number(pages), body: Number(body) }
+  }
+
+  it('a letter that fits is drawn once, as every paper is', async () => {
+    FakeJsPDF.made = 0
+    expect(await kept(await filingDocPdfBlob(letter(10), { fit: 'one-page' }))).toEqual({ pages: 1, body: FILING_BODY_SET.size })
+    expect(FakeJsPDF.made).toBe(1)
+  })
+
+  it('a letter a few lines over is drawn again with the lines closer and the same type, and that drawing is kept', async () => {
+    // 29 one-line paragraphs run a line past the page at the usual setting.
+    expect(await kept(await filingDocPdfBlob(letter(29)))).toEqual({ pages: 2, body: FILING_BODY_SET.size })
+    expect(await kept(await filingDocPdfBlob(letter(29), { fit: 'one-page' }))).toEqual({ pages: 1, body: 11.5 })
+    expect(FILING_FIT_ONE_PAGE_STEPS[0]!.size).toBe(FILING_BODY_SET.size)
+  })
+
+  it('a longer one steps the type down, never under 10 point', async () => {
+    const got = await kept(await filingDocPdfBlob(letter(36), { fit: 'one-page' }))
+    expect(got.pages).toBe(1)
+    expect(got.body).toBeLessThan(FILING_BODY_SET.size)
+    expect(got.body).toBeGreaterThanOrEqual(10)
+    expect(Math.min(...FILING_FIT_ONE_PAGE_STEPS.map((s) => s.size))).toBe(10)
+  })
+
+  it('a letter no step brings to one page keeps the usual setting, and a paper not asked to fit is never touched', async () => {
+    expect(await kept(await filingDocPdfBlob(letter(60), { fit: 'one-page' }))).toEqual({ pages: 3, body: FILING_BODY_SET.size })
+    expect(await kept(await filingDocPdfBlob(letter(36)))).toEqual({ pages: 2, body: FILING_BODY_SET.size })
   })
 })

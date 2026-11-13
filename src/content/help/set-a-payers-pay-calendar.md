@@ -76,6 +76,20 @@ Leave the calendar unset for a customer who pays some days after each bill. The 
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
+## From a contract on their form
+
+A general contractor's own subcontract is recorded as **Their paper** on the job. The record keeps the key terms with their clause numbers. One of them is **Pay calendar**.
+
+:::steps
+1. Open **Their paper** from the job's contract strip.
+2. Type the clause number and a few of its words beside **Pay calendar**.
+3. Press *Set their pay calendar…* under the key terms. The line carries the customer's name.
+4. Pick the days in the window that opens. The clause is already filled in.
+5. Save the calendar, then save the paper.
+:::
+
+The paper holds the clause. The calendar holds the days. You set the calendar for that job, or for every job that customer pays.
+
 ## One job on a different calendar
 
 Most of a customer's jobs follow one calendar. One job may have a contract of its own, or none.
@@ -115,11 +129,13 @@ The line under the row then reads *Accepted Dec 2*. Press it again to change the
 
 ## The cutoff, before a bill goes out
 
-A bill that has not gone out yet shows its cutoff. You see the line in three places.
+A bill that has not gone out yet shows its cutoff. You see it in five places.
 
 - A row in **Ready to Bill** on the Pipeline reads *Send by Nov 30 to be due Dec 10. After that, Jan 10.*
 - The **Ready to Bill** header shows the nearest cutoff, like *Next cutoff Nov 25 · 1 bill*.
 - The Bill Customer window says what sending today makes the bill.
+- A row in **Working** reads *Bill by Nov 30 to be due Dec 10. After that, Jan 10.* in the cutoff's last 10 days.
+- The payment forecast opens with **Cutoffs coming**. See [read the payment forecast](/help/read-the-payment-forecast#cutoffs-coming).
 
 The line is blue while the cutoff is far. It turns amber in the last 7 days. Press the first sentence on a row to open the calendar.
 

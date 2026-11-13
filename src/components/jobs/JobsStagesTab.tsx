@@ -78,7 +78,8 @@ import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../..
 import type { PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
 import type { PayCalendarJob } from '../customers/PayCalendarModal'
-import { calendarFor, nextCutoffChip, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { calendarFor, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
 import { jobIsScheduledInKind } from '../../lib/inKind/inKindLedger'
@@ -194,6 +195,7 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
+import { lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -212,6 +214,7 @@ import {
   accountManFilterOptionsFromJobs,
   filterJobsByAccountMan,
   locateStagesInvoiceSection,
+  jobBillingUnallocatedDollars,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
@@ -1062,6 +1065,41 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     return nextCutoffChip(lines)
   }, [payCalendars, unfilteredBoardLists])
+  /** Punch list #323, PR 5: the calendar of cutoffs for the Payment forecast: each calendar payer with work not yet billed. */
+  const cutoffsComing = useMemo(
+    () =>
+      buildCutoffsComing({
+        todayYmd: todayYmdInAppTz(),
+        calendars: payCalendars,
+        ready: unfilteredBoardLists.readyToBillRows.map((r) => {
+          const payer = paySpeedPayer(r.job, r.kind === 'job' ? null : r.inv)
+          return { payerId: payer.id, payerName: payer.name, jobId: r.job.id, dollars: readyToBillRowsExposureTotal([r]) }
+        }),
+        working: unfilteredBoardLists.working.map((j) => {
+          const payer = paySpeedPayer(j, null)
+          return { payerId: payer.id, payerName: payer.name, jobId: j.id, dollars: jobBillingUnallocatedDollars(j) }
+        }),
+      }),
+    [payCalendars, unfilteredBoardLists],
+  )
+  /** PR 5: a Working row's cutoff, said only in its last days: *Bill by Nov 30 to be due Dec 10. After that, Jan 10.* */
+  const workingCutoffLine = useCallback(
+    (j: JobWithDetails) => {
+      const payer = paySpeedPayer(j, null)
+      const payerId = payer.id
+      const calendar = payerId ? calendarFor(payCalendars, { payerId, jobId: j.id }) : null
+      const line = calendar ? payCutoffLine(todayYmdInAppTz(), calendar, 'Bill') : null
+      if (!line || !payerId || line.daysLeft > PAY_CUTOFF_WORKING_DAYS) return null
+      return (
+        <PayCutoffLine
+          line={line}
+          payerName={payer.name}
+          onOpen={payCalendarModal ? () => payCalendarModal.openPayCalendar({ id: payerId, name: payer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(j) }) : undefined}
+        />
+      )
+    },
+    [payCalendars, payCalendarModal, loadPayCalendars],
+  )
   // v2.6034 (punch list #177, decision 1): the GC facts and the GC pace here, worked out once for every billed chip,
   // forecast row, call and dates ledger on the board. The GC pace rests on the GC payers among the open bills on the
   // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
@@ -2777,6 +2815,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     } satisfies Partial<ComponentProps<typeof JobsStagesTable>>,
     working: {
       offerHazmatFee: stageOffersHazmatFee('working'),
+      jobCutoffLine: workingCutoffLine,
       actionLabel: 'Ready to Bill',
       onAction: (j) => readyToBillFromWorking(j),
       showTimeOpen: true,
@@ -4657,6 +4696,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         billedPace={billedPaceContext}
         payCalendars={payCalendars}
         acceptedByInvoice={acceptedByInvoice}
+        cutoffsComing={cutoffsComing}
         gcTemperatureById={gcTemperatureById}
         chaseTodayYmd={chaseTodayYmd}
         forecastTodayYmd={forecastTodayYmd}
@@ -4776,6 +4816,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
+        // v2.7077: the window's header names the step the row names (a notice waiting on its owner, its approval or its mailing).
+        deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {

@@ -1,5 +1,6 @@
 import type { NeedsYouItem } from './dashboardNeedsYou'
 import { CUSTOMER_MESSAGES_HREF } from './dashboardNeedsYou'
+import { MAIL_SAVED_DOOR } from './myMail/savedForYou'
 import { lienWindowHref } from './jobs/stagesDeepLinks'
 import { LIEN_DESK_PATH, lienDeskHref } from './lien/lienDeskRoute'
 import { roadmapPath } from './roadmapVisibility'
@@ -99,6 +100,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'bridge-moves':
       // The week's call: the page where the first move is done, or Done itself when the app has no page for it.
       return d.bridgeMoveDoor ? href(d.bridgeMoveDoor) : { kind: 'bridge-move-done' }
+    case 'mail-saved':
+      // The owner is told (v2.7068): the person's own record under Settings, which every role can open.
+      return href(MAIL_SAVED_DOOR)
     case 'while-off':
       // While you were off (v2.6060): the first line still waiting, at the line; Messages when none was read.
       return href(d.whileOffFirst ? messagesThreadHref(d.whileOffFirst.contactId, d.whileOffFirst.messageId) : '/messages')

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { PAPER_IDS, SAMPLE_JOB, SAMPLE_OWNER, paperSample, sampleBillDocument, sampleDemandLetterFields, sampleHazmatInputs, sampleLienReleaseInputs, sampleOwnerNoticeInputs } from './paperSamples'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from '../customerSample'
 import { customerJourneys } from '../customerJourneys'
+import { sampleLienDays } from './lienLetterSamples'
 
 const TODAY = '2026-09-16'
 
@@ -49,12 +50,15 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
     const p = paperSample('demand-letter', TODAY)
     expect(p.html).toContain(SAMPLE_HOMEOWNER.name)
     expect(p.html).toContain('1,850')
+    // How to pay is a whole sentence, so the dispute line after it starts its own (v2.7080).
+    expect(p.html).toContain('Pay by card or bank transfer from the bill link, or by check to the office. If you believe this balance is incorrect')
   })
 
   it('the notice to the owner of record names the builder as original contractor and the project', () => {
     const { fields } = sampleOwnerNoticeInputs(TODAY)
     expect(fields.originalContractorName).toBe(SAMPLE_GC.company)
-    expect(fields.noticeDate).toBe(TODAY)
+    // Dated the day the sample job's notice went, not today: the cover letter in front of it names that day.
+    expect(fields.noticeDate).toBe(sampleLienDays(TODAY).noticeSentOn)
     const p = paperSample('owner-notice', TODAY)
     expect(p.html).toContain('53.056')
     expect(p.html).toContain(SAMPLE_OWNER.project)

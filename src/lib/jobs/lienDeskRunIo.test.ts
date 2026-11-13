@@ -16,6 +16,8 @@ const db = vi.hoisted(() => ({
   invokeError: null as string | null,
 }))
 
+/** What each paper's PDF was asked to do, in the order drawn (v2.7071: the cover letter is asked to fit one page). */
+const pdfAsks = vi.hoisted(() => [] as string[])
 vi.mock('../supabase', () => ({
   supabase: {
     functions: {
@@ -51,7 +53,15 @@ vi.mock('../../utils/errorHandling', async (importOriginal) => ({
 }))
 vi.mock('../jobsDocuments/lienFilingDocuments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../jobsDocuments/lienFilingDocuments')>()),
-  filingDocPdfBlob: async () => new Blob(['%PDF-1.4 notice']),
+  filingDocPdfBlob: async (_blocks: unknown, opts?: { fit?: string }) => {
+    pdfAsks.push(opts?.fit ?? '')
+    return new Blob(['%PDF-1.4 notice'])
+  },
+}))
+// The owner's copy with a letter is several PDFs joined: the join itself is the packet's own test.
+vi.mock('../jobsDocuments/demandLetterPacket', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../jobsDocuments/demandLetterPacket')>()),
+  mergePdfBlobs: async (parts: Blob[]) => parts[0]!,
 }))
 vi.mock('./lienDeskIo', () => ({ markLienDeskItemSent: async (itemId: string, _filingId: string, sentAt: string | null = null) => void db.events.push(`sent ${itemId}${sentAt ? ` on ${sentAt}` : ''}`) }))
 vi.mock('./lienClaimCorrectionIo', () => ({ clearOneShotLienClaimCorrection: async () => undefined }))
@@ -186,6 +196,16 @@ describe('recordLienDeskRun · a copy that went through Docsmit (v2.5532)', () =
 })
 
 describe('buildRunNoticePdf · the attachment the courtesy preview shows (v2.5073)', () => {
+  it('asks for the owner’s cover letter on one page, and for no other paper (v2.7071)', async () => {
+    pdfAsks.length = 0
+    await buildRunNoticePdf(notice({ coverLetter: 'To the owner of the property:\n\n• Have the builder pay us.' }), 'owner', [], [])
+    // The form is drawn first, then the letter that rides in front of it.
+    expect(pdfAsks).toEqual(['', 'one-page'])
+    pdfAsks.length = 0
+    await buildRunNoticePdf(notice({ coverLetter: 'To the owner of the property:' }), 'original_contractor', [], [])
+    expect(pdfAsks).toEqual([''])
+  })
+
   it('is the PDF the courtesy email attaches, byte for byte', async () => {
     const shown = await buildRunNoticePdf(notice(), 'original_contractor', [], [])
     await recordLienDeskRun([notice()], OPTS)

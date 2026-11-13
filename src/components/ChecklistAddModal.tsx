@@ -20,6 +20,9 @@ import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } 
 import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
+import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
+import { TaskPlaceRow } from './checklist/TaskPlaceRow'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -95,6 +98,8 @@ export default function ChecklistAddModal({
   const lineCount = parseLines(linesText).length
   /** The writer's switch (PR 4): on by itself once a line is written, off on a plain one-off, until the writer touches it. */
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
+  // Punch list #328: where the work is. Null is a task with no place, the default.
+  const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
   const asksForPhoto = asksForPhotoPick ?? asksForPhotoDefault(lineCount)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -278,6 +283,7 @@ export default function ChecklistAddModal({
       })
       setCustomTimeOpen(false)
       setFormError(null)
+      setPlace(null)
       // The job bar already shows its link, so the Links section stays folded behind it (v2.3751).
       setLinksSectionOpen(presetLinks.length > 0 && !preset?.job)
       setWhen(preset?.when ?? 'today')
@@ -402,6 +408,9 @@ export default function ChecklistAddModal({
           links: storedLinks,
           // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
           ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
+          // A place (#328) is written only when one is set, so a task with none sends the row it always sent. The columns
+          // are younger than the generated types.
+          ...(place ? (taskPlaceColumns(place, authUser.id, new Date().toISOString()) as Record<string, unknown>) : {}),
           created_by_user_id: authUser.id,
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -448,6 +457,7 @@ export default function ChecklistAddModal({
       setLinesText('')
       setLinesOpen(false)
       setAsksForPhotoPick(null)
+      setPlace(null)
       modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
       window.dispatchEvent(new CustomEvent('checklist-item-saved'))
@@ -472,9 +482,9 @@ export default function ChecklistAddModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="checklist-add-modal-title"
-      // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
-      // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1012 }}
+      // Above Job Detail (1004) and Edit Job (1010) so the header send-as-task buttons stack this over either
+      // (v2.1529), and above a thread's window (1200) so Ask a tech… and Send as a task do too (v2.7069).
+      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: ADD_TASK_WINDOW_Z }}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header, Cancel, or a successful Send.
     >
@@ -892,6 +902,7 @@ export default function ChecklistAddModal({
                 />
               </div>
             </div>
+            <TaskPlaceRow value={place} onChange={setPlace} />
             {linksSectionOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {form.links.map((url, i) => (
@@ -1281,6 +1292,7 @@ export default function ChecklistAddModal({
                 <div style={{ minWidth: 200, flex: '1 1 200px' }}>
                   <SearchableSelect
                     id="checklist-add-notify-on-complete"
+                    portalZIndex={ADD_TASK_PICKER_Z}
                     value={form.notify_on_complete_user_id}
                     onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
                     options={assignToSelectOptions}
