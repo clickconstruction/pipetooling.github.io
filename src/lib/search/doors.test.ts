@@ -49,7 +49,7 @@ const sources = { guides, todos }
 const every: DoorViewer[] = ROLES.flatMap((role) => [
   plainViewer(role),
   { ...plainViewer(role), estimatorProspectsAccess: true, teamProspectsAccess: true },
-  { ...plainViewer(role), farmModeActive: true },
+  { ...plainViewer(role), taskModeActive: true },
 ])
 
 describe('doors — the parsers', () => {
@@ -215,7 +215,7 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     for (const v of every) {
       for (const d of doorsFor(v, sources)) {
         if (d.kind === 'guide' || d.kind === 'todo') continue
-        if (!doorAllowedByRouteGuard(d, v)) drift.push(`${v.role}${v.estimatorProspectsAccess ? '+prospects' : ''}${v.farmModeActive ? '+farm' : ''}: ${d.id}`)
+        if (!doorAllowedByRouteGuard(d, v)) drift.push(`${v.role}${v.estimatorProspectsAccess ? '+prospects' : ''}${v.taskModeActive ? '+task-mode' : ''}: ${d.id}`)
       }
     }
     expect(drift).toEqual([])

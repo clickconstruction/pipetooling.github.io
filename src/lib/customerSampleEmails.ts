@@ -19,6 +19,7 @@ import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_C
 import { buildSubmittalRoomLinkEmail, roomLinkBidLabel } from '../../supabase/functions/_shared/submittalRoomLinkEmail'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
+import { sampleCourtesyEmail } from './journeys/lienLetterSamples'
 import { testReportSampleEmail } from './jobs/testReportSample'
 import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
 import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailSubject, gcStatementQrDataUrl } from './jobsDocuments/gcStatementEmail'
@@ -509,6 +510,8 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   if (id === 'messages-reply') return buildSampleMessagesReplyEmail(ctx)
+  // Lien letters (punch list #326): the courtesy notice as `send-lien-filing-email` sends it, the Lien desk's own words in the lien email's own frame.
+  if (id === 'lien-courtesy-owner' || id === 'lien-courtesy-gc') return sampleCourtesyEmail(id === 'lien-courtesy-owner' ? 'owner' : 'original_contractor', ctx.todayYmd)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 

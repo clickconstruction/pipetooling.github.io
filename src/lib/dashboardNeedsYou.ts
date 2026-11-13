@@ -416,7 +416,7 @@ export type NeedsYouInputs = {
   teamReviewCadenceDays: number
   /**
    * Roadmap "needs a person" nudges (v2.2489). The hook self-gates (empty
-   * unless `canSeeRoadmapNeedsYou` — dev, not Farm Mode — or under the
+   * unless `canSeeRoadmapNeedsYou` — dev, not Task Mode — or under the
    * min-count threshold); the builder drops the item for non-dev roles anyway
    * (`kind: 'roadmap'`, Tier-2 #41).
    */

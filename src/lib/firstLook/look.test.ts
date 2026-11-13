@@ -19,6 +19,11 @@ import {
   firstLookExpiry,
   firstLookFileFacts,
   FIRST_LOOK_UPLOAD_ADDRESS_HOURS,
+  FIRST_LOOK_WORDS,
+  FIRST_LOOK_WORDS_ES,
+  firstLookLangOf,
+  firstLookPlaceKept,
+  firstLookWords,
   firstLookKeptPath,
   firstLookKindOfMime,
   firstLookMimeOf,
@@ -373,5 +378,57 @@ describe('the sample page (Settings → What customers see)', () => {
 
   it('a file on the sample is answered in words that nothing is sent', () => {
     expect(FIRST_LOOK_SAMPLE_WORDS).toBe('This is a sample of the page. Nothing is sent from it.')
+  })
+})
+
+describe('the page in Spanish (punch list #319 PR 4b)', () => {
+  it('a phone set to Spanish reads Spanish, every other reads English', () => {
+    for (const tag of ['es', 'es-MX', 'es_US', 'ES-419']) expect(firstLookLangOf(tag)).toBe('es')
+    for (const tag of ['en-US', 'fr', 'est', '', null, undefined]) expect(firstLookLangOf(tag)).toBe('en')
+  })
+
+  it('the Spanish table has every key the English one has, with the same shape', () => {
+    expect(Object.keys(FIRST_LOOK_WORDS_ES).sort()).toEqual(Object.keys(FIRST_LOOK_WORDS).sort())
+    for (const key of Object.keys(FIRST_LOOK_WORDS) as Array<keyof typeof FIRST_LOOK_WORDS>) {
+      const en = FIRST_LOOK_WORDS[key]
+      const es = FIRST_LOOK_WORDS_ES[key]
+      expect(typeof es).toBe(typeof en)
+      if (Array.isArray(en)) expect((es as readonly string[]).length).toBe(en.length)
+      if (typeof en === 'string') expect((es as string).trim()).not.toBe('')
+    }
+    expect(firstLookWords('es')).toBe(FIRST_LOOK_WORDS_ES)
+    expect(firstLookWords('en')).toBe(FIRST_LOOK_WORDS)
+  })
+
+  it('the owner’s line is there in Spanish, whole', () => {
+    expect(FIRST_LOOK_WORDS_ES.why).toBe('Entre más información nos dé, y mejor sea la calidad de las fotos y los videos, más exactos podemos ser. Así le damos el mejor servicio, y menos viajes significan un mejor precio.')
+  })
+
+  it('counts, the ask line, the send press and the thank-you read in Spanish', () => {
+    expect(firstLookCountWords(3, 1, 'es')).toBe('3 fotos y 1 video')
+    expect(firstLookCountWords(1, 0, 'es')).toBe('1 foto')
+    expect(firstLookAskedWords('Rosa Delgado', 'es')).toBe('Rosa pidió verlo. Agregue unas fotos o un video corto. Le damos el precio antes de ir.')
+    expect(firstLookSendLabel({ photos: 2, videos: 0, sending: 0, percent: null, waitingForSignal: false }, 'es')).toEqual({ label: 'Enviar 2 fotos', ready: true })
+    expect(firstLookSendLabel({ photos: 0, videos: 0, sending: 2, percent: 40, waitingForSignal: false }, 'es')).toEqual({ label: 'Esperando 2 archivos, 40%', ready: false })
+    expect(firstLookSendLabel({ photos: 0, videos: 0, sending: 0, percent: null, waitingForSignal: false }, 'es').label).toBe('Agregue primero una foto o un video')
+    const open = firstLookThanks({ askedBy: 'Rosa', photos: 3, videos: 1, officeOpen: true, closesWords: '5 PM', opensWords: null, lang: 'es' })
+    expect(open.got).toBe('Recibido. Rosa tiene 3 fotos y 1 video.')
+    // The office's hours are English words, so the Spanish promise names no clock.
+    expect(open.steps[0]).toBe('Rosa las revisa hoy.')
+    expect(firstLookThanks({ askedBy: '', photos: 1, videos: 0, officeOpen: false, closesWords: null, opensWords: 'tomorrow at 7:30 AM', lang: 'es' }).steps[0]).toBe('Las revisamos en cuanto abra la oficina.')
+  })
+
+  it('a refusal reads in Spanish, with the same code', () => {
+    const none = { photos: 0, videos: 0, photoSigns: 0, videoSigns: 0 }
+    expect(firstLookSignRefusal({ mime: 'application/pdf', bytes: 10 }, none, 'es')).toEqual({ code: 'kind', words: 'Aquí solo se pueden enviar fotos y videos.' })
+    expect(firstLookSignRefusal({ mime: 'image/jpeg', bytes: 10 }, { ...none, photos: 20 }, 'es')?.code).toBe('photos-full')
+    expect(firstLookSignRefusal({ mime: 'image/jpeg', bytes: 10 }, none, 'es')).toBeNull()
+  })
+
+  it('the office is sent a place by its English name', () => {
+    expect(firstLookPlaceKept('es', 'Cocina')).toBe('Kitchen')
+    expect(firstLookPlaceKept('es', 'Otro lugar')).toBe('Somewhere else')
+    expect(firstLookPlaceKept('en', 'Bathroom')).toBe('Bathroom')
+    expect(firstLookPlaceKept('es', null)).toBeNull()
   })
 })

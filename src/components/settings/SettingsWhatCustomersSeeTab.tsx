@@ -242,6 +242,20 @@ function JourneyStrip(props: {
         <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{journey.title}</h3>
         <span style={MUTED}>{journey.subtitle}</span>
       </div>
+      {/* Punch list #326: a group that goes in a fixed order says the order first, one line a stage. */}
+      {journey.stages && journey.stages.length > 0 ? (
+        <ol data-testid={`wcs-stages-${journey.id}`} aria-label={`${journey.title}: the order`} style={{ listStyle: 'none', margin: '0 0 0.75rem', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.4rem' }}>
+          {journey.stages.map((st) => (
+            <li key={st.name} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.4rem 0.6rem', background: st.n ? 'var(--surface)' : 'var(--bg-page)', fontSize: '0.78rem', lineHeight: 1.35 }}>
+              <strong style={{ color: 'var(--text-strong)', display: 'block' }}>
+                {st.n ? `Step ${st.n} · ` : 'Beside the order · '}
+                {st.name}
+              </strong>
+              <span style={{ color: 'var(--text-muted)' }}>{st.when}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
       <div style={{ display: 'flex', overflowX: 'auto', gap: 0, alignItems: 'stretch', paddingBottom: '0.25rem' }}>
         {journey.steps.map((s, i) => (
           <StepCard
@@ -291,7 +305,7 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
       >
         {step.render.kind === 'text' ? (
           <div style={{ width: THUMB_W, height: THUMB_H, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-            <TextSample sample={sampleText(step.render.text)} compact />
+            <TextSample sample={sampleText(step.render.text, undefined, todayYmdInAppTz())} compact />
           </div>
         ) : renderable ? (
           <StepThumb step={step} emails={props.emails} papers={props.papers} origin={props.origin} reloadNonce={props.reloadNonce} />
@@ -377,7 +391,7 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
       </div>
       <div style={{ background: 'var(--bg-page)', borderRadius: 8, padding: '0.9rem', display: 'grid', placeItems: 'start center' }}>
         {step.render.kind === 'text' ? (
-          <TextSample sample={sampleText(step.render.text)} />
+          <TextSample sample={sampleText(step.render.text, undefined, todayYmdInAppTz())} />
         ) : step.render.kind === 'soon' || step.render.kind === 'external' ? (
           <div style={{ maxWidth: 560, fontSize: '0.85rem', lineHeight: 1.45 }}>
             <strong style={{ color: 'var(--text-strong)' }}>{step.render.kind === 'external' ? 'Sent by another system' : 'Next release'}</strong>

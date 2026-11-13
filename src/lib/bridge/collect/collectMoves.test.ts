@@ -37,7 +37,7 @@ const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp
 const cut = buildCollectPayers(pile, { touches })
 const payer = (name: string) => cut.payers.find((p) => p.payerName === name)!
 const lienHref = (door: LienArChip['door']) => `/lien?${'jobId' in door ? door.jobId : ''}`
-const chip = (over: Partial<LienArChip>): LienArChip => ({ tone: 'amber', state: 'due', paper: 'notice', words: 'Notice by Nov 16 · 22d', sentence: 'August, to the owner.', title: '', door: { to: 'desk', jobId: 'j-tfh', kind: 'notice', pile: null }, dueOn: '2026-11-16', daysLeft: 22, ...over })
+const chip = (over: Partial<LienArChip>): LienArChip => ({ tone: 'amber', state: 'due', paper: 'notice', words: 'Notice by Nov 16 · 22d', lead: 'Notice', action: 'draft', act: null, sentence: 'August, to the owner.', title: '', door: { to: 'desk', jobId: 'j-tfh', kind: 'notice', pile: null }, dueOn: '2026-11-16', daysLeft: 22, ...over })
 
 describe('collectMoveFor (v2.5854)', () => {
   const opts = { todayYmd: TODAY, dayLabel: md, lienHref }

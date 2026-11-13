@@ -5,7 +5,7 @@ import { MY_MAIL_FUNCTION, MY_MAIL_GMAIL_LABEL, MY_MAIL_PAGE, MY_MAIL_REFUSAL_WO
 const ERRORS: readonly MyMailRefusalError[] = ['signIn', 'readOnly', 'officeOnly', 'off', 'imitated', 'offWorkspace', 'google', 'badRequest', 'notFound']
 
 describe('the My email contract', () => {
-  it('names the function, the page and the Gmail label both sides share', () => {
+  it('names the function, the page, and the old Gmail label the clean-up deletes', () => {
     expect(MY_MAIL_FUNCTION).toBe('gmail-mine')
     expect(MY_MAIL_PAGE).toBe(50)
     expect(MY_MAIL_GMAIL_LABEL).toBe('Tagged in ClickTooling')
