@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · not built: the seat's verbs for the numbers and the case, upgrade 3, upgrade 4, 5b and 5c
+status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884), v2.7111 the engagements' migration (#7886) · not built: the seat's verbs for the numbers and the case, upgrade 3, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -12,7 +12,7 @@ summary: >
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
 ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111
-next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
+next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884, #7886 then push its migration). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
