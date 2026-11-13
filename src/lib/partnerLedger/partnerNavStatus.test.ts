@@ -6,7 +6,7 @@ const base: PartnerSummary = {
   exists: true,
   partnership_id: 'p1',
   display_name: 'Bryan',
-  company_name: 'Herber Electric',
+  company_name: 'Helbrow Electric',
   started_on: '2026-03-22',
   status: 'active',
   balance: -1,

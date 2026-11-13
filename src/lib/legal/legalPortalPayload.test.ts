@@ -5,17 +5,17 @@ import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './le
 const firm = { id: 'f1', name: 'Example Law Firm, PLLC', handling_name: 'A. Attorney', email: 'a@x.test', phone: '', contingency_pct: 30, filing_cost: 400, active: true }
 
 function matterRaw() {
-  const job = makeJob({ id: 'job-a', hcp_number: '717', status: 'billed', collections_at: '2026-08-20T15:00:00Z', collections_note: 'Theft of service.', customer_id: 'tle', customer_name: 'The Learning Experience', customer_email: 'aaron@tle.test', invoices: [makeInvoice({ id: 'inv-a', job_id: 'job-a', amount: 7502, status: 'billed', billed_at: '2026-04-17T12:00:00Z', stripe_invoice_status: 'open' })] })
+  const job = makeJob({ id: 'job-a', hcp_number: '717', status: 'billed', collections_at: '2026-08-20T15:00:00Z', collections_note: 'Theft of service.', customer_id: 'tle', customer_name: 'The Reading Corner', customer_email: 'aaron@tle.test', invoices: [makeInvoice({ id: 'inv-a', job_id: 'job-a', amount: 7502, status: 'billed', billed_at: '2026-04-17T12:00:00Z', stripe_invoice_status: 'open' })] })
   return {
     id: 'm1',
     stage: 'referred',
-    payer: { key: 'c:tle', name: 'The Learning Experience', customerId: 'tle' },
+    payer: { key: 'c:tle', name: 'The Reading Corner', customerId: 'tle' },
     handling: 'A. Attorney',
     noteToFirm: 'Pursue the GC first.',
     releasedAt: '2026-09-11',
     sharedOverrides: { 'contact:c0': false },
     jobs: [job],
-    customer: { id: 'tle', name: 'The Learning Experience', address: '15054 State Hwy 71', contact_info: {}, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
+    customer: { id: 'tle', name: 'The Reading Corner', address: '15054 State Hwy 71', contact_info: {}, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
     contacts: [],
     contactEntries: [{ id: 'c0', ymd: '2026-03-28', method: 'Site visit', by: 'Malachi', text: 'Walked the scope.' }, { id: 'c2', ymd: '2026-05-05', method: 'Phone', by: 'Taunya', text: 'Retainage.' }],
     addresses: [],
@@ -55,7 +55,7 @@ describe('buildMatterPacket', () => {
   it('runs one matter through the same kernel the desk uses, sharing the pre-bill entry like every other (#85 item 29) and honoring the firm’s fee model', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-11', firm, particulars: {}, matters: [matterRaw()] })!
     const packet = buildMatterPacket(p.matters[0]!, '2026-09-11', portalFeeModel(p))!
-    expect(packet.account.payer.name).toBe('The Learning Experience')
+    expect(packet.account.payer.name).toBe('The Reading Corner')
     expect(packet.theory.key).toBe('sworn')
     expect(packet.worth.contingencyPct).toBe(0.3)
     expect(packet.worth.filingCost).toBe(400)

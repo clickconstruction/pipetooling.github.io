@@ -36,7 +36,7 @@ describe('WorkbenchHelpCard', () => {
     ['a solo bid', true],
     ['more than one price or GC', false],
   ])('%s: every line reads in plain words (src/lib/plainWords.ts)', (_name, solo) => {
-    renderWithProviders(<WorkbenchHelpCard {...props({ solo, gcName: 'Burd & Assoc', gcShort: 'Burd' })} />)
+    renderWithProviders(<WorkbenchHelpCard {...props({ solo, gcName: 'Brund & Assoc', gcShort: 'Brund' })} />)
     const lines = Array.from(screen.getByRole('dialog').querySelectorAll('[data-help-line]'))
     expect(lines).toHaveLength(4)
     for (const line of lines) {

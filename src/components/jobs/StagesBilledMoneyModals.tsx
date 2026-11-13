@@ -220,8 +220,10 @@ export default function StagesBilledMoneyModals({
       chaseTodayYmd,
       gcTemperatureById,
       billedPace,
+      payCalendars,
+      acceptedByInvoice,
     )
-  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPace])
+  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPace, payCalendars, acceptedByInvoice])
 
   return (
     <>

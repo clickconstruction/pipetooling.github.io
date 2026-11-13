@@ -25,7 +25,7 @@ const score = (o: Partial<RunScoreRow> & { id: string }): RunScoreRow => ({
   run_label: `BT-${o.id}`,
   kind: 'backtest',
   axis: 'small TI',
-  project_name: 'AutoZone 1604',
+  project_name: 'TireBarn 1604',
   twin_bid_number: null,
   reference_bid_number: null,
   locked_total: null,
@@ -47,7 +47,7 @@ const shadow = (o: Partial<ShadowRunRow> & { id: string }): ShadowRunRow => ({
   scored_at: null,
   shadow_bid_number: '481',
   reference_bid_number: '385',
-  project_name: 'Galloway Park Concession Stand Burnet',
+  project_name: 'Gallenby Park Concession Stand Burnet',
   requested_by_name: null,
   reference_sent_at: null,
   locked_total: null,
@@ -184,11 +184,11 @@ describe('your part', () => {
 
   it('leads with the viewer’s sealed bids, then queued, then what the robots can’t see, then what waits on anyone', () => {
     const bids = [
-      bid({ id: 'b385', project_name: 'Galloway Park', estimator_id: 'grace' }),
+      bid({ id: 'b385', project_name: 'Gallenby Park', estimator_id: 'grace' }),
       bid({ id: 'b391', project_name: 'RBFCU Potranco', estimator_id: 'grace', bid_date_sent: '2026-09-01' }),
       bid({ id: 'b483', project_name: 'Laynes Chicken Fingers', estimator_id: 'grace' }),
       bid({ id: 'b380', project_name: 'Medina Valley ISD', estimator_id: 'wendi' }),
-      bid({ id: 'b431', project_name: 'Palmer Winery', estimator_id: 'wendi' }),
+      bid({ id: 'b431', project_name: 'Palvern Winery', estimator_id: 'wendi' }),
     ]
     const lines = buildYourPart({
       viewerId: 'grace',
@@ -206,7 +206,7 @@ describe('your part', () => {
     })
     expect(lines.map((l) => l.key)).toEqual(['sealed', 'queued', 'cant-see', 'waiting', 'coverage'])
     expect(lines[0]!.text).toBe('The robot has sealed numbers on 2 of your bids.')
-    expect(lines[0]!.detail).toBe('b385 Galloway Park scores the day you send it. b391 RBFCU Potranco scores once it has a bid value.')
+    expect(lines[0]!.detail).toBe('b385 Gallenby Park scores the day you send it. b391 RBFCU Potranco scores once it has a bid value.')
     expect(lines[0]!.doors.map((d) => d.label)).toEqual(['Open b385', 'Open b391'])
     expect(lines[1]!.text).toBe('b483 Laynes Chicken Fingers is queued for the next weekday batch.')
     expect(lines[2]!.text).toBe('Robots can’t see 1 live bid.')
@@ -219,8 +219,8 @@ describe('your part', () => {
 
   it('falls back to the office’s sealed bids when the viewer has none, and counts a scored run against their number', () => {
     const bids = [
-      bid({ id: 'b431', project_name: 'Palmer Winery', estimator_id: 'wendi' }),
-      bid({ id: 'b166', project_name: 'Take 5 Brownsville', estimator_id: 'robert', bid_date_sent: '2026-09-02' }),
+      bid({ id: 'b431', project_name: 'Palvern Winery', estimator_id: 'wendi' }),
+      bid({ id: 'b166', project_name: 'Tune 5 Brownsville', estimator_id: 'robert', bid_date_sent: '2026-09-02' }),
     ]
     const lines = buildYourPart({
       viewerId: 'robert',
@@ -235,7 +235,7 @@ describe('your part', () => {
     })
     expect(lines.map((l) => l.key)).toEqual(['sealed', 'scored'])
     expect(lines[0]!.text).toBe('The robot has a sealed number on 1 live bid.')
-    expect(lines[1]!.text).toBe('The robot was 44% high on b166 Take 5 Brownsville.')
+    expect(lines[1]!.text).toBe('The robot was 44% high on b166 Tune 5 Brownsville.')
     expect(lines[1]!.doors[0]).toMatchObject({ label: 'Compare b166', kind: 'bid' })
   })
 
@@ -256,11 +256,11 @@ describe('your part', () => {
 
 describe('runs', () => {
   it('orders live runs in flight first, then scored, voided last, and says whose send it waits on', () => {
-    const bids: YourPartBid[] = [{ id: 'x', bid_number: '385', project_name: 'Galloway', bid_date_sent: null, outcome: null, estimator_id: 'grace' }]
+    const bids: YourPartBid[] = [{ id: 'x', bid_number: '385', project_name: 'Gallenby', bid_date_sent: null, outcome: null, estimator_id: 'grace' }]
     const rows = buildLiveRuns(
       [
-        shadow({ id: 'scored', status: 'scored', shadow_bid_number: '418', reference_bid_number: '166', project_name: 'Take 5 Brownsville', locked_total: 72854, reference_value: 50528, delta_pct: 44.2, scored_at: '2026-09-07T00:00:00Z', teacher_name: 'Wendi', teacher_standard: true }),
-        shadow({ id: 'void', status: 'void', shadow_bid_number: '480', reference_bid_number: '378', project_name: 'SpaceX', created_at: '2026-09-07T11:00:00Z' }),
+        shadow({ id: 'scored', status: 'scored', shadow_bid_number: '418', reference_bid_number: '166', project_name: 'Tune 5 Brownsville', locked_total: 72854, reference_value: 50528, delta_pct: 44.2, scored_at: '2026-09-07T00:00:00Z', teacher_name: 'Wendi', teacher_standard: true }),
+        shadow({ id: 'void', status: 'void', shadow_bid_number: '480', reference_bid_number: '378', project_name: 'SkyLab', created_at: '2026-09-07T11:00:00Z' }),
         shadow({ id: 'sealed', created_at: '2026-09-06T10:00:00Z' }),
         shadow({ id: 'sent', status: 'locked', shadow_bid_number: '420', reference_bid_number: '391', project_name: 'RBFCU', reference_sent_at: '2026-09-01T00:00:00Z', created_at: '2026-08-31T00:00:00Z' }),
       ],

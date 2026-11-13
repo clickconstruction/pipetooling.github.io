@@ -17,7 +17,7 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-// The screen's width: the desk by default, a phone where a test says so (the Gun Dog spike, 2026-11-02).
+// The screen's width: the desk by default, a phone where a test says so (the Gray Fox spike, 2026-11-02).
 const screenState = vi.hoisted(() => ({ phone: false }))
 vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => screenState.phone }))
 const opened: string[] = []

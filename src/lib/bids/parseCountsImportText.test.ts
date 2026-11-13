@@ -206,8 +206,8 @@ describe('the scope heading (v2.4699)', () => {
 
 describe('the project behind a copy (v2.5517)', () => {
   it('reads the project token from the link and the project name from the scope heading', () => {
-    const r = parseCountsImportText('--- Counts, SpaceX BA · every sheet · every layer ---\nWC-1\t4\t2\n\nView link:\thttps://counttooling.com/app/?t=8F3C2A4E-1B9D-4C77-A0E2-6D5B1F0A9E21')
-    expect(r.projectName).toBe('SpaceX BA')
+    const r = parseCountsImportText('--- Counts, SkyLab BA · every sheet · every layer ---\nWC-1\t4\t2\n\nView link:\thttps://counttooling.com/app/?t=8F3C2A4E-1B9D-4C77-A0E2-6D5B1F0A9E21')
+    expect(r.projectName).toBe('SkyLab BA')
     expect(r.sourceToken).toBe('8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
     expect(r.scope).toBe('all')
   })

@@ -10,11 +10,11 @@ const book: LaborBookMatchEntry[] = [
 ]
 const row = (fixture: string, count: number, hrs: [number, number, number]) => ({ fixture, count, is_fixed: false, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2] })
 
-// The to-do's real pairs, illustrative hours: J650 ATI (339 h on $33.5k), J523 (549 h at 90 %), J804 (131 h at 80 %).
-const j650: CalibrationJob = { jobId: 'j650', label: 'J650 ATI Schertz', bidId: 'b34', pctDone: 100, fieldDays: 22, actualHours: 339, rows: [row('WC', 20, [1, 1, 1]), row('LAV', 20, [0.5, 0.5, 0.5]), row('FD', 10, [1.5, 0, 0.5])] } // predicted 60 + 30 + 20 = 110... scaled below
-const j523: CalibrationJob = { jobId: 'j523', label: 'J523 Mission Hills', bidId: 'b66', pctDone: 90, fieldDays: 41, actualHours: 549, rows: [row('WC', 100, [1, 1, 1]), row('LAV', 100, [0.5, 0.5, 0.5])] } // predicted 300 + 150 = 450 → to date 405
-const j804: CalibrationJob = { jobId: 'j804', label: 'J804 AutoZone', bidId: 'b67', pctDone: 80, fieldDays: 12, actualHours: 131, rows: [row('WC', 30, [1, 1, 1]), row('FD', 20, [1.5, 0, 0.5])] } // predicted 90 + 40 = 130 → to date 104
-const young: CalibrationJob = { jobId: 'j1007', label: 'J1007 SPACEX', bidId: 'b375', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [row('WC', 10, [1, 1, 1])] }
+// The to-do's real pairs, illustrative hours: J650 AXO (339 h on $33.5k), J523 (549 h at 90 %), J804 (131 h at 80 %).
+const j650: CalibrationJob = { jobId: 'j650', label: 'J650 AXO Schertz', bidId: 'b34', pctDone: 100, fieldDays: 22, actualHours: 339, rows: [row('WC', 20, [1, 1, 1]), row('LAV', 20, [0.5, 0.5, 0.5]), row('FD', 10, [1.5, 0, 0.5])] } // predicted 60 + 30 + 20 = 110... scaled below
+const j523: CalibrationJob = { jobId: 'j523', label: 'J523 Mission Flats', bidId: 'b66', pctDone: 90, fieldDays: 41, actualHours: 549, rows: [row('WC', 100, [1, 1, 1]), row('LAV', 100, [0.5, 0.5, 0.5])] } // predicted 300 + 150 = 450 → to date 405
+const j804: CalibrationJob = { jobId: 'j804', label: 'J804 TireBarn', bidId: 'b67', pctDone: 80, fieldDays: 12, actualHours: 131, rows: [row('WC', 30, [1, 1, 1]), row('FD', 20, [1.5, 0, 0.5])] } // predicted 90 + 40 = 130 → to date 104
+const young: CalibrationJob = { jobId: 'j1007', label: 'J1007 SKYLAB', bidId: 'b375', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [row('WC', 10, [1, 1, 1])] }
 const unpriced: CalibrationJob = { jobId: 'j879', label: 'J879 ADAMS', bidId: 'b76', pctDone: 100, fieldDays: 15, actualHours: 200, rows: [row('WC', 10, [0, 0, 0])] }
 
 describe('bookMultiplier', () => {
@@ -43,7 +43,7 @@ describe('entryEvidence', () => {
     const m = bookMultiplier([j650, j523, j804])
     const ev = entryEvidence(book, m.used)
     const toilet = ev.get('e-toilet')!
-    expect(toilet.rows.map((r) => r.jobLabel)).toEqual(['J650 ATI Schertz', 'J523 Mission Hills', 'J804 AutoZone'])
+    expect(toilet.rows.map((r) => r.jobLabel)).toEqual(['J650 AXO Schertz', 'J523 Mission Flats', 'J804 TireBarn'])
     // J523: 300 of 450 predicted → 2/3 of 549 = 366 actual on toilets vs 270 predicted to date → 1.356
     const j523Row = toilet.rows.find((r) => r.jobId === 'j523')!
     expect(j523Row.predictedHours).toBe(300)

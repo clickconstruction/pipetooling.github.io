@@ -9,11 +9,11 @@ const job = (id: string, over: Partial<LienBookJob> = {}): LienBookJob => ({
   label: `${id.slice(1)} · Job ${id}`,
   address: `${id.slice(1)} Main St, Kyle, TX`,
   gcId: 'gc1',
-  gcName: 'Knight Contracting',
+  gcName: 'Kestrin Contracting',
   propertyKind: 'non_residential',
   homestead: false,
   county: 'Hays',
-  ownerName: 'Elbel Holdings LLC',
+  ownerName: 'Elwick Holdings LLC',
   openBalance: 10_000,
   lastWorkDate: '2026-09-20',
   isSub: true,
@@ -61,7 +61,7 @@ function input(): LienTimelineBookInput {
     filingsByJob: {},
     jobs: {
       j878: job('j878', { openBalance: 38_625 }),
-      j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palmer', propertyKind: 'residential', homestead: true, openBalance: 7_152, ownerName: 'LAGAN JOEL C & SHANNON' }),
+      j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palvern', propertyKind: 'residential', homestead: true, openBalance: 7_152, ownerName: 'LARROW JOEL C & SHANNON' }),
       j702: job('j702', { openBalance: 9_221, propertyKind: '' }),
       j1101: job('j1101', { gcId: null, gcName: '', isSub: false, lastWorkDate: '2026-07-20', propertyKind: 'residential', openBalance: 1_795, ownerName: 'Sam Whitfield' }),
     },
@@ -103,7 +103,7 @@ describe('legalLienGridCells', () => {
   })
 
   it('reads Residential with Homestead or No homestead beneath', () => {
-    expect(cell('j843')).toMatchObject({ kind: 'Residential', homestead: 'Homestead', owner: 'LAGAN JOEL C & SHANNON' })
+    expect(cell('j843')).toMatchObject({ kind: 'Residential', homestead: 'Homestead', owner: 'LARROW JOEL C & SHANNON' })
     expect(cell('j1101')).toMatchObject({ kind: 'Residential', homestead: 'No homestead' })
   })
 
@@ -132,8 +132,8 @@ describe('the rail', () => {
     const rail = legalLienGridGcs(book, 'all')
     expect(rail.map((e) => [e.id, e.name, e.count, e.open])).toEqual([
       ['', 'All GCs', 4, 56_793],
-      ['gc1', 'Knight Contracting', 2, 47_846],
-      ['gc2', 'Michael Palmer', 1, 7_152],
+      ['gc1', 'Kestrin Contracting', 2, 47_846],
+      ['gc2', 'Michael Palvern', 1, 7_152],
       [LEGAL_LIEN_NO_GC, 'No GC · with the owner', 1, 1_795],
     ])
     expect(rail.map((e) => e.kind)).toEqual(['all', 'gc', 'gc', 'none'])
@@ -156,7 +156,7 @@ describe('the rail', () => {
 
   it('a find keeps All and the selected entry, and matches the rest by name', () => {
     const rail = legalLienGridGcs(book, 'all')
-    expect(findLegalLienGcs(rail, 'knight', 'gc2').map((e) => e.id)).toEqual(['', 'gc1', 'gc2'])
+    expect(findLegalLienGcs(rail, 'kestrin', 'gc2').map((e) => e.id)).toEqual(['', 'gc1', 'gc2'])
     expect(findLegalLienGcs(rail, '', 'gc2')).toHaveLength(4)
     expect(legalLienGcCountWords(1)).toBe('1 job')
     expect(legalLienGcCountWords(0)).toBe('0 jobs')
@@ -176,7 +176,7 @@ describe('by court (v2.4825)', () => {
       ],
       jobs: {
         j878: job('j878', { openBalance: 38_625 }),
-        j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palmer', county: 'Guadalupe County', precinct: '2', openBalance: 7_152 }),
+        j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palvern', county: 'Guadalupe County', precinct: '2', openBalance: 7_152 }),
         j702: job('j702', { precinct: '2', openBalance: 9_221 }),
         j1101: job('j1101', { gcId: null, gcName: '', isSub: false, county: '', openBalance: 1_795 }),
         j900: job('j900', { precinct: '1', precinctNote: '1 or 2 — on the line', openBalance: 4_000 }),

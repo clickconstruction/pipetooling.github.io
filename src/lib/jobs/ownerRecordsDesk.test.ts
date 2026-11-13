@@ -4,7 +4,7 @@ import { ownerRecordsFromDesk } from './ownerRecordsDesk'
 
 const fields = (claim: string) => ({ notice: { claimAmount: claim, noticeDate: '2026-09-14' }, gcEmail: '' })
 const item = (id: string, job_id: string, status: string, claim: string, at: string, over: Record<string, unknown> = {}) => ({ id, job_id, kind: 'notice_53_056', status, fields: fields(claim), voided_at: null, sent_at: status === 'sent' ? at : null, updated_at: at, created_at: at, ...over })
-const job = (id: string, name: string, address: string, addressId: string | null, customer_id: string, revenue: number, paid: number) => ({ id, hcp_number: id.slice(1), click_number: null, job_name: name, job_address: address, customer_id, customer_name: 'Umar Khan', gc_customer_id: 'gc1', customer_address_id: addressId, revenue, payments_made: paid, master_user_id: null, last_work_date: null })
+const job = (id: string, name: string, address: string, addressId: string | null, customer_id: string, revenue: number, paid: number) => ({ id, hcp_number: id.slice(1), click_number: null, job_name: name, job_address: address, customer_id, customer_name: 'Ulric Karrow', gc_customer_id: 'gc1', customer_address_id: addressId, revenue, payments_made: paid, master_user_id: null, last_work_date: null })
 
 const data = {
   items: [
@@ -19,13 +19,13 @@ const data = {
     { ...item('i6', 'j273', 'approved', '1.00', '2026-10-05T15:00:00Z'), kind: 'affidavit' },
   ],
   jobsById: {
-    j273: job('j273', 'Dudley (Lennox)', '9703 Lenox Hl\nSan Antonio, TX 78240', 'addr-lenox', 'c1', 20000, 2415),
-    j858: job('j858', 'Service Visit', '9703 Lenox Hl, San Antonio, TX', 'addr-lenox', 'c1', 7902, 0),
-    j881: job('j881', 'Dudley Mason', '9703 Lenox Hl San Antonio, TX', null, 'c1', 1050, 0),
-    j867: job('j867', 'Service Visit', '628 Terrell Rd, San Antonio, TX', 'addr-terrell', 'c2', 1710, 0),
+    j273: job('j273', 'Dunmere (Linmoor)', '9703 Linmor Hl\nSan Antonio, TX 78240', 'addr-linmor', 'c1', 20000, 2415),
+    j858: job('j858', 'Service Visit', '9703 Linmor Hl, San Antonio, TX', 'addr-linmor', 'c1', 7902, 0),
+    j881: job('j881', 'Dunmere Mallin', '9703 Linmor Hl San Antonio, TX', null, 'c1', 1050, 0),
+    j867: job('j867', 'Service Visit', '628 Tarrow Rd, San Antonio, TX', 'addr-tarrow', 'c2', 1710, 0),
   },
-  gcsById: { gc1: { id: 'gc1', name: 'RMC- Dudley Mason', address: '', email: '', policy: 'ask', policyNote: '' } },
-  ownerByJob: { j273: { owner_mode: 'person', owner_name: 'KHAN UMAR & BANGASH SHAZMEENA', company_name: null, mailing_address: '3203 Spider Lily' }, j867: { owner_mode: 'building_owner', owner_name: 'R. Syed', company_name: 'Terrell Holdings LLC', mailing_address: null } },
+  gcsById: { gc1: { id: 'gc1', name: 'RLC- Dunmere Mallin', address: '', email: '', policy: 'ask', policyNote: '' } },
+  ownerByJob: { j273: { owner_mode: 'person', owner_name: 'KARROW ULRIC & BARROWBY SHELMINA', company_name: null, mailing_address: '3203 Spider Lily' }, j867: { owner_mode: 'building_owner', owner_name: 'R. Syed', company_name: 'Tarrow Holdings LLC', mailing_address: null } },
 } as unknown as LienDeskData
 
 describe('ownerRecordsFromDesk', () => {
@@ -38,13 +38,13 @@ describe('ownerRecordsFromDesk', () => {
   it('folds the desk’s jobs by owner and property, named by the owner of record when there is one', () => {
     expect(desk.properties.every((p) => p.sharesAddress === false)).toBe(true)
     expect(desk.properties.map((p) => [p.owner, p.address, p.gcName, p.jobs, p.open, p.seedJobId])).toEqual([
-      ['KHAN UMAR & BANGASH SHAZMEENA', '9703 Lenox Hl, San Antonio, TX 78240', 'RMC- Dudley Mason', 3, 26537, 'j273'],
-      ['Terrell Holdings LLC', '628 Terrell Rd, San Antonio, TX', 'RMC- Dudley Mason', 1, 1710, 'j867'],
+      ['KARROW ULRIC & BARROWBY SHELMINA', '9703 Linmor Hl, San Antonio, TX 78240', 'RLC- Dunmere Mallin', 3, 26537, 'j273'],
+      ['Tarrow Holdings LLC', '628 Tarrow Rd, San Antonio, TX', 'RLC- Dunmere Mallin', 1, 1710, 'j867'],
     ])
   })
 
   it('hands the window the job behind a row', () => {
-    expect(desk.seedFor('j273')).toEqual({ jobId: 'j273', customerId: 'c1', addressId: 'addr-lenox', gcId: 'gc1' })
+    expect(desk.seedFor('j273')).toEqual({ jobId: 'j273', customerId: 'c1', addressId: 'addr-linmor', gcId: 'gc1' })
     expect(desk.seedFor('nope')).toBeNull()
   })
 

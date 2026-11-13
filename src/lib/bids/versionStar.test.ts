@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BundlePricing, BundleVersion } from './coverLetterVersionBundle'
 import { afterOpenPriceDeleted, letterPriceCountByVersion, resolvedStarPricingId, starWriteAllowed } from './versionStar'
 
-// BP385 Galloway Park as it stands on prod (2026-10-01): both versions star Value Engineered's price.
+// BP385 Gallenby Park as it stands on prod (2026-10-01): both versions star Value Engineered's price.
 const ve: BundleVersion = { id: 'v-ve', name: 'Value Engineered', sort_order: 0, include_in_submission: true, is_alternate: true, starred_price_book_version_id: 'p-ve' }
 const wtp: BundleVersion = { id: 'v-wtp', name: 'Written to Plan', sort_order: 1, include_in_submission: true, is_alternate: false, starred_price_book_version_id: 'p-ve' }
 const bp385Pricings: BundlePricing[] = [

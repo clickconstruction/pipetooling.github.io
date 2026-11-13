@@ -19,7 +19,7 @@ const METHODS = [
 function setup(over: Partial<DemandRecordSendSheetProps> = {}) {
   const props: DemandRecordSendSheetProps = {
     headline: 'Demand letter · $15,722.49',
-    lines: ['ATI Schertz — As per plans · 650', 'Pay by October 16, 2026'],
+    lines: ['AXO Schertz — As per plans · 650', 'Pay by October 16, 2026'],
     methods: METHODS,
     method: 'certified_mail',
     onMethod: vi.fn(),
@@ -43,7 +43,7 @@ describe('DemandRecordSendSheet', () => {
     setup()
     const summary = document.querySelector('[data-lien-record-summary]')!
     expect(summary.textContent).toContain('Demand letter · $15,722.49')
-    expect(summary.textContent).toContain('ATI Schertz — As per plans · 650')
+    expect(summary.textContent).toContain('AXO Schertz — As per plans · 650')
     expect(summary.textContent).toContain('Pay by October 16, 2026')
     expect(screen.getByText(/Deadline watch/)).toBeTruthy()
   })

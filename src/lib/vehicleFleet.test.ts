@@ -258,13 +258,13 @@ describe('buildVehicleLedger service rows (v2.1645)', () => {
       possessions: [],
       valueEntries: [],
       serviceEvents: [
-        svc({ note: 'Take 5, Bandera Rd' }),
+        svc({ note: 'Tune 5, Bandera Rd' }),
         svc({ id: 's2', service_type: 'tires', service_date: '2026-03-14', odometer_value: 109300, cost: 612, note: '2 front + alignment' }),
       ],
       userNameById: new Map(),
     })
     expect(rows.map((r) => r.key)).toEqual(['service-s1', 'reading-r1', 'service-s2'])
-    expect(rows[0]?.label).toBe('Oil change · Take 5, Bandera Rd · $89.00')
+    expect(rows[0]?.label).toBe('Oil change · Tune 5, Bandera Rd · $89.00')
     expect(rows[0]?.odometer).toBe(115000)
     expect(rows[2]?.label).toBe('Tires · 2 front + alignment · $612.00')
   })

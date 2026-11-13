@@ -87,11 +87,11 @@ describe('buildLienReminders — the strip’s counts and the names behind them'
         j733: two({ state: 'in_flight', day: 16, words: 'the attorney’s letter · unresponsive · drafting', letterTwo: { itemId: 'i2', kind: 'unresponsive', status: 'draft', sentAt: null } }),
         j729: two({ state: 'paid' }),
       },
-      jobTitle: (id) => ({ j663: '663 · Knight Contracting', j273: '273 · Dudley (Lennox)', j912: '912 · Harlan Homes', j741: '741 · Ridgeway Builders', j733: '733 · Castell', j729: '729 · Pecan Grove' })[id] ?? id,
+      jobTitle: (id) => ({ j663: '663 · Kestrin Contracting', j273: '273 · Dunmere (Linmoor)', j912: '912 · Harlan Homes', j741: '741 · Ridgeway Builders', j733: '733 · Castell', j729: '729 · Pecan Grove' })[id] ?? id,
     })
     expect(r.counts).toEqual([2, 1, 1, 1])
     expect(r.waiting).toBe(1)
-    expect(r.rows.map((x) => `${x.step} ${x.title} ${x.state}`)).toEqual(['1 273 · Dudley (Lennox) due', '1 663 · Knight Contracting due', '1 912 · Harlan Homes waiting', '2 741 · Ridgeway Builders sent', '3 733 · Castell two_drafting', '4 729 · Pecan Grove paid'])
+    expect(r.rows.map((x) => `${x.step} ${x.title} ${x.state}`)).toEqual(['1 273 · Dunmere (Linmoor) due', '1 663 · Kestrin Contracting due', '1 912 · Harlan Homes waiting', '2 741 · Ridgeway Builders sent', '3 733 · Castell two_drafting', '4 729 · Pecan Grove paid'])
   })
   it('is empty with no sent notice', () => {
     expect(buildLienReminders({ courtesyByJob: {}, letterTwoByJob: {}, jobTitle: (id) => id })).toEqual({ rows: [], counts: [0, 0, 0, 0], waiting: 0, scheduled: 0 })

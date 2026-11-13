@@ -131,7 +131,7 @@ Press {{button:outline|Start a bid}} to make a new bid from the email. A panel o
 
 The bid takes the plans link and the due day from the email. The email lands on the bid. The Bid Board opens on it.
 
-Press {{button:outline|Put it on a bid…}} when the bid exists already. A picker lists the sender's bids first. Type a name or a number to find another open bid. Press the bid. The email lands on it. The bid's history gains one line. It reads *Invitation to bid came in by email from Glenn Geling, Oct 22.* So the bid says it reached you by email too.
+Press {{button:outline|Put it on a bid…}} when the bid exists already. A picker lists the sender's bids first. Type a name or a number to find another open bid. Press the bid. The email lands on it. The bid's history gains one line. It reads *Invitation to bid came in by email from Glenn Gelwin, Oct 22.* So the bid says it reached you by email too.
 
 Press {{button:outline|Open the bid}} on an email that is on a bid already. The Bid Board opens on it.
 
@@ -186,7 +186,7 @@ Every press leaves a gray line on this thread. The line says who pressed what an
 :::example The lines a press leaves
 Grace pressed Call on (832) 871-4166 ext. 121 from Glenn's email of Oct 22. · 2:14 PM
 
-Grace opened a thread for amy@maxxbuilders.com from Glenn's email of Oct 22. open it › · 2:15 PM
+Grace opened a thread for amy@marrexbuilders.example from Glenn's email of Oct 22. open it › · 2:15 PM
 :::
 
 The line lands ten seconds after the press. Press {{button:outline|Undo}} on the toast within those ten seconds and nothing is written. Press **open it ›** on a line to go to the thread it opened.

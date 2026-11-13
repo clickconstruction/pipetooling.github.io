@@ -22,9 +22,9 @@ import { lienReleaseNotaryCopy, NOTARY_COPY_MAX_BYTES, notaryCopyFileProblem, no
 
 const FIELDS: LienWaiverFields = {
   companyName: 'Click Plumbing and Electrical',
-  checkFrom: 'Southern Post Construction, LLC',
+  checkFrom: 'Southern Pine Construction, LLC',
   amount: '3800',
-  projectDescription: 'Take 5 Seguin — 380 TX-123, Seguin, TX 78155',
+  projectDescription: 'Tune 5 Seguin — 410 TX-123, Seguin, TX 78155',
   throughDate: '',
   signedDate: '2026-10-28',
   signerName: 'Malachi Whites',
@@ -86,11 +86,11 @@ describe('the jurat block', () => {
 
 describe('the send email', () => {
   it('links the notarized copy in place of the attached-PDF line', () => {
-    const withLink = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Take 5 Seguin', amountLabel: '$3,800.00', notaryCopyUrl: 'https://drive.google.com/file/d/1aB2/view' })
+    const withLink = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Tune 5 Seguin', amountLabel: '$3,800.00', notaryCopyUrl: 'https://drive.google.com/file/d/1aB2/view' })
     expect(withLink.text).toContain('signed in ink before a notary')
     expect(withLink.text).toContain('https://drive.google.com/file/d/1aB2/view')
     expect(withLink.html).toContain('href="https://drive.google.com/file/d/1aB2/view"')
-    const without = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Take 5 Seguin', amountLabel: '$3,800.00' })
+    const without = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Tune 5 Seguin', amountLabel: '$3,800.00' })
     expect(without.text).toContain('The attached PDF is the complete, signed document')
     expect(without.text).not.toContain('notary')
   })
@@ -108,7 +108,7 @@ describe('the notarized PDF itself (v2.5985)', () => {
   })
 
   it('takes a PDF up to 4 MB, and names what is wrong with anything else', () => {
-    expect(notaryCopyFileProblem({ name: 'Take 5 notarized.pdf', type: 'application/pdf', size: 312_000 })).toBeNull()
+    expect(notaryCopyFileProblem({ name: 'Tune 5 notarized.pdf', type: 'application/pdf', size: 312_000 })).toBeNull()
     // Some browsers hand a PDF over with no type: the name decides.
     expect(notaryCopyFileProblem({ name: 'scan.PDF', type: '', size: 900_000 })).toBeNull()
     expect(notaryCopyFileProblem({ name: 'IMG_2231.jpg', type: 'image/jpeg', size: 900_000 })).toBe('Pick the PDF the notary sent back. A photo or a scan in another format will not attach.')
@@ -149,8 +149,8 @@ describe('the notarized PDF itself (v2.5985)', () => {
   })
 
   it('the email attaches the notarized PDF and drops the link line, even when a link is on file too', () => {
-    const b = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Take 5 Seguin', amountLabel: '$3,800.00', notaryCopyUrl: 'https://drive.google.com/file/d/1aB2/view', notaryCopyAttached: true })
-    expect(b.text).toBe('Attached is the signed release of lien (Conditional · final, $3,800.00) for Take 5 Seguin.\n\nThis release was signed before a notary. The attached PDF is the signed, notarized copy.')
+    const b = buildLienReleaseEmailBodies({ formLabel: 'Conditional · final', projectDescription: 'Tune 5 Seguin', amountLabel: '$3,800.00', notaryCopyUrl: 'https://drive.google.com/file/d/1aB2/view', notaryCopyAttached: true })
+    expect(b.text).toBe('Attached is the signed release of lien (Conditional · final, $3,800.00) for Tune 5 Seguin.\n\nThis release was signed before a notary. The attached PDF is the signed, notarized copy.')
     expect(b.html).toContain('<p>This release was signed before a notary. The attached PDF is the signed, notarized copy.</p>')
     expect(b.text).not.toContain('drive.google.com')
     expect(b.html).not.toContain('href=')

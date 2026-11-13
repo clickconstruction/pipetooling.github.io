@@ -13,7 +13,7 @@ function wo(overrides: Partial<SubBoardCommitmentInput> & { id: string; person_i
     stepStart: null,
     stepEnd: null,
     stepName: 'Top Out',
-    projectName: 'Dudley Mason',
+    projectName: 'Dunmere Mallin',
     projectId: 'proj-1',
     ...overrides,
   }
@@ -39,8 +39,8 @@ describe('buildSubBoardLanes', () => {
   it('offered orders render as ghosts; draft/declined/settled do not bar; undated are counted', () => {
     const { lanes, undatedCount } = buildSubBoardLanes(
       [
-        wo({ id: 'c1', person_id: 'p1', display_name: 'Texas R & A', status: 'offered', proposed_start: '2026-08-14', proposed_end: '2026-08-18' }),
-        wo({ id: 'c2', person_id: 'p1', display_name: 'Texas R & A', status: 'declined', proposed_start: '2026-08-14', proposed_end: '2026-08-18' }),
+        wo({ id: 'c1', person_id: 'p1', display_name: 'Texas Q & E', status: 'offered', proposed_start: '2026-08-14', proposed_end: '2026-08-18' }),
+        wo({ id: 'c2', person_id: 'p1', display_name: 'Texas Q & E', status: 'declined', proposed_start: '2026-08-14', proposed_end: '2026-08-18' }),
         wo({ id: 'c3', person_id: 'p2', display_name: 'Kyle', status: 'accepted' }),
       ],
       WIN[0],
@@ -55,7 +55,7 @@ describe('buildSubBoardLanes', () => {
   it('flags overlapping bars within a lane, sorts lanes by name, clamps to the window', () => {
     const { lanes } = buildSubBoardLanes(
       [
-        wo({ id: 'c1', person_id: 'p-kyle', display_name: 'Kyle', stepStart: '2026-08-10', stepEnd: '2026-08-15', stepName: 'Bunker', projectName: 'Gun Dog' }),
+        wo({ id: 'c1', person_id: 'p-kyle', display_name: 'Kyle', stepStart: '2026-08-10', stepEnd: '2026-08-15', stepName: 'Bunker', projectName: 'Gray Fox' }),
         wo({ id: 'c2', person_id: 'p-kyle', display_name: 'Kyle', stepStart: '2026-08-14', stepEnd: '2026-08-20', stepName: 'Walk', projectName: 'SVP' }),
         wo({ id: 'c3', person_id: 'p-behar', display_name: 'Behar Kraja', stepStart: '2026-08-12', stepEnd: '2026-08-13' }),
       ],

@@ -16,7 +16,7 @@ describe('LienDeskOwnerPane — Find the owner ›', () => {
   it('opens Edit Job on the Property record row, as its hover promises (#87 E)', async () => {
     const onOpenEditJob = vi.fn()
     await renderSettled(
-      <LienDeskOwnerPane job={undefined} jobId="job-1" gcName="Loberg Contracting" gcCustomerId={null} address={null} owner={noOwner} ownerName="" userId={null} onChanged={() => {}} onOpenEditJob={onOpenEditJob} />,
+      <LienDeskOwnerPane job={undefined} jobId="job-1" gcName="Lowbeck Contracting" gcCustomerId={null} address={null} owner={noOwner} ownerName="" userId={null} onChanged={() => {}} onOpenEditJob={onOpenEditJob} />,
       { loaded: () => screen.findByText('No job address to look up.') },
     )
     const door = screen.getByRole('button', { name: 'Find the owner ›' })

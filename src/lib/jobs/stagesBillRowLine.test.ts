@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { stagesBillRowLine } from './stagesBillRowLine'
 
 describe('stagesBillRowLine (the This bill line on a Pipeline bill row)', () => {
-  it('a part-paid bill says what is paid and what is left (Springtown, the Sep 1 bill)', () => {
+  it('a part-paid bill says what is paid and what is left (Stonewick, the Sep 1 bill)', () => {
     const l = stagesBillRowLine({ amount: 11770.3, applied: 11181.78, billedYmd: '2026-09-01' })
     expect(l.paid).toBe('$11,182 paid')
     expect(l.left).toBe('$589 left')
@@ -10,7 +10,7 @@ describe('stagesBillRowLine (the This bill line on a Pipeline bill row)', () => 
     expect(l.title).toBe("This row's bill: $11,770 sent Sep 1. $11,182 is paid on it, and $589 is left.")
   })
 
-  it('a bill with nothing paid says nothing paid, and the whole bill is left (Springtown, the Sep 23 bill)', () => {
+  it('a bill with nothing paid says nothing paid, and the whole bill is left (Stonewick, the Sep 23 bill)', () => {
     const l = stagesBillRowLine({ amount: '3635.92', applied: 0, billedYmd: '2026-09-23' })
     expect(l.paid).toBe('nothing paid')
     expect(l.left).toBe('$3,636 left')

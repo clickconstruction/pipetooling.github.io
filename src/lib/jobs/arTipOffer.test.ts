@@ -14,23 +14,23 @@ const row = (jobId: string, hcp: string, name: string, amount: number): ArTipAll
   amount,
 })
 
-/** The live case this was built for: Elaine Giesber's deposit, three bills on job 960. */
+/** The live case this was built for: Elaine Gilbrow's deposit, three bills on job 960. */
 const ELAINE: ArTipAllocation[] = [
-  row('j960', '960', 'Elaine Giesber-Installations Pcv & Lavatory Sink', 650),
-  row('j960', '960', 'Elaine Giesber-Installations Pcv & Lavatory Sink', 483.2),
-  row('j960', '960', 'Elaine Giesber-Installations Pcv & Lavatory Sink', 672.5),
+  row('j960', '960', 'Elaine Gilbrow-Installations Pcv & Lavatory Sink', 650),
+  row('j960', '960', 'Elaine Gilbrow-Installations Pcv & Lavatory Sink', 483.2),
+  row('j960', '960', 'Elaine Gilbrow-Installations Pcv & Lavatory Sink', 672.5),
 ]
 
 describe('arTipJobLabel', () => {
   it('reads the way the applied breakdown does', () => {
-    expect(arTipJobLabel(row('j1', '960', 'Elaine Giesber-Installations', 1))).toBe(
-      '960 · Elaine Giesber-Installations',
+    expect(arTipJobLabel(row('j1', '960', 'Elaine Gilbrow-Installations', 1))).toBe(
+      '960 · Elaine Gilbrow-Installations',
     )
   })
 
   it('falls back to an em dash on either half', () => {
     expect(arTipJobLabel({ job_id: 'j1', hcp_number: '', job_name: '', amount: 1 })).toBe('— · —')
-    expect(arTipJobLabel({ job_id: 'j1', hcp_number: null, job_name: 'Knight', amount: 1 })).toBe('— · Knight')
+    expect(arTipJobLabel({ job_id: 'j1', hcp_number: null, job_name: 'Kestrin', amount: 1 })).toBe('— · Kestrin')
   })
 })
 
@@ -38,12 +38,12 @@ describe('soleJobOfAllocations', () => {
   it('finds the one job every row shares', () => {
     expect(soleJobOfAllocations(ELAINE)).toEqual({
       jobId: 'j960',
-      label: '960 · Elaine Giesber-Installations Pcv & Lavatory Sink',
+      label: '960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink',
     })
   })
 
   it('returns null when the rows span two jobs', () => {
-    expect(soleJobOfAllocations([...ELAINE, row('j712', '712', 'Knight Contracting', 100)])).toBeNull()
+    expect(soleJobOfAllocations([...ELAINE, row('j712', '712', 'Kestrin Contracting', 100)])).toBeNull()
   })
 
   it('returns null on no rows, and on a row with no job', () => {
@@ -60,7 +60,7 @@ describe('buildArTipOffer', () => {
     expect(offer?.jobId).toBe('j960')
     expect(offer?.headline).toBe('$50.00 more than the bills.')
     expect(offer?.sentence).toBe(
-      'They paid over. Record it as a tip on 960 · Elaine Giesber-Installations Pcv & Lavatory Sink.',
+      'They paid over. Record it as a tip on 960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink.',
     )
     expect(offer?.buttonLabel).toBe('Add a $50.00 Tip line')
   })
@@ -68,21 +68,21 @@ describe('buildArTipOffer', () => {
   it('offers the deposit’s own jobs as a closed list when it paid more than one', () => {
     const offer = buildArTipOffer({
       remaining: 50,
-      allocations: [...ELAINE, row('j712', '712', 'Knight Contracting', 100)],
+      allocations: [...ELAINE, row('j712', '712', 'Kestrin Contracting', 100)],
     })
     expect(offer?.jobId).toBeNull()
     expect(offer?.jobLabel).toBeNull()
     expect(offer?.sentence).toContain('more than one job')
     expect(offer?.buttonLabel).toBe('Add a $50.00 Tip line')
     expect(offer?.jobChoices).toEqual([
-      { jobId: 'j960', label: '960 · Elaine Giesber-Installations Pcv & Lavatory Sink' },
-      { jobId: 'j712', label: '712 · Knight Contracting' },
+      { jobId: 'j960', label: '960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink' },
+      { jobId: 'j712', label: '712 · Kestrin Contracting' },
     ])
   })
 
   it('lists the single job as the only choice', () => {
     expect(buildArTipOffer({ remaining: 50, allocations: ELAINE })?.jobChoices).toEqual([
-      { jobId: 'j960', label: '960 · Elaine Giesber-Installations Pcv & Lavatory Sink' },
+      { jobId: 'j960', label: '960 · Elaine Gilbrow-Installations Pcv & Lavatory Sink' },
     ])
   })
 

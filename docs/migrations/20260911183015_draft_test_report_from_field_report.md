@@ -6,6 +6,6 @@ Test reports PR 4 — dial A (fragment `docs/recent-features/v2.3303.md`). Requi
 - No backfill: the reports already filed this week were handled by hand.
 - Ends with both read-only blocks.
 
-Validated 2026-09-11 in a rolled-back transaction on prod (PR 2's DDL applied first): Johnson Pretest + "Hydrostatic test passed." → one pre_test PASS draft with source and author; a second status report adds no row; a Note on an ordinary job drafts nothing; a Job Complete "Failed - lost 2 inches" on Montolongo Post Test → post_test FAIL.
+Validated 2026-09-11 in a rolled-back transaction on prod (PR 2's DDL applied first): Jarrow Pretest + "Hydrostatic test passed." → one pre_test PASS draft with source and author; a second status report adds no row; a Note on an ordinary job drafts nothing; a Job Complete "Failed - lost 2 inches" on Montelby Post Test → post_test FAIL.
 
 Apply order: merge, then `supabase db push` (after PR 2's migration). No edge function.

@@ -108,7 +108,7 @@ describe('the emailed Payment forecast sets a bill paid in kind apart, as the mo
     const row = (id: string, amount: number, deal: string | null): StageRow =>
       ({
         kind: 'invoice',
-        job: { id, customer_id: 'c1', customer_name: 'Gun Dog', job_name: id, hcp_number: '1', click_number: null, in_kind_arrangement_id: deal, payments: [], invoices: [] },
+        job: { id, customer_id: 'c1', customer_name: 'Gray Fox', job_name: id, hcp_number: '1', click_number: null, in_kind_arrangement_id: deal, payments: [], invoices: [] },
         inv: { id: `inv-${id}`, job_id: id, amount, status: 'billed', sequence_order: 1, billed_at: '2026-04-01T12:00:00Z' },
       }) as unknown as StageRow
     const screen = buildBilledPaymentForecast([row('a', 726.5, 'deal-a'), row('b', 300, null)], null, '2026-11-11')
@@ -118,8 +118,8 @@ describe('the emailed Payment forecast sets a bill paid in kind apart, as the mo
       pay_speeds: null,
       promises: {},
       rows: [
-        { invoice_id: 'inv-a', job_id: 'a', display_number: '1', job_name: 'a', customer_id: 'c1', customer_name: 'Gun Dog', billed_at: '2026-04-01T12:00:00Z', est_bill_ymd: null, remaining: 726.5, in_kind_arrangement_id: 'deal-a' },
-        { invoice_id: 'inv-b', job_id: 'b', display_number: '1', job_name: 'b', customer_id: 'c1', customer_name: 'Gun Dog', billed_at: '2026-04-01T12:00:00Z', est_bill_ymd: null, remaining: 300 },
+        { invoice_id: 'inv-a', job_id: 'a', display_number: '1', job_name: 'a', customer_id: 'c1', customer_name: 'Gray Fox', billed_at: '2026-04-01T12:00:00Z', est_bill_ymd: null, remaining: 726.5, in_kind_arrangement_id: 'deal-a' },
+        { invoice_id: 'inv-b', job_id: 'b', display_number: '1', job_name: 'b', customer_id: 'c1', customer_name: 'Gray Fox', billed_at: '2026-04-01T12:00:00Z', est_bill_ymd: null, remaining: 300 },
       ],
     })
     expect(email.inKind).toEqual(screen.inKind)

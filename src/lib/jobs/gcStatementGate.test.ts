@@ -47,7 +47,7 @@ describe('gcStatementGate', () => {
     expect(GC_STATEMENT_UNCHECKED_WORDS).toBe('Check the bills first — a statement never goes out unchecked')
   })
 
-  it('Knight’s shape: the board keys a job with one bill by the job, the payload by the bill, and they match job by job', () => {
+  it('Kestrin’s shape: the board keys a job with one bill by the job, the payload by the bill, and they match job by job', () => {
     const certified = cert([
       { key: 'job-0baef727', jobId: 'job-0baef727', remaining: 1828.71 },
       { key: 'bill-5987671b', jobId: 'job-f067e117', remaining: 3635.92 },
@@ -63,7 +63,7 @@ describe('gcStatementGate', () => {
     expect(gcStatementGate(live, [certified])).toEqual({ ok: true, why: 'checked' })
   })
 
-  it('Done Right’s shape: a bill on another job sent two hours after the check holds it', () => {
+  it('Dead Level’s shape: a bill on another job sent two hours after the check holds it', () => {
     const certified = cert([{ key: 'job-sheppard', jobId: 'job-sheppard', remaining: 250 }], '2026-10-08T17:43:55Z')
     const live = [
       { jobId: 'job-sheppard', remaining: 250 },
@@ -78,10 +78,10 @@ describe('gcStatementGate', () => {
     expect(gcStatementGate([{ jobId: 'j1', remaining: 4421.25 }], [certified]).ok).toBe(false)
   })
 
-  it('Michael Holub’s shape: paid in full since the check, there is nothing to check', () => {
-    const certified = cert([{ key: 'j-holub', jobId: 'j-holub', remaining: 6600 }])
+  it('Michael Holmby’s shape: paid in full since the check, there is nothing to check', () => {
+    const certified = cert([{ key: 'j-holmby', jobId: 'j-holmby', remaining: 6600 }])
     expect(gcStatementGate([], [certified])).toEqual({ ok: true, why: 'nothing_to_check' })
-    expect(gcStatementGate([{ jobId: 'j-holub', remaining: 0 }], [])).toEqual({ ok: true, why: 'nothing_to_check' })
+    expect(gcStatementGate([{ jobId: 'j-holmby', remaining: 0 }], [])).toEqual({ ok: true, why: 'nothing_to_check' })
   })
 
   it('the latest check of the week stands: a re-check after a change frees it, a stale one does not', () => {
@@ -113,10 +113,10 @@ describe('gcStatementGate', () => {
     expect(gcBulkHeldSummary('printed', 4, ['changed', 'not_checked'])).toBe('4 printed · 1 held: not checked this week · 1 held: changed since it was checked')
     expect(gcBulkHeldSummary('sent', 5, [])).toBe('5 sent')
     expect(gcBulkHeldLines([
-      { name: 'TF Harper', why: 'not_checked' },
-      { name: 'Done Right Foundation', why: 'changed' },
-      { name: 'Loberg Contracting', why: 'not_checked' },
-    ])).toEqual(['Held, not checked this week: TF Harper, Loberg Contracting', 'Held, changed since it was checked: Done Right Foundation'])
+      { name: 'TF Halden', why: 'not_checked' },
+      { name: 'Dead Level Foundation', why: 'changed' },
+      { name: 'Lowbeck Contracting', why: 'not_checked' },
+    ])).toEqual(['Held, not checked this week: TF Halden, Lowbeck Contracting', 'Held, changed since it was checked: Dead Level Foundation'])
     expect(gcBulkHeldLines([])).toEqual([])
   })
 
@@ -184,7 +184,7 @@ describe('readGcStatementGate — the dispatch hands in the group it built', () 
     const admin = fakeAdmin({ certs: [cert([{ key: 'job-a', jobId: 'job-a', remaining: 1200 }])] })
     const rows = [
       payloadRow({ job_id: 'job-a', row_key: 'bill-a', remaining: 1200 }),
-      payloadRow({ job_id: 'job-heron', row_key: 'bill-heron', remaining: 4050, in_collections: true }),
+      payloadRow({ job_id: 'job-hadlow', row_key: 'bill-hadlow', remaining: 4050, in_collections: true }),
     ] as never[]
     expect(await readGcStatementGate(admin, 'gc-1', { rows, now: ON_FRIDAY })).toEqual({ ok: true, why: 'checked' })
     expect(admin.reads.map((r) => r.table)).toEqual(['gc_review_certifications'])
@@ -195,10 +195,10 @@ describe('readGcStatementGate — the dispatch hands in the group it built', () 
     expect(admin.rpcs).toEqual([])
   })
 
-  it('Heron’s shape: a GC whose only bill went to Collections has nothing to check', async () => {
+  it('Hadlow’s shape: a GC whose only bill went to Collections has nothing to check', async () => {
     const admin = fakeAdmin({ certs: [] })
-    const rows = [payloadRow({ job_id: 'job-heron', row_key: 'bill-heron', remaining: 4050, in_collections: true })] as never[]
-    expect(await readGcStatementGate(admin, 'gc-heron', { rows, now: ON_FRIDAY })).toEqual({ ok: true, why: 'nothing_to_check' })
+    const rows = [payloadRow({ job_id: 'job-hadlow', row_key: 'bill-hadlow', remaining: 4050, in_collections: true })] as never[]
+    expect(await readGcStatementGate(admin, 'gc-hadlow', { rows, now: ON_FRIDAY })).toEqual({ ok: true, why: 'nothing_to_check' })
   })
 
   it('a read that fails throws, so the attempt is tried again rather than sent', async () => {
@@ -209,19 +209,19 @@ describe('readGcStatementGate — the dispatch hands in the group it built', () 
 
 describe('readGcStatementHolds — the whole report, every GC section in one read', () => {
   it('holds the sections the week’s checks do not stand behind; the no-GC bucket is never held', async () => {
-    const admin = fakeAdmin({ certs: [{ gc_customer_id: 'gc-knight', ...cert([{ key: 'job-k', jobId: 'job-k', remaining: 900 }]) }] })
+    const admin = fakeAdmin({ certs: [{ gc_customer_id: 'gc-kestrin', ...cert([{ key: 'job-k', jobId: 'job-k', remaining: 900 }]) }] })
     const group = (id: string | null, rows: unknown[]) => ({ entity_id: id, entity_name: id ?? 'Not billed to a GC', is_no_entity: id == null, job_count: 1, subtotal: 0, oldest_age_days: null, rows })
     const holds = await readGcStatementHolds(admin, [
-      group('gc-knight', [payloadRow({ job_id: 'job-k', row_key: 'b-k', remaining: 900 })]),
-      group('gc-harper', [payloadRow({ job_id: 'job-h', row_key: 'b-h', remaining: 3000 })]),
+      group('gc-kestrin', [payloadRow({ job_id: 'job-k', row_key: 'b-k', remaining: 900 })]),
+      group('gc-halden', [payloadRow({ job_id: 'job-h', row_key: 'b-h', remaining: 3000 })]),
       group(null, [payloadRow({ job_id: 'job-n', row_key: 'b-n', remaining: 50 })]),
     ] as never[], { now: ON_FRIDAY })
     expect([...holds.entries()].map(([id, g]) => [id, g.ok ? g.why : g.why])).toEqual([
-      ['gc-knight', 'checked'],
-      ['gc-harper', 'not_checked'],
+      ['gc-kestrin', 'checked'],
+      ['gc-halden', 'not_checked'],
     ])
     expect(admin.reads[0]!.steps.filter(([m]) => m === 'in' || m === 'eq')).toEqual([
-      ['in', ['gc_customer_id', ['gc-knight', 'gc-harper']]],
+      ['in', ['gc_customer_id', ['gc-kestrin', 'gc-halden']]],
       ['eq', ['week_start', '2026-10-05']],
     ])
   })
@@ -238,7 +238,7 @@ describe('readGcStatementGate — send-gc-statement-email has it build the group
     groups: [
       {
         entity_id: 'gc-1',
-        entity_name: 'Knight Contracting',
+        entity_name: 'Kestrin Contracting',
         is_no_entity: false,
         job_count: 1,
         subtotal: 1000,

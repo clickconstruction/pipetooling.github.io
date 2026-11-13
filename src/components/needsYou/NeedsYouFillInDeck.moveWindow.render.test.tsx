@@ -36,8 +36,8 @@ const sources = (): MoveWindowSources => ({
     { invoice_id: 'inv-m', job_id: 'j-901' },
   ],
   accounts: [{ job_id: 'j-650', supply_house_id: 'h-1', status: 'open', account_ref: '44812', opened_at: '2026-10-10T15:00:00Z', requested_at: null }],
-  asks: [{ id: 'ask-1', invoice_id: 'inv-a', requested_at: '2026-10-27T14:00:00Z', via: 'email', sent_to: 'curly@bluebonnet.com' }],
-  reps: [{ id: 'rep-1', supply_house_id: 'h-1', name: 'Curly', email: 'curly@bluebonnet.com', phone: '210-555-0100' }],
+  asks: [{ id: 'ask-1', invoice_id: 'inv-a', requested_at: '2026-10-27T14:00:00Z', via: 'email', sent_to: 'curly@bluebonnet.example' }],
+  reps: [{ id: 'rep-1', supply_house_id: 'h-1', name: 'Curly', email: 'curly@bluebonnet.example', phone: '210-555-0100' }],
   houses: [
     { id: 'h-1', name: 'Bluebonnet Supply' },
     { id: 'h-2', name: 'Moore Supply' },
@@ -59,7 +59,7 @@ function harness() {
     save: async (w) => {
       saves.push(w)
       if (w.choice === 'moved') return { choice: 'moved', invoiceId: w.invoiceId, confirmedAskId: null, insertedAskId: 'row-9', account: w.account ? { jobId: w.account.jobId, houseId: w.account.houseId, previous: null, flaggedInvoiceIds: [] } : null }
-      if (w.choice === 'asked') return { choice: 'asked', invoiceId: w.invoiceId, sentTo: 'curly@bluebonnet.com' }
+      if (w.choice === 'asked') return { choice: 'asked', invoiceId: w.invoiceId, sentTo: 'curly@bluebonnet.example' }
       return { choice: 'not_needed', invoiceId: w.invoiceId, account: { jobId: w.account.jobId, houseId: w.account.houseId, previous: null, flaggedInvoiceIds: [] } }
     },
     undo: async (s) => {
@@ -139,17 +139,17 @@ describe('NeedsYouFillInDeck · the move window', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
     await settle()
     expect(cardTitle()).toBe('$2,210.00 at Bluebonnet Supply · #650 Maple Street remodel · closes in 4 days')
-    expect(screen.getByText('Asked by email Oct 27, 2 days ago, to curly@bluebonnet.com. The house has not confirmed.')).toBeTruthy()
+    expect(screen.getByText('Asked by email Oct 27, 2 days ago, to curly@bluebonnet.example. The house has not confirmed.')).toBeTruthy()
     // The account is open: moved asks no reference here.
     fireEvent.click(screen.getByRole('radio', { name: /Moved · I called the house/ }))
     expect(document.querySelector('[data-move-window-ref]')).toBeNull()
     fireEvent.click(screen.getByRole('radio', { name: /Send the email again/ }))
-    expect(document.querySelector('[data-move-window-email]')?.textContent).toContain('Curly · curly@bluebonnet.com')
+    expect(document.querySelector('[data-move-window-email]')?.textContent).toContain('Curly · curly@bluebonnet.example')
     fireEvent.click(screen.getByRole('button', { name: 'Send and next' }))
     await waitFor(() => expect(h.saves.length).toBe(1))
     await settle()
-    expect(h.saves[0]).toEqual({ choice: 'asked', invoiceId: 'inv-a', includeAsked: true, sentTo: 'curly@bluebonnet.com' })
-    expect(trail()).toContain('asked curly@bluebonnet.com by email · follow up with a call until the house confirms')
+    expect(h.saves[0]).toEqual({ choice: 'asked', invoiceId: 'inv-a', includeAsked: true, sentTo: 'curly@bluebonnet.example' })
+    expect(trail()).toContain('asked curly@bluebonnet.example by email · follow up with a call until the house confirms')
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
   })
 

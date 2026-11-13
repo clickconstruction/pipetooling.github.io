@@ -4,7 +4,7 @@ import { hazmatNoticeEmailSubject, hazmatNoticeEmailText } from './sendHazmatNot
 
 const section = {
   jobNumber: '857',
-  customerEmail: 'brace.tj@gmail.com',
+  customerEmail: 'brill.tj@example.com',
   attachmentFilename: 'biohazard-remediation-fee-notice-857.pdf',
   noticeHtml: '<!DOCTYPE html><html><body><h1>Notice</h1></body></html>',
   invoiceReference: 'Stripe invoice for job 857',
@@ -15,7 +15,7 @@ describe('buildHazmatNoticeEmailPreviewHtml', () => {
     const html = buildHazmatNoticeEmailPreviewHtml([section])
     expect(html).toContain(hazmatNoticeEmailSubject('857'))
     expect(html).toContain(hazmatNoticeEmailText('857', 'Stripe invoice for job 857'))
-    expect(html).toContain('brace.tj@gmail.com')
+    expect(html).toContain('brill.tj@example.com')
     expect(html).toContain('biohazard-remediation-fee-notice-857.pdf')
   })
 

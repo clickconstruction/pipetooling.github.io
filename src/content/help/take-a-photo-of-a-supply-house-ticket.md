@@ -2,7 +2,7 @@
 title: take a photo of a supply house ticket
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician, assistant, controller, dev, primary, estimator
-keywords: ticket, receipt, supply house, counter, photo, camera, tally, purchase, card, po code, job, my tickets, no signal, pdf, return
+keywords: ticket, receipt, supply house, counter, photo, camera, tally, purchase, card, po code, job, my tickets, no signal, pdf, return, receipt link, link, no sign in
 where: /tally
 order: 13
 ---
@@ -95,6 +95,26 @@ Open the ticket from **My tickets**.
 A removed ticket leaves your list. The photo is kept.
 
 Once the office has used a ticket, you can no longer change its job or remove it. The window says so. Ask the office to change it.
+
+## A receipt link from the office
+
+The office can send you a link for one charge on your card. You need no sign-in to open it.
+
+1. Open the link. The page shows the store, the amount, the day and whose card.
+2. Press **Take a photo of the receipt**. Hold the phone over the whole receipt.
+3. Wait for **Got it**. The receipt is then on that charge.
+
+The page may ask **Which job was it for?** Tap the job, or skip it. The office sorts the charge either way.
+
+- Press **Retake** to take the photo again.
+- Press **+ Add a page** for a long receipt.
+- Press **or choose a photo or a PDF you already have** for a receipt the store sent you.
+
+Stay on the page until the photo sends. The page has no sign-in, so it cannot keep a photo for later.
+
+With no signal the photo waits on the page. Press **Try again** when the signal is back.
+
+The link opens for 14 days. Once the link has closed, take the photo in **Job Parts Tally** as above.
 
 ## What the office does with it
 

@@ -20,7 +20,7 @@ The newest lens is {{chip:green|new}} **Call queue**. It is Followup as one list
 The header line counts **bids** and names the trade you're looking at. It reads *· Plumbing · 96 bids · 99 GC packets to chase · 59 losses need a reason …*. Bids come first. When a bid went to more than one GC, the GC-packet figure follows as the second number. A GC packet is one GC's copy of the bid. That is because the queue lists one row per GC, while a bid is still one bid. Three GCs means three calls. Bold numbers are work owed. The Done column says what's already collected. It reads like *16 of 24 fresh* or *8 of 9 recorded*. A *—* means nothing owed. **Click any row and it drops open in place**. The pending bids open with their one-tap chips. The lost bids open with the six reason chips. The gettable tabs open with the capture panel. So you can collect one thing between meetings without leaving the queue. The one-tap chips on a pending bid are the same ones as Waiting to hear. They are ***Left message · Still pending · Bid tab received · Rebid / RFQ · Won · Lost…***. Every tap writes the bid note and stamps Last Contact for you.
 
 :::example Won on a bid that went to several GCs
-Tap **Won** under one builder on a multi-GC bid and the app asks first, in one sentence: *Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won.* **Cancel** leaves the row exactly as it was; confirm and it all happens at once. Tapped the wrong builder? On the bid's GC line (Bid Board or Edit Bid) set the winner back to {{chip:gray|waiting}} — the GCs it marked lost return to waiting and the bid goes back to the section it came from.
+Tap **Won** under one builder on a multi-GC bid and the app asks first, in one sentence: *Mark Southern Pine Won? This marks the other GC (Brund & Assoc.) Lost — GC lost the project and the bid Won.* **Cancel** leaves the row exactly as it was; confirm and it all happens at once. Tapped the wrong builder? On the bid's GC line (Bid Board or Edit Bid) set the winner back to {{chip:gray|waiting}} — the GCs it marked lost return to waiting and the bid goes back to the section it came from.
 :::
 
 Filter chips narrow the list to one kind of gap. They are **To chase**, **Need a reason** and **Tab gettable**. {{button:blue|📞 Start call}} jumps to the builder card for a full call session.
@@ -111,7 +111,7 @@ The header reads the same way as Waiting to hear. First is the red count of **lo
 
 A **bids by** select in the header scopes the whole lens to one estimator. The headline count, builder rail, and the keyboard queue all become "my Friday list". All estimators is one tap back.
 
-The left rail is a call queue: builders with unexplained lost bids first, biggest dollars on top. Pick whoever you have on the phone. Their lost bids become a row of **project-name pills**. A pill reads *Take 5 Dickinson*, not a street fragment three other bids share. Hover a pill for the full name and address. When the GC talks in streets, the open bid's **address button** is right below. It opens Google Maps. Six reason chips:
+The left rail is a call queue: builders with unexplained lost bids first, biggest dollars on top. Pick whoever you have on the phone. Their lost bids become a row of **project-name pills**. A pill reads *Tune 5 Dickinson*, not a street fragment three other bids share. Hover a pill for the full name and address. When the GC talks in streets, the open bid's **address button** is right below. It opens Google Maps. Six reason chips:
 
 ***GC lost the project · Price too high · Went with another sub · Project died / on hold · Never finished bid · No answer***
 
@@ -128,7 +128,7 @@ You don't need a pop-up at all. On a builder card, every unsent or pending bid r
 One more quality-of-life fix. Jumping to a builder card from another lens used to leave that jump stuck in the page. Every later visit to By builder scrolled way down to it. Jumps are now one-shot. The page scrolls when you ask, and opens at the top of the call queue every time after.
 
 :::example a Friday morning
-Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before the 2 — "1, skip, 1". Knight's row goes green and the next builder is already open.
+Dale from Kestrin picks up. Six pills. "1, 1, 2" — with "6k over" typed before the 2 — "1, skip, 1". Kestrin's row goes green and the next builder is already open.
 :::
 
 ## Review why you lose
@@ -164,10 +164,10 @@ Need to record a call after the fact? **Edit Bid → Log contact…** takes the 
 
 ## One bid, several GCs — every queue knows
 
-A bid sent to several GCs shows up under **each** of them. That is in the Call queue, By builder's numbers, Why we lost and Waiting to hear. Since Bids by GC, **each GC's packet carries its own answer**. See *bid one project to multiple GCs*. Say a bid is won with Southern Post and lost with Burd. It is a **win in SPC's numbers and a loss in Burd's**. Hit rates, the *won · lost · pending* line and the map's builder focus all count the packet that went to *that* builder. Single-GC bids count exactly as before.
+A bid sent to several GCs shows up under **each** of them. That is in the Call queue, By builder's numbers, Why we lost and Waiting to hear. Since Bids by GC, **each GC's packet carries its own answer**. See *bid one project to multiple GCs*. Say a bid is won with Southern Pine and lost with Brund. It is a **win in SPC's numbers and a loss in Brund's**. Hit rates, the *won · lost · pending* line and the map's builder focus all count the packet that went to *that* builder. Single-GC bids count exactly as before.
 
 - When you mark one GC **won**, the other GCs you sent to are marked ***lost · GC lost the project*** for you. That works from the board, Followup, or a chase tap. A confirm names them before anything is written. It warns when the bid was marked Lost by hand and is about to flip to Won. They land tagged {{chip:gray|auto}} in Why we lost. You can tap a different reason any time. Nothing to triage. Setting the winner back to **waiting** undoes the whole thing. Siblings go back to waiting, and the bid goes back where it was.
-- In **Why we lost**, a multi-GC entry shows a line under the address. It reads *Burd & Assoc.* {{chip:red|lost}} *★ $52,311 · sent 7/31 · also went to Southern Post* {{chip:green|won}}. The reason you tap is **that GC's**. The bid's overall outcome doesn't move.
+- In **Why we lost**, a multi-GC entry shows a line under the address. It reads *Brund & Assoc.* {{chip:red|lost}} *★ $52,311 · sent 7/31 · also went to Southern Pine* {{chip:green|won}}. The reason you tap is **that GC's**. The bid's overall outcome doesn't move.
 - In **By status**, the bid shows one row per GC, each in the bucket that GC's answer puts it. The GC column names the row's GC with a quiet *also to …* line. The Lost row's reason is that GC's. The section headers count bids first. One reads *Not yet won or lost (101 bids · 107 GC packets)*. The Unsent header carries the trade name.
 - In **Waiting to hear**, a GC that has answered drops off that builder's list while the others keep waiting. Touches stay per-bid, so a touch under any GC freshens every copy. A touch is Left message, Still pending and the like.
 - A GC on the bid's **Also sent to** list may have no packet of its own. It got the same letter as the bid's GC. It rides with the bid's outcome. One reason still clears it everywhere. On the **Bid Board**, multi-GC bids show a line per GC under the row. They wear a {{chip:gray|+2 GCs}} chip for the Also-sent-to list.

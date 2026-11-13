@@ -39,7 +39,7 @@ describe('buildBackfillPlan (v2.3579)', () => {
 
   it('links one send to the several report rows it paid (rule c) and refuses two rows on one report', () => {
     const plan = buildBackfillPlan({
-      sends: [send({ id: '#D-1200', occurredDate: '2026-08-03', amountSent: 1200, personName: 'Michael A', counterparty: 'michael Archambault' })],
+      sends: [send({ id: '#D-1200', occurredDate: '2026-08-03', amountSent: 1200, personName: 'Michael A', counterparty: 'michael Archley' })],
       payments: [
         pay({ id: 'a', personName: 'Michael A', amount: 700, paidAt: '2026-08-03', memo: 'sent', payStubId: 's1' }),
         pay({ id: 'b', personName: 'Michael A', amount: 500, paidAt: '2026-08-03', memo: 'sent', payStubId: 's2' }),
@@ -132,10 +132,10 @@ describe('buildBackfillPlan (v2.3579)', () => {
     const mercury: MercurySend[] = [
       { id: 'm-778', postedDate: '2026-05-28', amountSent: 778.4, counterparty: 'Taunya Villarreal', memo: 'From Click Plumbing for Tristen last week', personName: 'Tristen' },
       { id: 'm-500', postedDate: '2026-06-15', amountSent: 500, counterparty: 'Taunya Villarreal', memo: 'From Click Plumbing', personName: 'Taunya' },
-      { id: 'm-near', postedDate: '2026-04-07', amountSent: 716.27, counterparty: 'Michael Archambault', memo: 'Week', personName: 'Michael A' },
-      { id: 'm-none', postedDate: '2026-04-07', amountSent: 716.27, counterparty: 'Michael Archambault', memo: 'From Click Plumbing', personName: 'Michael A' },
-      { id: 'm-old', postedDate: '2026-03-23', amountSent: 750, counterparty: 'Michael Archambault', memo: 'From Click Plumbing', personName: 'Michael A' },
-      { id: 'm-zinna', postedDate: '2026-04-20', amountSent: 1500, counterparty: 'Michael Zinna', memo: '', personName: null },
+      { id: 'm-near', postedDate: '2026-04-07', amountSent: 716.27, counterparty: 'Michael Archley', memo: 'Week', personName: 'Michael A' },
+      { id: 'm-none', postedDate: '2026-04-07', amountSent: 716.27, counterparty: 'Michael Archley', memo: 'From Click Plumbing', personName: 'Michael A' },
+      { id: 'm-old', postedDate: '2026-03-23', amountSent: 750, counterparty: 'Michael Archley', memo: 'From Click Plumbing', personName: 'Michael A' },
+      { id: 'm-zellin', postedDate: '2026-04-20', amountSent: 1500, counterparty: 'Michael Zellin', memo: '', personName: null },
     ]
     const plan = buildBackfillPlan({
       sends: [],
@@ -155,7 +155,7 @@ describe('buildBackfillPlan (v2.3579)', () => {
     ])
     expect(plan.mercuryBeforeRecords).toBe(1)
     const unmatched = plan.actions.filter((a) => a.kind === 'mercury_unmatched')
-    expect(unmatched.map((a) => a.kind === 'mercury_unmatched' && a.mercuryId)).toEqual(['m-none', 'm-zinna'])
+    expect(unmatched.map((a) => a.kind === 'mercury_unmatched' && a.mercuryId)).toEqual(['m-none', 'm-zellin'])
   })
 
   it('renders the plan as Markdown with one section per action kind', () => {
@@ -206,8 +206,8 @@ describe('buildBackfillPlan (v2.3579)', () => {
     const people = ['Abraham', 'Trace', 'William', 'Juan', 'Michael A', 'Mike Z', 'Julia W', 'Jesse', 'Zach W']
     expect(guessPersonByName('Trace Whites', people)).toBe('Trace')
     expect(guessPersonByName('Juan M Farias Jr', people)).toBe('Juan')
-    expect(guessPersonByName('Michael Archambault', people)).toBe('Michael A')
-    expect(guessPersonByName('Michael Zinna', people)).toBeNull() // Mike Z is a nickname: an alias, not a guess
+    expect(guessPersonByName('Michael Archley', people)).toBe('Michael A')
+    expect(guessPersonByName('Michael Zellin', people)).toBeNull() // Mike Z is a nickname: an alias, not a guess
     expect(guessPersonByName('Julia Whites', people)).toBe('Julia W')
     expect(guessPersonByName('Jessie Lopez', people)).toBeNull()
     expect(guessPersonByName('Zackary Williams', people)).toBeNull()
@@ -226,7 +226,7 @@ describe('buildBackfillPlan (v2.3579)', () => {
         send({ id: '#D-APR', occurredDate: '2026-04-27', amountSent: 673.76, note: 'Week Taunya' }),
       ],
       payments,
-      mercury: [{ id: 'm-mar', postedDate: '2026-03-30', amountSent: 600, counterparty: 'Michael Archambault', memo: '', personName: 'Michael A' }],
+      mercury: [{ id: 'm-mar', postedDate: '2026-03-30', amountSent: 600, counterparty: 'Michael Archley', memo: '', personName: 'Michael A' }],
       firstReportStartByPerson: { Taunya: '2026-03-22', 'Michael A': '2026-03-22' },
       sinceYmd: '2026-04-01',
     })

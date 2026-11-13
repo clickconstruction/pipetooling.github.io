@@ -130,7 +130,7 @@ describe('DashboardSuperintendentJobsSection (extracted)', () => {
     renderWithProviders(
       <DashboardSuperintendentJobsSection
         role="superintendent"
-        superintendentJobs={[makeRow({ id: 'sup-1', hcp_number: '857', job_name: 'TJ Brace' })]}
+        superintendentJobs={[makeRow({ id: 'sup-1', hcp_number: '857', job_name: 'TJ Brill' })]}
         superintendentJobsLoading={false}
         superintendentJobsExpanded
         setSuperintendentJobsExpanded={noop}
@@ -146,7 +146,7 @@ describe('DashboardSuperintendentJobsSection (extracted)', () => {
     )
     await settle()
     expect(screen.getByText(/Superintendent Jobs \(1\)/)).toBeTruthy()
-    expect(screen.getByText(/857 · TJ Brace/)).toBeTruthy()
+    expect(screen.getByText(/857 · TJ Brill/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /View Reports/i })).toBeTruthy()
   })
 
