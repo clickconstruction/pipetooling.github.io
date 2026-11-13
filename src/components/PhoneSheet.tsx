@@ -1,7 +1,8 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useModalStackEntry } from '../hooks/useModalStackEntry'
-import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight'
+import { useVisualViewportBox } from '../hooks/useVisualViewportBox'
+import { visibleBand } from '../lib/visibleBand'
 
 /** Where a window becomes a sheet: the phone width the thread window fills the screen at (`ThreadWindow.tsx`). */
 export const PHONE_SHEET_QUERY = '(max-width: 760px)'
@@ -14,7 +15,9 @@ const BACKDROP = 'rgba(15, 23, 42, 0.35)'
  * the job picker and the ⋯ menu. At a desk it draws the frame those windows drew themselves: the backdrop at z 1300,
  * the panel `min(width, 100%)` wide, the title row with ×. On a phone the panel rises from the bottom at full width with
  * a grab bar, scrolls inside at most 85% of the room, and keeps above the software keyboard: the backdrop is as tall as
- * the visual viewport, the room the keyboard leaves, so the sheet's foot sits on the keyboard's top.
+ * the visual viewport, the room the keyboard leaves, so the sheet's foot sits on the keyboard's top. It also starts where
+ * that viewport starts (punch list #348): an iPhone slides the page under a field that sits where the keyboard will be,
+ * and a backdrop pinned to the top of the page would lift the sheet off the keyboard by the length of the slide.
  *
  * The caller's children are the body, which scrolls itself. Escape closes only the window on top (`useModalStackEntry`)
  * and is marked handled, so the thread window behind stays open. A press on the backdrop stops there before it closes,
@@ -45,7 +48,7 @@ export function PhoneSheet({
   children: ReactNode
 }) {
   const phone = useMatchMedia(PHONE_SHEET_QUERY)
-  const keyboardRoom = useVisualViewportHeight()
+  const shows = visibleBand(useVisualViewportBox())
   const isTopmost = useModalStackEntry()
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export function PhoneSheet({
   }, [onClose, isTopmost])
 
   const backdrop: CSSProperties = phone
-    ? { position: 'fixed', top: 0, left: 0, right: 0, height: keyboardRoom ? `${keyboardRoom}px` : '100%', background: BACKDROP, zIndex, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 'var(--app-top-chrome, 0px) 0 0' }
+    ? { position: 'fixed', top: shows?.top ?? 0, left: 0, right: 0, height: shows ? `${shows.height}px` : '100%', background: BACKDROP, zIndex, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 'var(--app-top-chrome, 0px) 0 0' }
     : { position: 'fixed', inset: 0, background: BACKDROP, zIndex, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }
   const panel: CSSProperties = phone
     ? {
