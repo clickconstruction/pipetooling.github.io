@@ -57,6 +57,24 @@ The top of the desk has three tabs.
 
 All filings reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All filings.
 
+## The desk on a phone
+
+On a phone the top of the desk is one row. It holds the way back, the desk's name and {{button:outline|⋯}}. The three tabs sit under it, each as tall as a thumb.
+
+Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
+
+- **Record the mailing** or **Send the run**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
+- **Put a GC on notice…** shows while **Notices** is open.
+- **§ Rules** opens the Texas lien rules.
+- **An owner is calling** opens what to say.
+- **What this desk holds** names each part of the desk.
+- **Share where the liens stand** makes a message for a teammate.
+- **An owner asked for records** opens the packet for a property.
+
+Press a row and More closes. The door opens as it does on a computer.
+
+On **Affidavits** and **Retainage** the pile chips sit at the top of the list. They slide sideways and scroll away with the list.
+
 ## Look ahead on the Deadlines
 
 The **Deadlines** tab is beside Do now. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
