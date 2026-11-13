@@ -383,7 +383,6 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     'The desk cannot tell which. One look at the job can.',
     'A job with no price shows hours but never movement.',
     'Set the % files a status report on the job, the way a crew’s does.',
-    'The week’s call is recorded on the link desk above, not here.',
   ].join(' ')
 
   return { windowStart, todayYmd: today, days, totals, headline, verdict, subLine, tiles, rows, movedFold, noPctLine, footnote }

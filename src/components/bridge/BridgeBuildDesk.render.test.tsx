@@ -195,7 +195,7 @@ describe('BridgeBuildDesk on the step frame (punch list #334, PR 1)', () => {
     fireEvent.click(counted)
     const footnote = screen.getByTestId('bridge-build-footnote')
     expect(footnote.textContent).toContain('Hours are each job’s clock hours over the last 14 days.')
-    expect(footnote.textContent).toContain('The week’s call is recorded on the link desk, not here.')
+    expect(footnote.textContent).not.toContain('call is recorded')
     expect(footnote.textContent).toContain(`Read ${STAMP}`)
     expect(footnote.textContent).not.toContain('job_pct_events')
     expect(screen.queryByTestId('bridge-build-row')).toBeNull()
