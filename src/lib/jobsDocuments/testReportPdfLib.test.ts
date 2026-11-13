@@ -5,12 +5,12 @@ import { DEFAULT_TEST_REPORT_SETTINGS, buildTestReportBlocks, emptyTestReportDat
 
 const job: TestReportJobInfo = {
   jobNumber: '1014',
-  jobName: 'Johnson Pretest',
-  jobAddress: '112 Seidel St, Marion, TX 78124',
-  customerName: 'Anna & Jeffrey Johnson',
-  customerEmail: 'johnson@example.com',
+  jobName: 'Jarrow Pretest',
+  jobAddress: '112 Sedlow St, Marion, TX 78124',
+  customerName: 'Anna & Jeffrey Jarrow',
+  customerEmail: 'jarrow@example.com',
   customerPhone: '(830) 351-4600',
-  customerCompany: 'Done Right Foundation Repair',
+  customerCompany: 'Dead Level Foundation Repair',
 }
 
 async function pageCount(bytes: Uint8Array): Promise<{ pages: number; title: string | undefined }> {

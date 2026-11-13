@@ -284,7 +284,7 @@ export function moneyLookWords(model: SiteMoneyModel, money: (n: number) => stri
 }
 
 /**
- * The fifth tile when nothing billed is unpaid but money is still to come (the Gun Dog spike, 2026-11-02:
+ * The fifth tile when nothing billed is unpaid but money is still to come (the Gray Fox spike, 2026-11-02:
  * *Open on bills $0 · nothing unpaid* told the owner nothing while $170K sat in waiting jobs never billed).
  * Null when a bill is open (the tile keeps its name) or nothing is left on the site.
  */

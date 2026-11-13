@@ -41,10 +41,10 @@ describe('parseCtRfiFlags', () => {
 })
 
 describe('rfiAuditNote', () => {
-  const base = { rfi_number: 3, question: 'Gas water heater vs COMcheck all-electric — which governs?', sheet_ref: 'P002 vs COMcheck', sent_via: 'email' as const, sent_to: [{ gc_customer_id: 'x', name: 'Knight Contracting' }], answer_ref: 'Addendum 1' }
+  const base = { rfi_number: 3, question: 'Gas water heater vs COMcheck all-electric — which governs?', sheet_ref: 'P002 vs COMcheck', sent_via: 'email' as const, sent_to: [{ gc_customer_id: 'x', name: 'Kestrin Contracting' }], answer_ref: 'Addendum 1' }
   it('stamps each event with the RFI number', () => {
     expect(rfiAuditNote('created', base)).toContain('[RFI-3] drafted (P002 vs COMcheck)')
-    expect(rfiAuditNote('sent', base)).toContain('sent via email to Knight Contracting')
+    expect(rfiAuditNote('sent', base)).toContain('sent via email to Kestrin Contracting')
     expect(rfiAuditNote('answered', base)).toBe('[RFI-3] answered — Addendum 1')
     expect(rfiAuditNote('withdrawn', base)).toBe('[RFI-3] withdrawn')
   })

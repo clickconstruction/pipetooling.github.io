@@ -1012,7 +1012,7 @@ describe('BidsSubmittalsTab', () => {
   })
 
   it('2026-10-01 · Read its parts: the house’s file sits beside the rows; Use the file’s parts rewrites the parts it pairs, adds the rest, takes off what the estimator says, and gives the row the file’s pages', async () => {
-    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [{ path: 'b398/rev-1/0.pdf', house_id: null, house_name: null, name: 'SPACEX BA-2 CORE & SHELL.pdf', pages: 75, trimmed_at: null, dropped_pages: null, names_rows: 12, sectioned: true }] }]
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [{ path: 'b398/rev-1/0.pdf', house_id: null, house_name: null, name: 'SKYLAB BA-2 CORE & SHELL.pdf', pages: 75, trimmed_at: null, dropped_pages: null, names_rows: 12, sectioned: true }] }]
     state.items = [item({ id: 'lav2', tag: 'LAV-2', sequence_order: 1, submitted_label: 'KOHLER 2215-0 LADENA WHITE + TOTO T25S51E#CP + BOBRICK B-8236', status: 'proposed', supply_house_id: null })]
     state.parts = [
       { id: 'pt-kohler', item_id: 'lav2', bid_id: 'b398', sequence_order: 1, label: 'KOHLER 2215-0 LADENA WHITE', quantity: 1, on_submittal: true, sheet_pages: [], procure_key: 'k1', decision_source: 'room' },
@@ -1025,7 +1025,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       await screen.findAllByTestId('submittal-row')
       fireEvent.click(await screen.findByTestId('read-parts-open'))
-      const dialog = await screen.findByRole('dialog', { name: 'What SPACEX BA-2 CORE & SHELL.pdf says' })
+      const dialog = await screen.findByRole('dialog', { name: 'What SKYLAB BA-2 CORE & SHELL.pdf says' })
       // Only the LAV-2 card is used here; every other tag is switched off.
       for (const card of within(dialog).getAllByTestId('house-file-tag')) if (!card.textContent?.startsWith('LAV-2')) fireEvent.click(within(card).getAllByRole('checkbox')[0]!)
       const lav = within(dialog).getAllByTestId('house-file-tag').find((c) => c.textContent?.startsWith('LAV-2'))!

@@ -25,6 +25,22 @@ vi.mock('../hooks/useAuth', async () => {
 const offeredPlaces = vi.hoisted(() => ({ places: [] as Array<{ name: string; lat: number; lng: number; accuracyM: number | null; setBy: string | null; setAt: string | null }> }))
 vi.mock('../lib/tasks/taskPlaceIo', () => ({ loadRecentTaskPlaces: () => Promise.resolve(offeredPlaces.places), loadTaskPlace: () => Promise.resolve(null) }))
 
+// The photo of the spot (#328, PR 6): the field is stood in for by one press that hands up a picture, and the send is recorded.
+const spotPhotoIo = vi.hoisted(() => ({ puts: [] as string[], refusal: null as string | null }))
+vi.mock('../lib/tasks/taskSpotPhotoIo', () => ({
+  putTaskSpotPhoto: (owner: { kind: string; id: string }, id: string) => {
+    spotPhotoIo.puts.push(`${owner.kind}/${owner.id}/${id}`)
+    return Promise.resolve(spotPhotoIo.refusal ? { error: spotPhotoIo.refusal } : { path: `${owner.kind}/${owner.id}/${id}.jpg` })
+  },
+}))
+vi.mock('./checklist/TaskSpotPhotoField', () => ({
+  TaskSpotPhotoField: (props: { value: unknown; onChange: (v: unknown) => void }) => (
+    <button type="button" onClick={() => props.onChange({ kind: 'new', id: 'p1', blob: new Blob(['x']), previewUrl: 'blob:p1' })}>
+      {props.value ? 'photo held' : 'stub: take the photo'}
+    </button>
+  ),
+}))
+
 // Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
 const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
 
@@ -66,6 +82,7 @@ import {
   useChecklistAddModal,
 } from '../contexts/ChecklistAddModalContext'
 import { renderWithProviders } from '../test/renderSmokeMocks'
+import { THREAD_WINDOW_Z } from '../lib/windowLayers'
 
 function OpenOnMount() {
   const modal = useChecklistAddModal()
@@ -171,6 +188,12 @@ describe('ChecklistAddModal closing', () => {
     expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
     cleanup()
   })
+
+  it('opens over a thread window, so Ask a tech… and Send as a task show it (v2.7069)', async () => {
+    await renderOpenModal()
+    expect(Number(screen.getByRole('dialog').style.zIndex)).toBeGreaterThan(THREAD_WINDOW_Z)
+    cleanup()
+  })
 })
 
 describe('ChecklistAddModal on a phone (v2.3188)', () => {
@@ -210,7 +233,7 @@ const JOB_PRESET = {
     name: 'Mission faucet',
     trade: { tag: 'PLUM', color: '#e17235' },
     address: '15638 Mission Crest, San Antonio, TX',
-    customer: 'Johnny Ingram',
+    customer: 'Johnny Inglow',
     path: '/jobs?jobDetail=job-1',
     url: JOB_URL,
   },
@@ -248,7 +271,7 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     const bar = screen.getByTestId('checklist-add-job-bar')
     expect(bar.textContent).toContain('1016 PLUM')
     expect(bar.textContent).toContain('Mission faucet')
-    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Ingram')
+    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Inglow')
     // The raw grammar never reaches the box; the header Send waits for typed text.
     expect(screen.queryByDisplayValue(/\{\{1:/)).toBeNull()
     expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
@@ -365,6 +388,47 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     expect(typeof row.place_set_at).toBe('string')
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     offeredPlaces.places = []
+    cleanup()
+  })
+})
+
+describe('ChecklistAddModal photo of the spot (punch list #328, PR 6)', () => {
+  it('a task sent with a photo files it under the new task\'s id, after the task exists', async () => {
+    inserted.length = 0
+    spotPhotoIo.puts = []
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+    fireEvent.click(screen.getByRole('button', { name: 'stub: take the photo' }))
+    expect(screen.getByRole('button', { name: 'photo held' })).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(spotPhotoIo.puts).toEqual(['item/item-1/p1']))
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    cleanup()
+  })
+
+  it('a task sent with no photo sends none', async () => {
+    inserted.length = 0
+    spotPhotoIo.puts = []
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    expect(spotPhotoIo.puts).toEqual([])
+    cleanup()
+  })
+
+  it('a photo that does not save says the task was sent, why the photo was not, and where to add it, and stays open', async () => {
+    inserted.length = 0
+    spotPhotoIo.puts = []
+    spotPhotoIo.refusal = 'The photo did not upload.'
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Grease the pump bearings' } })
+    fireEvent.click(screen.getByRole('button', { name: 'stub: take the photo' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    expect(await screen.findByText('The task was sent, but its photo did not save: The photo did not upload. Add it from Checklist → Manage → Edit.')).toBeTruthy()
+    expect(inserted.filter((r) => r.table === 'checklist_items')).toHaveLength(1)
+    expect(screen.getByPlaceholderText('What needs to be done?')).toBeTruthy()
+    spotPhotoIo.refusal = null
     cleanup()
   })
 })

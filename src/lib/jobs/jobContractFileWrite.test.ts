@@ -12,10 +12,10 @@ describe('filing a signed contract', () => {
 
   it('is ready with a name and either a link or a file — never a name alone', () => {
     const file = new File(['x'], 'scan.pdf', { type: 'application/pdf' })
-    expect(fileSignedContractReady({ link: '', file: null, signerName: 'Dudley Mason' })).toBe(false)
-    expect(fileSignedContractReady({ link: 'https://docs.google.com/document/d/1', file: null, signerName: 'Dudley Mason' })).toBe(true)
-    expect(fileSignedContractReady({ link: 'not a link', file: null, signerName: 'Dudley Mason' })).toBe(false)
-    expect(fileSignedContractReady({ link: '', file, signerName: 'Dudley Mason' })).toBe(true)
+    expect(fileSignedContractReady({ link: '', file: null, signerName: 'Dunmere Mallin' })).toBe(false)
+    expect(fileSignedContractReady({ link: 'https://docs.google.com/document/d/1', file: null, signerName: 'Dunmere Mallin' })).toBe(true)
+    expect(fileSignedContractReady({ link: 'not a link', file: null, signerName: 'Dunmere Mallin' })).toBe(false)
+    expect(fileSignedContractReady({ link: '', file, signerName: 'Dunmere Mallin' })).toBe(true)
     expect(fileSignedContractReady({ link: '', file, signerName: ' ' })).toBe(false)
   })
 

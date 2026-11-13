@@ -110,6 +110,10 @@ describe('the Tickets list', () => {
   it('labels the chip and the tab', () => {
     expect(ticketChipWords('JP1042')).toBe('Ticket · JP1042 first')
     expect(ticketChipWords(null)).toBe('Ticket')
+    // A photo through the charge's receipt link (#299) says which door it came by.
+    expect(ticketChipWords('JP1038', 'link')).toBe('Receipt from the link · JP1038 first')
+    expect(ticketChipWords(null, 'link')).toBe('Receipt from the link')
+    expect(ticketChipWords('JP1042', 'camera')).toBe('Ticket · JP1042 first')
     expect(ticketsTabLabel(null)).toBe('Tickets')
     expect(ticketsTabLabel(3)).toBe('Tickets (3)')
   })

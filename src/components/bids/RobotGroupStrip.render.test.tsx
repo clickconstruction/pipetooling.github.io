@@ -14,12 +14,12 @@ import type { RobotRowState } from '../../lib/bids/robotRowState'
 const shadowRows = [
   {
     id: 'sh-live', status: 'locked', axis: null, created_at: '2026-09-07T10:00:00Z', locked_at: '2026-09-07T12:00:00Z', scored_at: null,
-    shadow_bid_number: '482', reference_bid_number: '431', project_name: 'PALMER WINERY', requested_by_name: null,
+    shadow_bid_number: '482', reference_bid_number: '431', project_name: 'PALVERN WINERY', requested_by_name: null,
     reference_sent_at: null, locked_total: null, reference_value: null, delta_pct: null, teacher_name: 'Wendi', teacher_standard: true,
   },
   {
     id: 'sh-sent', status: 'scored', axis: 'franchise-oil-change', created_at: '2026-09-04T10:00:00Z', locked_at: '2026-09-04T12:00:00Z', scored_at: '2026-09-08T15:00:00Z',
-    shadow_bid_number: '418', reference_bid_number: '397', project_name: 'TAKE 5 BROWNSVILLE', requested_by_name: null,
+    shadow_bid_number: '418', reference_bid_number: '397', project_name: 'TUNE 5 BROWNSVILLE', requested_by_name: null,
     reference_sent_at: '2026-09-08', locked_total: 72854, reference_value: 50528, delta_pct: 44.2, teacher_name: 'Wendi', teacher_standard: true,
   },
 ]
@@ -42,14 +42,14 @@ const bid = (over: Partial<BidWithBuilder> & { id: string; bid_number: string; p
   ({ outcome: null, bid_date_sent: null, bid_value: null, plans_link: 'https://drive/x', customers: null, bids_gc_builders: null, estimator: { id: 'wendi', name: 'Wendi', email: 'w@x' }, ...over }) as unknown as BidWithBuilder
 
 const humanBids = [
-  bid({ id: 'h431', bid_number: '431', project_name: 'PALMER WINERY' }),
-  bid({ id: 'h397', bid_number: '397', project_name: 'TAKE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
+  bid({ id: 'h431', bid_number: '431', project_name: 'PALVERN WINERY' }),
+  bid({ id: 'h397', bid_number: '397', project_name: 'TUNE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
   bid({ id: 'h380', bid_number: '380', project_name: 'MEDINA VALLEY ISD', plans_link: null, bid_due_date: '2026-09-10' }),
   bid({ id: 'h483', bid_number: '483', project_name: 'Laynes Chicken Fingers', bid_due_date: '2026-09-18' }),
 ]
 const robotBids = [
-  bid({ id: 's482', bid_number: '482', project_name: 'ZZ Shadow PALMER WINERY', twin_source_bid_id: 'h431' }),
-  bid({ id: 's418', bid_number: '418', project_name: 'ZZ Shadow TAKE 5 BROWNSVILLE', twin_source_bid_id: null }),
+  bid({ id: 's482', bid_number: '482', project_name: 'ZZ Shadow PALVERN WINERY', twin_source_bid_id: 'h431' }),
+  bid({ id: 's418', bid_number: '418', project_name: 'ZZ Shadow TUNE 5 BROWNSVILLE', twin_source_bid_id: null }),
 ]
 const rowStateFor = (b: BidWithBuilder): RobotRowState => {
   if (b.id === 'h380') return { kind: 'needs', badge: '?', title: '', questions: 0, gaps: [{ key: 'plans', label: 'No plans link', fix: 'Paste the plan set on the Edit form under Job Plans.', required: true }] }

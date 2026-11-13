@@ -32,6 +32,7 @@ import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
+import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
@@ -601,7 +602,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <MoveSheet line={sheet.line} from={sheet.container} others={others} onClose={() => setSheet(null)} onMove={(n, to) => { write('moved', sheet.line, n, sheet.container.id, to.id); setLastAct({ containerId: to.id, what: sheet.container.kind === 'unsorted' ? 'Put in' : 'Move', at: Date.now() }); setSheet(null); showToast(`Moved ${n} to ${to.label}.`, 'success') }} onTaken={(n, where) => { write('taken', sheet.line, n, sheet.container.id, null, where); setSheet(null); showToast(`Took ${n} to ${where}.`, 'success') }} onReturned={(n) => { write('returned', sheet.line, n, sheet.container.id, null); setSheet(null); showToast(`${n} going back to the supply house. The office will expect a credit.`, 'success') }} onDamaged={(n) => { write('damaged', sheet.line, n, sheet.container.id, null); setSheet(null); showToast(`${n} marked damaged.`, 'success') }} onNewContainer={(n) => setSheet({ kind: 'add-container', moveAfter: { line: sheet.line, qty: n, from: sheet.container } })} />
       ) : null}
       {sheet?.kind === 'add-part' ? (
-        <AddPartSheet container={sheet.container} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { write('delivered', part, n, null, sheet.container.id, 'added on site'); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(`${n} ${part.partName} added to ${sheet.container.label}.`, 'success') }} />
+        <AddPartSheet container={sheet.container} names={onHandNames(lines, containers)} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { write('delivered', part, n, null, sheet.container.id, 'added on site'); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(`${n} ${part.partName} added to ${sheet.container.label}.`, 'success') }} />
       ) : null}
       {sheet?.kind === 'add-container' ? (
         <AddContainerSheet jobId={jobId} existing={containers} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else setView({ kind: 'container', id: c.id }) }} />
@@ -706,7 +707,7 @@ function MoveSheet({ line, from, others, onClose, onMove, onTaken, onReturned, o
   )
 }
 
-function AddPartSheet({ container, searchParts, onClose, onAdd }: { container: Container; searchParts: (term: string) => Promise<OnSitePart[]>; onClose: () => void; onAdd: (part: { partId: string | null; partName: string; manufacturer: string | null }, n: number) => void }) {
+function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { container: Container; /** The names this job already holds (punch list #330): offered first, so a part is not typed a second way. */ names: ReadonlyArray<OnHandName>; searchParts: (term: string) => Promise<OnSitePart[]>; onClose: () => void; onAdd: (part: { partId: string | null; partName: string; manufacturer: string | null }, n: number) => void }) {
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<OnSitePart[]>([])
   const [searching, setSearching] = useState(false)
@@ -724,12 +725,29 @@ function AddPartSheet({ container, searchParts, onClose, onAdd }: { container: C
     }, 250)
     return () => { live = false; clearTimeout(t) }
   }, [term, picked, searchParts])
+  const already = picked ? [] : matchOnHandNames(names, term)
   return (
-    <Sheet title={`Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : 'Find it in the parts book, or type its name.'} onClose={onClose}>
+    <Sheet title={`Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : 'Pick a name this job already has, find it in the parts book, or type its name.'} onClose={onClose}>
       {!picked ? (
         <>
           <input type="search" autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Part name or manufacturer" aria-label="Search the parts book" style={input} />
+          {already.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.3rem' }} data-testid="add-part-already">
+              <span style={{ ...muted, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Already on this job</span>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, border: '1px solid var(--border)', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
+                {already.map((a) => (
+                  <li key={a.key}>
+                    <button type="button" onClick={() => setPicked({ partId: a.partId, partName: a.partName, manufacturer: a.manufacturer })} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit', minHeight: TOUCH_MIN }}>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere', fontWeight: 600 }}>{a.partName}{a.manufacturer ? <span style={{ ...muted, marginLeft: '0.5rem', fontWeight: 400 }}>· {a.manufacturer}</span> : null}</span>
+                      <span style={{ ...muted, whiteSpace: 'nowrap' }}>{onHandNameWords(a)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {searching ? <p style={{ ...muted, margin: 0 }}>Searching…</p> : null}
+          {already.length > 0 && results.length > 0 ? <span style={{ ...muted, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>In the parts book</span> : null}
           {results.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, border: '1px solid var(--border)', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
               {results.map((p) => (

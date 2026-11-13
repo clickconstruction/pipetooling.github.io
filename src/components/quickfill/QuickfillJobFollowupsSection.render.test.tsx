@@ -17,7 +17,7 @@ const nudge: { value: Nudge } = {
     count: 2,
     stageCounts: { waiting: 0, working: 2, ready_to_bill: 0, billed: 0, collections: 0 },
     idle: { count: 3, total: 41_550, mine: 1 },
-    first: { hcpNumber: '651', jobName: 'Dudley Mason', quietDays: 12 },
+    first: { hcpNumber: '651', jobName: 'Dunmere Mallin', quietDays: 12 },
     idleFirst: { hcpNumber: '983', jobName: 'Water Heater removal', idleDays: 46, need: 'Schedule the next visit or close it' },
     reload,
   },
@@ -59,7 +59,7 @@ describe('QuickfillJobFollowupsSection · two lanes (v2.6093, punch list #178)',
     expect(screen.getByText('3 open jobs have sat idle 21+ days')).toBeTruthy()
     expect(screen.getByText('$41,550 of contract with no crew on site in 21 days · 1 is yours. Each card says what the job needs: a bill, a visit, or to be closed.')).toBeTruthy()
     expect(counts[counts.length - 1]).toBe(5)
-    expect(lines[lines.length - 1]).toBe('Call about 651 Dudley Mason · quiet 12 days')
+    expect(lines[lines.length - 1]).toBe('Call about 651 Dunmere Mallin · quiet 12 days')
   })
 
   it('the Idle lane opens the deck on its lens in place, and closing it re-reads', async () => {

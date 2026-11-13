@@ -5,7 +5,7 @@ roles: dev, master_technician
 keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the three numbers at the top. They are what the field made last week, cash's low point, and the slowest step.
+1. Read the numbers at the top. They are what the field made last week, the slowest step, and your two balances.
 2. Read the card under them. It names the slowest step and the moves for this week.
 3. Press {{button:blue|Make Build this week's call}} to record it. The button names the step the page reads today.
 
@@ -19,19 +19,30 @@ The Bridge is for the owner and devs. A dev lands here when they open the app or
 
 ## The first screen
 
-The page opens on three numbers.
+The page opens on four numbers.
 
 - **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
-- **Cash low point, 8 weeks** is the lowest your cash gets in the next eight weeks. The tile is green when that stays above your floor. The tile is red when cash goes under the floor, and it names the day.
 - **Slowest step** is the stage the page reads as the weakest link.
+- **Cash balance** is cash on hand today. The number is green while the next eight weeks stay over your floor. The number is amber when cash goes under the floor on a later day, and the line names that day. The number is red when cash is under the floor today.
+- **Accrual balance** is cash, plus what customers owe you, less what you owe. What you owe is the supply bills, the payroll owed and the sub labor owed. Bills in collections are left out. Press the accrual balance to open **Money owed** behind Money.
 
-Under the three numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the three numbers. In a week cash comes first, a phone shows it under the card.
+A line under each balance says its runway in days. Runway is how long that balance lasts with nothing coming in. Runway counts payroll and overhead only. One line under both balances says what payroll and overhead come to a day.
+
+:::example Reading the balances
+
+Cash balance $21.0k, 14 days of runway. Accrual balance $60.7k, 40 days of runway. Runway counts payroll and overhead, $1.5k a day.
+
+:::
+
+On a phone, the first two numbers share a row and the balances sit under them.
+
+Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
 
 Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
-An amber line under the cash tile names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
+An amber line under the cash balance names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
-When cash goes under your floor, cash comes first. The cash tile takes the top row and the card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
+When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move. To call a step that week, press {{button:outline|Pick another step ›}}.
 
 Under the numbers, **This week's call** names the step and proposes two or three moves. Each move has a person. Press a move to open the page where the work is done.
 

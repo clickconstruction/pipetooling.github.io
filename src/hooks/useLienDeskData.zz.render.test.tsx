@@ -28,7 +28,7 @@ const TABLES: Record<string, unknown[]> = {
   ],
   // Z is a ZZ job by its own name, Y by its customer's.
   jobs_ledger: [job('A', '101 Hill Street', 'Ann Lee'), job('Z', 'ZZ TEST lien', 'Ann Lee'), job('Y', 'Hill Street remodel', 'ZZ Test Customer')],
-  customers: [{ id: 'gc-1', name: 'Knight Builders', address: '', contact_info: null, lien_notice_policy: null, lien_notice_policy_note: null }],
+  customers: [{ id: 'gc-1', name: 'Kestrin Builders', address: '', contact_info: null, lien_notice_policy: null, lien_notice_policy_note: null }],
 }
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -78,15 +78,15 @@ describe('useLienDeskData · ZZ test jobs', () => {
     const items = TABLES.job_lien_desk_items!
     const jobsLedger = TABLES.jobs_ledger!
     TABLES.job_lien_desk_items = [...items, { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null }]
-    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Terrell Rd', 'Dudley Mason'), customer_id: 'c-mason' }]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Tarrow Rd', 'Dunmere Mallin'), customer_id: 'c-mallin' }]
     try {
       const data = await read(false)
       const sent = data.queue.entries.find((e) => e.jobId === 'S')!
       expect(sent.pile).toBe('sent')
       expect(sent.months).toEqual([])
       expect(sent.gcCustomerId).toBe('gc-1')
-      expect(sent.customerId).toBe('c-mason')
-      expect(data.gcsById['gc-1']?.name).toBe('Knight Builders')
+      expect(sent.customerId).toBe('c-mallin')
+      expect(data.gcsById['gc-1']?.name).toBe('Kestrin Builders')
     } finally {
       TABLES.job_lien_desk_items = items
       TABLES.jobs_ledger = jobsLedger
@@ -97,7 +97,7 @@ describe('useLienDeskData · ZZ test jobs', () => {
     const items = TABLES.job_lien_desk_items!
     const jobsLedger = TABLES.jobs_ledger!
     TABLES.job_lien_desk_items = [...items, { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null }]
-    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Terrell Rd', 'Dudley Mason'), customer_id: 'c-mason', status: 'billed', revenue: 285 }]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Tarrow Rd', 'Dunmere Mallin'), customer_id: 'c-mallin', status: 'billed', revenue: 285 }]
     TABLES.jobs_ledger_invoices = [{ id: 'inv-S', job_id: 'S', status: 'billed', amount: 285, sequence_order: 1, billed_at: '2026-07-15' }]
     TABLES.jobs_ledger_payments = []
     try {

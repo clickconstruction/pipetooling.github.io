@@ -30,7 +30,7 @@ const signed: JobContractCoverage = {
   kind: 'signed',
   source: 'estimate',
   signedAt: '2026-09-20T15:00:00Z',
-  signerName: 'Sharon Kane',
+  signerName: 'Sharon Kanby',
   contractId: null,
   estimateNumber: 150,
   estimateId: 'est-150',
@@ -42,7 +42,7 @@ describe('contractRowChip', () => {
     expect(contractRowChip(input({ status: 'paid', coverage: signed }))).toEqual({ show: false })
   })
 
-  it('asks for the contract by the first booked day when the crew has not started (Cano Camera)', () => {
+  it('asks for the contract by the first booked day when the crew has not started (Carrow Camera)', () => {
     const chip = shown({ nextBookedYmd: '2026-10-03' })
     expect(chip.label).toBe('Contract by Sat Oct 3 · 2d')
     expect(chip.tone).toBe('ask')
@@ -54,7 +54,7 @@ describe('contractRowChip', () => {
     expect(shown({ status: 'waiting', nextBookedYmd: TODAY }).label).toBe('Contract by Thu Oct 1 · today')
   })
 
-  it('reads crew on site once the crew has started and is booked or working this week (Megan Connell)', () => {
+  it('reads crew on site once the crew has started and is booked or working this week (Megan Corbray)', () => {
     expect(shown({ nextBookedYmd: TODAY, workStarted: true, workedThisWeek: true }).label).toBe('No contract · crew on site')
     expect(shown({ workStarted: true, workedThisWeek: true }).tone).toBe('ask')
     expect(shown({ nextBookedYmd: '2026-10-05', workStarted: true }).label).toBe('No contract · crew on site')
@@ -85,17 +85,17 @@ describe('contractRowChip', () => {
 
   it('reads No subcontract on file on a GC job and opens the GC paper sheet, in every unpaid stage', () => {
     for (const status of ['waiting', 'working', 'ready_to_bill', 'billed']) {
-      const chip = shown({ status, gcCustomerId: 'gc-dudley', gcName: 'RMC- Dudley Mason', nextBookedYmd: '2026-10-03' })
+      const chip = shown({ status, gcCustomerId: 'gc-dunmere', gcName: 'RLC- Dunmere Mallin', nextBookedYmd: '2026-10-03' })
       expect(chip.label).toBe('No subcontract on file')
       expect(chip.tone).toBe('none')
       expect(chip.opens).toBe('gc-paper')
-      expect(chip.title).toContain('RMC- Dudley Mason')
+      expect(chip.title).toContain('RLC- Dunmere Mallin')
     }
   })
 
   it('keeps the words a GC job already has once something is on file or a draft of ours is started', () => {
-    const sent: JobContractCoverage = { kind: 'sent', contractId: 'c9', revision: 1, sentAt: '2026-09-23T15:00:00Z', viewCount: 0, recipientEmail: 'pm@tfharper.test' }
-    const chip = shown({ coverage: sent, gcCustomerId: 'gc-tf', gcName: 'TF Harper' })
+    const sent: JobContractCoverage = { kind: 'sent', contractId: 'c9', revision: 1, sentAt: '2026-09-23T15:00:00Z', viewCount: 0, recipientEmail: 'pm@tfhalden.test' }
+    const chip = shown({ coverage: sent, gcCustomerId: 'gc-tf', gcName: 'TF Halden' })
     expect(chip.label.startsWith('Contract sent')).toBe(true)
     expect(chip.tone).toBe('sent')
     expect(chip.opens).toBe('contract')
@@ -158,7 +158,7 @@ describe('contractRowChipForJob', () => {
   })
 
   it('names the GC from the job', () => {
-    const chip = contractRowChipForJob({ ...job, gc_customer_id: 'gc', gcCustomer: { name: 'Knight Contracting' } } as never, feeds)
-    expect(chip.show && chip.title).toContain('Knight Contracting')
+    const chip = contractRowChipForJob({ ...job, gc_customer_id: 'gc', gcCustomer: { name: 'Kestrin Contracting' } } as never, feeds)
+    expect(chip.show && chip.title).toContain('Kestrin Contracting')
   })
 })

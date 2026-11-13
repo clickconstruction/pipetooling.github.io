@@ -31,7 +31,7 @@ vi.mock('../../lib/physicalInvoiceIssuer', () => ({
 
 vi.mock('../../lib/aiaG702G703PrefillIo', () => ({
   loadAiaPrefillFacts: () =>
-    Promise.resolve({ ownerName: 'Heron Construction Group', ownerAddress: '900 Broadway St, San Antonio, TX 78215', contractSignedOn: '2026-07-14' }),
+    Promise.resolve({ ownerName: 'Hadlow Construction Group', ownerAddress: '900 Broadway St, San Antonio, TX 78215', contractSignedOn: '2026-07-14' }),
 }))
 
 // The bid's schedule of values, when a test gives the job one.
@@ -134,7 +134,7 @@ function savedOne(thisPeriod = 19400, updatedAt = '2026-10-02T15:00:00Z'): Saved
       g702_n5_project: '1',
       g702_n6_period_to: '09/30/2026',
       g702_h6_project_name: 'Water Sample Test',
-      g702_d6_owner_name: 'Heron Construction Group',
+      g702_d6_owner_name: 'Hadlow Construction Group',
       g702_h18_original_contract_sum: 48500,
       g702_c28_retainage_percent: 10,
     },
@@ -183,7 +183,7 @@ function setWide(wide: boolean) {
   })) as typeof window.matchMedia
 }
 
-const job = makeJob({ job_name: 'Water Sample Test', customer_name: 'Heron Construction Group', revenue: 48500, pct_complete: 40 })
+const job = makeJob({ job_name: 'Water Sample Test', customer_name: 'Hadlow Construction Group', revenue: 48500, pct_complete: 40 })
 const cell = (key: string) => document.querySelector(`[data-aia-cell="${key}"]`) as HTMLButtonElement
 const field = (key: string) => document.getElementById(`aia-field-${key}`) as HTMLInputElement
 /** A box of a line in the form: label, scheduled, from, pct, this or stored. */
@@ -228,7 +228,7 @@ describe('AiaG702G703Modal', () => {
     expect(cell('g702_h18_original_contract_sum').dataset.aiaSource).toBe('typed')
     // The job is the project; the payer read beside it is the owner; the number waits to be typed.
     expect(cell('g702_h6_project_name').textContent).toBe('Water Sample Test')
-    expect(cell('g702_d6_owner_name').textContent).toBe('Heron Construction Group')
+    expect(cell('g702_d6_owner_name').textContent).toBe('Hadlow Construction Group')
     expect(cell('g702_d7_owner_address').textContent).toBe('900 Broadway St')
     expect(cell('g702_n9_contract_date').textContent).toBe('07/14/2026')
     expect(cell('g702_n5_project').dataset.aiaSource).toBe('blank')
@@ -1015,7 +1015,7 @@ describe('AiaG702G703Modal', () => {
   /** Job 892's shape: three stage Line Items that add to the job's price, and no bid schedule. */
   const stageItemsJob = (fixtures?: Array<Record<string, unknown>>) =>
     makeJob({
-      job_name: 'Megan Connell',
+      job_name: 'Megan Corbray',
       revenue: 37745,
       fixtures: fixtures ?? [
         { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 15098, progress_pct: 100, sequence_order: 0 },

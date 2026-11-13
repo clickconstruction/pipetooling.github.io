@@ -4,15 +4,15 @@ import { titleCaseUpperWords } from '../customers/propertyRecord'
  * The appraisal roll's mailing address as envelope lines (display only — what
  * Use saves is untouched). The roll hands back one string, and the districts
  * write "care of" as a leading `%`:
- *   "% SABRA HEALTH CARE REIT INC 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612"
- * which read on the desk as "mail to % Sabra…" and wrapped mid-street. Here it
+ *   "% SABLOW HEALTH CARE REIT INC 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612"
+ * which read on the desk as "mail to % Sablow…" and wrapped mid-street. Here it
  * becomes c/o + street + "City, ST ZIP", each on its own line.
  *
  * Every step falls back to the tidied whole string: a shape this does not
  * recognise is shown as the roll wrote it, never rearranged on a guess.
  */
 export interface RollMailingLines {
-  /** "Sabra Health Care Reit Inc" — '' when the roll names no care-of. */
+  /** "Sablow Health Care Reit Inc" — '' when the roll names no care-of. */
   careOf: string
   /** Street line(s), then "City, ST ZIP". At least one line when the input is not blank. */
   lines: string[]

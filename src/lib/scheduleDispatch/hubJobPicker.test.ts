@@ -43,8 +43,8 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id)
 describe('hubJobPickerSubline', () => {
   it('reads "<days>d <Mon D> | <address>"', () => {
     expect(
-      hubJobPickerSubline({ created_at: '2026-09-21T15:00:00Z', job_address: '105 Dover Rd San Antonio, TX 78209' }, NOW),
-    ).toBe('7d Sep 21 | 105 Dover Rd San Antonio, TX')
+      hubJobPickerSubline({ created_at: '2026-09-21T15:00:00Z', job_address: '105 Dorrow Rd San Antonio, TX 78209' }, NOW),
+    ).toBe('7d Sep 21 | 105 Dorrow Rd San Antonio, TX')
   })
 
   it('counts calendar days in the company zone, not 24-hour spans', () => {
@@ -123,7 +123,7 @@ describe('filterHubJobPickerRows — no search', () => {
 
 describe('filterHubJobPickerRows — the search box', () => {
   const rows = [
-    jobRow('1', { hcp_number: '927', job_name: 'Berg AirBnb', displayTitle: 'J927 · Berg AirBnb' }),
+    jobRow('1', { hcp_number: '927', job_name: 'Birkby AirBnb', displayTitle: 'J927 · Birkby AirBnb' }),
     jobRow('2', { hcp_number: '412', job_name: 'Rough-in', job_address: '12 Elm St, Austin' }),
     jobRow('3', { hcp_number: '88', job_name: 'Repipe', customer_name: 'Hillside Builders' }),
     jobRow('4', { hcp_number: null, click_number: '4102', job_name: 'Tower', displayTitle: 'J4102 · Tower' }),
@@ -142,7 +142,7 @@ describe('filterHubJobPickerRows — the search box', () => {
   })
 
   it('ignores case and the space around the search', () => {
-    expect(ids(filterHubJobPickerRows(rows, '  BERG  ', ''))).toEqual(['1'])
+    expect(ids(filterHubJobPickerRows(rows, '  BIRKBY  ', ''))).toEqual(['1'])
   })
 
   it('shows nothing for a search nothing contains', () => {
@@ -279,7 +279,7 @@ function ledgerRow(id: string, over: Partial<ScheduleDispatchHubJobRow> = {}): S
 
 describe('filterQuickAssignPickerJobs — the search box', () => {
   const rows = [
-    ledgerRow('hcp', { hcp_number: '1008', job_name: 'Mike Holub', created_at: '2026-01-05T15:00:00Z' }),
+    ledgerRow('hcp', { hcp_number: '1008', job_name: 'Mike Holmby', created_at: '2026-01-05T15:00:00Z' }),
     ledgerRow('click', { hcp_number: null, click_number: '1007', job_name: 'ZZ Test sink', created_at: '2026-11-03T15:00:00Z' }),
     ledgerRow('addr', { hcp_number: '412', job_name: 'Rough-in', job_address: '12 Elm St, Austin', created_at: '2026-06-01T15:00:00Z' }),
     ledgerRow('cust', { hcp_number: '88', job_name: 'Repipe', customer_name: 'Hillside Builders', created_at: '2026-03-01T15:00:00Z' }),

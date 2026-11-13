@@ -9,7 +9,8 @@ import {
   receiptGapTone,
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
-import { buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers, billWaitTone,type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
+import { buildMoneyWaiting, moneyWaitingBasis, moneyWaitingInKindLine, moneyWaitingLead, openBillsForCustomers, type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
+import { calendarBillWords, payCalendarWords, type PayCalendarIndex } from '../../lib/jobs/payCalendar'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
@@ -247,6 +248,7 @@ function openBillRow(b: OpenBill, key: number, onOpenJob?: (jobId: string) => vo
       title={
         `${b.jobName}${b.address ? ` · ${b.address}` : ''} — ${formatUsdNoCents(b.open)} open, ` +
         (b.billedYmd ? `billed ${formatYmdMonthDay(b.billedYmd)}, waiting ${b.waitDays}d` : 'no bill date yet') +
+        (b.calendar ? `, ${calendarBillWords(b.calendar)} on their pay calendar` : '') +
         (clickable ? ' — open the job' : '')
       }
       onClick={(e) => {
@@ -279,7 +281,8 @@ function openBillRow(b: OpenBill, key: number, onOpenJob?: (jobId: string) => vo
         {b.address ? <span style={{ color: 'var(--text-muted)' }}> · {b.address}</span> : null}
       </span>
       <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-        {b.billedYmd ? `billed ${formatYmdSlash(b.billedYmd)}` : 'no date'}
+        {/* A payer on a Pay calendar is read against the bill's due day, not the wait (punch list #323). */}
+        {b.calendar ? calendarBillWords(b.calendar) : b.billedYmd ? `billed ${formatYmdSlash(b.billedYmd)}` : 'no date'}
       </span>
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{formatUsdNoCents(b.open)}</span>
       {clickable && <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>›</span>}
@@ -309,6 +312,8 @@ export default function PaySpeedsBreakdownModal({
   onSpeedsChanged,
   focusPayer = null,
   focusRows,
+  payCalendars = null,
+  acceptedByInvoice = null,
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
@@ -333,15 +338,20 @@ export default function PaySpeedsBreakdownModal({
   focusPayer?: PaySpeedsPayer | null
   /** The bills to look for the payer's open ones in, when wider than `rows` (a Collections row's payer). */
   focusRows?: StageRow[]
+  /** The Pay calendars read (punch list #323): a payer on one is judged by each bill's expected day, not its wait. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id: the day a calendar counts from. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
   // One list: real medians slowest-first, then thin-history customers
   // (muted, "—" median) biggest open $ first.
   const merged = useMemo(() => [...breakdown.ranked, ...breakdown.thin], [breakdown])
-  const money = useMemo(() => buildMoneyWaiting(rows, paySpeeds, todayYmd), [rows, paySpeeds, todayYmd])
+  const calendars = useMemo(() => ({ payCalendars, acceptedByInvoice }), [payCalendars, acceptedByInvoice])
+  const money = useMemo(() => buildMoneyWaiting(rows, paySpeeds, todayYmd, calendars), [rows, paySpeeds, todayYmd, calendars])
   // Per-customer open bills for the "By customer" expansions — every customer
   // with open money, not just the off-pace ones (v2.2382).
-  const billsByCustomer = useMemo(() => openBillsForCustomers(rows, paySpeeds, todayYmd), [rows, paySpeeds, todayYmd])
+  const billsByCustomer = useMemo(() => openBillsForCustomers(rows, paySpeeds, todayYmd, calendars), [rows, paySpeeds, todayYmd, calendars])
   // Money-waiting row expansion (separate from the receipts toggle below —
   // the two lists key by the same customer ids).
   const [openMoneyRows, setOpenMoneyRows] = useState<Record<string, boolean>>({})
@@ -360,7 +370,7 @@ export default function PaySpeedsBreakdownModal({
   const quality = paySpeeds?.quality ?? null
   // One payer first (v2.7013): their card leads and the whole window opens under All customers.
   const focus = useMemo(
-    () => (focusPayer ? buildPaySpeedsPayerFocus(focusPayer, focusRows ?? rows, paySpeeds, todayYmd) : null),
+    () => (focusPayer ? buildPaySpeedsPayerFocus(focusPayer, focusRows ?? rows, paySpeeds, todayYmd, calendars) : null),
     [focusPayer, focusRows, rows, paySpeeds, todayYmd],
   )
   const [allCustomersOpen, setAllCustomersOpen] = useState(false)
@@ -618,7 +628,7 @@ export default function PaySpeedsBreakdownModal({
                 {money.rows.map((c: MoneyWaitingRow, i) => {
                   const expanded = !!openMoneyRows[c.customerId]
                   const jobs = distinctJobCount(c.bills)
-                  const worst = BILL_TONE[billWaitTone(c.oldestWaitDays, c.baselineDays)]
+                  const worst = BILL_TONE[c.worstTone]
                   return (
                     <div key={c.customerId}>
                       <div
@@ -626,9 +636,12 @@ export default function PaySpeedsBreakdownModal({
                         tabIndex={0}
                         aria-expanded={expanded}
                         title={
-                          `${c.name} — oldest open bill has waited ${c.oldestWaitDays}d (` +
-                          (c.ownMedianDays != null ? `they usually pay in ~${c.ownMedianDays}d` : `no history of their own — company pays in ~${money.companyMedianDays}d`) +
-                          `) · ${formatUsdNoCents(c.open)} open on ${jobs} ${jobs === 1 ? 'job' : 'jobs'} — click for each job`
+                          (c.calendar && c.pastExpectedDays != null
+                            ? `${c.name} pays on a calendar. ${payCalendarWords(c.calendar)} A bill of theirs is ${c.pastExpectedDays}d past the day it was expected`
+                            : `${c.name} — oldest open bill has waited ${c.oldestWaitDays}d (` +
+                              (c.ownMedianDays != null ? `they usually pay in ~${c.ownMedianDays}d` : `no history of their own — company pays in ~${money.companyMedianDays}d`) +
+                              ')') +
+                          ` · ${formatUsdNoCents(c.open)} open on ${jobs} ${jobs === 1 ? 'job' : 'jobs'} — click for each job`
                         }
                         onClick={() => toggleMoneyRow(c.customerId)}
                         onKeyDown={(e) => {
@@ -662,7 +675,7 @@ export default function PaySpeedsBreakdownModal({
                           {c.bills.map((b, bi) => (
                             <span
                               key={bi}
-                              title={`${b.jobName}${b.address ? ` · ${b.address}` : ''} — ${formatUsdNoCents(b.open)}, ${b.billedYmd ? `waiting ${b.waitDays}d` : 'no bill date'}`}
+                              title={`${b.jobName}${b.address ? ` · ${b.address}` : ''} — ${formatUsdNoCents(b.open)}, ${b.calendar ? calendarBillWords(b.calendar) : b.billedYmd ? `waiting ${b.waitDays}d` : 'no bill date'}`}
                               style={{
                                 height: 12,
                                 borderRadius: 3,
@@ -675,9 +688,9 @@ export default function PaySpeedsBreakdownModal({
                           ))}
                         </span>
                         <span style={{ textAlign: 'right', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                          <b style={{ color: worst.fg }}>{c.oldestWaitDays}d waiting</b>
+                          <b data-testid="money-waiting-lead" style={{ color: worst.fg }}>{moneyWaitingLead(c)}</b>
                           <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                            {c.ownMedianDays != null ? `usually ~${c.ownMedianDays}d` : `no history — vs company ~${money.companyMedianDays}d`} ·{' '}
+                            {moneyWaitingBasis(c, money.companyMedianDays)} ·{' '}
                             <b style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(c.open)}</b> open on {jobs} {jobs === 1 ? 'job' : 'jobs'}
                           </span>
                         </span>

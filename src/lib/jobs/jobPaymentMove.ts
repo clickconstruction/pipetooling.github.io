@@ -107,7 +107,7 @@ export type JobPaymentTraceLine = { id: string; text: string; direction: 'out' |
  * The grey lines under a job's Payments received table: what left it and what arrived, with
  * who and why. A payment moved here and later removed draws a *removed* line right under its
  * *moved here* line (the owner's call of 2026-10-09), so the arrival never sits over no payment.
- * `labelFor` names the other job (J922 · Michael Palmer); `money` formats dollars.
+ * `labelFor` names the other job (J922 · Michael Palvern); `money` formats dollars.
  */
 export function jobPaymentTraceLines(
   events: readonly JobPaymentEvent[],

@@ -83,7 +83,7 @@ export type GcStatementHistoryEntry = {
   note: string | null
 }
 
-/** "ap@knight.com" · "ap@knight.com +2" */
+/** "ap@kestrin.com" · "ap@kestrin.com +2" */
 export function formatStatementRecipient(sentTo: string, cc: string[] | null | undefined): string {
   const n = (cc ?? []).filter((e) => typeof e === 'string' && e.trim()).length
   return n > 0 ? `${sentTo} +${n}` : sentTo

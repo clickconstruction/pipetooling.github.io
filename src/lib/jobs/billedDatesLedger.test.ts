@@ -9,14 +9,14 @@ import type { PaySpeedData } from './billedExpectedPay'
 const today = '2026-09-30'
 const data: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
-  customers: { drf: { medianDays: 11, samples: 8 } },
+  customers: { dlf: { medianDays: 11, samples: 8 } },
   segments: { residential: null, commercial: null },
   customerTypes: {},
   receipts: {},
   quality: null,
 }
 // Billed Sep 23 → expected Oct 4.
-const row = { billedAtIso: '2026-09-23T15:00:00Z', estBillYmd: null, customerId: 'drf' }
+const row = { billedAtIso: '2026-09-23T15:00:00Z', estBillYmd: null, customerId: 'dlf' }
 // Last work in August on a residential sub job: § 53.056 notice by Oct 15, lien by Nov 16 (Nov 15 is a Sunday).
 const runwayInput = (over: Partial<LienRunwayInput> = {}): LienRunwayInput => ({
   todayYmd: today,

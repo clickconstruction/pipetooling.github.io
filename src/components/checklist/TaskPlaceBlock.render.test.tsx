@@ -31,7 +31,7 @@ vi.mock('../materials/OnSiteMap', () => ({
   },
 }))
 
-import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
 
 // About 76 m north-east of where the phone says it is.
 const PLACE: TaskPlace = {
@@ -126,5 +126,35 @@ describe('TaskPlaceBlock', () => {
   it('a place with no setter and no day says only where the reading goes', () => {
     render(<TaskPlaceBlock place={{ ...PLACE, setBy: null, setAt: null }} placedByName={null} />)
     expect(screen.getByText('Your location stays on this phone.')).toBeTruthy()
+  })
+})
+
+describe('the giver\'s photo of the spot (PR 6)', () => {
+  it('sits beside the picture from above, and a press opens it full size and closes alone', async () => {
+    const behind = vi.fn()
+    render(
+      <div onClick={behind}>
+        <TaskPlaceBlock place={PLACE} placedByName="Rosa" photoUrl="signed:p1" />
+      </div>,
+    )
+    expect(await screen.findByTestId('still-map')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open the photo of the spot' }))
+    expect(screen.getByRole('dialog', { name: 'The photo of the spot' })).toBeTruthy()
+    behind.mockClear()
+    fireEvent.click(document.querySelector('[data-task-spot-photo-sheet]')!)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(behind).not.toHaveBeenCalled()
+  })
+
+  it('with no photo the block is the block it was', async () => {
+    render(<TaskPlaceBlock place={PLACE} placedByName="Rosa" />)
+    await screen.findByTestId('still-map')
+    expect(document.querySelector('[data-task-spot-photo]')).toBeNull()
+  })
+
+  it('a picture that will not load draws nothing in its place', () => {
+    render(<TaskSpotPhotoView url="signed:gone" />)
+    fireEvent.error(screen.getByAltText('The spot'))
+    expect(document.querySelector('[data-task-spot-photo]')).toBeNull()
   })
 })

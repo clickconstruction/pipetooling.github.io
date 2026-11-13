@@ -5,9 +5,9 @@ import type { JobWorkOrderCoverage } from './workOrderCoverage'
 const TODAY = '2026-09-05'
 const none: JobWorkOrderCoverage = { kind: 'none' }
 const draft = (unpriced = true): JobWorkOrderCoverage => ({ kind: 'draft', id: 'o', subName: 'Behar Kraja', unpriced })
-const sent = (over: Partial<Extract<JobWorkOrderCoverage, { kind: 'sent' }>> = {}): JobWorkOrderCoverage => ({ kind: 'sent', id: 'o', subName: 'Cale Yarbrough', amount: 1208.97, sentAt: '2026-09-02', expiresOn: '2026-09-09', expired: false, ...over })
+const sent = (over: Partial<Extract<JobWorkOrderCoverage, { kind: 'sent' }>> = {}): JobWorkOrderCoverage => ({ kind: 'sent', id: 'o', subName: 'Cale Yarwick', amount: 1208.97, sentAt: '2026-09-02', expiresOn: '2026-09-09', expired: false, ...over })
 const signed: JobWorkOrderCoverage = { kind: 'signed', id: 'o', subName: 'Miguel Rodriguez', amount: 1750, signedOn: '2026-09-05', laborJobId: 's', recordId: 'WO-892-01' }
-const declined: JobWorkOrderCoverage = { kind: 'declined', id: 'o', subName: 'Jonathan Bartlett', reason: 'price is low' }
+const declined: JobWorkOrderCoverage = { kind: 'declined', id: 'o', subName: 'Jonathan Barwell', reason: 'price is low' }
 const rail = (over: Partial<SheetRailInput> = {}) => buildSheetRail({ coverage: none, sheetStage: 'working', agreed: 40000, open: 40000, unpriced: false, ...over })
 const states = (r: ReturnType<typeof buildSheetRail>) => r.steps.map((s) => s.state).join(' ')
 
@@ -85,7 +85,7 @@ describe('buildSheetRail — signed, the sub’s four', () => {
 })
 
 describe('sheetNextAction', () => {
-  const ctx = { subName: 'Texas R & A Electrical LLC', agreed: 40000, open: 40000, unpriced: false, todayYmd: TODAY }
+  const ctx = { subName: 'Texas Q & E Electrical LLC', agreed: 40000, open: 40000, unpriced: false, todayYmd: TODAY }
   it('no agreement → Get it in writing, draft button first', () => {
     expect(sheetNextAction(rail(), none, ctx)).toEqual({ label: 'Get it in writing', hint: '$40,000 of work on a handshake', button: 'draft', buttonLabel: 'Draft a work order…' })
     expect(sheetNextAction(rail({ unpriced: true, agreed: 0, open: 0 }), none, { ...ctx, unpriced: true }).hint).toBe('price the sheet, then send the order')
@@ -96,9 +96,9 @@ describe('sheetNextAction', () => {
   })
   it('sent → waiting on the sub; a nudge is due after three days', () => {
     const fresh = sent({ sentAt: '2026-09-04' })
-    expect(sheetNextAction(rail({ coverage: fresh }), fresh, { ...ctx, subName: 'Cale Yarbrough' })).toEqual({ label: 'Waiting on Cale Yarbrough · 1 day', hint: 'good through Sep 9', button: null, buttonLabel: null })
+    expect(sheetNextAction(rail({ coverage: fresh }), fresh, { ...ctx, subName: 'Cale Yarwick' })).toEqual({ label: 'Waiting on Cale Yarwick · 1 day', hint: 'good through Sep 9', button: null, buttonLabel: null })
     const stale = sent({ sentAt: '2026-09-02' })
-    expect(sheetNextAction(rail({ coverage: stale }), stale, { ...ctx, subName: 'Cale Yarbrough' })).toEqual({ label: 'Waiting on Cale Yarbrough · 3 days', hint: 'a nudge is due', button: 'nudge', buttonLabel: 'Nudge' })
+    expect(sheetNextAction(rail({ coverage: stale }), stale, { ...ctx, subName: 'Cale Yarwick' })).toEqual({ label: 'Waiting on Cale Yarwick · 3 days', hint: 'a nudge is due', button: 'nudge', buttonLabel: 'Nudge' })
   })
   it('declined / expired → re-offer', () => {
     expect(sheetNextAction(rail({ coverage: declined }), declined, ctx)).toMatchObject({ label: 'Re-offer or re-price', button: 'reoffer', buttonLabel: 'Re-offer…' })

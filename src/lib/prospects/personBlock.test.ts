@@ -3,13 +3,13 @@ import { EMPTY_COMPANY, EMPTY_PERSON, blocksFromRow, blocksProblem, callNumbers,
 
 const sub = rowFromBlocks(
   { name: 'Tomás Reyna', title: 'Estimator', cell: '(210) 555-0122', email: 'tomas@example.com', lang: 'es', okToText: 'not_asked' },
-  { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
+  { company: 'Baxter Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://baxterfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
 )
 
 describe('rowFromBlocks and blocksFromRow', () => {
   it('a company with a person: the company is the title, the person is the contact', () => {
     expect(sub.is_person).toBe(false)
-    expect(sub.company_name).toBe('Bexar Fire Protection')
+    expect(sub.company_name).toBe('Baxter Fire Protection')
     expect(sub.contact_name).toBe('Tomás Reyna')
     expect(sub.contact_title).toBe('Estimator')
     expect(sub.contact_phone).toBe('(210) 555-0122')
@@ -18,7 +18,7 @@ describe('rowFromBlocks and blocksFromRow', () => {
     expect(sub.ok_to_text).toBe('not_asked')
     expect(blocksFromRow(sub)).toEqual({
       person: { name: 'Tomás Reyna', title: 'Estimator', cell: '(210) 555-0122', email: 'tomas@example.com', lang: 'es', okToText: 'not_asked' },
-      company: { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
+      company: { company: 'Baxter Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://baxterfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
     })
   })
 
@@ -51,7 +51,7 @@ describe('rowFromBlocks and blocksFromRow', () => {
 
 describe('the card', () => {
   it('titles the company, or the person on their own, or says no name', () => {
-    expect(prospectTitle(sub)).toBe('Bexar Fire Protection')
+    expect(prospectTitle(sub)).toBe('Baxter Fire Protection')
     expect(prospectTitle({ company_name: null, contact_name: 'Dana' })).toBe('Dana')
     expect(prospectTitle({ company_name: null, contact_name: null })).toBe('(no name)')
   })
@@ -71,7 +71,7 @@ describe('the card', () => {
     expect(callNumbers({ contact_phone: null, phone_number: null }).call).toBeNull()
   })
   it('carries the Maps link and the license both ways (v2.5604)', () => {
-    const row = rowFromBlocks({ ...EMPTY_PERSON, name: 'Tomás' }, { ...EMPTY_COMPANY, company: 'Bexar Fire Protection', mapsUrl: ' https://maps.app.goo.gl/x7Qz ', license: 'TX SCR-1884' })
+    const row = rowFromBlocks({ ...EMPTY_PERSON, name: 'Tomás' }, { ...EMPTY_COMPANY, company: 'Baxter Fire Protection', mapsUrl: ' https://maps.app.goo.gl/x7Qz ', license: 'TX SCR-1884' })
     expect(row.maps_url).toBe('https://maps.app.goo.gl/x7Qz')
     expect(row.license).toBe('TX SCR-1884')
     expect(blocksFromRow(row).company.mapsUrl).toBe('https://maps.app.goo.gl/x7Qz')

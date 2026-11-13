@@ -131,7 +131,7 @@ export function stateUppercased(spelling: string): string {
 
 /**
  * The words the head prints for the shared address: the most common raw spelling among the
- * members of the most common key, so the head reads *Gun Dog Trail, Neeses, SC* and not a key;
+ * members of the most common key, so the head reads *Gray Fox Trail, Neeses, SC* and not a key;
  * the state in capitals whatever the rows typed (`stateUppercased`).
  */
 export function sharedAddressWords(members: Members): string | null {
@@ -171,7 +171,7 @@ export function sharedAddressWords(members: Members): string | null {
 /**
  * A SQL `ilike` pattern that finds every spelling of one normalized address: the key's words
  * up to the first street suffix (the number and the street's name), joined by the wildcard, so
- * *Gun Dog Trl* and *gun dog trail* both come back and the key decides which ones match.
+ * *Gray Fox Trl* and *gray fox trail* both come back and the key decides which ones match.
  */
 const SUFFIX_WORDS = new Set(['road', 'street', 'drive', 'lane', 'trail', 'avenue', 'boulevard', 'highway', 'court', 'circle', 'parkway', 'place', 'terrace', 'way', 'loop'])
 export function addressSearchPattern(key: string): string {
@@ -357,7 +357,7 @@ export function pulseWords(args: { name: string; openQuestions: number; oldestAg
 }
 
 /**
- * A robot estimator's shadow bid (the Gun Dog spike, 2026-11-02): a bid whose estimator is a digital twin.
+ * A robot estimator's shadow bid (the Gray Fox spike, 2026-11-02): a bid whose estimator is a digital twin.
  * The table shows it with a *shadow* chip so the owner sees the robot at work; the head's people and the
  * tiles' counts leave it out, since a shadow is not a bid the company is chasing.
  */

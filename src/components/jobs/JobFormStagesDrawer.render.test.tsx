@@ -40,7 +40,7 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof JobFormStagesDr
       open
       onClose={() => {}}
       plan={plan}
-      gcName="Summit General"
+      gcName="Selwick General"
       jobLabel="#1004 · 407 E 6th St"
       jobAddress={null}
       portalUrl="http://x/portal?t=sample-gc"
@@ -58,7 +58,7 @@ describe('JobFormStagesDrawer — Create their link', () => {
     renderDrawer({ gcCustomerId: 'gc-1', onLinkMinted })
     await settle()
     expect(screen.getByTestId('stages-drawer-mint').textContent).toContain('No portal link yet.')
-    expect(screen.getByText(/Summit General has never been given a portal page/)).toBeTruthy()
+    expect(screen.getByText(/Selwick General has never been given a portal page/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Create their link' }))
     await waitFor(() => expect(onLinkMinted).toHaveBeenCalledTimes(1))
     expect(rpc).toHaveBeenCalledWith('mint_customer_portal_link', { p_customer_id: 'gc-1', p_audience: 'all', p_rotate: false })

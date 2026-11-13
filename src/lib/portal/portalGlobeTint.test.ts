@@ -33,9 +33,9 @@ describe('portalGlobeTint — the ONE state→colour map (B18 / J21-F3)', () => 
   })
 
   it('titles read in trade language and say the state', () => {
-    expect(portalGlobeTitle('Knight Contracting', 'active')).toBe("Knight Contracting's portal — portal is live")
-    expect(portalGlobeTitle('Knight Contracting', 'unminted')).toBe("Knight Contracting's portal — no portal link yet")
-    expect(portalGlobeTitle('Knight Contracting', 'off')).toBe("Knight Contracting's portal — portal is turned off")
-    expect(portalGlobeTitle('Knight Contracting', null)).toBe("Knight Contracting's portal")
+    expect(portalGlobeTitle('Kestrin Contracting', 'active')).toBe("Kestrin Contracting's portal — portal is live")
+    expect(portalGlobeTitle('Kestrin Contracting', 'unminted')).toBe("Kestrin Contracting's portal — no portal link yet")
+    expect(portalGlobeTitle('Kestrin Contracting', 'off')).toBe("Kestrin Contracting's portal — portal is turned off")
+    expect(portalGlobeTitle('Kestrin Contracting', null)).toBe("Kestrin Contracting's portal")
   })
 })

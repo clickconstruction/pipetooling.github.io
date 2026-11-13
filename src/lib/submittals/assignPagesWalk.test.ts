@@ -29,7 +29,7 @@ const item = (p: Partial<SubmittalItemRow> & { id: string; tag: string }): Submi
   ({ submitted_model: null, submitted_label: null, specified_model: null, sheet_file: null, sheet_pages: [], ...p }) as SubmittalItemRow
 
 const items = [
-  item({ id: 'dwh', tag: 'DWH-1', submitted_label: 'DWH1 & ET assembly SPACEX', submitted_model: 'BTH-199' }),
+  item({ id: 'dwh', tag: 'DWH-1', submitted_label: 'DWH1 & ET assembly SKYLAB', submitted_model: 'BTH-199' }),
   item({ id: 'fd', tag: 'FD', submitted_model: 'Z415', submitted_label: 'Zurn Z415 floor drain' }),
   item({ id: 'wha200', tag: 'WHA-200', submitted_model: 'Z1700-200-OV' }),
   item({ id: 'wha500', tag: 'WHA-500', submitted_model: 'Z1700-500-OV', submitted_label: 'ZURN Z1700-500-OV HAMMER ARRESTOR' }),
@@ -40,7 +40,7 @@ const rows = walkRowsFrom(items)
 
 // A vendor PDF: cover, index naming four rows, then runs of sheets, one scan with no text.
 const texts = [
-  'SPACEX BA-2 CORE & SHELL plumbing submittal rev 3',
+  'SKYLAB BA-2 CORE & SHELL plumbing submittal rev 3',
   'INDEX  DWH-1 BTH-199 p3 · FD Z415 p7 · WHA-200 Z1700-200-OV p9 · WHA-500 Z1700-500-OV p10 · WC-1 CT708 p12',
   'A.O. SMITH BTH-199 commercial gas water heater specification sheet dimensions',
   'BTH-199 continued: venting table and clearances for the heater',
@@ -86,7 +86,7 @@ describe('reading the pages', () => {
     const combined = walkRowsFrom([item({ id: 'wc', tag: 'WC-1, WC-2', submitted_model: 'TET2UB31#SS' }), item({ id: 'ur', tag: 'UR-1 & UR-2' })])
     expect(tagTokens('WC-1, WC-2')).toEqual([' WC 1 ', ' WC 2 '])
     expect(tagTokens('FD')).toEqual([])
-    const reads = readPages(['NATIONAL WHOLESALE SUPPLY · SPACEX BA-2 · WC-2 · TOTO wall-hung bowl page', 'stamped UR-2 on the header of this urinal sheet page'], combined)
+    const reads = readPages(['NATIONAL WHOLESALE SUPPLY · SKYLAB BA-2 · WC-2 · TOTO wall-hung bowl page', 'stamped UR-2 on the header of this urinal sheet page'], combined)
     expect(reads[1]).toEqual({ itemId: 'wc', why: 'tag' })
     expect(reads[2]).toEqual({ itemId: 'ur', why: 'tag' })
     expect(readsFromGuesses(new Map([[7, { tag: 'UR-2', sure: true }]]), combined)).toEqual({ 7: { itemId: 'ur', why: 'tag' } })
@@ -112,9 +112,9 @@ describe('reading the pages', () => {
 })
 
 describe('a stamped file (the National Wholesale shape)', () => {
-  const H = 'SPACEX BA-2 CORE & SHELL'
+  const H = 'SKYLAB BA-2 CORE & SHELL'
   const stamped = [
-    '09/28/2026 SPACEX BA-2 CORE & SHELL Selena Garcia se.garcia@nws-inc.com',
+    '09/28/2026 SKYLAB BA-2 CORE & SHELL Selena Garcia se.garcia@nws.example',
     `${H} Table of Contents VENDOR PART VENDOR DESCRIPTION PAGE DWH-1 PROPH40 Rheem heater 6 WC-1 & WC-2 CT728CUVG#01 Toto 20 ET-1 ST-5 Amtrol 13`,
     `${H} E88AA24000 Fiat Bumper Guard 66 MSG-2424 Fiat Wall Panel 68 EWC-1 LZSTL8WSL Elkay bottle filler 69 — the contents run on`,
     `${H} DWH-1 VENDOR PART VENDOR DESCRIPTION PAGE PROPH40 T2 RH400 Rheem ProTerra Hybrid Electric Heat Pump Specifications 6`,
@@ -127,7 +127,7 @@ describe('a stamped file (the National Wholesale shape)', () => {
   const stampedRows = walkRowsFrom([item({ id: 'dwh', tag: 'DWH-1', submitted_label: 'DWH1 & ET assembly' }), item({ id: 'wc', tag: 'WC-1, WC-2', submitted_model: 'TET2UB31#SS' })])
 
   it('finds the shared header and the file’s own section tags', () => {
-    expect(commonHeader(stamped)).toBe(' SPACEX BA 2 CORE SHELL ')
+    expect(commonHeader(stamped)).toBe(' SKYLAB BA 2 CORE SHELL ')
     expect(fileSectionTags(stamped, commonHeader(stamped))).toEqual(['WC 1 WC 2', 'DWH 1', 'ET 1'])
     // a file with no stamps reads as before: nothing is front matter by position
     expect(readPages(texts, rows)[1]).toBeUndefined()

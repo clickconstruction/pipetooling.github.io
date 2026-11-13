@@ -38,6 +38,8 @@ Send Dana {{button:outline|Ask for photos}} {{button:outline|An estimate}} {{but
 
 Each press does what its typed word does. The words are `/show`, `/estimate` and `/bill`.
 
+Hold the pointer on a press to read what it does. The last words name its typed word.
+
 The three are grey for a number that sent STOP. Hold the pointer on one to read why.
 
 ## What the customer sees

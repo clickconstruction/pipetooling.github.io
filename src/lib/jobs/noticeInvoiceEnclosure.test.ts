@@ -9,9 +9,9 @@ const inv = (id: string, amount: number, seq: number, status = 'billed') =>
 const job = {
   id: 'j867',
   hcp_number: '867',
-  job_name: 'Service Visit — 628 Terrell Rd',
-  job_address: '628 Terrell Rd, San Antonio, TX 78209',
-  customer_name: 'RMC- Dudley Mason',
+  job_name: 'Service Visit — 628 Tarrow Rd',
+  job_address: '628 Tarrow Rd, San Antonio, TX 78209',
+  customer_name: 'RLC- Dunmere Mallin',
   customer_email: '',
   customer_id: 'c1',
   gc_customer_id: null,

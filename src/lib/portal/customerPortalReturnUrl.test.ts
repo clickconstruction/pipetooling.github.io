@@ -6,8 +6,8 @@ const ORIGIN = 'https://clicktooling.com/'
 
 describe('resolvePortalReturnUrl (which portal address the receipt points home to)', () => {
   it('main link + saved slug → the short custom address with paid=1', () => {
-    expect(resolvePortalReturnUrl([{ audience: 'all', token: 'tok-all', revoked_at: null }], 'knight', ORIGIN)).toBe(
-      'https://my.clickplumbing.com/knight?paid=1',
+    expect(resolvePortalReturnUrl([{ audience: 'all', token: 'tok-all', revoked_at: null }], 'kestrin', ORIGIN)).toBe(
+      'https://my.clickplumbing.com/kestrin?paid=1',
     )
   })
 
@@ -31,16 +31,16 @@ describe('resolvePortalReturnUrl (which portal address the receipt points home t
   })
 
   it('only a GC-scoped link active → its token URL (never the slug: scoped views do not advertise the merged address)', () => {
-    expect(resolvePortalReturnUrl([{ audience: 'gc', token: 'tok-gc', revoked_at: null }], 'knight', ORIGIN)).toBe(
+    expect(resolvePortalReturnUrl([{ audience: 'gc', token: 'tok-gc', revoked_at: null }], 'kestrin', ORIGIN)).toBe(
       'https://clicktooling.com/portal?t=tok-gc&paid=1',
     )
   })
 
   it('revoked, blank-token, or no links → null (no line on the receipt)', () => {
-    expect(resolvePortalReturnUrl([{ audience: 'all', token: 'tok', revoked_at: '2026-09-01T00:00:00Z' }], 'knight', ORIGIN)).toBeNull()
-    expect(resolvePortalReturnUrl([{ audience: 'all', token: '  ', revoked_at: null }], 'knight', ORIGIN)).toBeNull()
+    expect(resolvePortalReturnUrl([{ audience: 'all', token: 'tok', revoked_at: '2026-09-01T00:00:00Z' }], 'kestrin', ORIGIN)).toBeNull()
+    expect(resolvePortalReturnUrl([{ audience: 'all', token: '  ', revoked_at: null }], 'kestrin', ORIGIN)).toBeNull()
     expect(resolvePortalReturnUrl([{ audience: 'customer', token: 'tok', revoked_at: null }], null, ORIGIN)).toBeNull()
-    expect(resolvePortalReturnUrl([], 'knight', ORIGIN)).toBeNull()
+    expect(resolvePortalReturnUrl([], 'kestrin', ORIGIN)).toBeNull()
   })
 
   it('withPaidFlag picks ? or & by whether a query already exists', () => {

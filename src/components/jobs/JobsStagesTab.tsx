@@ -195,6 +195,7 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
+import { lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -1815,9 +1816,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     // card hidden rather than offering call mode whose writes would fail.
     if (!canMarkPromisedPay || !cacheLeanBilledRows || chaseTouches == null) return null
     return summarizePaymentChase(
-      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext),
+      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext, payCalendars, acceptedByInvoice),
     )
-  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext])
+  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext, payCalendars, acceptedByInvoice])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -4815,6 +4816,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
+        // v2.7077: the window's header names the step the row names (a notice waiting on its owner, its approval or its mailing).
+        deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {

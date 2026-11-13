@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { citationsBySection, citedByWords, headingNumber, parseSectionCitations, sectionByNumber, splitByCitations } from './hrDocCitations'
+import { citationsBySection, citedByWords, citedCorrectedWords, headingNumber, parseSectionCitations, sectionByNumber, splitByCitations } from './hrDocCitations'
 
 describe('hrDocCitations (an entry cites a section of the narrative, v2.6615)', () => {
   it('parses N§16, N §16 and §16, each number once, in order', () => {
@@ -38,5 +38,10 @@ describe('hrDocCitations (an entry cites a section of the narrative, v2.6615)', 
     expect(by.get(2)?.map((l) => l.key)).toEqual(['a', 'b'])
     expect(citedByWords(2)).toBe('cited by 2 entries')
     expect(citedByWords(1)).toBe('cited by 1 entry')
+  })
+
+  it('counts the citing entries a later entry corrected (punch list #315)', () => {
+    expect(citedCorrectedWords(1)).toBe('1 of them corrected since')
+    expect(citedCorrectedWords(3)).toBe('3 of them corrected since')
   })
 })

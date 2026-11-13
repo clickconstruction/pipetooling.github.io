@@ -64,7 +64,7 @@ Two definitions, one click apart:
 - **Working → Billed** is the default. A job runs from the moment it was moved to Working until it was moved to Billed or Paid. It counts touched or not. This is "open on the board", the way the office counts. It runs higher and longer than the worked span.
 
 :::example One paused job
-Mission Hills had hours every week in May, nothing for ten days in June, then hours again. With the gap at 7d it shows as two runs and isn't counted during the pause; with 14d it's one run straight through.
+Mission Flats had hours every week in May, nothing for ten days in June, then hours again. With the gap at 7d it shows as two runs and isn't counted during the pause; with 14d it's one run straight through.
 :::
 
 ## Watch-outs

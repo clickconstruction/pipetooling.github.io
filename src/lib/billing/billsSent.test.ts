@@ -4,13 +4,22 @@ import {
   billsSentGapFilter,
   billsSentGapHeading,
   billsSentGaps,
+  BILLS_SENT_CSV_HEAD,
   billsSentAgainWords,
   billsSentByWords,
+  billsSentCsv,
+  billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
   billsSentLines,
+  billsSentListHtml,
   billsSentPaidWords,
+  billsSentRecord,
+  billsSentRecordHtml,
+  billsSentRecordPath,
+  byHandFiling,
+  byHandProblem,
   billsSentSumWords,
   billsSentTiles,
   canOpenBillsSent,
@@ -363,5 +372,150 @@ describe('billsSent — whether a send arrived (PR 3)', () => {
   it('reads a text Quo could not deliver as a send that did not arrive', () => {
     const data = input([], { texts: [{ id: 't1', atIso: '2026-11-12T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: '', by: 'Priya', delivery: 'failed' }] })
     expect(billsSentLines(data)[0]).toMatchObject({ delivery: 'Not delivered', deliveryTone: 'bad', stillMissed: true })
+  })
+})
+
+describe('billsSentRecord (PR 4)', () => {
+  const data = input(
+    [copy({ id: 'c2', sentAt: '2026-11-12T17:02:00.000Z' }), copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' }), copy({ id: 'x1', sourceId: BILL_B, jobIds: [JOB_B] })],
+    {
+      bills: new Map([
+        [BILL_A, { id: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed', billedAtIso: '2026-11-03T22:38:00.000Z' }],
+        [BILL_B, { id: BILL_B, jobId: JOB_B, amount: 9750, status: 'paid' }],
+      ]),
+      texts: [{ id: 't1', atIso: '2026-11-10T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: 'Hal Jensen', by: 'Priya', delivery: 'delivered' }],
+      marks: new Map([
+        ['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-12T17:02:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+        ['c1', { id: 'c1', lastEvent: 'opened', lastEventAtIso: '2026-11-04T14:12:00.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }],
+      ]),
+    },
+  )
+  const lines = billsSentLines(data)
+
+  it('puts every send of one bill in order, newest first, with who it went to and whether it arrived', () => {
+    const record = billsSentRecord(BILL_A, lines, data)!
+    expect(record).toMatchObject({ what: 'Bill 1412-0002', jobWords: 'J1412 · Sable Ridge Lot 14', payer: 'Sable Ridge Builders', amount: 4860, stateWords: 'Not paid', madeWords: 'Bill made Tue, Nov 3 at 4:38 PM.' })
+    expect(record.events.map((e) => [e.when, e.head, e.detail])).toEqual([
+      ['Thu, Nov 12 · 11:02 AM', 'Emailed again by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Delivered 11:02 AM.'],
+      ['Tue, Nov 10 · 2:14 PM', 'Texted the pay link by Priya', 'To Hal Jensen, (512) 555-0142. Delivered.'],
+      ['Tue, Nov 3 · 4:41 PM', 'Emailed by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Opened Wed, Nov 4 at 8:12 AM.'],
+    ])
+    expect(billsSentRecordPath(BILL_A)).toBe(`/bills-sent?bill=${BILL_A}`)
+  })
+
+  it('still has a record for a bill with no send, and none for a bill the page does not know', () => {
+    const bare = billsSentRecord(BILL_A, [], data)!
+    expect(bare.events).toEqual([])
+    expect(bare).toMatchObject({ what: 'Bill', jobWords: 'J1412 · Sable Ridge Lot 14', stateWords: 'Not paid' })
+    expect(billsSentRecord('ffffffff-0000-4000-8000-000000000000', lines, data)).toBeNull()
+    expect(billsSentRecord(BILL_B, lines, data)).toMatchObject({ stateWords: 'Paid', madeWords: '' })
+  })
+
+  it('prints as one page, with the words escaped and what Delivered means', () => {
+    const record = billsSentRecord(BILL_A, lines, data)!
+    const html = billsSentRecordHtml({ ...record, payer: 'Sable <Ridge> & Co' }, '2026-11-12T21:00:00.000Z')
+    expect(html).toContain('<h1>Bill 1412-0002 · J1412 · Sable Ridge Lot 14</h1>')
+    expect(html).toContain('Sable &lt;Ridge&gt; &amp; Co · $4,860.00 · Not paid')
+    expect(html).toContain('<td class="when">Thu, Nov 12 · 11:02 AM</td><td><b>Emailed again by Priya</b>')
+    expect(html).toContain('Delivered means their mail server took the email.')
+    expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
+    expect(billsSentRecordHtml({ ...record, events: [] }, '2026-11-12T21:00:00.000Z')).toContain('No send of this bill is on record.')
+  })
+})
+
+describe('billsSent — out of the app (PR 5)', () => {
+  const data = input(
+    [
+      copy({ id: 'c2', sentAt: '2026-11-12T17:02:00.000Z', recipientName: '=Sable, "Ridge" Builders' }),
+      copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' }),
+    ],
+    {
+      stamps: [{ billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' }],
+      unsent: [{ billId: 'dddddddd-4444-4444-8444-444444444444', jobId: JOB_B, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+      marks: new Map([['c2', { id: 'c2', lastEvent: 'delivered', lastEventAtIso: '2026-11-12T17:02:09.000Z', emailType: 'stripe_bill', paidOn: null, paidHow: null }]]),
+    },
+  )
+  const lines = billsSentLines(data)
+  const gaps = billsSentGaps(data, lines)
+
+  it('writes the lines as a spreadsheet a column of amounts can add, then the bills with no send', () => {
+    const rows = billsSentCsv(lines, gaps.open).trimEnd().split('\r\n')
+    expect(rows[0]).toBe(BILLS_SENT_CSV_HEAD.join(','))
+    expect(rows).toHaveLength(5)
+    // A second send: not in the day total, with which send it is. A name that opens like a formula is led with an apostrophe, and its comma and quotes are held.
+    expect(rows[1]).toBe('2026-11-12,11:02 AM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,"\'=Sable, ""Ridge"" Builders",4860.00,no,"\'=Sable, ""Ridge"" Builders",hal@sableridge.example,,"Email, sent again",Priya,2,Delivered 11:02 AM,,')
+    // A Housecall Pro day: no time, and what the app does not have.
+    expect(rows[2]).toBe('2026-11-11,,Bill,J1398 · Larkfield Clinic,Larkfield Construction,9750.00,yes,,,,Housecall Pro,,1,,Paid since,"Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy."')
+    expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,,')
+    expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
+    expect(billsSentCsvFileName('2026-11-12')).toBe('bills-sent-2026-11-12.csv')
+  })
+
+  it('prints what the list shows under its days, with the gaps first', () => {
+    const html = billsSentListHtml(billsSentDays(lines, '2026-11-12'), gaps.open, { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.' })
+    expect(html).toContain('<h1>Bills sent</h1>')
+    expect(html).toContain('<h2>1 bill is billed with no send on record</h2>')
+    expect(html).toContain('<b>Today · Thu, Nov 12</b> <span>0 bills · 1 sent again</span>')
+    expect(html).toContain('<td class="when">11:02 AM</td><td><b>Bill 1412-0002</b> · J1412 · Sable Ridge Lot 14 · =Sable, &quot;Ridge&quot; Builders')
+    expect(html).toContain('Email, sent again · by Priya · 2nd send. First sent Tue, Nov 3. · Delivered 11:02 AM')
+    expect(html).toContain('<td class="when">Day only</td>')
+    expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
+    expect(html.indexOf('no send on record')).toBeLessThan(html.indexOf('Today · Thu, Nov 12'))
+  })
+})
+
+describe('billsSent — a record made by hand (PR 6)', () => {
+  const gap = { billId: BILL_A, jobId: JOB_A, jobWords: 'J1412 · Sable Ridge Lot 14' }
+  const draft = { how: 'handed' as const, toWhom: ' Hal Jensen, on site ', wentOnYmd: '2026-11-09', note: ' With the permit card. ' }
+
+  it('asks for what is missing, one thing at a time', () => {
+    expect(byHandProblem({ ...draft, how: '' }, '2026-11-12')).toBe('Pick how the bill went.')
+    expect(byHandProblem({ ...draft, toWhom: '  ' }, '2026-11-12')).toBe('Say who the bill went to.')
+    expect(byHandProblem({ ...draft, wentOnYmd: '' }, '2026-11-12')).toBe('Pick the day the bill went.')
+    expect(byHandProblem({ ...draft, wentOnYmd: '2026-11-13' }, '2026-11-12')).toBe('The day cannot be after today.')
+    expect(byHandProblem(draft, '2026-11-12')).toBe('')
+  })
+
+  it('files one sent copy with no addresses, the bill as its source and what was said', () => {
+    expect(byHandFiling(gap, draft)).toEqual({
+      kind: 'bill_by_hand',
+      title: 'Bill · J1412 · Sable Ridge Lot 14 · Handed over, recorded by hand',
+      how: 'hand',
+      recipientName: 'Hal Jensen, on site',
+      jobIds: [JOB_A],
+      source: { table: 'jobs_ledger_invoices', id: BILL_A },
+      sourceSnapshot: { by_hand: true, how: 'handed', went_on: '2026-11-09', note: 'With the permit card.' },
+    })
+    expect(byHandFiling(gap, { ...draft, how: 'mailed' }).how).toBe('mail')
+    expect(byHandFiling(gap, { ...draft, how: 'own_mailbox' }).how).toBe('email')
+    expect(byHandFiling(gap, { ...draft, how: 'housecall_pro' }).how).toBe('email')
+  })
+
+  it('reads the record as a line on the day it went, marked as someone\u2019s word, and closes the gap', () => {
+    const record = copy({
+      id: 'h1',
+      kind: 'bill_by_hand',
+      how: 'hand',
+      title: 'Bill · J1412 · Sable Ridge Lot 14 · Handed over, recorded by hand',
+      recipientName: 'Hal Jensen, on site',
+      recipientEmails: [],
+      copyPath: null,
+      copyHash: '',
+      sentAt: '2026-11-12T20:30:00.000Z',
+      sentByName: 'Priya',
+      sourceSnapshot: { by_hand: true, how: 'handed', went_on: '2026-11-09', note: 'With the permit card.' },
+      resendEmailId: null,
+    })
+    const data = input([record], {
+      unsent: [{ billId: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+      stamps: [{ billId: BILL_A, atIso: '2026-11-08T18:00:00.000Z', channel: 'housecallpro' }],
+    })
+    const lines = billsSentLines(data)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatchObject({ id: 'h1', route: 'by_hand', routeWords: 'Handed over', dayOnly: true, toName: 'Hal Jensen, on site', toAddresses: [], by: 'Priya', copy: null, amount: 4860, counts: true, nth: 1 })
+    expect(lines[0]!.note).toBe('Recorded by hand on Thu, Nov 12. The app sent nothing and kept no copy. With the permit card.')
+    expect(billsSentDays(lines, '2026-11-12').map((d) => d.label)).toEqual(['Mon, Nov 9'])
+    expect(billsSentGaps(data, lines)).toEqual({ open: [], paid: [] })
+    expect(billsSentFilter(lines, 'by_hand', '').map((l) => l.id)).toEqual(['h1'])
   })
 })

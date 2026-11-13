@@ -15,7 +15,7 @@ import { BID_BOARD_MAP_DUE_RING_COLOR, JOBS_MAP_COLLECTIONS_RING_COLOR, JOBS_MAP
 import { BID_STAGE_MARKER_COLOR } from './builderBidMapFocus'
 
 const office = { lat: 29.42, lng: -98.49 }
-const berg = { addressKey: 'river rd', addressLabel: '6288 River Rd, New Braunfels', lat: 29.76, lng: -98.09 } // ~31 mi
+const berg = { addressKey: 'river rd', addressLabel: '6288 Rill Rd, New Braunfels', lat: 29.76, lng: -98.09 } // ~31 mi
 import type { MapPagePlaceSource } from './mapPagePlaces'
 const e = (o: Record<string, unknown>) => ({ sublabel: '', tableLabel: 'x', ...o }) as unknown as MapPagePlaceSource & { id: string }
 
@@ -42,7 +42,7 @@ describe('mapPagePlaces', () => {
     expect(mapPagePlaceRing(place, () => undefined)).toBe(JOBS_MAP_COLLECTIONS_RING_COLOR)
     const pins = mapPagePlacePins(places, { builderFocus: false, focusSection: () => undefined })
     expect(pins[0]).toMatchObject({ id: 'river rd', color: JOBS_MAP_SECTION_COLOR.working, ringColor: JOBS_MAP_COLLECTIONS_RING_COLOR, label: '4' })
-    expect(pins[0]!.title).toBe('6288 River Rd, New Braunfels · 3 jobs · 1 bid')
+    expect(pins[0]!.title).toBe('6288 Rill Rd, New Braunfels · 3 jobs · 1 bid')
   })
 
   it('a place of one record is that record; a due bid rings amber; an estimate is violet', () => {

@@ -40,7 +40,7 @@ The find box sits at the top of the list. Type whatever they give you. That can 
 A letter older than thirty days is not on the piles. The box still finds it. Those appear under **Also sent**, below the piles, each with the day it mailed. Press one and the call sheet opens on that notice. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month.
 
 :::example What a match looks like
-**Priya Natarajan · owner of 9703 Lenox Hl, San Antonio** — {{chip:green|Sent Sep 22}} *§ 53.056 notice · residential letter · mailed Sep 22 · $7,902.00 for June, July and August 2026 · GC RMC · job 273 · signed Robert Douglas* — {{button:outline|Open the call ›}}
+**Priya Natarajan · owner of 9703 Lenox Hl, San Antonio** — {{chip:green|Sent Sep 22}} *§ 53.056 notice · residential letter · mailed Sep 22 · $7,902.00 for June, July and August 2026 · GC RLC · job 273 · signed Robert Douglas* — {{button:outline|Open the call ›}}
 :::
 
 A **GC's name** finds every job of theirs. If the GC itself is the one calling, the call goes to the master.
@@ -59,10 +59,10 @@ At the bottom of the words, **Take a practice call ›** opens the same call she
 
 - **The top line is the letter they hold.** It says which notice, mailed when, for how much, under which GC, and who signed it. Glance at it so your words match their paper.
 - **Say the green line.** It is written to be read aloud. The small **ⓘ** beside it holds the statute cites for your own reference. Do not read those out.
-- **Tap what they say.** Under the line are a few replies in the owner's own words. They read like *"I already paid RMC — everything"*, *"There's still a payment to RMC"* or *"I'd have to check"*. Tap the closest one and the next card opens. Some replies open a small box first. It asks how much is left, the day the 10% went to the builder, or the day the builder finished. The builder may be *still going*. Type what they tell you, then {{button:blue|Next ›}}.
+- **Tap what they say.** Under the line are a few replies in the owner's own words. They read like *"I already paid RLC — everything"*, *"There's still a payment to RLC"* or *"I'd have to check"*. Tap the closest one and the next card opens. Some replies open a small box first. It asks how much is left, the day the 10% went to the builder, or the day the builder finished. The builder may be *still going*. Type what they tell you, then {{button:blue|Next ›}}.
 - **The chips at the top jump.** The owner may change the subject, from "I paid" to "can I pay you?". Tap that chip and the sheet goes with them. *‹ Back* undoes a tap.
 - **The owner may hold a reminder too.** A courtesy notice may have reached them by email after the letter. The reminder is not a new notice. Say the mailed notice stands, and the reminder only said where to pay and by when.
-- **The sentence at the bottom is the record.** It builds as you go: *Priya paid RMC in full. They let the 10% go to RMC on Sep 10, 19 days before the hold ended. RMC finished Aug 30.* Check it reads like what they told you.
+- **The sentence at the bottom is the record.** It builds as you go: *Priya paid RLC in full. They let the 10% go to RLC on Sep 10, 19 days before the hold ended. RLC finished Aug 30.* Check it reads like what they told you.
 
 You are not asking the owner three legal questions. The cards ask three things. What do they still owe the builder? Did the ten percent stay with them or go out, and when? When did the builder finish? Those three facts decide what happens next. The cards ask them in plain words at the natural moment.
 
@@ -78,7 +78,7 @@ The green lines are the attorney's words, arranged for the phone. Staying on the
 
 ## After the call
 
-1. Add a **note** on the last card if anything would help the master. One might read *"very calm — thought paying RMC ended it"*. Then tap {{button:blue|Save the call}}.
+1. Add a **note** on the last card if anything would help the master. One might read *"very calm — thought paying RLC ended it"*. Then tap {{button:blue|Save the call}}.
 2. Saving writes the call onto the notice. The desk's footer, the Affidavits tab and the GC run's grid read it. The job sorts into the attorney's **pile**. Pile A is an owner who still owes the builder. Pile B paid but never held the 10%. Pile C paid in full and holds nothing. *The attorney’s letter* switches off. *Wants to pay us → counsel* flags the sign-off.
 3. **Tell the master the same day** in three cases. The owner wants to pay us directly. The builder has gone quiet on them too. Anything surprised you. The sheet records it. The master decides it.
 

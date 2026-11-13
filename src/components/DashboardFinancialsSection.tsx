@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
+import { loadPayCalendars } from '../lib/jobs/payCalendarIo'
+import { indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
 import DashboardArCustomersView from './DashboardArCustomersView'
@@ -525,11 +527,27 @@ function ItemsModal({
       cancelled = true
     }
   }, [cardKey])
+  // Punch list #323: a customer on a Pay calendar is judged by each bill's expected day. Fail-soft like the
+  // speeds: the read answers none for a role that may not see calendars, and every row then reads its wait.
+  const [arPayCalendars, setArPayCalendars] = useState<PayCalendarIndex | null>(null)
+  useEffect(() => {
+    if (cardKey !== 'ar') return
+    let cancelled = false
+    void loadPayCalendars(supabase).then(
+      (rows) => {
+        if (!cancelled) setArPayCalendars(indexPayCalendars(rows))
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [cardKey])
   const arCustomersActive = cardKey === 'ar' && arView === 'customers'
   const arTodayYmd = todayYmdInAppTz()
   const arRollup = useMemo(
-    () => (cardKey === 'ar' ? buildArCustomerRollup(bucket.items, arPaySpeeds, arTodayYmd) : null),
-    [cardKey, bucket.items, arPaySpeeds, arTodayYmd],
+    () => (cardKey === 'ar' ? buildArCustomerRollup(bucket.items, arPaySpeeds, arTodayYmd, arPayCalendars) : null),
+    [cardKey, bucket.items, arPaySpeeds, arTodayYmd, arPayCalendars],
   )
   // Call sheet (v2.2572): chase pills + call card need the Payment Chase inputs.
   // Office roles only (the Pipeline chase gate); every fetch fails soft.
