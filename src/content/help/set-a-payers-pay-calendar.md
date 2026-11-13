@@ -76,6 +76,22 @@ Leave the calendar unset for a customer who pays some days after each bill. The 
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
+## The cutoff, before a bill goes out
+
+A bill that has not gone out yet shows its cutoff. You see the line in three places.
+
+- A row in **Ready to Bill** on the Pipeline reads *Send by Nov 30 to be due Dec 10. After that, Jan 10.*
+- The **Ready to Bill** header shows the nearest cutoff, like *Next cutoff Nov 25 · 1 bill*.
+- The Bill Customer window says what sending today makes the bill.
+
+The line is blue while the cutoff is far. It turns amber in the last 7 days. Press the first sentence on a row to open the calendar.
+
+:::example One day decides a month
+Send by Nov 30 to be due Dec 10. After that, Jan 10.
+:::
+
+The cutoff never stops a bill. It tells you what waiting costs.
+
 ## What it changes
 
 Every bill that customer pays reads the calendar.

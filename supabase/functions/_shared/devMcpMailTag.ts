@@ -27,7 +27,7 @@ export interface MailTagArgs {
   person: MailTagPerson | null
   /** The call log's target. */
   target: string
-  /** `tag.for_record: true` (server 0.79.0, punch list #324): file every mail of this tag for the record, whatever its age. A job tag's alone. */
+  /** `tag.for_record: true` (server 0.80.0, punch list #324): file every mail of this tag for the record, whatever its age. A job tag's alone. */
   forRecord: boolean
 }
 
@@ -92,7 +92,7 @@ export interface MailTagCommitment {
   counts: MyMailTagPlanOk['counts']
   mails: Array<{ gmailId: string; kind: 'write' | 'tie' | 'skip'; tie?: boolean }>
   moving_from: string | null
-  /** Present and true when the plan was asked to file every mail for the record (server 0.79.0): an apply without it is another plan. */
+  /** Present and true when the plan was asked to file every mail for the record (server 0.80.0): an apply without it is another plan. */
   for_record?: true
 }
 
@@ -140,7 +140,7 @@ export function tagReading(preview: MyMailTagPlanOk): string {
 }
 
 /**
- * What the tag would do to Follow up (server 0.79.0, punch list #324): each mail's `lands` says `record` (filed for the
+ * What the tag would do to Follow up (server 0.80.0, punch list #324): each mail's `lands` says `record` (filed for the
  * record, asks nobody) or `followUp` (lands as mail that came in today would, and a mail of theirs opens the thread).
  */
 export function followUpReading(counts: Pick<MyMailTagPlanOk['counts'], 'lines' | 'filed'>): string {

@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -26,7 +26,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Ask the GC a plans question (RFI) / see what's unanswered → `/bids?tab=rfi`
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
-- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Farm Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
+- Create a bid → the header's **Bid** press, drawn on the Bids page alone (dev, master, assistant, controller, estimator and superintendent, off in Task Mode; it opens `/bids?new=true`) or, on a wide screen, the page's New Bid at the tab row's right
 - Search a bid's plans, ask the robot what they say and make an RFI of what they do not → the **Plans** button at the end of the bid tabs' row while a bid is picked (`&plans=1` on the Followup tab opens it; v2.5736, v2.5737; guide `search-the-plans-on-a-bid`)
 - Everything new for an estimator in two minutes: the robots' ring, the Plans button, the Dashboard's lines and Messages → `/help?g=use-the-robots-and-the-new-bid-tools-as-an-estimator`
 
@@ -383,6 +383,9 @@ Mercury account with Mercury's own name, its numbers and its newest lines (a dev
 
 ### /accounts-receivable — AR
 Outstanding billed jobs by customer; collections flags. The bank deposits modal leads a deposit's pane with a customer's word that they paid when the deposit fits it (**They said they paid**, v2.5650; guide `match-bank-deposits-to-bills`). Roles: dev, master, assistant, controller.
+
+### /bills-sent — Bills sent
+Every bill that left the company, newest first under a band per day, one line each time a bill goes (punch list #327, v2.7049): the time, the bill's number, the job, the amount, the address it went to, how it went and who pressed send, with **Copy as sent** opening the email as the payer read it. A second send is its own line and says the day of the first; a day's total counts each bill once; a statement to a GC is listed and never added. A search box (a job, a customer, an address, a bill number) and the chips All · Email · Printed · Statement. Read from the sent copies, so it starts 2026-10-05 and writes nothing. Also reached from `/documents?tab=sent` under the Bills chip. Roles: dev, master, assistant, controller. Guide: help?g=see-which-bills-went-out.
 
 ### /in-kind — In kind
 Every arrangement where a customer pays finished work with something other than money (punch list #301, v2.6836): one row a partner with what is given, how far along, what is left and which way, and what is next; a row opens the deal on its customer's page, where the ledger, **Add a line** and a month's credit live; **Set up paying in kind** finds a customer by name. Reached from Accounts Receivable's header. Guide `keep-track-of-work-paid-in-kind`. Roles: dev, master_technician, assistant, controller.

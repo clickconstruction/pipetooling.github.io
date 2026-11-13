@@ -34,7 +34,7 @@ export interface AssistantLandingInput {
   isMobile: boolean
   pathname: string
   awayMs: number
-  /** Layout's `dispatchModeActive` — the toggle, the role gate and Farm Mode already folded in. */
+  /** Layout's `dispatchModeActive` — the toggle, the role gate and Task Mode already folded in. */
   dispatchMode: boolean
 }
 

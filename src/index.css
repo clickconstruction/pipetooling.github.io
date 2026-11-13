@@ -5404,6 +5404,28 @@ button.gcStep:hover > em { text-decoration: underline; }
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+/* A lien line's act is its press (v2.7043, punch list #325): the underline alone, in the words' own colour and with no
+   ring, as on Pays in. Dotted at rest, solid under the pointer, solid and thicker under the keyboard's focus. The day
+   and the count beside the act are not underlined. */
+.billedDatesLedger button.ledgerActRow:hover {
+  text-decoration: none;
+}
+.billedDatesLedger .ledgerAct {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.billedDatesLedger button.ledgerActRow:hover .ledgerAct {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.billedDatesLedger button.ledgerActRow:focus-visible {
+  outline: none;
+}
+.billedDatesLedger button.ledgerActRow:focus-visible .ledgerAct {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
 
 /* "Pays in 3–67d" under a Billed row's Expected date (v2.7013): a press that opens Pay speeds on that payer.
    The owner's call (2026-11-12): the underline alone says press. The words keep the grey of the line they sit in,

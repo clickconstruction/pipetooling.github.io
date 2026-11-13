@@ -104,7 +104,7 @@ describe('plan_mail_tag · the kernel', () => {
     expect(reply.lands).toBe(
       "2 lines on 912 Limitless Renovations's Activity and notes, each at its mail's own time, as dana@example-plumbing.test. A new tag's grey line on the thread names you, through the dev seat. 1 line would land as mail that came in today: a mail of theirs opens the thread on Follow up. Pass for_record: true to file every mail instead.",
     )
-    // for_record (server 0.79.0, punch list #324): the seat's word, kept in the commitment so an apply without it is another plan.
+    // for_record (server 0.80.0, punch list #324): the seat's word, kept in the commitment so an apply without it is another plan.
     const forRecord = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB }, for_record: true } }, KNOWN)
     expect(forRecord.ok && forRecord.value.forRecord).toBe(true)
     expect(tagCommitment({ ...args, forRecord: true }, preview).for_record).toBe(true)
@@ -167,7 +167,7 @@ describe('plan_mail_tag · the kernel', () => {
 describe('the doors and the docs', () => {
   it('gmail-mine opens the tag to a dev’s key with the seat header, as a current login, and answers the plan before anything is written', () => {
     expect(MINE).toContain("if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(")
-    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile)) return refuse(")
+    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile && ask.action !== 'untag')) return refuse(")
     // Punch list #289: a person target goes to its own tag, a person's own press never carries one, and the follow reads the file rows.
     expect(MINE).toContain("if ('person' in ask) return await tagPerson(ctx, ask,")
     expect(MINE).toContain("if ('person' in ask) return refuse(")
@@ -182,7 +182,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.79.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
     expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
     expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {

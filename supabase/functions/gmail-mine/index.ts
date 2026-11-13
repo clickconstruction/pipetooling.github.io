@@ -42,6 +42,12 @@
  *   its files, counted as `held`. A line the boxes wrote stays, untied only when the row records it as the tag's own
  *   tie. The grey line and the `email_tag_threads` row go. An untag reads nothing from Gmail and changes nothing there
  *   (v2.7035).
+ *   Through the dev seat's door (`as`, server 0.79.0) the same untag runs for a tag the seat made and no
+ *   other (`seatMayUntag`: an ok `apply_mail_tag` in `dev_mcp_calls` that put the conversation on the job it is on);
+ *   `plan` answers what it would do (`untagPlanPreview`) and writes nothing, the mark included. The seat's untag also
+ *   takes off what would still show who was written to (`planUntagSweep`: the `contact_jobs` ties the tag made and the
+ *   unknown contacts it made, once they keep no line) and leaves the tombstone, so the app's Sent read never puts the
+ *   conversation back.
  *
  * - A conversation onto a person's HR file (punch list #289, the dev seat's alone through its door below): a `tag`
  *   whose body names `person` in place of `job` reads the conversation as the login named and plans one dated entry per
@@ -120,6 +126,7 @@ import {
   type MyMailTagRequest,
   type MyMailUntagOk,
   type MyMailUntagRequest,
+  type MyMailUntagSweep,
 } from '../_shared/gcKernels/lib/myMail/contract.ts'
 import { MY_MAIL_NOT_SIGN_IN_WORDS, imitationsSince, isSignInAddress, openedByImitation, sessionLinkAt } from '../_shared/gcKernels/lib/myMail/imitation.ts'
 import { guessJob } from '../_shared/gcKernels/lib/myMail/mailGuess.ts'
@@ -184,6 +191,10 @@ import {
   oldLabelId,
   onWorkspace,
   readLabelCleanup,
+  seatMayUntag,
+  seatTagRecord,
+  seatTagsOf,
+  untagPlanPreview,
   myMailTeam,
   newestMailAt,
   orphanCopies,
@@ -194,6 +205,7 @@ import {
   personTagPlanPreview,
   planFollow,
   planUntag,
+  planUntagSweep,
   SENT_FOLLOW_PAGE,
   sentFollowQuery,
   sentPlacement,
@@ -213,6 +225,9 @@ import {
   type MyMailHeldLine,
   type MyMailLine,
   type MyMailNamed,
+  type MyMailSeatCall,
+  type MyMailSweepContact,
+  type MyMailSweepTie,
   type MyMailPageFacts,
   type MyMailPipelineRow,
   type MyMailProjectRow,
@@ -225,9 +240,9 @@ const USER_COLUMNS = 'id, name, email, role, archived_at, read_only, is_sample, 
 const LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id'
 const HELD_COLUMNS = 'id, contact_id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mailbox, mail_user_id, tied_by'
 /** A conversation's row as the tag and the untag read it: its job, who tagged it, and the lines its tag tied. */
-const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, tied_line_ids, placed_by_app'
+const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, tagged_at, tied_line_ids, placed_by_app'
 /** A line the row records as the tag's own tie, as the untag reads it before it unties one. */
-const TIED_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by'
+const TIED_COLUMNS = 'id, contact_id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by'
 const BID_COLUMNS = 'id, bid_number, project_name, service_type_id, outcome'
 const FOLLOW_USER_COLUMNS = 'id, name, email, role, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, archived_at, my_mail_hidden_labels, my_mail_sent_read_at'
 const FOLLOW_TAG_COLUMNS = 'id, user_id, gmail_thread_id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, last_mail_at'
@@ -1142,52 +1157,136 @@ async function mattersHolding(admin: Admin, me: Pick<Me, 'id'>, lineIds: readonl
   return n
 }
 
+/** The lines the untag takes off, by the contact each sits on: whose thread loses them. */
+interface OffLine {
+  id: string
+  contact_id?: string | null
+}
+
+/**
+ * What the seat's untag clears and leaves beyond the lines (`planUntagSweep`), read for the contacts of the lines that
+ * go or come off the job: each contact with its kind and when it was made, its `contact_jobs` rows, and whether it
+ * keeps a line on the tag's job or anywhere once `gone` are deleted and `offJob` are untied, the grey line never
+ * counted. Each count asks for a few more rows than it could discount, so one row left over is a line that stays.
+ */
+async function untagSweep(admin: Admin, tagRow: { id: string; tagged_at?: string | null; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }, contactIds: readonly string[], gone: ReadonlySet<string>, offJob: ReadonlySet<string>): Promise<MyMailUntagSweep> {
+  const ids = unique(contactIds)
+  const key = jobKeyOfRow(tagRow)
+  if (ids.length === 0) return { ties: [], tiesLeft: 0, contacts: [], contactsLeftEmpty: 0 }
+  const column = tagRow.bid_id ? 'bid_id' : tagRow.project_id ? 'project_id' : 'jobs_ledger_id'
+  const jobId = tagRow.bid_id ?? tagRow.project_id ?? tagRow.jobs_ledger_id
+  const eventKey = myMailTagEventKey(tagRow.id)
+  const [contacts, ties] = await Promise.all([
+    rowsIn<MyMailSweepContact>(ids, (c) => admin.from('contacts').select('id, kind, created_at').in('id', c), 'the people the conversation is with'),
+    rowsIn<MyMailSweepTie>(ids, (c) => admin.from('contact_jobs').select('id, contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at').in('contact_id', c), 'the jobs those people are on'),
+  ])
+  const onJob: Record<string, number> = {}
+  const lines: Record<string, number> = {}
+  const stays = (l: { id: string; quo_id?: string | null }, off: ReadonlySet<string> | null): boolean => !gone.has(l.id) && l.quo_id !== eventKey && !(off?.has(l.id) ?? false)
+  for (const id of ids) {
+    const [here, anywhere] = await Promise.all([
+      rows<{ id: string; quo_id?: string | null }>(admin.from('messages').select('id, quo_id').eq('contact_id', id).eq(column, jobId).limit(gone.size + offJob.size + 2), 'the lines they keep on the job'),
+      rows<{ id: string; quo_id?: string | null }>(admin.from('messages').select('id, quo_id').eq('contact_id', id).limit(gone.size + 2), 'the lines they keep'),
+    ])
+    onJob[id] = here.filter((l) => stays(l, offJob)).length
+    lines[id] = anywhere.filter((l) => stays(l, null)).length
+  }
+  return planUntagSweep({ jobKey: key, taggedAt: tagRow.tagged_at ?? null, contacts, ties, onJob, lines })
+}
+
 async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   const { admin, me } = ctx
   // An untag reads nothing from Gmail and changes nothing there (v2.7035): the lines are the app's own copies.
+  const planOnly = ask.plan === true
   const { data: tagRow, error: tagError } = await admin.from('email_tag_threads').select(TAG_ROW_COLUMNS).eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle()
   if (tagError) throw stopped('Reading the tag failed.', tagError.message)
   if ((tagRow as { person_id?: string | null } | null)?.person_id) return refuse(myMailRefusal('badRequest', MY_MAIL_ON_FILE_WORDS), MY_MAIL_REFUSAL_STATUS.badRequest, 'untag')
+  let record = myMailTagRecord(tagRow)
+  // The seat takes off only a tag the seat made: its own call log must hold an ok apply_mail_tag that put this
+  // conversation on the job it is on now (`seatMayUntag`). A person's own tag stays theirs to untag.
+  if (ctx.seat) {
+    const calls = await rows<MyMailSeatCall>(
+      admin.from('dev_mcp_calls').select('user_id, created_at, args').eq('verb', 'apply_mail_tag').eq('status', 'ok').contains('args', { tag: { thread_id: ask.threadId } }),
+      'the dev seat’s call log',
+    )
+    const may = seatMayUntag(tagRow, seatTagsOf(calls, me.email, ask.threadId))
+    if (!may.ok) {
+      log({ event: 'gmail_mine_seat_untag_refused', dev: ctx.seat.id, as: me.id, had_tag: Boolean(tagRow) })
+      return refuse(myMailRefusal(tagRow ? 'badRequest' : 'notFound', may.words), tagRow ? MY_MAIL_REFUSAL_STATUS.badRequest : MY_MAIL_REFUSAL_STATUS.notFound, 'untag')
+    }
+    record = seatTagRecord(record, me.id, may.devId)
+  }
   // The mark first: from here the follow passes the conversation by, so no run lands back what this untag takes off,
-  // and an untag that stops leaves the row, marked, for the next untag to find and finish.
-  if (tagRow) {
+  // and an untag that stops leaves the row, marked, for the next untag to find and finish. The seat's plan marks nothing.
+  if (tagRow && !planOnly) {
     const marked = await admin.from('email_tag_threads').update({ untagging_at: nowIso() }).eq('id', tagRow.id)
     if (marked.error) throw stopped('The untag stopped before it began.', marked.error.message)
   }
-  const record = myMailTagRecord(tagRow)
-  const own = await rows<{ id: string }>(admin.from('messages').select('id').eq('mail_user_id', me.id).eq('gmail_thread_id', ask.threadId), 'your lines')
+  const own = await rows<OffLine>(admin.from('messages').select('id, contact_id').eq('mail_user_id', me.id).eq('gmail_thread_id', ask.threadId), 'your lines')
   const ownIds = unique(own.map((l) => l.id))
   // What the office keeps on a line goes with it (ON DELETE CASCADE), so such a line stays: a promise written down on it,
   // or a highlight. And the lines the row records as the tag's own ties, as they are now.
   const [promised, highlighted, tied] = await Promise.all([
     rowsIn<{ message_id: string }>(ownIds, (c) => admin.from('message_promises').select('message_id').in('message_id', c), 'the promises on your lines'),
     rowsIn<{ message_id: string }>(ownIds, (c) => admin.from('message_highlights').select('message_id').in('message_id', c), 'the highlights on your lines'),
-    rowsIn<MyMailLine>(record?.tied ?? [], (c) => admin.from('messages').select(TIED_COLUMNS).in('id', c), 'the lines the tag tied'),
+    rowsIn<MyMailLine & OffLine>(record?.tied ?? [], (c) => admin.from('messages').select(TIED_COLUMNS).in('id', c), 'the lines the tag tied'),
   ])
-  const plan = planUntag({ userId: me.id, record, own, kept: unique([...promised, ...highlighted].map((r) => r.message_id)), tied })
+  // What we owe done by a line holds it too (ON DELETE RESTRICT): the delete finds that out, so only the plan asks.
+  const owed = planOnly ? await rowsIn<{ done_note_message_id: string }>(ownIds, (c) => admin.from('contact_owed').select('done_note_message_id').in('done_note_message_id', c), 'what we owe on your lines') : []
+  const keptBy = { promised: unique(promised.map((r) => r.message_id)), highlighted: unique(highlighted.map((r) => r.message_id)), owed: unique(owed.map((r) => r.done_note_message_id)) }
+  const plan = planUntag({ userId: me.id, record, own, kept: unique([...keptBy.promised, ...keptBy.highlighted, ...keptBy.owed]), tied })
   const [files, kept] = await Promise.all([
     rowsIn<{ message_id: string; bucket_path: string | null }>(plan.remove, (c) => admin.from('message_attachments').select('message_id, bucket_path').in('message_id', c), 'the files'),
     mattersHolding(admin, me, plan.remove),
   ])
+  /** The contacts whose thread loses a line: the ones the seat's sweep looks at. */
+  const contactsOf = (ids: readonly string[]): string[] => {
+    const off = new Set(ids)
+    return unique([...own, ...tied].filter((l) => off.has(l.id)).map((l) => l.contact_id))
+  }
+
+  // The seat's dry run: what the untag would do, read back, and nothing written, the row's mark included.
+  if (planOnly) {
+    if (!tagRow || !ctx.seat) return refuse(myMailRefusal('badRequest', 'The plan of an untag is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, 'untag')
+    const grey = await admin.from('messages').select('id, contact_id').eq('quo_id', myMailTagEventKey(tagRow.id)).eq('channel', 'event').maybeSingle()
+    if (grey.error) throw stopped('Reading the tag’s grey line failed.', grey.error.message)
+    const sweep = await untagSweep(admin, tagRow, [...contactsOf([...plan.remove, ...plan.untie]), (grey.data as OffLine | null)?.contact_id], new Set(plan.remove), new Set(plan.untie))
+    const preview = untagPlanPreview({
+      threadId: ask.threadId,
+      account: me.email,
+      jobKey: jobKeyOfRow(tagRow) ?? '',
+      taggedAt: (tagRow as { tagged_at?: string | null }).tagged_at ?? null,
+      plan,
+      kept: keptBy,
+      files: unique(files.map((f) => f.bucket_path)).length,
+      keptForMatter: kept,
+      greyLine: Boolean(grey.data),
+      sweep,
+    })
+    log({ event: 'gmail_mine_untag_plan', user: me.id, dev: ctx.seat.id, remove: preview.remove.length, held: preview.held.length, untie: preview.untie.length, files: preview.files, kept_for_matter: kept, ties: sweep.ties.length, ties_left: sweep.tiesLeft, contacts: sweep.contacts.length, contacts_left_empty: sweep.contactsLeftEmpty })
+    return json(preview)
+  }
 
   let removed = 0
   let held = plan.keep.length
   let orphaned = 0
+  const gone: string[] = []
   for (const id of plan.remove) {
     // Its message_attachments rows go with it (ON DELETE CASCADE). A line the office has since made the record of
     // something by (contact_owed, ON DELETE RESTRICT) cannot go: it stays, and so do its files.
-    const gone = await admin.from('messages').delete().eq('id', id).eq('mail_user_id', me.id)
-    if (gone.error) {
+    const taken = await admin.from('messages').delete().eq('id', id).eq('mail_user_id', me.id)
+    if (taken.error) {
       held++
-      console.warn(JSON.stringify({ event: 'gmail_mine_line_held', user: me.id, line: id, reason: String(gone.error.message).slice(0, 300) }))
+      console.warn(JSON.stringify({ event: 'gmail_mine_line_held', user: me.id, line: id, reason: String(taken.error.message).slice(0, 300) }))
       continue
     }
     removed++
+    gone.push(id)
     const paths = [...unique(files.filter((f) => f.message_id === id).map((f) => f.bucket_path)), myMailEmlPath(id)]
-    const taken = await admin.storage.from(MY_MAIL_BUCKET).remove(paths)
-    if (taken.error) {
+    const out = await admin.storage.from(MY_MAIL_BUCKET).remove(paths)
+    if (out.error) {
       orphaned += paths.length
-      console.warn(JSON.stringify({ event: 'gmail_mine_files_left', user: me.id, line: id, files: paths.length, reason: String(taken.error.message).slice(0, 300) }))
+      console.warn(JSON.stringify({ event: 'gmail_mine_files_left', user: me.id, line: id, files: paths.length, reason: String(out.error.message).slice(0, 300) }))
     }
   }
   let untied = 0
@@ -1198,26 +1297,54 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   }
   // The tag's grey line goes with it, before the row whose id keys it. One that will not go is logged and left.
   let eventGone = false
+  let eventContact: string | null = null
   if (tagRow) {
-    const event = await admin.from('messages').delete().eq('quo_id', myMailTagEventKey(tagRow.id)).eq('channel', 'event')
+    const event = await admin.from('messages').delete().eq('quo_id', myMailTagEventKey(tagRow.id)).eq('channel', 'event').select('contact_id')
     if (event.error) console.warn(JSON.stringify({ event: 'gmail_mine_event_line_left', user: me.id, reason: String(event.error.message).slice(0, 300) }))
-    else eventGone = true
+    else {
+      eventGone = true
+      eventContact = ((event.data as OffLine[] | null) ?? [])[0]?.contact_id ?? null
+    }
+  }
+  // The seat's untag leaves nothing that still shows who was written to (`planUntagSweep`): the ties the tag made that
+  // put a person on the job's people, and the contacts it made for a sender nobody knew, once they keep no line. While
+  // the row still stands, so an untag that stops here is found and finished. A person's own untag leaves both.
+  let swept: MyMailUntagOk['swept']
+  if (tagRow && ctx.seat) {
+    const sweep = await untagSweep(admin, tagRow, [...contactsOf([...gone, ...plan.untie]), eventContact], new Set(gone), new Set(plan.untie))
+    swept = { ties: 0, tiesLeft: sweep.tiesLeft, contacts: 0, contactsLeftEmpty: sweep.contactsLeftEmpty }
+    for (const id of sweep.ties) {
+      const off = await admin.from('contact_jobs').delete().eq('id', id)
+      if (off.error) {
+        swept.tiesLeft++
+        console.warn(JSON.stringify({ event: 'gmail_mine_job_tie_left', user: me.id, reason: String(off.error.message).slice(0, 300) }))
+      } else swept.ties++
+    }
+    for (const id of sweep.contacts) {
+      // Only one still of kind unknown, and only while nothing holds it: the database refuses a contact a line stands on.
+      const off = await admin.from('contacts').delete().eq('id', id).eq('kind', 'unknown')
+      if (off.error) {
+        swept.contactsLeftEmpty++
+        console.warn(JSON.stringify({ event: 'gmail_mine_contact_left', user: me.id, reason: String(off.error.message).slice(0, 300) }))
+      } else swept.contacts++
+    }
   }
   // The row goes last, so an untag that stopped before here finds the tag again and finishes.
   if (tagRow) {
-    const gone = await admin.from('email_tag_threads').delete().eq('id', tagRow.id)
-    if (gone.error) throw stopped('The untag stopped before the tag came off.', gone.error.message)
+    const off = await admin.from('email_tag_threads').delete().eq('id', tagRow.id)
+    if (off.error) throw stopped('The untag stopped before the tag came off.', off.error.message)
   }
   // A conversation the app placed from the person's Sent and the person took off stays off (punch list #263 PR B): the
-  // tombstone, which the Sent read asks before it places anything, and which a tag by hand lifts.
+  // tombstone, which the Sent read asks before it places anything, and which a tag by hand lifts. The seat's untag
+  // leaves one too, so the app never puts back by itself what the seat took off.
   let tombstone = false
-  if ((tagRow as { placed_by_app?: boolean | null } | null)?.placed_by_app === true) {
-    const kept = await admin.from('email_tag_threads_off').upsert({ user_id: me.id, gmail_thread_id: ask.threadId, untagged_at: nowIso() }, { onConflict: 'user_id,gmail_thread_id' })
-    if (kept.error) console.warn(JSON.stringify({ event: 'gmail_mine_tombstone_missed', user: me.id, reason: String(kept.error.message).slice(0, 300) }))
+  if ((tagRow as { placed_by_app?: boolean | null } | null)?.placed_by_app === true || (tagRow && ctx.seat)) {
+    const off = await admin.from('email_tag_threads_off').upsert({ user_id: me.id, gmail_thread_id: ask.threadId, untagged_at: nowIso() }, { onConflict: 'user_id,gmail_thread_id' })
+    if (off.error) console.warn(JSON.stringify({ event: 'gmail_mine_tombstone_missed', user: me.id, reason: String(off.error.message).slice(0, 300) }))
     else tombstone = true
   }
-  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0, held }
-  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, kept_for_matter: kept, event_line: eventGone, tombstone })
+  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0, held, ...(ctx.seat ? { untied, swept } : {}) }
+  log({ event: 'gmail_mine_untag', user: me.id, ...(ctx.seat ? { dev: ctx.seat.id } : {}), had_tag: Boolean(tagRow), removed, held, kept_for_office: plan.keep.length, orphaned, untied, kept_for_matter: kept, event_line: eventGone, tombstone, ...(swept ? { ties: swept.ties, ties_left: swept.tiesLeft, contacts: swept.contacts, contacts_left_empty: swept.contactsLeftEmpty } : {}) })
   return json(answer)
 }
 
@@ -1821,17 +1948,20 @@ serve(async (req) => {
     // X-Dev-Seat, tags a conversation out of another login's box onto a job — the plan first, written nowhere, then
     // the tag — as that person, under the same delegation and the same planner, so the lines land as their own press
     // would land them. The tag itself is the dev's: the row's `tagged_by` and the grey line on the thread name the dev
-    // and the seat (`ctx.seat`), never the person as the one who tagged. Only a tag comes through here: the seat reads
-    // mail with its own verbs, and never untags.
-    if (ask.action === 'tag' && typeof ask.as === 'string') {
-      if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(myMailRefusal('badRequest', 'A tag as another login is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
+    // and the seat (`ctx.seat`), never the person as the one who tagged. An untag comes through too (server 0.79.0,
+    // `plan_mail_untag` → `apply_mail_untag`): the function's own untag as that person, for a tag the seat made and no
+    // other (`seatMayUntag` over the seat's call log), the plan first, which marks nothing. The seat reads mail with its
+    // own verbs.
+    if ((ask.action === 'tag' || ask.action === 'untag') && typeof ask.as === 'string') {
+      if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(myMailRefusal('badRequest', ask.action === 'untag' ? 'An untag as another login is the dev seat’s alone.' : 'A tag as another login is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
       if (who.read_only === true) return refuse(myMailRefusal('readOnly'), MY_MAIL_REFUSAL_STATUS.readOnly, action)
       const { data: them, error: themError } = await admin.from('users').select(USER_COLUMNS).ilike('email', ask.as).maybeSingle()
       if (themError) return refuse(stoppedRefusal('Reading that login failed.', themError.message), MY_MAIL_STOPPED_STATUS)
       // A tag onto a job lands lines as the login, so the login must be current; a tag onto a person's HR file (punch
-      // list #289) writes as the dev, so an archived login's box may be read.
+      // list #289) writes as the dev, so an archived login's box may be read; and an untag only takes off, so the lines
+      // of a teammate who has left since can still come off.
       const onFile = 'person' in ask
-      if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile)) return refuse(myMailRefusal('notFound', `No current login of the Workspace reads as ${ask.as}.`), MY_MAIL_REFUSAL_STATUS.notFound, action)
+      if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile && ask.action !== 'untag')) return refuse(myMailRefusal('notFound', `No current login of the Workspace reads as ${ask.as}.`), MY_MAIL_REFUSAL_STATUS.notFound, action)
       const theirEmail = String(them.email ?? '').trim()
       let token: string
       try {
@@ -1842,11 +1972,13 @@ serve(async (req) => {
       const theirHidden = Array.isArray(them.my_mail_hidden_labels) ? (them.my_mail_hidden_labels as unknown[]).filter((l): l is string => typeof l === 'string') : []
       const dev = { id: String(who.id), name: String(who.name ?? '').trim(), email: String(who.email ?? '').trim() }
       const ctx: Ctx = { admin, caller, token, me: { id: String(them.id), name: String(them.name ?? '').trim(), email: theirEmail, readOnly: false, hiddenLabels: theirHidden }, seat: dev }
-      log({ event: 'gmail_mine_seat_tag', dev: dev.id, as: String(them.id), plan: ask.plan === true, on_file: onFile })
+      log({ event: ask.action === 'untag' ? 'gmail_mine_seat_untag' : 'gmail_mine_seat_tag', dev: dev.id, as: String(them.id), plan: ask.plan === true, on_file: onFile })
+      if (ask.action === 'untag') return await untag(ctx, ask)
       if ('person' in ask) return await tagPerson(ctx, ask, { id: dev.id, name: dev.name || dev.email })
       return await tag(ctx, ask)
     }
     if (ask.action === 'tag' && ask.plan === true) return refuse(myMailRefusal('badRequest', 'The plan of a tag is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
+    if (ask.action === 'untag' && ask.plan === true) return refuse(myMailRefusal('badRequest', 'The plan of an untag is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
 
     const { data: office, error: officeError } = await caller.rpc('gc_office_team')
     if (officeError || office !== true) return refuse(myMailRefusal('officeOnly'))
