@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent } from '../types/laborJob'
+import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent, SubPaymentExtras } from '../types/laborJob'
 import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
@@ -85,11 +85,18 @@ export function useSubLaborLedger({
           .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
           .in('job_id', jobIds)
           .order('sequence_order', { ascending: true }),
-        supabase
-          .from('people_labor_job_payments')
-          .select('id, job_id, amount, memo, created_at, payment_date')
-          .in('job_id', jobIds)
-          .order('sequence_order', { ascending: true }),
+        // v2.7176: `method` and `method_ref` come from migration 20261113180000. Until that is pushed the database
+        // refuses their names, and a refused read here would draw every sheet as unpaid. So a refusal reads the row
+        // as it was before the two columns: the payments still load, and only the method is missing.
+        (async () => {
+          const withMethod = await supabase
+            .from('people_labor_job_payments')
+            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref' as 'id, job_id, amount, memo, created_at, payment_date')
+            .in('job_id', jobIds)
+            .order('sequence_order', { ascending: true })
+          if (!withMethod.error) return withMethod
+          return supabase.from('people_labor_job_payments').select('id, job_id, amount, memo, created_at, payment_date').in('job_id', jobIds).order('sequence_order', { ascending: true })
+        })(),
         linkedJobIds.length > 0 ? supabase.from('jobs_ledger').select('id, job_name').in('id', linkedJobIds) : { data: [] },
         // Junction rows + each assignee's CURRENT roster name — keys the
         // Outstanding roll-up by person id (v2.1737). Fail-soft: an error or
@@ -168,9 +175,9 @@ export function useSubLaborLedger({
         }
       }
       const paymentsByJob = new Map<string, LaborJobPayment[]>()
-      for (const p of (paymentsData ?? []) as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null }>) {
+      for (const p of (paymentsData ?? []) as unknown as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null; method?: string | null; method_ref?: string | null }>) {
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
-        paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date })
+        paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date, method: p.method ?? null, method_ref: p.method_ref ?? null })
       }
       setLaborJobNamesByJobId(buildLaborJobNamesById((ledgerJobs ?? []) as Array<{ id: string; job_name: string | null }>))
       // Resolve project names for anchored sheets (display only, fail-soft).
@@ -257,11 +264,22 @@ export function useSubLaborLedger({
     }
   }
 
-  async function recordLaborJobPayment(jobId: string, amount: number, memo: string | null, paymentDate: string | null) {
+  async function recordLaborJobPayment(jobId: string, amount: number, memo: string | null, paymentDate: string | null, extras: SubPaymentExtras = {}) {
     setError(null)
     const { data: existing } = await supabase.from('people_labor_job_payments').select('sequence_order').eq('job_id', jobId).order('sequence_order', { ascending: false }).limit(1)
     const nextOrder = existing?.length ? (Number((existing[0] as { sequence_order: number }).sequence_order) + 1) : 0
-    const { error: err } = await supabase.from('people_labor_job_payments').insert({ job_id: jobId, amount, memo: memo?.trim() || null, sequence_order: nextOrder, payment_date: paymentDate?.trim() || null })
+    // v2.7176: how it was sent rides the row. The two columns are named only when a method was picked, so a payment
+    // with none is the insert it always was.
+    const row = {
+      job_id: jobId,
+      amount,
+      memo: memo?.trim() || null,
+      sequence_order: nextOrder,
+      payment_date: paymentDate?.trim() || null,
+      ...(extras.hidden_from_sub ? { hidden_from_sub: true } : {}),
+      ...(extras.method ? { method: extras.method, method_ref: extras.method_ref?.trim() || null } : {}),
+    }
+    const { error: err } = await supabase.from('people_labor_job_payments').insert(row as never)
     if (err) setError(err.message)
     else await loadLaborJobs()
   }
@@ -287,13 +305,21 @@ export function useSubLaborLedger({
     amount: number,
     memo: string | null,
     isBackcharge: boolean,
-    paymentDate: string | null
+    paymentDate: string | null,
+    /** v2.7176: present when the Edit window drew the method chips; absent leaves the row's method as it is. */
+    extras?: SubPaymentExtras
   ) {
     setError(null)
     const amt = isBackcharge ? -Math.abs(amount) : Math.abs(amount)
+    const patch = {
+      amount: amt,
+      memo: memo?.trim() || null,
+      payment_date: paymentDate?.trim() || null,
+      ...(extras && 'method' in extras ? { method: extras.method || null, method_ref: extras.method ? extras.method_ref?.trim() || null : null } : {}),
+    }
     const { error: err } = await supabase
       .from('people_labor_job_payments')
-      .update({ amount: amt, memo: memo?.trim() || null, payment_date: paymentDate?.trim() || null })
+      .update(patch as never)
       .eq('id', paymentId)
     if (err) setError(err.message)
     else await loadLaborJobs()

@@ -49,8 +49,8 @@ function clockOut(over: Partial<OutboxPress<'clock-out'>> = {}): OutboxPress<'cl
 }
 
 describe('outbox · what may queue', () => {
-  it('eight presses may queue, in this order of names, and nothing else', () => {
-    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos'])
+  it('ten presses may queue, in this order of names, and nothing else', () => {
+    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos', 'on-site-press'])
     expect(isOutboxKind('clock-in')).toBe(true)
     expect(isOutboxKind('payment')).toBe(false)
     expect(isOutboxKind(null)).toBe(false)
