@@ -1,6 +1,9 @@
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import type { CallTodo } from '../../lib/bridge/callTodo'
 import type { DiveCell, DiveItem, DiveProject, DiveRow, DiveTarget, MoveDive } from '../../lib/bridge/callDive'
+import { handedOutWords, todoStateFor, todoStateWords, type TodoState } from '../../lib/bridge/callTodoState'
+import { BridgeTodoCheck } from './BridgeTodoCheck'
 
 /**
  * A move's lines as a table (punch list #334, PR 8). The owner, of the card: "Visually, I don't like how this looks,
@@ -8,23 +11,32 @@ import type { DiveCell, DiveItem, DiveProject, DiveRow, DiveTarget, MoveDive } f
  *
  *   - each fact has a column with a heading, so amounts line up and can be read down;
  *   - a line is one row, with the customer's projects behind a press in its own column;
- *   - a row's action is a blue word, so the name leads the row.
+ *   - a row's action is a blue word, so the name leads the row;
+ *   - the checks share one column at the right edge of every move (punch list #334, PR 9), and a line under a row
+ *     says who has its to-do and for how long.
  *
  * On a phone there is no room for columns: a line is its name and its figure, then the rest with its press.
  */
 
+type Seen = Extract<TodoState, { kind: 'open' | 'covered' | 'done' }>
+
 type Props = {
   dive: MoveDive
   narrow: boolean
+  /** Where each line stands as a to-do, by the to-do's key. Null while not read: every check is grey. */
+  todoStates: ReadonlyMap<string, TodoState> | null
+  dayLabel: (ymd: string) => string
   onDive?: (target: DiveTarget) => void
+  /** A blue check was pressed: show the card it stands for. */
+  onTodoSee?: (state: Seen) => void
 }
 
 /**
- * One grid for the whole table, so every row's columns line up: name, two figures, words, the row's press.
+ * One grid for the whole table, so every row's columns line up: name, two figures, words, the row's press, the check.
  * A column no line fills takes no room. The gap between columns is padding inside the cells, so a row's rule runs
  * unbroken under all of them.
  */
-const deskColumns = (has: { a: boolean; b: boolean; text: boolean }): string => `minmax(0, 1.6fr) ${has.a ? 'minmax(64px, auto)' : '0px'} ${has.b ? 'minmax(64px, auto)' : '0px'} ${has.text ? 'minmax(0, 1.1fr)' : '0px'} auto`
+const deskColumns = (has: { a: boolean; b: boolean; text: boolean }): string => `minmax(0, 1.6fr) ${has.a ? 'minmax(64px, auto)' : '0px'} ${has.b ? 'minmax(64px, auto)' : '0px'} ${has.text ? 'minmax(0, 1.1fr)' : '0px'} auto 52px`
 const GAP = 16
 const cell: CSSProperties = { padding: '5px 0', borderTop: '1px solid var(--border)', fontSize: '0.82rem', lineHeight: 1.3, minHeight: 46, display: 'flex', alignItems: 'center', minWidth: 0, fontVariantNumeric: 'tabular-nums' }
 const heading: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '2px 0 4px', whiteSpace: 'nowrap', overflow: 'hidden' }
@@ -34,8 +46,9 @@ const right: CSSProperties = { justifyContent: 'flex-end', textAlign: 'right', w
 /** A word that acts: the app's link blue, no box. */
 const wordPress = (narrow: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, minHeight: narrow ? 44 : 36, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' })
 const cellColor = (c: DiveCell): string | undefined => (c.warn ? 'var(--text-amber-800)' : c.muted ? 'var(--text-muted)' : undefined)
+const stateColor = (s: TodoState): string => (s.kind === 'open' ? (s.late ? 'var(--text-amber-800)' : 'var(--text-link)') : 'var(--text-muted)')
 
-export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
+export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, onTodoSee }: Props) {
   const [all, setAll] = useState(false)
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
   const items = all ? dive.items : dive.items.slice(0, dive.shown)
@@ -64,6 +77,8 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
       </button>
     )
   }
+  const check = (todo: CallTodo | undefined, state: TodoState): ReactNode =>
+    todo ? <BridgeTodoCheck todo={todo} state={state} dayLabel={dayLabel} narrow={narrow} showWords={false} onMake={(t) => onDive?.({ kind: 'todo', todo: t })} onSee={(seen) => onTodoSee?.(seen)} /> : null
   /** The row's own press: *Set the percent*, *Set a pay date*, or the press that opens a customer's projects. */
   const actionOf = (item: DiveItem): ReactNode => {
     if (item.press) {
@@ -93,6 +108,17 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
       </button>
     )
   }
+  /** Under a row: who has its to-do and for how long, and how many of a customer's projects are with someone. */
+  const under = (state: TodoState, extra: string): ReactNode => {
+    const words = todoStateWords(state, dayLabel)
+    if (!words && !extra) return null
+    return (
+      <div data-testid="bridge-week-dive-under" style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 10, fontSize: '0.76rem', margin: narrow ? '0 0 6px' : '-8px 0 6px', fontVariantNumeric: 'tabular-nums' }}>
+        {extra && <span style={{ color: 'var(--text-muted)' }}>{extra}</span>}
+        {words && <span style={{ color: stateColor(state), fontWeight: state.kind === 'open' ? 700 : 400 }}>{words}</span>}
+      </div>
+    )
+  }
   const showAll =
     dive.items.length > dive.shown ? (
       <button type="button" onClick={() => setAll((a) => !a)} data-testid="bridge-week-dive-all" style={{ ...wordPress(narrow), fontWeight: 400, fontSize: '0.8rem' }}>
@@ -102,7 +128,7 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
 
   // ── a phone: no columns ────────────────────────────────────────────────────
   if (narrow) {
-    const phoneRow = (key: string, name: ReactNode, row: DiveRow | undefined, action: ReactNode, testId: string, indent: boolean) => {
+    const phoneRow = (key: string, name: ReactNode, row: DiveRow | undefined, action: ReactNode, box: ReactNode, below: ReactNode, testId: string, indent: boolean) => {
       const rest = [row?.b, row?.text].filter((c): c is DiveCell => !!c)
       return (
         <li key={key} data-testid={testId} style={{ padding: '6px 0 2px', borderTop: '1px solid var(--border)', ...(indent ? { paddingLeft: 10, borderLeft: '2px solid var(--border)' } : {}) }}>
@@ -120,25 +146,35 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
               ))}
             </span>
             {action}
+            {box}
           </div>
+          {below}
         </li>
       )
     }
     return (
       <div data-testid="bridge-week-dive" style={{ marginTop: 4 }}>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {items.map((item) => (
-            <Fragment key={item.title}>
-              {phoneRow(item.title, nameOf(item), item.row, actionOf(item), 'bridge-week-dive-item', false)}
-              {item.projects && open.has(item.title) && (
-                <li style={{ listStyle: 'none' }}>
-                  <ul style={{ listStyle: 'none', margin: '0 0 6px', padding: 0 }} data-testid="bridge-week-dive-projects">
-                    {item.projects.map((p) => phoneRow(p.key, <b style={{ fontSize: '0.82rem', color: 'var(--text-strong)' }}>{p.title}</b>, p.row, projectAction(p), 'bridge-week-dive-project', true))}
-                  </ul>
-                </li>
-              )}
-            </Fragment>
-          ))}
+          {items.map((item) => {
+            const state = todoStateFor(todoStates, item.todo)
+            const handed = handedOutWords(todoStates, (item.projects ?? []).map((p) => p.todo))
+            return (
+              <Fragment key={item.title}>
+                {phoneRow(item.title, nameOf(item), item.row, actionOf(item), check(item.todo, state), under(state, handed), 'bridge-week-dive-item', false)}
+                {item.projects && open.has(item.title) && (
+                  <li style={{ listStyle: 'none' }}>
+                    <ul style={{ listStyle: 'none', margin: '0 0 6px', padding: 0 }} data-testid="bridge-week-dive-projects">
+                      {item.projects.map((p) => {
+                        // A project under a customer whose own to-do is open reads as covered by it.
+                        const ps = todoStateFor(todoStates, p.todo, item.todo)
+                        return phoneRow(p.key, <b style={{ fontSize: '0.82rem', color: 'var(--text-strong)' }}>{p.title}</b>, p.row, projectAction(p), check(p.todo, ps), under(ps, ''), 'bridge-week-dive-project', true)
+                      })}
+                    </ul>
+                  </li>
+                )}
+              </Fragment>
+            )
+          })}
         </ul>
         {showAll}
       </div>
@@ -163,58 +199,73 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
             {has.text ? cols.text : ''}
           </span>
           <span style={heading} />
+          <span style={heading} />
         </div>
-        {items.map((item) => (
-          <Fragment key={item.title}>
-            <div role="row" style={{ display: 'contents' }} data-testid="bridge-week-dive-item">
-              <span role="cell" style={cell}>
-                {nameOf(item)}
-              </span>
-              <span role="cell" style={{ ...cell, ...right, fontWeight: 600, ...lead(has.a) }}>
-                {cellWords(item.row?.a, false)}
-              </span>
-              <span role="cell" style={{ ...cell, ...right, ...lead(has.b) }}>
-                {cellWords(item.row?.b, false)}
-              </span>
-              <span role="cell" style={{ ...cell, ...lead(has.text) }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.row?.text?.text}>
-                  {cellWords(item.row?.text, false)}
+        {items.map((item) => {
+          const state = todoStateFor(todoStates, item.todo)
+          const handed = handedOutWords(todoStates, (item.projects ?? []).map((p) => p.todo))
+          return (
+            <Fragment key={item.title}>
+              <div role="row" style={{ display: 'contents' }} data-testid="bridge-week-dive-item">
+                <span role="cell" style={cell}>
+                  {nameOf(item)}
                 </span>
-              </span>
-              <span role="cell" style={{ ...cell, justifyContent: 'flex-end', paddingLeft: GAP }}>
-                {actionOf(item)}
-              </span>
-            </div>
-            {item.projects &&
-              open.has(item.title) &&
-              item.projects.map((p, i) => {
-                const sub: CSSProperties = { ...cell, minHeight: 42, borderTop: i === 0 ? '1px solid var(--border)' : '1px dashed var(--border)' }
-                return (
-                  <Fragment key={p.key}>
-                    <div role="row" style={{ display: 'contents' }} data-testid="bridge-week-dive-project">
-                      <span role="cell" style={{ ...sub, paddingLeft: 12, borderLeft: '2px solid var(--border)' }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }} title={p.title}>
-                          {p.title}
+                <span role="cell" style={{ ...cell, ...right, fontWeight: 600, ...lead(has.a) }}>
+                  {cellWords(item.row?.a, false)}
+                </span>
+                <span role="cell" style={{ ...cell, ...right, ...lead(has.b) }}>
+                  {cellWords(item.row?.b, false)}
+                </span>
+                <span role="cell" style={{ ...cell, ...lead(has.text) }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.row?.text?.text}>
+                    {cellWords(item.row?.text, false)}
+                  </span>
+                </span>
+                <span role="cell" style={{ ...cell, justifyContent: 'flex-end', paddingLeft: GAP }}>
+                  {actionOf(item)}
+                </span>
+                <span role="cell" style={{ ...cell, justifyContent: 'flex-end' }}>
+                  {check(item.todo, state)}
+                </span>
+              </div>
+              {under(state, handed)}
+              {item.projects &&
+                open.has(item.title) &&
+                item.projects.map((p, i) => {
+                  // A project under a customer whose own to-do is open reads as covered by it.
+                  const ps = todoStateFor(todoStates, p.todo, item.todo)
+                  const sub: CSSProperties = { ...cell, minHeight: 42, borderTop: i === 0 ? '1px solid var(--border)' : '1px dashed var(--border)' }
+                  return (
+                    <Fragment key={p.key}>
+                      <div role="row" style={{ display: 'contents' }} data-testid="bridge-week-dive-project">
+                        <span role="cell" style={{ ...sub, paddingLeft: 12, borderLeft: '2px solid var(--border)' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }} title={p.title}>
+                            {p.title}
+                          </span>
                         </span>
-                      </span>
-                      <span role="cell" style={{ ...sub, ...right, ...lead(has.a) }}>
-                        {cellWords(p.row?.a, false)}
-                      </span>
-                      <span role="cell" style={{ ...sub, ...right, ...lead(has.b) }}>
-                        {cellWords(p.row?.b, false)}
-                      </span>
-                      <span role="cell" style={{ ...sub, ...lead(has.text) }}>
-                        {cellWords(p.row?.text, false)}
-                      </span>
-                      <span role="cell" style={{ ...sub, justifyContent: 'flex-end', paddingLeft: GAP }}>
-                        {projectAction(p)}
-                      </span>
-                    </div>
-                  </Fragment>
-                )
-              })}
-          </Fragment>
-        ))}
+                        <span role="cell" style={{ ...sub, ...right, ...lead(has.a) }}>
+                          {cellWords(p.row?.a, false)}
+                        </span>
+                        <span role="cell" style={{ ...sub, ...right, ...lead(has.b) }}>
+                          {cellWords(p.row?.b, false)}
+                        </span>
+                        <span role="cell" style={{ ...sub, ...lead(has.text) }}>
+                          {cellWords(p.row?.text, false)}
+                        </span>
+                        <span role="cell" style={{ ...sub, justifyContent: 'flex-end', paddingLeft: GAP }}>
+                          {projectAction(p)}
+                        </span>
+                        <span role="cell" style={{ ...sub, justifyContent: 'flex-end' }}>
+                          {check(p.todo, ps)}
+                        </span>
+                      </div>
+                      {under(ps, '')}
+                    </Fragment>
+                  )
+                })}
+            </Fragment>
+          )
+        })}
       </div>
       {showAll}
     </div>

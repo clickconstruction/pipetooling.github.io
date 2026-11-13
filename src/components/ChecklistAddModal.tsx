@@ -287,6 +287,11 @@ export default function ChecklistAddModal({
       setLinksSectionOpen(presetLinks.length > 0 && !preset?.job)
       setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
+      // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
+      const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
+      setLinesText(presetLines.join('\n'))
+      setLinesOpen(presetLines.length > 0)
+      setAsksForPhotoPick(preset?.asksForPhoto ?? null)
     }
   }, [
     modalContext?.isOpen,
