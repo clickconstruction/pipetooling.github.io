@@ -15,6 +15,7 @@ import {
   GUIDE_WATERMARK,
   lienHelpAfterSteps,
   lienHelpBatchAfterSteps,
+  lienHelpBatchBlanksTitle,
   lienHelpAskWords,
   lienHelpClerkGroupWords,
   lienHelpClerkLine,
@@ -253,9 +254,40 @@ describe('what the app checked on a paper', () => {
     // The notary writes the counties by hand on a paper with none printed: six blanks, as before.
     expect(textOf(lienHelpCoverSheetHtml(checkedPaper(), 'November 11, 2026'))).toContain('COUNTY OF, at the top.')
     const batch = textOf(lienHelpBatchSheetHtml({ papers: [printed, { ...printed, jobLabel: '418 · Mock Ave', propertyAddress: '77 Mock Ave, Fenwick, TX 75002' }], printedOn: 'November 11, 2026' }))
-    expect(batch).toContain('Each paper has four things to write')
-    // A batch that mixes a printed county with a blank keeps the six.
-    expect(textOf(lienHelpBatchSheetHtml({ papers: [printed, checkedPaper(clear, { propertyAddress: '77 Mock Ave, Fenwick, TX 75002' })], printedOn: 'November 11, 2026' }))).toContain('Each paper has six blanks')
+    expect(batch).toContain('Each paper has three things to write')
+    // A batch that mixes a printed county with a blank keeps the county blanks: five on the batch sheet.
+    expect(textOf(lienHelpBatchSheetHtml({ papers: [printed, checkedPaper(clear, { propertyAddress: '77 Mock Ave, Fenwick, TX 75002' })], printedOn: 'November 11, 2026' }))).toContain('Each paper has five blanks')
+  })
+
+  it('the batch sheet lists five blanks, each name on its own line, with the notary’s signature and seal as one', () => {
+    // The owner, 2026-11-13, working from a printed batch: the name on one line, its words under it, and lines 5 and 6
+    // one line, the notarial certificate.
+    expect(LIEN_HELP_BLANKS_SHORT).toEqual([
+      ['COUNTY OF, at the top:', 'where you sign. Not the property’s county.'],
+      ['Signature:', 'in front of the notary.'],
+      ['COUNTY OF, notary’s block:', 'the same county.'],
+      ['Day, month, year:', 'the day it is signed.'],
+      ['Notarial certificate:', 'notary signs and stamps.'],
+    ])
+    expect(LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT.map(([lead]) => lead)).toEqual(['Signature:', 'Day, month, year:', 'Notarial certificate:'])
+    expect(lienHelpBatchBlanksTitle(false)).toBe('Each paper has five blanks')
+    expect(lienHelpBatchBlanksTitle(true)).toBe('Each paper has three things to write')
+    const numsIn = (html: string) => html.match(/<span class="lien-help-num">\d+<\/span>/g)?.map((m) => m.replace(/\D/g, '')) ?? []
+    const blank = lienHelpBatchSheetHtml({ papers: [checkedPaper()], printedOn: 'November 13, 2026' })
+    expect(blank).toContain('<li><strong style="display:block">Signature:</strong> in front of the notary.</li>')
+    expect(blank).toContain('<li><strong style="display:block">Notarial certificate:</strong> notary signs and stamps.</li>')
+    expect(blank).not.toContain('Seal:')
+    expect(blank.match(/<li><strong style="display:block">/g)).toHaveLength(5)
+    // The picture's numbers are the list's own: one for each line, and no sixth.
+    expect(numsIn(blank)).toEqual(['1', '2', '3', '4', '5'])
+    const printed = lienHelpBatchSheetHtml({ papers: [checkedPaper(clear, { signingCounty: 'Alder' })], printedOn: 'November 13, 2026' })
+    expect(printed.match(/<li><strong style="display:block">/g)).toHaveLength(3)
+    expect(numsIn(printed)).toEqual(['1', '2', '3'])
+    // The cover sheet for one paper keeps its six, the seal on a line of its own, and its picture's six numbers.
+    const cover = lienHelpCoverSheetHtml(checkedPaper(), 'November 13, 2026')
+    expect(textOf(cover)).toContain('The notary’s seal.')
+    expect(cover).not.toContain('style="display:block"')
+    expect(numsIn(lienHelpPictureHtml(''))).toEqual(['1', '2', '3', '4', '5', '6'])
   })
 
   it('the guide copy of a paper with its counties printed marks no county blank, and its marks still count 1, 2, 3', () => {
