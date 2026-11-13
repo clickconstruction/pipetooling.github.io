@@ -33,6 +33,8 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   listMovements: (id: string) => data.movements[id] ?? [],
   serverSummary: () => null,
   priceOf: () => null,
+  priceFor: () => null,
+  loadBookPrices: async () => {},
 }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
   useOnSiteDeskJobs: () => ({

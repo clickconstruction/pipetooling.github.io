@@ -6916,3 +6916,27 @@ button.developmentCountChip:focus-visible {
     min-height: 40px;
   }
 }
+
+/* The New task window's shelves (punch list #331): a row of faces or places on one line that slides sideways, its end
+   faded so the next one shows as more to come. A desk wraps the faces instead. A class, because a scrollbar and a mask
+   cannot be set inline. */
+.ntwShelf {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 18px 2px 2px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+}
+.ntwShelf::-webkit-scrollbar {
+  display: none;
+}
+.ntwShelf.ntwShelfWrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-right: 2px;
+  -webkit-mask-image: none;
+  mask-image: none;
+}

@@ -31,6 +31,7 @@ The top row of figures reads the site at a glance.
 - **Can't find** and **Short at a count** count the lines to chase.
 - **Missing this week** is the money that walked away.
 - **This week** is what came in and what was used.
+- **Worth** is the money of the material that has a price. A smaller line says how many lines have one.
 
 The counts are only as fresh as the last press. Read **Last recorded** before you trust a total.
 
@@ -46,11 +47,17 @@ The chip **Same part?** beside By place lists only the rows with a question. The
 
 To take a join back, press the row to open it. **Names joined here** lists each pair with who joined it. Press **Undo** beside a pair. A join never changes a count or a box.
 
+**Worth** is never the whole site unless every line has a price. Read the smaller line with it, such as *9 of 118 lines have a price*. Press **Worth** to list the rows with no price, most pieces first.
+
+A name typed on site has no price until it is tied to the parts book. Press a row to open it. Press **This is a parts-book part** and type words from the part's name. Press the part in the list. The row now reads the book's name and price, and **Worth** grows. **Undo** under **Names joined here** takes the tie back.
+
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
 Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
 
 Nothing on this screen changes a count. A count and a correction stay on the job's page and the phone.
+
+Press **Print the material location report** at the top to print the site. The [report](/help/print-the-material-location-report) opens on the site's Development page. The report's **By part** chip prints this same list.
 
 ## Read the row
 
@@ -60,7 +67,7 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 
 ## On site
 
-The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List** and **Map** at the row's end switch between the boxes and the site map with their pins.
+The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
 
@@ -100,7 +107,7 @@ The press is withheld when a live box on the job already carries that stencil. T
 
 ## Find a box from anywhere
 
-Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
+Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Type a site's name and the list has a row for the whole site. Press it to open the site's materials. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
 
 ## Find a part on any job
 
