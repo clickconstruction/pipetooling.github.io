@@ -42,9 +42,11 @@ class FakeJsPDF {
   line() {}
   rect() {}
   /** Each picture drawn: its data, the page it is on and its size (v2.7086: the pay code in the amount box). */
-  images: Array<{ data: string; page: number; w: number; h: number }> = []
-  addImage(data: string, _type: string, _x: number, _y: number, w: number, h: number) {
-    this.images.push({ data, page: this.pages, w, h })
+  images: Array<{ data: string; page: number; w: number; h: number; compression: string | undefined }> = []
+  static last: FakeJsPDF | null = null
+  addImage(data: string, _type: string, _x: number, _y: number, w: number, h: number, _alias?: string, compression?: string) {
+    this.images.push({ data, page: this.pages, w, h, compression })
+    FakeJsPDF.last = this
   }
   /** The blob names the drawing it came from, so a test can tell which of several drawings was kept. */
   output() {
@@ -167,6 +169,8 @@ describe('letter-first in the PDF (v2.7086, punch list #333)', () => {
 
   it('two codes sit above the statement behind the letter, at the band’s own size', async () => {
     expect(await drawnFirst({ bills: 2 })).toEqual({ words: 'pages=2 body=11 signature=11 signed-on-page=1 account-on-page=2 codes=22mm on page 2, 22mm on page 2', made: 1 })
+    // Each bill's own picture, stored compressed (v2.7090).
+    expect(FakeJsPDF.last!.images.map((i) => [i.data, i.compression])).toEqual([['data:image/png;base64,ONE', 'FAST'], ['data:image/png;base64,TWO', 'FAST']])
   })
 
 })
