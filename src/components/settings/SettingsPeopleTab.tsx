@@ -155,7 +155,7 @@ export default function SettingsPeopleTab({
 }: SettingsPeopleTabProps) {
   return (
     <>
-          {/* Punch list #313: which looks of the card and the footer the team is offered. A dev's card. */}
+          {/* Punch list #313: which looks and sizes of the card and the footer the team is offered. The owner's card and a dev's (v2.7139); it draws nothing for anyone else. */}
           <CardLooksCard role={myRole} />
           {/* v2.3705 (People spine PR 6): accounts live on the roster — the same pattern Team feedback took (v2.2835). */}
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
