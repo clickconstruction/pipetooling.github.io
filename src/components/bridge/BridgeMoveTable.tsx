@@ -53,7 +53,8 @@ export function BridgeMoveTable({ dive, narrow, onDive }: Props) {
 
   const cellWords = (c: DiveCell | undefined, phone: boolean): ReactNode => (c ? <span style={{ color: cellColor(c) }}>{phone ? (c.phone ?? c.text) : c.text}</span> : null)
   const nameOf = (item: DiveItem): ReactNode => {
-    const style: CSSProperties = { font: 'inherit', fontSize: '0.84rem', fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', textAlign: 'left', minWidth: 0, ...(narrow ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }
+    // On a phone the name is a press of its own, so it is as tall as a thumb, like the row's other presses.
+    const style: CSSProperties = { font: 'inherit', fontSize: '0.84rem', fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', textAlign: 'left', minWidth: 0, ...(narrow ? { display: 'inline-flex', alignItems: 'center', minHeight: 44 } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }
     return item.target.kind === 'page' ? (
       <Link to={item.target.to} title={item.title} style={style} data-testid="bridge-week-dive-name">
         {item.title}

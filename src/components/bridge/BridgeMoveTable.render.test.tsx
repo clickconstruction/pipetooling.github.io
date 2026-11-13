@@ -110,8 +110,16 @@ describe('BridgeMoveTable on a phone', () => {
     const rows = screen.getAllByTestId('bridge-week-dive-item')
     expect(rows[0]!.textContent).toBe('301 · Pine Row$30.0k contractSet the percent')
     expect(rows[1]!.textContent).toBe('302 · Spruce HallSet to 60% just nowChange the percent')
-    // A word press is tall enough for a thumb.
+    // A word press is tall enough for a thumb, and so is the name that opens the line's own thing.
     expect((within(rows[0]!).getByRole('button', { name: 'Set the percent' }) as HTMLButtonElement).style.minHeight).toBe('44px')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-name').style.minHeight).toBe('44px')
+  })
+
+  it('keeps a name one line high at a desk, where a pointer needs no more', () => {
+    renderWithProviders(<BridgeMoveTable dive={pct} narrow={false} />)
+    const name = screen.getAllByTestId('bridge-week-dive-name')[0]!
+    expect(name.style.minHeight).toBe('')
+    expect(name.style.whiteSpace).toBe('nowrap')
   })
 
   it('opens a customer’s projects under the customer', () => {

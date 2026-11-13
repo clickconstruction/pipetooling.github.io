@@ -1,8 +1,8 @@
 ---
 name: "The Bridge as a pulse"
 number: 334
-group: ready
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner called the result satisfactory and said to build the whole train · this card is step 0 · the twelve PRs are being built, each by its own session · nothing of the train is on main yet
+group: close
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · PRs 1 to 8 are live on clicktooling.com and were walked there, read only, 2026-11-13 · PR 2's migration is pushed · a final walk of the whole page found one fault of the train's own, fixed in v2.7137 · PRs 9 to 12 are built and open
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,9 +12,9 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: PR 1, the Build, Bill and Collect windows on the shared frame. Then the stack in order, the bottom PR armed alone.
+next: PR 9, the check on every line, once #7873 is on main. Then PRs 10, 11 and 12 in order, each migration pushed right after its merge, and a walk on the live site after each.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
-blocker: None for the build. The finished work is a snapshot on one computer, so a builder on another computer has nothing to read.
+blocker: PR 9 waits for #7873, from the new task window's train, #331. Both change the window that makes a task, so #7873 goes first and PR 9 takes it in. Nothing else blocks the train.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
 mockup: not required — every part was built on a spike and walked by the owner on the live page, 2026-11-12
 ---
@@ -237,7 +237,8 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
 
 ## Found while building, not built
 
-Two faults turned up while PRs 2 and 3 were built. Each is bigger than a fix on the way, so each waits here.
+Two faults turned up while PRs 2 and 3 were built, and two more on the final walk of the live site. Each is
+bigger than a fix on the way or belongs to another part of the app, so each waits here.
 
 - **A dev who shows ZZ test jobs loses some of them once the left-out list names anything.** Every read on
   the page takes one set of job ids. With no list, this dev's reads get no set, and every ZZ job stays. With
@@ -250,11 +251,35 @@ Two faults turned up while PRs 2 and 3 were built. Each is bigger than a fix on 
   won rate alone, which was the ask. Market's count of asks and the two windows' own lists of estimates
   still count a test estimate for a viewer who hides tests. The bids follow the switch everywhere already.
   The rule PR 3 added would bring the estimates in line.
+- **On a phone the page scrolls sideways once Money owed is open.** At 375 px wide the page grows to 404 px
+  once the accrual balance's press opens Money owed behind the Money door. It did the same before the train,
+  so it belongs to Money owed. A layout fix there would end it.
+- **The pay date window does not close with Escape.** *Write down their word* closes by its own *Cancel*
+  alone. The other windows on the Bridge close with Escape. It is the app's own window and is used beyond
+  the Bridge, so the fix belongs to it.
 
 ## Where it stands
 
 Asked, built on a spike and walked by the owner on 2026-11-12. He called it satisfactory and said to build
-the whole train. This card is the train's step 0. None of the twelve PRs is on `main` yet.
+the whole train. On 2026-11-13 PRs 1 to 8 reached `main` and the live site. Each was walked there, read
+only. PR 2's migration is pushed, and every function those PRs touched is current.
+
+A final walk of the whole page on the live site followed, at 1400 px in light and dark and at 375 px. The
+page matches what the owner approved on the spike, short of PRs 9 and 10. It found one fault of the train's
+own, fixed in v2.7137: on a phone the name that leads each line was a press only 16 px tall. It found two
+more that belong elsewhere, listed under *Found while building, not built*.
+
+PRs 9 to 12 are built and open, each on the one before it. PR 9 waits for #7873, as the blocker above says.
+PR 11's migration drops the two functions behind the old Needs you line. PR 12's adds the tag's column. Each
+is pushed right after its merge, and PR 11's comes with a small PR that takes the two functions out of the
+generated types.
+
+Not walked on purpose, because each one records. The first of each is the owner's or the office's:
+
+- The first save of the left-out list.
+- The first *Mark paid* on a supply house's bill.
+- The first pay date or percent saved from *What to do now*.
+- The first to-do handed out from a grey check, once PR 9 is live.
 
 Still open, and not the builder's to answer:
 
