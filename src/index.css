@@ -3611,6 +3611,11 @@ body.my-time-boundary-dragging {
 .jobPaymentLineMore {
   width: 28px;
   height: 26px;
+  /* Centred by the box: under the default button padding the ⋯ overflowed right and low. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
