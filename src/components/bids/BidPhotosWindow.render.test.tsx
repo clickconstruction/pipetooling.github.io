@@ -4,7 +4,9 @@
  * picked files become tiles, the press names the folder it makes with its count and writes each name; a video in the
  * pick is left out with its reason; the grid draws what the bid has, with a photo Drive does not hold yet marked; a
  * held folder says the photos are safe and why; a read that fails offers Retry; a training account sees the photos
- * and no way to add one.
+ * and no way to add one. With no signal (PR 8): the shot's tile reads *Kept on this phone.*, the press keeps it in
+ * the phone's queue with its name and writes nothing, the window counts what waits, and it reads again when the queue
+ * lands the press; a window opened with no signal still offers the camera under the read that failed.
  */
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,12 +15,12 @@ import type { BidPhotoFolderState } from '../../lib/bids/bidPhotos'
 import type { BidPhotoRow } from '../../lib/bids/bidPhotoWindow'
 import type { BidPhotosRead, BidPhotosWindowIo } from '../../lib/bids/bidPhotosIo'
 
-const auth = vi.hoisted(() => ({ readOnly: false }))
+const auth = vi.hoisted(() => ({ readOnly: false, phone: false }))
 vi.mock('../../hooks/useAuth', () => {
   const made = useAuthModuleMock({ role: 'estimator', profileName: 'Dana Whitfield' })
   return { ...made, useAuth: () => ({ ...made.useAuth(), readOnly: auth.readOnly }) }
 })
-vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => false }))
+vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => auth.phone }))
 vi.mock('../../lib/photos/reportPhotosIo', () => ({
   loadReportPhotoSize: () => Promise.resolve('medium'),
   jobHasDriveFolder: () => Promise.resolve(true),
@@ -32,6 +34,9 @@ vi.mock('../../lib/photos/shrink', async (importOriginal) => {
 })
 
 import { BidPhotosWindow } from './BidPhotosWindow'
+import { dispatchLanded } from '../../hooks/useOutboxReplay'
+import { outbox } from '../../lib/offline/outboxState'
+import type { BidPhotosPayload } from '../../lib/offline/outbox'
 
 const bid = { id: '00000000-0000-0000-0000-00000306b001', label: 'b598 Quarry Road Storage Bunker' }
 
@@ -48,7 +53,10 @@ const row = (over: Partial<BidPhotoRow> = {}): BidPhotoRow => ({
   bytes: 310_000, storage_path: null, drive_file_id: 'drive-1', filed_at: '2026-11-06T18:05:00.000Z', fail_why: null, ...over,
 })
 
-function makeIo(start: Partial<BidPhotosRead> | Error): BidPhotosWindowIo & { added: unknown[]; sent: string[]; loads: number } {
+/** The send's own error for a lost signal, by its name and kind, as `sendBidPhoto` throws it. */
+const lostSignal = () => Object.assign(new Error('This device has no signal.'), { name: 'PhotoSendError', kind: 'network' })
+
+function makeIo(start: Partial<BidPhotosRead> | Error, opts: { noSignal?: boolean } = {}): BidPhotosWindowIo & { added: unknown[]; sent: string[]; loads: number } {
   let answer: BidPhotosRead | Error = start instanceof Error ? start : { folder: folder('project'), driveWhy: null, photos: [], previews: {}, adopted: 0, ...start }
   const io: BidPhotosWindowIo & { added: unknown[]; sent: string[]; loads: number } = {
     added: [],
@@ -60,6 +68,7 @@ function makeIo(start: Partial<BidPhotosRead> | Error): BidPhotosWindowIo & { ad
     },
     shots: {
       send: (input) => {
+        if (opts.noSignal) return Promise.reject(lostSignal())
         io.sent.push(input.id)
         return Promise.resolve({ storagePath: `${input.jobId}/${input.id}.jpg` })
       },
@@ -87,6 +96,8 @@ const jpg = (name: string) => new File([new Uint8Array(4_000)], name, { type: 'i
 describe('BidPhotosWindow', () => {
   beforeEach(() => {
     auth.readOnly = false
+    auth.phone = false
+    for (const p of outbox.presses()) outbox.remove(p.id)
     let urls = 0
     URL.createObjectURL = () => `blob:test-${++urls}`
     URL.revokeObjectURL = () => undefined
@@ -168,6 +179,88 @@ describe('BidPhotosWindow', () => {
     renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} io={io} />)
     await settle()
     expect(screen.getByText(/permission denied for table bid_photos/)).toBeTruthy()
+  })
+
+  it('with no signal the shot is kept on this phone, the press keeps it in the queue with its name, and the window counts what waits', async () => {
+    auth.phone = true
+    const io = makeIo({ folder: folder('ready') }, { noSignal: true })
+    const changed = vi.fn()
+    renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} onChanged={changed} io={io} />)
+    await settle()
+    fireEvent.change(screen.getByTestId('bid-photos-camera'), { target: { files: [jpg('site.jpg')] } })
+    await waitFor(() => expect(document.querySelectorAll('[data-shot-tile="kept"]')).toHaveLength(1))
+    expect(screen.getByText('Kept on this phone.')).toBeTruthy()
+    // No Retry on a kept shot: it is not a failure, and the press takes it.
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(document.querySelector('[data-bid-photos-kept]')?.textContent).toBe('There is no signal. Add 1 photo keeps it on this phone. It goes to the bid when the signal is back.')
+
+    fireEvent.change(document.querySelector<HTMLInputElement>('[data-shot-name]')!, { target: { value: ' Meter bank ' } })
+    const press = screen.getByRole('button', { name: 'Add 1 photo' })
+    expect(press.getAttribute('data-bid-photos-add')).toBe('live')
+    fireEvent.click(press)
+
+    await waitFor(() => expect(outbox.presses()).toHaveLength(1))
+    const kept = outbox.presses()[0]!
+    expect(kept.kind).toBe('bid-photos')
+    expect(kept.state).toBe('waiting')
+    expect(kept.about).toBe('b598 Quarry Road Storage Bunker')
+    expect(kept.door).toBe('/bids?tab=bid-board')
+    const payload = kept.payload as BidPhotosPayload
+    expect(payload.bidId).toBe(bid.id)
+    expect(payload.photos).toHaveLength(1)
+    expect(payload.photos[0]).toMatchObject({ sent: false, name: 'Meter bank', bytes: 310_000, width: 1600, height: 1200, byName: 'Dana Whitfield' })
+    // Nothing was written to the bid, the tile left the form, and the window says what waits.
+    expect(io.added).toEqual([])
+    expect(changed).not.toHaveBeenCalled()
+    await waitFor(() => expect(document.querySelectorAll('[data-shot-tile]')).toHaveLength(0))
+    expect(document.querySelector('[data-bid-photos-on-phone]')?.textContent).toBe('1 photo waits on this phone. It goes to the bid when the signal is back.')
+    expect(screen.getByText('Kept on this phone. The photo goes to the bid when the signal is back.')).toBeTruthy()
+
+    // The queue lands the press: the line goes and the window reads the bid again.
+    const loadsBefore = io.loads
+    outbox.put({ ...kept, state: 'sent', sentAt: Date.now() })
+    dispatchLanded({ pressId: kept.id, kind: 'bid-photos', result: { bid_id: bid.id, added: 1 } })
+    await waitFor(() => expect(io.loads).toBe(loadsBefore + 1))
+    expect(document.querySelector('[data-bid-photos-on-phone]')).toBeNull()
+    // Another bid's landing is not this window's.
+    dispatchLanded({ pressId: 'other', kind: 'bid-photos', result: { bid_id: 'another-bid', added: 1 } })
+    await settle()
+    expect(io.loads).toBe(loadsBefore + 1)
+  })
+
+  it('a send that is refused, not lost, keeps its tile with Retry and is never queued', async () => {
+    auth.phone = true
+    const io = makeIo({ folder: folder('ready') })
+    io.shots.send = () => Promise.reject(Object.assign(new Error('That bid is not one you can change.'), { name: 'PhotoSendError', kind: 'server' }))
+    renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} io={io} />)
+    await settle()
+    fireEvent.change(screen.getByTestId('bid-photos-camera'), { target: { files: [jpg('site.jpg')] } })
+    await waitFor(() => expect(document.querySelectorAll('[data-shot-tile="failed"]')).toHaveLength(1))
+    expect(screen.getByText('That bid is not one you can change.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(document.querySelector('[data-bid-photos-kept]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add photos' }).getAttribute('data-bid-photos-add')).toBe('dead')
+    expect(outbox.presses()).toHaveLength(0)
+  })
+
+  it('a window opened with no signal still offers the camera under the read that failed, and a refusal does not', async () => {
+    auth.phone = true
+    const offline = makeIo(new TypeError('Failed to fetch'), { noSignal: true })
+    const first = renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} io={offline} />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Take a photo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pick from this phone' })).toBeTruthy()
+    fireEvent.change(screen.getByTestId('bid-photos-camera'), { target: { files: [jpg('site.jpg')] } })
+    await waitFor(() => expect(document.querySelectorAll('[data-shot-tile="kept"]')).toHaveLength(1))
+    // The folder did not read, so the press claims to make nothing.
+    expect(screen.getByRole('button', { name: 'Add 1 photo' }).getAttribute('data-bid-photos-add')).toBe('live')
+    first.unmount()
+
+    const refused = makeIo(new Error('permission denied for table bid_photos'))
+    renderWithProviders(<BidPhotosWindow bid={bid} onClose={() => undefined} io={refused} />)
+    await settle()
+    expect(screen.getByText(/permission denied for table bid_photos/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Take a photo' })).toBeNull()
   })
 
   it('shows a training account the photos and no way to add one', async () => {

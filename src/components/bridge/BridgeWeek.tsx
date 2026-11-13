@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { accrualPressLabel, type MoneyLine } from '../../lib/bridge/moneyCard'
 import type { CallLink, CallOutcome, MoveDone } from '../../lib/bridge/calls'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, movesShown, movesToRecord, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { chipName, type CallPerson, type RecordedMove } from '../../lib/bridge/callPeople'
 
 /**
- * The Bridge's first screen (punch list #303, PR 1): three tiles and the week's call with its
- * moves. The words are `buildWeekCall`'s; this draws them and holds what the owner changes
+ * The Bridge's first screen (punch list #303, PR 1): the tiles and the week's call with its
+ * moves. The tiles read *Made last week*, *Slowest step*, then the two balances (punch list #334, PR 6). The words are `buildWeekCall`'s; this draws them and holds what the owner changes
  * before the press: a move taken off, a person renamed. The doors to everything behind it are
  * `BridgeDoors`, drawn by the page under this since PR 2.
  *
@@ -28,22 +29,71 @@ const TYPE_A_NAME = '__type_a_name__'
 const pressBase: CSSProperties = { font: 'inherit', fontSize: '0.95rem', fontWeight: 700, minHeight: 48, borderRadius: 10, border: 'none', padding: '0.5rem 0.9rem', cursor: 'pointer', width: '100%' }
 const smallPress: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 700, minHeight: 36, borderRadius: 8, padding: '0.25rem 0.8rem', cursor: 'pointer' }
 
-function Tile({ tile, narrow, onNote }: { tile: WeekTile; narrow: boolean; onNote: () => void }) {
-  const red = tile.tone === 'red'
+/**
+ * The balances (punch list #334, PR 6; `moneyCard.ts` holds the words and the owner's asks): the cash balance and the
+ * accrual balance side by side, each with its runway under the number, and one line under both that says what runway
+ * counts. It stands in for the red band and the separate cash tile.
+ *
+ * The owner asked for the slowest step "to the left of the cash section", so the row reads *Made last week*,
+ * *Slowest step*, then this card. On a phone those two tiles share a row and this card takes the next one whole.
+ * The accrual balance is a press: it opens Money owed, where the waterfall walks from cash to that number.
+ */
+function BalancesTile({ cash, accrual, foot, narrow, onNote, onAccrual }: { cash: MoneyLine; accrual: MoneyLine; foot: string; narrow: boolean; onNote: () => void; onAccrual: () => void }) {
+  const pad = narrow ? '0.5rem 0.55rem' : '0.7rem 0.9rem'
+  const balance = narrow ? '1.35rem' : '1.9rem'
+  const sub: CSSProperties = { fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }
+  // Runway is the fact to act on, so it reads a step stronger than the sentence under it.
+  const runway: CSSProperties = { fontSize: narrow ? '0.74rem' : '0.86rem', fontWeight: 700, color: 'var(--text-700)', lineHeight: 1.3, marginTop: 1 }
+  const number = (line: MoneyLine): CSSProperties => ({ fontSize: balance, fontWeight: 800, lineHeight: 1.15, color: toneText(line.tone), fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' })
   return (
-    <div
-      data-testid={`bridge-week-tile-${tile.id}`}
-      style={{
-        gridColumn: tile.wide ? '1 / -1' : undefined,
-        background: red ? 'var(--bg-red-tint)' : 'var(--surface)',
-        border: `1px solid ${red ? 'var(--border-red)' : 'var(--border)'}`,
-        borderRadius: 10,
-        padding: narrow ? '0.5rem 0.55rem' : '0.7rem 0.9rem',
-        minWidth: 0,
-      }}
-    >
+    <div data-testid="bridge-week-tile-money" style={{ gridColumn: narrow ? '1 / -1' : undefined, display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', flex: 1 }}>
+        <div data-testid="bridge-week-tile-cash" style={{ padding: pad, minWidth: 0 }}>
+          <div style={label}>{cash.label}</div>
+          <div style={number(cash)}>{cash.value}</div>
+          {cash.runway && (
+            <div style={runway} data-testid="bridge-week-runway-cash">
+              {cash.runway}
+            </div>
+          )}
+          <div style={sub}>{cash.sub}</div>
+          {/* The accounts left out of cash on hand (v2.6838): the list and its switches sit behind Money. */}
+          {cash.note && (
+            <button type="button" onClick={onNote} data-testid="bridge-week-tile-note" style={{ display: 'block', font: 'inherit', textAlign: 'left', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: narrow ? '0.72rem' : '0.8rem', color: 'var(--text-amber-800)', lineHeight: 1.3, marginTop: 2, textDecoration: 'underline' }}>
+              {cash.note}
+            </button>
+          )}
+        </div>
+        <div style={{ padding: pad, borderLeft: '1px solid var(--border)', minWidth: 0 }}>
+          <button type="button" onClick={onAccrual} aria-label={accrualPressLabel(accrual)} data-testid="bridge-week-tile-accrual" style={{ display: 'block', width: '100%', font: 'inherit', textAlign: 'left', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', minWidth: 0 }}>
+            <div style={label}>
+              {accrual.label} <span aria-hidden>›</span>
+            </div>
+            <div style={number(accrual)}>{accrual.value}</div>
+            {accrual.runway && (
+              <div style={runway} data-testid="bridge-week-runway-accrual">
+                {accrual.runway}
+              </div>
+            )}
+            <div style={sub}>{accrual.sub}</div>
+          </button>
+        </div>
+      </div>
+      {foot && (
+        <div style={{ padding: narrow ? '0.25rem 0.55rem 0.35rem' : '0.3rem 0.9rem 0.45rem', borderTop: '1px solid var(--border)', fontSize: narrow ? '0.68rem' : '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }} data-testid="bridge-week-runway-foot">
+          {foot}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** *Made last week* or *Slowest step*. The cash tile and its red band are the balances' now. */
+function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
+  return (
+    <div data-testid={`bridge-week-tile-${tile.id}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: narrow ? '0.5rem 0.55rem' : '0.7rem 0.9rem', minWidth: 0 }}>
       <div style={label}>{tile.label}</div>
-      <div style={{ fontSize: tile.wide ? (narrow ? '1.3rem' : '1.7rem') : narrow ? '1.35rem' : '1.9rem', fontWeight: 800, lineHeight: 1.15, color: toneText(tile.tone), fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{tile.value}</div>
+      <div style={{ fontSize: narrow ? '1.35rem' : '1.9rem', fontWeight: 800, lineHeight: 1.15, color: toneText(tile.tone), fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{tile.value}</div>
       {tile.bars && tile.bars.length > 0 && (
         <div aria-hidden style={{ display: 'flex', alignItems: 'flex-end', gap: narrow ? 2 : 4, height: narrow ? 22 : 30, margin: '4px 0 2px', maxWidth: 280 }}>
           {tile.bars.map((b) => (
@@ -62,12 +112,6 @@ function Tile({ tile, narrow, onNote }: { tile: WeekTile; narrow: boolean; onNot
         </div>
       )}
       <div style={{ fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }}>{tile.sub}</div>
-      {/* The accounts left out of cash on hand (v2.6838): the list and its switches sit behind Money. */}
-      {tile.note && (
-        <button type="button" onClick={onNote} data-testid="bridge-week-tile-note" style={{ display: 'block', font: 'inherit', textAlign: 'left', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: narrow ? '0.72rem' : '0.8rem', color: 'var(--text-amber-800)', lineHeight: 1.3, marginTop: 2, textDecoration: 'underline' }}>
-          {tile.note}
-        </button>
-      )}
     </div>
   )
 }
@@ -83,6 +127,8 @@ export function BridgeWeek({
   strip,
   stripSide = false,
   people = [],
+  money,
+  onAccrual,
 }: {
   model: WeekCallModel
   recording: boolean
@@ -100,6 +146,10 @@ export function BridgeWeek({
   stripSide?: boolean
   /** The accounts a move can go to (PR 4). With none, the chip takes a typed name, which reaches nobody. */
   people?: ReadonlyArray<CallPerson>
+  /** The two balances and the line that says what runway counts (`moneyCard.ts`; punch list #334, PR 6). */
+  money: { cash: MoneyLine; accrual: MoneyLine; foot: string }
+  /** A press on the accrual balance: the page opens Money owed. */
+  onAccrual: () => void
 }) {
   const narrow = useIsNarrowScreen()
   const proposing = model.state === 'propose'
@@ -267,10 +317,14 @@ export function BridgeWeek({
   const side = !narrow && stripSide && strip != null
   return (
     <section id="bridge-week" aria-label="This week on the Bridge" data-testid="bridge-week" style={{ scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: narrow ? 8 : 12 }}>
-        {model.tiles.map((t) => (
-          <Tile key={t.id} tile={t} narrow={narrow} onNote={onCashNote} />
-        ))}
+      {/* Made last week, the slowest step, then the two balances. On a phone the first two share a row. */}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr)', gap: narrow ? 8 : 12 }}>
+        {model.tiles
+          .filter((t) => t.id !== 'cash')
+          .map((t) => (
+            <Tile key={t.id} tile={t} narrow={narrow} />
+          ))}
+        <BalancesTile cash={money.cash} accrual={money.accrual} foot={money.foot} narrow={narrow} onNote={onCashNote} onAccrual={onAccrual} />
       </div>
       {!side && !model.cashLeads && strip}
 
