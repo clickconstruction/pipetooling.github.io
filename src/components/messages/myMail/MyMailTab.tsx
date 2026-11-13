@@ -30,7 +30,7 @@ import { MY_MAIL_REFUSAL_WORDS } from '../../../lib/myMail/contract'
 import { emptyPageWords, FIRST_PAGE, MY_MAIL_LIST_WORDS, newerPage, notTaggedWords, olderPage, pageToken, tagActWords, untaggedWords, type MyMailPages, type MyMailTagAct } from '../../../lib/myMail/list'
 import { supabaseMyMailIo, type MyMailIo } from '../../../lib/myMail/myMailIo'
 import { pickedJob } from '../../../lib/myMail/picker'
-import { MY_MAIL_READER_WORDS, unknownSenderContact, type MyMailDone } from '../../../lib/myMail/reader'
+import { AFTER_TAG_WORDS, afterTag, MY_MAIL_READER_WORDS, unknownSenderContact, type AfterTagPress, type MyMailDone } from '../../../lib/myMail/reader'
 import { MY_MAIL_GUIDE, MY_MAIL_GUIDE_READS, MY_MAIL_SETTINGS_HREF, MY_MAIL_VIEWS } from '../../../lib/myMail/tab'
 import { MY_MAIL_WORDS, viewRows } from '../../../lib/myMail/view'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../../lib/offlineRecoveryState'
@@ -187,6 +187,26 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
   }
 
   // A first tag, a move (Another job…) and a mail put on the job are one door, gmail-mine's tag, safe to run again.
+  // The line after a tag (v2.7032, punch list #324): the one press that overrules what the age decided.
+  const afterTagPress = async (threadId: string, press: AfterTagPress) => {
+    const contactId = done[threadId]?.ok.contactId
+    if (busy.current || !contactId) return
+    busy.current = true
+    setBusyThread(threadId)
+    setProblem(null)
+    try {
+      await io.afterTag(contactId, press)
+      setDone((d) => (d[threadId] ? { ...d, [threadId]: { ...d[threadId]!, after: press } } : d))
+      showToast(AFTER_TAG_WORDS.went[press], 'success')
+      changed()
+    } catch (e) {
+      setProblem(formatErrorMessage(e, AFTER_TAG_WORDS.failed[press]))
+    } finally {
+      busy.current = false
+      setBusyThread(null)
+    }
+  }
+
   const tagOnto = async (threadId: string, job: MyMailJobRef, chip: MyMailJobChip | null, act: MyMailTagAct = 'tag') => {
     if (busy.current) return
     busy.current = true
@@ -199,7 +219,9 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
         return
       }
       setDone((d) => ({ ...d, [threadId]: { ok: a, chip, act } }))
-      showToast(tagActWords(act, a, chip), 'success')
+      // The toast says what the tag did to Follow up too, for a tag pressed from a row with no reader open.
+      const after = afterTag(a)
+      showToast(after ? `${tagActWords(act, a, chip)} ${after.words}` : tagActWords(act, a, chip), 'success')
       if (a.unknownSender) setWho(unknownSenderContact(a.unknownSender))
       changed()
     } catch (e) {
@@ -369,6 +391,7 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
           onMove={(onJob) => pick(readerRow, onJob)}
           onPutOn={(job) => void tagOnto(readerRow.threadId, { kind: job.kind, id: job.id }, job, 'put')}
           onUntag={() => void untag(readerRow.threadId)}
+          onAfterTag={(press) => void afterTagPress(readerRow.threadId, press)}
           lineContact={lineContact}
           onOpenThread={openThread}
           onClose={() => {

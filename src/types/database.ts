@@ -5987,6 +5987,12 @@ export type Database = {
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          place_accuracy_m: number | null
+          place_lat: number | null
+          place_lng: number | null
+          place_name: string | null
+          place_set_at: string | null
+          place_set_by: string | null
           remind_day_before: boolean
           reminder_scope: string | null
           reminder_time: string | null
@@ -6010,6 +6016,12 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
@@ -6033,6 +6045,12 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          place_accuracy_m?: number | null
+          place_lat?: number | null
+          place_lng?: number | null
+          place_name?: string | null
+          place_set_at?: string | null
+          place_set_by?: string | null
           remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
@@ -6057,6 +6075,13 @@ export type Database = {
           {
             foreignKeyName: "checklist_items_notify_on_complete_user_id_fkey"
             columns: ["notify_on_complete_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_place_set_by_fkey"
+            columns: ["place_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -11805,6 +11830,9 @@ export type Database = {
         Row: {
           asked_by: string | null
           asked_by_name: string
+          asked_task_id: string | null
+          asked_tech_at: string | null
+          asked_tech_ids: string[]
           closed_at: string | null
           closed_by: string | null
           code_hash: string
@@ -11822,11 +11850,19 @@ export type Database = {
           place: string | null
           sent_at: string | null
           sent_count: number
+          tech_note: string | null
+          tech_read: string | null
+          tech_read_at: string | null
+          tech_read_by: string | null
+          tech_read_name: string | null
           words: string | null
         }
         Insert: {
           asked_by?: string | null
           asked_by_name?: string
+          asked_task_id?: string | null
+          asked_tech_at?: string | null
+          asked_tech_ids?: string[]
           closed_at?: string | null
           closed_by?: string | null
           code_hash: string
@@ -11844,11 +11880,19 @@ export type Database = {
           place?: string | null
           sent_at?: string | null
           sent_count?: number
+          tech_note?: string | null
+          tech_read?: string | null
+          tech_read_at?: string | null
+          tech_read_by?: string | null
+          tech_read_name?: string | null
           words?: string | null
         }
         Update: {
           asked_by?: string | null
           asked_by_name?: string
+          asked_task_id?: string | null
+          asked_tech_at?: string | null
+          asked_tech_ids?: string[]
           closed_at?: string | null
           closed_by?: string | null
           code_hash?: string
@@ -11866,6 +11910,11 @@ export type Database = {
           place?: string | null
           sent_at?: string | null
           sent_count?: number
+          tech_note?: string | null
+          tech_read?: string | null
+          tech_read_at?: string | null
+          tech_read_by?: string | null
+          tech_read_name?: string | null
           words?: string | null
         }
         Relationships: [
@@ -40532,6 +40581,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      answer_first_look: {
+        Args: { p_look_id: string; p_note?: string; p_read: string }
+        Returns: Json
+      }
       answer_invitation: {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
@@ -40642,6 +40695,10 @@ export type Database = {
         Returns: boolean
       }
       archived_pre_request: { Args: never; Returns: undefined }
+      ask_tech_first_look: {
+        Args: { p_item_id: string; p_look_id: string }
+        Returns: Json
+      }
       assert_caller_can_merge_customer_pair: {
         Args: {
           p_survivor_master_user_id: string

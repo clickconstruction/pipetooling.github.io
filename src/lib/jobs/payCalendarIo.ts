@@ -78,3 +78,37 @@ export async function loadPayerReceipts(db: Db, payerId: string): Promise<PayCal
     return []
   }
 }
+
+type AcceptanceRow = { invoice_id?: string | null; accepted_on?: string | null }
+
+/**
+ * The day a payer accepted each bill that has one (PR 4, `invoice_payer_acceptances`), keyed by the bill's id.
+ * Empty before the migration is pushed, so every bill counts from the day it went in.
+ */
+export async function loadInvoiceAcceptances(db: Db): Promise<Map<string, string>> {
+  const { data, error } = (await db.from('invoice_payer_acceptances' as never).select('invoice_id, accepted_on')) as { data: AcceptanceRow[] | null; error: CodedError | null }
+  const out = new Map<string, string>()
+  if (error) {
+    if (isMissingRelation(error.code)) return out
+    throw error
+  }
+  for (const r of data ?? []) if (r.invoice_id && typeof r.accepted_on === 'string') out.set(r.invoice_id, r.accepted_on.slice(0, 10))
+  return out
+}
+
+/** Sets, replaces or clears (null) the day a payer accepted one bill. The server stamps who marked it. */
+export async function saveInvoiceAcceptance(db: Db, args: { invoiceId: string; acceptedYmd: string | null }): Promise<void> {
+  const { error } = await db.rpc('set_invoice_payer_accepted_on' as never, { p_invoice_id: args.invoiceId, p_accepted_on: args.acceptedYmd } as never)
+  if (error) throw error
+}
+
+/** The jobs of one development, for *Also set on the other jobs here*: their ids, with no order. Empty on a read that fails. */
+export async function loadDevelopmentJobIds(db: Db, developmentId: string): Promise<string[]> {
+  try {
+    const { data, error } = await db.from('jobs_ledger').select('id').eq('development_id', developmentId)
+    if (error) return []
+    return ((data ?? []) as Array<{ id: string }>).map((j) => j.id)
+  } catch {
+    return []
+  }
+}
