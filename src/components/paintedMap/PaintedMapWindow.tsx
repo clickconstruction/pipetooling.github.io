@@ -718,7 +718,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         {mode === 'walk' && walk.state ? (
           // The bar is red for every second the phone is being read, and at no other time.
           <div data-painted-bar={painting ? 'painting' : 'paused'} role="status" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: painting ? '#b91c1c' : '#4b5563', color: '#fff', fontWeight: 700 }}>
-            <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', boxShadow: '0 0 0 4px rgba(255,255,255,.3)', flex: 'none' }} />
+            <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 0 4px rgba(255,255,255,.3)', flex: 'none' }} />
             <span>{painting ? 'Painting' : 'Paused'} · {clockWords(walkPaintedMs(walk.state, walk.nowMs))}</span>
             <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: '0.8125rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{painting ? title : 'The phone is not being read'}</span>
             <button type="button" onClick={leave} aria-label="Close the painted map" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
