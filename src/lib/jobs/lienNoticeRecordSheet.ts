@@ -1,6 +1,6 @@
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import { buildLienNoticeBlocks, filingDocHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
-import { LIEN_HELP_FOOT_PAPER_NEXT, STRIPE, esc, foot } from './lienHelpSheet'
+import { LIEN_HELP_BATCH_ASK_LEAD, LIEN_HELP_FOOT_PAPER_NEXT, STRIPE, esc, foot } from './lienHelpSheet'
 import { describeNoticeMonths } from './lienNoticeDraft'
 import { lienNoticeRecordAsks, lienNoticeRecordDaysBetween, lienNoticeRecordMethodWords, type LienNoticeRecord, type LienNoticeRecordCopy, type LienNoticeRecordLine, type LienNoticeRecordNotice } from './lienNoticeRecord'
 
@@ -63,6 +63,9 @@ export const LIEN_RECORD_STYLES = `
   .lien-help ul.lien-record-sent-lines li { display: grid; grid-template-columns: 11pt 1fr; gap: 3pt; margin: 0 0 1pt; }
   .lien-record-code { display: flex; gap: 6pt; align-items: center; }
   .lien-record-code img { width: 38pt; height: 38pt; display: block; image-rendering: pixelated; }
+  .lien-record-verdict { border: 0.75pt solid #8a9099; border-left-width: 3pt; padding: 2.5pt 7pt; margin: 4pt 0 0; break-inside: avoid; page-break-inside: avoid; }
+  .lien-record-verdict[data-lien-record-verdict="ask"] { background: #e2e4e8; border-color: #6b727b; }
+  .lien-record-verdict-lead { font-weight: 800; }
 `
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
@@ -74,11 +77,18 @@ export function lienRecordDay(ymd: string): string {
   return m && name ? `${name} ${Number(m[3])}, ${m[1]}` : (ymd ?? '')
 }
 
-/** Above the table when every sworn month stands. */
+/** At the foot of a record when every sworn month stands, after `LIEN_RECORD_ON`. */
 export const LIEN_RECORD_CLEAR = 'Every month the paper swears has a notice mailed on time, to the owner and to the original contractor.'
 
-/** After the notice check's own lines, when a month does not stand. */
-export const LIEN_RECORD_ASK = 'Ask the attorney before this is signed.'
+/**
+ * The lead of the box at a record's foot when a month does not stand: the batch sheet's own lead, so a row and its
+ * block say it the same way (the owner, 2026-11-13). The notice check's lines follow it whole. Here there is room to
+ * say which copy raised the question, which the row no longer says.
+ */
+export const LIEN_RECORD_ASK = LIEN_HELP_BATCH_ASK_LEAD
+
+/** The lead of the same spot on a record that stands. */
+export const LIEN_RECORD_ON = 'On record.'
 
 /** Under the notices: what the record cannot say. */
 export const LIEN_RECORD_ENVELOPE = 'The app keeps who each copy went to. It does not keep the address on the envelope.'
@@ -189,27 +199,30 @@ function compactClose(record: LienNoticeRecord): string {
   return `<ul class="lien-record-lines lien-help-small" data-lien-record-close style="margin-top:3pt">${items.join('')}</ul>`
 }
 
-/** The band under the facts: what the record adds up to, in the help sheet's own two voices. A batch block that stands says so in a line, with no box. */
-function verdict(record: LienNoticeRecord, compact = false): string {
-  if (!lienNoticeRecordAsks(record)) {
-    return compact
-      ? `<p data-lien-record-verdict="clear" style="margin-bottom:3pt"><strong class="lien-help-ask-tag">ON RECORD</strong> ${esc(LIEN_RECORD_CLEAR)}</p>`
-      : `<div class="lien-help-ask lien-help-yours" data-lien-record-verdict="clear"><strong class="lien-help-ask-tag">ON RECORD</strong> ${esc(LIEN_RECORD_CLEAR)}</div>`
-  }
+/**
+ * The box that closes a record: what the facts above it add up to. It sits at the foot, after the table and the
+ * lines, and is drawn in grey (the owner, 2026-11-13, on a heavy black box above the table: *move the box to the
+ * bottom of the section, make it less black and more gray*). The facts come first and the question about them closes
+ * the block. A record that stands has its line in the same spot and the same family, with no fill, so a reader finds
+ * one place on every block. The fill and the wider left edge are what set a question apart on a black-and-white print.
+ * The lead stays in the page's own ink: grey words break up under a laser's screen, and a grey band does not.
+ */
+function verdict(record: LienNoticeRecord): string {
+  if (!lienNoticeRecordAsks(record)) return `<div class="lien-record-verdict" data-lien-record-verdict="clear"><span class="lien-record-verdict-lead">${esc(LIEN_RECORD_ON)}</span> ${esc(LIEN_RECORD_CLEAR)}</div>`
   const words = record.flags.length > 0 ? record.flags.join(' ') : record.lines.filter((l) => l.state === 'ask').map((l) => `${l.lead} ${l.words}`).join(' ')
-  return `<div class="lien-help-ask" data-lien-record-verdict="ask"><strong class="lien-help-ask-tag">ASK FIRST</strong> ${esc(words)} ${esc(LIEN_RECORD_ASK)}</div>`
+  return `<div class="lien-record-verdict" data-lien-record-verdict="ask"><span class="lien-record-verdict-lead">${esc(LIEN_RECORD_ASK)}</span> ${esc(words)}</div>`
 }
 
-/** Everything under a record's head: the verdict, the notices, the months, and the two boxes. One body for both shapes, so a batch block and a single page cannot disagree. */
+/** Everything under a record's head: the notices, the two sentences against them, what is missing, and the verdict last. One body for both shapes, so a batch block and a single page cannot disagree. */
 function recordBody(record: LienNoticeRecord, compact = false): string {
   // A batch block (`compact`) says the envelope line and where to add what is missing once, above the blocks.
-  if (compact) return verdict(record, true) + noticesTable(record) + compactClose(record)
+  if (compact) return noticesTable(record) + compactClose(record) + verdict(record)
   return (
-    verdict(record) +
     `<div class="lien-record-h" style="margin-top:0">The notices on record</div>` +
     noticesTable(record) +
     (record.notices.length > 0 ? `<p class="lien-help-small">${esc(LIEN_RECORD_ENVELOPE)}</p>` : '') +
-    `<div class="lien-help-two" style="margin-top:5pt">${linesBox(record)}${gapsBox(record)}</div>`
+    `<div class="lien-help-two" style="margin-top:5pt">${linesBox(record)}${gapsBox(record)}</div>` +
+    verdict(record)
   )
 }
 

@@ -7,7 +7,7 @@ import { plainWordsFailures } from '../plainWords'
 import { buildLienAffidavitBlocks, filingDocFooter, filingDocPrintHtml, lienAffidavitPrintOptions, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import { lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords, lienAffidavitPrintRun, type LienAffidavitPrintPaper } from './lienAffidavitBatch'
 import { lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
-import { LIEN_HELP_FOOT_PAPER_NEXT, LIEN_HELP_FOOT_RECORD_NEXT, LIEN_HELP_NOTICES_SEE_RECORD, lienHelpCoverSheetHtml, lienHelpPaperFromFields } from './lienHelpSheet'
+import { LIEN_HELP_BATCH_ASK_LEAD, LIEN_HELP_FOOT_PAPER_NEXT, LIEN_HELP_FOOT_RECORD_NEXT, LIEN_HELP_NOTICES_SEE_RECORD, lienHelpCoverSheetHtml, lienHelpPaperFromFields } from './lienHelpSheet'
 import { describeNoticeMonths } from './lienNoticeDraft'
 import { lienNoticeRecord, type LienNoticeRecordFiling } from './lienNoticeRecord'
 import {
@@ -25,6 +25,7 @@ import {
   LIEN_RECORD_NO_NOTICE,
   LIEN_RECORD_NOTE_ONLY,
   LIEN_RECORD_NOT_SUB,
+  LIEN_RECORD_ON,
   LIEN_RECORD_SAVED_NOTE,
   LIEN_RECORD_STYLES,
   LIEN_RECORD_WHOLE,
@@ -146,9 +147,29 @@ describe('lienNoticeRecordSheetHtml · one page in front of one paper', () => {
     for (const fact of ['4417 · Quarry Bend rough-in', '1408 Quarry Bend Rd, Marlow, TX 78000', 'Hollis Family Trust', 'Ridgeway Builders LLC', '$5,260.00']) expect(html).toContain(fact)
   })
 
-  it('opens with the help sheet’s own lines when a month does not stand', () => {
-    expect(html).toContain('data-lien-record-verdict="ask"')
-    expect(textOf(html)).toContain(`The owner's notice went after its date, or is not on record, for April, May, June and July 2026. The original contractor's copy went after its date for April, May, June and July 2026. ${LIEN_RECORD_ASK}`)
+  it('closes with the question when a month does not stand: the batch row’s lead once, then the check’s own lines (the owner, 2026-11-13)', () => {
+    expect(LIEN_RECORD_ASK).toBe(LIEN_HELP_BATCH_ASK_LEAD)
+    // Here there is room for what the row leaves out: which copy raised the question.
+    expect(html).toContain(`<div class="lien-record-verdict" data-lien-record-verdict="ask"><span class="lien-record-verdict-lead">Ask the attorney first.</span> The owner's notice went after its date, or is not on record, for April, May, June and July 2026. The original contractor's copy went after its date for April, May, June and July 2026.</div>`)
+    // Read as the page reads: the lead, the reasons, and then the foot. No closing sentence repeats the lead.
+    expect(textOf(html)).toContain(`${LIEN_RECORD_ASK} The owner's notice went after its date, or is not on record, for April, May, June and July 2026. The original contractor's copy went after its date for April, May, June and July 2026. Notice record for 4417`)
+    expect(html.match(/Ask the attorney first\./g)).toHaveLength(1)
+    expect(html).not.toContain('Ask the attorney before this is signed.')
+  })
+
+  it('the box is the last thing on the page above the foot: the facts first, the question about them last', () => {
+    const at = (needle: string) => html.indexOf(needle)
+    const order = [at('data-lien-record-notices'), at('data-lien-record-lines'), at('data-lien-record-gaps'), at('data-lien-record-verdict='), at('lien-help-foot')]
+    expect(order.every((n) => n > 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+
+  it('the box is grey, never the cover sheet’s black band, and a question is set apart by its fill', () => {
+    expect(html).not.toContain('lien-help-ask')
+    expect(html).not.toContain('ASK FIRST')
+    expect(LIEN_RECORD_STYLES).toMatch(/\.lien-record-verdict \{ border: 0\.75pt solid #8a9099; border-left-width: 3pt;/)
+    expect(LIEN_RECORD_STYLES).toMatch(/\.lien-record-verdict\[data-lien-record-verdict="ask"\] \{ background: #e2e4e8;/)
+    expect(LIEN_RECORD_STYLES.split('\n').filter((l) => l.includes('lien-record-verdict')).join('')).not.toContain('#111418')
   })
 
   it('lists each notice with its months, claim, day entered and saved copy, then a row for each copy', () => {
@@ -174,8 +195,10 @@ describe('lienNoticeRecordSheetHtml · one page in front of one paper', () => {
 
   it('the clean case says so in every place', () => {
     const clean = lienNoticeRecordSheetHtml(HEAD, recordOf(CLEAN, CLEAN_MONTHS), '')
-    expect(clean).toContain('data-lien-record-verdict="clear"')
-    expect(clean).toContain(LIEN_RECORD_CLEAR)
+    // Its line sits in the same spot as a question's box, in the same family, with no fill.
+    expect(clean).toContain(`<div class="lien-record-verdict" data-lien-record-verdict="clear"><span class="lien-record-verdict-lead">${LIEN_RECORD_ON}</span> ${LIEN_RECORD_CLEAR}</div>`)
+    expect(clean.indexOf('data-lien-record-gaps')).toBeLessThan(clean.indexOf('data-lien-record-verdict='))
+    expect(clean).not.toContain('ON RECORD')
     expect(clean).toContain(LIEN_RECORD_WHOLE)
     expect(clean).toContain('data-lien-record-gaps="none"')
     expect(clean).not.toContain('Printed ')
@@ -223,7 +246,7 @@ describe('the record’s words', () => {
   })
 
   it('every sentence the page writes follows the plain-words rules', () => {
-    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ENVELOPE, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
+    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ON, LIEN_RECORD_ENVELOPE, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
@@ -255,6 +278,7 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
   it('a paper that stands takes a few lines: its copies, and one line for the rest', () => {
     const block = html.slice(html.indexOf('data-lien-record-paper="1"'), html.indexOf('data-lien-record-paper="2"'))
     expect(block).toContain('data-lien-record-verdict="clear"')
+    expect(block).toContain(`${LIEN_RECORD_ON}</span> ${LIEN_RECORD_CLEAR}`)
     expect(block).toContain('9589 0000 0000 0000 0000 24')
     expect(block).toContain(`${LIEN_RECORD_MATCH} Nothing is missing from the record.`)
     expect(block).not.toContain('lien-help-box" data-lien-record-lines')
@@ -263,11 +287,24 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
   it('a paper with a question says which months do not stand and names what is missing', () => {
     const block = html.slice(html.indexOf('data-lien-record-paper="2"'), html.indexOf('data-lien-record-paper="3"'))
     expect(block).toContain('data-lien-record-verdict="ask"')
-    expect(block).toContain('went after its date')
+    expect(block).toContain(`<span class="lien-record-verdict-lead">Ask the attorney first.</span> The owner's notice went after its date`)
     expect(block).not.toContain('days late')
     expect(block.match(/data-lien-record-gap/g)).toHaveLength(3)
     expect(block).toContain(LIEN_RECORD_MATCH)
     expect(block).not.toContain('Nothing is missing')
+  })
+
+  it('every block ends on its verdict, under the table and the lines (the owner, 2026-11-13: move the box to the bottom of the section)', () => {
+    for (const [n, next] of [['1', '2'], ['2', '3']] as const) {
+      const block = html.slice(html.indexOf(`data-lien-record-paper="${n}"`), html.indexOf(`data-lien-record-paper="${next}"`))
+      const order = [block.indexOf('data-lien-record-notices'), block.indexOf('data-lien-record-close'), block.indexOf('data-lien-record-verdict=')]
+      expect(order.every((i) => i > 0), n).toBe(true)
+      expect([...order].sort((a, b) => a - b), n).toEqual(order)
+      // Nothing of the block follows the box but the block's own end.
+      expect(block.slice(block.indexOf('data-lien-record-verdict=')).replace(/^[^>]*>.*?<\/div><\/div>/, '')).not.toContain('<li')
+    }
+    expect(html).not.toContain('lien-help-ask')
+    expect(html).not.toContain('ASK FIRST')
   })
 
   it('a job contracted with the owner gets its line and no table', () => {
