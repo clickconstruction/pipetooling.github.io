@@ -1,5 +1,5 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
-import type { BilledDatesLedger as LedgerModel, LedgerAction, LedgerRow, LedgerTone } from '../../lib/jobs/billedDatesLedger'
+import type { BilledDatesLedger as LedgerModel, LedgerAction, LedgerLienTab, LedgerRow, LedgerTone } from '../../lib/jobs/billedDatesLedger'
 
 /**
  * The dates block under a Billed / Collections row's money legend (v2.4168;
@@ -66,14 +66,14 @@ export default function BilledDatesLedger({
   evidence?: ReactNode
   /** Opens They said… / New date… (absent for roles that may not record a promise). */
   onMoney?: () => void
-  /** Opens the job's Lien window. */
-  onLienDesk?: () => void
+  /** Opens the job's Lien window, on the tab of the paper the lien line names (v2.7046); null leaves the window its own first tab. */
+  onLienDesk?: (tab: LedgerLienTab | null) => void
   compact?: boolean
 }) {
   if (ledger.rows.length === 0) return null
   const handlerFor = (action: LedgerAction | null): (() => void) | undefined => {
     if (action === 'they-said' || action === 'new-date') return onMoney
-    if (action === 'lien-desk') return onLienDesk
+    if (action === 'lien-desk') return onLienDesk ? () => onLienDesk(ledger.lienTab) : undefined
     return undefined
   }
   // A lien line's tip is whole as the kernel writes it, press and all (v2.7043, `lienRowTip`); the money's doors keep their tail.

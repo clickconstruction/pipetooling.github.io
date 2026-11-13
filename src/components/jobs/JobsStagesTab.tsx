@@ -74,7 +74,10 @@ import {
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
-import { billedPayModel } from '../../lib/jobs/billedDuePay'
+import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
+import type { PayCalendar } from '../../lib/jobs/payCalendar'
+import PayerAcceptedModal from './PayerAcceptedModal'
+import type { PayCalendarJob } from '../customers/PayCalendarModal'
 import { calendarFor, nextCutoffChip, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -494,6 +497,16 @@ const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
 const STAGES_JOB_FOCUS_TRIES = 30
 const STAGES_JOB_FOCUS_RETRY_MS = 300
 
+/** Punch list #323, PR 4: the job a row's press sits on, so the Pay calendar window can set a calendar for that job alone, or for its development's jobs. */
+function payCalendarJobOf(j: JobWithDetails): PayCalendarJob {
+  return {
+    id: j.id,
+    label: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+    developmentId: j.development_id ?? null,
+    developmentName: j.development?.name ?? null,
+  }
+}
+
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
   ref: ForwardedRef<JobsStagesTabHandle>,
@@ -819,6 +832,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   /** The payer whose "Pays in" line was pressed on a billed row (v2.7013): the Pay speeds window opens on them. */
   const [paySpeedsPayer, setPaySpeedsPayer] = useState<PaySpeedsPayer | null>(null)
+  /** Punch list #323, PR 4: the bill whose accepted day is being set, for a payer on a Pay calendar. */
+  const [payerAcceptedBill, setPayerAcceptedBill] = useState<{ invoiceId: string; billLabel: string; payerName: string; calendar: PayCalendar; wentInYmd: string | null; acceptedYmd: string | null } | null>(null)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
@@ -1018,9 +1033,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     paceFacts,
     payCalendars,
     loadPayCalendars,
+    acceptedByInvoice,
   } = useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay })
   /** The Pay calendar window's opener (punch list #323): a billed row whose payer is on a calendar opens it from the calendar's words. */
   const payCalendarModal = usePayCalendarModal()
+
   /**
    * UNFILTERED board lists — the single "what's true" derivation, as opposed
    * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
@@ -1065,8 +1082,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienRunwayFor = useCallback(
     // The runway's read is `lienCalendarRows.ts`'s (punch list #182): the Lien desk's page reads the same one.
     (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null =>
-      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()), payCalendars }),
-    [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext, payCalendars],
+      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()), payCalendars, acceptedByInvoice }),
+    [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext, payCalendars, acceptedByInvoice],
   )
   // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
   // below once the desk's reads are in (`lienStateFor`) and handed here as state, since the desk's hook sits later in
@@ -1093,7 +1110,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           <PayCutoffLine
             line={cutoff}
             payerName={rtbPayer.name}
-            onOpen={payCalendarModal && rtbPayerId ? () => payCalendarModal.openPayCalendar({ id: rtbPayerId, name: rtbPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars() }) : undefined}
+            onOpen={
+              payCalendarModal && rtbPayerId
+                ? () =>
+                    payCalendarModal.openPayCalendar(
+                      { id: rtbPayerId, name: rtbPayer.name ?? 'this customer' },
+                      { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) },
+                    )
+                : undefined
+            }
           />
         )
       }
@@ -1105,7 +1130,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const calendar = inv && payer ? calendarFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
       const ledger = buildBilledDatesLedger({
         todayYmd,
-        row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name } : null,
+        row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: acceptedByInvoice?.get(inv.id) ?? null } : null,
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
@@ -1127,7 +1152,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
       const pressedPayer = payer?.id ? { id: payer.id, name: payer.name } : null
+      // PR 4: which day the calendar counted from, as a press that sets the day they accepted the bill.
+      const acceptedYmd = inv ? (acceptedByInvoice?.get(inv.id) ?? null) : null
+      const clock = calendar && inv ? payClockFor({ billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer?.id ?? null, acceptedYmd }) : null
+      const wentIn = inv ? payClockFor({ billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer?.id ?? null }) : null
       const evidence = inv ? (
+        <>
         <BilledReliabilityLine
           line={buildReliabilityLine(
             payer?.id ? billedPaySpeeds?.receipts[payer.id] : null,
@@ -1141,7 +1171,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           // calendar they are the calendar's words, and open its window instead.
           onOpenPaySpeeds={
             pressedPayer && calendar && payCalendarModal
-              ? () => payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars() })
+              ? () => payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) })
               : pressedPayer
                 ? () => setPaySpeedsPayer(pressedPayer)
                 : undefined
@@ -1149,17 +1179,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           opens={calendar && payCalendarModal ? 'the pay calendar' : 'pay speeds'}
           payerName={payer?.name}
         />
+        {calendar && clock && canMarkPromisedPay && inv ? (
+          <button
+            type="button"
+            className="payCalendarPress"
+            data-testid="pay-clock-press"
+            title={`${payClockWords(clock)}. Press to set the day they accepted it.`}
+            onClick={(e) => {
+              e.stopPropagation()
+              setPayerAcceptedBill({ invoiceId: inv.id, billLabel: label, payerName: payer?.name ?? 'this customer', calendar, wentInYmd: wentIn?.ymd ?? null, acceptedYmd })
+            }}
+            style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+          >
+            {payClockShort(clock)}
+          </button>
+        ) : null}
+        </>
       ) : null
       return (
         <BilledDatesLedger
           ledger={ledger}
           evidence={evidence}
           onMoney={canMarkPromisedPay ? () => setPromisedPayModalJob({ jobId: row.job.id, jobLabel: label, initialYmd: promise?.promisedYmd ?? null }) : undefined}
-          onLienDesk={() => setLienInstrumentsModal({ job: row.job, invoice: inv })}
+          // v2.7046: the window opens on the paper the lien line names, not on Demand letter (punch list #325, PR 3).
+          onLienDesk={(tab) => setLienInstrumentsModal({ job: row.job, invoice: inv, initialTab: tab ?? undefined })}
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn, payCalendars, payCalendarModal, loadPayCalendars],
+    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn, payCalendars, payCalendarModal, loadPayCalendars, acceptedByInvoice],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
@@ -2614,7 +2661,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const expectedPay =
       (stage === 'billed' || stage === 'collections') && inv && payer && !jobIsScheduledInKind(job)
         ? billedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
+            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: acceptedByInvoice?.get(inv.id) ?? null },
             billedPaySpeeds,
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
@@ -4609,6 +4656,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         loadChaseTouches={loadChaseTouches}
         billedPace={billedPaceContext}
         payCalendars={payCalendars}
+        acceptedByInvoice={acceptedByInvoice}
         gcTemperatureById={gcTemperatureById}
         chaseTodayYmd={chaseTodayYmd}
         forecastTodayYmd={forecastTodayYmd}
@@ -4626,6 +4674,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         openStagesDetailJobModal={openStagesDetailJobModal}
         printBilledAwaitingPaymentReport={printBilledAwaitingPaymentReport}
       />
+      {payerAcceptedBill ? (
+        <PayerAcceptedModal
+          key={payerAcceptedBill.invoiceId}
+          {...payerAcceptedBill}
+          onClose={() => setPayerAcceptedBill(null)}
+          onSaved={() => void loadPayCalendars()}
+        />
+      ) : null}
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
         onClose={() => {
