@@ -2,7 +2,7 @@
 title: use Task Mode to see only my checklist
 category: Field Work
 roles: all
-keywords: task mode, farm mode, checklist only, today, history, gear menu, simple view, recurring tasks, exit, turn off, chip
+keywords: task mode, farm mode, map, where my tasks are, checklist only, today, history, gear menu, simple view, recurring tasks, exit, turn off, chip
 order: 45
 ---
 Task Mode strips the app down to one thing: your checklist. The mode is for anyone whose whole day is tasks.
@@ -16,6 +16,7 @@ While Task Mode is on:
 - A green strip at the very top says *☑ Task Mode · Exit*. A borrowed tablet never looks like a broken app. The way out is always on screen.
 - The header shows a single **Checklist** link. Every other page redirects back to the checklist. The Roadmap is included.
 - The checklist keeps just two tabs. **Today** is your assigned tasks for the day. **History** is what you have completed.
+- When one of your open tasks has a place, Today opens on a map called **Where my tasks are**. [See all my tasks on a map](/help/check-off-my-daily-tasks#see-all-my-tasks-on-a-map) shows how to use it.
 - Everything else comes back the moment you turn the mode off. The office tabs like Review and Manage come back. So do the Roadmap page and the `/` people finder.
 
 :::example What you see in Task Mode
