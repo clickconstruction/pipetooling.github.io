@@ -310,7 +310,8 @@ export default function ChecklistAddModal({
       // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
       const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
       setLinesText(presetLines.join('\n'))
-      setLinesOpen(presetLines.length > 0)
+      // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
+      if (presetLines.length > 0) setAddOpen('lines')
       setAsksForPhotoPick(preset?.asksForPhoto ?? null)
       setSourceTag(preset?.sourceTag?.trim() || null)
     }
