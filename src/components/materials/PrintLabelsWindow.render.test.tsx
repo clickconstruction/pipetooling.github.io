@@ -8,7 +8,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container } from '../../lib/materials/onSite'
 import type { OnSiteFindJob } from '../../lib/materials/onSiteFind'
-import PrintLabelsWindow from './PrintLabelsWindow'
+import PrintLabelsWindow, { PRINT_LABELS_WINDOW_WIDTH } from './PrintLabelsWindow'
 
 // The window's retry panel reads the signed-in user.
 vi.mock('../../hooks/useAuth', async () => {
@@ -35,6 +35,25 @@ describe('PrintLabelsWindow', () => {
     fireEvent.click(rows[0]!)
     expect(screen.getAllByTestId('labels-sheet')).toHaveLength(2)
     expect(screen.getByTestId('labels-print').textContent).toBe('Print 2 labels')
+  })
+
+  it('is wide enough for a long job name, and no name can widen it into a sideways scroll', () => {
+    const long: OnSiteFindJob = { ...mill, jobId: 'j9', label: 'JP1091 · ZZ Test lift stations and site visit with a name long enough to pass the window' }
+    renderWithProviders(<PrintLabelsWindow jobs={[oak, long]} loading={false} failure={quiet} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog', { name: 'Print labels' })
+    expect(PRINT_LABELS_WINDOW_WIDTH).toBeGreaterThanOrEqual(600)
+    expect(dialog.style.width).toBe(`min(${PRINT_LABELS_WINDOW_WIDTH}px, 100%)`)
+    // The window's column and the list's column are held to the window's own width, and it never scrolls sideways.
+    expect(dialog.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    expect(dialog.style.overflowX).toBe('hidden')
+    const rows = screen.getAllByTestId('print-labels-job')
+    expect((rows[0]!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    // The whole name reads, on as many lines as it needs; the count beside it stays on one.
+    const [name, count] = [...rows[1]!.children] as HTMLElement[]
+    expect(name!.textContent).toBe(long.label)
+    expect(name!.style.whiteSpace).toBe('')
+    expect(name!.style.textOverflow).toBe('')
+    expect(count!.style.whiteSpace).toBe('nowrap')
   })
 
   it('skips the question for one job, and opens straight on a row’s job', () => {

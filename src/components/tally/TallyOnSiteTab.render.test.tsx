@@ -28,6 +28,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   retireContainer: vi.fn(),
   unretireContainer: vi.fn(),
   setOnSiteErrorHandler: vi.fn(),
+  refreshJob: vi.fn(),
 }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')

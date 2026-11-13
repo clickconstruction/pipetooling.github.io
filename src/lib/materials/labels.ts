@@ -79,3 +79,53 @@ export function labelRows(lines: ReadonlyArray<LabelLine>, minRows = LABEL_MIN_R
   const blanks = Math.max(blankAfter, minRows - filled.length)
   return [...filled, ...Array.from({ length: blanks }, () => null)]
 }
+
+/**
+ * The letters and number a name starts with (v2.7195): `G12` of `G12 COPPER 90`, `G24B` of `G24B`. One letter after
+ * the number stays, since G24 and G24B are two boxes. Null when the name does not start that way (`CONCRETE MIX`).
+ */
+export function labelPlate(name: string): string | null {
+  const m = /^([A-Z]+\d+[A-Z]?)(?=\s|$)/i.exec(name.trim())
+  return m ? m[1]!.toUpperCase() : null
+}
+
+type NamedBox = { id: string; label: string; retiredAt?: string | null }
+
+/**
+ * What each label prints in large type (the owner's ask, 2026-11-13): the letters and number alone, without the
+ * words typed after them, so a label stays true when what the box holds changes. Two names print whole: one with no
+ * letters and number to print, and one whose short form another live box in the list shares, since two labels that
+ * read the same would send a person to the wrong box. The QR is the box's own either way.
+ */
+export function labelPrintNames(containers: ReadonlyArray<NamedBox>): Map<string, string> {
+  const live = containers.filter((c) => !c.retiredAt)
+  const shared = new Map<string, number>()
+  for (const c of live) {
+    const plate = labelPlate(c.label) ?? c.label.trim().toUpperCase()
+    shared.set(plate, (shared.get(plate) ?? 0) + 1)
+  }
+  const out = new Map<string, string>()
+  for (const c of containers) {
+    const plate = labelPlate(c.label)
+    out.set(c.id, plate && (shared.get(plate) ?? 0) <= 1 ? plate : c.label)
+  }
+  return out
+}
+
+/** One box's printed name out of `labelPrintNames`, the whole name when the box is not in the list. */
+export function labelPrintName(names: ReadonlyMap<string, string>, box: { id: string; label: string }): string {
+  return names.get(box.id) ?? box.label
+}
+
+/**
+ * The line under the pick when a ticked label prints shorter than its name, so nobody is surprised at the printer.
+ * Null when every ticked label prints its whole name.
+ */
+export function shortenedLabelsNote(picked: ReadonlyArray<{ id: string; label: string }>, names: ReadonlyMap<string, string>): string | null {
+  const short = picked.filter((c) => labelPrintName(names, c) !== c.label)
+  const first = short[0]
+  if (!first) return null
+  const more = short.length - 1
+  const lead = `${first.label} prints as ${labelPrintName(names, first)}${more > 0 ? `, and ${more} more like it` : ''}.`
+  return `${lead} A label carries the letter and number alone.`
+}
