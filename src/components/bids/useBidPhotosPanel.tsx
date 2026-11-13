@@ -7,6 +7,10 @@
  * the sweep files it in Drive, so a bid folder the app cannot file into costs a delay and never a photo; the panel
  * says why when that is so.
  *
+ * With no signal (PR 8) a shot is kept on the phone and its tile says so; the press then goes through the outbox as a
+ * `bid-photos` press, the window counts what still waits on the phone, and it reads again when the press lands. A
+ * window opened with no signal still offers the camera under the read that failed.
+ *
  * The read is the `bid-photos` function's (`lib/bids/bidPhotosIo.ts`); a read that fails draws `OfflineRetryPanel`
  * with its reason. The rules are `lib/bids/bidPhotoWindow.ts`.
  */
@@ -16,16 +20,21 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { CameraGlyph } from '../materials/PhotoPress'
 import { useAuth } from '../../hooks/useAuth'
+import { useOutbox } from '../../hooks/useOutbox'
+import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from '../../hooks/useOutboxReplay'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useShotTileEngine } from '../../hooks/useShotTiles'
 import { useToastContext } from '../../contexts/ToastContext'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { isImpersonationSessionActive } from '../../lib/impersonationSession'
+import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { drivePhotoUrl } from '../../lib/photos/jobPhotos'
 import { fileTimeOrNow } from '../../lib/photos/shotTiles'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { supabaseBidPhotosWindowIo, type BidPhotosRead, type BidPhotosWindowIo } from '../../lib/bids/bidPhotosIo'
 import { BidPhotoFull, BidPhotoThumb } from './BidPhotoPictures'
 import {
@@ -38,7 +47,14 @@ import {
   gridHeadWords,
   gridTileWords,
   heldFilesWords,
+  keptCount,
+  keptNextWords,
+  landedBidPhotos,
   newestFirst,
+  onThisPhoneWords,
+  photosOnThisPhone,
+  queuedBidPhotos,
+  queuedWords,
   sortPickedFiles,
   tileStatusWords,
   whereWords,
@@ -53,6 +69,8 @@ export interface BidPhotosWindowBid {
 }
 
 const TILE = 132
+/** Where a kept press's Fix opens: the board the bid's camera is on. */
+const BID_BOARD_PATH = '/bids?tab=bid-board'
 const sub: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }
 const headRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }
 const headCount: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.9375rem' }
@@ -138,8 +156,9 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
     jobHasFolder: read?.folder ? read.folder.kind === 'ready' : null,
     tile: (base) => ({ ...base, name: '' }),
     multiple: true,
-    // No shot is kept on the phone yet: a send lost to the signal keeps its tile with Retry.
-    sendErrorName: 'BidPhotoKeptLater',
+    // A send lost to the signal keeps the shot on the phone, to go with the press (PR 8). A session whose queue is
+    // off (a view-as) keeps nothing: the tile fails with Retry, as before.
+    sendErrorName: isImpersonationSessionActive() ? 'BidPhotoNotKept' : 'PhotoSendError',
     noJobWords: 'That bid is gone.',
     pickedAt: (file) => fileTimeOrNow(file),
     testId: 'bid-photos-camera',
@@ -163,6 +182,18 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
     }
   }, [io, bid.id, tick, enabled])
 
+  // This bid's Add press landed from the phone's queue: the window reads again. The board counts again by itself.
+  useEffect(() => {
+    if (!enabled) return
+    const onLanded = (e: Event) => {
+      if (landedBidPhotos((e as CustomEvent<OutboxLandedDetail>).detail) === bid.id) setTick((t) => t + 1)
+    }
+    window.addEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    return () => window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
+  }, [bid.id, enabled])
+
+  const presses = useOutbox()
+  const onPhoneLine = onThisPhoneWords(photosOnThisPhone(presses, bid.id), phone)
   const photos = useMemo(() => newestFirst(read?.photos ?? []), [read])
   const today = todayYmdInAppTz()
   const press = addPress({ tiles: host.tiles, adding, folder: read?.folder ?? null })
@@ -172,6 +203,7 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
   const holdWhy = read?.folder?.hold ?? null
   const heldLine = heldFilesWords(held)
   const canAdd = !readOnly
+  const keptLine = keptNextWords({ tiles: host.tiles, pressLabel: press.label, phone })
 
   /** Files from a pick or a drop: the pictures go to the engine through its own handler, the rest are named. */
   const hand = useCallback(
@@ -206,6 +238,29 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
     if (press.dead) return
     setAdding(true)
     try {
+      // A shot kept on the phone with no signal (PR 8): the whole press goes through the outbox. The replay sends the
+      // kept shots first, then writes each name and `added_at`, the same writes as the press below.
+      if (keptCount(host.tiles) > 0) {
+        if (!authUserId) {
+          showToast('Sign in again to add the photos.', 'warning')
+          return
+        }
+        const queued = queuedBidPhotos(host.tiles, profileName?.trim() || '')
+        const outcome = await pressThroughOutbox({ kind: 'bid-photos', userId: authUserId, pressedAt: Date.now(), payload: { bidId: bid.id, photos: queued }, about: bid.label, door: BID_BOARD_PATH }, { forceQueue: true })
+        if (outcome.kind === 'queued') {
+          // The press owns these shots now: their tiles leave the form and nothing is discarded. A tile that failed stays.
+          host.clear(queued.map((p) => p.id))
+          setHeld([])
+          showToast(queuedWords(queued.length, phone), 'success')
+        } else if (outcome.kind === 'landed') {
+          host.clear(queued.map((p) => p.id))
+          setTick((t) => t + 1)
+          onChanged?.()
+        } else {
+          showToast(outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error, 'The photos did not add.'), 'warning')
+        }
+        return
+      }
       const writes = addWrites(host.tiles)
       const out = await io.add(writes)
       const failed = new Set(out.failedIds)
@@ -337,7 +392,7 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
             {host.tiles.length ? (
               <section aria-label="New photos" style={{ display: 'grid', gap: '0.6rem' }}>
                 {host.tiles.map((t) => {
-                  const words = tileStatusWords(t)
+                  const words = tileStatusWords(t, phone)
                   return (
                     <div key={t.id} style={shotCard} data-shot-tile={t.status}>
                       <img src={t.previewUrl} alt="" style={shotImg} />
@@ -363,6 +418,11 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
                     </div>
                   )
                 })}
+                {keptLine ? (
+                  <p style={{ ...S.warn, margin: 0 }} role="status" data-bid-photos-kept="">
+                    {keptLine}
+                  </p>
+                ) : null}
                 {whereLine ? (
                   <div style={where} data-bid-photos-where="">
                     <span>{whereLine.lead}</span>
@@ -377,8 +437,18 @@ export function useBidPhotosPanel({ bid, onClose, onChanged, io: ioProp, enabled
               </p>
             ) : null}
 
+            {onPhoneLine ? (
+              <p style={{ ...S.warn, margin: 0 }} role="status" data-bid-photos-on-phone="">
+                {onPhoneLine}
+              </p>
+            ) : null}
+
             {failure ? (
-              <OfflineRetryPanel failure={failure} onRetry={() => setTick((t) => t + 1)} surface="bid-photos" idempotent />
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                <OfflineRetryPanel failure={failure} onRetry={() => setTick((t) => t + 1)} surface="bid-photos" idempotent />
+                {/* With no signal the photos cannot be read, and one can still be taken: it waits on the phone. */}
+                {failure.kind === 'network' && canAdd && host.tiles.length === 0 ? addControls : null}
+              </div>
             ) : read == null ? (
               <p style={sub}>{BID_PHOTO_WORDS.reading}</p>
             ) : photos.length === 0 ? (

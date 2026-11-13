@@ -4,6 +4,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeWeek } from './BridgeWeek'
 import type { WeekCallModel, WeekMove } from '../../lib/bridge/weekCall'
+import type { MoneyLine } from '../../lib/bridge/moneyCard'
 
 // Made-up numbers: the model is built by hand so the smoke reads the drawing, not the kernel.
 
@@ -14,6 +15,11 @@ const tiles: WeekCallModel['tiles'] = [
   { id: 'cash', label: 'Cash low point, 8 weeks', value: '$12.0k', sub: 'On Nov 27. The floor is $10.0k.', tone: 'green' },
   { id: 'step', label: 'Slowest step', value: 'Bill', sub: '7.5 weeks to bill what is already finished.', tone: 'red' },
 ]
+
+// The two balances, as `moneyCard.ts` would word them.
+const cash: MoneyLine = { id: 'cash', label: 'Cash balance', value: '$12.0k', sub: 'Stays over the $10.0k floor. Low point $11.0k on Nov 27.', tone: 'green', runway: '8 days of runway' }
+const accrual: MoneyLine = { id: 'accrual', label: 'Accrual balance', value: '$64.0k', sub: 'Adds $80.0k owed to you. Takes off $28.0k you owe, subs included.', tone: 'plain', runway: '42 days of runway' }
+const money = { cash, accrual, foot: 'Runway counts payroll and overhead, $1.5k a day.' }
 
 const propose: WeekCallModel = {
   state: 'propose',
@@ -51,9 +57,9 @@ const friday: WeekCallModel = {
 }
 
 describe('BridgeWeek', () => {
-  it('draws the three tiles, the call and its moves, and records what is left on', () => {
+  it('draws the tiles, the call and its moves, and records what is left on', () => {
     const onRecord = vi.fn()
-    renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.getByTestId('bridge-week-tile-step').textContent).toContain('Bill')
     expect(screen.getByTestId('bridge-week-tile-cash').textContent).toContain('$12.0k')
     expect(screen.getByTestId('bridge-week-lead').textContent).toBe('Bill is the slowest step.')
@@ -85,7 +91,7 @@ describe('BridgeWeek', () => {
     // Made-up accounts; the first move is proposed for Dana's account.
     const people = [{ id: 'u-dana', name: 'Dana Reyes' }, { id: 'u-jorge', name: 'Jorge Luna' }, { id: 'u-sam', name: 'Sam Holt' }]
     const withIds: WeekCallModel = { ...propose, card: { ...propose.card, moves: propose.card.moves.map((m, i) => (i === 0 ? { ...m, whoId: 'u-dana' } : m)) } }
-    renderWithProviders(<BridgeWeek model={withIds} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} people={people} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={withIds} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} people={people} />)
     // The second move was proposed for a name with no account: its chip says so.
     expect(screen.getByRole('button', { name: /Sam does: Price the 4 jobs/ }).getAttribute('title')).toBe('No account, so this move reaches nobody’s Needs you.')
     expect(screen.getByRole('button', { name: /Dana does: Bill the 11 finished jobs/ }).getAttribute('title')).toBeNull()
@@ -107,14 +113,14 @@ describe('BridgeWeek', () => {
 
   it('takes a note with the call, and shows it under a call that stands (v2.6840)', () => {
     const onRecord = vi.fn()
-    const { unmount } = renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    const { unmount } = renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.queryByTestId('bridge-week-note-input')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add a note ›' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'A note on the call' }), { target: { value: '  Ridgeway pays on the 20th if billed by Friday.  ' } })
     fireEvent.click(screen.getByTestId('bridge-week-record'))
     expect(onRecord.mock.calls[0]?.[2]).toBe('Ridgeway pays on the 20th if billed by Friday.')
     unmount()
-    renderWithProviders(<BridgeWeek model={{ ...friday, card: { ...friday.card, note: 'Ridgeway pays on the 20th if billed by Friday.' } }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={{ ...friday, card: { ...friday.card, note: 'Ridgeway pays on the 20th if billed by Friday.' } }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.getByTestId('bridge-week-note').textContent).toBe('Note. Ridgeway pays on the 20th if billed by Friday.')
     expect(screen.queryByRole('button', { name: 'Add a note ›' })).toBeNull()
   })
@@ -122,7 +128,7 @@ describe('BridgeWeek', () => {
   it('brings the next move on when one is taken off, and keeps the one taken off with its way back (v2.6840)', () => {
     const four: WeekCallModel = { ...propose, card: { ...propose.card, moves: [...propose.card.moves, move({ title: 'Mark a job ready to bill the day it finishes.' })] } }
     const onRecord = vi.fn()
-    renderWithProviders(<BridgeWeek model={four} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={four} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.getAllByTestId('bridge-week-move').length).toBe(3)
     expect(screen.queryByText('Mark a job ready to bill the day it finishes.')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Take off the call: Price the 4 jobs/ }))
@@ -135,10 +141,9 @@ describe('BridgeWeek', () => {
 
   it('says under the cash tile which account is left out, and the sentence opens the list', () => {
     const note = 'Leaves out Accounts Payable 2222, $12.4k.'
-    const left: WeekCallModel = { ...propose, tiles: tiles.map((t) => (t.id === 'cash' ? { ...t, note } : t)) }
     const onCashNote = vi.fn()
     const onPickStep = vi.fn()
-    renderWithProviders(<BridgeWeek model={left} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={onPickStep} onCashNote={onCashNote} />)
+    renderWithProviders(<BridgeWeek money={{ ...money, cash: { ...cash, note } }} onAccrual={() => {}} model={propose} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={onPickStep} onCashNote={onCashNote} />)
     const press = screen.getByTestId('bridge-week-tile-note')
     expect(press.textContent).toBe(note)
     fireEvent.click(press)
@@ -148,14 +153,39 @@ describe('BridgeWeek', () => {
     expect(onPickStep).toHaveBeenCalledTimes(1)
   })
 
+  it('reads Made last week, Slowest step, then the two balances with their runway (#334, PR 6)', () => {
+    const onAccrual = vi.fn()
+    const { unmount } = renderWithProviders(<BridgeWeek money={money} onAccrual={onAccrual} model={propose} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    expect(before(screen.getByTestId('bridge-week-tile-made'), screen.getByTestId('bridge-week-tile-step'))).toBe(true)
+    expect(before(screen.getByTestId('bridge-week-tile-step'), screen.getByTestId('bridge-week-tile-money'))).toBe(true)
+    expect(screen.getByTestId('bridge-week-tile-cash').textContent).toContain('Cash balance')
+    expect(screen.getByTestId('bridge-week-runway-cash').textContent).toBe('8 days of runway')
+    expect(screen.getByTestId('bridge-week-runway-accrual').textContent).toBe('42 days of runway')
+    expect(screen.getByTestId('bridge-week-runway-foot').textContent).toBe('Runway counts payroll and overhead, $1.5k a day.')
+    // The accrual balance is a press that says its whole reading, and opens Money owed.
+    const press = screen.getByTestId('bridge-week-tile-accrual')
+    expect(press.getAttribute('aria-label')).toBe('Accrual balance $64.0k. 42 days of runway. Adds $80.0k owed to you. Takes off $28.0k you owe, subs included. Open Money owed.')
+    fireEvent.click(press)
+    expect(onAccrual).toHaveBeenCalledTimes(1)
+    unmount()
+    // A week cash leads: the kernel still hands its red band as a wide cash tile, and the page does not draw it.
+    const band: WeekCallModel = { ...propose, cashLeads: true, tiles: [{ id: 'cash', label: 'Cash comes first this week', value: 'Under the floor today', sub: 'Cash goes under the $10.0k floor today.', tone: 'red', wide: true }, ...tiles.filter((t) => t.id !== 'cash')] }
+    renderWithProviders(<BridgeWeek money={{ cash: { ...cash, runway: undefined }, accrual: { ...accrual, runway: undefined }, foot: '' }} onAccrual={() => {}} model={band} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    expect(screen.getByTestId('bridge-week').textContent).not.toContain('Under the floor today')
+    expect(screen.getAllByTestId(/^bridge-week-tile-(made|step|money)$/).length).toBe(3)
+    // With no burn read, no runway is printed and the foot is left off.
+    for (const id of ['bridge-week-runway-cash', 'bridge-week-runway-accrual', 'bridge-week-runway-foot']) expect(screen.queryByTestId(id)).toBeNull()
+  })
+
   it('draws the strip of pipe under the tiles in a usual week, and under the card in a week cash leads (PR 3)', () => {
     const strip = <div data-testid="the-strip">pipe</div>
-    const { unmount } = renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
+    const { unmount } = renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={propose} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
     const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
     expect(before(screen.getByTestId('bridge-week-tile-step'), screen.getByTestId('the-strip'))).toBe(true)
     expect(before(screen.getByTestId('the-strip'), screen.getByTestId('bridge-week-card'))).toBe(true)
     unmount()
-    renderWithProviders(<BridgeWeek model={{ ...propose, cashLeads: true }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={{ ...propose, cashLeads: true }} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} />)
     expect(screen.getAllByTestId('the-strip').length).toBe(1)
     expect(before(screen.getByTestId('bridge-week-card'), screen.getByTestId('the-strip'))).toBe(true)
   })
@@ -164,7 +194,7 @@ describe('BridgeWeek', () => {
     const strip = <div data-testid="the-strip">pipe</div>
     const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
     for (const model of [propose, { ...propose, cashLeads: true }]) {
-      const { unmount } = renderWithProviders(<BridgeWeek model={model} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} stripSide />)
+      const { unmount } = renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={model} recording={false} answering={false} onRecord={() => {}} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} strip={strip} stripSide />)
       expect(screen.getAllByTestId('the-strip').length).toBe(1)
       // The pipe and the card share one row: the pipe's column comes first.
       const row = screen.getByTestId('the-strip').parentElement?.parentElement
@@ -177,7 +207,7 @@ describe('BridgeWeek', () => {
 
   it('never records an empty call', () => {
     const onRecord = vi.fn()
-    renderWithProviders(<BridgeWeek model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={propose} recording={false} answering={false} onRecord={onRecord} onAnswer={() => {}} onPickStep={() => {}} onCashNote={() => {}} />)
     for (const b of screen.getAllByRole('button', { name: /Take off the call/ })) fireEvent.click(b)
     const press = screen.getByTestId('bridge-week-record') as HTMLButtonElement
     expect(press.disabled).toBe(true)
@@ -188,7 +218,7 @@ describe('BridgeWeek', () => {
 
   it('asks on Friday and takes the answer', () => {
     const onAnswer = vi.fn()
-    renderWithProviders(<BridgeWeek model={friday} recording={false} answering={false} onRecord={() => {}} onAnswer={onAnswer} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={friday} recording={false} answering={false} onRecord={() => {}} onAnswer={onAnswer} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.getByTestId('bridge-week-lead').textContent).toBe('Did Bill move?')
     expect(screen.queryByTestId('bridge-week-record')).toBeNull()
     expect(screen.getByTestId('bridge-week-move').textContent).toContain('done')
@@ -199,7 +229,7 @@ describe('BridgeWeek', () => {
   it('asks for the answer an earlier call never got, beside this week’s proposal', () => {
     const onAnswer = vi.fn()
     const withLast: WeekCallModel = { ...propose, last: { linkName: 'Collect', text: 'The last call was Collect. Did it move?', tone: 'amber', asks: true, consequence: '', moves: [{ title: 'Chase the 6 late invoices.', who: 'Dana', doneText: 'done', done: 'yes' }] } }
-    renderWithProviders(<BridgeWeek model={withLast} recording={false} answering={false} onRecord={() => {}} onAnswer={onAnswer} onPickStep={() => {}} onCashNote={() => {}} />)
+    renderWithProviders(<BridgeWeek money={money} onAccrual={() => {}} model={withLast} recording={false} answering={false} onRecord={() => {}} onAnswer={onAnswer} onPickStep={() => {}} onCashNote={() => {}} />)
     expect(screen.getByTestId('bridge-week-last').textContent).toContain('The last call was Collect. Did it move?')
     expect(screen.queryByTestId('bridge-week-how')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'It moved' }))

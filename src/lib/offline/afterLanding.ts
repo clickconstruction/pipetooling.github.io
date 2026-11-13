@@ -1,4 +1,4 @@
-import type { CounterTicketPayload, FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress, TaskPhotoPayload } from './outbox'
+import type { BidPhotosPayload, CounterTicketPayload, FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress, TaskPhotoPayload } from './outbox'
 import { announceTickets } from '../tickets/ticketEvents'
 import { announceTaskPhotos } from '../taskPhotos'
 import { checklistAnswerWrites, type ChecklistAnswerWrite } from '../photos/reportPhotoChecklist'
@@ -84,6 +84,16 @@ export async function afterLanding(press: OutboxPress, result: unknown, io?: Aft
         // a list that is not mounted hears nothing, and loses nothing: it reads on its next open
       }
     }
+    return
+  }
+  if (press.kind === 'bid-photos') {
+    // The replay wrote the rows and the landing added them; the bytes go. The board and an open window hear the
+    // landing itself (`OUTBOX_LANDED_EVENT`) and read again. A bid photo writes no thread line. Best effort.
+    const payload = press.payload as BidPhotosPayload
+    const run = io ?? (await defaultIo().catch(() => null))
+    if (!run) return
+    const sent = (payload.photos ?? []).filter((p) => p.sent).map((p) => p.id)
+    if (run.dropKeptPhotos && sent.length > 0) await run.dropKeptPhotos(sent).catch(() => undefined)
     return
   }
   if (press.kind === 'task-photo') {
