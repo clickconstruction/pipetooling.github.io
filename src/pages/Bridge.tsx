@@ -522,7 +522,10 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const v = await loadEstimatesSent(supabase, { leftOut: leftOutRules ?? [] })
+        // The viewer's ZZ switch, read the way the bids read it: a set leaves the ZZ test estimates out (punch list #334, PR 3).
+        const zzTestJobIds = await readZzSwitchIds()
+        if (cancelled) return
+        const v = await loadEstimatesSent(supabase, { leftOut: leftOutRules ?? [], zzTestJobIds })
         if (!cancelled) setEstimatesSent(v)
       } catch {
         if (!cancelled) setEstimatesSent(null)
@@ -531,7 +534,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, leftOutRules])
+  }, [data, leftOutRules, readZzSwitchIds])
   const estimateWins = useMemo(() => (data && estimatesSent ? buildEstimateWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, estimates: estimatesSent }) : null), [data, estimatesSent])
 
   // Bids through theirs, the same way: every bid ever sent and the jobs made from them.

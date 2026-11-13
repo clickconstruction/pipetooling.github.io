@@ -74,6 +74,21 @@ The line under the buttons says who set the place and when. A machine moves and 
 
 With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
 
+## Add a place to a task that has none
+
+Some tasks come with no place. If you are standing at the task, you can add its place yourself.
+
+1. Tap the task to open it.
+2. Tap **Standing at this task? Add its place**. Your phone looks up where you are.
+3. Read the line that says how sure your phone is. Type a name, like *Shop bay 2*.
+4. Tap {{button:blue|Add this place}}.
+
+The next person who gets this task sees the place and can get directions.
+
+- Your phone has to be sure within about 150 feet. If it is not, step out into the open and tap **Try again**.
+- This saves where you stand as the task's place. The app does not follow you after that.
+- A task that already has a place does not show this line. If its place is wrong, say so in a note.
+
 ## See all my tasks on a map
 
 When an open task of yours has a place, the Today tab opens on a map. The map is called **Where my tasks are**. It sits above the list, in Task Mode too.

@@ -12,6 +12,8 @@ const db = vi.hoisted(() => ({
   reads: [] as string[],
   updates: [] as Array<{ table: string; cols: Row; id: string }>,
   updateError: null as null | { message: string },
+  rpcs: [] as Array<{ fn: string; args: Row }>,
+  rpcError: null as null | { message: string },
 }))
 
 vi.mock('../supabase', () => {
@@ -38,10 +40,18 @@ vi.mock('../supabase', () => {
     }
     return b
   }
-  return { supabase: { from: (table: string) => builder(table) } }
+  return {
+    supabase: {
+      from: (table: string) => builder(table),
+      rpc: (fn: string, args: Row) => {
+        db.rpcs.push({ fn, args })
+        return Promise.resolve({ error: db.rpcError })
+      },
+    },
+  }
 })
 
-import { loadRecentTaskPlaces, loadRoadmapTaskPlace, loadTaskPlacesForItems, saveRoadmapTaskPlace } from './taskPlaceIo'
+import { addTaskPlaceFromTheSpot, loadRecentTaskPlaces, loadRoadmapTaskPlace, loadTaskPlacesForItems, saveRoadmapTaskPlace } from './taskPlaceIo'
 
 const place = (name: string, lat: number, at = '2026-11-03T15:00:00Z') => ({ place_name: name, place_lat: lat, place_lng: -98.3, place_accuracy_m: null, place_set_by: 'u1', place_set_at: at })
 const none = { place_name: null, place_lat: null, place_lng: null, place_accuracy_m: null, place_set_by: null, place_set_at: null }
@@ -51,6 +61,8 @@ beforeEach(() => {
   db.reads = []
   db.updates = []
   db.updateError = null
+  db.rpcs = []
+  db.rpcError = null
 })
 
 describe('loadTaskPlacesForItems', () => {
@@ -136,5 +148,18 @@ describe('a roadmap task\'s place', () => {
     expect(db.updates[1]!.cols).toEqual(none)
     db.updateError = { message: 'new row violates row-level security policy' }
     expect(await saveRoadmapTaskPlace('t1', null, 'u9')).toContain('row-level security')
+  })
+})
+
+describe('addTaskPlaceFromTheSpot (PR 8)', () => {
+  it('makes the one call, with the margin as whole metres and an empty name as none', async () => {
+    expect(await addTaskPlaceFromTheSpot('i1', { lat: 29.55, lng: -98.28, accuracyM: 6.4 }, '  ')).toBeNull()
+    expect(db.rpcs).toEqual([{ fn: 'add_task_place_from_the_spot', args: { p_instance_id: 'i1', p_lat: 29.55, p_lng: -98.28, p_accuracy_m: 6, p_name: null } }])
+  })
+
+  it('hands back the database\'s own reason when it refuses', async () => {
+    db.rpcError = { message: 'This task already has a place. If it is wrong, say so in a note.' }
+    expect(await addTaskPlaceFromTheSpot('i1', { lat: 29.55, lng: -98.28, accuracyM: 6 }, 'Shop bay 2')).toBe('This task already has a place. If it is wrong, say so in a note.')
+    expect(db.rpcs[0]!.args.p_name).toBe('Shop bay 2')
   })
 })

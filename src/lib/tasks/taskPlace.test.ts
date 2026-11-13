@@ -13,10 +13,13 @@ import {
   taskTitlePlain,
   cleanTaskPlaceName,
   isPoorTaskPlaceFix,
+  isTaskPlaceAddFix,
   isTaskPlacePoint,
   matchingTaskPlace,
   recentTaskPlaces,
   taskPlaceAccuracyWords,
+  taskPlaceAddNoFixWords,
+  taskPlaceAddPoorWords,
   taskPlaceColumns,
   taskPlaceDirection,
   taskPlaceDraft,
@@ -354,6 +357,29 @@ describe('the leader\'s map (PR 7)', () => {
     expect(taskPlacePersonColor(7)).toBe(TASK_PLACE_PERSON_COLORS[7])
     expect(taskPlacePersonColor(8)).toBe(TASK_PLACE_PERSON_COLORS[0])
     expect(new Set(TASK_PLACE_PERSON_COLORS).size).toBe(8)
+  })
+})
+
+describe('the doer adds a missing place (PR 8)', () => {
+  it('keeps a reading only when the phone gave a margin inside the limit the database also holds', () => {
+    expect(isTaskPlaceAddFix(6)).toBe(true)
+    expect(isTaskPlaceAddFix(46)).toBe(true)
+    expect(isTaskPlaceAddFix(46.4)).toBe(true)
+    expect(isTaskPlaceAddFix(46.6)).toBe(false)
+    expect(isTaskPlaceAddFix(121)).toBe(false)
+    expect(isTaskPlaceAddFix(null)).toBe(false)
+    expect(isTaskPlaceAddFix(-1)).toBe(false)
+  })
+
+  it('says how wide a reading was when it is not kept', () => {
+    expect(taskPlaceAddPoorWords(121)).toBe('Your phone is only sure within 400 ft. Try again in the open.')
+    expect(taskPlaceAddPoorWords(null)).toBe('Your phone did not say how sure it is. Try again in the open.')
+  })
+
+  it('a reading that did not come says what would make the press work, with no map to fall back on', () => {
+    expect(taskPlaceAddNoFixWords('refused')).toBe('Location is off for this app. To add a place from where you stand, allow location in the phone’s settings.')
+    expect(taskPlaceAddNoFixWords('none')).toBe('This device gives no location, so it cannot add a place from where you stand.')
+    expect(taskPlaceAddNoFixWords('failed')).toBe('Could not find you. Try again in the open.')
   })
 })
 
