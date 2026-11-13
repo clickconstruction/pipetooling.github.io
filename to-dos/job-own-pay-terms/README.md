@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the report, the gap list, the plan and the mock-up · nothing is built
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, built on claude/job-pay-calendar-door · PR 2, the mark, next
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,7 +12,7 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: the owner's calls below. With a yes on call 1, PR 1 (the door) and PR 2 (the mark) are two small PRs with no migration. Before any build, someone sets the first real calendars, since none is set.
+next: PR 2, the mark. Then the owner's calls 2 to 5. Someone still sets the first real calendars, since none is set.
 size: M as a train of five (S · S · S · M · M); PRs 1 and 2 carry the ask
 blocker: the owner's word. PRs 4 and 5 each carry a migration and wait on calls 3 and 4.
 opinion: build PRs 1 and 2 — the override exists and nobody can find it; hold PRs 4 and 5 until a real contract needs them
@@ -193,6 +193,12 @@ stays.
 For one bill with a date of its own, the nearest thing today is the promised date on the row. It
 wins the expected day. It is kept per job, so it moves every open bill on that job.
 
+**Corrected 2026-11-13, on the walk for PR 1.** The Their paper door did not draw where this
+section sends a person. The Pay calendar window's provider sat below the job window's and Bill
+Customer's, so the sheet opened from either found no opener and showed no press. Until PR 1 is
+live, the one way to a job's own calendar is the way around in the paragraph above: set the
+payer's, press the words on the job's row, save the job's own.
+
 ## The gaps
 
 | # | Gap | Size | Migration |
@@ -228,6 +234,14 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
 `JobsStagesTab.tsx`, `TheirPaperSheet.tsx`, `cutoffsComing.ts`, `moneyWaiting.ts`,
 `arCustomerRollup.ts`, `billedDuePay.ts`, the job form's fact rows, and the guide
 `set-a-payers-pay-calendar.md`. None is one of the four files the other session is moving.
+
+## Where it stands
+
+- **PR 1, the door**, built 2026-11-13 after the owner's *Yes, build both*: the job window's
+  **Pay calendar** row, Pay speeds carrying the row's job, the Their paper door carrying the
+  development, `calendarSourceFor`, and every screen reading again after a save. The walk found
+  the provider fault above and the PR fixes it. Walked on the local app with no save made.
+- **PR 2, the mark**, is next. PRs 3 to 5 wait on the calls below.
 
 ## How to verify
 

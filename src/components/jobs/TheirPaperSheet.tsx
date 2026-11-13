@@ -23,6 +23,7 @@ import {
   type TheirPaperTermKey,
 } from '../../lib/jobs/theirPaper'
 import { saveTheirPaper } from '../../lib/jobs/theirPaperIo'
+import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type TheirPaperSheetProps = {
@@ -33,6 +34,8 @@ export type TheirPaperSheetProps = {
   job: { id: string; num: string; partyName: string }
   /** Who pays this job's bills (punch list #323, PR 7): with one, the sheet offers the press that sets their Pay calendar, carrying this paper's clause. */
   payer?: { id: string; name: string } | null
+  /** The job as the Pay calendar window names it, with its development (punch list #341), so the window can offer the development's other jobs. Absent, the window reads *Job <number>*. */
+  payCalendarJob?: PayCalendarJob | null
   /** The record being edited, or null for a new one. */
   existing: TheirPaperRecord | null
   overlayZIndex?: number
@@ -241,7 +244,7 @@ export default function TheirPaperSheet(p: TheirPaperSheetProps) {
                 const payer = p.payer
                 if (!payer) return
                 payCalendarModal.openPayCalendar(payer, {
-                  job: { id: p.job.id, label: `Job ${p.job.num}` },
+                  job: p.payCalendarJob ?? { id: p.job.id, label: `Job ${p.job.num}` },
                   initial: { clause: draft.terms.pay_calendar.clause, words: draft.terms.pay_calendar.words },
                   zIndex: (p.overlayZIndex ?? 1300) + 10,
                 })

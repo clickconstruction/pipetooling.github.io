@@ -370,6 +370,9 @@ function AppContent() {
                           <NewProjectModalProvider>
                             <EditCustomerModalProvider>
                               <EditProjectModalProvider>
+                                {/* Above Bill Customer and the job window (punch list #341): both open their own windows from
+                                    providers, and a Pay calendar press inside either found no opener while this sat below them. */}
+                                <PayCalendarModalProvider>
                                 <BillCustomerModalProvider>
                                 <TestReportModalProvider>
                                   <JobDetailOpenerBridgeProvider>
@@ -379,7 +382,6 @@ function AppContent() {
                                         <JobsListCacheProvider>
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
-                                              <PayCalendarModalProvider>
                                               <CustomerProfileModalProvider>
                                               <JobHoursStoryModalProvider>
                                               <UserReviewModalProvider>
@@ -389,7 +391,6 @@ function AppContent() {
                                               </UserReviewModalProvider>
                                               </JobHoursStoryModalProvider>
                                               </CustomerProfileModalProvider>
-                                              </PayCalendarModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>
                                         </JobsListCacheProvider>
@@ -399,6 +400,7 @@ function AppContent() {
                                   </JobDetailOpenerBridgeProvider>
                                 </TestReportModalProvider>
                                 </BillCustomerModalProvider>
+                                </PayCalendarModalProvider>
                               </EditProjectModalProvider>
                             </EditCustomerModalProvider>
                           </NewProjectModalProvider>

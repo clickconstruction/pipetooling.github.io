@@ -77,7 +77,7 @@ import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLi
 import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
 import type { PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
-import type { PayCalendarJob } from '../customers/PayCalendarModal'
+import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
 import { calendarFor, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
@@ -499,16 +499,6 @@ const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
 /** A focused job's row is looked for this many times, `STAGES_JOB_FOCUS_RETRY_MS` apart, before the board gives up (about 9 s). */
 const STAGES_JOB_FOCUS_TRIES = 30
 const STAGES_JOB_FOCUS_RETRY_MS = 300
-
-/** Punch list #323, PR 4: the job a row's press sits on, so the Pay calendar window can set a calendar for that job alone, or for its development's jobs. */
-function payCalendarJobOf(j: JobWithDetails): PayCalendarJob {
-  return {
-    id: j.id,
-    label: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
-    developmentId: j.development_id ?? null,
-    developmentName: j.development?.name ?? null,
-  }
-}
 
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
@@ -1211,7 +1201,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             pressedPayer && calendar && payCalendarModal
               ? () => payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) })
               : pressedPayer
-                ? () => setPaySpeedsPayer(pressedPayer)
+                ? // Punch list #341: Pay speeds carries this row's job, so its Pay calendar line opens on the job.
+                  () => setPaySpeedsPayer({ ...pressedPayer, job: payCalendarJobOf(row.job) })
                 : undefined
           }
           opens={calendar && payCalendarModal ? 'the pay calendar' : 'pay speeds'}
