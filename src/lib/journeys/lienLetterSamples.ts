@@ -14,7 +14,7 @@
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { lienFilingEmailHtml } from '../../../supabase/functions/_shared/lienFilingEmail'
 import { SAMPLE_GC, ymdPlusDays } from '../customerSample'
-import { demandMoney } from '../jobsDocuments/demandLetter'
+import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import {
   buildLienAffidavitBlocks,
   buildLienNoticeBlocks,
@@ -106,11 +106,17 @@ export function sampleLienNoticeFields(noticeDate: string): LienNoticeFields {
   }
 }
 
-/** The notice to the owner of record as the tab has drawn it since v2.3509: the form, dated today. */
+/**
+ * The notice to the owner of record: the form, on the sample job's own month and dated the day it was mailed. Until
+ * v2.7070 it was dated today and named a month of its own, so it disagreed with the cover letter in front of it. Its
+ * reference line is the real notice's three short items: the PDF draws that line unwrapped, and a longer one ran off the sheet.
+ */
 export function sampleOwnerNoticeInputs(todayYmd: string): { fields: LienNoticeFields; extras: FilingDocExtras } {
+  const days = sampleLienDays(todayYmd)
   return {
-    fields: sampleLienNoticeFields(todayYmd),
-    extras: { letterhead: letterhead(), refItems: [`Re: ${SAMPLE_OWNER.project}`, `Original contractor: ${SAMPLE_GC.company}`, `Unpaid: ${ymdPlusDays(todayYmd, -60).slice(0, 7)}`] },
+    fields: sampleLienNoticeFields(days.noticeSentOn),
+    // The reference line a real notice carries (the Lien desk's own three items). The project and the builder are on the form.
+    extras: { letterhead: letterhead(), refItems: [`Job #${SAMPLE_LIEN_JOB.number}`, `Work months ${describeNoticeMonths([days.month])}`, demandDate(days.noticeSentOn)] },
   }
 }
 
