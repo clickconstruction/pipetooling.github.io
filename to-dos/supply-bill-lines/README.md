@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) built 2026-11-12: the four check rules and a fifth the measure found again, with the bills on file checked once more by the sweep; run read only over every line on file, 23 of the 44 off bills turn green and none that added up fails · PR 3 (v2.7110) built 2026-11-12: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · left: the views (4a, 4b, 4c) and the matching list (2a), then the price offered from a bill (2b)
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) built 2026-11-12: the four check rules and a fifth the measure found again, with the bills on file checked once more by the sweep; run read only over every line on file, 23 of the 44 off bills turn green and none that added up fails · PR 3 (v2.7110) built 2026-11-12: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · PR 4a (v2.7114) built 2026-11-12: Materials → What we buy, on the house's code, checked to the dollar against a hand sum · left: Price over time (4b), What to stock (4c), the matching list (2a), then the price offered from a bill (2b)
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: What we buy (4a) on the house's code, the default of the measure's last call. Then Price over time (4b), What to stock (4c) and the matching list (2a). After PR 1c merges: push its migration, deploy `bill-lines-sweep` and `bill-read`, and read the live count back onto this card. The owner's two open calls are in *The calls the measure raises*.
+next: Price over time (4b) and What to stock (4c), as tabs of What we buy. Then the matching list (2a). After PR 1c merges: push its migration, deploy `bill-lines-sweep` and `bill-read`, and read the live count back onto this card. The owner's two open calls are in *The calls the measure raises*.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
 opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after
-ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.7103 (PR 1c) · v2.7110 (PR 3) · v2.6088 · v2.6095 (the bill reader this builds on)
+ver: v2.6817 · v2.6819 · v2.6882 (PR 1, 1b and 2) · v2.6897 (the suffix match) · v2.7103 (PR 1c) · v2.7110 (PR 3) · v2.7114 (PR 4a) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -662,6 +662,14 @@ read back here after the deploy.
 So **49 bills need a person**: 28 held and 21 off. PR 3's list is where they are seen.
 
 ## Where it stands
+
+**PR 4a (v2.7114) is built** (2026-11-12): Materials → **What we buy**, a tab in the Purchase group for the office
+roles. A row is a part, or a house and its code where no part is matched; the filters are a house, a job and the
+months; the sort is spend, quantity or how often. Its live check: the page's parts, charges, bill count and top
+three rows equalled a hand sum from the tables. Two of the card's calls are open on it. **Call 7 is half built**:
+the office sees the page and an estimator does not, because the papers' read policy is the office's and widening it
+opens accounts payable's lines to estimators. **The service type filter waits for the matching list**, since no
+bill line has a part yet.
 
 **PR 3 (v2.7110) is built** (2026-11-12): Materials → Supply houses has one line under Accounts payable that says
 where every bill's lines stand, and its press opens *Bill lines*, each reason a bill waits with its count and its
