@@ -7,14 +7,14 @@ const slug = (customer_id: string, s: string, locked_at: string | null = null): 
 
 describe('resolveGcPortalLink', () => {
   it('prefers an active GC-scoped link (token URL, "GC bills only")', () => {
-    const r = resolveGcPortalLink('c1', [link('c1', 'all', 'A'), link('c1', 'gc', 'G')], [slug('c1', 'rmc-dudley-mason', '2026-08-01')], O)
+    const r = resolveGcPortalLink('c1', [link('c1', 'all', 'A'), link('c1', 'gc', 'G')], [slug('c1', 'rlc-dunmere-mallin', '2026-08-01')], O)
     expect(r).toEqual({ url: 'https://pipetooling.com/portal?t=G', view: 'gc', short: false, slug: null, slugLocked: false })
     expect(gcPortalLinkCaption(r!)).toBe('GC bills only')
   })
 
   it('falls back to the main link as the short address when a slug exists', () => {
-    const r = resolveGcPortalLink('c1', [link('c1', 'all', 'A')], [slug('c1', 'rmc-dudley-mason')], O)
-    expect(r).toEqual({ url: 'https://my.clickplumbing.com/rmc-dudley-mason', view: 'all', short: true, slug: 'rmc-dudley-mason', slugLocked: false })
+    const r = resolveGcPortalLink('c1', [link('c1', 'all', 'A')], [slug('c1', 'rlc-dunmere-mallin')], O)
+    expect(r).toEqual({ url: 'https://my.clickplumbing.com/rlc-dunmere-mallin', view: 'all', short: true, slug: 'rlc-dunmere-mallin', slugLocked: false })
     expect(gcPortalLinkCaption(r!)).toBe('full account')
   })
 

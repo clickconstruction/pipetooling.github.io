@@ -4,12 +4,12 @@ import { bridgeFirmOf, bridgeMapWords, caseNote, caseStand, casesInCounty, count
 const acc = (key: string, name: string, balance: number, jobs: MapAccount['jobs'], viaGc = false): MapAccount => ({ key, name, balance, viaGc, jobs })
 
 const ACCOUNTS = [
-  acc('c:tle', 'The Learning Experience', 15781.82, [
+  acc('c:tle', 'The Reading Corner', 15781.82, [
     { id: 'j707', click_number: 707, job_address: '12400 Hwy 71 W, Bee Cave, TX' },
     { id: 'j717', click_number: 717, job_address: '12400 Hwy 71 W, Bee Cave, TX' },
   ]),
-  acc('c:burd', 'Burd & Assoc.', 2028.04, [{ id: 'j891', hcp_number: '891', job_address: '11730 TX-29, Liberty Hill, TX', customer_address_id: 'addr-burd' }]),
-  acc('c:rmc', 'RMC- Dudley Mason', 1712.5, [{ id: 'j790', click_number: 790, job_address: '628 Terrell Rd, San Antonio, TX' }], true),
+  acc('c:brund', 'Brund & Assoc.', 2028.04, [{ id: 'j891', hcp_number: '891', job_address: '11730 TX-29, Liberty Hill, TX', customer_address_id: 'addr-brund' }]),
+  acc('c:rlc', 'RLC- Dunmere Mallin', 1712.5, [{ id: 'j790', click_number: 790, job_address: '628 Tarrow Rd, San Antonio, TX' }], true),
   acc('c:closed', 'Closed Co', 999, [{ id: 'j1', click_number: 1, job_address: '1 Main St, Austin, TX' }]),
 ]
 const GIVEN_UP = [acc('c:hall', 'Bruce Hall', 350, [{ id: 'j838', click_number: 838, job_address: '100 Oak, Seguin, TX' }])]
@@ -20,7 +20,7 @@ const MATTERS = new Map([
 const COORDS = new Map([
   ['12400 hwy 71 w, bee cave, tx', { lat: 30.3169, lng: -97.9786 }],
   ['11730 tx-29, liberty hill, tx', { lat: 30.6583, lng: -97.8876 }],
-  ['628 terrell rd, san antonio, tx', { lat: 29.4711, lng: -98.4454 }],
+  ['628 tarrow rd, san antonio, tx', { lat: 29.4711, lng: -98.4454 }],
 ])
 const countyOf = (lng: number, lat: number) => (lat > 30.5 ? 'Williamson' : lat > 30 ? 'Travis' : lng < -98.3 ? 'Bexar' : 'Guadalupe')
 const FIRMS = [
@@ -29,11 +29,11 @@ const FIRMS = [
 ]
 const FIRM_NAMES = new Map(FIRMS.map((f) => [f.id, f.name]))
 
-const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey: MATTERS, firmNames: FIRM_NAMES, coords: COORDS, recordCounty: new Map([['addr-burd', 'Williamson']]), countyOf })
+const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey: MATTERS, firmNames: FIRM_NAMES, coords: COORDS, recordCounty: new Map([['addr-brund', 'Williamson']]), countyOf })
 
 describe('shapeMapCases', () => {
   it('places each account at its first job, the county from the record else the point, largest first, closed matters off the map', () => {
-    expect(cases.map((c) => c.name)).toEqual(['The Learning Experience', 'Burd & Assoc.', 'RMC- Dudley Mason', 'Bruce Hall'])
+    expect(cases.map((c) => c.name)).toEqual(['The Reading Corner', 'Brund & Assoc.', 'RLC- Dunmere Mallin', 'Bruce Hall'])
     const tle = cases[0]!
     expect(tle).toMatchObject({ id: 'c:tle|live', key: 'c:tle', jobLabels: '707 · 717', jobCount: 2, stand: 'firm', note: 'with Snell Law Firm since 10/06', county: 'Travis', countyFrom: 'point', lat: 30.3169 })
     expect(cases[1]).toMatchObject({ stand: 'eyes', note: 'needs a dev’s eyes', county: 'Williamson', countyFrom: 'record', jobLabels: '891' })
@@ -79,13 +79,13 @@ describe('against the county map', () => {
       { firmId: 'firm-b', name: 'Austin firm', count: 0, dollars: 0, moneyWords: '$0.00' },
       { firmId: null, name: 'No firm covers it', count: 2, dollars: 2378.04, moneyWords: '$2,378.04' },
     ])
-    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Burd & Assoc. (Williamson) · Bruce Hall (off the map). Color the county for a firm, or the desk cannot release them.')
+    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Brund & Assoc. (Williamson) · Bruce Hall (off the map). Color the county for a firm, or the desk cannot release them.')
     expect(uncoveredWords([], assignments)).toBeNull()
   })
 })
 
 describe('the lens (v2.5784)', () => {
-  const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey: MATTERS, firmNames: FIRM_NAMES, coords: COORDS, recordCounty: new Map([['addr-burd', 'Williamson']]), countyOf })
+  const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey: MATTERS, firmNames: FIRM_NAMES, coords: COORDS, recordCounty: new Map([['addr-brund', 'Williamson']]), countyOf })
   it('uncoveredCounties lists each uncovered case\'s county once, sorted; a case with the firm is never uncovered', () => {
     expect(uncoveredCounties(cases, new Map([['Bexar', 'firm-a']]))).toEqual(['Williamson'])
     expect(uncoveredCounties(cases, new Map([['Bexar', 'firm-a'], ['Williamson', 'firm-b']]))).toEqual([])

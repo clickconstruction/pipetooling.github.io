@@ -56,7 +56,7 @@ describe('buildProjectSubRoster', () => {
 
   it('a rejected step counts as active and names the current step', () => {
     const roster = buildProjectSubRoster(
-      [step({ name: 'Top Out', sequence_order: 1, status: 'rejected', assigned_to_name: 'Texas R & A', assigned_person_id: 'p-txra' })],
+      [step({ name: 'Top Out', sequence_order: 1, status: 'rejected', assigned_to_name: 'Texas Q & E', assigned_person_id: 'p-txra' })],
       new Set(['p-txra']),
       new Set(),
     )

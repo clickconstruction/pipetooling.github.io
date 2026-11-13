@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fileTimeOrNow, sendLostSignal } from './shotTiles'
+import { bytesAlreadyThere, fileTimeOrNow, sendLostSignal } from './shotTiles'
 
 describe('sendLostSignal', () => {
   const lost = (name: string) => Object.assign(new Error('The phone has no signal.'), { name, kind: 'network' })
@@ -15,6 +15,25 @@ describe('sendLostSignal', () => {
     expect(sendLostSignal(new Error('The bucket refused it.'), 'PhotoSendError')).toBe(false)
     expect(sendLostSignal('no signal', 'PhotoSendError')).toBe(false)
     expect(sendLostSignal(null, 'PhotoSendError')).toBe(false)
+  })
+})
+
+// Punch list #306, v2.7133: the shapes the project's storage answered on 2026-11-13, as the storage client keeps them.
+describe('bytesAlreadyThere', () => {
+  const storageError = (message: string, statusCode: string) => Object.assign(new Error(message), { name: 'StorageApiError', status: 400, statusCode })
+
+  it('is true for an upload refused because its object is already in the bucket', () => {
+    expect(bytesAlreadyThere(storageError('The resource already exists', '409'))).toBe(true)
+    expect(bytesAlreadyThere({ status: 409, message: 'Conflict' })).toBe(true)
+    expect(bytesAlreadyThere({ message: 'The resource already exists' })).toBe(true)
+  })
+
+  it('is false for the refusal an upsert gets, a lost signal, and anything that is not an error', () => {
+    expect(bytesAlreadyThere(storageError('new row violates row-level security policy', '403'))).toBe(false)
+    expect(bytesAlreadyThere(new TypeError('Failed to fetch'))).toBe(false)
+    expect(bytesAlreadyThere(storageError('Payload too large', '413'))).toBe(false)
+    expect(bytesAlreadyThere(null)).toBe(false)
+    expect(bytesAlreadyThere('The resource already exists')).toBe(false)
   })
 })
 

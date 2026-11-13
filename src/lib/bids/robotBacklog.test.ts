@@ -28,7 +28,7 @@ const req = (id: string, p: Partial<RobotBacklogRequest> = {}): RobotBacklogRequ
   requested_at: ago(5 * H),
   claimed_at: null,
   heartbeat_at: null,
-  bid: { bid_number: '359', project_name: 'SpaceX BA-2' },
+  bid: { bid_number: '359', project_name: 'SkyLab BA-2' },
   ...p,
 })
 
@@ -66,10 +66,10 @@ describe('buildRobotBacklog', () => {
   })
 
   it('reads the one rule (v2.5753): a voided shell is backlog again, a non-plumbing or opted-out bid is not', () => {
-    const bids = [bid('b510', { project_name: 'AutoZone' }), bid('b519', { service_type_id: 'st-electrical' }), bid('b520', { robot_opt_out: true })]
+    const bids = [bid('b510', { project_name: 'TireBarn' }), bid('b519', { service_type_id: 'st-electrical' }), bid('b520', { robot_opt_out: true })]
     const b = buildRobotBacklog(bids, rule((id) => id === 'b510', { '510': 'void' }), [], NOW)!
     expect(b.bidsWaiting).toBe(1)
-    expect(b.firstBid).toBe('BP510 AutoZone')
+    expect(b.firstBid).toBe('BP510 TireBarn')
     expect(buildRobotBacklog(bids, rule(() => false, { '510': 'open' }), [], NOW)).toBeNull()
   })
 
@@ -92,7 +92,7 @@ describe('buildRobotBacklog', () => {
     const b = buildRobotBacklog([], rule(), rs, NOW)!
     expect(b.matricesOpen).toBe(4)
     expect(b.matricesStuck).toBe(2)
-    expect(b.firstMatrix).toBe('BP359 SpaceX BA-2')
+    expect(b.firstMatrix).toBe('BP359 SkyLab BA-2')
     expect(describeBacklogAge(b.oldestMatrixMs!)).toBe('5 hours')
     expect(b.bidsWaiting).toBe(0)
   })

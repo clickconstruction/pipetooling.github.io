@@ -29,7 +29,7 @@ function props(overrides: Partial<JobsStagesCommandBarProps> = {}): JobsStagesCo
       sortMode: 'number',
       contract: '',
       gc: '',
-      gcOptions: [{ id: 'gc-1', name: 'Knight Homes' }],
+      gcOptions: [{ id: 'gc-1', name: 'Kestrin Homes' }],
       development: '',
       developmentOptions: [],
       accountMan: '',
@@ -106,7 +106,7 @@ describe('JobsStagesCommandBar', () => {
         sortMode: 'progress',
         contract: 'missing',
         gc: 'gc-1',
-        gcOptions: [{ id: 'gc-1', name: 'Knight Homes' }],
+        gcOptions: [{ id: 'gc-1', name: 'Kestrin Homes' }],
         development: '',
         developmentOptions: [],
         accountMan: '',
@@ -119,7 +119,7 @@ describe('JobsStagesCommandBar', () => {
     expect(p.onClearSort).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByLabelText(/^Clear contract filter/))
     expect(p.onClearContract).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByLabelText('Clear GC filter: Knight Homes'))
+    fireEvent.click(screen.getByLabelText('Clear GC filter: Kestrin Homes'))
     expect(p.onClearGc).toHaveBeenCalledTimes(1)
     expect(screen.queryByLabelText(/^Clear development filter/)).toBeNull()
     expect(screen.queryByLabelText(/^Clear Account Man filter/)).toBeNull()

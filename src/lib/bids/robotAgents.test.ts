@@ -92,10 +92,10 @@ describe('buildRobotAgentView and the order', () => {
 })
 
 describe('queueWords (v2.5753: the check-in’s word on the queue)', () => {
-  const held = [{ bid: 'b516', project: 'TAKE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b519', why: 'Not a plumbing bid.' }]
+  const held = [{ bid: 'b516', project: 'TUNE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b519', why: 'Not a plumbing bid.' }]
   it('names the bids the last check-in passed over and why, when the check-in is today’s', () => {
     const words = queueWords(row({ idle_at: ago(3), idle_progress: { ready: 0, held } }), DAY)
-    expect(words).toBe('Passed over 2 bids. b516 TAKE 5 N LAMAR, made over 30 days ago and nobody asked. b519, not a plumbing bid.')
+    expect(words).toBe('Passed over 2 bids. b516 TUNE 5 N LAMAR, made over 30 days ago and nobody asked. b519, not a plumbing bid.')
     expect(plainWordsFailures(words ?? '')).toEqual([])
     expect(buildRobotAgentView(row({ idle_at: ago(3), idle_progress: { ready: 0, held } }), NOW, DAY, true).queue).toBe(words)
   })

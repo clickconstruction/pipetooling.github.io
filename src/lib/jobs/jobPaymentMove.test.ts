@@ -40,12 +40,12 @@ describe('planJobPaymentMove', () => {
 
 describe('jobPaymentTraceLines', () => {
   const ev = (over: Partial<Parameters<typeof jobPaymentTraceLines>[0][number]> = {}) => ({ id: 'e1', kind: 'moved', payment_id: 'p1', from_job_id: 'j880', to_job_id: 'j922', amount: 2400, paid_on: '2026-09-10', reason: 'wrong job', actor_name: 'Taunya', created_at: '2026-09-17T15:00:00Z', ...over })
-  const label = (id: string) => (id === 'j922' ? 'J922 · Michael Palmer' : 'J880 · Reliant')
+  const label = (id: string) => (id === 'j922' ? 'J922 · Michael Palvern' : 'J880 · Relwyn')
   const money = (n: number) => `$${n.toFixed(2)}`
   it('reads out on the job it left and in on the job it reached, with who and why', () => {
-    expect(jobPaymentTraceLines([ev()], 'j880', label, money)).toEqual([{ id: 'e1', direction: 'out', text: '$2400.00 moved → J922 · Michael Palmer · Taunya · wrong job' }])
-    expect(jobPaymentTraceLines([ev()], 'j922', label, money)).toEqual([{ id: 'e1', direction: 'in', text: '$2400.00 moved here from J880 · Reliant · Taunya · wrong job' }])
-    expect(jobPaymentTraceLines([ev({ reason: null, actor_name: null })], 'j880', label, money)[0]!.text).toBe('$2400.00 moved → J922 · Michael Palmer')
+    expect(jobPaymentTraceLines([ev()], 'j880', label, money)).toEqual([{ id: 'e1', direction: 'out', text: '$2400.00 moved → J922 · Michael Palvern · Taunya · wrong job' }])
+    expect(jobPaymentTraceLines([ev()], 'j922', label, money)).toEqual([{ id: 'e1', direction: 'in', text: '$2400.00 moved here from J880 · Relwyn · Taunya · wrong job' }])
+    expect(jobPaymentTraceLines([ev({ reason: null, actor_name: null })], 'j880', label, money)[0]!.text).toBe('$2400.00 moved → J922 · Michael Palvern')
     expect(jobPaymentTraceLines([ev()], 'j000', label, money)).toEqual([])
   })
 })

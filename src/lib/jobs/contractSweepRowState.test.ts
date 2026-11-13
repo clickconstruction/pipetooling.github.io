@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { assessContractSweepRows, contractSweepFilterMatches, contractSweepFooterSentence, contractSweepHeaderClauses, contractSweepPrimary, contractSweepSummary, CONTRACT_SWEEP_FILTER_LABELS, isThinScope, type ContractSweepRowInput } from './contractSweepRowState'
 
 function row(p: Partial<ContractSweepRowInput> & { id: string }): ContractSweepRowInput {
-  return { jobNumber: p.id.replace(/^j/, ''), jobName: 'Mission Hills', email: 'kcallison@tfharper.com', revenue: 123600, scopeLines: ['14 × Water closet', '9 × Lavatory'], gcJob: false, ...p }
+  return { jobNumber: p.id.replace(/^j/, ''), jobName: 'Mission Flats', email: 'kc@tfhalden.example', revenue: 123600, scopeLines: ['14 × Water closet', '9 × Lavatory'], gcJob: false, ...p }
 }
 
 describe('assessContractSweepRows', () => {
@@ -42,7 +42,7 @@ describe('assessContractSweepRows', () => {
     expect(assessContractSweepRows([row({ id: 'c' })]).get('c')!.flags).toEqual(['ready'])
     // No amount on the job and a draft that says T&M: they agree — only no_amount.
     expect(assessContractSweepRows([row({ id: 'd', revenue: null, draftAmountCents: null })]).get('d')!.flags).toEqual(['no_amount'])
-    expect(contractSweepFooterSentence({ state: differs, email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'pdf_email', amountDiffers: { draft: '$120,000', job: '$123,600' } })).toBe(
+    expect(contractSweepFooterSentence({ state: differs, email: 'kc@tfhalden.example', jobName: 'Mission Flats', gcName: null, nextJobNumber: '363', way: 'pdf_email', amountDiffers: { draft: '$120,000', job: '$123,600' } })).toBe(
       "This draft says $120,000, the job says $123,600 — use the job's number above",
     )
   })
@@ -56,8 +56,8 @@ describe('assessContractSweepRows', () => {
 
   it('rows sharing an email name each other', () => {
     const states = assessContractSweepRows([
-      row({ id: 'j651', jobNumber: '651', email: 'Masondudley396@gmail.com' }),
-      row({ id: 'j798', jobNumber: '798', email: 'masondudley396@gmail.com', revenue: null }),
+      row({ id: 'j651', jobNumber: '651', email: 'mallindunmere@example.com' }),
+      row({ id: 'j798', jobNumber: '798', email: 'mallindunmere@example.com', revenue: null }),
       row({ id: 'j523' }),
     ])
     expect(states.get('j651')!.sameEmailAs).toEqual(['798'])
@@ -68,8 +68,8 @@ describe('assessContractSweepRows', () => {
   it('the summary counts rows, dollars and distinct customers Send all would email; the filter splits To send from Needs a look', () => {
     const rows = [
       row({ id: 'j523' }),
-      row({ id: 'j363', email: 'palmer@example.com', revenue: 31400 }),
-      row({ id: 'j843', email: 'PALMER@example.com', revenue: 11920 }),
+      row({ id: 'j363', email: 'palvern@example.com', revenue: 31400 }),
+      row({ id: 'j843', email: 'PALVERN@example.com', revenue: 11920 }),
       row({ id: 'j683', jobName: 'Job', scopeLines: ['Job'], revenue: null }),
       row({ id: 'j804', gcJob: true, revenue: 32600 }),
     ]
@@ -99,23 +99,23 @@ describe('the pane footer (PR 2)', () => {
   it('names the primary and the sentence for each state', () => {
     const states = assessContractSweepRows([
       row({ id: 'j523' }),
-      row({ id: 'j363', email: 'palmer@example.com', revenue: 31400 }),
-      row({ id: 'j843', jobNumber: '843', email: 'palmer@example.com', revenue: 11920 }),
+      row({ id: 'j363', email: 'palvern@example.com', revenue: 31400 }),
+      row({ id: 'j843', jobNumber: '843', email: 'palvern@example.com', revenue: 11920 }),
       row({ id: 'j683', jobName: 'Job', scopeLines: ['Job'], revenue: null, email: 'may@x.com' }),
       row({ id: 'j778', email: '' }),
-      row({ id: 'j804', gcJob: true, email: 'estimating@summitgc.net' }),
+      row({ id: 'j804', gcJob: true, email: 'estimating@selwickgc.example' }),
     ])
     expect(contractSweepPrimary(states.get('j523'))).toBe('send_next')
-    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363' })).toBe('Emails kcallison@tfharper.com · then J363')
-    expect(contractSweepFooterSentence({ state: states.get('j363'), email: 'palmer@example.com', jobName: 'Michael Palmer', gcName: null, nextJobNumber: null })).toBe('Emails palmer@example.com · this customer also has J843 here')
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kc@tfhalden.example', jobName: 'Mission Flats', gcName: null, nextJobNumber: '363' })).toBe('Emails kc@tfhalden.example · then J363')
+    expect(contractSweepFooterSentence({ state: states.get('j363'), email: 'palvern@example.com', jobName: 'Michael Palvern', gcName: null, nextJobNumber: null })).toBe('Emails palvern@example.com · this customer also has J843 here')
     // PR 5: the sentence follows the chosen way.
-    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'pdf_email' })).toBe('Emails the PDF to kcallison@tfharper.com · then J363')
-    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'download' })).toBe('Nothing is emailed — the page is yours to hand over, and the job leaves this list · then J363')
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kc@tfhalden.example', jobName: 'Mission Flats', gcName: null, nextJobNumber: '363', way: 'pdf_email' })).toBe('Emails the PDF to kc@tfhalden.example · then J363')
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kc@tfhalden.example', jobName: 'Mission Flats', gcName: null, nextJobNumber: '363', way: 'download' })).toBe('Nothing is emailed — the page is yours to hand over, and the job leaves this list · then J363')
     expect(contractSweepPrimary(states.get('j683'))).toBe('blocked')
     expect(contractSweepFooterSentence({ state: states.get('j683'), email: 'may@x.com', jobName: 'Job', gcName: null, nextJobNumber: '778' })).toBe("the scope is one line — “Work we'll do: Job” · sends as time and materials · then J778")
     expect(contractSweepPrimary(states.get('j778'))).toBe('blocked')
     expect(contractSweepFooterSentence({ state: states.get('j778'), email: '', jobName: 'X', gcName: null, nextJobNumber: null })).toMatch(/^No signer email/)
     expect(contractSweepPrimary(states.get('j804'))).toBe('file_theirs')
-    expect(contractSweepFooterSentence({ state: states.get('j804'), email: 'e@summit.com', jobName: 'Auto Zone', gcName: 'Summit GC', nextJobNumber: null })).toBe("GC job · Summit GC's subcontract is the agreement")
+    expect(contractSweepFooterSentence({ state: states.get('j804'), email: 'e@selwick.com', jobName: 'Tire Barn', gcName: 'Selwick GC', nextJobNumber: null })).toBe("GC job · Selwick GC's subcontract is the agreement")
   })
 })

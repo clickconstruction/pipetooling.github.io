@@ -545,6 +545,9 @@ export default function PaymentChaseModal({
   )
 
   const speedLine = (c: ChaseCustomer): string => {
+    // Punch list #323: a payer on a Pay calendar is judged against its due day, so the line says that, not a pace in days.
+    const terms = [...c.bills, ...c.notLate].map((b) => b.model).find((m) => m.source === 'terms')
+    if (terms) return terms.paceWords
     const own = paySpeeds?.customers[c.customerId]
     if (own && own.samples >= PAY_SPEED_MIN_SAMPLES) return `usually pays in ~${own.medianDays}d`
     // v2.6034: the pace the bills were judged late against, borrowed the way the Collect desk borrows it.

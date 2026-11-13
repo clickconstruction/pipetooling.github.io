@@ -30,10 +30,10 @@ function bid(over: Partial<BidWithBuilder>): BidWithBuilder {
     bid_tab_high: null,
     bid_tab_rank_from_low: null,
     bid_tab_bidder_count: null,
-    customer_id: 'gc-knight',
+    customer_id: 'gc-kestrin',
     gc_builder_id: null,
     service_type_id: 'st1',
-    customers: { id: 'gc-knight', name: 'Knight Contracting', contact_info: { phone: '6025550000' } },
+    customers: { id: 'gc-kestrin', name: 'Kestrin Contracting', contact_info: { phone: '6025550000' } },
     bids_gc_builders: null,
     ...over,
   } as unknown as BidWithBuilder
@@ -68,7 +68,7 @@ describe('BidsCallQueueTab', () => {
     expect(screen.getByText(/1 builder worth a call/)).toBeTruthy()
     // Tier-2 #20: the scope is named where the numbers are, and bids lead the count.
     expect(screen.getByText(/· Plumbing · 1 bid to chase · 1 loss needs a reason/)).toBeTruthy()
-    expect(screen.getByText('Knight Contracting')).toBeTruthy()
+    expect(screen.getByText('Kestrin Contracting')).toBeTruthy()
     expect(screen.getByText(/Chase/)).toBeTruthy()
     expect(screen.getByText(/Loss reasons/)).toBeTruthy()
     expect(screen.getByText(/Bid tabs/)).toBeTruthy()

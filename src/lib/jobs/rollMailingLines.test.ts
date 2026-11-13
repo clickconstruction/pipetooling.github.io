@@ -3,14 +3,14 @@ import { rollMailingLines } from './rollMailingLines'
 
 describe('rollMailingLines', () => {
   it('reads the roll’s leading % as care-of and breaks the address into envelope lines', () => {
-    expect(rollMailingLines('% SABRA HEALTH CARE REIT INC 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612')).toEqual({
-      careOf: 'Sabra Health Care Reit Inc',
+    expect(rollMailingLines('% SABLOW HEALTH CARE REIT INC 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612')).toEqual({
+      careOf: 'Sablow Health Care Reit Inc',
       lines: ['18500 Von Karman Ave Ste 550', 'Irvine, CA 92612'],
     })
   })
 
   it('a plain address has no care-of; the state stays upper-case and ZIP+4 survives', () => {
-    expect(rollMailingLines('704 GARRATY CT , SAN ANTONIO, TX 78209-1234')).toEqual({ careOf: '', lines: ['704 Garraty Ct', 'San Antonio, TX 78209-1234'] })
+    expect(rollMailingLines('704 GARWICK CT , SAN ANTONIO, TX 78209-1234')).toEqual({ careOf: '', lines: ['704 Garwick Ct', 'San Antonio, TX 78209-1234'] })
   })
 
   it('C/O and ATTN lead the same way, and a PO box ends the care-of name', () => {

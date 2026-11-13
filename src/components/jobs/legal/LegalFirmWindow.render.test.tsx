@@ -67,8 +67,8 @@ function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null } & 
 const COVERED = new Map([['Travis', { first: 'firm-1', also: [] }], ['Williamson', { first: 'firm-1', also: [] }]])
 const CASES = [
   { id: 'a', key: 'c:a', name: 'Brazos Ridge Contracting', balance: 15781.82, jobLabels: '701', jobCount: 1, viaGc: false, stand: 'firm', firmId: 'firm-1', note: 'with ZZ Test Firm', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
-  { id: 'b', key: 'c:b', name: 'Bryan Herber', balance: 1238.65, jobLabels: '702', jobCount: 1, viaGc: false, stand: 'gave', firmId: null, note: 'given up on', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
-  { id: 'c', key: 'c:c', name: 'Burd & Assoc.', balance: 2976.34, jobLabels: '891', jobCount: 1, viaGc: true, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: null, lng: null, county: 'Williamson', countyFrom: 'record' },
+  { id: 'b', key: 'c:b', name: 'Bryan Helbrow', balance: 1238.65, jobLabels: '702', jobCount: 1, viaGc: false, stand: 'gave', firmId: null, note: 'given up on', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
+  { id: 'c', key: 'c:c', name: 'Brund & Assoc.', balance: 2976.34, jobLabels: '891', jobCount: 1, viaGc: true, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: null, lng: null, county: 'Williamson', countyFrom: 'record' },
   { id: 'd', key: 'c:d', name: 'Lost Pines Builders', balance: 500, jobLabels: '703', jobCount: 1, viaGc: false, stand: 'firm', firmId: 'firm-1', note: 'with ZZ Test Firm', lat: null, lng: null, county: 'Bastrop', countyFrom: 'record' },
   { id: 'e', key: 'c:e', name: 'Kettle Creek Farms', balance: 3310, jobLabels: '704', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: null, lng: null, county: 'Gonzales', countyFrom: 'record' },
 ] as unknown as NonNullable<CoverageProps['cases']>
@@ -223,7 +223,7 @@ describe('LegalFirmWindow', () => {
       'New releases in Williamson County go to ZZ Alamo. ZZ Alamo is first call there.',
       'ZZ Test Firm keeps Travis County.',
       'Brazos Ridge Contracting stays with ZZ Test Firm until it closes.',
-      'Burd & Assoc., in review there, reads ZZ Alamo as its firm from now on. This sends no email.',
+      'Brund & Assoc., in review there, reads ZZ Alamo as its firm from now on. This sends no email.',
     ])
     // Retire with it waits until every county is ticked, then for the account still with the firm.
     expect((document.querySelector('[data-legal-hand-off-retire] input') as HTMLInputElement).disabled).toBe(true)

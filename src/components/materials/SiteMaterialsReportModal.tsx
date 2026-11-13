@@ -20,7 +20,9 @@ import { printRootCss } from '../../lib/printRoot'
 import { manifestDateWords } from '../../lib/materials/containerManifest'
 import { fetchSiteMaterials, type SiteMaterialsReader } from '../../lib/materials/siteMaterialsRead'
 import { readReportView, writeReportView } from '../../lib/materials/siteMaterialsReportPrefs'
-import { boxWords, buildSiteMaterialsReport, countsWords, EMPTY_BOX_WORDS, footWords, jobWords, lastRecordedWords, NOTHING_ON_SITE_WORDS, nothingHeading, REPORT_VIEWS, reportLeadWords, reportSections, type ReportBox, type ReportJobInput, type ReportSiteInput, type ReportView, type SiteMaterialsReport, type SiteMaterialsRows } from '../../lib/materials/siteMaterialsReport'
+import { boxWords, buildSiteMaterialsReport, countsWords, EMPTY_BOX_WORDS, footWords, jobWords, lastRecordedWords, NOTHING_ON_SITE_WORDS, nothingHeading, REPORT_VIEWS, reportLeadWords, partRowsWords, reportPartRows, reportSections, type ReportPartRow, type ReportBox, type ReportJobInput, type ReportSiteInput, type ReportView, type SiteMaterialsReport, type SiteMaterialsRows } from '../../lib/materials/siteMaterialsReport'
+import { tieCanon, type PartTie } from '../../lib/materials/partTies'
+import { fetchPartTies } from '../../lib/materials/partTiesIo'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -51,9 +53,15 @@ type Props = {
   print?: () => void
   /** The read, the site's three tables over the job ids; a test hands in rows. */
   read?: SiteMaterialsReader
+  /** The site's development id (punch list #330): By part joins the names a person joined on the site's screen. Without it, only the same words fold. */
+  siteId?: string
+  /** The read of the site's joined names; a test hands in its own. */
+  readTies?: (siteId: string) => Promise<PartTie[]>
 }
 
-export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClose, print = () => window.print(), read = fetchSiteMaterials }: Props) {
+const readSiteTies = (siteId: string) => fetchPartTies({ developmentId: siteId })
+
+export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClose, print = () => window.print(), read = fetchSiteMaterials, siteId, readTies = readSiteTies }: Props) {
   const [view, setView] = useState<ReportView>(() => readReportView())
   const [rows, setRows] = useState<SiteMaterialsRows | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -97,6 +105,33 @@ export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClos
   }, [read, idsKey, tick])
 
   const report = useMemo(() => (rows ? buildSiteMaterialsReport({ site, jobs, rows, now: new Date(), printedBy }) : null), [rows, site, jobs, printedBy])
+  // The names a person joined on the site's screen: read once, and a refused read leaves the same-words rows.
+  const [ties, setTies] = useState<PartTie[]>([])
+  useEffect(() => {
+    if (!siteId) return
+    let cancelled = false
+    readTies(siteId).then(
+      (t) => {
+        if (!cancelled) setTies(t)
+      },
+      () => {
+        // By part then folds only the same words, as before a tie existed.
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [siteId, readTies])
+  const partRows = useMemo(() => {
+    if (!report || view !== 'part') return []
+    const bookNames = new Map<string, string>()
+    for (const t of ties) {
+      if (t.verdict !== 'same') continue
+      if (t.aKey.startsWith('id:')) bookNames.set(t.aKey, t.aName)
+      if (t.bKey.startsWith('id:')) bookNames.set(t.bKey, t.bName)
+    }
+    return reportPartRows(report, tieCanon(ties), bookNames)
+  }, [report, view, ties])
   const pick = (v: ReportView) => {
     setView(v)
     writeReportView(v)
@@ -130,7 +165,7 @@ export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClos
         ) : !report ? (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1rem 0' }} data-testid="report-reading">Reading the site’s cages and boxes…</div>
         ) : (
-          <ReportPaper report={report} view={view} />
+          <ReportPaper report={report} view={view} partRows={partRows} />
         )}
       </div>
     </div>,
@@ -139,7 +174,7 @@ export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClos
 }
 
 /** The Letter paper: the head, the sections of the view picked, the closing block, the foot. */
-function ReportPaper({ report, view }: { report: SiteMaterialsReport; view: ReportView }) {
+function ReportPaper({ report, view, partRows }: { report: SiteMaterialsReport; view: ReportView; partRows: ReportPartRow[] }) {
   const sections = reportSections(report, view)
   const empty = report.jobs.length === 0
   return (
@@ -175,6 +210,26 @@ function ReportPaper({ report, view }: { report: SiteMaterialsReport; view: Repo
           ))}
         </div>
       ))}
+      {view === 'part' && !empty ? (
+        <div data-testid="report-parts">
+          <div className="site-materials-report-section-head" style={sectionHead}>
+            <b style={{ fontSize: '0.98rem' }}>Every part on the site</b>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'right' }}>{partRowsWords(partRows)}</span>
+          </div>
+          {partRows.map((r) => (
+            <div key={r.key} className="site-materials-report-part" data-testid="report-part" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1px 12px', padding: '4px 0', borderBottom: '1px solid var(--border)', breakInside: 'avoid', fontSize: '0.8rem' }}>
+              <span style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                {r.name}
+                {r.spellings.length > 1 ? <span style={{ fontWeight: 400, color: 'var(--text-700)' }}> · also written {r.spellings.filter((n) => n !== r.name).join(', ')}</span> : null}
+              </span>
+              <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.total.toLocaleString('en-US')}{r.unit ? ` ${r.unit}` : ''}</span>
+              <span style={{ gridColumn: '1 / -1', color: 'var(--text-700)', fontSize: '0.74rem', overflowWrap: 'anywhere' }}>
+                {r.holds.map((h, i) => `${i ? ' · ' : ''}${h.stencil} ${h.onHand.toLocaleString('en-US')}${h.placeName ? ` (${h.placeName})` : ''}`).join('')}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {report.nothing.length ? (
         <div className="site-materials-report-nothing" style={{ marginTop: '0.9rem', borderTop: `1.5px solid ${RULE}`, paddingTop: 4 }} data-testid="report-nothing">
           <b style={{ fontSize: '0.88rem', display: 'block', marginBottom: 3 }}>{nothingHeading(report.nothing.length)}</b>

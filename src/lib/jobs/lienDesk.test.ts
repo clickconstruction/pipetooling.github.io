@@ -140,11 +140,11 @@ describe('buildLienDeskQueue', () => {
 
   it('reads the GC’s standing rule and sorts by earliest deadline then dollars', () => {
     const rows = [
-      row({ job_id: 'a', work_month: '2026-07', deadline: '2026-10-15', gc_customer_id: 'knight', open_balance: 500 }),
-      row({ job_id: 'b', work_month: '2026-06', deadline: '2026-09-15', gc_customer_id: 'loberg', open_balance: 33_500 }),
-      row({ job_id: 'c', work_month: '2026-06', deadline: '2026-09-15', gc_customer_id: 'dudley', open_balance: 13_420 }),
+      row({ job_id: 'a', work_month: '2026-07', deadline: '2026-10-15', gc_customer_id: 'kestrin', open_balance: 500 }),
+      row({ job_id: 'b', work_month: '2026-06', deadline: '2026-09-15', gc_customer_id: 'lowbeck', open_balance: 33_500 }),
+      row({ job_id: 'c', work_month: '2026-06', deadline: '2026-09-15', gc_customer_id: 'dunmere', open_balance: 13_420 }),
     ]
-    const q = buildLienDeskQueue(rows, [], { knight: 'send', loberg: 'ask' }, TODAY)
+    const q = buildLienDeskQueue(rows, [], { kestrin: 'send', lowbeck: 'ask' }, TODAY)
     expect(q.entries.map((e) => e.jobId)).toEqual(['b', 'c', 'a'])
     expect(q.entries.find((e) => e.jobId === 'a')!.policy).toBe('send')
     expect(q.entries.find((e) => e.jobId === 'c')!.policy).toBe('ask')
@@ -155,15 +155,15 @@ describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s 
   // 890's shape on 2026-11-02: last work set by hand in August, the notice sent Oct 14, every month's window closed
   // more than a week ago — so list_lien_notice_months returns no row for it, and the sent item alone keeps it on the desk.
   const sent = item({ job_id: 'j890', status: 'sent', sent_at: '2026-10-14T16:00:00Z', months: ['2026-07', '2026-08'] })
-  const jobs = { j890: { customer_id: 'cust-mason', gc_customer_id: 'gc-rmc-dudley' } }
+  const jobs = { j890: { customer_id: 'cust-mallin', gc_customer_id: 'gc-rlc-dunmere' } }
 
   it('with no month rows, the entry’s GC and customer come from the job row, not from nothing', () => {
-    const q = buildLienDeskQueue([], [sent], { 'gc-rmc-dudley': 'ask' }, '2026-11-02', jobs)
+    const q = buildLienDeskQueue([], [sent], { 'gc-rlc-dunmere': 'ask' }, '2026-11-02', jobs)
     expect(q.entries).toHaveLength(1)
     const e = q.entries[0]!
     expect(e.pile).toBe('sent')
-    expect(e.gcCustomerId).toBe('gc-rmc-dudley')
-    expect(e.customerId).toBe('cust-mason')
+    expect(e.gcCustomerId).toBe('gc-rlc-dunmere')
+    expect(e.customerId).toBe('cust-mallin')
     expect(e.policy).toBe('ask')
     expect(e.months).toEqual([])
   })
@@ -191,12 +191,12 @@ describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s 
 
   it('the gates then read the GC green: the fix the desk shows on 890', () => {
     const q = buildLienDeskQueue([], [sent], {}, '2026-11-02', jobs)
-    const gcsById: Record<string, { name: string; address: string }> = { 'gc-rmc-dudley': { name: 'RMC- Dudley Mason', address: '574 Co Rd 660, Devine TX 78016' } }
+    const gcsById: Record<string, { name: string; address: string }> = { 'gc-rlc-dunmere': { name: 'RLC- Dunmere Mallin', address: '574 Co Rd 660, Devine TX 78016' } }
     const gc = gcsById[q.entries[0]!.gcCustomerId ?? '']
-    const { gates } = buildLienDeskGates({ ownerName: 'Rizvi Syed Zulfiqar', ownerMailingAddress: '628 Terrell Rd, San Antonio, TX 78209', gcName: gc?.name ?? '', gcAddress: gc?.address ?? '', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, pendingSessions: 0 })
+    const { gates } = buildLienDeskGates({ ownerName: 'Rilvo Sorn Zelmar', ownerMailingAddress: '628 Tarrow Rd, San Antonio, TX 78209', gcName: gc?.name ?? '', gcAddress: gc?.address ?? '', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, pendingSessions: 0 })
     const gcGate = gates.find((g) => g.key === 'gc')!
     expect(gcGate.tone).toBe('ok')
-    expect(gcGate.value).toBe('RMC- Dudley Mason')
+    expect(gcGate.value).toBe('RLC- Dunmere Mallin')
   })
 })
 
@@ -312,7 +312,7 @@ describe('summarizeLienDeskForNeedsYou', () => {
 })
 
 describe('draftReadiness (v2.3450)', () => {
-  const ok = { gcName: 'Loberg Contracting', ownerName: 'Elbel Holdings LLC', ownerMailingAddress: '4 Example Way, Schertz, TX', monthsCount: 2 }
+  const ok = { gcName: 'Lowbeck Contracting', ownerName: 'Elwick Holdings LLC', ownerMailingAddress: '4 Example Way, Schertz, TX', monthsCount: 2 }
   it('is ready with a GC, an owner with a mailing address, and at least one month', () => {
     expect(draftReadiness(ok)).toEqual({ ready: true, reason: null })
   })

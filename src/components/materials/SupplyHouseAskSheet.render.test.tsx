@@ -35,8 +35,8 @@ const allocations = [
 ]
 const asks = buildHouseAsks({
   jobs: [
-    { jobId: 'j650', jobNumber: '650', jobName: 'ATI Schertz', billed: 33500, paidIn: 17777.51 },
-    { jobId: 'j363', jobNumber: '363', jobName: 'Michael Palmer', billed: 31400, paidIn: 31400 },
+    { jobId: 'j650', jobNumber: '650', jobName: 'AXO Schertz', billed: 33500, paidIn: 17777.51 },
+    { jobId: 'j363', jobNumber: '363', jobName: 'Michael Palvern', billed: 31400, paidIn: 31400 },
   ],
   suppliers: buildLienSupplierJobs({ invoices, allocations, houses: [{ id: 'reece', name: 'Reece' }, { id: 'winn', name: 'Winn Supply' }] }),
   // Both jobs are commercial: July is due Oct 15, August Nov 16 (a kind not set reads residential since v2.5031).
@@ -77,7 +77,7 @@ describe('SupplyHouseAskSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Read the message' }))
     const text = document.querySelector('[data-house-ask-message]')!.textContent!
     expect(text).toContain('Click Plumbing: balances and notice dates on 2 jobs')
-    expect(text).toContain('A. 363 Michael Palmer. Our books show $5,316.26 unpaid since July.')
+    expect(text).toContain('A. 363 Michael Palvern. Our books show $5,316.26 unpaid since July.')
     expect(text).toContain('Thank you,\nGrace\nClick Plumbing')
   })
 
@@ -86,11 +86,11 @@ describe('SupplyHouseAskSheet', () => {
     await settle()
     const save = () => screen.getByRole('button', { name: /^Save/ }) as HTMLButtonElement
     expect(save().disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palmer"), { target: { value: '5,000' } })
-    fireEvent.change(screen.getByLabelText("The day Reece's notice goes out on 650 ATI Schertz"), { target: { value: '2026-10-14' } })
+    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palvern"), { target: { value: '5,000' } })
+    fireEvent.change(screen.getByLabelText("The day Reece's notice goes out on 650 AXO Schertz"), { target: { value: '2026-10-14' } })
     fireEvent.change(screen.getByLabelText('Who said it'), { target: { value: 'Dana' } })
     fireEvent.click(screen.getByRole('tab', { name: /^Winn Supply/ }))
-    fireEvent.change(screen.getByLabelText("Winn Supply's balance on 363 Michael Palmer"), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText("Winn Supply's balance on 363 Michael Palvern"), { target: { value: '0' } })
     expect(screen.getByText(/They show nothing owed/)).toBeTruthy()
     expect(document.querySelector('[data-house-ask-pending]')?.textContent).toBe('3 answers to save')
     fireEvent.click(save())
@@ -107,10 +107,10 @@ describe('SupplyHouseAskSheet', () => {
   it('a red balance holds only its own answer: the rest save, and the held one stays with its reason', async () => {
     const { onClose, onSaved } = mount()
     await settle()
-    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palmer"), { target: { value: 'about 5k' } })
-    fireEvent.change(screen.getByLabelText("The day Reece's notice goes out on 650 ATI Schertz"), { target: { value: '2026-10-14' } })
+    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palvern"), { target: { value: 'about 5k' } })
+    fireEvent.change(screen.getByLabelText("The day Reece's notice goes out on 650 AXO Schertz"), { target: { value: '2026-10-14' } })
     fireEvent.click(screen.getByRole('tab', { name: /^Winn Supply/ }))
-    fireEvent.change(screen.getByLabelText("Winn Supply's balance on 363 Michael Palmer"), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText("Winn Supply's balance on 363 Michael Palvern"), { target: { value: '0' } })
     // The same job at the other house is not red: only Reece's answer is held.
     expect(screen.queryByText('Type the balance as a number, like 8,950.00.')).toBeNull()
     expect(document.querySelector('[data-house-ask-pending]')?.textContent).toBe('1 is held. It stays here with the reason. The 2 ready ones save now.')
@@ -121,7 +121,7 @@ describe('SupplyHouseAskSheet', () => {
     expect(onClose).not.toHaveBeenCalled()
     // The sheet turns to the held answer's house, still typed, still red, and the button waits for it.
     expect(screen.getByRole('tab', { name: /^Reece/ }).getAttribute('aria-selected')).toBe('true')
-    expect((screen.getByLabelText("Reece's balance on 363 Michael Palmer") as HTMLInputElement).value).toBe('about 5k')
+    expect((screen.getByLabelText("Reece's balance on 363 Michael Palvern") as HTMLInputElement).value).toBe('about 5k')
     expect(screen.getByText('Type the balance as a number, like 8,950.00.')).toBeTruthy()
     expect(document.querySelector('[data-house-ask-tab-held]')?.textContent).toBe('1 held')
     expect((screen.getByRole('button', { name: 'Save ▸' }) as HTMLButtonElement).disabled).toBe(true)
@@ -131,7 +131,7 @@ describe('SupplyHouseAskSheet', () => {
     const { onClose } = mount()
     await settle()
     const backdrop = screen.getByRole('dialog', { name: 'Ask a supply house' }).parentElement!
-    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palmer"), { target: { value: 'about 5k' } })
+    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palvern"), { target: { value: 'about 5k' } })
     expect(screen.getByText('Type the balance as a number, like 8,950.00.')).toBeTruthy()
     expect((screen.getByRole('button', { name: /^Save/ }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(backdrop)

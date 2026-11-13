@@ -21,7 +21,7 @@ export function promiseDateWords(ymd: string): string {
 }
 
 /**
- * The feed line: "Pay by Nov 20, 2026 — Umar Khan · phone · heard by Taunya · “check goes out with the draw”"; a paid
+ * The feed line: "Pay by Nov 20, 2026 — Ulric Karrow · phone · heard by Taunya · “check goes out with the draw”"; a paid
  * claim (v2.5648) reads "Says they paid Oct 20, 2026 · a check in the mail — Dana · by text · heard by Theo".
  */
 export function promiseSummary(p: PaymentPromise): string {

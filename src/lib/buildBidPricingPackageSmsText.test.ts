@@ -166,7 +166,7 @@ describe('buildBidPricingPackageSmsText', () => {
 describe('Send both (v2.3685)', () => {
   it('with sections: a heading line, the rows and a Total per price, ★ first', () => {
     const text = buildBidPricingPackageSmsText({
-      bidLabel: 'BP385 Galloway Park',
+      bidLabel: 'BP385 Gallenby Park',
       plansLink: null,
       externalRows: [row()],
       totalRevenue: 100,
@@ -176,7 +176,7 @@ describe('Send both (v2.3685)', () => {
       ],
     })
     expect(text.split('\n')).toEqual([
-      'Bid: BP385 Galloway Park',
+      'Bid: BP385 Gallenby Park',
       '',
       '★ Value Engineered — customer\'s price',
       'Toilet — 1 × $100 = $100',

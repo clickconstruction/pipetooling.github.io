@@ -1,7 +1,7 @@
 /**
  * The material location report (punch list #268): one Letter paper of what is in every cage and box
  * across a development's jobs, as the Materials on site ledger (#209) reads it. The owner, looking
- * at Gun Dog on 2026-11-04: *the ability to print a report that shows what materials are at all the
+ * at Gray Fox on 2026-11-04: *the ability to print a report that shows what materials are at all the
  * different locations … It needs to be able to be printed to pdf.*
  *
  * The rows are the ledger's own: a job's places, its live containers and its movements, summed by
@@ -21,12 +21,14 @@ import { manifestDateWords } from './containerManifest'
 import { boxCode } from './labels'
 import { UNITS } from './manifest'
 import { compareLabels, containerLines, partKey, type Container, type Movement, type Place } from './onSite'
+import { rollKey } from './siteRollup'
 
 /** The two ways the paper is read. */
-export type ReportView = 'job' | 'location'
+export type ReportView = 'job' | 'location' | 'part'
 export const REPORT_VIEWS: ReadonlyArray<{ key: ReportView; label: string; title: string }> = [
   { key: 'job', label: 'By job', title: 'Each job, its places, and the cages and boxes at each' },
   { key: 'location', label: 'By location', title: 'Each place across the jobs, with every job’s cages and boxes at it' },
+  { key: 'part', label: 'By part', title: 'Each part across the site’s jobs, with its total and the cages and boxes that hold it' },
 ]
 
 export type ReportJobInput = { id: string; label: string; name: string }
@@ -266,9 +268,66 @@ function sectionsByLocation(report: SiteMaterialsReport): ReportSection[] {
   return sections
 }
 
-/** The paper's sections for a view, from the one fold. */
+/** The paper's sections for a view, from the one fold. By part has none: it is one list (`reportPartRows`). */
 export function reportSections(report: SiteMaterialsReport, view: ReportView): ReportSection[] {
-  return view === 'job' ? sectionsByJob(report) : sectionsByLocation(report)
+  return view === 'job' ? sectionsByJob(report) : view === 'location' ? sectionsByLocation(report) : []
+}
+
+/** One row of the paper read by part (punch list #330): a part across the site's jobs, its total and where it is. */
+export type ReportPartRow = {
+  key: string
+  name: string
+  total: number
+  /** The unit every line of the row names, or null when they name none or differ. */
+  unit: string | null
+  /** The spellings folded into the row, most pieces first; one when nothing folded. */
+  spellings: string[]
+  /** The cages and boxes that hold it, most pieces first. */
+  holds: Array<{ containerId: string; stencil: string; jobLabel: string; placeName: string | null; onHand: number }>
+}
+
+/**
+ * The paper by part, from the one fold: one row per part across the site's jobs, the same rows the
+ * site's screen draws (`rollKey`, the same-words fold; `canon` joins the names a person joined,
+ * `bookNames` names a parts-book row whose lines were all typed). Each box's line keeps its own
+ * count; a row adds lines. By name as people read it.
+ */
+export function reportPartRows(report: SiteMaterialsReport, canon: (key: string) => string = (key) => key, bookNames: ReadonlyMap<string, string> = new Map()): ReportPartRow[] {
+  const rows = new Map<string, { row: ReportPartRow; spell: Map<string, number>; units: Set<string>; book: string | null }>()
+  for (const job of report.jobs) {
+    for (const box of job.boxes) {
+      for (const line of box.lines) {
+        const partId = line.partKey.startsWith('id:') ? line.partKey.slice('id:'.length) : null
+        const key = canon(rollKey({ partId, partName: line.partName }))
+        let a = rows.get(key)
+        if (!a) {
+          a = { row: { key, name: line.partName, total: 0, unit: null, spellings: [], holds: [] }, spell: new Map(), units: new Set(), book: null }
+          rows.set(key, a)
+        }
+        a.row.total += line.onHand
+        a.spell.set(line.partName, (a.spell.get(line.partName) ?? 0) + line.onHand)
+        a.units.add(line.unit ?? '')
+        if (partId && !a.book) a.book = line.partName
+        a.row.holds.push({ containerId: box.containerId, stencil: box.kind === 'unsorted' ? UNSORTED_HEADING : box.stencil, jobLabel: box.jobLabel, placeName: box.placeName, onHand: line.onHand })
+      }
+    }
+  }
+  const out: ReportPartRow[] = []
+  for (const a of rows.values()) {
+    const spellings = [...a.spell.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([name]) => name)
+    a.row.spellings = spellings
+    a.row.name = a.book ?? bookNames.get(a.row.key) ?? spellings[0] ?? a.row.name
+    a.row.unit = a.units.size === 1 ? [...a.units][0] || null : null
+    a.row.holds.sort((x, y) => y.onHand - x.onHand || compareLabels(x.stencil, y.stencil))
+    out.push(a.row)
+  }
+  return out.sort((x, y) => compareLabels(x.name, y.name) || x.key.localeCompare(y.key))
+}
+
+/** "104 parts · 1,940 pieces" over the by-part list. */
+export function partRowsWords(rows: ReadonlyArray<Pick<ReportPartRow, 'total'>>): string {
+  const pieces = rows.reduce((n, r) => n + r.total, 0)
+  return `${rows.length.toLocaleString('en-US')} ${pluralNoun('part', rows.length)} · ${pieces.toLocaleString('en-US')} ${pluralNoun('piece', pieces)}`
 }
 
 /** The closing block's head: "Nothing on site · 23 jobs". */
@@ -278,6 +337,7 @@ export function nothingHeading(n: number): string {
 
 /** The line under the window's title. */
 export function reportLeadWords(view: ReportView): string {
+  if (view === 'part') return 'Every part across the site’s jobs with its total and the cages and boxes that hold it, as the ledger reads it today. Print, then Save as PDF in the print window.'
   return view === 'job'
     ? 'What is in every cage and box across the site’s jobs, by job and place, as the ledger reads it today. Print, then Save as PDF in the print window.'
     : 'What is in every cage and box across the site’s jobs, by place with each job under it, as the ledger reads it today. Print, then Save as PDF in the print window.'

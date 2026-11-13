@@ -18,18 +18,18 @@ function job(over: Partial<JobWithDetails>): JobWithDetails {
   return { id: Math.random().toString(36).slice(2), ...over } as JobWithDetails
 }
 
-const gunDog = { id: 'dev-1', name: 'Gun Dog' }
-const ranch = { id: 'dev-2', name: 'Jacob Roberts Ranch' }
-const heron = { id: 'gc-1', name: 'Heron Construction Group' }
-const doneRight = { id: 'gc-2', name: 'Done Right Foundation' }
+const grayFox = { id: 'dev-1', name: 'Gray Fox' }
+const ranch = { id: 'dev-2', name: 'Jared Robson Ranch' }
+const hadlow = { id: 'gc-1', name: 'Hadlow Construction Group' }
+const deadLevel = { id: 'gc-2', name: 'Dead Level Foundation' }
 const trace = { account_manager_user_id: 'u-trace', account_manager: { id: 'u-trace', name: 'Trace' }, account_manager_relationship: 'only' }
 
 const JOBS: JobWithDetails[] = [
-  job({ development: gunDog, ...trace }),
-  job({ development: gunDog, ...trace }),
-  job({ development: ranch, gcCustomer: doneRight }),
-  job({ gcCustomer: heron, account_manager_user_id: 'u-mal', account_manager: { id: 'u-mal', name: 'Malachi' }, account_manager_relationship: 'primary' }),
-  job({ gcCustomer: heron }),
+  job({ development: grayFox, ...trace }),
+  job({ development: grayFox, ...trace }),
+  job({ development: ranch, gcCustomer: deadLevel }),
+  job({ gcCustomer: hadlow, account_manager_user_id: 'u-mal', account_manager: { id: 'u-mal', name: 'Malachi' }, account_manager_relationship: 'primary' }),
+  job({ gcCustomer: hadlow }),
   job({}),
 ]
 
@@ -46,8 +46,8 @@ describe('stagesExcludeOptionsFromJobs', () => {
       [STAGES_EXCLUDE_NONE, 3],
     ])
     expect(opts.gc.map((o) => [o.name, o.count])).toEqual([
-      ['Done Right Foundation', 1],
-      ['Heron Construction Group', 2],
+      ['Dead Level Foundation', 1],
+      ['Hadlow Construction Group', 2],
       ['No GC set', 3],
     ])
     expect(opts.accountMan.map((o) => [o.name, o.count])).toEqual([
@@ -92,7 +92,7 @@ describe('filterJobsByExclusions', () => {
       JOBS,
       filters({ development: ['dev-1'], gc: ['gc-1'], accountMan: [STAGES_EXCLUDE_NONE] }),
     )
-    // dev-1 jobs gone, gc-1 jobs gone, AM-less jobs gone → only the ranch/doneRight job... which has no AM → gone too.
+    // dev-1 jobs gone, gc-1 jobs gone, AM-less jobs gone → only the ranch/deadLevel job... which has no AM → gone too.
     expect(out).toHaveLength(0)
   })
 })

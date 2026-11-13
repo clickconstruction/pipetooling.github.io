@@ -52,14 +52,14 @@ describe('chipMatchesValue', () => {
 
 describe('gcEmailChip', () => {
   it('builds the GC\'s own chip from the customer email, normalized', () => {
-    expect(gcEmailChip('Done Right Foundation', '  Grace@ClickPlumbing.com ')).toEqual({
+    expect(gcEmailChip('Dead Level Foundation', '  Grace@ClickPlumbing.com ')).toEqual({
       email: 'grace@clickplumbing.com',
-      label: 'Done Right Foundation',
-      title: 'Done Right Foundation · grace@clickplumbing.com · GC',
+      label: 'Dead Level Foundation',
+      title: 'Dead Level Foundation · grace@clickplumbing.com · GC',
     })
   })
   it('is null without a usable email', () => {
-    expect(gcEmailChip('Done Right Foundation', null)).toBeNull()
-    expect(gcEmailChip('Done Right Foundation', 'no-at-sign')).toBeNull()
+    expect(gcEmailChip('Dead Level Foundation', null)).toBeNull()
+    expect(gcEmailChip('Dead Level Foundation', 'no-at-sign')).toBeNull()
   })
 })

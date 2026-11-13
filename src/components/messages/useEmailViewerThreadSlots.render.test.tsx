@@ -46,14 +46,14 @@ beforeEach(() => {
 const GLENN: Contact = {
   id: 'c-glenn',
   kind: 'customer',
-  name: 'Glenn Geling',
+  name: 'Glenn Gelwin',
   goesBy: null,
-  company: 'Maxx Builders',
-  record: { table: 'customers', id: 'cust-maxx' },
-  channels: [{ id: 'ch-1', kind: 'email', value: 'glenn@maxxbuilders.com', optedOutAt: null }],
+  company: 'Marrex Builders',
+  record: { table: 'customers', id: 'cust-marrex' },
+  channels: [{ id: 'ch-1', kind: 'email', value: 'glenn@marrexbuilders.example', optedOutAt: null }],
   jobIds: ['bid:b-oak'],
   defaultJobId: null,
-  customerId: 'cust-maxx',
+  customerId: 'cust-marrex',
 }
 const OAK: JobTile = { key: 'bid:b-oak', kind: 'bid', num: 'B512', name: 'Oak Hill Clinic', day: { words: 'bid due Thu Nov 12 · 8 days', tone: 'soon' } }
 const ELM: JobTile = { key: 'bid:b-elm', kind: 'bid', num: 'B520', name: 'Elm Street Shell', day: { words: 'no due day', tone: '' } }
@@ -66,7 +66,7 @@ const line = (id: string, over: Partial<ThreadMessage> = {}): ThreadMessage => (
   channel: 'email',
   direction: 'in',
   at: '2026-10-22T15:08:00Z',
-  who: 'Glenn Geling',
+  who: 'Glenn Gelwin',
   subject: SUBJECT,
   body: 'Wendi,\n\nWe would like to invite you to submit a bid for the following:\n\nScope of Work: Plumbing\nDeadline: Monday, November 02, 2026, 3:00 PM',
   invitation: { kind: 'invitation', project: 'Northeast Bible Church Elementary Building', due: { date: '2026-11-02', time: '15:00' }, portal: null, cue: 'invitation to bid' },
@@ -78,7 +78,7 @@ function fakeIo(): EmailViewerIo & { startBid: ReturnType<typeof vi.fn>; putOnBi
     loadKnown: vi.fn(async () => ({})),
     name: vi.fn(async () => 'c-glenn'),
     makeCustomerRecord: vi.fn(async () => 'cust-new'),
-    startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '531', customer: 'Maxx Builders' })),
+    startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '531', customer: 'Marrex Builders' })),
     searchOpenBids: vi.fn(async (words: string) => [OAK, ELM].filter((t) => t.name.toLowerCase().includes(words.toLowerCase()))),
     putOnBid: vi.fn(async () => undefined),
   }
@@ -136,9 +136,9 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     const panel = document.querySelector('[data-start-bid-panel]') as HTMLElement
     expect((within(panel).getByRole('textbox') as HTMLInputElement).value).toBe('Northeast Bible Church Elementary Building')
     expect(within(panel).queryByText('Make the customer and start the bid')).toBeNull()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Start a bid on Maxx Builders' }))
-    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-itb', { customerId: 'cust-maxx', projectName: 'Northeast Bible Church Elementary Building', dueDate: '2026-11-02', dueTime: '15:00', links: [] }))
-    expect(await screen.findByText('Bid b531 is started on Maxx Builders: Northeast Bible Church Elementary Building. The thread is on it.')).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Start a bid on Marrex Builders' }))
+    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-itb', { customerId: 'cust-marrex', projectName: 'Northeast Bible Church Elementary Building', dueDate: '2026-11-02', dueTime: '15:00', links: [] }))
+    expect(await screen.findByText('Bid b531 is started on Marrex Builders: Northeast Bible Church Elementary Building. The thread is on it.')).toBeTruthy()
     expect(reread).toHaveBeenCalledTimes(1)
     expect(open.closed).toBe(1)
     expect(navigate).toHaveBeenCalledWith('/bids?tab=bid-board&bidId=b-new')
@@ -147,17 +147,17 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
 
   it('Start a bid on a sender nobody has named: a new customer from the domain, made and named by the press', async () => {
     const io = fakeIo()
-    const unknown: Contact = { ...GLENN, kind: 'unknown', name: 'glenn@maxxbuilders.com', company: '', record: null, customerId: null, jobIds: [] }
-    draw(io, [line('m-itb', { who: 'glenn@maxxbuilders.com' })], unknown)
+    const unknown: Contact = { ...GLENN, kind: 'unknown', name: 'glenn@marrexbuilders.example', company: '', record: null, customerId: null, jobIds: [] }
+    draw(io, [line('m-itb', { who: 'glenn@marrexbuilders.example' })], unknown)
     fireEvent.click(screen.getByRole('button', { name: 'Start a bid' }))
     const panel = document.querySelector('[data-start-bid-panel]') as HTMLElement
     await waitFor(() => expect(io.loadKnown).toHaveBeenCalled())
     const fields = within(panel).getAllByRole('textbox') as HTMLInputElement[]
-    expect(fields.map((f) => f.value)).toEqual(['Northeast Bible Church Elementary Building', 'Maxxbuilders'])
-    fireEvent.change(fields[1]!, { target: { value: 'Maxx Builders' } })
+    expect(fields.map((f) => f.value)).toEqual(['Northeast Bible Church Elementary Building', 'Marrexbuilders'])
+    fireEvent.change(fields[1]!, { target: { value: 'Marrex Builders' } })
     fireEvent.click(within(panel).getByRole('button', { name: 'Make the customer and start the bid' }))
     await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-itb', expect.objectContaining({ customerId: 'cust-new' })))
-    expect(io.makeCustomerRecord).toHaveBeenCalledWith('c-glenn', { customerName: 'Maxx Builders', personName: null, email: 'glenn@maxxbuilders.com', phone: null, customerType: 'commercial' }, { userId: 'u-wendi' }, expect.any(String))
+    expect(io.makeCustomerRecord).toHaveBeenCalledWith('c-glenn', { customerName: 'Marrex Builders', personName: null, email: 'glenn@marrexbuilders.example', phone: null, customerType: 'commercial' }, { userId: 'u-wendi' }, expect.any(String))
     expect(io.name).toHaveBeenCalledWith('c-glenn', expect.objectContaining({ kind: 'customer', record: { table: 'customers', id: 'cust-new' } }))
   })
 
@@ -172,7 +172,7 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     const elm = await within(picker).findByRole('button', { name: /B520 Elm Street Shell/ })
     expect(io.searchOpenBids).toHaveBeenCalledWith('elm')
     fireEvent.click(elm)
-    await waitFor(() => expect(io.putOnBid).toHaveBeenCalledWith('m-itb', 'b-elm', 'Invitation to bid came in by email from Glenn Geling, Oct 22.'))
+    await waitFor(() => expect(io.putOnBid).toHaveBeenCalledWith('m-itb', 'b-elm', 'Invitation to bid came in by email from Glenn Gelwin, Oct 22.'))
     expect(await screen.findByText('Put on B520 Elm Street Shell. Its history says it came in by email.')).toBeTruthy()
     expect(reread).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog', { name: 'Put it on a bid' })).toBeNull()
@@ -183,7 +183,7 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     draw(io, [line('m-plain', { invitation: null, subject: 'Re: fixture schedule', body: 'Can you send the schedule?' })])
     fireEvent.click(screen.getByRole('button', { name: 'Put it on a bid…' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Put it on a bid' })).getByRole('button', { name: /B512 Oak Hill Clinic/ }))
-    await waitFor(() => expect(io.putOnBid).toHaveBeenCalledWith('m-plain', 'b-oak', 'An email came in from Glenn Geling, Oct 22: Re: fixture schedule.'))
+    await waitFor(() => expect(io.putOnBid).toHaveBeenCalledWith('m-plain', 'b-oak', 'An email came in from Glenn Gelwin, Oct 22: Re: fixture schedule.'))
   })
 
   it('a refusal keeps its words under the tools', async () => {

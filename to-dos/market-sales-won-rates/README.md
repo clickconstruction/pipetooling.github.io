@@ -43,7 +43,7 @@ All of this was said on 2026-11-11, on the Bridge spike, while the owner looked 
   lost the bid if we have not heard back within a hundred 80 days".
 - On very large and very small bids: "I don't think we should count these. I think we should only count bids
   within Two standard deviations." Shown that the won rate falls with the size of the bid, he chose a rate for
-  each size over a cut: "Okay, I like this. I also need you to exclude all the gundog bids."
+  each size over a cut: "Okay, I like this. I also need you to exclude all the grayfox bids."
 - On the chart of wins by size: "I really like your chart of what bids we are winning based on size. I would
   like to add that to the bid board somehow." Asked whether the board's Health section is the place: "Yes, keep
   it there".

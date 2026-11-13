@@ -26,12 +26,12 @@ vi.mock('../supabase', () => {
     },
   }
 })
-vi.mock('../fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: () => Promise.resolve({ id: 'j1', customer_name: 'Michael Palmer' }) }))
+vi.mock('../fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: () => Promise.resolve({ id: 'j1', customer_name: 'Michael Palvern' }) }))
 
 const { openInPersonSigning } = await import('./jobContractInPerson')
 
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString()
-const sent = (p: Record<string, unknown> = {}) => ({ id: 'c1', job_id: 'j1', status: 'sent', voided_at: null, sent_channel: 'pdf_email', public_token: 'tok-pdf', public_token_expires_at: inDays(60), recipient_email: 'palmer@example.com', recipient_name: 'Michael Palmer', ...p })
+const sent = (p: Record<string, unknown> = {}) => ({ id: 'c1', job_id: 'j1', status: 'sent', voided_at: null, sent_channel: 'pdf_email', public_token: 'tok-pdf', public_token_expires_at: inDays(60), recipient_email: 'palvern@example.com', recipient_name: 'Michael Palvern', ...p })
 
 beforeEach(() => {
   state.invoked = []

@@ -2,19 +2,17 @@
  * The Collect desk, PR C (v2.5854): the one move on each payer, the words to
  * say, and the lien paper beside it. The move is the first rule that matches,
  * top to bottom; the opener is built only from facts the kernel holds and
- * asks for what it does not. A statement is a move, not a call: Friday's
- * "calls that ended with a date" counts only the calls. The owner and the day
- * come from the recorded plan, never from here. Pure.
+ * asks for what it does not. A statement is a move, not a call. The owner and
+ * the day on a move are typed on the desk, never set here. Pure.
  *
  * v2.5873: the sheet keeps what the after-the-call sheet promises. A dispute
  * leaves it for the owner; a call that named no date waits TOUCH_QUIET_DAYS;
  * a live promise with nothing else late waits for its day. Each still shows
- * on its row, off the copied sheet and the plan. A second miss on the
+ * on its row, off the copied sheet. A second miss on the
  * account puts the owner on the call.
  */
 import type { LienArChip } from '../../jobs/lienArChip'
 import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChaseTouches'
-import type { CallMove } from '../calls'
 import { stageUsd } from '../stageFlow'
 import type { CollectBillRead } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
@@ -51,8 +49,6 @@ export type CollectMoveOptions = {
   /** Under this the move is a statement alone. */
   smallUsd?: number
   lienHref?: ((door: LienArChip['door']) => string) | null
-  /** This week's recorded plan, for the owner on each move. */
-  recordedMoves?: ReadonlyArray<CallMove> | null
   /** Days a payer waits off the sheet after a call that named no date. */
   quietDays?: number
 }
@@ -76,9 +72,8 @@ export function collectMoveFor(p: CollectPayer, opts: CollectMoveOptions): Colle
   const paper = paperFor(opts.chip, opts.lienHref)
   const late = p.byState.late + p.byState.broken
   const lateBills = p.bills.filter((b) => b.state === 'late' || b.state === 'broken')
-  const owner = (title: string): string => opts.recordedMoves?.find((m) => m.title === title)?.who ?? ''
   const escalated = p.misses >= 2
-  const done = (kind: CollectMoveKind, title: string, opener: string | null, isCall: boolean, askUsd: number): CollectMove => ({ kind, title, opener, isCall, paper, owner: escalated && isCall ? 'the owner' : owner(title), askUsd, onSheet: true, escalated: escalated && isCall })
+  const done = (kind: CollectMoveKind, title: string, opener: string | null, isCall: boolean, askUsd: number): CollectMove => ({ kind, title, opener, isCall, paper, owner: escalated && isCall ? 'the owner' : '', askUsd, onSheet: true, escalated: escalated && isCall })
   const wait = (kind: CollectMoveKind, title: string): CollectMove => ({ kind, title, opener: null, isCall: false, paper, owner: '', askUsd: 0, onSheet: false, escalated: false })
 
   const touch = p.lastTouch && !p.lastTouch.resolvedAt ? p.lastTouch : null
@@ -136,11 +131,6 @@ export function buildCollectSheet(cut: CollectPayerCut, moveFor: (p: CollectPaye
   const askUsd = on.reduce((s, r) => s + r.move.askUsd, 0)
   const paysItselfUsd = cut.cut.reduce((s, p) => s + (p.byState.late + p.byState.broken === 0 ? p.byState.notdue : 0), 0)
   return { rows, moves: on.length, waiting: rows.length - on.length, calls, statements: on.length - calls, askUsd, paysItselfUsd }
-}
-
-/** The moves as the Bridge's call records them: one per row, dollars under `chase`, the owner as typed. */
-export function collectSheetAsCallMoves(sheet: CollectSheet, owners: ReadonlyMap<string, string>): CallMove[] {
-  return sheet.rows.filter((r) => r.move.onSheet).map((r) => ({ key: 'chase', title: `${r.payer.payerName}: ${r.move.title}`, who: owners.get(r.payer.payerId ?? r.payer.payerName) ?? r.move.owner, then: r.move.askUsd }))
 }
 
 /** The call sheet as text, for the clipboard. */

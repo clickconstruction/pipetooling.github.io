@@ -52,10 +52,10 @@ describe('the words around the presses', () => {
   })
 
   it('the log line names what came in, from whom and the day, in the app’s time zone', () => {
-    const line = { who: 'Glenn Geling', at: '2026-10-22T15:08:00Z', subject: 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid' }
-    expect(putOnBidLogLine(line, 'invitation')).toBe('Invitation to bid came in by email from Glenn Geling, Oct 22.')
-    expect(putOnBidLogLine(line, 'addendum')).toBe('Addendum came in by email from Glenn Geling, Oct 22.')
-    expect(putOnBidLogLine({ ...line, subject: 'Re: fixture schedule' }, null)).toBe('An email came in from Glenn Geling, Oct 22: Re: fixture schedule.')
+    const line = { who: 'Glenn Gelwin', at: '2026-10-22T15:08:00Z', subject: 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid' }
+    expect(putOnBidLogLine(line, 'invitation')).toBe('Invitation to bid came in by email from Glenn Gelwin, Oct 22.')
+    expect(putOnBidLogLine(line, 'addendum')).toBe('Addendum came in by email from Glenn Gelwin, Oct 22.')
+    expect(putOnBidLogLine({ ...line, subject: 'Re: fixture schedule' }, null)).toBe('An email came in from Glenn Gelwin, Oct 22: Re: fixture schedule.')
     // Late evening UTC is still the same civil day in Texas only until 7 PM; after midnight UTC it is the day before.
     expect(putOnBidLogLine({ who: '', at: '2026-10-23T02:00:00Z', subject: null }, null)).toBe('An email came in from someone, Oct 22.')
   })

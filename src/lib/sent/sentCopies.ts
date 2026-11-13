@@ -28,7 +28,7 @@ export function canReadSentCopies(role: string | null | undefined): boolean {
 export type SentFiling = {
   /** What it is, as the code names it: lower case, digits and underscores (`owner_records_packet`). */
   kind: string
-  /** What it is, as a person reads it ("Records for 9703 Lenox Hill"). */
+  /** What it is, as a person reads it ("Records for 9703 Linmor Hill"). */
   title: string
   how: SentHow
   recipientName?: string | null
@@ -214,7 +214,7 @@ export function sentCopyLines(rows: ReadonlyArray<SentCopy>): SentCopyLine[] {
 }
 
 /**
- * The grey words after a line's name: "Printed Oct 5, 2026, 2:30 PM · to Umar Khan · by Robert",
+ * The grey words after a line's name: "Printed Oct 5, 2026, 2:30 PM · to Ulric Karrow · by Robert",
  * with "3 times, last" when the same copy went more than once.
  */
 export function sentCopyWords(line: SentCopyLine, when: (iso: string) => string): string {

@@ -12,7 +12,7 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 export type FixBillLineItem = {
   jobId: string
-  /** "964 PLUM · Pondhill demo" */
+  /** "964 PLUM · Penmoor demo" */
   label: string
   customerName: string | null
   open: number

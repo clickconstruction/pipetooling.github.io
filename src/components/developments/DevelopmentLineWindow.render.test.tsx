@@ -17,7 +17,7 @@ const HEAD = 'The GC wrote about the pour. '.repeat(14).trim()
 const WHOLE = `${HEAD} And then every word of the mail, the signature and the footer.`
 
 function line(over: Partial<ChangeLine> = {}): ChangeLine {
-  return { id: 'history:h1', at: '2026-10-28T14:12:00.000Z', kind: 'entry', verb: 'Email', about: { kind: 'site', id: null, label: 'Gun Dog' }, detail: HEAD, by: 'Dana', waitingDays: null, source: 'email', via: 'app', withTime: true, entryId: 'h1', detailIsHead: true, ...over }
+  return { id: 'history:h1', at: '2026-10-28T14:12:00.000Z', kind: 'entry', verb: 'Email', about: { kind: 'site', id: null, label: 'Gray Fox' }, detail: HEAD, by: 'Dana', waitingDays: null, source: 'email', via: 'app', withTime: true, entryId: 'h1', detailIsHead: true, ...over }
 }
 
 describe('DevelopmentLineWindow — the rest of a long line', () => {

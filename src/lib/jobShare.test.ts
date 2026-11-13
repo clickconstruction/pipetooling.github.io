@@ -12,15 +12,15 @@ import {
   type JobSharePayload,
 } from './jobShare'
 
-const fields = { hcpNumber: '951', jobName: 'Shearer Pinpoint', jobAddress: '717 Trinity St, Lockhart, TX' }
+const fields = { hcpNumber: '951', jobName: 'Shellan Pinpoint', jobAddress: '717 Trinity St, Lockhart, TX' }
 
 describe('buildJobShareTitle', () => {
   it('joins job # and name', () => {
-    expect(buildJobShareTitle(fields)).toBe('Job #951 — Shearer Pinpoint')
+    expect(buildJobShareTitle(fields)).toBe('Job #951 — Shellan Pinpoint')
   })
 
   it('degrades to just the name when the job # is missing', () => {
-    expect(buildJobShareTitle({ ...fields, hcpNumber: '  ' })).toBe('Shearer Pinpoint')
+    expect(buildJobShareTitle({ ...fields, hcpNumber: '  ' })).toBe('Shellan Pinpoint')
   })
 
   it('degrades to just the job # when the name is missing', () => {
@@ -47,14 +47,14 @@ describe('buildJobShareDeepLink', () => {
 describe('buildJobSharePayload', () => {
   it('puts title and address on separate lines of the text', () => {
     const p = buildJobSharePayload('j1', fields, 'https://pipetooling.com')
-    expect(p.title).toBe('Job #951 — Shearer Pinpoint')
-    expect(p.text).toBe('Job #951 — Shearer Pinpoint\n717 Trinity St, Lockhart, TX')
+    expect(p.title).toBe('Job #951 — Shellan Pinpoint')
+    expect(p.text).toBe('Job #951 — Shellan Pinpoint\n717 Trinity St, Lockhart, TX')
     expect(p.url).toBe('https://pipetooling.com/jobs?jobDetail=j1')
   })
 
   it('omits the address line when missing', () => {
     const p = buildJobSharePayload('j1', { ...fields, jobAddress: '  ' }, 'https://pipetooling.com')
-    expect(p.text).toBe('Job #951 — Shearer Pinpoint')
+    expect(p.text).toBe('Job #951 — Shellan Pinpoint')
   })
 })
 
@@ -90,8 +90,8 @@ describe('buildJobShareFunctionUrl', () => {
 })
 
 const payload: JobSharePayload = {
-  title: 'Job #951 — Shearer Pinpoint',
-  text: 'Job #951 — Shearer Pinpoint\n717 Trinity St, Lockhart, TX',
+  title: 'Job #951 — Shellan Pinpoint',
+  text: 'Job #951 — Shellan Pinpoint\n717 Trinity St, Lockhart, TX',
   url: 'https://pipetooling.com/jobs?jobDetail=j1',
 }
 

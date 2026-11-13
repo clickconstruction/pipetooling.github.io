@@ -4,7 +4,7 @@ import { allApprovedLine, noProductWords, reviewerNames, theirCallBoard, whoAnsw
 const row = (id: string, tag: string, o: Partial<{ status: string; review_decision: string | null; review_note: string | null; submitted_label: string | null; submitted_model: string | null }> = {}) => ({ id, tag, status: 'proposed', review_decision: null as string | null, review_note: null as string | null, submitted_label: `${tag} product` as string | null, submitted_model: null as string | null, ...o })
 const part = (id: string, label: string, seq: number, review_decision: string | null = null, review_note: string | null = null, on_submittal = true) => ({ id, label, sequence_order: seq, on_submittal, review_decision, review_note })
 
-// The SpaceX draft in small: one fixture with a part rejected, one answered as a whole, two waiting, one with no product.
+// The SkyLab draft in small: one fixture with a part rejected, one answered as a whole, two waiting, one with no product.
 const lav = row('lav', 'LAV-1', { review_decision: 'rejected' })
 const mop = row('mop', '12" DEEP MOP SINK', { review_decision: 'revise', review_note: 'resubmit in white', submitted_label: 'FIAT MSB2424100' })
 const dwh = row('dwh', 'DWH-1')

@@ -28,7 +28,10 @@ import {
   type PunchPick,
 } from '../lib/todos/punchListView'
 import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
+import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
+import { unpackHistory } from '../lib/todos/punchListHistory'
+import packedHistory from '../lib/todos/punchListHistoryData'
 import board from 'virtual:punch-list'
 
 /**
@@ -49,6 +52,9 @@ import board from 'virtual:punch-list'
  * the #29 sentence. Picks are shared rows in `punch_list_picks` (v2.3559), stamped with
  * who made them; until the table is pushed they stay on the device and the page says so.
  */
+/** The board's history as the build replayed it from git; the burndown reads it. */
+const history = unpackHistory(packedHistory)
+
 export default function PunchList() {
   const { user: authUser, role, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -151,6 +157,9 @@ export default function PunchList() {
           : 'Picks stay on this device until the database catches up with this deploy.'}
         {' '}To change a row, change its to-do file in the repo — this page is rendered from them.
       </p>
+
+      {/* The burndown: the open cards hour by hour, replayed from the folder's own history, and when the list clears. */}
+      <PunchListBurndown history={history} items={board.items} />
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <span style={eyebrow}>Show</span>

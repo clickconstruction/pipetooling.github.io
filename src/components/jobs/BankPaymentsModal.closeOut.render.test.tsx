@@ -48,7 +48,7 @@ const DEPOSITS = [
   {
     mercury_transaction_id: 'mtx-applied',
     amount: 1855.7,
-    counterparty_name: 'Elaine Giesber',
+    counterparty_name: 'Elaine Gilbrow',
     note: null,
     external_memo: null,
     posted_at: '2026-09-11T15:00:00Z',
@@ -245,7 +245,7 @@ describe('BankPaymentsModal · close out with a reason (render smoke)', () => {
   it('a fully applied deposit shows no strip', async () => {
     calls.booking = 'pending'
     await openWithSuggestedReason()
-    fireEvent.click(screen.getByRole('button', { name: /1,855\.70 from Elaine Giesber/ }))
+    fireEvent.click(screen.getByRole('button', { name: /1,855\.70 from Elaine Gilbrow/ }))
     await waitFor(() => {
       expect(screen.queryByTestId('ar-close-out')).toBeNull()
     })

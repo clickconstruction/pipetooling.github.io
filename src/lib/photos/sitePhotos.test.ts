@@ -196,8 +196,8 @@ describe('narrowing and the empty words', () => {
     expect(sitePhotosNarrowed({ jobId: null, source: 'all' }, 'Malachi Reed')).toBe(true)
   })
   it('the empty words name the site and the door that fills it', () => {
-    expect(sitePhotosEmptyWords(false, 'Gun Dog Trail')).toEqual({ main: 'Nothing filed yet on Gun Dog Trail.', tail: 'lists its jobs. A photo on a report, a box or a checklist on one of them shows here within a minute.' })
-    expect(sitePhotosEmptyWords(true, 'Gun Dog Trail')).toEqual({ main: 'No photo matches.', tail: 'Pick another job or another source.' })
+    expect(sitePhotosEmptyWords(false, 'Gray Fox Trail')).toEqual({ main: 'Nothing filed yet on Gray Fox Trail.', tail: 'lists its jobs. A photo on a report, a box or a checklist on one of them shows here within a minute.' })
+    expect(sitePhotosEmptyWords(true, 'Gray Fox Trail')).toEqual({ main: 'No photo matches.', tail: 'Pick another job or another source.' })
   })
   it("one person's rows, and the chip's words", () => {
     const rows = [row({ id: 'a' }), row({ id: 'b', by_name: 'Deon Price' }), row({ id: 'c', by_name: ' Malachi Reed ' })]
@@ -223,8 +223,8 @@ describe('an estimator, on the overview door', () => {
     expect(photosLookWords(null, 'overview')).toEqual({ n: 0, count: '…', need: null })
   })
   it('the empty words name what fills the row and where the crews’ photos are, with no door to the jobs', () => {
-    expect(sitePhotosEmptyWords(false, 'Gun Dog Trail', 'overview')).toEqual({ main: 'No picture sent by text or email on Gun Dog Trail yet.', tail: 'The crews’ photos on the jobs are for the office.' })
-    expect(sitePhotosEmptyWords(true, 'Gun Dog Trail', 'overview')).toEqual({ main: 'No picture matches.', tail: 'Pick another job.' })
+    expect(sitePhotosEmptyWords(false, 'Gray Fox Trail', 'overview')).toEqual({ main: 'No picture sent by text or email on Gray Fox Trail yet.', tail: 'The crews’ photos on the jobs are for the office.' })
+    expect(sitePhotosEmptyWords(true, 'Gray Fox Trail', 'overview')).toEqual({ main: 'No picture matches.', tail: 'Pick another job.' })
   })
   it('no source chips for an estimator, whose only source is a text or an email; the office keeps the Photos tab’s', () => {
     expect(siteSourceChips('estimator', 'overview')).toEqual([])

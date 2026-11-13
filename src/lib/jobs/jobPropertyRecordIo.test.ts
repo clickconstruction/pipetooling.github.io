@@ -29,7 +29,7 @@ vi.mock('../supabase', () => ({
 
 import { readJobPropertyRecord } from './jobPropertyRecordIo'
 
-const SITE = { id: 'site-891', customer_id: 'gc-burd', address: '11730 TX-29, Liberty Hill, TX 78642', property_kind: 'non_residential' }
+const SITE = { id: 'site-891', customer_id: 'gc-brund', address: '11730 TX-29, Liberty Hill, TX 78642', property_kind: 'non_residential' }
 
 beforeEach(() => {
   db.rows = { jobs_ledger: [{ id: 'job-891', customer_address_id: 'site-891' }], customer_addresses: [SITE] }

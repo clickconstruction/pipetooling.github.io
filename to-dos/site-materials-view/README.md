@@ -2,7 +2,7 @@
 name: "A site's materials on one screen: every part across the site's jobs, with the boxes that hold it"
 number: 330
 group: close
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PRs 2 to 5 stacked behind it
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PR 2 names at the source v2.7075 · PR 3 Same part? v2.7076 (migration 20261113040000, to push right after its merge) · PR 4 the parts book and the worth v2.7078 · PR 5 the paper and the job v2.7079 · all five built 2026-11-12, merging as a stack · left: PR 3's migration push right after its merge, the types PR, Grace's look on the real site
 mockup: to-dos/site-materials-view/mockup.html
 summary: >
   A company manager cannot see all the material on a site on a screen. The desk is one row per job
@@ -15,11 +15,11 @@ summary: >
   hold it. Two spellings of the same words are one row by themselves. Two names that are nearly
   the same ask a person once, Same part or Different, and a name never folds by closeness alone.
   The first PR needs no migration.
-next: PRs 2 to 5 merge in order behind PR 1; PR 3's migration is pushed right after its merge. Then Grace's look at the screen on the real site.
-size: L as a train of five (M · S · M · M · S); PR 1 is the whole screen, then a stop to look at it on the site
+next: The stack merges one PR at a time; push `20261113040000_on_site_part_ties.sql` right after PR 3's merge, then a types PR. Then Grace's look at the screen on the real site, and delete the folder.
+size: L, built as a train of five (M · S · M · M · S); left: the push, the types PR and the look (XS)
 blocker: none. The stack merges one PR at a time.
 opinion: build — Grace said build the entire train; look at the screen on the real site once PR 1 is live
-ver: v2.7074
+ver: v2.7074 · 7075 · 7076 · 7078 · 7079
 ---
 
 # A site's materials on one screen (#330)
@@ -296,10 +296,10 @@ the client reads what it makes. PR 4 writes the same table and needs none.
 |---|---|---|
 | 1 · the screen, **v2.7074** | The kernel `src/lib/materials/siteRollup.ts` (lines into part rows, the same-words fold after the sums, the glance, the search's total) with tests; the screen as `?site=` on both mounts, desk and phone; the desk grouped by site; the field roles' site row; the Development page's door; the guide, the release note, the docs. No migration. | M |
 | | **Stop here and look at it on the real site.** | |
-| 2 · names at the source | Add a part and the delivery lines offer the site's own names first, then the parts book's. No migration. Lands before the stickers walk adds its hundred boxes. | S |
-| 3 · Same part? | The migration; **Same part?** with **Same part** and **Different**; *Names joined here* with **Undo**; the search and the paper read the ties. | M |
-| 4 · the parts book and the worth | **This is a parts-book part** from a row; the worth with its cover and the list of lines with no price. | M |
-| 5 · the paper and the job | **By part** as a third reading of the material location report, and on one job's page; the print press on the site's screen; the Go anywhere row. | S |
+| 2 · names at the source, **v2.7075** | Add a part and the delivery lines offer the names the job already has first, then the parts book's (`onSiteNames.ts`). As built it is this job's names, not the whole site's: the phone holds one job's ledger. No migration. Lands before the stickers walk adds its hundred boxes. | S |
+| 3 · Same part?, **v2.7076** | The migration `20261113040000_on_site_part_ties.sql`; **Same part?** with **Same part** and **Different**; the chip that lists the names to check; *Names joined here* with **Undo**; the search reads the ties. The paper reads them in PR 5, with By part. | M |
+| 4 · the parts book and the worth, **v2.7078** | **This is a parts-book part** from a row, a tie in PR 3's table; **Worth** with its cover and the list of lines with no price (`siteWorth.ts`). No migration. | M |
+| 5 · the paper and the job, **v2.7079** | **By part** as a third reading of the material location report, and on one job's page; the print press on the site's screen (`?report=materials`); the Go anywhere row. | S |
 
 Each PR ships its release note, fragment and guide, and updates
 `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`; PR 1 also `ACCESS_CONTROL.md`, `GLOSSARY.md` (the site's

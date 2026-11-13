@@ -32,7 +32,7 @@ const fx = (o: Partial<SubmittalItemRow> & { id: string; tag: string }): Submitt
 } as SubmittalItemRow)
 const gcPart = (id: string, item: string, label: string, seq: number, review_decision: string | null = null, review_note: string | null = null): SubmittalPartRow => ({ id, item_id: item, label, sequence_order: seq, on_submittal: true, review_decision, review_note } as unknown as SubmittalPartRow)
 
-// The SpaceX draft in small: a fixture with one part rejected, two waiting, one with no product.
+// The SkyLab draft in small: a fixture with one part rejected, two waiting, one with no product.
 const typed = { review_decision: 'rejected', reviewed_by_name: 'structura', reviewed_at: '2026-10-02T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' } as const
 const lav = fx({ id: 'lav', tag: 'LAV-1', ...typed })
 const dwh = fx({ id: 'dwh', tag: 'DWH-1', sequence_order: 2 })

@@ -1,7 +1,7 @@
 /**
  * The read behind `cardHolders.ts` (v2.6457): for the card charges on a site's jobs, the card id and the kind out of
  * each bank record, a few bytes a row (PostgREST reads the one JSON field, never the whole record the
- * Gun Dog spike took off the page's read), then the cards' links to people and their nicknames, then
+ * Gray Fox spike took off the page's read), then the cards' links to people and their nicknames, then
  * the linked people's names. Runs under the reader's own policies; the board's cost rows are the
  * finance seats' alone, as the Costs column is.
  */

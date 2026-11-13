@@ -74,21 +74,21 @@ describe('StripeInvoiceSendFromStripeButton', () => {
   })
 
   it('the confirm lists who gets a copy', async () => {
-    copyList = ['pm@hartwell.example', 'ap@drf.example']
+    copyList = ['pm@hartwell.example', 'ap@dlf.example']
     render(<StripeInvoiceSendFromStripeButton {...props} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
-    await waitFor(() => expect(dialog.textContent).toContain('Copies from Click Plumbing and Electrical, same Pay link, to pm@hartwell.example, ap@drf.example.'))
+    await waitFor(() => expect(dialog.textContent).toContain('Copies from Click Plumbing and Electrical, same Pay link, to pm@hartwell.example, ap@dlf.example.'))
   })
 
   it('in test mode the confirm says the copy list gets nothing', async () => {
-    copyList = ['pm@hartwell.example', 'ap@drf.example']
+    copyList = ['pm@hartwell.example', 'ap@dlf.example']
     render(<StripeInvoiceSendFromStripeButton {...props} stripeModeForBilling="test" />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
-    await waitFor(() => expect(dialog.textContent).toContain('One copy comes to you too; nothing goes to pm@hartwell.example, ap@drf.example.'))
+    await waitFor(() => expect(dialog.textContent).toContain('One copy comes to you too; nothing goes to pm@hartwell.example, ap@dlf.example.'))
     expect(dialog.textContent).not.toContain('Copies from Click Plumbing and Electrical')
   })
 
@@ -102,7 +102,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
         copies_sent: [],
         copies_failed: [],
         copies_test_to: 'office@click.example',
-        copies_held_back: ['pm@hartwell.example', 'ap@drf.example'],
+        copies_held_back: ['pm@hartwell.example', 'ap@dlf.example'],
       },
       error: null,
     })
@@ -110,7 +110,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     await send()
     await screen.findByRole('status')
     expect(showToast).toHaveBeenCalledWith(
-      'Test bill: the email came to you (office@click.example), not the customer. The copy came to you too; nothing went to pm@hartwell.example, ap@drf.example.',
+      'Test bill: the email came to you (office@click.example), not the customer. The copy came to you too; nothing went to pm@hartwell.example, ap@dlf.example.',
       'success',
     )
     expect(showToast).toHaveBeenCalledTimes(1)

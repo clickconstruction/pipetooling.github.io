@@ -5,7 +5,7 @@ const NOW = Date.UTC(2026, 9, 16, 15, 0, 0) // 2026-10-16 15:00Z
 const daysBack = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000).toISOString()
 
 const row = (over: Partial<ProspectDoubleRow>): ProspectDoubleRow => ({
-  id: 'p1', name: 'Bexar Fire Protection', phone: '(210) 555-0188', kind: 'sub', status: null, last_contact: daysBack(12), created_at: daysBack(40), updated_at: daysBack(12), ...over,
+  id: 'p1', name: 'Baxter Fire Protection', phone: '(210) 555-0188', kind: 'sub', status: null, last_contact: daysBack(12), created_at: daysBack(40), updated_at: daysBack(12), ...over,
 })
 
 const homes = (over: Partial<DoubleHomes> = {}): DoubleHomes => ({ kind: 'sub', prospects: [], bench: [], customers: [], ...over })
@@ -18,9 +18,9 @@ describe('companyDouble', () => {
   })
 
   it('finds this lane first, by name case-blind, with when it was called', () => {
-    const twin = companyDouble('bexar fire protection', '', homes({ prospects: [row({})] }), NOW)
+    const twin = companyDouble('baxter fire protection', '', homes({ prospects: [row({})] }), NOW)
     expect(twin).toMatchObject({ where: 'lane', door: 'open_prospect', kind: 'sub', id: 'p1' })
-    expect(twin?.line).toBe('Bexar Fire Protection is already on Subs. Called 12 days ago.')
+    expect(twin?.line).toBe('Baxter Fire Protection is already on Subs. Called 12 days ago.')
   })
 
   it('finds this lane by a phone of seven digits or more', () => {
@@ -57,13 +57,13 @@ describe('companyDouble', () => {
   it('keeps the order: this lane beats another lane beats the bench beats the customers', () => {
     const all = homes({
       prospects: [row({ id: 'other', kind: 'customer' }), row({ id: 'mine', kind: 'sub' })],
-      bench: [{ id: 'b', name: 'Bexar Fire Protection', phone: null }],
-      customers: [{ id: 'k', name: 'Bexar Fire Protection', phone: null }],
+      bench: [{ id: 'b', name: 'Baxter Fire Protection', phone: null }],
+      customers: [{ id: 'k', name: 'Baxter Fire Protection', phone: null }],
     })
-    expect(companyDouble('Bexar Fire Protection', '', all, NOW)?.id).toBe('mine')
-    expect(companyDouble('Bexar Fire Protection', '', { ...all, prospects: [row({ id: 'other', kind: 'customer' })] }, NOW)?.id).toBe('other')
-    expect(companyDouble('Bexar Fire Protection', '', { ...all, prospects: [] }, NOW)?.id).toBe('b')
-    expect(companyDouble('Bexar Fire Protection', '', { ...all, prospects: [], bench: [] }, NOW)?.id).toBe('k')
+    expect(companyDouble('Baxter Fire Protection', '', all, NOW)?.id).toBe('mine')
+    expect(companyDouble('Baxter Fire Protection', '', { ...all, prospects: [row({ id: 'other', kind: 'customer' })] }, NOW)?.id).toBe('other')
+    expect(companyDouble('Baxter Fire Protection', '', { ...all, prospects: [] }, NOW)?.id).toBe('b')
+    expect(companyDouble('Baxter Fire Protection', '', { ...all, prospects: [], bench: [] }, NOW)?.id).toBe('k')
   })
 })
 
@@ -77,8 +77,8 @@ describe('prospectFact', () => {
     expect(prospectFact(row({ last_contact: null, created_at: null }), NOW)).toBe('Never called')
   })
   it('the same Google Maps place is the same company, whatever the spelling (v2.5604)', () => {
-    const rows = [row({ id: 'm1', name: 'Bexar Fire Protection LLC', phone: null, maps_url: 'https://maps.app.goo.gl/x7QzAbc?g_st=ic' })]
-    const twin = companyDouble('Bexar Fire', '', homes({ prospects: rows }), NOW, 'maps.app.goo.gl/x7QzAbc/')
+    const rows = [row({ id: 'm1', name: 'Baxter Fire Protection LLC', phone: null, maps_url: 'https://maps.app.goo.gl/x7QzAbc?g_st=ic' })]
+    const twin = companyDouble('Baxter Fire', '', homes({ prospects: rows }), NOW, 'maps.app.goo.gl/x7QzAbc/')
     expect(twin).toMatchObject({ where: 'lane', id: 'm1' })
     expect(companyDouble('', '', homes({ prospects: rows }), NOW, 'https://maps.app.goo.gl/other')).toBeNull()
   })

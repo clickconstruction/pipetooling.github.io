@@ -57,8 +57,8 @@ describe('SubmittalShareModal', () => {
     fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Dana Whitfield' } })
     fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'Dana@Whitfield-Arch.com' } })
     fireEvent.click(screen.getByRole('button', { name: '+ another person' }))
-    fireEvent.change(screen.getByLabelText('Name 2'), { target: { value: 'Logan Parsons' } })
-    fireEvent.change(screen.getByLabelText('Email 2'), { target: { value: 'logan@structura.com' } })
+    fireEvent.change(screen.getByLabelText('Name 2'), { target: { value: 'Logan Parlen' } })
+    fireEvent.change(screen.getByLabelText('Email 2'), { target: { value: 'logan@structura.example' } })
     fireEvent.change(screen.getByLabelText('Role 2'), { target: { value: 'builder' } })
     fireEvent.click(screen.getByLabelText('Watching 2'))
     fireEvent.click(screen.getByRole('button', { name: 'Share Rev 2 · mint the link' }))
@@ -71,7 +71,7 @@ describe('SubmittalShareModal', () => {
     const people = state.writes.find((w) => w.table === 'bid_submittal_people' && w.op === 'insert')!.payload as Array<Record<string, unknown>>
     expect(people.map((p) => [p.name, p.email, p.role, p.may_decide, p.how])).toEqual([
       ['Dana Whitfield', 'dana@whitfield-arch.com', 'architect', true, 'named'],
-      ['Logan Parsons', 'logan@structura.com', 'builder', false, 'named'],
+      ['Logan Parlen', 'logan@structura.example', 'builder', false, 'named'],
     ])
     expect(people.every((p) => /^[0-9a-f]{48}$/.test(String(p.token)))).toBe(true)
     const revWrites = state.writes.filter((w) => w.table === 'bid_submittals' && w.op === 'update')
@@ -147,8 +147,8 @@ describe('SubmittalShareModal · v2.5026 the box that emails each person their l
     await settle()
     expect(box().checked).toBe(true)
     expect(screen.getByTestId('email-links').textContent).toBe('Emails one person their own link when you share.')
-    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parsons' } })
-    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.com' } })
+    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parlen' } })
+    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.example' } })
     expect(screen.getByTestId('email-links').textContent).toBe('Emails 2 people their own link when you share.')
     fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))
     await waitFor(() => expect(shared).toHaveBeenCalled())
@@ -172,8 +172,8 @@ describe('SubmittalShareModal · v2.5026 the box that emails each person their l
     await settle()
     expect(box().checked).toBe(false)
     expect(box().disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parsons' } })
-    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.com' } })
+    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parlen' } })
+    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.example' } })
     expect(box().disabled).toBe(false)
     expect(box().checked).toBe(true)
   })

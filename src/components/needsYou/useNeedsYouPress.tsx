@@ -72,8 +72,6 @@ export function useNeedsYouPress({
         }
       } else if (door.kind === 'station') {
         if (!onStation?.(door.station)) navigate(door.href)
-      } else if (door.kind === 'bridge-move-done') {
-        handles.markBridgeMoveDone()
       }
     },
     [doorData, handles, host, navigate, onStation, testReportModal],
@@ -85,10 +83,6 @@ export function useNeedsYouPress({
       if (!door) return
       if (door.kind === 'href') {
         navigate(door.href)
-        return
-      }
-      if (door.kind === 'bridge-move-done') {
-        handles.markBridgeMoveDone()
         return
       }
       const { bulkDelete, bulkHours, claimDev, robotBacklogNudge, robotSilenceNudge } = handles

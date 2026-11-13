@@ -32,7 +32,10 @@ import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
-import { groupDeskBySite } from '../../lib/materials/siteRollup'
+import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
+import { tieCanon } from '../../lib/materials/partTies'
+import { usePartTies } from '../../hooks/usePartTies'
+import { onHandNames, onHandNameWords } from '../../lib/materials/onSiteNames'
 import { useOnSiteSites } from '../../hooks/useOnSiteSites'
 import SiteMaterialsView from '../materials/SiteMaterialsView'
 import { photoMarkWords } from '../../lib/materials/photo'
@@ -202,6 +205,8 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           backLabel="Materials desk"
           boxHref={jobHref}
           developmentHref={`/developments/${siteId}`}
+          canTie
+          byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />
       </div>
@@ -295,7 +300,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     )
   }
 
-  return <JobView jobId={jobId} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -376,7 +381,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast }: { jobId: string; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -385,9 +390,14 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
   const lines = containerLines(movements)
   const diffs = countDiffs(movements)
   const sum = jobMaterialsSummaryFor(jobId, now)
+  /** The names this job already holds (punch list #330): a delivery line's Part box offers them as the office types, so an invoice's wording lands on the line the crew counts. */
+  const namesListId = `on-site-names-${jobId}`
+  const knownNames = onHandNames(lines, containers)
   const [section, setSection] = useState<'onsite' | 'missing' | 'deliveries' | 'history'>('onsite')
   /** The green pill's two views: the list of boxes, or the site map (#209: the map is a view of On site, not a fifth step). */
-  const [onSiteView, setOnSiteView] = useState<'list' | 'map'>('list')
+  const [onSiteView, setOnSiteView] = useState<'list' | 'parts' | 'map'>('list')
+  // By part (punch list #330): this job's parts as the site's screen rolls them up, with the names a person joined there.
+  const partTies = usePartTies(siteId ? { developmentId: siteId } : { jobId })
   const flow = officeFlow(containers, movements, now, priceOf)
   const load = useOnSiteJob(jobId)
   /** The On site list narrowed to what needs a hand: boxes due a count, boxes with a Can't find since their last count. */
@@ -517,8 +527,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
           { key: 'history', word: 'used', figure: flowFigure(flow.used), tone: 'out', on: section === 'history', title: `${flowFigure(flow.used)} pieces used · ${flowFigure(movements.length)} presses`, onPress: () => setSection('history') },
           { key: 'missing', word: 'missing', figure: flowFigure(flow.missing), tone: 'gap', badge: flow.missingMoney > 0 ? { text: money(flow.missingMoney), red: true } : null, on: section === 'missing', title: flow.missing > 0 ? `${flowFigure(flow.missing)} pieces missing this week · ${money(flow.missingMoney)} walked away` : 'Nothing missing this week', onPress: () => setSection('missing') },
         ]}
-        trailing={section === 'onsite' ? (['list', 'map'] as const).map((v) => (
-          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{v === 'list' ? 'List' : mapPins.length ? `Map · ${mapPins.length}` : 'Map'}</button>
+        trailing={section === 'onsite' ? (['list', 'parts', 'map'] as const).map((v) => (
+          <button key={v} type="button" aria-pressed={onSiteView === v} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.6rem', borderRadius: 999, flex: '0 0 auto', whiteSpace: 'nowrap', ...(onSiteView === v ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setOnSiteView(v)}>{v === 'list' ? 'List' : v === 'parts' ? 'By part' : mapPins.length ? `Map · ${mapPins.length}` : 'Map'}</button>
         )) : null}
       />
 
@@ -721,6 +731,9 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                   <p style={{ ...muted, margin: 0 }}>No line read as a quantity and a part. A line reads when it starts with a count, like “25 EA 3/4 copper 90”, or ends with one.</p>
                 ) : (
                   <>
+                    <datalist id={namesListId} data-testid="delivery-known-names">
+                      {knownNames.map((n) => <option key={n.key} value={n.partName}>{onHandNameWords(n)}</option>)}
+                    </datalist>
                     <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                       <thead><tr><th style={{ ...th, ...num }}>Qty</th><th style={th}>Unit</th><th style={th}>Part, as the invoice names it</th><th style={{ ...th, ...num }}>Price</th><th style={th}></th></tr></thead>
                       <tbody>
@@ -728,7 +741,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                           <tr key={i}>
                             <td style={{ ...td, ...num }}><input type="number" value={l.quantity} aria-label="Quantity" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, quantity: Math.max(0, Math.round(Number(e.target.value))) } : x)))} style={{ width: 64, minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...muted }}>{l.unit ?? ''}</td>
-                            <td style={td}><input value={l.name} aria-label="Part" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
+                            <td style={td}><input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...num }}>{l.unitPrice != null ? money(l.unitPrice) : <span style={muted}>—</span>}</td>
                             <td style={{ ...td, ...num }}><button type="button" aria-label="Leave this line out" title="Leave this line out" style={{ ...btn, minHeight: 30, minWidth: 30, padding: 0, fontWeight: 500 }} onClick={() => setParsed(parsed.filter((_, j) => j !== i))}>×</button></td>
                           </tr>
@@ -791,6 +804,45 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
               })}
             </tbody>
           </table>
+        </div>
+      ) : null}
+
+      {section === 'onsite' && onSiteView === 'parts' ? (
+        <div style={sec} data-testid="job-by-part">
+          <h5 style={secH}>
+            Every part on this job
+            <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>one row per part with its total and the boxes that hold it · two names are one row when their words are the same{siteId ? ', or when someone joined them on the site’s screen' : ''}</span>
+          </h5>
+          {siteId && siteName ? (
+            <div style={{ ...muted, padding: '0.4rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
+              This job is on {siteName}.{' '}
+              <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }} onClick={() => onOpenSite(siteId)}>Open the whole site</button>
+            </div>
+          ) : null}
+          {(() => {
+            const rows = sitePartRows([{ jobId, label: jobLabel(job, jobId), containers, places, lines }], now, tieCanon(partTies.ties))
+            if (rows.length === 0) return load.loaded ? <EmptyState compact main="No part is on hand on this job yet." tail="A crew counts parts into a box on the phone’s On site tab." /> : <p style={{ ...muted, margin: 0, padding: '0.75rem 0.9rem' }}>Reading the boxes…</p>
+            return (
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead><tr><th style={{ ...th, minWidth: 220 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>In</th></tr></thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.key} style={r.cannotFind > 0 || r.short > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
+                      <td style={td}><span style={{ fontWeight: 600 }}>{r.name}</span>{r.manufacturer ? <span style={muted}> · {r.manufacturer}</span> : null}{spellingsWords(r) ? <span style={muted}> · {spellingsWords(r)}</span> : null}</td>
+                      <td style={{ ...td, ...num, fontWeight: 700 }}>{r.total.toLocaleString('en-US')}</td>
+                      <td style={td}>
+                        <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {r.boxes.map((b) => <span key={`${b.containerId}:${b.spelling}`} style={chip('dim')}>{b.label} · {b.onHand.toLocaleString('en-US')}</span>)}
+                          {r.cannotFind > 0 ? <span style={chip('amber')}>{r.cannotFind} can't find</span> : null}
+                          {r.short > 0 ? <span style={chip('amber')}>{r.short} short at a count</span> : null}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          })()}
         </div>
       ) : null}
 

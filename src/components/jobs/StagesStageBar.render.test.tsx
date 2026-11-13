@@ -32,12 +32,12 @@ const crewRow = (over: Partial<JobCrewPositionRpcRow> & { job_ledger_id: string 
   pct_manual_at: null,
   ...over,
 })
-const heronCrew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'heron', last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'], sessions_60d: 14, people_60d: 6, pct_set_at: '2026-08-07T12:00:00Z', pct_source: 'seed' })], today).get('heron')!
+const hadlowCrew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'hadlow', last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'], sessions_60d: 14, people_60d: 6, pct_set_at: '2026-08-07T12:00:00Z', pct_source: 'seed' })], today).get('hadlow')!
 
-// J931 Heron Construction as it stood on 2026-10-01.
-const heron = progressPaymentForJob(
-  { id: 'heron', revenue: 48_700, payments_made: 24_359.44, pct_complete: 40, status: 'working', fixtures: [stage('r', 'Rough In', 19_480, 0), stage('t', 'Top Out', 19_480, 1), stage('s', 'Trim Set', 9_740, 2)], invoices: [], payments: [] },
-  heronCrew,
+// J931 Hadlow Construction as it stood on 2026-10-01.
+const hadlow = progressPaymentForJob(
+  { id: 'hadlow', revenue: 48_700, payments_made: 24_359.44, pct_complete: 40, status: 'working', fixtures: [stage('r', 'Rough In', 19_480, 0), stage('t', 'Top Out', 19_480, 1), stage('s', 'Trim Set', 9_740, 2)], invoices: [], payments: [] },
+  hadlowCrew,
   today,
 )
 
@@ -45,7 +45,7 @@ const slicesOf = (block: Element) => [...block.querySelectorAll('[data-money-sli
 
 describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => {
   it('stages: blocks filled by money, a hollow tick, names under the blocks, the % date beside the box, no words, Paid and Left only', () => {
-    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} onPctCommit={() => {}} />)
+    render(<StagesProgressPaymentCell model={hadlow.model} pctComplete={40} view={hadlow.view} onPctCommit={() => {}} />)
     const bar = screen.getByRole('img', { name: 'Top Out · Behar & Malachi on site Sep 12 · 40% set Aug 7 · $24,359 paid, nothing billed' })
     const blocks = bar.querySelectorAll('[data-money-block]')
     expect(blocks).toHaveLength(3)
@@ -72,7 +72,7 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
     expect(screen.getByText('$48,700 bid')).toBeTruthy()
   })
 
-  it('a single-line job (Stimson-like): paid, done-not-billed amber, a solid tick, and the four rows that carry money', () => {
+  it('a single-line job (Stimlow-like): paid, done-not-billed amber, a solid tick, and the four rows that carry money', () => {
     const { model, view } = progressPaymentForJob(
       { id: 'st', revenue: 6_720, payments_made: 4_520, pct_complete: 75, status: 'waiting', fixtures: [line('a', 'Handrails', 4_520, 0), line('d', 'Two custom window replacements', 2_200, 1)], invoices: [], payments: [] },
       null,
@@ -131,8 +131,8 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
   })
 
   it('no price: a dashed track and Add the price in place of the red pill, the sentence and the empty legend', () => {
-    const crew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'drf', last_work_date: today, last_day_people: ['Edgar Lopez', 'Jose Cruz'], sessions_60d: 2, people_60d: 2 })], today).get('drf')!
-    const { model, view } = progressPaymentForJob({ id: 'drf', revenue: 0, payments_made: 0, pct_complete: null, status: 'working', fixtures: [], invoices: [], payments: [] }, crew, today)
+    const crew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'dlf', last_work_date: today, last_day_people: ['Edgar Lopez', 'Jose Cruz'], sessions_60d: 2, people_60d: 2 })], today).get('dlf')!
+    const { model, view } = progressPaymentForJob({ id: 'dlf', revenue: 0, payments_made: 0, pct_complete: null, status: 'working', fixtures: [], invoices: [], payments: [] }, crew, today)
     let opened = 0
     render(<StagesProgressPaymentCell model={model} pctComplete={null} view={view} onNoBidValueClick={() => { opened += 1 }} />)
     expect(screen.queryByRole('img')).toBeNull()
@@ -145,7 +145,7 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
   })
 
   it('compact cards: the same bar and a one-line legend without $0 items', () => {
-    render(<StagesProgressPaymentCell compact model={heron.model} pctComplete={40} view={heron.view} />)
+    render(<StagesProgressPaymentCell compact model={hadlow.model} pctComplete={40} view={hadlow.view} />)
     expect(screen.getByRole('list', { name: 'Stages' })).toBeTruthy()
     expect(screen.getByText(/Paid \$24,359/)).toBeTruthy()
     expect(screen.queryByText(/Billed/)).toBeNull()
@@ -162,23 +162,23 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
 
   it('with onStageClick the bar is one button into Bill; without it nothing is clickable', () => {
     let opened = 0
-    const { unmount } = render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} onStageClick={() => { opened += 1 }} />)
+    const { unmount } = render(<StagesProgressPaymentCell model={hadlow.model} pctComplete={40} view={hadlow.view} onStageClick={() => { opened += 1 }} />)
     fireEvent.click(screen.getByRole('button', { name: /Top Out · Behar & Malachi on site Sep 12/ }))
     expect(opened).toBe(1)
     unmount()
-    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} />)
+    render(<StagesProgressPaymentCell model={hadlow.model} pctComplete={40} view={hadlow.view} />)
     expect(screen.queryByRole('button')).toBeNull()
   })
 })
 
 describe('this row\'s bill on the bar (v2.4353)', () => {
   it('a bracket under the bar where the bill sits; a stage bill bolds its stage in place of the crew\'s', () => {
-    const { unmount } = render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} billMark={{ kind: 'bracket', leftPct: 33.5, widthPct: 29.5, title: "This row's bill: $11,770" }} />)
+    const { unmount } = render(<StagesProgressPaymentCell model={hadlow.model} pctComplete={40} view={hadlow.view} billMark={{ kind: 'bracket', leftPct: 33.5, widthPct: 29.5, title: "This row's bill: $11,770" }} />)
     const bracket = document.querySelector('[data-bill-bracket]') as HTMLElement
     expect(bracket.style.left).toBe('33.5%')
     expect(bracket.style.width).toBe('29.5%')
     unmount()
-    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} billMark={{ kind: 'stage', key: 's', title: "This row's bill: $9,740" }} />)
+    render(<StagesProgressPaymentCell model={hadlow.model} pctComplete={40} view={hadlow.view} billMark={{ kind: 'stage', key: 's', title: "This row's bill: $9,740" }} />)
     expect(document.querySelector('[data-bill-bracket]')).toBeNull()
     const names = within(screen.getByRole('list', { name: 'Stages' })).getAllByRole('listitem')
     expect(names.map((n) => n.style.fontWeight)).toEqual(['400', '400', '700'])

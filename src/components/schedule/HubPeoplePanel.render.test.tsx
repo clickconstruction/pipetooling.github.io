@@ -59,7 +59,7 @@ const WEEK = [
   block({ id: 'blk-1', assignee_user_id: 'abraham', note: null }),
   block({ id: 'blk-2', assignee_user_id: 'paige', job_id: 'job-2', work_date: '2026-09-29' }),
 ]
-const TITLES: Record<string, string> = { 'job-1': 'J927 · Berg AirBnb', 'job-2': 'J412 · Rough-in' }
+const TITLES: Record<string, string> = { 'job-1': 'J927 · Birkby AirBnb', 'job-2': 'J412 · Rough-in' }
 const LANES: DispatchSwimLanesData = {
   lanes: [{ id: 'lane-1', name: 'Underground crew' }] as DispatchSwimLanesData['lanes'],
   memberIdsByLaneId: new Map([['lane-1', ['paige', 'cruz']]]),
@@ -164,7 +164,7 @@ describe('HubPeoplePanel — who is listed', () => {
     expect(personRows(container)).toEqual(['abraham', 'cruz', 'paige'])
     const heads = [...container.querySelectorAll('thead th')].map((h) => text(h))
     expect(heads.slice(1).map((h) => h.slice(0, 11))).toEqual(['Mon (09/28)', 'Tue (09/29)', 'Wed (09/30)'])
-    expect(text(container)).toContain('J927 · Berg AirBnb')
+    expect(text(container)).toContain('J927 · Birkby AirBnb')
     expect(text(container)).toContain('J412 · Rough-in')
   })
 
@@ -216,7 +216,7 @@ describe('HubPeoplePanel — the search and the View menu', () => {
     const search = screen.getByRole('searchbox', { name: 'Search person or job' })
     fireEvent.change(search, { target: { value: 'pai' } })
     expect(personRows(container)).toEqual(['paige'])
-    fireEvent.change(search, { target: { value: 'berg' } })
+    fireEvent.change(search, { target: { value: 'birkby' } })
     expect(personRows(container)).toEqual(['abraham'])
   })
 
