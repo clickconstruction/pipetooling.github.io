@@ -6,8 +6,8 @@ const note: ReleaseNote = {
   title: 'Contract sweep: a contract for another address is never offered',
   kind: 'fix',
   highlights: [
-    'The sweep’s Drive pass no longer offers a customer’s paper for one job to their job at a different address — a file or folder that names 105 Dover is not a find for the job at 141 Encino, whatever folder it sits in.',
-    'The ⋯ → Look in Drive window lists such a file under No match with the reason: “names 105 Dover, not the job’s address”.',
+    'The sweep’s Drive pass no longer offers a customer’s paper for one job to their job at a different address — a file or folder that names 105 Dorrow is not a find for the job at 141 Encino, whatever folder it sits in.',
+    'The ⋯ → Look in Drive window lists such a file under No match with the reason: “names 105 Dorrow, not the job’s address”.',
   ],
 }
 

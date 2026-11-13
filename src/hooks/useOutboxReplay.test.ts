@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { appTzWallTimeMs } from '../utils/dateUtils'
 import type { LandOutcome } from '../lib/offline/landFieldPress'
-import { DEPENDENCY_REFUSED_MESSAGE, markTryFailed, markSending, newPress, type FieldReportPayload, type OutboxPress } from '../lib/offline/outbox'
+import { createKeptPhotos, sendKeptPhotos } from '../lib/offline/keptPhotos'
+import { landBidPhotos } from '../lib/offline/landFieldPress'
+import { DEPENDENCY_REFUSED_MESSAGE, markTryFailed, markSending, newPress, type BidPhotosPayload, type FieldReportPayload, type OutboxPress } from '../lib/offline/outbox'
 import { createOutboxState } from '../lib/offline/outboxState'
-import { replayOutbox } from './useOutboxReplay'
+import { OUTBOX_LANDED_EVENT, replayOutbox, type OutboxLandedDetail } from './useOutboxReplay'
 
 const DAY = '2026-10-29'
 const at = (h: number, m: number) => appTzWallTimeMs(DAY, h, m)
@@ -150,5 +152,91 @@ describe('replayOutbox, a report with photos', () => {
     await replayOutbox({ store: s, land, after, sendKept: async () => { kept++; return { ok: true as const } }, online: () => true, now: () => at(9, 42) })
     expect(kept).toBe(0)
     expect(s.presses()[0]?.state).toBe('sent')
+  })
+})
+
+// Punch list #306, PR 8: a bid's Add press kept with no signal, through the real send and the real landing with
+// their io stubbed. The run is cut twice, and each shot still goes up once and the press lands once.
+describe('replayOutbox, a bid’s photos kept with no signal', () => {
+  const shot = (id: string) => ({ id, sent: false, name: id === 'bp-1' ? 'Meter bank' : '', takenAt: '2026-11-12T20:41:00Z', bytes: 3, originalBytes: 9, width: 1600, height: 1200, byName: 'Dana Whitfield' })
+  const press = newPress({ id: 'p-bp', seq: 1, kind: 'bid-photos', userId: 'u1', pressedAt: at(8, 0), payload: { bidId: 'b1', photos: [shot('bp-1'), shot('bp-2')] } })
+
+  it('sends nothing offline; then each shot once and the names once, across a lost signal and a lost answer', async () => {
+    const s = store([press])
+    const bytes = createKeptPhotos({ open: async () => null })
+    await bytes.keep('bp-1', new Blob([new Uint8Array(3)]), at(8, 0))
+    await bytes.keep('bp-2', new Blob([new Uint8Array(3)]), at(8, 0))
+    const uploads: string[] = []
+    const landings: Array<Array<{ id: string; name: string }>> = []
+    const landed: OutboxLandedDetail[] = []
+    const onLanded = (e: Event) => void landed.push((e as CustomEvent<OutboxLandedDetail>).detail)
+    const hasWindow = typeof window !== 'undefined'
+    if (hasWindow) window.addEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    let signal: 'none' | 'drops-after-one' | 'answer-lost' | 'good' = 'none'
+    let clock = at(8, 0)
+    const dropped: string[] = []
+    const io = {
+      store: s,
+      online: () => signal !== 'none',
+      now: () => clock,
+      sendKept: (p: OutboxPress, st: typeof s) =>
+        sendKeptPhotos(p, st, {
+          bytes,
+          send: async (input) => {
+            if (signal === 'drops-after-one' && uploads.length >= 1) throw new TypeError('Failed to fetch')
+            uploads.push(input.id)
+          },
+        }),
+      land: (p: OutboxPress) =>
+        landBidPhotos(p, {
+          land: async (writes) => {
+            if (signal === 'answer-lost') throw new TypeError('Failed to fetch')
+            landings.push([...writes])
+            return { added: writes.length }
+          },
+        }),
+      after: { invokeFunction: async () => undefined, stampMovedLines: async () => undefined, propagateReportPct: async () => undefined, dropKeptPhotos: async (ids: ReadonlyArray<string>) => void dropped.push(...ids) },
+    }
+
+    // No signal: nothing is tried, the press waits with both shots.
+    await replayOutbox(io)
+    expect(uploads).toEqual([])
+    expect(s.presses()[0]!.state).toBe('waiting')
+    expect(s.presses()[0]!.attempts).toBe(0)
+
+    // The signal comes back and drops after the first shot: that shot is marked sent, the press waits.
+    signal = 'drops-after-one'
+    await replayOutbox(io)
+    expect(uploads).toEqual(['bp-1'])
+    expect(s.presses()[0]!.state).toBe('waiting')
+    expect((s.presses()[0]!.payload as BidPhotosPayload).photos.map((p) => p.sent)).toEqual([true, false])
+    expect(landings).toEqual([])
+
+    // Back again, and the landing's answer is lost: the second shot went up, the first was not sent again.
+    signal = 'answer-lost'
+    clock += 60_000
+    await replayOutbox(io)
+    expect(uploads).toEqual(['bp-1', 'bp-2'])
+    expect(s.presses()[0]!.state).toBe('waiting')
+
+    // A good signal: no shot goes up again, and the press lands once with each name.
+    signal = 'good'
+    clock += 60_000
+    await replayOutbox(io)
+    expect(uploads).toEqual(['bp-1', 'bp-2'])
+    expect(landings).toEqual([[{ id: 'bp-1', name: 'Meter bank' }, { id: 'bp-2', name: '' }]])
+    expect(s.presses()[0]!.state).toBe('sent')
+    expect(s.presses()[0]!.result).toEqual({ bid_id: 'b1', added: 2 })
+    expect(dropped).toEqual(['bp-1', 'bp-2'])
+    if (hasWindow) {
+      expect(landed.map((d) => [d.kind, d.result])).toEqual([['bid-photos', { bid_id: 'b1', added: 2 }]])
+      window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    }
+
+    // Nothing is left to do: another run sends and lands nothing.
+    clock += 60_000
+    await replayOutbox(io)
+    expect(uploads).toEqual(['bp-1', 'bp-2'])
+    expect(landings).toHaveLength(1)
   })
 })

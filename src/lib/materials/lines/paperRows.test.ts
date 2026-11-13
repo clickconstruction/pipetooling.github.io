@@ -110,6 +110,14 @@ describe('gapWords', () => {
   })
 })
 
+describe('gapWords, what the check allowed', () => {
+  it('says a charge outside the subtotal under the sum', () => {
+    const lines = [line(1, 'UR-100', 'URINAL', 2, 310.5, 62100), line(2, '', 'S&H Charges', 1, 45, 4500, 'charge')]
+    const { check } = recheck({ kind: 'invoice', lines, subtotalCents: 62100, taxCents: 0, freightCents: null, totalCents: 66600 }, lines, 66600)
+    expect(gapWords(check)).toEqual({ tone: 'ok', title: 'The 2 lines add up.', detail: [expect.stringMatching(/\$666\.00/), 'A charge of $45.00 is printed outside the subtotal.'] })
+  })
+})
+
 describe('drafts', () => {
   it('round-trips a line through its draft', () => {
     const d = draftOfLine(LINES[0]!)

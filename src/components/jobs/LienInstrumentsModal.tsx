@@ -1578,7 +1578,7 @@ export default function LienInstrumentsModal({
                   )
                   : toggle('includeLateFees', 'Late-fees / interest note')}
             {payCodeRows.length > 0
-              ? toggle('includePayCodes', 'Pay codes', `${payCodeRows.length === 1 ? 'one code' : `${payCodeRows.length} codes`} under the amount box — each opens that bill's own payment page`)
+              ? toggle('includePayCodes', 'Pay codes', payCodeRows.length === 1 ? "one code in the amount box — it opens the bill's own payment page" : `${payCodeRows.length} codes above the statement of account, behind the letter — each opens that bill's own payment page`)
               : (
                   <label data-demand-pay-codes-none style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'not-allowed', opacity: 0.6 }}>
                     <input type="checkbox" checked={false} disabled readOnly />

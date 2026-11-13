@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator'],
   highlights: [
-    'Typing a company name or phone on New Prospect now checks the four places it could already be: this lane, another lane, the bench and the customers. One line says where, with one fact, like “Bexar Fire Protection is already on Subs. Called 12 days ago.”',
+    'Typing a company name or phone on New Prospect now checks the four places it could already be: this lane, another lane, the bench and the customers. One line says where, with one fact, like “Baxter Fire Protection is already on Subs. Called 12 days ago.”',
     'Open it goes to that record. A company that is already a customer still offers Link this lead to them on Jobs to GC.',
     'Save reads Save anyway while the line shows, because two branches of one company are real.',
   ],
