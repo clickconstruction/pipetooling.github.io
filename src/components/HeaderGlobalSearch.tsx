@@ -57,7 +57,10 @@ import {
   type DoorSources,
   type DoorViewer,
 } from '../lib/search/doors'
-import { boxDoors, type BoxSearchJob } from '../lib/materials/boxSearch'
+import { boxDoors, siteDoors, type BoxSearchJob } from '../lib/materials/boxSearch'
+import { canOpenMaterialsTab } from '../lib/materials/materialsTabs'
+import { groupDeskBySite } from '../lib/materials/siteRollup'
+import { useOnSiteSites } from '../hooks/useOnSiteSites'
 import { containerLines } from '../lib/materials/onSite'
 import { jobIdsWithData, listContainers, listMovements, listPlaces, loadDesk } from '../lib/materials/onSiteStore'
 import { useOnSiteStoreVersion } from '../hooks/useOnSiteStore'
@@ -272,12 +275,18 @@ export function HeaderGlobalSearchProvider({
         setBoxJobs(rows.map((r) => ({ id: r.id, label: [r.hcp_number, r.job_name].filter(Boolean).join(' · ') || `job ${r.id.slice(0, 8)}` })))
       })
   }, [open, viewer, storeVersion])
+  // The sites behind the boxes, read once the box opens: the office and the field roles that run a site, never an estimator.
+  const sitesAllowed = Boolean(role) && role !== 'estimator' && canOpenMaterialsTab(role, 'on-site')
+  const onSiteSites = useOnSiteSites(open && sitesAllowed && storeVersion >= 0 ? jobIdsWithData() : [], open && sitesAllowed)
   const doors = useMemo<Door[]>(() => {
     if (!viewer) return []
     const mine = doorsFor(viewer, sources)
     const boxes = storeVersion >= 0 ? jobIdsWithData().flatMap((jobId) => boxDoors({ jobs: boxJobs, containers: listContainers(jobId), lines: containerLines(listMovements(jobId)), places: listPlaces(jobId), forField: fieldLookup })) : []
-    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...boxes] : [...mine, ...boxes]
-  }, [viewer, sources, fieldLookup, boxJobs, storeVersion])
+    // A site that holds boxes (punch list #330): one door to the whole site's materials, for the roles that get that screen.
+    const siteGroups = sitesAllowed && storeVersion >= 0 ? groupDeskBySite(jobIdsWithData(), onSiteSites.siteOfJob, onSiteSites.siteNames) : []
+    const sites = siteDoors(siteGroups.flatMap((g) => (g.kind === 'site' ? [{ siteId: g.siteId, name: g.name, jobs: g.jobIds.length, boxes: g.jobIds.reduce((n, id) => n + listContainers(id).filter((c) => !c.retiredAt && c.kind !== 'unsorted').length, 0) }] : [])))
+    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...sites, ...boxes] : [...mine, ...sites, ...boxes]
+  }, [viewer, sources, fieldLookup, boxJobs, storeVersion, sitesAllowed, onSiteSites])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {

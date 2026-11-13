@@ -36,7 +36,7 @@ const data: PurchaseData = {
   jobNames: new Map([['j1', 'JP1042 Oak Hollow C']]),
 }
 
-function mount(io: PurchaseLinesIo = { load: vi.fn(async () => data) }, heldIo?: HeldBillsIo) {
+function mount(io: PurchaseLinesIo = { load: vi.fn(async () => data), bookPrices: vi.fn(async () => []) }, heldIo?: HeldBillsIo) {
   return renderWithProviders(<WhatWeBuyTab io={io} heldIo={heldIo} />)
 }
 
@@ -114,11 +114,55 @@ describe('WhatWeBuyTab', () => {
     expect(within(tile).getByRole('link', { name: 'Supply houses' }).getAttribute('href')).toBe('/materials?tab=supply-houses')
   })
 
+  it('a row’s name opens Price over time on that row, and the strip comes back', async () => {
+    const io: PurchaseLinesIo = { load: vi.fn(async () => data), bookPrices: vi.fn(async () => [{ houseId: 'h1', price: 3.62, checkedOn: '2026-07-14' }]) }
+    mount(io)
+    const page = await screen.findByTestId('what-we-buy')
+    fireEvent.click(within(page).getByRole('button', { name: 'Copper tube, type L, 3/4 in.' }))
+    const price = await screen.findByTestId('price-over-time')
+    expect(within(price).getByRole('heading', { name: 'Copper tube, type L, 3/4 in.' })).toBeTruthy()
+    expect(price.textContent).toMatch(/2 purchases since Sep 18 · every purchase is a point/)
+    expect(within(price).getAllByTestId('price-point')).toHaveLength(2)
+    expect(io.bookPrices).toHaveBeenCalledWith('p-tube')
+    // The last price at the house, its change since the purchase before, and the book beside it.
+    const last = within(price).getByTestId('price-last-paid')
+    expect(last.textContent).toMatch(/Last paid · Ridgeway Supply.*\$3\.84.*Oct 22 · up 2% since Sep 18/)
+    expect((await within(price).findByTestId('price-book')).textContent).toMatch(/\$3\.62.*checked Jul 14.*stale/)
+    expect(within(price).getByTestId('price-book-line')).toBeTruthy()
+    // The purchases are a table too, newest first, with the bill's job.
+    const rows = within(price).getAllByTestId('price-row')
+    expect(rows.map((r) => r.textContent)).toEqual([expect.stringMatching(/Oct 22.*Ridgeway Supply.*80 FT.*\$3\.84.*JP1042 Oak Hollow C/), expect.stringMatching(/Sep 18.*200 FT.*\$3\.78/)])
+    // A point says itself on focus.
+    fireEvent.focus(within(price).getAllByTestId('price-point')[0]!)
+    expect((await within(price).findByTestId('price-tip')).textContent).toMatch(/\$3\.78 · Sep 18 · Ridgeway Supply · 200 FT/)
+    fireEvent.click(within(page).getByRole('tab', { name: 'What we buy' }))
+    await settle()
+    expect(within(page).getAllByTestId('what-we-buy-row')).toHaveLength(2)
+  })
+
+  it('Price over time with no row picked offers the most spent, and a search narrows them', async () => {
+    mount()
+    const page = await screen.findByTestId('what-we-buy')
+    fireEvent.click(within(page).getByRole('tab', { name: 'Price over time' }))
+    const price = await screen.findByTestId('price-over-time')
+    const picker = within(price).getByTestId('price-picker')
+    expect(within(picker).getAllByRole('button').map((b) => b.textContent)).toEqual(['PVC SCH40 PIPE 2X20 PE · Pecan Supply Co 0417-2210', 'Copper tube, type L, 3/4 in.'])
+    fireEvent.change(within(picker).getByLabelText('Find a part or a code'), { target: { value: '0417' } })
+    await settle()
+    expect(within(picker).getAllByRole('button')).toHaveLength(1)
+    fireEvent.change(within(picker).getByLabelText('Find a part or a code'), { target: { value: 'zzz' } })
+    await settle()
+    expect(picker.textContent).toMatch(/No parts or codes match ‘zzz’\./)
+    fireEvent.click(within(picker).getByRole('button', { name: 'Clear the search' }))
+    await settle()
+    expect(within(picker).getAllByRole('button')).toHaveLength(2)
+  })
+
   it('no line on file points at Supply houses, and a failed read says its reason', async () => {
-    const none = mount({ load: vi.fn(async () => ({ ...data, lines: [] })) })
+    const none = mount({ load: vi.fn(async () => ({ ...data, lines: [] })), bookPrices: vi.fn(async () => []) })
     expect((await screen.findByTestId('what-we-buy')).textContent).toMatch(/No bill lines yet\./)
     none.unmount()
-    mount({ load: vi.fn(async () => Promise.reject(new Error('permission denied for view supply_purchase_lines'))) })
+    mount({ load: vi.fn(async () => Promise.reject(new Error('permission denied for view supply_purchase_lines'))), bookPrices: vi.fn(async () => []) })
     expect(await screen.findByText(/permission denied for view supply_purchase_lines/)).toBeTruthy()
   })
 })

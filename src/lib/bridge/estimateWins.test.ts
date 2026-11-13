@@ -104,3 +104,18 @@ describe('buildEstimateWins: the words', () => {
     expect(w.line).toContain('a thin count')
   })
 })
+
+describe('buildEstimateWins: which estimates are behind each count (punch list #334, PR 4)', () => {
+  it('keeps each count’s estimates by their place in the list handed in', () => {
+    const w = build([
+      est({ sentYmd: '2026-10-01', usd: 3_000, status: 'customer_accepted' }),
+      est({ sentYmd: '2026-10-02', usd: 9_000, status: 'declined' }),
+      est({ sentYmd: '2026-08-01', usd: 6_000 }),
+      est({ sentYmd: '2026-11-01', usd: 5_000 }),
+      // A draft is in no count and in no list.
+      est({ sentYmd: '2026-11-02', usd: 1_000, status: 'draft' }),
+    ])
+    expect(w.members).toEqual({ won: [0], declined: [1], notChosen: [], expired: [2], out: [3] })
+    expect([w.members.won.length, w.members.declined.length, w.members.notChosen.length, w.members.expired.length, w.members.out.length]).toEqual([w.won.count, w.declined.count, w.notChosen.count, w.expired.count, w.out.count])
+  })
+})

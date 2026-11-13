@@ -18,6 +18,26 @@ export { boxDeskLink }
 
 export const BOX_PHONE_SCREEN_WORDS = 'Open on the phone screen'
 
+/** A site's materials on one screen (punch list #330), as a link: the On site tab on that site. */
+export function siteMaterialsLink(siteId: string): string {
+  return `/materials?tab=on-site&site=${siteId}`
+}
+
+/** One door per site that holds boxes: the whole site's materials on one screen. Offered to the roles that get the site's screen. */
+export function siteDoors(sites: ReadonlyArray<{ siteId: string; name: string; boxes: number; jobs: number }>): Door[] {
+  return sites
+    .filter((s) => s.boxes > 0)
+    .map((s) => ({
+      id: `site-materials:${s.siteId}`,
+      kind: 'box',
+      label: `${s.name} · the whole site`,
+      where: `${s.boxes.toLocaleString('en-US')} ${s.boxes === 1 ? 'box' : 'boxes'} on ${s.jobs === 1 ? '1 job' : `${s.jobs} jobs`} · every part on one screen`,
+      words: [s.name.toLowerCase(), 'site', 'whole site', 'materials', 'every part', 'boxes on site'],
+      to: siteMaterialsLink(s.siteId),
+      gate: () => true,
+    }) satisfies Door)
+}
+
 /** One door per live box, in the order given; a job with no name reads by its id's start. */
 export function boxDoors(input: { jobs: ReadonlyArray<BoxSearchJob>; containers: ReadonlyArray<Container>; lines: ReadonlyArray<ContainerLine>; places: ReadonlyArray<Place>; forField: boolean }): Door[] {
   const jobLabel = new Map(input.jobs.map((j) => [j.id, j.label] as const))

@@ -120,7 +120,7 @@ describe('SiteMaterialsView', () => {
     expect(within(glance).getByText('8 used')).toBeTruthy()
     // The week's Can't find at the price the store knows: 3 at $4.
     expect(within(glance).getByText('$12.00')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Open the Development page' }).getAttribute('href')).toBe('/developments/dev1')
+    expect(screen.getByRole('link', { name: 'Print the material location report' }).getAttribute('href')).toBe('/developments/dev1?report=materials')
   })
 
   it('folds the same words across two jobs into one row and keeps a near twin its own row', () => {
@@ -170,12 +170,12 @@ describe('SiteMaterialsView', () => {
     expect(screen.getByRole('link', { name: 'R58' })).toBeTruthy()
   })
 
-  it('draws no money for a role that does not read it, and no Development door without one', () => {
+  it('draws no money for a role that does not read it, and no print press without the Development page', () => {
     setup({ showMoney: false, developmentHref: null })
     expect(screen.queryByText('$12.00')).toBeNull()
     expect(screen.queryByText('Worth')).toBeNull()
     expect(document.querySelector('[data-row-worth]')).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Open the Development page' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Print the material location report' })).toBeNull()
   })
 
   it('an empty site says what fills it, and Back returns', () => {

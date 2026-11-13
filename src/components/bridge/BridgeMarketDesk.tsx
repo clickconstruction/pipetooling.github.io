@@ -12,14 +12,15 @@
  * bid size and up to three things to do this week. The sources, the asks by week, what it cannot see and how it is
  * counted each wait behind a press at the foot. `marketStepWindow.ts` picks the rows and writes the words.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { stageUsd } from '../../lib/bridge/stageFlow'
-import type { BidWins, MarketWorth } from '../../lib/bridge/bidWins'
-import type { EstimateWins } from '../../lib/bridge/estimateWins'
+import type { BidSent, BidWins, MarketWorth } from '../../lib/bridge/bidWins'
+import type { EstimateSent, EstimateWins } from '../../lib/bridge/estimateWins'
 import { MARKET_CANNOT_SEE, MARKET_DESK_WEEKS, MARKET_RECORDED_LINE, type MarketDesk, type MarketHeader, type MarketRow, type MarketRowState } from '../../lib/bridge/market/marketDesk'
 import { MARKET_STEP_WORDS, buildMarketStep, marketErrorWords, type MarketStepModel } from '../../lib/bridge/market/marketStepWindow'
+import { BREAKOUT_SHOWN, bidsBreakout, breakoutPressLabel, breakoutRowLabel, estimatesBreakout, type MarketBreakout } from '../../lib/bridge/market/marketBreakout'
 import { BridgeStepWindow, type StepFoldSpec, type StepGroup } from './BridgeStepWindow'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -60,6 +61,10 @@ export type BridgeMarketDeskProps = {
   bidWins?: BidWins | null
   /** The estimates part. */
   estimateWins?: EstimateWins | null
+  /** The bids and the estimates the won rates were built from (punch list #334, PR 4), the same lists in the same order, so a breakout can name them. */
+  bids?: ReadonlyArray<BidSent> | null
+  estimates?: ReadonlyArray<EstimateSent> | null
+  todayYmd?: string | null
   /** Dollars a week the field builds. Left out, the window uses the header's own figure. */
   fieldPerWeekUsd?: number | null
 }
@@ -123,8 +128,171 @@ function MarketRowCard({ row, open, onToggle }: { row: MarketRow; open: boolean;
 const sub: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }
 const footDoor: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--text-link)', textDecoration: 'none', fontSize: '0.84rem' }
 
+/**
+ * What makes up one of Market's two amounts, in a window of its own over the Market window (punch list #334, PR 4). The
+ * owner asked to press either amount and see its breakout, then: "Those breakouts can be in an additional modal.
+ * One modal for each." Escape and a press outside close this window alone; the Market window stays open behind it.
+ */
+function MarketBreakoutWindow({ breakout, value, words, onClose }: { breakout: MarketBreakout; value: string; words: string; onClose: () => void }) {
+  // The row that is open on its bids or estimates, one at a time, and the lists showing every one of theirs.
+  const [openRow, setOpenRow] = useState<string | null>(null)
+  const [allOf, setAllOf] = useState<ReadonlySet<string>>(() => new Set())
+  useEffect(() => {
+    // Capture, and stopped here, so the Market window behind does not also close.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose])
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation()
+        onClose()
+      }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', zIndex: 760, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(40px + var(--app-top-chrome, 0px)) 16px 16px', overflowY: 'auto' }}
+      data-testid={`bridge-market-breakout-${breakout.key}`}
+    >
+      <div role="dialog" aria-modal="true" aria-label={breakout.title} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', width: 'min(640px, 100%)', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={label}>{breakout.title}</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }} data-testid="bridge-market-breakout-amount">
+              {value}
+            </div>
+            <div style={sub}>{words}</div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ minWidth: 44, minHeight: 44, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '1.1rem', cursor: 'pointer' }}>
+            ×
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem', fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>
+            <thead>
+              <tr>
+                {breakout.columns.map((c, i) => (
+                  <th key={c} scope="col" style={{ textAlign: i === 0 ? 'left' : 'right', padding: '4px 0 4px 10px', paddingLeft: i === 0 ? 0 : 10, fontWeight: 600, fontSize: '0.74rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {breakout.rows.flatMap((r) => [
+                <tr key={r.key} style={{ borderTop: r.total ? '2px solid var(--border-strong)' : '1px solid var(--border)' }} data-testid="bridge-market-breakout-row">
+                  <th scope="row" style={{ textAlign: 'left', padding: r.note ? '5px 0 0' : '5px 0', fontWeight: r.total ? 700 : 500, color: 'var(--text-strong)' }}>
+                    {r.groups && r.groups.length > 0 ? (
+                      // A row with bids or estimates behind it opens on them.
+                      <button
+                        type="button"
+                        aria-expanded={openRow === r.key}
+                        aria-label={breakoutRowLabel(r, openRow === r.key)}
+                        onClick={() => setOpenRow(openRow === r.key ? null : r.key)}
+                        data-testid="bridge-market-breakout-open"
+                        style={{ font: 'inherit', fontWeight: 600, textAlign: 'left', padding: 0, minHeight: 32, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
+                      >
+                        <span aria-hidden>{openRow === r.key ? '▾' : '▸'}</span> {r.label}
+                      </button>
+                    ) : (
+                      r.label
+                    )}
+                  </th>
+                  {r.cells.map((c, i) => (
+                    <td key={i} style={{ textAlign: 'right', padding: r.note ? '5px 0 0 10px' : '5px 0 5px 10px', verticalAlign: 'top', whiteSpace: 'nowrap', fontWeight: r.total ? 700 : 400, color: 'var(--text-strong)' }}>
+                      {c}
+                    </td>
+                  ))}
+                </tr>,
+                // The row's note runs the table's whole width, so a narrow window does not squeeze the first column.
+                ...(r.note
+                  ? [
+                      <tr key={`${r.key}-note`}>
+                        <td colSpan={breakout.columns.length} style={{ padding: '0 0 5px', fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                          {r.note}
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
+                // The bids or the estimates behind the row, by name, largest first, each a press to that one.
+                ...(openRow === r.key && r.groups
+                  ? [
+                      <tr key={`${r.key}-items`} data-testid="bridge-market-breakout-items">
+                        <td colSpan={breakout.columns.length} style={{ padding: '2px 0 10px' }}>
+                          <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: 10, display: 'grid', gap: 8 }}>
+                            {r.groups.map((g) => {
+                              const all = allOf.has(`${r.key}:${g.key}`)
+                              const items = all ? g.items : g.items.slice(0, BREAKOUT_SHOWN)
+                              return (
+                                <div key={g.key} data-testid="bridge-market-breakout-group">
+                                  {/* A row with one list needs no second name for it: the row above says it. */}
+                                  {(r.groups?.length ?? 0) > 1 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                                      <b style={{ color: 'var(--text-700)' }}>{g.title}</b>
+                                      <span>{g.words}</span>
+                                    </div>
+                                  )}
+                                  <ul style={{ listStyle: 'none', margin: '2px 0 0', padding: 0 }}>
+                                    {items.map((it) => (
+                                      <li key={it.key} data-testid="bridge-market-breakout-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '3px 0', borderTop: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                                        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                          {it.to ? (
+                                            <Link to={it.to} style={{ color: 'var(--text-link)', textDecoration: 'none', fontWeight: 600 }}>
+                                              {it.title} ›
+                                            </Link>
+                                          ) : (
+                                            <b>{it.title}</b>
+                                          )}{' '}
+                                          <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{it.detail}</span>
+                                        </span>
+                                        <span style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{it.amount}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  {g.items.length > BREAKOUT_SHOWN && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setAllOf((s) => {
+                                          const next = new Set(s)
+                                          const k = `${r.key}:${g.key}`
+                                          if (next.has(k)) next.delete(k)
+                                          else next.add(k)
+                                          return next
+                                        })
+                                      }
+                                      data-testid="bridge-market-breakout-all"
+                                      style={{ font: 'inherit', fontSize: '0.78rem', minHeight: 32, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
+                                    >
+                                      {all ? `Show the first ${BREAKOUT_SHOWN}` : `Show all ${g.items.length}`}
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
+              ])}
+            </tbody>
+          </table>
+        </div>
+        <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'grid', gap: 2, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+          {breakout.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 /** Between the headline and the rows: the error, the two parts, and the won rate for each bid size. */
-function MarketSummary({ step, error, reading }: { step: MarketStepModel; error: string | null; reading: boolean }) {
+function MarketSummary({ step, error, reading, breakouts, onOpenPart }: { step: MarketStepModel; error: string | null; reading: boolean; breakouts: Record<string, MarketBreakout | null>; onOpenPart: (key: 'bids' | 'estimates') => void }) {
   return (
     <>
       {error && (
@@ -135,12 +303,36 @@ function MarketSummary({ step, error, reading }: { step: MarketStepModel; error:
       {reading && <div style={sub}>{MARKET_STEP_WORDS.reading}</div>}
       {step.figures.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
-          {step.figures.map((f) => (
-            <div key={f.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: 0 }} data-testid="bridge-market-figure">
-              <b style={{ display: 'block', fontSize: '1.15rem', color: 'var(--text-strong)' }}>{f.value}</b>
-              {f.words}
-            </div>
-          ))}
+          {step.figures.map((f) => {
+            const breakout = breakouts[f.key] ?? null
+            const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: 0 }
+            // An amount with nothing behind it yet stays plain words.
+            if (!breakout) {
+              return (
+                <div key={f.key} style={tile} data-testid="bridge-market-figure">
+                  <b style={{ display: 'block', fontSize: '1.15rem', color: 'var(--text-strong)' }}>{f.value}</b>
+                  {f.words}
+                </div>
+              )
+            }
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-haspopup="dialog"
+                aria-label={breakoutPressLabel(f.value, f.words)}
+                onClick={() => onOpenPart(f.key as 'bids' | 'estimates')}
+                style={{ ...tile, display: 'block', width: '100%', minHeight: 56, font: 'inherit', textAlign: 'left', background: 'var(--surface)', cursor: 'pointer' }}
+                data-testid="bridge-market-figure"
+              >
+                <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <b style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{f.value}</b>
+                  <span style={{ color: 'var(--text-link)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>what makes it up ›</span>
+                </span>
+                {f.words}
+              </button>
+            )
+          })}
         </div>
       )}
       {step.bars.length > 0 && (
@@ -287,8 +479,13 @@ function MarketAsks({ desk, byWonRates }: { desk: MarketDesk; byWonRates: boolea
 }
 
 export function BridgeMarketDesk(props: BridgeMarketDeskProps) {
-  const { header, desk, error, isLink, readStamp, onClose, worth, bidWins, estimateWins, fieldPerWeekUsd } = props
+  const { header, desk, error, isLink, readStamp, onClose, worth, bidWins, estimateWins, fieldPerWeekUsd, bids, estimates, todayYmd } = props
   const step = buildMarketStep({ header, desk, worth, bidWins, estimateWins, fieldPerWeekUsd })
+  // Each of the two amounts opens what makes it up, in a window of its own (punch list #334, PR 4).
+  const [openPart, setOpenPart] = useState<'bids' | 'estimates' | null>(null)
+  const breakouts: Record<string, MarketBreakout | null> = { bids: bidsBreakout(bidWins, bids, todayYmd), estimates: estimatesBreakout(estimateWins, estimates, todayYmd) }
+  const openBreakout = openPart ? (breakouts[openPart] ?? null) : null
+  const openFigure = openPart ? (step.figures.find((f) => f.key === openPart) ?? null) : null
 
   const groups: StepGroup[] = [
     {
@@ -349,6 +546,7 @@ export function BridgeMarketDesk(props: BridgeMarketDeskProps) {
   )
 
   return (
+    <>
     <BridgeStepWindow
       testId="bridge-market-desk"
       ariaLabel="Market, broken down"
@@ -357,11 +555,14 @@ export function BridgeMarketDesk(props: BridgeMarketDeskProps) {
       headlineTestId="bridge-market-headline"
       tone={isLink ? 'bad' : 'plain'}
       line={step.line}
-      summary={<MarketSummary step={step} error={error} reading={!desk && !error} />}
+      summary={<MarketSummary step={step} error={error} reading={!desk && !error} breakouts={breakouts} onOpenPart={setOpenPart} />}
       groups={groups}
       folds={folds}
       footer={footer}
       onClose={onClose}
+      escCloses={openBreakout == null}
     />
+    {openBreakout && openFigure && <MarketBreakoutWindow breakout={openBreakout} value={openFigure.value} words={openFigure.words} onClose={() => setOpenPart(null)} />}
+    </>
   )
 }

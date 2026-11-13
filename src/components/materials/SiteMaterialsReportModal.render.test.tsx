@@ -173,4 +173,27 @@ describe('SiteMaterialsReportModal', () => {
     expect(css.slice(0, css.indexOf('@media screen'))).not.toContain('grid-column')
     expect(css).not.toContain('visibility: hidden')
   })
+
+  it('By part lists one row per part across the jobs and joins the names a person joined on the site’s screen (punch list #330)', async () => {
+    const print = vi.fn()
+    const twoNames: SiteMaterialsRows = {
+      ...rows,
+      movements: [...rows.movements, move('m3', 'j2', '3/4 inch copper 90s', 12, 'delivered', null, G1, '2026-11-01T15:00:00Z', 'Reyes', 'ea'), move('m4', 'j2', 'Gas valve', 2, 'delivered', null, G1, '2026-11-01T15:00:00Z', 'Reyes')],
+    }
+    const readTies = vi.fn(async () => [{ id: 't1', aKey: 'words:gas valve', bKey: 'words:3/4" gas valve', aName: 'Gas valve', bName: 'Gas valve 3/4"', verdict: 'same' as const, byName: 'Dana', at: '2026-11-12T10:00:00Z' }])
+    renderWithProviders(<SiteMaterialsReportModal site={site} jobs={jobs} siteId="dev1" printedBy="Dana Example" onClose={() => {}} print={print} read={() => Promise.resolve(twoNames)} readTies={readTies} />)
+    fireEvent.click(await screen.findByTestId('report-view-part'))
+    expect(readReportView()).toBe('part')
+    const parts = await screen.findByTestId('report-parts')
+    await waitFor(() => expect(within(parts).getAllByTestId('report-part')).toHaveLength(2))
+    const [copper, valve] = within(parts).getAllByTestId('report-part')
+    expect(copper!.textContent).toContain('3/4" copper 90')
+    expect(copper!.textContent).toContain('60 ea')
+    expect(copper!.textContent).toContain('also written 3/4 inch copper 90s')
+    expect(copper!.textContent).toContain('A1 48 (Arena)')
+    expect(valve!.textContent).toContain('16')
+    expect(readTies).toHaveBeenCalledWith('dev1')
+    expect(screen.queryAllByTestId('report-box')).toHaveLength(0)
+    expect(parts.textContent).toContain('2 parts · 76 pieces')
+  })
 })
