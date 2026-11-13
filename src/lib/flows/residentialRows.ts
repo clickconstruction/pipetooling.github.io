@@ -7,6 +7,7 @@
  * out of what was read, whether that was theirs alone or everyone's at once. Pure.
  */
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc } from '../jobs/billedExpectedPay'
+import { indexPayCalendars, type PayCalendarRow } from '../jobs/payCalendar'
 import type { ContactRow, StepSkipRow } from './load'
 import type {
   ClockSessionRow,
@@ -37,6 +38,10 @@ export const PIPELINE_SELECTS = {
   texts: 'contact_id, jobs_ledger_id, channel, direction, at, body, who_user_id, who_text',
   /** `job_contracts`: the warranties sent in place of a contract (the Warranty step's rounds); every kind is read, the loader keeps the warranties. */
   agreements: 'id, job_id, kind, status, sent_at, signed_at, voided_at',
+  /** `payer_pay_calendars` (punch list #323, v2.7140), for `parsePayCalendarRow`: the morning run selects them; the client reads through `payCalendarIo.ts`. */
+  payCalendars: 'payer_customer_id, job_id, off, cutoff_day, pay_day, months_after, pay_when_paid, clause, words, set_at',
+  /** `invoice_payer_acceptances`: the day a payer accepted a bill, which its Pay calendar counts from. */
+  acceptedDays: 'invoice_id, accepted_on',
 } as const
 
 /** `jobs_ledger`, with the job's name for the card and `{job}`. */
@@ -62,6 +67,10 @@ export type PipelineRows = {
   agreements?: readonly JobAgreementRow[]
   paySpeeds: unknown
   promisedPay: unknown
+  /** The stored Pay calendars, parsed (`parsePayCalendarRow`). Left out or null by a reader from before v2.7140, or when the read failed: every bill then reads the pay speeds. */
+  payCalendars?: readonly PayCalendarRow[] | null
+  /** The day a payer accepted each bill that has one (`YYYY-MM-DD`), by the bill's id. Left out or null: every bill counts from the day it went in. */
+  acceptedDays?: Readonly<Record<string, string>> | null
 }
 
 /** An empty read, for a run with no residential customer. */
@@ -108,7 +117,18 @@ export function residentialRowsOf(rows: PipelineRows, who: ResidentialWho): Resi
     skips: (who.skips ?? []).map((k) => ({ step_key: k.step_key, jobs_ledger_id: k.jobs_ledger_id ?? null, why: k.why, by_name: k.by_name, created_at: k.created_at, undone_at: k.undone_at })),
     paySpeeds: parsePaySpeedsRpc(rows.paySpeeds),
     promisedPay: parsePromisedPayDatesRpc(rows.promisedPay) ?? undefined,
+    payCalendars: rows.payCalendars?.length ? indexPayCalendars(rows.payCalendars) : null,
+    acceptedByInvoice: acceptedOf(rows),
   }
+}
+
+/** The accepted days as the loader reads them, by the bill's id; null when none was read. */
+function acceptedOf(rows: Pick<PipelineRows, 'acceptedDays'>): ReadonlyMap<string, string> | null {
+  const days = rows.acceptedDays
+  if (!days) return null
+  const out = new Map<string, string>()
+  for (const [invoiceId, ymd] of Object.entries(days)) if (typeof ymd === 'string' && ymd) out.set(invoiceId, ymd.slice(0, 10))
+  return out.size ? out : null
 }
 
 /** The name the card and `{job}` give each of their Pipeline jobs, by id, for `PersonFlow.jobs`. */

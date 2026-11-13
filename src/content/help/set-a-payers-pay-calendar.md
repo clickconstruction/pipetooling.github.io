@@ -166,6 +166,8 @@ Every bill that customer pays reads the calendar.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
 - **Money waiting** and the Dashboard's Accounts Receivable judge them by each bill's expected day. See [A customer on a pay calendar](/help/see-which-customers-pay-slowly#a-customer-on-a-pay-calendar).
+- Quickfill's **Billed Awaiting Payment** calls their bill past due after its due day, not 30 days after it was billed.
+- A development's **Money** look reads **Due** on their billed jobs. It counts a job past due after that day.
 
 A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
 
