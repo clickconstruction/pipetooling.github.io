@@ -9,7 +9,7 @@
  * that is still open — so a line must count for what is still UNPAID on it,
  * never its face amount, or the paid part is subtracted twice.
  *
- * Job 978 (Stonewick HVAC, 2026-09-23): $3,630 bid, $2,999 paid on the job,
+ * Job 978 (Springtown HVAC, 2026-09-23): $3,630 bid, $2,999 paid on the job,
  * one $1,072.50 billed line with $1,018.87 applied to it. Face-amount math
  * read 3,630 − 2,999 − 1,072.50 < 0 → "Nothing left to bill for this job";
  * the line's unpaid $53.63 is what stands against the job, so $577.37 is left.

@@ -2,7 +2,7 @@ import { normalizeIdentityKey } from './identityKey'
 /**
  * Customers → "Show similar": cluster likely duplicate customers so they can be
  * merged before they cause trouble (born from a real incident: two identical
- * "John Inglow" rows created by a failed create-from-job retry).
+ * "John Ingram" rows created by a failed create-from-job retry).
  *
  * Two customers are considered similar when they share ANY normalized signal:
  * name, address, phone, or email. Sharing is exact after normalization

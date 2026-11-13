@@ -239,7 +239,7 @@ export type ExpectedPayRowInput = {
   estBillYmd: string | null
   /** Whose history the estimate reads: since v2.4365 the bill's payer (`paySpeedPayer`), the GC on a GC-billed bill. */
   customerId: string | null
-  /** The payer's name for the hover (v2.4365): "RLC- Dunmere Mallin's median pay speed". */
+  /** The payer's name for the hover (v2.4365): "RMC- Dudley Mason's median pay speed". */
   payerName?: string | null
 }
 
