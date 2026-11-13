@@ -98,7 +98,7 @@ Once the office has used a ticket, you can no longer change its job or remove it
 
 ## A receipt link from the office
 
-The office can send you a link for one charge on your card. You need no sign-in to open it.
+The office can send you a link for one charge on your card. You need no sign-in to open it. The app can text you the same link when a charge posts. [Answer the text about a charge on your card](/help/answer-the-text-about-a-charge-on-your-card) covers that text.
 
 1. Open the link. The page shows the store, the amount, the day and whose card.
 2. Press **Take a photo of the receipt**. Hold the phone over the whole receipt.

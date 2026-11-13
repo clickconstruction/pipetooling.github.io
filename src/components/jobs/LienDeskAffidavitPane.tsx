@@ -24,7 +24,8 @@ import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/j
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
-import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
@@ -258,12 +259,13 @@ export default function LienDeskAffidavitPane({
     return none
   }
 
-  const run = async (labelText: string, fn: () => Promise<void>, done: string) => {
+  /** `fn` may answer with its own words and tone, which replace `done`: the send for approval says which way the leader was told. */
+  const run = async (labelText: string, fn: () => Promise<void | { said: string; tone: 'success' | 'warning' }>, done: string) => {
     if (busy) return
     setBusy(true)
     try {
-      await fn()
-      showToast(done, 'success')
+      const own = await fn()
+      showToast(own ? own.said : done, own ? own.tone : 'success')
       onChanged()
     } catch (e) {
       showToast(e instanceof Error && e.message ? `${labelText}: ${e.message}` : `${labelText} failed.`, 'error')
@@ -279,7 +281,12 @@ export default function LienDeskAffidavitPane({
       'Send for approval',
       async () => {
         const id = await ensureDraft()
-        await submitLienDeskItem(id, lienAffidavitSubmitOutcome(entry, { policyFor: () => policy, promiseYmdFor: () => promise?.promisedYmd ?? null, gcHasPriorNotice: (gcId) => data.gcsWithPriorNotice.has(gcId), gcHeldBefore: (gcId) => data.gcsHeldBefore.has(gcId), todayYmd }))
+        const outcome = lienAffidavitSubmitOutcome(entry, { policyFor: () => policy, promiseYmdFor: () => promise?.promisedYmd ?? null, gcHasPriorNotice: (gcId) => data.gcsWithPriorNotice.has(gcId), gcHeldBefore: (gcId) => data.gcsHeldBefore.has(gcId), todayYmd })
+        await submitLienDeskItem(id, outcome)
+        // The leader is told (punch list #305, v2.7180), as a notice tells him: best effort, after the write, with the last day to file. A tell that fails never undoes the send.
+        if (outcome.status !== 'awaiting_approval') return
+        const told = await tellLeaderOfLienAffidavits([{ itemId: id, dueYmd: entry.deadline }])
+        return { said: lienAffidavitToldWords(told), tone: told && !told.ok ? 'warning' : 'success' }
       },
       policy === 'send' && !promise ? 'Approved by the standing rule — ready to file.' : 'Sent for approval.',
     )

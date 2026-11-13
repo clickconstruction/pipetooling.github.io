@@ -3,7 +3,7 @@ import type { PricePick } from './bookPrice'
 import { containerLines, type Container, type Movement } from './onSite'
 import { orderedPair, tieCanon, type PartTie } from './partTies'
 import { rollKey, sitePartRows, type SiteRollupJob } from './siteRollup'
-import { bookSearchWords, rowWorth, siteWorth, worthWords } from './siteWorth'
+import { bookSearchWords, lensChipWords, rowWorth, siteWorth, worthWords } from './siteWorth'
 
 const NOW = new Date('2026-11-12T18:00:00Z')
 const book = (price: number, stale = false): PricePick => ({ price, from: 'book', supplyHouse: 'Pecan Supply', checkedOn: stale ? '2026-01-05' : '2026-10-03', ageDays: stale ? 311 : 40, stale })
@@ -76,6 +76,9 @@ describe('rows left out and rows on an old price (punch list #342)', () => {
     expect(w.unpriced.map((r) => r.name)).toEqual(['2" 90 pvc'])
     expect(w.known).toBe(704)
     expect(worthWords(w).small).toBe('2 of 4 lines have a price · 1 on a price older than 90 days · 2 left out')
+  })
+  it('names each of the tile’s three lists with its count', () => {
+    expect([lensChipWords('none', 87), lensChipWords('old', 9), lensChipWords('out', 1400)]).toEqual(['No price · 87', 'An old price · 9', 'Left out · 1,400'])
   })
   it('lists the rows on a price older than 90 days', () => {
     expect(siteWorth(rows, prices).stale.map((r) => r.name)).toEqual(['Old valve'])

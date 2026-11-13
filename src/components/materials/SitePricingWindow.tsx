@@ -10,15 +10,20 @@
  * window's foot. Before that table is on the database, or for a reader it gives nothing to, the
  * bills are shown to read and the box is not drawn.
  *
+ * Since PR 3 the same window walks the rows on a price older than 90 days (`mode="old"`): it
+ * shows the price a row reads now and offers only a bill newer than that price.
+ *
  * The window owns the walk and nothing else: the rows, the offers and the writes are handed in.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { EmptyState } from '../EmptyState'
 import { emptyWordsWithPress } from '../../lib/emptyWords'
 import { BookPartPicker } from './BookPartPicker'
 import type { BookPartHit } from '../../lib/materials/bookSearchIo'
 import { parsePriceInput } from '../../lib/materials/materialPriceIndex'
+import { priceWords, type PricePick } from '../../lib/materials/bookPrice'
 import { offerWords, rowOffers, type BillOffer, type PriceOffer } from '../../lib/materials/priceOffers'
 import { answerWalk, currentKey, skipWalk, startWalk, undoWalk, walkEndWords, walkWords, type Walk } from '../../lib/materials/pricingWalk'
 import type { SitePartRow } from '../../lib/materials/siteRollup'
@@ -32,8 +37,12 @@ export type PricingAnswer = { kind: 'tie'; pair: TiePair } | { kind: 'price'; id
 
 type Props = {
   siteName: string
-  /** The rows with no price, most pieces first. Live: a row that gets a price leaves the list. */
+  /** `none` walks the rows with no price; `old` walks the rows on a price older than 90 days. */
+  mode?: 'none' | 'old'
+  /** The rows to walk, most pieces first. Live: a row that gets a price, or a fresh one, leaves the list. */
   rows: ReadonlyArray<SitePartRow>
+  /** The price a row reads now, for the old prices' walk. */
+  nowPick?: (row: SitePartRow) => PricePick | null
   offers: PriceOffersState
   today: string
   searchBook: (term: string) => Promise<BookPartHit[]>
@@ -68,7 +77,8 @@ function typing(target: EventTarget | null): boolean {
   return Boolean(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))
 }
 
-export function SitePricingWindow({ siteName, rows, offers, today, searchBook, onUsePart, canOwnPrice, onUseBill, onTypePrice, onLeaveOut, onUndo, onClose }: Props) {
+export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offers, today, searchBook, onUsePart, canOwnPrice, onUseBill, onTypePrice, onLeaveOut, onUndo, onClose }: Props) {
+  const old = mode === 'old'
   // The order is fixed when the window opens, so a row never jumps under the reader.
   const [walk, setWalk] = useState<Walk>(() => startWalk(rows.map((r) => r.key)))
   const [showAll, setShowAll] = useState(false)
@@ -81,7 +91,14 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
   const key = currentKey(walk, (k) => byKey.has(k))
   const row = key ? (byKey.get(key) ?? null) : null
   const rowKey = row?.key ?? null
-  const found: PriceOffer[] = useMemo(() => (row && offers.index ? rowOffers(row, offers.index) : []), [row, offers.index])
+  const now = row && old && nowPick ? nowPick(row) : null
+  const nowDay = now?.checkedOn ?? ''
+  const found: PriceOffer[] = useMemo(() => {
+    if (!row || !offers.index) return []
+    const all = rowOffers(row, offers.index)
+    // An old price is checked against a newer bill, never against the book it already reads.
+    return old ? all.filter((o) => o.kind === 'bill' && (o.datedOn ?? '') > nowDay) : all
+  }, [row, offers.index, old, nowDay])
   const shown = showAll ? found : found.slice(0, FIRST_OFFERS)
   // An offer that can be pressed is an answer, numbered as drawn. A bill is one once the site's own prices can be written.
   const answers = shown.filter((o) => o.kind === 'book' || canOwnPrice)
@@ -174,7 +191,7 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
 
   return (
     <ResponsiveModalShell
-      title={`Price what has no price · ${siteName}`}
+      title={`${old ? 'Check the old prices' : 'Price what has no price'} · ${siteName}`}
       onRequestClose={onClose}
       maxWidthDesktop={640}
       footer={
@@ -210,9 +227,15 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
                 <strong style={{ color: 'var(--text-strong)' }}>{row.total.toLocaleString('en-US')}</strong> {row.total === 1 ? 'piece' : 'pieces'}
                 {row.boxes.slice(0, 4).map((b) => <span key={`${b.containerId}:${b.spelling}`} style={chipBox}>{b.label} · {b.onHand.toLocaleString('en-US')}</span>)}
                 {row.boxes.length > 4 ? <span>+{row.boxes.length - 4}</span> : null}
-                {row.partId ? <span>· a parts-book part with no price in the book</span> : null}
+                {row.partId && !old ? <span>· a parts-book part with no price in the book</span> : null}
               </span>
             </div>
+
+            {now ? (
+              <span style={{ justifySelf: 'start', display: 'inline-flex', alignItems: 'center', padding: '0.15rem 0.55rem', borderRadius: 999, fontSize: '0.78rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }} data-testid="pricing-now">
+                Now: ${now.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for one · {priceWords(now, today)}
+              </span>
+            ) : null}
 
             {offers.loading ? <span style={muted}>Reading the parts book and the bills…</span> : null}
             {offers.bookError ? <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>The parts book’s offers are not here. {offers.bookError}</span> : null}
@@ -254,7 +277,7 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
               </div>
             ) : null}
 
-            {!offers.loading && found.length === 0 ? <EmptyState compact main="Nothing found in the parts book or on a bill." tail={canOwnPrice ? 'Type a price for one, press Other part… to search with other words, or press Not a part.' : 'Press Other part… to search with other words, or Skip.'} /> : null}
+            {!offers.loading && found.length === 0 ? (old ? <EmptyState compact main="Nothing newer on a bill." tail="Type today’s price for one, or press Skip." /> : <EmptyState compact main="Nothing found in the parts book or on a bill." tail={canOwnPrice ? 'Type a price for one, press Other part… to search with other words, or press Not a part.' : 'Press Other part… to search with other words, or Skip.'} />) : null}
 
             {canOwnPrice && !picking ? (
               <form style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); takeTyped() }}>
@@ -272,7 +295,8 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
                 {found.length > shown.length ? <button type="button" style={btn} onClick={() => setShowAll(true)}>{found.length - shown.length} more {found.length - shown.length === 1 ? 'fit' : 'fits'}…</button> : null}
-                {!row.partId ? <button type="button" style={btn} disabled={busy} onClick={() => setPicking(true)} title="Search the parts book with other words.">Other part…</button> : null}
+                {!row.partId && !old ? <button type="button" style={btn} disabled={busy} onClick={() => setPicking(true)} title="Search the parts book with other words.">Other part…</button> : null}
+                {old && now?.from === 'book' ? <Link to="/materials?tab=parts-book" style={{ ...btn, textDecoration: 'none' }} title="The book’s own price is checked there, for every site at once.">Open the Parts Book</Link> : null}
                 {canOwnPrice ? <button type="button" style={btn} disabled={busy} onClick={leaveOut} title="Scrap, tools or a mixed box. The row leaves the count of lines that need a price.">Not a part <span style={kbd} aria-hidden="true">N</span></button> : null}
                 <button type="button" style={btn} disabled={busy} onClick={skip}>Skip <span style={kbd} aria-hidden="true">S</span></button>
               </div>
@@ -281,11 +305,11 @@ export function SitePricingWindow({ siteName, rows, offers, today, searchBook, o
         ) : (
           <div style={{ display: 'grid', gap: '0.6rem', justifyItems: 'center', textAlign: 'center', padding: '1rem 0.5rem' }} data-testid="pricing-walk-end">
             {rows.length === 0 ? (
-              <EmptyState compact {...emptyWordsWithPress({ main: 'Nothing waiting on a price on this site.', next: 'Done', tail: 'closes the window.' }, { onPress: onClose })} />
+              <EmptyState compact {...emptyWordsWithPress({ main: old ? 'Nothing waiting on a newer price on this site.' : 'Nothing waiting on a price on this site.', next: 'Done', tail: 'closes the window.' }, { onPress: onClose })} />
             ) : (
               <>
                 <strong style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>That is every row in this pass.</strong>
-                <span style={muted}>{walkEndWords(walk, rows.length)}</span>
+                <span style={muted}>{walkEndWords(walk, rows.length, mode)}</span>
                 <button type="button" style={btnPrimary} onClick={() => setWalk(startWalk(rows.map((r) => r.key)))}>Go through the {rows.length.toLocaleString('en-US')} left</button>
               </>
             )}

@@ -98,8 +98,10 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
   const load = useCallback(async () => {
     setError(null)
     const [peopleRes, usersRes, sheetsRes, assigneesRes, commitmentsRes, docsRes] = await Promise.all([
-      supabase.from('people').select('id, name, archived_at, account_user_id, start_date, end_date, notes, created_at').eq('kind', 'sub'),
-      supabase.from('users').select('id, name, email').eq('role', 'subcontractor'),
+      // v2.7169: the whole roster and every login's role, the two lists the Pay view reads, so a teammate on a
+      // sub's sheet is told from a second sub. The rows of this page are still the kind `sub` people alone.
+      supabase.from('people').select('id, name, kind, archived_at, account_user_id, start_date, end_date, notes, created_at').limit(1000),
+      supabase.from('users').select('id, name, email, role').limit(1000),
       supabase.from('people_labor_jobs').select('id, assigned_to_name, address, job_number, labor_rate, job_date, paid_at'),
       supabase.from('people_labor_job_assignees').select('labor_job_id, person_id'),
       supabase.from('step_commitments').select('person_id, amount, status, step_id, labor_job_id, offer_scope_snapshot, accepted_at'),
@@ -166,8 +168,14 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
     setTodayYmd(todayYmd)
 
+    type RosterRow = { id: string; name: string; kind: string; archived_at: string | null; account_user_id: string | null; start_date?: string | null; end_date?: string | null; notes?: string | null; created_at?: string | null }
+    const everyone = (peopleRes.data ?? []) as RosterRow[]
+    const subPeople = everyone.filter((p) => p.kind === 'sub')
+    const allUsers = (usersRes.data ?? []) as Array<{ id: string; name: string | null; email: string | null; role: string | null }>
+    const roleByUserId = new Map(allUsers.map((u) => [u.id, u.role]))
+
     const meta: Record<string, BenchMeta> = {}
-    for (const p of (peopleRes.data ?? []) as Array<{ id: string; start_date?: string | null; end_date?: string | null; notes?: string | null; created_at?: string | null }>) {
+    for (const p of subPeople) {
       meta[p.id] = {
         startDate: p.start_date ?? null,
         endDate: p.end_date ?? null,
@@ -177,7 +185,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     }
     setBenchMeta(meta)
 
-    const activeRoster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null; end_date?: string | null }>)
+    const activeRoster = subPeople
       .filter((p) => !p.archived_at)
       .map((p) => ({ id: p.id, name: p.name, benched: !!p.end_date }))
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -185,13 +193,14 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
 
     setResult(
       buildSubsHqRows({
-        people: ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null; account_user_id: string | null }>).map((p) => ({
+        people: subPeople.map((p) => ({
           id: p.id,
           name: p.name,
           archived: !!p.archived_at,
           accountUserId: p.account_user_id,
         })),
-        users: (usersRes.data ?? []) as Array<{ id: string; name: string | null; email: string | null }>,
+        users: allUsers.filter((u) => u.role === 'subcontractor'),
+        roster: everyone.map((p) => ({ id: p.id, name: p.name, kind: p.kind, accountRole: p.account_user_id ? (roleByUserId.get(p.account_user_id) ?? null) : null })),
         sheets: sheetRows.map((s) => ({
           id: s.id,
           label: [s.job_number, s.address].filter(Boolean).join(' · ') || s.assigned_to_name,
@@ -230,9 +239,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     )
 
     const grouped: Record<string, DocRow[]> = {}
-    const peopleByNameLower = new Map(
-      ((peopleRes.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.name.trim().toLowerCase(), p.id]),
-    )
+    const peopleByNameLower = new Map(subPeople.map((p) => [p.name.trim().toLowerCase(), p.id]))
     for (const d of docRows) {
       const pid = d.person_id ?? (d.person_name ? peopleByNameLower.get(d.person_name.trim().toLowerCase()) : undefined)
       if (!pid) continue
@@ -356,7 +363,10 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
 
   // Archived-and-settled sheets are history, not problems — they get a quiet
   // summary line instead of amber rows. Archived with money open stays amber.
-  const actionableGroups = unattributedGroups.filter((g) => g.reason !== 'archived' || g.totalBalance > 0)
+  // Crew pay (v2.7169) is nothing to fix either: teammates only, paid through payroll, a quiet line of its own.
+  const crewGroups = unattributedGroups.filter((g) => g.reason === 'crew')
+  const crewSheetCount = crewGroups.reduce((n, g) => n + g.sheetCount, 0)
+  const actionableGroups = unattributedGroups.filter((g) => g.reason !== 'crew' && (g.reason !== 'archived' || g.totalBalance > 0))
   const archivedSettledGroups = unattributedGroups.filter((g) => g.reason === 'archived' && g.totalBalance <= 0)
   const actionableSheetCount = actionableGroups.reduce((n, g) => n + g.sheetCount, 0)
   const archivedSettledSheetCount = archivedSettledGroups.reduce((n, g) => n + g.sheetCount, 0)
@@ -369,6 +379,19 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       {archivedSettledSheetCount} sheet{archivedSettledSheetCount === 1 ? ' belongs' : 's belong'} to archived{' '}
       {archivedNames.length === 1 ? 'person' : 'people'}
       {archivedNames.length > 0 ? ` (${archivedNames.join(', ')})` : ''} — nothing owed.
+    </p>
+  )
+
+  const crewSummaryLine = crewSheetCount > 0 && (
+    <p data-testid="subs-crew-pay-line" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+      {crewSheetCount} crew {crewSheetCount === 1 ? 'sheet has' : 'sheets have'} teammates on {crewSheetCount === 1 ? 'it' : 'them'} and no sub. Crew sheets pay through payroll, so they are in nobody's Balance due.{' '}
+      <button
+        type="button"
+        onClick={() => navigate('/jobs?tab=subs&view=pay')}
+        style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'inherit', color: 'var(--text-link)', fontFamily: 'inherit' }}
+      >
+        See them on Jobs → Subs → Pay
+      </button>
     </p>
   )
 
@@ -634,6 +657,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
         </div>
       )}
       {archivedSummaryLine}
+      {crewSummaryLine}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 0 0.35rem' }} role="group" aria-label="Show subs">
         {(
           [
