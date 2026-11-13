@@ -54,7 +54,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 -- What the caller's list holds, as "why store amount" lines in the order the function gives them.
 CREATE FUNCTION ro.list() RETURNS text LANGUAGE sql AS $$
-  SELECT COALESCE(string_agg(c.why || ' ' || COALESCE(c.store, '-') || ' ' || c.amount::text, ' | '), '') FROM public.receipt_requests_to_chase() c
+  SELECT COALESCE(string_agg(c.why || ' ' || COALESCE(c.store, '-') || ' ' || round(c.amount, 2)::text, ' | '), '') FROM public.receipt_requests_to_chase() c
 $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA ro TO authenticated;
 
