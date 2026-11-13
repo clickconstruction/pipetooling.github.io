@@ -2,7 +2,7 @@
 name: "Stickers before boxes: print a run of blank stickers, stick one on a box, then say what it is"
 number: 329
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · nothing built
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace took the seven calls as recommended that evening · PR 1, the sticker itself, is built (v2.7072, #7849) and waits for its merge, the push and the box-read deploy · PRs 2 to 6 not built
 mockup: to-dos/stickers-before-boxes/mockup.html
 summary: >
   Today a box is made in the app first and its label is printed from that record, because a label's
@@ -14,7 +14,7 @@ summary: >
   next unused sticker is the next box with no office step. A scan of a used sticker opens the box,
   where it can be renamed, moved to the right box or started over, with the old name kept in the
   history. Every label printed so far keeps working.
-next: PR 1 (the sticker itself, no new screen but a blank sticker's page), in its own session, then PRs 2 and 3 and a stop to walk the site.
+next: PR 1's merge with the push right after it and the box-read deploy, then PR 2 (print a run) in its own session, PR 3 and a stop to walk the site.
 size: L as a train of six (M · M · M · S · M · S); PRs 1 to 3 are the whole loop, then a stop to use it on the site
 blocker: none. The seven calls are answered; PR 1's migration is pushed right after its merge, with the person who pushes at hand.
 opinion: build PRs 1 to 3, then walk the site — the loop is whole there with the phone's own camera, and the walk shows whether the in-app camera and the sheet of 30 are worth their PRs
@@ -361,3 +361,36 @@ new box is named by its sticker's number.
   one sticker from two browsers.
 - The mock-up was checked at 375, 768 and 1400 wide, light and dark, with no sideways scroll.
 - Made-up names, jobs, numbers and counts only, in the repo, the PRs and every screenshot.
+
+## Where it stands
+
+2026-11-12: **PR 1, the sticker itself, is built** as v2.7072 (#7849). It is the ground only. A sticker
+can exist with no box, its code opens a page, and every label printed so far still opens its box. No
+screen prints a run or places a sticker. Nothing was written to the database: the migration is pushed
+right after the merge, and `box-read` is deployed after the push.
+
+What it built, against *What needs a migration* above:
+
+- The four tables and the three functions as listed, in `20261113020000_box_stickers.sql`.
+- **A sticker changes only through a `box_sticker_events` row.** The row is judged by the caller's own
+  RLS and a trigger then moves the sticker, so no client updates `box_stickers`. A run is the same
+  shape: inserting the `sticker_runs` row is the act, and its triggers number it and make the stickers.
+  `mint_sticker_run` and `place_sticker` are the wrappers a screen calls.
+- All four kinds of event already hold their rules, so PR 4's presses need no second migration.
+- `sticker_runs` also keeps `sticker_count`. `box_sticker_facts` answers a sticker by its id.
+- A new box whose code a sticker already holds is refused, so a scanned code names one thing.
+- **Who reads a blank sticker**: whoever may touch the job its run was printed for, and nobody else,
+  so nobody collects codes ahead of their boxes. Whoever holds the code reads what `sticker_by_code`
+  answers. **Who prints a run**: the office, a primary or a superintendent, on a job they can reach.
+
+Checked: the migration three times on a throwaway local Postgres through 117 checks and two races
+between two sessions, the kernel's 28 tests, the render tests of both pages, and a read-only walk on a
+local copy of the app, where the ZZ job's label opened its box signed in and signed out. The blank
+sticker's page is proved by tests and that Postgres run, since nothing can be minted on prod yet.
+
+Left by PR 1, each for a later PR to weigh:
+
+- A whole-job move or combine does not carry a run's job. Placed stickers follow their boxes.
+- A number typed into **Scan a label** finds a sticker only for someone on its run's job or its box's
+  job. A leftover on another site is found by its scan. A wider read by number is a call for Grace.
+- A lost sticker takes no further act. Whether one can be found again is PR 4's question.
