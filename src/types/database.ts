@@ -11027,6 +11027,7 @@ export type Database = {
           doc_kind: string
           estimate_number: number
           field_write_up: Json | null
+          first_look_id: string | null
           for_address: string | null
           id: string
           internal_notes: string | null
@@ -11071,6 +11072,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11115,6 +11117,7 @@ export type Database = {
           doc_kind?: string
           estimate_number?: number
           field_write_up?: Json | null
+          first_look_id?: string | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -11161,6 +11164,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_first_look_id_fkey"
+            columns: ["first_look_id"]
+            isOneToOne: false
+            referencedRelation: "first_looks"
             referencedColumns: ["id"]
           },
           {
@@ -11713,6 +11723,12 @@ export type Database = {
           bytes: number | null
           client: string | null
           declared_bytes: number
+          drive_file_id: string | null
+          drive_tried_at: string | null
+          drive_upload_offset: number | null
+          drive_upload_uri: string | null
+          fail_why: string | null
+          filed_at: string | null
           finished_at: string | null
           id: string
           kind: string
@@ -11731,6 +11747,12 @@ export type Database = {
           bytes?: number | null
           client?: string | null
           declared_bytes: number
+          drive_file_id?: string | null
+          drive_tried_at?: string | null
+          drive_upload_offset?: number | null
+          drive_upload_uri?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           finished_at?: string | null
           id?: string
           kind: string
@@ -11749,6 +11771,12 @@ export type Database = {
           bytes?: number | null
           client?: string | null
           declared_bytes?: number
+          drive_file_id?: string | null
+          drive_tried_at?: string | null
+          drive_upload_offset?: number | null
+          drive_upload_uri?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           finished_at?: string | null
           id?: string
           kind?: string
@@ -11781,6 +11809,7 @@ export type Database = {
           closed_by: string | null
           code_hash: string
           contact_id: string | null
+          drive_folder_id: string | null
           expires_at: string
           id: string
           label: string
@@ -11800,6 +11829,7 @@ export type Database = {
           closed_by?: string | null
           code_hash: string
           contact_id?: string | null
+          drive_folder_id?: string | null
           expires_at: string
           id?: string
           label?: string
@@ -11819,6 +11849,7 @@ export type Database = {
           closed_by?: string | null
           code_hash?: string
           contact_id?: string | null
+          drive_folder_id?: string | null
           expires_at?: string
           id?: string
           label?: string
@@ -27419,6 +27450,7 @@ export type Database = {
           estimate_id: string | null
           gmail_id: string | null
           gmail_thread_id: string | null
+          history: boolean
           id: string
           introduces_user_id: string | null
           invitation: Json | null
@@ -27462,6 +27494,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -27505,6 +27538,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -45013,6 +45047,7 @@ export type Database = {
       }
       messages_tech_on_job: { Args: { p_job_id: string }; Returns: boolean }
       messages_tech_team: { Args: never; Returns: boolean }
+      messages_unfile: { Args: { p_contact_id: string }; Returns: undefined }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json

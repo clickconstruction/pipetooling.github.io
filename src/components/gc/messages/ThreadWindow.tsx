@@ -12,7 +12,7 @@ import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
 import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
-import { courtOf, threadOf } from '../../../lib/messages/thread'
+import { courtOf, filedMark, threadOf } from '../../../lib/messages/thread'
 import { isThreadBeside, isThreadFolded, isThreadShort, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { threadHeaderPlan } from '../../../lib/messages/threadHeader'
 import { noFlowWords } from '../../../lib/flows/facts'
@@ -567,6 +567,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                             smallPrint={smallPrint.get(r.message.id)}
                             userNames={view?.userNames ?? {}}
                             contact={contact ?? null}
+                            filed={filedMark(r.message, nowIso)}
                             onOpen={() => setOpenMessageId(r.message.id)}
                             onTie={() => {
                               if (tying) void tie(r.message.id, tying)

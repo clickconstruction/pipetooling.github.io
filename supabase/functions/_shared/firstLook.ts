@@ -122,11 +122,24 @@ export function firstLookMimeOf(file: { type: string | null | undefined; name: s
   return MIME_BY_EXT[ext] ?? ''
 }
 
-/** Where a file sits in the bucket: `<look id>/<file id>.<ext>`. */
+/** Where a file is uploaded to in the bucket: `<look id>/<file id>.<ext>`. The page's upload address names this place. */
 export function firstLookObjectPath(lookId: string, fileId: string, mime: string): string {
   const m = mime.trim().toLowerCase().split(';')[0] ?? ''
   return `${lookId}/${fileId}.${EXT_BY_MIME[m] ?? 'bin'}`
 }
+
+/**
+ * Where a file is kept once it is in and checked: `<look id>/kept/<file id>.<ext>` (punch list #319 PR 3). An upload
+ * address is good for two hours and may write its place again, so a finished file is moved out from under it: whoever
+ * holds the link can no longer put other bytes where a checked file sits.
+ */
+export function firstLookKeptPath(lookId: string, fileId: string, mime: string): string {
+  const m = mime.trim().toLowerCase().split(';')[0] ?? ''
+  return `${lookId}/kept/${fileId}.${EXT_BY_MIME[m] ?? 'bin'}`
+}
+
+/** How long an upload address lasts, and so how long a finished file's old place may still be written to. */
+export const FIRST_LOOK_UPLOAD_ADDRESS_HOURS = 2
 
 export type FirstLookCounts = { photos: number; videos: number; photoSigns: number; videoSigns: number }
 

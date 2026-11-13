@@ -5,7 +5,7 @@ import { findOrCreateFolder, googleAccessToken, putResumablePiece, resumableStat
 import { lookFolderOrWhy, lookTree, type LookForFolder, type LookTree } from '../_shared/driveLookFolder.ts'
 import { DRIVE_WHOLE_MAX_BYTES, lookCountsAsSent, lookFileDriveName, lookFileDue } from '../_shared/firstLookDrive.ts'
 import { copyInPieces } from '../_shared/driveCopyInPieces.ts'
-import { firstLookSentLine } from '../_shared/firstLook.ts'
+import { FIRST_LOOK_UPLOAD_ADDRESS_HOURS, firstLookObjectPath, firstLookSentLine } from '../_shared/firstLook.ts'
 import { driveFileState, folderFiles, freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
 import { REFILE_ASK_REFUSAL, REFILE_BUDGET_MS, REFILE_SWEEP_BATCH, dueRowsByJob, mayAskRefile, nextFreeName, refileAskOf, refileResult, refileRowNeedsClearing, refileRowPatch, refileStep, type RefileHeld, type RefileMoved, type RefileResult } from '../_shared/boxPhotoRefile.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
@@ -1359,8 +1359,8 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
         deadline,
       )
       if ('paused' in put) {
-        // Part way: no reason to show, and the next run goes on from where Drive says it stopped.
-        await tried(r, null)
+        // Part way: no reason to show, and no stamp. The cron calls again in five minutes for a file never tried or
+        // not tried lately, and the copy goes on from where Drive says it stopped.
         continue
       }
       const { error: kept } = await admin
@@ -1425,6 +1425,17 @@ async function sweepLooks(admin: SupabaseClient): Promise<{ saved: number; faile
         failed.push({ id: a.id, why: driveFailWords(e instanceof Error ? e.message : String(e)) })
       }
     }
+  }
+  // PR 3: a finished file was moved out from under its upload address (`firstLookKeptPath`). Once that address has run
+  // out, anything written to the old place since is dropped. Removing a place that holds nothing is not an error.
+  try {
+    const from = new Date(nowMs - 26 * 3_600_000).toISOString()
+    const until = new Date(nowMs - FIRST_LOOK_UPLOAD_ADDRESS_HOURS * 3_600_000).toISOString()
+    const { data: moved } = await admin.from('first_look_files').select('id, look_id, mime, storage_path').gte('finished_at', from).lte('finished_at', until).like('storage_path', '%/kept/%').limit(200)
+    const old = ((moved ?? []) as { id: string; look_id: string; mime: string; storage_path: string }[]).map((f) => firstLookObjectPath(f.look_id, f.id, f.mime))
+    if (old.length) await admin.storage.from(LOOK_FILES_BUCKET).remove(old)
+  } catch (e) {
+    console.warn('photo-save: the looks’ old upload places were not cleared', e instanceof Error ? e.message : e)
   }
   if (failed.length) console.warn('photo-save: some of a look’s files were not filed', failed)
   return { saved, failed }

@@ -2,7 +2,9 @@
  * A conversation tagged onto a job from the dev seat (server 0.30.0): `plan_mail_tag` → `apply_mail_tag` run
  * gmail-mine's own tag — the Messages → My email press — as the login whose box the conversation is in, through the
  * seat's door on that function (`as`, `plan`), so every mail lands on the job's Activity and notes at its own time,
- * deduplicated by Message-ID, with later mail following as the press's would. Since punch list #289 (server 0.42.0)
+ * deduplicated by Message-ID, with later mail following as the press's would. The lines are that person's mail; the
+ * tag is the dev's: its row names the dev (`tagged_by`) and its grey line on the thread says the dev tagged it from the
+ * person's mail, through the dev seat. Since punch list #289 (server 0.42.0)
  * the target may be a person instead: each mail lands as a dated entry on that person's HR file, deduplicated by its
  * Gmail id, later mail following as entries; `stop` lifts that follow. The pure half: the arguments, the commitment the
  * plan hashes (the target, the conversation, and what the tag would do with each mail), the words.
@@ -149,7 +151,8 @@ export function tagPlanReply(commitment: MailTagCommitment, preview: MyMailTagPl
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call apply_mail_tag with the same tag and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply plans again first and tags only when the conversation and the job are as the plan saw them. One apply per plan.`,
     reading: tagReading(preview),
-    lands: `${words(commitment.counts.lines + commitment.counts.tied, 'line', 'lines')} on ${preview.job.num ? `${preview.job.num} ` : ''}${preview.job.name}'s Activity and notes, each at its mail's own time, as ${commitment.account}.`,
+    // The lines are the person's mail; the tag is the dev's, and the thread says so (gmail-mine's `myMailTagEventWords`).
+    lands: `${words(commitment.counts.lines + commitment.counts.tied, 'line', 'lines')} on ${preview.job.num ? `${preview.job.num} ` : ''}${preview.job.name}'s Activity and notes, each at its mail's own time, as ${commitment.account}. A new tag's grey line on the thread names you, through the dev seat.`,
     ...commitment,
     /** The job as its chip reads, and each mail with its headers and why: over the commitment's bare ids. */
     job: preview.job,

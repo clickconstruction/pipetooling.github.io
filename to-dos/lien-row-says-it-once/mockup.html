@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A billed row's lien line says it once</title>
+<style>
+  /* Punch list #325. The lien lines in a billed row's Progress & payment column, drawn 2026-11-12 with that day as today.
+     Nothing here is built. Every name, job, date and count is made up: Ridgeway Builders, Marisol, jobs J1502 to J1519.
+     The "Now" words are what the two kernels print today for made-up inputs; no live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --dot-red: #dc2626; --dot-amber: #d97706; --dot-green: #16a34a; --dot-blue: #2563eb;
+    --twice: #fde68a; --twice-ink: #713f12;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --dot-red: #f87171; --dot-amber: #fbbf24; --dot-green: #4ade80; --dot-blue: #60a5fa;
+    --twice: #5b4708; --twice-ink: #fde68a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul, .pick ol { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap, .cap.sug { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--surface); color: var(--text-base); min-width: 0; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 14px; }
+  .colhead { font-size: 11px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); padding: 6px 14px; background: var(--bg-subtle); }
+
+  /* the dates block, at the column's own width (14.5rem) */
+  .led { width: 232px; max-width: 100%; display: flex; flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; text-align: left; }
+  .r { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; color: var(--text-muted); }
+  .r .w { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; overflow: hidden; }
+  .r .w > span.t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .r.wrapw .w { white-space: normal; overflow: visible; }
+  .r.wrapw .w > span.t { overflow: visible; }
+  .r .by { white-space: nowrap; }
+  .r .far { white-space: nowrap; color: var(--text-strong); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: var(--border-strong); margin-right: 6px; flex: 0 0 auto; transform: translateY(-1px); }
+  .dot.ring { background: var(--surface) !important; }
+  .red .dot { border-color: var(--dot-red); background: var(--dot-red); } .amber .dot { border-color: var(--dot-amber); background: var(--dot-amber); }
+  .green .dot { border-color: var(--dot-green); background: var(--dot-green); } .blue .dot { border-color: var(--dot-blue); background: var(--dot-blue); }
+  .red .far, .red b { color: var(--text-red-700); } .amber .far, .amber b { color: var(--text-amber-800); }
+  .green .far, .green b { color: var(--text-green-700); } .blue .far, .blue b { color: var(--text-blue-800); }
+  .r b { font-weight: 600; } .r.loud .far { font-weight: 600; }
+  .press { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; cursor: pointer; }
+  .sub { padding-left: 14px; margin-top: -3px; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub.red { color: var(--text-red-700); } .sub.amber { color: var(--text-amber-800); } .sub.green { color: var(--text-green-700); } .sub.blue { color: var(--text-blue-800); }
+  .sub.paysin { text-decoration: underline dotted; text-underline-offset: 2px; }
+  .verdict { border-top: 1px solid var(--border); padding-top: 3px; margin-top: 1px; font-weight: 600; color: var(--text-strong); }
+  .verdict.red span, .verdict.amber span:last-child, .verdict.green span:last-child { }
+  .verdict.red { color: var(--text-red-700); } .verdict.amber { color: var(--text-amber-800); } .verdict.green .far { color: var(--text-green-700); }
+  mark { background: var(--twice); color: var(--twice-ink); border-radius: 3px; padding: 0 1px; }
+  .col.sug mark, .sugside mark { background: var(--new-tint); color: inherit; outline: 1.5px solid var(--new); }
+
+  /* the tip, drawn open */
+  .tip { margin-top: 10px; background: #1f2937; color: #f9fafb; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; max-width: 300px; }
+  [data-theme="dark"] .tip { background: #0b1220; border: 1px solid var(--border-strong); }
+  .tip small { display: block; margin-top: 4px; color: #9ca3af; font-size: 11px; }
+
+  /* every case */
+  .cases { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 14px; margin-top: 14px; }
+  .case { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .case h3 { margin: 0 0 2px; font-size: 14px; color: var(--text-strong); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .case p { margin: 0 0 10px; font-size: 12.5px; color: var(--text-700); max-width: 80ch; }
+  .verd { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; max-width: 100%; }
+  .verd.repeat { background: var(--twice); color: var(--twice-ink); } .verd.differ { background: var(--bg-red-tint); color: var(--text-red-700); }
+  .verd.agree { background: var(--bg-green-tint); color: var(--text-green-700); } .verd.adds { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px 18px; }
+  .pair > div { min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .pair .sugside { border-left: 2px solid var(--new); padding-left: 12px; }
+  @media (max-width: 560px) { .pair .sugside { border-left: 0; padding-left: 0; border-top: 2px solid var(--new); padding-top: 8px; } }
+
+  /* the window's top, drawn small */
+  .win { font-size: 13px; }
+  .win .title { font-weight: 700; font-size: 16px; color: var(--text-strong); }
+  .win .who { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .win .next { margin-top: 10px; background: var(--bg-red-tint); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .win .next .k { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--text-muted); }
+  .win .next .s { font-weight: 700; color: var(--text-red-700); }
+  .win .next .btn { margin-left: auto; background: #2563eb; color: #fff; font-weight: 600; font-size: 12px; border-radius: 6px; padding: 5px 10px; white-space: nowrap; }
+  .win .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .win .tabs span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--text-700); background: var(--surface); }
+  .win .tabs span.on { border: 2px solid #2563eb; background: var(--bg-blue-tint); color: var(--text-strong); }
+
+  /* one job, every place */
+  table.places { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.places th, table.places td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.places th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  table.places td.s { border-left: 2px solid var(--new); }
+  .scroll { overflow-x: auto; }
+
+  /* the phone card */
+  .phone { width: 343px; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+  .phone .job { font-weight: 700; color: var(--text-strong); font-size: 14px; }
+  .phone .meta { color: var(--text-muted); font-size: 12px; margin-bottom: 8px; }
+  .phone .led { width: 100%; }
+  .barline { height: 8px; border-radius: 3px; background: #2563eb; margin: 6px 0; }
+
+  ol.calls { padding-left: 22px; max-width: 96ch; }
+  ol.calls li { margin: 0 0 8px; }
+  code { font-size: 12px; background: var(--bg-muted); border-radius: 4px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #325 · decision mock-up · nothing built</p>
+      <h1>A billed row's lien line says it once</h1>
+      <p>Jobs → Stages, a row in Billed Awaiting Payment or Collections, the <b>Progress &amp; payment</b> column. Today two lines sit there for the lien. Each was built at a different time, by a different part of the app. This page shows what they print now, and one line that takes their place. Today on this page is Nov 12, 2026. Every name and number is made up.</p>
+    </div>
+    <div class="themes" role="group" aria-label="Theme">
+      <button type="button" data-set="light" aria-pressed="true">Light</button>
+      <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+  <nav class="jump">
+    <a href="#short">The short of it</a>
+    <a href="#spot">1 · The row you sent</a>
+    <a href="#cases">2 · Every case</a>
+    <a href="#press">3 · The press and the tip</a>
+    <a href="#places">4 · One job, every place</a>
+    <a href="#phone">5 · On a phone</a>
+    <a href="#calls">Your calls</a>
+  </nav>
+
+  <h2 id="short">The short of it</h2>
+  <p class="lede">The first line is the <b>clock</b>. It knows the legal last day and when the money is expected. The second line is the <b>paper</b>. It knows where the notice or the affidavit stands on the Lien desk. The second was written as a chip that stands alone, so it carries its own day and count. Under the first line it says them again.</p>
+  <div class="pick">
+    <div class="sug">
+      <h3>My suggestion</h3>
+      <ol>
+        <li><b>One lien line.</b> Its words are the next act on the lien path. Its day is the legal last day that act protects. The count shows once.</li>
+        <li><b>A second line only for paper that is out.</b> Sent, delivered, held, the attorney's letter. It never carries a day and count the first line has.</li>
+        <li><b>The line under the rule speaks of money only.</b> It never names a lien act again.</li>
+        <li><b>The press opens the Lien window on the right paper.</b> Today it opens on Demand letter.</li>
+      </ol>
+      <p>The clock gives the line its day and its colour. The paper gives it its words.</p>
+    </div>
+    <div>
+      <h3>Now</h3>
+      <ul>
+        <li>The same act, day and count print twice on 20 of the 28 billed rows that carry a second line. Counted Nov 12, counts only.</li>
+        <li>One act has two names: <i>File the lien</i> above, <i>File the affidavit</i> below.</li>
+        <li>The bold line asks to file even when filing is not possible yet. The true next step is the small line.</li>
+        <li>A third line under the rule can say <i>File the lien first</i>, so one row says file three times.</li>
+        <li>The tip is one paragraph of about 70 words.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="spot">1 · The row you sent <small>the affidavit is approved and ready to file</small></h2>
+  <p class="lede">The whole dates block, as the column draws it. Yellow marks what is said twice. Violet marks what changes.</p>
+  <div class="two">
+    <div class="col sug">
+      <div class="cap">My suggestion</div>
+      <div class="frame"><div class="colhead">Progress &amp; payment</div><div class="pad" id="spot-sug"></div></div>
+      <p class="say">One line. It reads like the Lien window's own header: <i>File the affidavit</i>. The day and the count show once. The underlined words are the press.</p>
+    </div>
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame"><div class="colhead">Progress &amp; payment</div><div class="pad" id="spot-now"></div></div>
+      <p class="say">Two red lines for one act. The first comes from the pay runway, the second from the Accounts Receivable lien chip.</p>
+    </div>
+  </div>
+
+  <h2 id="cases">2 · Every case <small>Now on the left, my suggestion on the right</small></h2>
+  <p class="lede">Each card is one state a job can be in. The tag says whether today's two lines <b>repeat</b> each other, <b>differ</b>, or whether the second line <b>adds</b> something. Only the lien lines are drawn. The Billed and Expected rows above them do not change.</p>
+  <div class="cases" id="case-grid"></div>
+  <div class="note"><b>What does not change.</b> A ring is still a deadline ahead, and a filled dot with bold words is still the thing to do. There is still one deadline at a time. The colour still comes from the money: red inside a week, or when the money is expected after the last day. <i>Can run late</i> still shows only when it adds something. The <i>Pays in</i> press and the <i>Due</i> line of the Pay calendar keep their places above.</div>
+
+  <h2 id="press">3 · The press and the tip</h2>
+  <p class="lede">The row's press opens the job's Lien window. The tip is what shows on hover.</p>
+  <div class="two">
+    <div class="col sug">
+      <div class="cap">My suggestion</div>
+      <div class="frame"><div class="pad win">
+        <div class="title">Liens on job J1507</div>
+        <div class="who">Ridgeway Builders · J1507 · residential</div>
+        <div class="next"><span class="k">NEXT ON THE PATH</span><span class="s">File the affidavit. 4 days.</span><span class="btn">Go to the affidavit ›</span></div>
+        <div class="tabs"><span>Demand letter</span><span>§ 53.056 notice</span><span class="on">Mechanic's lien</span></div>
+      </div></div>
+      <div class="tip">The affidavit is approved and ready to file. The last day is Nov 16. Press to open it.<small>Three short sentences: where the paper stands, the day, where the press goes.</small></div>
+      <p class="say">The window opens on the paper the row names. Its header says the same sentence as the row, so the reader knows they are in the right place. How the day was counted stays in the window, on its <i>Last work</i> stop.</p>
+    </div>
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="frame"><div class="pad win">
+        <div class="title">Liens on job J1507</div>
+        <div class="who">Ridgeway Builders · J1507 · residential</div>
+        <div class="next"><span class="k">NEXT ON THE PATH</span><span class="s">File the affidavit — 4 days.</span><span class="btn">Go to the affidavit ›</span></div>
+        <div class="tabs"><span class="on">Demand letter</span><span>§ 53.056 notice</span><span>Mechanic's lien</span></div>
+      </div></div>
+      <div class="tip">The expected pay date has passed with the balance still open. The lien window closes Nov 16. The § 53.056 notice for this month is recorded. Counts from the last work month (August 2026, dated from the job's creation · no clock hours) · residential: the 15th of the 3rd month after (§ 53.052). — click to open the Lien window</div>
+      <p class="say">The window opens on Demand letter whatever the row said. The reader presses once more to reach the affidavit.</p>
+    </div>
+  </div>
+
+  <h2 id="places">4 · One job, every place <small>so a job never reads three ways</small></h2>
+  <p class="lede">The same two jobs, read in each place that names a lien step. One shared table of act words feeds all of them.</p>
+  <div class="scroll">
+  <table class="places">
+    <thead><tr><th>Where</th><th>Now · approved, ready to file</th><th>Now · not drafted yet</th><th>My suggestion · ready to file</th><th>My suggestion · not drafted</th></tr></thead>
+    <tbody>
+      <tr><td>Pipeline row</td><td><b>File the lien</b> by Nov 16 · 4d<br>File the affidavit · by Nov 16 · 4d</td><td><b>File the lien</b> by Nov 16 · 4d<br>Affidavit · Notice to draft · by Nov 16 · 4d</td><td class="s"><b>File the affidavit</b> by Nov 16 · 4d</td><td class="s"><b>Draft the affidavit</b> by Nov 16 · 4d</td></tr>
+      <tr><td>Lien window header</td><td>File the affidavit — 4 days.</td><td>File the affidavit — 4 days.</td><td class="s">File the affidavit. 4 days.</td><td class="s">Draft the affidavit. 4 days.</td></tr>
+      <tr><td>Lien desk, Do now</td><td>Affidavit approved · ready to file</td><td>Affidavit to draft</td><td class="s">File the affidavit</td><td class="s">Draft the affidavit</td></tr>
+      <tr><td>Accounts Receivable chip</td><td>File the affidavit · by Nov 16 · 4d</td><td>Affidavit · Notice to draft · by Nov 16 · 4d</td><td class="s">File the affidavit · by Nov 16 · 4d</td><td class="s">Draft the affidavit · by Nov 16 · 4d</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="say" style="margin-top:8px">The chip in Accounts Receivable stands alone, so it keeps its day and count. Only its words are fixed.</p>
+
+  <h2 id="phone">5 · On a phone <small>a Mobile card at 375 wide, held by the homestead answer</small></h2>
+  <p class="lede">The card draws the same block at the card's width. A long act wraps as a unit, and the day drops under it. Nothing is cut to three dots.</p>
+  <div class="two">
+    <div class="col sug">
+      <div class="cap">My suggestion</div>
+      <div class="phone"><div class="job">J1511 · Ridgeway Builders</div><div class="meta">Lot 14 · billed</div><div class="barline"></div><div id="phone-sug"></div></div>
+      <p class="say">Five lines. The lien has one of them.</p>
+    </div>
+    <div class="col">
+      <div class="cap">Now</div>
+      <div class="phone"><div class="job">J1511 · Ridgeway Builders</div><div class="meta">Lot 14 · billed</div><div class="barline"></div><div id="phone-now"></div></div>
+      <p class="say">Six lines. The lien has three of them, and the small one is cut short.</p>
+    </div>
+  </div>
+
+  <h2 id="calls">Your calls</h2>
+  <ol class="calls">
+    <li><b>One line with the next act first, or only trim the repeat?</b> My pick is the next act first. The trim alone is the first PR either way, and it fixes the row you sent.</li>
+    <li><b>The name of the paper on the line.</b> My pick is <i>File the affidavit</i>, the Lien window's and the Lien desk's own words. The other choice is <i>File the lien</i> everywhere.</li>
+    <li><b>Where the press lands.</b> My pick is the job's Lien window, on the paper the line names. The other choice sends a notice step straight to the Lien desk, which leaves the board.</li>
+    <li><b>A closed notice window while the affidavit's is still open.</b> The row says <i>Lien gone</i> today. The Lien window says a late notice can still go, the owner's reading of Oct 6. My pick is that the row follows the window.</li>
+  </ol>
+</div>
+<script>
+  // The theme switch.
+  for (const b of document.querySelectorAll('.themes button')) b.addEventListener('click', () => {
+    document.documentElement.dataset.theme = b.dataset.set
+    for (const x of document.querySelectorAll('.themes button')) x.setAttribute('aria-pressed', String(x === b))
+  })
+  if (new URLSearchParams(location.search).get('theme') === 'dark') document.querySelector('.themes button[data-set="dark"]').click()
+
+  // One row of the block. l: bold words, rest: plain words, by: "by Nov 16", far: the right column.
+  const row = (o) => `<div class="r ${o.tone || ''} ${o.loud ? 'loud' : ''} ${o.wrap ? 'wrapw' : ''}"><span class="w"><span class="dot ${o.ring ? 'ring' : ''}"></span><span class="t">${o.l ? `<b class="${o.press ? 'press' : ''}">${o.l}</b>` : ''}${o.rest ? ` ${o.rest}` : ''}${o.by ? ` <span class="by">${o.by}</span>` : ''}</span></span><span class="far">${o.far || ''}</span></div>`
+  const sub = (text, tone = '', cls = '') => `<div class="sub ${tone} ${cls}">${text}</div>`
+  const verdict = (label, value, tone = '') => `<div class="r verdict ${tone}"><span>${label}</span><span class="far">${value}</span></div>`
+  const led = (html) => `<div class="led">${html}</div>`
+  const billed = row({ rest: 'Billed Aug 18', far: '86d ago' })
+  const expected = row({ tone: 'amber', rest: 'Expected Sep 22', far: '51d past', loud: true }) + sub('Pays in 27–46d · 1 check came back', '', 'paysin')
+
+  // 1 · the row Grace sent
+  document.getElementById('spot-now').innerHTML = led(billed + expected + row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('File the affidavit · <mark>by Nov 16 · 4d</mark>', 'red'))
+  document.getElementById('spot-sug').innerHTML = led(billed + expected + row({ tone: 'red', loud: true, wrap: true, l: '<mark>File the affidavit</mark>', press: true, by: 'by Nov 16', far: '4d' }))
+
+  // 5 · the phone card: money expected after the last day, the affidavit not drafted
+  const pMoney = row({ tone: 'green', rest: 'Expected Nov 20', far: 'in 8d' }) + sub('Pays in 27–46d', '', 'paysin')
+  document.getElementById('phone-now').innerHTML = led(row({ rest: 'Billed Oct 14', far: '29d ago' }) + pMoney + row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: 'by Nov 16', far: '4d' }) + `<div class="sub red" style="max-width:200px">Affidavit · fix the property · by Nov 16 · 4d</div>` + verdict('File the lien first', '4d short', 'red'))
+  document.getElementById('phone-sug').innerHTML = led(row({ rest: 'Billed Oct 14', far: '29d ago' }) + pMoney + row({ tone: 'red', loud: true, wrap: true, l: 'Answer the homestead question', press: true, by: 'by Nov 16', far: '4d' }) + verdict('Money lands too late', '4d short', 'red'))
+
+  // 2 · every case. v: repeat | differ | adds | agree.
+  const A = (l, by, far, tone = 'red') => row({ tone, loud: true, wrap: true, l, press: true, by, far })
+  const cases = [
+    { t: 'Nothing due soon, the money comes first', v: 'agree', vt: 'One line, quiet', p: 'A job under a GC. The notice is 64 days out and the money is expected before it. Nothing changes.',
+      now: row({ tone: 'green', ring: true, rest: 'Lien notice by Jan 15', far: '64d' }) + verdict('Can run late', '51d', 'green'),
+      sug: row({ tone: 'green', ring: true, rest: 'Lien notice by Jan 15', far: '64d' }) + verdict('Can run late', '51d', 'green') },
+    { t: 'The notice is sent, the lien day is far', v: 'adds', vt: 'The second line adds', p: 'The second line is a fact about paper that is out. It carries no day and count. It stays.',
+      now: row({ tone: 'green', ring: true, rest: 'Lien by Jan 15', far: '64d' }) + sub('Sent Nov 6', 'green') + verdict('Can run late', '46d', 'green'),
+      sug: row({ tone: 'green', ring: true, rest: 'Lien by Jan 15', far: '64d' }) + sub('Notice sent Nov 6', 'green') + verdict('Can run late', '46d', 'green') },
+    { t: 'Notice due in 4 days, no owner of record yet', v: 'differ', vt: 'Differ: wrong step in bold', p: 'The deadline is the notice. The next act is finding the owner. Today the act is the small line.',
+      now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('Needs the owner · <mark>by Nov 16 · 4d</mark>', 'red'),
+      sug: A('Find the owner', 'by Nov 16', '4d') },
+    { t: 'Notice due in 4 days, waiting on the leader', v: 'differ', vt: 'Differ', p: 'The office cannot act. The line says who it waits on, in the Lien desk\'s words. The leader\'s own screen reads <i>Approve the notice</i>.',
+      now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('Waiting on Marisol · <mark>by Nov 16 · 4d</mark>', 'red'),
+      sug: A('Waiting on Marisol', 'by Nov 16', '4d') },
+    { t: 'Notice due in 4 days, held by the leader', v: 'adds', vt: 'Held', p: 'A hold is the leader\'s choice. The legal day does not move, so the line keeps it. The second line gives the reason.',
+      now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: 'by Nov 16', far: '4d' }) + sub('Held · they promised · asks again Nov 13', 'amber'),
+      sug: A('Review the hold', 'by Nov 16', '4d') + sub('Held · they promised · asks again Nov 13', 'amber') },
+    { t: 'Notice printed and in the mail', v: 'adds', vt: 'The second line adds', p: 'The notice is out. What is left is typing the certified number, so the line turns blue, not red.',
+      now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: 'by Nov 16', far: '4d' }) + sub('In the mail · tracking owed', 'blue'),
+      sug: A('Record the mailing', 'by Nov 16', '4d', 'blue') },
+    { t: 'Affidavit approved, ready to file', v: 'repeat', vt: 'Repeat', p: 'The row you sent. The most common pair on the board today.',
+      now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('File the affidavit · <mark>by Nov 16 · 4d</mark>', 'red'),
+      sug: A('File the affidavit', 'by Nov 16', '4d') },
+    { t: 'Affidavit not drafted yet', v: 'differ', vt: 'Differ, wrong word below', p: 'The chip was written for notices. Under an affidavit it reads <i>Notice to draft</i>. Nothing can be filed until a draft exists.',
+      now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('Affidavit · Notice to draft · <mark>by Nov 16 · 4d</mark>', 'red'),
+      sug: A('Draft the affidavit', 'by Nov 16', '4d') },
+    { t: 'Affidavit held by a gate: the homestead answer', v: 'differ', vt: 'Differ: held by a gate', p: 'Today the small line says only <i>fix the property</i>. Which fact is missing shows on hover alone. The same shape serves <i>Add the GC\'s address</i> and <i>Fix the property record</i>.',
+      now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('Affidavit · fix the property · <mark>by Nov 16 · 4d</mark>', 'red'),
+      sug: A('Answer the homestead question', 'by Nov 16', '4d') },
+    { t: 'The owner of record is a city or a school district', v: 'differ', vt: 'Differ: no lien can attach', p: 'The Lien desk says no lien attaches to public property. The row still asks to file. The suggestion says the fact and gives no day to race.',
+      now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: 'by Nov 16', far: '4d' }) + sub('Affidavit · fix the property · by Nov 16 · 4d', 'red'),
+      sug: row({ tone: 'amber', loud: true, wrap: true, l: 'Public property, no lien', press: true }) + sub('Ask the attorney about the bond', 'amber') },
+    { t: 'The money is expected after the last day', v: 'repeat', vt: 'Repeat, three times', p: 'Three rows on the board read this way today. The line under the rule should speak of the money, since the line above already names the act.',
+      now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('File the affidavit · <mark>by Nov 16 · 4d</mark>', 'red') + verdict('<mark>File the lien first</mark>', '4d short', 'red'),
+      sug: A('File the affidavit', 'by Nov 16', '4d') + verdict('Money lands too late', '4d short', 'red') },
+    { t: 'The expected day has passed, nothing due inside three weeks', v: 'repeat', vt: 'Repeat, in the money', p: 'Not a lien line, but the same fault. The count beside <i>Ask for a date</i> is the count on the Expected row two lines up.',
+      now: row({ tone: 'amber', rest: 'Expected Oct 22', far: '<mark>21d past</mark>', loud: true }) + row({ ring: true, rest: 'Lien by Dec 15', far: '33d' }) + verdict('Ask for a date', '<mark>21d past</mark>', 'amber'),
+      sug: row({ tone: 'amber', rest: 'Expected Oct 22', far: '21d past', loud: true }) + row({ ring: true, rest: 'Lien by Dec 15', far: '33d' }) + verdict('Ask for a date', '', 'amber') },
+    { t: 'The notice window closed, the affidavit\'s is still open', v: 'differ', vt: 'Differ: the row gives up early', p: 'The Lien window says a late notice can still carry the lien. The row says the lien is gone and shows no next step.',
+      now: row({ rest: 'Notice window closed Oct 15', far: '28d ago' }) + verdict('Lien gone', '', 'red'),
+      sug: A('Send the late notice', 'by Nov 16', '4d') },
+    { t: 'Lien filed, copies not served yet', v: 'differ', vt: 'Differ: green over red', p: 'A calm green line sits over a red one. Five days is the shortest clock on the path. Today the row shows it only after the Lien desk has been opened.',
+      now: row({ tone: 'green', rest: '<mark>Lien filed</mark> Nov 9', far: '' }) + sub('<mark>Lien filed</mark> · serve it · by Nov 14 · 2d', 'red'),
+      sug: A('Serve the affidavit', 'by Nov 14', '2d') + sub('Filed Nov 9', '') },
+    { t: 'Lien filed and served', v: 'repeat', vt: 'Repeat', p: 'The filing day prints twice.',
+      now: row({ tone: 'green', rest: '<mark>Lien filed Nov 9</mark>', far: '' }) + sub('<mark>Lien filed Nov 9</mark> · served Nov 11', 'green'),
+      sug: row({ tone: 'green', rest: 'Lien filed Nov 9 · served Nov 11', far: '' }) },
+    { t: 'The lien window closed with nothing filed', v: 'repeat', vt: 'Repeat', p: 'Two lines say closed and gone. One line can say both. It is red until someone writes the closed window down, grey after.',
+      now: row({ rest: 'Lien window <mark>closed</mark> Oct 15', far: '28d ago' }) + verdict('<mark>Lien gone</mark>', '', 'red'),
+      sug: row({ tone: 'red', loud: true, wrap: true, l: 'Lien gone', rest: '· closed Oct 15', press: true, far: '28d ago' }) },
+    { t: 'A retainage notice is the nearest paper', v: 'differ', vt: 'Differ: two papers, two days', p: 'The small line names another paper with another day. The nearest act takes the line. The far lien day stays in the Lien window.',
+      now: row({ tone: 'green', ring: true, rest: 'Lien by Jan 15', far: '64d' }) + sub('Retainage · Notice to draft · by Dec 2 · 20d', 'amber') + verdict('Can run late', '46d', 'green'),
+      sug: A('Draft the retainage notice', 'by Dec 2', '20d', 'amber') },
+    { t: 'The attorney\'s letter is overdue', v: 'adds', vt: 'The second line adds', p: 'A reminder has no legal day, so it stays the quiet second line. Only the repeated count under the rule goes.',
+      now: row({ ring: true, rest: 'Lien by Dec 15', far: '33d' }) + sub('day 12 · the attorney’s letter overdue', 'red') + verdict('Ask for a date', '21d past', 'amber'),
+      sug: row({ ring: true, rest: 'Lien by Dec 15', far: '33d' }) + sub('Attorney’s letter overdue · day 12', 'red') + verdict('Ask for a date', '', 'amber') },
+  ]
+  document.getElementById('case-grid').innerHTML = cases.map((c) => `<article class="case"><h3>${c.t} <span class="verd ${c.v}">${c.vt}</span></h3><p>${c.p}</p><div class="pair"><div><div class="cap">Now</div>${led(c.now)}</div><div class="sugside"><div class="cap sug">My suggestion</div>${led(c.sug)}</div></div></article>`).join('')
+</script>
+</body>
+</html>
