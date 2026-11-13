@@ -3,12 +3,17 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import type { SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
+import type { SubLaborBackchargeTarget, SubLaborPaymentTarget, SubPaymentExtras } from '../../types/laborJob'
+import { AmountPaidField, PaidDateField, PayMethodPicker, PaymentNoteField, RecordPaymentFooter, RecordPaymentHelp, RecordPaymentShell, RecordPaymentSummary } from '../pay/RecordPaymentPieces'
+import { isSubPayMethod, planSubPayment, subPayMethodRefField, subPayMethodWrite, subPaymentAfterWords, subPaymentAmountDefault, subPaymentSummaryWords, SUB_PAY_METHOD_OPTIONS, type SubPayMethod } from '../../lib/subWorkOrders/subPaymentWindow'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Memos are sub-visible on the sub portal (sub-portal train) — say so at the point of writing. */
 const MEMO_PORTAL_HINT = '👁 Shown to the sub on their portal — write it like they’ll read it.'
+
+/** The same line once the memo is kept off the portal. */
+const MEMO_HIDDEN_HINT = 'Kept off the sub’s portal. Only the office reads this memo.'
 
 const memoHintStyle = { margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' } as const
 
@@ -22,6 +27,9 @@ export type EditingPaymentTarget = {
   /** User-set "date sent" (YYYY-MM-DD); null on legacy rows, which display created_at instead. */
   paymentDate: string | null
   createdAt: string | null
+  /** v2.7176: how it was sent and that method's number; absent on callers that do not know them. */
+  method?: string | null
+  methodRef?: string | null
 }
 
 /** Local YYYY-MM-DD for date inputs (same pattern as the form modal's Date of Labor seed). */
@@ -50,10 +58,10 @@ export type SubLaborPaymentModalsHandle = {
 }
 
 export type SubLaborPaymentModalsProps = {
-  recordLaborJobPayment: (jobId: string, amount: number, memo: string | null, paymentDate: string | null) => Promise<void>
+  recordLaborJobPayment: (jobId: string, amount: number, memo: string | null, paymentDate: string | null, extras?: SubPaymentExtras) => Promise<void>
   recordLaborJobBackcharge: (jobId: string, amount: number, memo: string) => Promise<void>
   deleteLaborJobPayment: (paymentId: string) => Promise<void>
-  updateLaborJobPayment: (paymentId: string, amount: number, memo: string | null, isBackcharge: boolean, paymentDate: string | null) => Promise<void>
+  updateLaborJobPayment: (paymentId: string, amount: number, memo: string | null, isBackcharge: boolean, paymentDate: string | null, extras?: SubPaymentExtras) => Promise<void>
   /** v2.3562: when set, the Edit dialog's Remove hands the row to the reason dialog instead of deleting on a confirm. */
   onRequestRemove?: (payment: EditingPaymentTarget) => void
 }
@@ -74,6 +82,10 @@ function SubLaborPaymentModalsInner(
   const [makePaymentDate, setMakePaymentDate] = useState('')
   const [makePaymentMemo, setMakePaymentMemo] = useState('')
   const [makePaymentSaving, setMakePaymentSaving] = useState(false)
+  // v2.7176: how it was sent, that method's number, and whether the memo is kept off the sub's portal.
+  const [makePaymentMethod, setMakePaymentMethod] = useState<SubPayMethod | null>(null)
+  const [makePaymentMethodRef, setMakePaymentMethodRef] = useState('')
+  const [makePaymentHideMemo, setMakePaymentHideMemo] = useState(false)
   const [backchargeLaborJob, setBackchargeLaborJob] = useState<SubLaborBackchargeTarget | null>(null)
   const [backchargeAmount, setBackchargeAmount] = useState('')
   const [backchargeMemo, setBackchargeMemo] = useState('')
@@ -83,6 +95,8 @@ function SubLaborPaymentModalsInner(
   const [editPaymentDate, setEditPaymentDate] = useState('')
   const [editPaymentMemo, setEditPaymentMemo] = useState('')
   const [editPaymentSaving, setEditPaymentSaving] = useState(false)
+  const [editPaymentMethod, setEditPaymentMethod] = useState<SubPayMethod | null>(null)
+  const [editPaymentMethodRef, setEditPaymentMethodRef] = useState('')
   // Hide-memo toggle (sub-portal train): tri-state — null until the user
   // touches it, so an unrelated edit never flips a previously chosen state.
   const [editPaymentHideMemo, setEditPaymentHideMemo] = useState<boolean | null>(null)
@@ -104,9 +118,14 @@ function SubLaborPaymentModalsInner(
 
   useImperativeHandle(ref, () => ({
     openMakePayment: (target, defaultAmount) => {
-      setMakePaymentAmount(defaultAmount)
+      // The box opens on what is left, to the cent, as the pay stubs' window does.
+      const seeded = Number(defaultAmount)
+      setMakePaymentAmount(Number.isFinite(seeded) && seeded > 0 ? subPaymentAmountDefault(seeded) : defaultAmount)
       setMakePaymentDate(todayYmd())
       setMakePaymentMemo('')
+      setMakePaymentMethod(null)
+      setMakePaymentMethodRef('')
+      setMakePaymentHideMemo(false)
       setMakePaymentLaborJob(target)
     },
     openBackcharge: (target) => {
@@ -119,6 +138,8 @@ function SubLaborPaymentModalsInner(
       setEditPaymentDate(paymentDateSeed(payment))
       setEditPaymentMemo(memoSeed)
       setEditPaymentHideMemo(null)
+      setEditPaymentMethod(isSubPayMethod(payment.method) ? payment.method : null)
+      setEditPaymentMethodRef(payment.methodRef ?? '')
       setEditingPayment(payment)
     },
     clearEditPayment: () => {
@@ -128,51 +149,61 @@ function SubLaborPaymentModalsInner(
 
   return (
     <>
-      {makePaymentLaborJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Make Payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{makePaymentLaborJob.contractor} · {makePaymentLaborJob.hcp}</p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(makePaymentLaborJob.totalCost)} · Paid: ${formatCurrency(makePaymentLaborJob.paid)} · Outstanding: ${formatCurrency(makePaymentLaborJob.outstanding)}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={makePaymentAmount}
-                onChange={(e) => setMakePaymentAmount(e.target.value)}
-                placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+      {makePaymentLaborJob &&
+        (() => {
+          const target = makePaymentLaborJob
+          const remaining = Math.max(0, target.outstanding)
+          const plan = planSubPayment(makePaymentAmount, remaining)
+          const refField = subPayMethodRefField(makePaymentMethod)
+          const close = () => {
+            setMakePaymentLaborJob(null)
+            setMakePaymentAmount('')
+            setMakePaymentMemo('')
+          }
+          const record = async () => {
+            if (!plan.ok) return
+            setMakePaymentSaving(true)
+            await recordLaborJobPayment(target.id, plan.amount, makePaymentMemo.trim() || null, makePaymentDate.trim() || null, { ...subPayMethodWrite(makePaymentMethod, makePaymentMethodRef), hidden_from_sub: makePaymentHideMemo && !!makePaymentMemo.trim() })
+            setMakePaymentSaving(false)
+            close()
+          }
+          return (
+            <RecordPaymentShell title="Record payment" zIndex={760} testId="sub-record-payment">
+              <RecordPaymentSummary>{subPaymentSummaryWords(target)}</RecordPaymentSummary>
+              <AmountPaidField value={makePaymentAmount} onChange={setMakePaymentAmount} disabled={makePaymentSaving} />
+              <RecordPaymentHelp>
+                <strong>Record payment</strong> records this amount on the sheet. A part payment is fine: what is left stays due, and the sheet reads Paid once nothing is left.
+              </RecordPaymentHelp>
+              {plan.ok ? (
+                <p data-sub-payment-after style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: plan.settles ? 'var(--text-green-700)' : 'var(--text-700)' }}>
+                  {subPaymentAfterWords(plan)}
+                </p>
+              ) : plan.reason === 'blank' ? null : (
+                <p role="alert" data-sub-payment-refusal={plan.reason} style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                  {plan.error}
+                </p>
+              )}
+              <PaidDateField value={makePaymentDate} onChange={setMakePaymentDate} disabled={makePaymentSaving} />
+              <PayMethodPicker
+                options={SUB_PAY_METHOD_OPTIONS}
+                value={makePaymentMethod}
+                onChange={setMakePaymentMethod}
+                disabled={makePaymentSaving}
+                refBox={refField ? { id: 'sub-payment-method-ref', ...refField } : null}
+                refValue={makePaymentMethodRef}
+                onRefChange={setMakePaymentMethodRef}
               />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date sent</label>
-              <input
-                type="date"
-                value={makePaymentDate}
-                onChange={(e) => setMakePaymentDate(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo (optional)</label>
-              <textarea
-                value={makePaymentMemo}
-                onChange={(e) => setMakePaymentMemo(e.target.value)}
-                placeholder="Optional note"
-                rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-              />
-              <p style={memoHintStyle}>{MEMO_PORTAL_HINT}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={makePaymentSaving || !(parseFloat(makePaymentAmount) > 0)} onClick={async () => { if (!makePaymentLaborJob) return; const amt = parseFloat(makePaymentAmount); if (!(amt > 0)) return; setMakePaymentSaving(true); await recordLaborJobPayment(makePaymentLaborJob.id, amt, makePaymentMemo || null, makePaymentDate || null); setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo(''); setMakePaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? DEAD_PRESS_FILL : '#059669', color: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? 'not-allowed' : 'pointer' }}>{makePaymentSaving ? '…' : 'Record Payment'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+              <PaymentNoteField value={makePaymentMemo} onChange={setMakePaymentMemo} label="Memo for the sub (optional)" placeholder="e.g. rough-in draw" rows={2} disabled={makePaymentSaving}>
+                <p style={memoHintStyle}>{makePaymentHideMemo ? MEMO_HIDDEN_HINT : MEMO_PORTAL_HINT}</p>
+                <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                  <input type="checkbox" checked={makePaymentHideMemo} disabled={makePaymentSaving} onChange={(e) => setMakePaymentHideMemo(e.target.checked)} />
+                  Hide this memo from the sub&#8217;s portal (the amount still shows)
+                </label>
+              </PaymentNoteField>
+              <RecordPaymentFooter onCancel={close} onConfirm={() => void record()} confirmLabel="Record payment" busy={makePaymentSaving} disabled={!plan.ok} />
+            </RecordPaymentShell>
+          )
+        })()}
       {backchargeLaborJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
@@ -234,6 +265,17 @@ function SubLaborPaymentModalsInner(
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
+            {editingPayment.isBackcharge ? null : (
+              <PayMethodPicker
+                options={SUB_PAY_METHOD_OPTIONS}
+                value={editPaymentMethod}
+                onChange={setEditPaymentMethod}
+                disabled={editPaymentSaving}
+                refBox={subPayMethodRefField(editPaymentMethod) ? { id: 'sub-payment-edit-method-ref', ...subPayMethodRefField(editPaymentMethod)! } : null}
+                refValue={editPaymentMethodRef}
+                onRefChange={setEditPaymentMethodRef}
+              />
+            )}
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo {editingPayment.isBackcharge ? <span style={{ color: 'var(--text-red-700)' }}>*</span> : '(optional)'}</label>
               <textarea
@@ -257,7 +299,7 @@ function SubLaborPaymentModalsInner(
               <button type="button" disabled={editPaymentSaving} onClick={async () => { if (editingPayment && onRequestRemove) { const p = editingPayment; setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); onRequestRemove(p); return } if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? DEAD_PRESS_FILL : 'var(--bg-red-100)', color: editPaymentSaving ? DEAD_PRESS_TEXT : '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_FILL : '#059669', color: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
+                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null, editingPayment.isBackcharge ? undefined : subPayMethodWrite(editPaymentMethod, editPaymentMethodRef)); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_FILL : '#059669', color: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
               </div>
             </div>
           </div>

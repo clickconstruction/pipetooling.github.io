@@ -1,6 +1,19 @@
 /** Sub Sheet Ledger ("Sub Labor") domain types, shared across Jobs tabs and the extracted JobsSubLaborTab. */
 
-export type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string; payment_date?: string | null }
+export type LaborJobPayment = {
+  id: string
+  amount: number
+  memo: string | null
+  created_at: string
+  payment_date?: string | null
+  /** How it was sent (v2.7176): one of `SUB_PAY_METHODS`, null on a row recorded before the chips. */
+  method?: string | null
+  /** The method's own number: a check number, a Cash App id, a confirmation. */
+  method_ref?: string | null
+}
+
+/** What the Record payment and Edit Payment windows add to a payment beyond its amount, date and memo (v2.7176). */
+export type SubPaymentExtras = { method?: string | null; method_ref?: string | null; hidden_from_sub?: boolean }
 
 /** v2.3562: what happened to a payment — moved (from → to), removed (snapshot; restored_event_id once undone), restored. */
 export type LaborJobPaymentEvent = {

@@ -1496,6 +1496,10 @@ The switch that lets the office text from the company number (Messages, cut 5; `
 
 A sub sheet payment (`people_labor_job_payments`) can be **moved** to another sheet, and a payment or a backcharge **removed with a reason**, from the sheet's Payments table (Jobs → Subs → Pay, v2.3562); each writes one row to `people_labor_job_payment_events` (`kind` moved · removed · restored, `from_job_id` / `to_job_id`, a snapshot, `reason`, the actor). A move re-points the live row (same id, amount, memo, date, visibility) through `move_labor_job_payment`; a removal deletes the row and keeps the snapshot (`remove_labor_job_payment`), so every reader of payments stays correct with no filter; `restore_labor_job_payment` undoes a removal within 30 days. Since v2.5007 a backcharge stays on the sheet it was raised on (`subPaymentMoveRefusal`), so Remove is its only way off; the guard is the client's alone, and `move_labor_job_payment` still takes one. Both sheets draw a grey **trace line** from the events (*Moved → 922 Michael Palvern · Taunya · wrong job*); the sub portal follows in a later release. Kernel: `src/lib/jobs/subPaymentMoveRemove.ts`; dialogs: `SubLaborPaymentMoveRemoveModals.tsx`. Guide: *fix a payment on the wrong sheet*.
 
+### Sub payment method
+
+How a payment to a sub was sent (v2.7176): `people_labor_job_payments.method`, one of `check` · `zelle` · `mercury` · `cashapp` · `apple_pay` · `cash` · `client_direct` · `other` (`SUB_PAY_METHODS` in `src/lib/subWorkOrders/subPaymentWindow.ts`), with `method_ref` for that method's own number. The **Record payment** and **Edit Payment** windows on Jobs → Subs → Pay set it with the *How it was sent* chips; it is empty on a row recorded before them. It is its own list, not `pay_stub_payments.source_kind`. The sub portal does not show it.
+
 ## Materials System
 
 ### Part / Material Part
