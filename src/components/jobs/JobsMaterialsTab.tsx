@@ -203,6 +203,8 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           backLabel="Materials desk"
           boxHref={jobHref}
           developmentHref={`/developments/${siteId}`}
+          canTie
+          byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />
       </div>

@@ -75,3 +75,23 @@ export function citedByWords(count: number): string {
 export function citedCorrectedWords(count: number): string {
   return `${count} of them corrected since`
 }
+
+/** `Ev #41`, `Ev. #41`: an evidence record by the number the file gave it (punch list #315). The `#` is required, so a plain "Ev 4" in a sentence is left as words. */
+const DOOR_RE = /(?:\bN\s?)?§\s?(\d{1,3})\b|\bEv\.?\s?#\s?(\d{1,6})\b/g
+
+export type DoorPart = CitationPart | { kind: 'exhibit'; raw: string; exhibitNo: number }
+
+/** A line's words split into plain runs, citations of the narrative and evidence numbers, each drawn as a press in place. */
+export function splitByDoors(text: string): DoorPart[] {
+  const parts: DoorPart[] = []
+  let last = 0
+  for (const m of text.matchAll(DOOR_RE)) {
+    const at = m.index ?? 0
+    if (at > last) parts.push({ kind: 'text', text: text.slice(last, at) })
+    if (m[1] !== undefined) parts.push({ kind: 'cite', raw: m[0], section: Number(m[1]) })
+    else parts.push({ kind: 'exhibit', raw: m[0], exhibitNo: Number(m[2]) })
+    last = at + m[0].length
+  }
+  if (last < text.length) parts.push({ kind: 'text', text: text.slice(last) })
+  return parts
+}

@@ -235,6 +235,22 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
   Run `npm run sessions` before building it.
 - **Do not run a formatter on existing files.** They keep long lines, and a formatter rewrites whole files.
 
+## Found while building, not built
+
+Two faults turned up while PRs 2 and 3 were built. Each is bigger than a fix on the way, so each waits here.
+
+- **A dev who shows ZZ test jobs loses some of them once the left-out list names anything.** Every read on
+  the page takes one set of job ids. With no list, this dev's reads get no set, and every ZZ job stays. With
+  a list, the set holds the left-out jobs, and each read takes any set to mean *leave the ZZ jobs out*. So
+  ZZ jobs and bids leave the pipe, the step windows and the people tables. The won rates are already right.
+  The fix gives each read two things in place of one: the ZZ switch, and the ids to leave out. It touches
+  every loader the page has. A dev who hides ZZ jobs, the default, sees none of this. Nobody else does
+  either.
+- **ZZ test estimates still count in the asks and in the Market and Sales lists.** PR 3 took them out of the
+  won rate alone, which was the ask. Market's count of asks and the two windows' own lists of estimates
+  still count a test estimate for a viewer who hides tests. The bids follow the switch everywhere already.
+  The rule PR 3 added would bring the estimates in line.
+
 ## Where it stands
 
 Asked, built on a spike and walked by the owner on 2026-11-12. He called it satisfactory and said to build

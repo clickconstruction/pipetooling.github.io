@@ -42,7 +42,7 @@ describe('MaterialsGroupStrip', () => {
     const groups = screen.getAllByRole('group')
     expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Plan', 'Purchase', 'Track'])
     expect(within(groups[0]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['Parts Book', 'Assembly Book', 'PO Builder'])
-    expect(within(groups[1]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers'])
+    expect(within(groups[1]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers', 'What we buy'])
     expect(within(groups[2]!).getAllByRole('button').map((b) => b.textContent)).toEqual(['On site', 'Scan a label', 'Print labels'])
     expect(groups[2]!.textContent).toContain('3 due a count')
     expect(groups[0]!.textContent).not.toContain('due a count')
@@ -131,7 +131,7 @@ describe('MaterialsGroupStrip', () => {
     expect(purchase.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(purchase)
     expect(onTab).not.toHaveBeenCalled()
-    expect(within(screen.getByRole('group', { name: 'Purchase' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers'])
+    expect(within(screen.getByRole('group', { name: 'Purchase' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Purchase Orders', 'PO Generator', 'Supply houses', 'Held for suppliers', 'What we buy'])
     // Track is where the page still is, and its name says so
     expect(screen.getByRole('button', { name: 'Track, on On site, 3 due a count. Show its tabs.' }).getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(screen.getByRole('button', { name: 'Supply houses' }))

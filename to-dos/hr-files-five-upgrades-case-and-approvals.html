@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HR files: the Case view and Waiting on you</title>
+<style>
+  /* Layout: one column of mock screens, each a card the width of the HR panel. Every name and word here is made up. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --border: #dfe3e8; --border-strong: #aab2bd;
+    --text: #15181d; --muted: #5f6873; --faint: #8e97a3; --link: #1d4ed8;
+    --blue: #2563eb; --blue-tint: #e8f0fe; --blue-700: #1e40af;
+    --amber-tint: #fdf4e3; --amber-800: #7a4700; --green-700: #15803d; --red-700: #b91c1c;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --surface-2: #1e232b; --border: #2a303a; --border-strong: #3d4552;
+    --text: #e8ebef; --muted: #a6afbb; --faint: #717b88; --link: #8ab4ff;
+    --blue: #2563eb; --blue-tint: #172a4d; --blue-700: #9cc0ff;
+    --amber-tint: #2b2311; --amber-800: #f1c069; --green-700: #4ade80; --red-700: #f87171; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --surface: #171b21; --surface-2: #1e232b; --border: #2a303a; --border-strong: #3d4552;
+    --text: #e8ebef; --muted: #a6afbb; --faint: #717b88; --link: #8ab4ff;
+    --blue: #2563eb; --blue-tint: #172a4d; --blue-700: #9cc0ff;
+    --amber-tint: #2b2311; --amber-800: #f1c069; --green-700: #4ade80; --red-700: #f87171; color-scheme: dark }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans);
+         padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+  main { max-width: 860px; margin: 0 auto; display: grid; gap: 34px }
+  main > * { min-width: 0 }
+  .item .f .btn, .head .btn { flex: 0 0 auto }
+  h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance }
+  h2 { font-size: 16px; margin: 0 0 6px }
+  .lede, .note { color: var(--muted); margin: 0 0 10px; max-width: 72ch }
+  .note { font-size: 13px }
+  .screen { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0 }
+  .crumb { color: var(--faint); font-size: 12px; margin-bottom: 8px }
+  .strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px }
+  .name { font-size: 18px; font-weight: 700; margin-right: 4px }
+  .chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); white-space: nowrap }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-700); border-color: transparent }
+  .chip.amber { background: var(--amber-tint); color: var(--amber-800); border-color: transparent }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 10px 0 14px; overflow-x: auto }
+  .tab { padding: 7px 12px 9px; font-size: 13.5px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap }
+  .tab.on { color: var(--link); font-weight: 600; border-bottom-color: var(--blue) }
+  .label { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 14px 0 6px }
+  .item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0 }
+  .item + .item { margin-top: 8px }
+  .item .t { font-weight: 600; overflow-wrap: anywhere }
+  .item .m { color: var(--muted); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere }
+  .item .f { color: var(--faint); font-size: 12px; margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+  .btn { display: inline-block; font: inherit; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--link); white-space: nowrap }
+  .btn.blue { background: #2563eb; color: #fff; border-color: transparent }
+  .btn.quiet { border-color: var(--border); color: var(--muted) }
+  .head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between }
+  .log { list-style: none; margin: 0; padding: 0 }
+  .log li { display: grid; grid-template-columns: 6.2rem 1fr; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px }
+  .log .d { color: var(--muted) } .log .w { color: var(--faint); font-size: 12px }
+  .plan { font-size: 12.5px; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-top: 8px; color: var(--muted); overflow-wrap: anywhere }
+  .band { border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: 9px; padding: 10px 12px; background: var(--surface) }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px }
+  @media (max-width: 480px) { .log li { grid-template-columns: 1fr; gap: 2px } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>HR files: the Case view and Waiting on you</h1>
+    <p class="lede">Two screens of punch list #315. The first is built and walked. The second is the proposal for upgrade 3, drawn before it is built. Every name and word on this page is made up.</p>
+  </header>
+
+  <section>
+    <h2>1. The Case view (upgrade 2, built)</h2>
+    <p class="note">A tab beside Documents on a person's HR file. The file gives each item its number, so two people never take the same one. Closing an item asks why. Every change writes its own line in the log.</p>
+    <div class="screen">
+      <div class="crumb">People › HR › ZZ Sample Person</div>
+      <div class="strip"><span class="name">ZZ Sample Person</span><span class="chip">6 HR entries</span><span class="chip">4 pieces of evidence</span></div>
+      <div class="tabs"><span class="tab">Timeline (11)</span><span class="tab">Evidence (4)</span><span class="tab">Documents (4)</span><span class="tab on">Case (2)</span><span class="tab">By theme</span><span class="tab">Matter</span></div>
+      <div class="head"><span class="note" style="margin:0">2 open, 1 done. The file numbers each item, so two people never take the same number.</span><span class="btn blue">+ Add an item</span></div>
+      <div class="label">Open</div>
+      <div class="item">
+        <div class="t"><span class="chip blue">Item 1</span> Ask the yard for the gate log</div>
+        <div class="m">with Robert</div>
+        <div class="m">The week of March 30. A photo of the page is enough.</div>
+        <div class="f">opened Nov 10, 2026 by Robert <span class="btn">Close…</span><span class="btn">Hand over…</span></div>
+      </div>
+      <div class="item">
+        <div class="t"><span class="chip blue">Item 2</span> File the photo of the truck</div>
+        <div class="m">nobody has it yet</div>
+        <div class="f">opened Nov 11, 2026 by Robert <span class="btn">Close…</span><span class="btn">Hand over…</span></div>
+      </div>
+      <div class="m" style="margin-top:10px;color:var(--muted)">▸ 1 closed</div>
+      <div class="label">Log</div>
+      <ul class="log">
+        <li><span class="d">Nov 11, 2026</span><span>Item 3 done: the letter was filed.<br><span class="w">Robert</span></span></li>
+        <li><span class="d">Nov 10, 2026</span><span>Item 1 opened: Ask the yard for the gate log (with Robert)<br><span class="w">Robert, morning session</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Waiting on you (upgrade 3, proposed)</h2>
+    <p class="note">Today a plan an agent makes lives in the session that made it, so the owner says <em>Apply it</em> in each session. The proposal: an agent may <strong>keep</strong> a plan on the file. Kept plans gather in one list. The first PR shows the list as words. Apply and Drop come in the next.</p>
+    <div class="band">
+      <strong>What does not change.</strong>
+      <ul class="plain">
+        <li>A kept plan is the same plan with the same hash. Apply runs the dry run again and writes only when it still matches.</li>
+        <li>Only a dev sees the list, as only a dev sees the file.</li>
+        <li>A plan that carries a file's bytes is not kept. It stays in its session.</li>
+      </ul>
+    </div>
+    <div class="screen" style="margin-top:12px">
+      <div class="crumb">People › HR</div>
+      <div class="head"><strong>Waiting on you (2)</strong><span class="note" style="margin:0">Plans an agent kept for a yes. Oldest first.</span></div>
+      <div class="item" style="margin-top:10px">
+        <div class="t">ZZ Sample Person · an HR entry <span class="chip amber">waiting 2 days</span></div>
+        <div class="m">Kept by Robert's agent, morning session, Nov 10, 2026</div>
+        <div class="plan">One entry dated Nov 3, 2026, as an incident. It corrects the entry of Oct 28, 2026. 212 characters.</div>
+        <div class="f"><span class="btn blue">Apply</span><span class="btn quiet">Drop…</span><span>PR 3b</span></div>
+      </div>
+      <div class="item">
+        <div class="t">ZZ Sample Person · a case item <span class="chip">waiting today</span></div>
+        <div class="m">Kept by Robert's agent, afternoon session, Nov 12, 2026</div>
+        <div class="plan">Close item 2 as done: the photo is on the file as Ev #5.</div>
+        <div class="f"><span class="btn blue">Apply</span><span class="btn quiet">Drop…</span><span>PR 3b</span></div>
+      </div>
+      <div class="item">
+        <div class="t">ZZ Sample Person · an HR document <span class="chip amber">no longer matches</span></div>
+        <div class="m">The document was saved after this plan was made. The agent plans again.</div>
+        <div class="f"><span class="btn quiet">Drop…</span></div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:10px">The same list, narrowed to one person, sits at the top of that person's file.</p>
+  </section>
+
+  <section>
+    <h2>The owner's calls, with what the train builds in his place</h2>
+    <ul class="plain">
+      <li><strong>Who may press Apply.</strong> Built: any dev, as any dev may apply in a session today. The stricter choice is the owner alone.</li>
+      <li><strong>Whether a kept plan expires.</strong> Built: it never expires by the clock. It turns stale only when its dry run no longer matches.</li>
+      <li><strong>Whether a session may add a log line without a yes.</strong> Built: no. A log line is a plan like any other.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
