@@ -147,12 +147,14 @@ describe('lienNoticeRecordSheetHtml · one page in front of one paper', () => {
     for (const fact of ['4417 · Quarry Bend rough-in', '1408 Quarry Bend Rd, Marlow, TX 78000', 'Hollis Family Trust', 'Ridgeway Builders LLC', '$5,260.00']) expect(html).toContain(fact)
   })
 
-  it('closes with the question when a month does not stand: the batch row’s lead once, then the check’s own lines (the owner, 2026-11-13)', () => {
+  it('closes with the question when a month does not stand: the batch row’s lead once, then the check in one short sentence (the owner, 2026-11-13)', () => {
     expect(LIEN_RECORD_ASK).toBe(LIEN_HELP_BATCH_ASK_LEAD)
-    // Here there is room for what the row leaves out: which copy raised the question.
-    expect(html).toContain(`<div class="lien-record-verdict" data-lien-record-verdict="ask"><span class="lien-record-verdict-lead">Ask the attorney first.</span> The owner's notice went after its date, or is not on record, for April, May, June and July 2026. The original contractor's copy went after its date for April, May, June and July 2026.</div>`)
+    // The box says what the row leaves out, which copy raised the question, in as few words.
+    expect(html).toContain(`<div class="lien-record-verdict" data-lien-record-verdict="ask"><span class="lien-record-verdict-lead">Ask the attorney first.</span> Both copies went late for April to July 2026.</div>`)
     // Read as the page reads: the lead, the reasons, and then the foot. No closing sentence repeats the lead.
-    expect(textOf(html)).toContain(`${LIEN_RECORD_ASK} The owner's notice went after its date, or is not on record, for April, May, June and July 2026. The original contractor's copy went after its date for April, May, June and July 2026. Notice record for 4417`)
+    expect(textOf(html)).toContain(`${LIEN_RECORD_ASK} Both copies went late for April to July 2026. Notice record for 4417`)
+    // The long lines are the cover sheet's and the Lien window's. The box is one short sentence (the owner, 2026-11-13: this sentence looks like it is too long).
+    expect(html).not.toContain('went after its date')
     expect(html.match(/Ask the attorney first\./g)).toHaveLength(1)
     expect(html).not.toContain('Ask the attorney before this is signed.')
   })
@@ -287,7 +289,7 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
   it('a paper with a question says which months do not stand and names what is missing', () => {
     const block = html.slice(html.indexOf('data-lien-record-paper="2"'), html.indexOf('data-lien-record-paper="3"'))
     expect(block).toContain('data-lien-record-verdict="ask"')
-    expect(block).toContain(`<span class="lien-record-verdict-lead">Ask the attorney first.</span> The owner's notice went after its date`)
+    expect(block).toContain('<span class="lien-record-verdict-lead">Ask the attorney first.</span> Both copies went late for April to July 2026.</div>')
     expect(block).not.toContain('days late')
     expect(block.match(/data-lien-record-gap/g)).toHaveLength(3)
     expect(block).toContain(LIEN_RECORD_MATCH)

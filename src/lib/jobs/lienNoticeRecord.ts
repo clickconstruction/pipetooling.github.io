@@ -1,5 +1,5 @@
 import { lienAffidavitMethodWords, lienAffidavitNoticesWords, type LienAffidavitNoticeRow, type LienAffidavitOwnerSend } from './lienAffidavitNotices'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from './lienAffidavitNoticeCheck'
+import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckShortLines } from './lienAffidavitNoticeCheck'
 import { lienCommercialClock } from './lienDeadlines'
 import { describeNoticeMonths } from './lienNoticeDraft'
 import { parseLienSends, sendNeedsTracking, sendTrackingComing } from './lienSendTracking'
@@ -90,6 +90,8 @@ export type LienNoticeRecord = {
   months: LienNoticeRecordMonth[]
   /** The notice check's own lines (`lienNoticeCheckLines`): what the help sheet says under **Ask first**. None when every month is on time to both. */
   flags: string[]
+  /** The same check in the fewest sentences that still say which copy (`lienNoticeCheckShortLines`): what the box at the record's foot says. Empty exactly when `flags` is. */
+  flagsShort: string[]
   lines: LienNoticeRecordLine[]
   /** What the record does not hold, each a thing the office can add in the app. */
   gaps: string[]
@@ -334,6 +336,7 @@ export function lienNoticeRecord(input: {
     notices,
     months,
     flags: lienNoticeCheckLines(check),
+    flagsShort: lienNoticeCheckShortLines(check),
     lines,
     gaps: lienNoticeRecordGaps(notices),
     voided: filings.filter((f) => f.kind === 'notice_53_056' && Boolean(f.voided_at)).length,

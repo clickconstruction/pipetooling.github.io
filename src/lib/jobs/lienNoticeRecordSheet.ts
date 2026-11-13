@@ -82,8 +82,8 @@ export const LIEN_RECORD_CLEAR = 'Every month the paper swears has a notice mail
 
 /**
  * The lead of the box at a record's foot when a month does not stand: the batch sheet's own lead, so a row and its
- * block say it the same way (the owner, 2026-11-13). The notice check's lines follow it whole. Here there is room to
- * say which copy raised the question, which the row no longer says.
+ * block say it the same way (the owner, 2026-11-13). The notice check's short lines follow it
+ * (`LienNoticeRecord.flagsShort`): they say which copy raised the question, which the row no longer says.
  */
 export const LIEN_RECORD_ASK = LIEN_HELP_BATCH_ASK_LEAD
 
@@ -209,7 +209,7 @@ function compactClose(record: LienNoticeRecord): string {
  */
 function verdict(record: LienNoticeRecord): string {
   if (!lienNoticeRecordAsks(record)) return `<div class="lien-record-verdict" data-lien-record-verdict="clear"><span class="lien-record-verdict-lead">${esc(LIEN_RECORD_ON)}</span> ${esc(LIEN_RECORD_CLEAR)}</div>`
-  const words = record.flags.length > 0 ? record.flags.join(' ') : record.lines.filter((l) => l.state === 'ask').map((l) => `${l.lead} ${l.words}`).join(' ')
+  const words = record.flagsShort.length > 0 ? record.flagsShort.join(' ') : record.flags.length > 0 ? record.flags.join(' ') : record.lines.filter((l) => l.state === 'ask').map((l) => `${l.lead} ${l.words}`).join(' ')
   return `<div class="lien-record-verdict" data-lien-record-verdict="ask"><span class="lien-record-verdict-lead">${esc(LIEN_RECORD_ASK)}</span> ${esc(words)}</div>`
 }
 

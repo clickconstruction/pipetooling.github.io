@@ -118,3 +118,30 @@ export function lienNoticeCheckRowLine(check: LienNoticeCheck): string {
   if (months.length === 0) return ''
   return months.length === 1 ? `The notice for ${noticeMonthsSpanWords(months)} went late or is not on record.` : `Notices for ${noticeMonthsSpanWords(months)} went late or are not on record.`
 }
+
+/**
+ * The check in the fewest sentences that still say which copy, for the box that closes a notice record (the owner,
+ * 2026-11-13, on that box with the lines above in it: *this sentence looks like it is too long*). The same months as
+ * `lienNoticeCheckLines`, said shorter three ways: the months read as a span, two copies with one answer share a
+ * sentence (*Both copies went late for April to July 2026.*), and the owner's copy is said as late or as not on
+ * record, never both, because each month's row says which. A check whose months carry no row keeps the long lines.
+ */
+export function lienNoticeCheckShortLines(check: LienNoticeCheck): string[] {
+  const by = new Map(check.months.map((m) => [m.month, m]))
+  if ([...check.ownerLate, ...check.contractorMissing, ...check.contractorLate].some((m) => !by.has(m))) return lienNoticeCheckLines(check)
+  const ownerMissing = check.ownerLate.filter((m) => by.get(m)?.ownerSentOn === null)
+  const ownerLate = check.ownerLate.filter((m) => !ownerMissing.includes(m))
+  const same = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) => a.length > 0 && [...new Set(a)].sort().join() === [...new Set(b)].sort().join()
+  const lines: string[] = []
+  if (same(ownerLate, check.contractorLate)) lines.push(`Both copies went late for ${noticeMonthsSpanWords(ownerLate)}.`)
+  else {
+    if (ownerLate.length > 0) lines.push(`The owner's copy went late for ${noticeMonthsSpanWords(ownerLate)}.`)
+    if (check.contractorLate.length > 0) lines.push(`The original contractor's copy went late for ${noticeMonthsSpanWords(check.contractorLate)}.`)
+  }
+  if (same(ownerMissing, check.contractorMissing)) lines.push(`No copy is on record for ${noticeMonthsSpanWords(ownerMissing)}.`)
+  else {
+    if (ownerMissing.length > 0) lines.push(`No copy to the owner is on record for ${noticeMonthsSpanWords(ownerMissing)}.`)
+    if (check.contractorMissing.length > 0) lines.push(`No copy to the original contractor is on record for ${noticeMonthsSpanWords(check.contractorMissing)}.`)
+  }
+  return lines
+}

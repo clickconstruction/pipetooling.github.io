@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'On the notice record that prints with a lien affidavit, the box that sends a paper to the attorney now closes its block. The table of what was mailed comes first.',
     'The box is grey, with a light fill and a wider left edge. The heavy black box and its black ASK FIRST label are gone.',
-    'It starts with the same words as the row on the batch help sheet: Ask the attorney first. Then it says which copy went late or is missing, and for which months.',
+    'It starts with the same words as the row on the batch help sheet: Ask the attorney first. Then one short sentence says which copy went late or is missing, such as Both copies went late for April to July 2026.',
     'A paper whose notices all stand has On record in the same spot, with no fill. The same papers are flagged as before, and nothing on the affidavit changes.',
   ],
 }
