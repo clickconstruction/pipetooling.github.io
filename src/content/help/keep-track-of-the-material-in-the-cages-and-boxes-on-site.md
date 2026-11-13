@@ -141,6 +141,8 @@ A label printed with the old name still opens the box, because its code never ch
 
 The window has two tabs. **Cage** holds those fields, the box's code and its history: when it was added, each move and each rename. **Contents** lists each part in the box. Under a part is the day it came in, who added it and where the box stood then. Open the fold under a part to read every count, use and move of it.
 
+A part's name typed wrong is fixed on **Contents**. Tap **Fix the name** under the part, type the right name and press **Rename to 3/4 pex**. The name changes in every box on the job that holds that part. The window says which boxes before you press. The counts and the history stay as they are. **Undo the rename** puts the old name back. A part from the parts book has no such press, since its name is the book's. Fixing a name needs a signal.
+
 Rename a box only when the same things are inside. For different things, retire the box and add a new one. Last week's count then still means what it meant.
 
 ## Retire a box
