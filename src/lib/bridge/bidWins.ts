@@ -61,6 +61,9 @@ export type BidSent = {
   jobUsd: number | null
   /** True for a bid on something the Bridge leaves out (`leftOut.ts`): in no count. */
   leftOut?: boolean
+  /** The bid's own id and name, for a list that names the bids behind a count. The counting never reads them. */
+  id?: string
+  name?: string | null
 }
 
 type Tally = { count: number; usd: number }
@@ -80,6 +83,11 @@ export type BidSizeWins = {
   /** Sent in the window, dollars a week, and what that wins at `usedRate`. */
   sentPerWeekUsd: number
   wonPerWeekUsd: number | null
+  /**
+   * Which bids are behind each count, as their places in the list handed in: the ones sent in the window, and every
+   * one won, lost or with no mark. So a list that names them cannot disagree with the counts.
+   */
+  members: { sent: number[]; won: number[]; lost: number[]; noMark: number[] }
 }
 
 export type BidWins = {
@@ -135,11 +143,13 @@ export function buildBidWins(input: { todayYmd: string; windowStart: string; bid
   const noMark = tally()
   const noMarkOld = tally()
   const win = tally()
-  const sizes = BID_SIZES.map((s) => ({ id: s.id, label: s.label, won: tally(), lost: tally(), noMark: tally(), agedLostUsd: 0, sentUsd: 0 }))
+  const sizes = BID_SIZES.map((s) => ({ id: s.id, label: s.label, won: tally(), lost: tally(), noMark: tally(), agedLostUsd: 0, sentUsd: 0, members: { sent: [] as number[], won: [] as number[], lost: [] as number[], noMark: [] as number[] } }))
   let wonNoValue = 0
   let agedLostUsd = 0
   let leftOutCount = 0
+  let at = -1
   for (const b of input.bids) {
+    at += 1
     const sent = dayOf(b.sentYmd)
     if (!Number.isFinite(sent) || sent > today || sent < EARLIEST) continue
     if (b.leftOut) {
@@ -154,10 +164,16 @@ export function buildBidWins(input: { todayYmd: string; windowStart: string; bid
     if (isWon) {
       if (usd === 0) wonNoValue += 1
       add(won, usd)
-      if (size) add(size.won, usd)
+      if (size) {
+        add(size.won, usd)
+        size.members.won.push(at)
+      }
     } else if (b.outcome === 'lost') {
       add(lost, usd)
-      if (size) add(size.lost, usd)
+      if (size) {
+        add(size.lost, usd)
+        size.members.lost.push(at)
+      }
     } else {
       const aged = usd * lostShareAt(age)
       add(noMark, usd)
@@ -166,11 +182,15 @@ export function buildBidWins(input: { todayYmd: string; windowStart: string; bid
       if (size) {
         add(size.noMark, usd)
         size.agedLostUsd += aged
+        size.members.noMark.push(at)
       }
     }
     if (sent >= start) {
       add(win, usd)
-      if (size) size.sentUsd += usd
+      if (size) {
+        size.sentUsd += usd
+        size.members.sent.push(at)
+      }
     }
   }
   const rateOf = (w: number, l: number, aged: number): number | null => (w + l + aged > 0 ? w / (w + l + aged) : null)
@@ -181,7 +201,7 @@ export function buildBidWins(input: { todayYmd: string; windowStart: string; bid
     const rate = rateOf(s.won.usd, s.lost.usd, s.agedLostUsd)
     const usedRate = rate ?? coefficient
     const sentPerWeekUsd = s.sentUsd / weeks
-    return { id: s.id, label: s.label, won: s.won, lost: s.lost, noMark: s.noMark, agedLostUsd: s.agedLostUsd, rate, usedRate, sentPerWeekUsd, wonPerWeekUsd: usedRate != null ? sentPerWeekUsd * usedRate : null }
+    return { id: s.id, label: s.label, won: s.won, lost: s.lost, noMark: s.noMark, agedLostUsd: s.agedLostUsd, rate, usedRate, sentPerWeekUsd, wonPerWeekUsd: usedRate != null ? sentPerWeekUsd * usedRate : null, members: s.members }
   })
   const sentPerWeekUsd = win.usd / weeks
   const wonPerWeekUsd = coefficient != null ? sizeWins.reduce((sum, s) => sum + (s.wonPerWeekUsd ?? 0), 0) : null
