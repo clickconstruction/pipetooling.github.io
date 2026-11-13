@@ -4324,7 +4324,7 @@ export default function Prospects() {
                                       style={{
                                         borderBottom: '1px solid var(--border)',
                                         cursor: 'pointer',
-                                        background: selectedProspectForList?.id === p.id ? '#eff6ff' : undefined,
+                                        background: selectedProspectForList?.id === p.id ? 'var(--bg-blue-tint)' : undefined,
                                       }}
                                     >
                                       <td style={{ padding: '0.75rem' }}>
@@ -4816,7 +4816,7 @@ export default function Prospects() {
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
                         {formatWeekHours(s.timerSeconds)} on calls · {s.callbacks} {s.callbacks === 1 ? 'callback' : 'callbacks'} set ·{' '}
-                        <span style={{ color: s.conversions > 0 ? '#6d28d9' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
+                        <span style={{ color: s.conversions > 0 ? 'var(--text-violet-700)' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
                           {s.conversions} {kindWords.landedCount}
                         </span>
                       </div>

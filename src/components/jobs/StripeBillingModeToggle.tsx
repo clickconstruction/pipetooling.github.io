@@ -61,7 +61,7 @@ export default function StripeBillingModeToggle({
       fontWeight: selected ? 600 : 400,
       border: 'none',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      background: selected ? (isLive ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)') : '#ffffff',
+      background: selected ? (isLive ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)') : 'var(--surface)',
       color: selected && isLive ? 'var(--text-amber-800)' : 'var(--text-strong)',
     }
   }

@@ -722,6 +722,52 @@ describe('JobsStagesTab render smoke', () => {
   })
 })
 
+describe('JobsStagesTab — the Billed header\u2019s door to Bills sent', () => {
+  beforeEach(() => {
+    cache.merged = [...ALL_SCOPES]
+    cache.asked = []
+  })
+  const billedHeader = () => document.getElementById('stages-section-billed') ?? [...document.querySelectorAll<HTMLElement>('[data-stages-section-header]')].find((h) => /Billed Awaiting Payment/.test(h.textContent ?? ''))!
+  const door = () => billedHeader().querySelector<HTMLAnchorElement>('a[data-testid="billed-header-bills-sent"]')
+
+  it('an assistant sees Bills sent as a link to /bills-sent, the last press of the row, with the page\u2019s own words as its title', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ authRole: 'assistant', myRole: 'assistant' })} />)
+    await settle()
+    const link = door()!
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('/bills-sent')
+    expect(link.textContent).toBe('Bills sent')
+    expect(link.title).toBe('Every bill that left, who it went to, and the minute it went')
+    expect(link.querySelector('[data-tools-glyph="send"] svg')).toBeTruthy()
+    // Built like its neighbours: the same 28 px outline press, and the row's last child.
+    expect(link.style.height).toBe('28px')
+    expect(link.style.border).toBe('1px solid var(--border)')
+    expect(link.parentElement!.lastElementChild).toBe(link)
+  })
+
+  it('every role the page lets in sees it, right after Paid notifications where that is drawn', async () => {
+    for (const authRole of ['dev', 'master_technician', 'controller'] as const) {
+      const view = renderWithProviders(<JobsStagesTab {...makeProps({ authRole, myRole: authRole })} />)
+      await settle()
+      const link = door()!
+      expect(link, authRole).toBeTruthy()
+      expect(link.previousElementSibling?.textContent, authRole).toBe('Paid notifications')
+      view.unmount()
+    }
+  })
+
+  it('a role outside the page\u2019s gate gets no door', async () => {
+    for (const authRole of ['superintendent', 'estimator', 'primary'] as const) {
+      const view = renderWithProviders(<JobsStagesTab {...makeProps({ authRole, myRole: authRole })} />)
+      await settle()
+      expect(sectionHeader('Billed Awaiting Payment', 0)).toBeTruthy()
+      expect(door(), authRole).toBeNull()
+      expect(screen.queryByText('Bills sent'), authRole).toBeNull()
+      view.unmount()
+    }
+  })
+})
+
 describe('JobsStagesTab — the round cards read through useGcStatementRound (v2.5075)', () => {
   const WEEK = gcReviewWeekStartYmd()
   const SIX_WEEKS_BACK = trailingWeekStarts(WEEK, 6)[0]!

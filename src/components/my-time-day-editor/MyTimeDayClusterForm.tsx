@@ -278,8 +278,8 @@ export function MyTimeDayClusterForm({
         borderBottom: !showClusterBottomDivider
           ? 'none'
           : overlapDividerBelow
-            ? '5px double #d1d5db'
-            : '2px solid #d1d5db',
+            ? '5px double var(--border-strong)'
+            : '2px solid var(--border-strong)',
         boxSizing: 'border-box',
       }}
     >

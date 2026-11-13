@@ -1781,7 +1781,7 @@ function ForecastBalanceStripGutterCell({ series }: { series: ForecastBalanceSer
         style={{
           fontVariantNumeric: 'tabular-nums',
           fontWeight: 700,
-          color: end < 0 ? '#dc2626' : end > 0 ? '#16a34a' : 'var(--text-muted)',
+          color: end < 0 ? 'var(--text-red-600)' : end > 0 ? '#16a34a' : 'var(--text-muted)',
         }}
         title="Balance at the right edge of the visible window (anchored money only)"
       >

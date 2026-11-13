@@ -13,7 +13,7 @@ import { loadPaidClaims } from '../lib/jobs/paidClaimsIo'
 import type { PaceFacts } from '../lib/jobs/payPace'
 import { loadPaceFacts } from '../lib/jobs/payPaceIo'
 import { indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
-import { loadInvoiceAcceptances, loadPayCalendars } from '../lib/jobs/payCalendarIo'
+import { loadInvoiceAcceptances, loadPayCalendars, onPayCalendarChanged } from '../lib/jobs/payCalendarIo'
 import {
   buildCustomerPromiseRecords,
   classifyPromises,
@@ -177,6 +177,8 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
   }, [canSeeBilledExpectedPay])
   useEffect(() => {
     void reloadPayCalendars()
+    // A calendar saved through a door that is not the board's own (Pay speeds, the job window's row) is read too (punch list #341).
+    return onPayCalendarChanged(() => void reloadPayCalendars())
   }, [reloadPayCalendars])
 
   return {

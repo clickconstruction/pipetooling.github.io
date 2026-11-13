@@ -2,7 +2,7 @@
 name: "Bill Customer says what the customer will get: who, by which channel, the real email and text in place, and a press that names its act"
 number: 343
 group: ready
-status: looked at 2026-11-13 on the live app, nothing built; a mock-up of the window as it is beside the proposal, at desktop and phone width
+status: the owner said build it all, 2026-11-13; PR 1 (the words) built as v2.7157; left: PR 2 the email and text faces, PR 3 one press
 summary: >
   The owner asked whether it is clear, when the assistant sends a bill, what the customer is
   receiving. It is not. On the default tab the press reads Create Stripe invoice. It makes the
@@ -12,10 +12,10 @@ summary: >
   send on record that day. The card adds a caption per channel, a Send to line with the name and
   the phone, the real email and text drawn in place, a When you press box, and a press named for
   its act.
-next: the owner's look at the mock-up, then PR 1 (words only); one call is his, whether one press should make the bill and email it (PR 3)
-size: M as a train of three (XS · S · M)
-blocker: none for PR 1 and PR 2; PR 3 waits on the owner's yes
-opinion: build PR 1 now, it is words on one window; PR 2 next; PR 3 is your call, and it is the one that stops a bill being made and never sent
+next: PR 2, the real email and text drawn in place; then PR 3, one press that makes the bill and emails it
+size: M as a train of three (XS · S · M); left: PR 2 (S) and PR 3 (M)
+blocker: none
+opinion: build in the card's order; PR 3 is the one that stops a bill being made and never sent
 ---
 
 # Bill Customer says what the customer will get (#343)
@@ -168,5 +168,14 @@ left no row.
 
 ## Where it stands
 
-Looked at and drawn. Nothing built. The owner has the screenshots of the live window and this
-mock-up.
+The owner's word on the mock-up, 2026-11-13: *build it all*. That is his yes to PR 3 too.
+
+- **PR 1, the words, v2.7157**: the caption under each tab, the name and phone in Send to, the
+  *When you press* box, the presses *Make the Stripe bill* and *Email the invoice to …*, and the
+  door to the sample. Built as the card says, with three choices made in the build. The first box
+  line reads *The bill is made and marked billed*, since a job moves to Billed Awaiting Payment
+  only when the whole job is billed. The phone line reads *Phone … A text can follow on the next
+  screen* and shows only when the customer themself is billed, since a text goes to the job's
+  customer and its number is read from the customer on the next screen. The counted press reads
+  *Email the invoice to 2 people*.
+- **PR 2 and PR 3**: not built yet.

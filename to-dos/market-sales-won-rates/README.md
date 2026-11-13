@@ -1,8 +1,8 @@
 ---
 name: "Market and Sales on the won rates"
 number: 318
-group: ready
-status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · PR 4 as v2.6979, one rule on the page · PR 5 as v2.6983, the weekly email on the Market amount · PR 6 as v2.6988, the guide and the docs · all six built, and every function redeployed 2026-11-12 · a visual pass at three widths as v2.6998 · what is left is the owner's calls · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
+group: close
+status: asked and walked 2026-11-11 in a spike on the Bridge · the rules are the owner's, set that day in his words · PR 1 shipped as v2.6973, the pipe standing up with Market at what it is worth · PR 2 as v2.6975, the chart of wins by bid size on the Bid Board · PR 3 as v2.6977, the Market and Sales windows on the shared frame · PR 4 as v2.6979, one rule on the page · PR 5 as v2.6983, the weekly email on the Market amount · PR 6 as v2.6988, the guide and the docs · all six built, and every function redeployed 2026-11-12 · a visual pass at three widths as v2.6998 · checked 2026-11-13 against main and production: every commit is on main, the train's tests pass, every function is current, and nothing on the plan is left to build · the Monday email has never gone out and its switch is on · what is left is the owner's calls and his read of Monday's email · branch claude/318-bridge-won-rates-pr1-a42022 and the ones after it
 mockup: to-dos/market-sales-won-rates/mockup.html
 summary: >
   The Bridge read Market as every dollar asked in a week and judged it at one win share for everything. The owner set new rules in one sitting: estimates and bids each run through their own won
@@ -11,10 +11,10 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board read this way since PRs 1 to 3
   (v2.6973, v2.6975, v2.6977). The page's own Market and Sales cards, the slowest-step reading, the weekly email
   and the guide followed with PRs 4 to 6 (v2.6979, v2.6983, v2.6988). This card holds every rule and what is left, which is the owner's calls.
-next: the owner's calls under Where it stands; the email's first send is Monday 2026-11-16 and carries the Market amount
-size: L as a train of six (M · S · M · M · M · S); left: the owner's calls
-blocker: None. The spike branch is on GitHub.
-opinion: ship PRs 1 to 3 as built, since the owner walked them. PR 4 is the one that matters most, because until it lands the page tells two stories about Market.
+next: the owner answers the eight calls at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word
+size: L as a train of six (M · S · M · M · M · S), all shipped; left: the owner's calls (XS)
+blocker: None for the build. Monday's email matches the page only once #7948 and #7893 are merged and `bridge-weekly-sheet` is redeployed, and both belong to #334.
+opinion: your call — nothing is left to build; retire it after Monday's email is read, because no real send has shown the Market amount yet.
 ---
 
 # Market and Sales on the won rates (#318)
@@ -205,6 +205,102 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 
 ## Where it stands
 
+Checked on 2026-11-13 against `main` and against production, read only. Nothing on this card's plan is left to
+build. What is left is eight short questions for the owner and his read of Monday's email.
+
+### The owner's calls
+
+Each takes one word. The pick is the builder's, and it stands until he says otherwise.
+
+1. **Is *the scaling function* the step that moves the fewest dollars a week?** Pick: **yes**. That is the reading
+   card #321 draws (`to-dos/bridge-narrowest-step/`), and #321 builds nothing before this answer. A yes costs M
+   there, or S for the row directions alone. The question lives on #321 from here on.
+2. **Should Sales' line *sold $X of work a week* count only the bids marked won?** Pick: **no**. PR 4 left the line
+   as the contract on the jobs made in the window. That is work handed to the field, and the Sales window already
+   reads the pile at the won rates. A yes is S: `buildPace.ts` feeds the line, the kernel is copied to the edge
+   functions, and the functions that read the copy are redeployed.
+3. **Does the first screen still need its budget of 150 words and 24 numbers?** Pick: **no, drop the question**.
+   PR 1 found the standing pipe put the usual week at 161 words and 27 numbers. #334 then took the week's call off
+   the page (v2.7105), so the screen that budget measured is gone. The test still holds the card the email prints.
+   Nothing to build.
+4. **A note on each bid's row on the Bid Board, *bids this size: N% won*?** Pick: **no**. Bids → Pricing already
+   says how bids this size went, on the bid's title line. A yes is S.
+5. **A row in Soft numbers for the old bids with no mark?** Pick: **no**. The Market and Sales windows already ask
+   for those marks, each with a door to the Bid Board. A yes is S.
+6. **Size the pipe's widths straight to the dollars?** Pick: **no**. #321 answers the same worry, that the five
+   steps look alike, by lighting one of them. A yes is S.
+7. **Fix the Bid Board's Pulse so a bid sent on a Sunday counts in its own week?** Pick: **yes**. The look is
+   written under *Looked at* below. No count is wrong today. The fix is XS and is clear of every open Bridge PR.
+8. **Retire this card now, or after Monday's email is read?** Pick: **after Monday**. The reason is under *When
+   this card closes*.
+
+Calls 4 to 6 are the three under *Offered to the owner and not asked for*.
+
+### What was checked on 2026-11-13
+
+- **The commits.** All seven are on `main`: PR 1 (#7725), PR 2 (#7727), PR 3 (#7729), PR 4 (#7731), PR 5 (#7733),
+  PR 6 (#7741) and the visual pass (#7758). #7754 took the weekly email's kernels off the shared index so
+  `customer-portal` fits a deploy. Each version has its release note and its fragment.
+- **The code today.** The one win share is gone: nothing in `src` or `supabase` names `marketWinShare`. The page
+  builds the won rates once and hands them to the pipe, the Market card, the dial and both windows. Sales counts a
+  bid by its mark alone. `loadMarketDesk.ts` reads no jobs. The guide has *What Market is worth* and no *win share*.
+  The train's rule tests and render tests pass, 170 tests in 18 files.
+- **Every item under *Not built: the rest*.** Items 1 to 7 are each in the code as the plan says. Nothing was
+  skipped.
+- **Production.** `npm run check:edge-drift` reads every repo function as deployed and current, `bridge-weekly-sheet`
+  among them. The email's switch, `bridge_weekly_sheet_on_v1`, reads `true`. Its last run is empty and the send log
+  holds no weekly mail, so Monday is the first send. The schedule is the one `20261026120000_bridge_weekly_sheet.sql`
+  set, Mondays at 11:00 and 12:00 UTC, and the function runs only the tick that is 6 AM Central. The dev seat cannot
+  read the scheduler's own row, so the schedule was read from the migration and not from production.
+
+### Where #334 built on top of this train
+
+Nothing this train built was taken away. Four pieces were changed again by #334 (`to-dos/bridge-pulse/`):
+
+- **PR 1's left-out list.** The loaders took an empty list. Since v2.7095 the page hands them the list a person
+  saved. The saved list is the one the owner set. It names two developments today, and one is the ZZ test one.
+- **PR 1's place for the pipe.** It stood beside the call's card. The call left the page in v2.7105, and the card
+  beside the pipe is What to do now since v2.7109.
+- **PR 3's Market window.** Its two amounts are presses since v2.7120, and each opens what makes it up. The
+  estimates' won rate leaves out ZZ test estimates since v2.7119.
+- **PR 5's email.** Two open PRs change it: #7893 takes the call out of the mail, and #7948 makes the mail read
+  the left-out list.
+
+### What Monday's email carries, as things stand
+
+The deployed function is `main`'s. On Monday 2026-11-16 at 6 AM Central it mails the owner and every dev with a real
+account. As deployed today the mail holds the three tiles, the pipe with Market read as *worth*, one line for what
+the bids win and what the estimates sell, and the week's call.
+
+Two things in it will not match the page:
+
+- **It counts everything.** The mail does not read the left-out list. The page leaves out what the list names, so
+  the mail's Market amount and its other figures will differ from the page's. #7948 fixes this.
+- **It still carries the week's call.** Its button sends the reader to the Bridge to make the call or answer it,
+  and the page has had no call since v2.7105. #7893 fixes this. It is third in #334's stack and carries a migration to push.
+
+For Monday's mail to match the page, both PRs are merged and `bridge-weekly-sheet` is redeployed before Monday
+12:00 UTC, then a dry run is read. Neither PR is this card's, and nothing was deployed from here.
+
+### Looked at: the Pulse's weeks on the Bid Board
+
+A bid's send day is a date with no time. `estimatingPulse.ts` and `bidBoardWeeklySentStats.ts` read it through the
+helper for a moment in time, which takes a plain date as midnight UTC. That is the evening before in Chicago, so
+each bid lands a day early. Only a Sunday send changes weeks: it counts in the week before. None of the bids sent
+since May 2026 carries a Sunday send day, so no week on the board is wrong today. The fix is to read the date as
+written (`ymdFromDateLike`) in both kernels, with a test that feeds a plain date. Their tests feed a time today,
+which the column never holds. It is call 7.
+
+### When this card closes
+
+Close it after Monday's email is read. Everything on the plan is built, live and checked, and by the owner's rule
+of 2026-10-06 a look does not hold a card open. This is more than a look. The mail has never been sent, and the
+Market amount is this card's own figure. As deployed, Monday's mail will show an amount the page does not. Once the
+mail and the page agree on it, delete this folder in its own PR, on the owner's word. The branch
+`spike/bridge-scaling` is still on GitHub and can go with it.
+
+### How each PR landed
+
 Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11.
 
 - **PR 1 shipped as v2.6973.** The pipe stands up, beside the call's card at a desk. Market's row reads what the
@@ -239,10 +335,6 @@ Rules set, built on the spike branch, walked and kept by the owner on 2026-11-11
   pipe's five names fall at even steps, Market's working reads as two blocks, the chart's empty track shows in
   light, and in the Sales window a reason's dollars stay on its own line on a phone.
 
-Still open, not the builder's to answer:
-
-- **What *the scaling function* means.** The owner named it as the aim behind all of this and has not defined it.
-
 Left out on purpose, each its own change:
 
 - **What the Bridge leaves out** (the list, its picker and the migration for the owner's role), **the header's
@@ -252,17 +344,4 @@ Left out on purpose, each its own change:
 - **Names in other test files.** v2.7087 swapped the names in the test fixtures across the repo for made-up ones, and
   `collect/collectScorecard.test.ts` left with the week's call in v2.7105. This card named two files.
 - **The Pulse's weeks on the Bid Board** read a bid's send day, a date, as an instant. The new chart reads it as
-  written. Whether a bid sent on a Sunday lands in the week before is worth a look.
-
-One thing PR 4 left for the owner:
-
-- **Sales' line *sold $X of work a week*** is still the contract on the jobs made in the window. It is work
-  handed to the field, not a count of bids won, so the mark-only rule was not applied to it. Say so if it should be.
-
-Two things PR 1 turned up, for the owner:
-
-- **The first screen's budget.** #303 held a phone's first screen to 150 words and 24 numbers, with the pipe drawn
-  across. The standing pipe prints a row for each step, which puts the test's usual week at 161 words and 27
-  numbers. Either the budget moves or the rows are trimmed. Nothing was changed to hide it.
-- **What the Bridge leaves out** is not on this card's plan. The spike built the list and its picker, and they need
-  a migration for the owner's role. They shipped as v2.7095 (punch list #334) with that migration, `20261113050000_bridge_left_out_key_owner.sql`, and the won rates leave out what the list names.
+  written. The look was taken on 2026-11-13 and is under *Looked at* above.

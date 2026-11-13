@@ -72,6 +72,31 @@ export function payClockWords(clock: { ymd: string; from: PayClockFrom }): strin
   return `Counted from ${formatYmdMonthDay(clock.ymd)}, the day ${clock.from === 'accepted' ? 'they accepted it' : 'it went in'}`
 }
 
+/** The day a bill is held to, for a screen that asks whether it is past due. */
+export type BillHeldDay = {
+  /** On a Pay calendar the due day; else the expected day, or the day the customer named. */
+  ymd: string
+  /** That day has gone by. */
+  late: boolean
+  /** Days past it; 0 while it is ahead. */
+  daysLate: number
+  /** The day is the calendar's due day. */
+  onCalendar: boolean
+}
+
+/**
+ * The day a screen holds a bill to when it asks *is this past due?* (v2.7140): a reminder's day, a
+ * *past due* count. On a Pay calendar it is the due day, the day the contract names, so a bill is
+ * never past due before it and is the day after. With no calendar it is the expected day, as
+ * before. A day the customer named wins either way. A screen that counts money still reads
+ * `expectedYmd`.
+ */
+export function billHeldDay(model: BilledPayModel | null | undefined): BillHeldDay | null {
+  if (!model) return null
+  if (model.source === 'terms' && model.dueYmd) return { ymd: model.dueYmd, late: model.daysPastDue > 0, daysLate: model.daysPastDue, onCalendar: true }
+  return { ymd: model.expectedYmd, late: model.state === 'late', daysLate: model.daysLate, onCalendar: false }
+}
+
 /**
  * The pay model for one billed row. `calendar` is the row's Pay calendar from `calendarFor`
  * (its job's own, else its payer's); null or absent reads exactly as `billedExpectedPayModel`.

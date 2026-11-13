@@ -1615,7 +1615,7 @@ export function BidsBidBoardTab({
               style={{
                 padding: '0.5rem 1rem 0.5rem 2rem',
                 borderTop: '1px solid var(--border)',
-                borderBottom: expanded ? undefined : '1px solid #e5e7eb',
+                borderBottom: expanded ? undefined : '1px solid var(--border)',
                 verticalAlign: 'top',
                 fontSize: '0.8125rem',
                 lineHeight: 1.45,

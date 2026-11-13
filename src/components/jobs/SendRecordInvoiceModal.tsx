@@ -81,6 +81,8 @@ import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPrevi
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
 import { isOfficeRole } from '../../lib/doorRoles'
+import { billSampleHref, theyWillGet, type BillSendChannel } from '../../lib/billing/billCustomerTheyWillGet'
+import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
 import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, billOnDealWords, billQuestionState, jobIsOffTheDeal, jobIsOnTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
 import { addJobToInKindArrangement } from '../../lib/inKind/inKindStandingIo'
 import InKindBillQuestion from '../inKind/InKindBillQuestion'
@@ -168,7 +170,7 @@ const BILL_DB_WRITE_TIMEOUT_MS = 15000
 const BILL_STRIPE_INVOKE_TIMEOUT_MS = 30000
 const BILL_EMAIL_INVOKE_TIMEOUT_MS = 60000
 
-/** Shared copy shown above Create Stripe invoice / Send email when line wording hits the lowercase-leading check. */
+/** Shared copy shown above the Stripe and Physical presses when line wording hits the lowercase-leading check. */
 const BILL_CUSTOMER_LEADING_LOWERCASE_HINT =
   'Some line wording starts with a lowercase letter. For many customers this invoice may be their main impression of your company—double-check if that is intentional.'
 
@@ -1796,7 +1798,7 @@ export default function SendRecordInvoiceModal({
           headers: { Authorization: `Bearer ${token}` },
         }),
         BILL_STRIPE_INVOKE_TIMEOUT_MS,
-        'Create Stripe invoice',
+        'Make the Stripe bill',
       )
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
@@ -2334,24 +2336,66 @@ export default function SendRecordInvoiceModal({
       address, the payer's contacts (flagged ones start ticked), Copy the other
       party, and a one-off. Both channels read the same ticks; the Stripe copies
       go out from send-stripe-invoice, the physical ones ride the same email. */
+  /** Punch list #343: the window's words for a channel that reaches a customer, from the payer as the composed job reads. */
+  function sendWords(channel: BillSendChannel) {
+    // A text goes to the job's own customer, so the phone line is left out when a GC pays or a bill-to is typed.
+    const billedThemself = !billToOverride && payerParty !== 'gc'
+    return theyWillGet({
+      channel,
+      name: job?.customer_name,
+      email: job?.customer_email,
+      ...(channel === 'stripe' && billedThemself ? { phone: job?.customer_phone ?? null } : {}),
+      copyEmails: physicalAdditionalEmails(),
+    })
+  }
+
+  /** Punch list #343: what the press does, what it does not, and where the copy is kept, in a box right above the press. */
+  function pressBox(channel: BillSendChannel) {
+    // A paid job's presses are dead until the tick: the notice above says why, and this box would promise a send.
+    if (paidJobBlocked) return null
+    const words = sendWords(channel)
+    return (
+      <div
+        data-testid="bill-customer-press-box"
+        style={{ margin: '0.6rem 0 0', padding: '0.55rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.45 }}
+      >
+        <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{words.pressTitle}</div>
+        <ol style={{ margin: '0.2rem 0 0', paddingLeft: '1.15rem' }}>
+          {words.pressLines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ol>
+        {canSeeWhatCustomersSee(authRole) ? (
+          <a href={billSampleHref(channel)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.3rem', color: 'var(--text-link)' }}>
+            See a sample of this email
+          </a>
+        ) : null}
+      </div>
+    )
+  }
+
   function sendToBlock(channel: 'stripe' | 'physical') {
     if (!job) return null
+    const words = sendWords(channel)
     return (
       <>
         {(customerContacts.length > 0 || (job.customer_email ?? '').trim()) && (
           <div style={{ marginBottom: '0.75rem' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
+              {words.who ? <strong data-testid="bill-customer-send-to-name" style={{ color: 'var(--text-strong)' }}>{words.who} </strong> : null}
               {(job.customer_email ?? '').trim() || '—'}{' '}
               <span style={{ color: 'var(--text-faint)' }}>
                 {billToOverride ? '(bill-to recipient)' : payerParty === 'gc' ? `(${payerRecipient?.name || 'GC'} · billing email)` : '(primary)'}
               </span>
             </div>
-            {channel === 'stripe' ? (
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                The bill email goes to that address. Everyone ticked below gets a copy from Click Plumbing and Electrical with the same Pay link when you press
-                <strong> Send Email invoice</strong>.
+            {words.phoneLine ? (
+              <div data-testid="bill-customer-send-to-phone" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                {words.phoneLine}
               </div>
+            ) : null}
+            {channel === 'stripe' || customerContacts.length > 0 ? (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.4 }}>{words.copyHelp}</div>
             ) : null}
             {/* Bill-to override: the customer's contact persons never ride on an
                 invoice that bills someone else. */}
@@ -2687,6 +2731,12 @@ export default function SendRecordInvoiceModal({
             </button>
           )}
         </div>
+        {/* Punch list #343: what each channel puts in front of the customer, as HouseCall Pro's caption already says for its own. */}
+        {!billInKind && (tab === 'stripe' || tab === 'physical') ? (
+          <p data-testid="bill-customer-channel-caption" style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            {sendWords(tab).caption}
+          </p>
+        ) : null}
 
         {jobIsPaid ? (
           <div
@@ -3269,6 +3319,7 @@ export default function SendRecordInvoiceModal({
                 </span>
               </label>
             ) : null}
+            {pressBox('physical')}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
@@ -3287,7 +3338,7 @@ export default function SendRecordInvoiceModal({
                   cursor: physicalSendReady && !busy ? 'pointer' : 'not-allowed',
                 }}
               >
-                {busy ? '…' : 'Send email'}
+                {busy ? '…' : sendWords('physical').press}
               </button>
             </div>
           </>
@@ -3697,7 +3748,7 @@ export default function SendRecordInvoiceModal({
                               border:
                                 activeStripeFooterPreset === 'plumbing'
                                   ? '2px solid #2563eb'
-                                  : '1px solid #d1d5db',
+                                  : '1px solid var(--border-strong)',
                               borderRadius: 4,
                               background: activeStripeFooterPreset === 'plumbing' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                               color: 'var(--text-700)',
@@ -3726,7 +3777,7 @@ export default function SendRecordInvoiceModal({
                               border:
                                 activeStripeFooterPreset === 'electrical'
                                   ? '2px solid #2563eb'
-                                  : '1px solid #d1d5db',
+                                  : '1px solid var(--border-strong)',
                               borderRadius: 4,
                               background: activeStripeFooterPreset === 'electrical' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                               color: 'var(--text-700)',
@@ -3917,6 +3968,7 @@ export default function SendRecordInvoiceModal({
                       : `Notice email failed: ${hazmatNoticeEmailStatus} — re-send from Edit Job → Riders.`}
                   </p>
                 ) : null}
+                {pressBox('stripe')}
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button
                     type="button"
@@ -3939,7 +3991,7 @@ export default function SendRecordInvoiceModal({
                       cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
                     }}
                   >
-                    {busy ? '…' : 'Create Stripe invoice'}
+                    {busy ? '…' : sendWords('stripe').press}
                   </button>
                 </div>
               </>
