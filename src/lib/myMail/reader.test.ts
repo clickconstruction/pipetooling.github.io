@@ -145,7 +145,7 @@ describe('the reader’s words', () => {
 
   it('asks before an untag in words true of a conversation the boxes hold too', () => {
     expect(MY_MAIL_READER_WORDS.untagAsk).toBe(
-      'Untag takes this conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line the bids@ or team@ reader took goes back to where it was.',
+      'This takes the conversation off the job. The lines the save wrote go, with their files and the copy of each mail. A line the bids@ or team@ reader took goes back to where it was.',
     )
   })
 })

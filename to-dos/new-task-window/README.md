@@ -1,8 +1,8 @@
 ---
 name: "The window that gives a task: redraw Add checklist item as New task, so the common task fits one phone screen and every row has its own shape"
 number: 331
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's go and her six calls
+group: ready
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same night, as drawn · PR 1 (the words and the order) in v2.7082 · PR 2 (the window) next
 summary: >
   The Add checklist item window works, but it shows every choice at once and at the same weight.
   On a phone it is 1,267 px tall, one and a half screens, and the day sits 711 px down. Of the 137
@@ -11,9 +11,9 @@ summary: >
   where. People become a row of faces, the day one joined bar, places a shelf, and the rare things
   quiet presses in a row called Add. A bar at the bottom says in words what will happen, and its
   button names who gets the task. The drawn window is about 570 px tall. No database change.
-next: Grace's go and her six calls, then PR 1 (the words and the order as a kernel, no screen).
+next: PR 2, the window itself, stacked on the place train. Then a walk on a real phone before PRs 3 and 4.
 size: M as a train of four (S · M · M · S)
-blocker: Grace's go. The build also waits for the place train (#328) to land, since its photo PR still changes this window.
+blocker: none to build. PR 2 lands after the place train (#328), since its photo PR still changes this window.
 opinion: build PRs 1 and 2, then walk it on a real phone before the other two windows follow — the bar above the keyboard is the one thing a drawing cannot prove
 ---
 
@@ -27,7 +27,8 @@ Grace, 2026-11-12, after seeing the Add window with the new Place row and Photo 
 > don't think we're offering the best tool here, help me visually create the best tool
 
 This card is the answer and [mockup.html](mockup.html) is the picture. The suggested window in the
-mock-up can be pressed. Nothing is built.
+mock-up can be pressed. She saw both and said "Yes, build it", so each of the six calls below took
+its pick. PR 1 is built: the words and the order, with no screen in it (v2.7082).
 
 ## The answer, in short
 
