@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay calendar: a door on a bid for the estimator</title>
+<style>
+  /* Punch list #323 and #341. The owner's question of 2026-11-13: should an estimator be able to set a payer's Pay
+     calendar while working a bid? This page draws the form I would build: the estimator writes down the terms they
+     read, and the office makes them the calendar. Nothing here is built. Every name, bid, clause and date is made up:
+     Larkfield Construction, Sable Ridge Builders, Dana Whitfield, Maya Okafor, bid B412, section 5.2. No live row and
+     no real contract's words are on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --dead-fill: #e5e7eb; --dead-text: #6b7280;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --new: #c4b5fd; --new-tint: #2a2350;
+    --dead-fill: #374151; --dead-text: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 40px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--new); }
+  .cap.quiet { color: var(--text-muted); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .pad { padding: 12px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 6px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 14px; }
+  .bar .x { margin-left: auto; font-size: 16px; line-height: 1; }
+  .sect { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 6px; }
+  .lab { font-weight: 600; font-size: 13px; color: var(--text-strong); margin: 0 0 6px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .card + .card { margin-top: 8px; }
+  .gchead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .gchead b { color: var(--text-strong); font-size: 14px; }
+  .gchead .link { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-link); }
+  .who { font-size: 12px; color: var(--text-muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--bg-blue-tint); color: var(--text-blue-800); white-space: nowrap; }
+  .chip.plain { background: var(--bg-muted); color: var(--text-700); }
+  .chip.green { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .fact { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; }
+  .fact dt { color: var(--text-muted); }
+  .fact dd { margin: 0; min-width: 0; }
+  .press { color: var(--text-link); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .small { display: block; font-size: 12px; color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 32px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.quiet { color: var(--text-muted); font-weight: 600; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: flex-end; }
+
+  .win { background: var(--surface); padding: 14px 16px; }
+  .win h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .win .hint { margin: 4px 0 0; font-size: 12.5px; color: var(--text-muted); }
+  .fl { display: block; font-size: 12px; font-weight: 600; color: var(--text-700); margin: 11px 0 4px; }
+  .sel { display: inline-flex; align-items: center; gap: 14px; min-height: 34px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font-size: 13.5px; }
+  .sel::after { content: "▾"; color: var(--text-muted); font-size: 11px; }
+  .inp { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font-size: 13.5px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13.5px; }
+  .box { margin: 11px 0 0; padding: 8px 11px; border-radius: 8px; font-size: 13px; }
+  .box.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .box.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .box.gone { border: 1.5px dashed var(--border-strong); color: var(--text-muted); background: none; }
+  .foot { margin: 9px 0 0; font-size: 12px; color: var(--text-muted); }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; margin-top: 11px; }
+  .check i { flex: none; width: 15px; height: 15px; border: 1.5px solid var(--border-strong); border-radius: 3px; margin-top: 2px; }
+
+  .inbox { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .inbox b { color: var(--text-strong); }
+
+  table.cost { width: 100%; border-collapse: collapse; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  table.cost th, table.cost td { text-align: left; vertical-align: top; padding: 9px 11px; border-bottom: 1px solid var(--border); }
+  table.cost th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  table.cost tr:last-child td { border-bottom: none; }
+  table.cost tr.pick td { background: var(--new-tint); }
+  table.cost td b { color: var(--text-strong); }
+  .scroll { overflow-x: auto; }
+  @media (max-width: 720px) { table.cost { min-width: 760px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #323 and #341 · the owner's question, 2026-11-13 · a draft, nothing built</p>
+    <h1>Should an estimator set the Pay calendar from a bid?</h1>
+    <p><b>My pick: yes, in a narrower form.</b> The estimator writes down the terms they read in the GC's contract, on the bid. The office gets them in Dispatch and makes them the calendar with one press, with the payer's record in front of them. The estimator never sees a payment, and no bill's due day moves until the office says so.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+
+<h2>The door on a bid <small>three steps, left to right</small></h2>
+<p class="lede">The purple outline marks what is new. Everything else is on the screen today.</p>
+
+<div class="three">
+
+  <div class="col">
+    <div class="cap">1 · The estimator, in the bid window</div>
+    <p class="say">The bid window's <b>People</b> section already shows each GC on the bid as a card. The card gains one row, <b>Pay terms</b>. This is where the estimator has the GC's contract open.</p>
+    <div class="frame">
+      <div class="bar"><b>Edit bid · B412 Larkfield Medical Office</b><span class="x">×</span></div>
+      <div class="pad">
+        <p class="sect">People</p>
+        <p class="lab">GCs on this bid</p>
+        <div class="card">
+          <div class="gchead"><b>Larkfield Construction</b><span class="chip plain">primary</span><span class="link">change ▸</span></div>
+          <div class="who">410 Harrow Street · Maya Okafor · (555) 010-0142</div>
+          <dl class="fact new">
+            <dt>Pay terms</dt>
+            <dd><span class="press">Write down their pay terms…</span><span class="tag">new</span>
+              <span class="small">From their contract or the bid documents. The office sets the pay calendar from it.</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="gchead"><b>Sable Ridge Builders</b><span class="chip plain">also bidding to</span></div>
+          <div class="who">88 Quarry Road</div>
+          <dl class="fact new">
+            <dt>Pay terms</dt>
+            <dd>In by the 25th, paid the 30th of the next month <span class="chip">With the office</span>
+              <span class="small">You sent this Nov 11. § 7.1</span></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <p class="say">A second door, same window: the <b>Go / no-go</b> checklist's <i>Payment terms</i> question gets the same press under it.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap">2 · What the estimator fills in</div>
+    <p class="say">The same three choices the office's window has, and the same plain-date read-back. No payment record, and the button sends. It does not save a calendar.</p>
+    <div class="frame">
+      <div class="win new">
+        <h3>Pay terms · Larkfield Construction</h3>
+        <p class="hint">What their contract says. Skip this for a GC who pays some days after each bill.</p>
+        <span class="fl">Bills must be in by</span>
+        <span class="sel">The 25th</span>
+        <span class="fl">They pay on the</span>
+        <div class="row"><span class="sel">10th</span><span>of</span><span class="sel">the next month</span></div>
+        <div class="check"><i></i><span>They pay when the owner pays them</span></div>
+        <span class="fl">Where the contract says it</span>
+        <div class="row"><span class="inp">§ 5.2</span><span class="inp" style="flex:1 1 180px">Paid the 10th of the month after it is received.</span></div>
+        <div class="box blue"><b>In by Nov 25, due Dec 10.</b><br>One day late is due Jan 10.</div>
+        <div class="box gone">Their record against this. <b>Not drawn for an estimator.</b> It is the payer's payment history.</div>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Send to the office</span></div>
+        <p class="foot">Nothing changes on a bill until the office sets it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">3 · The office, in Dispatch</div>
+    <p class="say">The terms land as a row in the Dispatch inbox, like a won bid's <i>Open the job</i>. The press opens today's Pay calendar window, already filled in.</p>
+    <div class="frame">
+      <div class="pad">
+        <div class="inbox new">
+          <b>Pay terms read on B412 · Larkfield Construction</b>
+          <span class="small">From Dana Whitfield · In by the 25th, paid the 10th of the next month · § 5.2</span>
+          <div class="btnrow" style="justify-content:flex-start;margin-top:8px"><span class="btn blue">Open the pay calendar</span><span class="btn quiet">Not a calendar payer</span></div>
+        </div>
+      </div>
+      <div class="win" style="border-top:1px solid var(--border)">
+        <h3>Pay calendar · Larkfield Construction</h3>
+        <p class="hint">Filled in from Dana Whitfield's read of bid B412. Check it, then save.</p>
+        <span class="fl">Bills must be in by</span>
+        <span class="sel">The 25th</span>
+        <span class="fl">They pay on the</span>
+        <div class="row"><span class="sel">10th</span><span>of</span><span class="sel">the next month</span></div>
+        <div class="box blue"><b>In by Nov 25, due Dec 10.</b><br>One day late is due Jan 10.</div>
+        <div class="box amber"><b>Their record against this.</b> The office reads how the payer's past payments landed, as today.</div>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Save pay calendar</span></div>
+        <p class="foot">Every bill this payer pays reads it.</p>
+      </div>
+    </div>
+    <p class="say">After the save the estimator's row reads <span class="chip green">Set by the office Nov 14</span>. When the bid is won, its job follows the payer's calendar from its first bill. Nothing is copied.</p>
+  </div>
+
+</div>
+
+<h2>The three forms, and what each costs</h2>
+<div class="scroll">
+<table class="cost">
+  <thead>
+    <tr><th>Form</th><th>What the estimator does</th><th>Migration and gates</th><th>What the estimator newly reads</th><th>The risk</th></tr>
+  </thead>
+  <tbody>
+    <tr class="pick">
+      <td><b>Write it down, the office sets it</b><span class="tag">my pick</span></td>
+      <td>Types the terms on the bid and sends them. The office saves the calendar.</td>
+      <td><b>None.</b> A Dispatch row carries the terms. The two money gates are not touched.</td>
+      <td><b>Nothing.</b> Their own sent row and its answer.</td>
+      <td>One press of office work per GC. An estimator cannot see that a GC already has a calendar.</td>
+    </tr>
+    <tr>
+      <td><b>The estimator sets it</b></td>
+      <td>Saves the calendar from the bid. Sees the two days and the read-back, never the record.</td>
+      <td><b>One migration.</b> Two gates of the calendar's own, a new policy, and a refusal for the digital twins written into the save.</td>
+      <td>Every payer's calendar: the days, the clause, who set it.</td>
+      <td>A calendar moves the due day on every bill that payer has out, set by someone who sees none of those bills and cannot see the record that would warn them.</td>
+    </tr>
+    <tr>
+      <td><b>The estimator only sees it</b></td>
+      <td>Reads a GC's calendar on the bid. Tells the office by hand when it is wrong.</td>
+      <td><b>One migration.</b> A read gate of the calendar's own and a new policy.</td>
+      <td>Every payer's calendar: the days, the clause, who set it.</td>
+      <td>The terms the estimator just read still have nowhere to go.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="note"><b>Why the two money gates cannot simply be widened.</b> The gate that lets the office set a calendar also lets it record a customer's promise to pay, mark a bill as paid by claim and set the day a payer accepted a bill. The gate that reads a calendar also reads every promise and paid claim in the company. Adding estimators to either would hand them all of that, and the digital twins sign in as estimators. So any form where the estimator reads or saves a calendar needs gates of the calendar's own.</p>
+
+</div>
+<script>
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set);
+      document.querySelectorAll('.themes button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+</script>
+</body>
+</html>
