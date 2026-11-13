@@ -8,6 +8,7 @@ import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { derivePersonFileFreshness, type PersonFileFreshness } from '../../lib/people/personFileFreshness'
 import { HrPendingReportsSection } from './HrPendingReportsSection'
 import { PersonFilePanel, type PersonFileView } from './personFile/PersonFilePanel'
+import { HrKeptPlansSection } from './HrKeptPlansSection'
 
 export { HR_ENTRY_SOURCES } from './personFile/PersonFilePanel'
 
@@ -262,6 +263,9 @@ export default function PeopleHrTab() {
         onExpand={() => setQueueOpen(true)}
       />
 
+      {/* Punch list #315: the plans an agent kept for a yes, every file's while none is open. */}
+      {selectedPerson ? null : <HrKeptPlansSection nameForPerson={(id) => people.find((p) => p.id === id)?.name ?? 'this person'} onOpenPerson={(id) => openPerson(id, 'timeline')} reloadKey={fileChangeKey} />}
+
       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Roster */}
         {narrow && selectedPerson ? null : (
@@ -322,6 +326,7 @@ export default function PeopleHrTab() {
                 {selectedPerson.archived_at && <span style={chipStyle({ background: 'var(--bg-neutral-100)', color: 'var(--text-muted)' })}>Archived</span>}
                 {!selectedPerson.account_user_id && <span style={chipStyle({ background: 'var(--bg-subtle)', color: 'var(--text-muted)' })}>no login</span>}
               </div>
+              <HrKeptPlansSection personId={selectedPerson.id} nameForPerson={() => selectedPerson.name} onOpenPerson={(id) => openPerson(id, 'timeline')} reloadKey={fileChangeKey} />
               <PersonFilePanel
                 personId={selectedPerson.id}
                 userId={selectedPerson.account_user_id}
