@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { addressRule, addressWords, isLeftOut, leftOutKey, leftOutPickerNames, leftOutText, leftOutWords, parseLeftOut, withRule, withoutRule, type LeftOutRule } from './leftOut'
+import { addressRule, addressWords, isLeftOut, leftOutKey, leftOutPickerNames, leftOutText, leftOutWords, parseLeftOut, withLeftOutJobIds, withRule, withoutRule, type LeftOutRule } from './leftOut'
 
 const development: LeftOutRule = { kind: 'development', key: 'dev-1', label: 'Oak Hollow' }
 const customer: LeftOutRule = { kind: 'customer', key: 'cust-1', label: 'Ridgeway Builders' }
@@ -88,5 +88,25 @@ describe('the key and the words', () => {
     expect(leftOutWords([development, customer])).toBe('Leaves out Oak Hollow and Ridgeway Builders.')
     expect(leftOutWords([development, customer, address])).toBe('Leaves out Oak Hollow, Ridgeway Builders and 12 Elm St.')
     for (const rules of [[], [development], [development, customer], [development, customer, address]]) expect(plainWordsFailures(leftOutWords(rules))).toEqual([])
+  })
+})
+
+describe('the ids every job-keyed read takes', () => {
+  const zz: ReadonlySet<string> = new Set(['job-zz'])
+  const named: ReadonlySet<string> = new Set(['job-oak', 'job-zz'])
+
+  it('is the ZZ set itself when the list names no job', () => {
+    expect(withLeftOutJobIds(zz, new Set())).toBe(zz)
+    expect(withLeftOutJobIds(zz, null)).toBe(zz)
+    expect(withLeftOutJobIds(zz, undefined)).toBe(zz)
+    expect(withLeftOutJobIds(null, new Set())).toBeNull()
+  })
+
+  it('joins the jobs the list names to the ZZ jobs', () => {
+    expect([...(withLeftOutJobIds(zz, named) ?? [])].sort()).toEqual(['job-oak', 'job-zz'])
+  })
+
+  it('is the list’s jobs alone for a reader who keeps the ZZ test jobs', () => {
+    expect(withLeftOutJobIds(null, named)).toBe(named)
   })
 })

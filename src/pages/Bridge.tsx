@@ -58,7 +58,7 @@ import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
-import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
+import { leftOutKey, leftOutPickerNames, withLeftOutJobIds, type LeftOutRule } from '../lib/bridge/leftOut'
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
@@ -260,8 +260,7 @@ export default function Bridge() {
   /** The ids every Bridge read takes (v2.6813): the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
   const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
     const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
-    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
-    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+    return withLeftOutJobIds(zz, leftOutJobIds)
   }, [hideZz, user?.id, leftOutJobIds])
   /**
    * The viewer's ZZ switch alone, for the won rates. There a set stands for the switch, and a bid on something left
