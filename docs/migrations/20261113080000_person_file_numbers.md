@@ -23,3 +23,5 @@ All three tables are a dev's alone and the migration ends with the four fence ca
 Held by `npm run test:pg:person-file-numbers` (`supabase/tests/person_file_numbers/`, in `scripts/sql-beds.txt`): 41 checks. Before the PR the scenario ran on a local Postgres 15 with stand-in tables and the migration applied twice; three mutants each failed it (a trigger that keeps the client's number, a floor that ignores old titles, a backfill that takes the first of a clash).
 
 Deploy order: push this migration. From the push on, every new evidence record is numbered. No client reads the new tables yet and no function is redeployed.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

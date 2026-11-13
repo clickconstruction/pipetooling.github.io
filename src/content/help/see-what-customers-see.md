@@ -9,12 +9,12 @@ What customers see shows every email and page anyone outside the company gets. E
 
 **Settings → What customers see** shows every email and page anyone outside the company gets. That is a customer, a general contractor, a subcontractor, a supply house or the collections law firm. Each is rendered live with sample data, in the order they meet them. Since v2.3507 the whole office sees it, not only devs. You send these pages. So this is where you see them from the other side. You use it after you change a Setting. That may be the estimate copy, the public terms, the footer or the bid cover-letter defaults. You see every surface follow.
 
-## Five audiences, and a count at the top
+## Six audiences, and a count at the top
 
 The strips are **Homeowner**, **General contractor**, **Lien letters**, **Subcontractor**, **Supply house** and **Collections law firm**. That is every audience the app writes to. Lien letters is a group of its own, for the owner of a property and their builder. Under the toolbar a count says how much of it renders today:
 
 :::example The count line
-{{chip:blue|39 steps across 5 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
+{{chip:blue|39 steps across 6 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
 :::
 
 Under the count, **Where people are, all at once** shows, per step, how many outside people are there. It shows how many are stuck. Stuck means agreements never opened, bid rooms never opened, portals never visited, or statements not certified. Each has its door. A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it. So nothing the customer gets is missing from the map, even before it renders. A check runs on every change to the app. A new public page or a new customer email cannot ship without a place on this tab.
@@ -36,7 +36,7 @@ Each strip is one audience. Each step names what sends it, for example *Estimate
 {{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement PDF}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Signed copy}} → {{chip:gray|Bill email}}
 :::
 
-The **Agreement to sign** step is the customer's service agreement from the Contract sweep. It is a different document from the subcontractor's **Contract to sign** further down. Its email, its **Agreement PDF** email and its reminder are built by the same code the app sends with. The Agreement PDF email has the agreement attached to print and sign by hand, with the link underneath. On a real customer, one of the two emails did not go. That one reads *Went as a signing link* or *Went as a PDF to sign by hand*. A page handed over in person reads *Handed over on paper*. The sample page signs into the signed view without saving anything. The GC strip's **Submittal review room** is the same. A submittal is the product paperwork sent for approval. You identify and decide on the sample room and nothing is saved. So are the supply house's **Quote page** and the law firm's **Portal**. Collections paper sits at the end of the journey it belongs to. That is the demand letter, the notice to the owner of record, and the lien release.
+The **Agreement to sign** step is the customer's service agreement from the Contract sweep. It is a different document from the subcontractor's **Contract to sign** further down. Its email, its **Agreement PDF** email and its reminder are built by the same code the app sends with. The Agreement PDF email has the agreement attached to print and sign by hand, with the link underneath. On a real customer, one of the two emails did not go. That one reads *Went as a signing link* or *Went as a PDF to sign by hand*. A page handed over in person reads *Handed over on paper*. The sample page signs into the signed view without saving anything. The GC strip's **Submittal review room** is the same. A submittal is the product paperwork sent for approval. You identify and decide on the sample room and nothing is saved. So are the supply house's **Quote page** and the law firm's **Portal**. Collections paper sits at the end of the journey it belongs to. That is the demand letter and the lien release. The notice to the owner of record is step 1 of the Lien letters strip.
 
 :::example The subcontractor's strip
 {{chip:gray|Portal link, texted}} → {{chip:gray|Sub portal}} → {{chip:gray|Contract email}} → {{chip:gray|Contract to sign}} → {{chip:gray|Signed}}

@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · the spike live 2026-11-12 (v2.6981, v2.6993, v2.6995) · the owner's side tried it, said *I like all of it, start PR one and build it all* · THE TRAIN IS BUILT AND ON MAIN 2026-11-12: the ask and the card (v2.6999), the three presses (v2.7000, moved onto the Text row in v2.7054), Drive (v2.7001, v2.7025), the kept place (v2.7002), the estimate (v2.7004), the job (v2.7005), the page's own entry (v2.7007, v2.7038), Spanish (v2.7009), What customers see (v2.7017) · the tech (v2.7006) · every migration pushed, every function deployed
+status: asked 2026-11-11 · the spike live 2026-11-12 (v2.6981, v2.6993, v2.6995) · the owner's side tried it, said *I like all of it, start PR one and build it all* · THE TRAIN IS BUILT AND ON MAIN 2026-11-12: the ask and the card (v2.6999), the three presses (v2.7000, moved onto the Text row in v2.7054, each hover naming its typed word since v2.7123), Drive (v2.7001, v2.7025), the kept place (v2.7002), the estimate (v2.7004), the job (v2.7005), the page's own entry (v2.7007, v2.7038), Spanish (v2.7009), What customers see (v2.7017) · the tech (v2.7006, its window opening over the conversation since v2.7069) · every migration pushed, every function deployed
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -17,7 +17,7 @@ summary: >
   so the card calls the record a First look and the customer's page Show us the problem. The
   files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
   under each job, and what is picked on the phone is kept there until it has signal to send.
-next: #7842 merges, so Ask a tech opens where it can be seen; then the owner's first real call with it, and his try of a real iPhone clip on the office's machines
+next: the owner's first real call with it, and his try of a real iPhone clip on the office's machines
 size: L, built as nine PRs and four small ones after
 blocker: Three things that are the owner's: the Worker's /show/ line in the Cloudflare dashboard, raising the 50 MiB a file limit if a video longer than about 40 seconds is wanted, and a real iPhone clip played on the office's machines.
 opinion: built — what is left is small and named under *What is not done*
@@ -447,7 +447,7 @@ Asked 2026-11-11 and read against `main` the same day. The owner's side read the
 - **Spanish**: a phone set to Spanish opened the sample and a real link in Spanish, one press turned the page to English and back, the button read *Enviar 1 foto*, and the thank-you read *Recibido. Robert tiene 1 foto.* The office's card read the place as *Kitchen* and their words as written.
 
 - **The presses' row**: on the live site the three presses sit level with Text, at the right edge, and at 375 wide they wrap under the kinds with nothing off the side.
-- **The tech**: **Ask a tech…** was on the card, and the press found a fault. Add a task opened with the question on it underneath the thread's window, where nobody could see it, because the thread's window sits on a higher layer. **Send as a task** in a thread's menu had the same fault. #7842 puts Add a task on top; it was seen right on the real thread window from a local server. The tech's page opened for the one look, drew the photo with the place and the words, and kept **Send my answer** dead until an answer was picked. An answer sent by the office's own sign-in read *The office has your answer*, and the card and a team note on the thread both read *Robert: Needs a visit to price* with the note. No task was saved.
+- **The tech**: **Ask a tech…** was on the card, and the press found a fault. Add a task opened with the question on it underneath the thread's window, where nobody could see it, because the thread's window sits on a higher layer. **Send as a task** in a thread's menu had the same fault. #7842 (v2.7069, merged 2026-11-13) puts Add a task on top; it was seen right on the real thread window from a local server. The tech's page opened for the one look, drew the photo with the place and the words, and kept **Send my answer** dead until an answer was picked. An answer sent by the office's own sign-in read *The office has your answer*, and the card and a team note on the thread both read *Robert: Needs a visit to price* with the note. No task was saved.
 
 Every ZZ Test look was removed from the desk afterwards, with its rows and its files. Two Drive folders the walks made stay under the ZZ Test customer and the ZZ Test job, since nothing here can delete from Drive.
 

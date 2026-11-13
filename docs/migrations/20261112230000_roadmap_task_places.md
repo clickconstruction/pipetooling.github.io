@@ -30,3 +30,5 @@ Read-only on prod after the push:
 
 - `select count(*) from information_schema.columns where table_name = 'checklist_tech_tree_group_tasks' and column_name like 'place_%'` reads `6`.
 - `select conname from pg_constraint where conname like 'checklist_tech_tree_group_tasks_place_%'` lists three.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7901.
