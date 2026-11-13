@@ -83,5 +83,5 @@ export const MY_MAIL_SETTINGS_ANCHOR = 'settings-my-mail'
 export const MY_MAIL_SETTINGS_HREF = `/settings?tab=settings-account#${MY_MAIL_SETTINGS_ANCHOR}`
 
 /** The guide for the tab (`src/content/help/`), and its heading the tab's words line opens. */
-export const MY_MAIL_GUIDE = 'tag-an-email-onto-a-job-from-your-own-mail'
+export const MY_MAIL_GUIDE = 'save-an-email-to-a-job-from-your-own-mail'
 export const MY_MAIL_GUIDE_READS = 'What the tab reads and keeps'

@@ -864,7 +864,7 @@ function drawDemandLetterPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, block
           ensureRoom(rowH)
           b.rows.slice(i, i + perRow).forEach((r, j) => {
             const x = PAGE_MARGIN + j * colW
-            if (r.png) doc.addImage(r.png, 'PNG', x, y, qr, qr)
+            if (r.png) doc.addImage(r.png, 'PNG', x, y, qr, qr, undefined, 'FAST')
             else {
               doc.setDrawColor(150, 145, 136)
               doc.setLineWidth(0.25)

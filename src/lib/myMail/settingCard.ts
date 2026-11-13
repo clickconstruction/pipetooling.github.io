@@ -20,12 +20,12 @@ export const MY_MAIL_CARD_WORDS = {
   off: 'Off',
   reads: (address: string): string =>
     address.trim()
-      ? `Reads ${address.trim()}, your Inbox and Sent, live. Nothing is kept until you tag a conversation.`
-      : 'Reads your own Inbox and Sent, live. Nothing is kept until you tag a conversation.',
-  tag: 'A tag copies that conversation onto the job, where the office team reads it.',
-  untag: 'Untag takes it back, unless the office already put it on a legal matter.',
+      ? `Reads ${address.trim()}, your Inbox and Sent, live. Nothing is kept until you save a conversation.`
+      : 'Reads your own Inbox and Sent, live. Nothing is kept until you save a conversation.',
+  tag: 'Saving copies that conversation onto the job, where the office team reads it.',
+  untag: 'Take off the job takes it back, unless the office already put it on a legal matter.',
   never: 'Never read: Drafts, Spam, Trash, and any label you name here.',
-  gmailLabel: 'Nothing writes to your Gmail. A tag adds no label and changes no mail.',
+  gmailLabel: 'Nothing writes to your Gmail. Saving adds no label and changes no mail.',
   onlyYou: 'Only you see this tab. Nobody on the team reads your mail through the app.',
   hidden: 'Labels left out',
   addLabel: '+ a label',
