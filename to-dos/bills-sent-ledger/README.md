@@ -209,6 +209,7 @@ The calls were taken as recommended, since she said build: one screen over the r
 | 5 | **Print** and **Download CSV** of what the list shows. | v2.7056, live |
 | 6 | **Say how it went…** on a bill with no send on record: a record made by hand. | #7827, in the merge queue |
 | | Bills sent can be pinned to the Dashboard (Pin, and Pin for someone). | #7912, in the merge queue |
+| | The press in the Billed header on Jobs → Pipeline, after Paid notifications, and its row in the ☰ Section tools menu: the recommendation's door 5, asked for by Todd on 2026-11-13 with a screenshot. | v2.7146 |
 | | The phone layout: the list first, a short card a send whose whole face opens the record, presses a thumb can hit. | #7917, waits on #7827 |
 
 What the live reads showed, counts only: 349 lines back to the spring under 101 days, 128 of them older emails that say the address was not kept, 24 open bills with no send on record and 58 more paid behind the press. Of the 69 emailed bills with a kept copy, 62 read *Delivered*, 6 have no answer from the mail server yet, and none bounced. The CSV's rows match the screen's lines, and the rows marked as in the day total add up to the screen's day totals.

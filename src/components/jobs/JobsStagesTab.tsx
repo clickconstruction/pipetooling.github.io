@@ -24,7 +24,7 @@ import {
 import { useOrgDefault } from '../../hooks/useOrgDefault'
 import { orgDefaultBool } from '../../lib/orgDefaults'
 import { readDeviceString, writeDeviceString } from '../../lib/deviceString'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
@@ -264,6 +264,7 @@ import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
 import { LIEN_DESK_PATH, lienDeskHref } from '../../lib/lien/lienDeskRoute'
+import { BILLS_SENT_PATH, canOpenBillsSent } from '../../lib/billing/billsSent'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
@@ -301,7 +302,7 @@ import { canSeeProjectsBoard } from '../../lib/jobs/projectsBoard'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
-import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
+import { BILLS_SENT_DOOR_TITLE, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
@@ -3280,6 +3281,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // Punch list #182 (PR 2): the Legal desk is a page, `/legal-desk`; the row goes there and Back returns here.
       'legal-desk': () => navigate(LEGAL_DESK_PATH),
       'paid-notifications': () => setPaymentEmailSettingsOpen(true),
+      // Bills sent is a page, `/bills-sent` (punch list #327); the row goes there and Back returns here.
+      'bills-sent': () => navigate(BILLS_SENT_PATH),
       'paid-profit-chart': () => setPaidProfitChartOpen(true),
       'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
     }
@@ -4132,6 +4135,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       <StagesToolsMenuGlyph name="bell" inherit />
                       Paid notifications
                     </button>
+                  )}
+                  {/* Bills sent is a page (punch list #327), so its door is a link: a new tab opens it too. The page's own gate draws it. */}
+                  {canOpenBillsSent(authRole) && (
+                    <Link
+                      to={BILLS_SENT_PATH}
+                      data-testid="billed-header-bills-sent"
+                      title={BILLS_SENT_DOOR_TITLE}
+                      style={{ ...billedHeaderActionStyle(false), textDecoration: 'none' }}
+                    >
+                      <StagesToolsMenuGlyph name="send" inherit />
+                      Bills sent
+                    </Link>
                   )}
                   </div>
                 </div>

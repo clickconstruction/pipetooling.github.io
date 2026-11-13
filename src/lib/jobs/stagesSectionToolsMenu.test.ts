@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildStagesSectionToolsMenu } from './stagesSectionToolsMenu'
+import { canOpenBillsSent } from '../billing/billsSent'
+import { BILLS_SENT_DOOR_TITLE, buildStagesSectionToolsMenu } from './stagesSectionToolsMenu'
 
 const base = {
   recentViewOpen: false,
@@ -38,6 +39,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart',
       'billed-payment-forecast',
       'paid-notifications',
+      'bills-sent',
       'legal-desk',
       'paid-profit-chart',
       'paid-in-full-notifications',
@@ -90,7 +92,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'legal-desk'])
+    expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'bills-sent', 'legal-desk'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     // Since v2.6760 (punch list #188 row 41) the controller opens the notification windows too, so her menu is the dev's.
     expect(keysOf(controllerGroups)).toEqual(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })))
@@ -143,10 +145,25 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart': 'chart-bar',
       'billed-payment-forecast': 'calendar-bars',
       'paid-notifications': 'bell',
+      'bills-sent': 'send',
       'legal-desk': 'scales',
       'paid-profit-chart': 'chart-bar',
       'paid-in-full-notifications': 'bell',
     })
+  })
+
+  it('Bills sent is the page\u2019s own gate, last in the Billed group, saying what it opens in the page\u2019s words', () => {
+    const billed = (authRole: string | null) => buildStagesSectionToolsMenu({ ...base, authRole }).find((g) => g.section === 'Billed Awaiting Payment')!.items
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(canOpenBillsSent(authRole)).toBe(true)
+      const last = billed(authRole).at(-1)!
+      expect(last).toEqual({ key: 'bills-sent', label: 'Bills sent', title: BILLS_SENT_DOOR_TITLE, disabled: false, icon: 'send' })
+    }
+    expect(BILLS_SENT_DOOR_TITLE).toBe('Every bill that left, who it went to, and the minute it went')
+    for (const authRole of ['primary', 'superintendent', 'estimator', 'subcontractor', 'helpers', null]) {
+      expect(canOpenBillsSent(authRole)).toBe(false)
+      expect(billed(authRole).map((i) => i.key)).not.toContain('bills-sent')
+    }
   })
 
   it('GC Review disables only when Billed and Collections are both empty', () => {
