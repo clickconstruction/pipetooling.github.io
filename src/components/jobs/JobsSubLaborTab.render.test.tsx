@@ -77,6 +77,24 @@ describe('JobsSubLaborTab · the Pay view on a phone', () => {
     expect(document.querySelector('[data-sub-pay-phone]')).toBeNull()
   })
 
+  it("a desk row's More button centres its dots by its own box, keeps its name and opens its menu (v2.7168)", async () => {
+    narrow.on = false
+    renderWithProviders(<JobsSubLaborTab {...props()} />)
+    await settle()
+    const more = screen.getByRole('button', { name: 'More' })
+    // The dots are the Pipeline row's icon, not typed characters: text under the default button padding sat right and low.
+    expect(more.textContent).toBe('')
+    expect(more.querySelector('svg')).not.toBeNull()
+    expect(more.style.display).toBe('inline-flex')
+    expect(more.style.alignItems).toBe('center')
+    expect(more.style.justifyContent).toBe('center')
+    expect(more.style.padding).toBe('0px')
+    expect(more.style.width).toBe('30px')
+    expect(more.style.height).toBe('26px')
+    fireEvent.click(more)
+    expect(screen.getAllByRole('menuitem').map((x) => x.textContent)).toEqual(expect.arrayContaining(['Back-charge…', 'Edit sheet', 'Print', 'Story…', 'Lien waiver…']))
+  })
+
   it('the Sheet date saves a finished date only: a half-typed year hands over nothing, a finished date once', async () => {
     narrow.on = false
     const onUpdateLaborJobDate = vi.fn()
