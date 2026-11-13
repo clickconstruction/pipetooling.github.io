@@ -14,7 +14,7 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 function customer(overrides: Partial<CustomerRow>): CustomerRow {
   return {
     id: 'c1',
-    name: 'Todd Cop',
+    name: 'Todd Crayle',
     address: '6414 Maverick Oak Dr San Antonio, TX 78240',
     master_user_id: 'master-1',
     contact_info: null,
@@ -69,13 +69,13 @@ describe('customerRowSummary', () => {
     const summary = customerRowSummary({
       customers: [customer({})],
       customerId: 'c1',
-      customerName: 'Todd Cop',
+      customerName: 'Todd Crayle',
       customerEmail: '',
       customerPhone: '',
       masterUserId: 'master-1',
     })
     expect(summary).toEqual({
-      name: 'Todd Cop',
+      name: 'Todd Crayle',
       linked: true,
       address: '6414 Maverick Oak Dr San Antonio, TX 78240',
       notInCustomers: false,
@@ -98,7 +98,7 @@ describe('customerRowSummary', () => {
     const summary = customerRowSummary({
       customers: [customer({})],
       customerId: null,
-      customerName: 'Todd Cop',
+      customerName: 'Todd Crayle',
       customerEmail: '',
       customerPhone: '',
       masterUserId: 'master-1',

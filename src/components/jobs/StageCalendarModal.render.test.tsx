@@ -17,15 +17,15 @@ describe('StageCalendarModal', () => {
       <StageCalendarModal
         open
         onClose={onClose}
-        title="Top-out · #880 · Knight Contracting"
-        subtitle="150 E Sonterra Blvd · Behar Kraja · WO-880-02"
+        title="Top-out · #880 · Kestrin Contracting"
+        subtitle="150 E Sonmere Blvd · Behar Kraja · WO-880-02"
         todayYmd="2026-09-07"
         window={{ start: '2026-09-22', end: '2026-10-02' }}
         windowBy="office"
         pick={null}
         pickBy={null}
         ask={{ span: { start: '2026-09-29', end: '2026-10-10' }, note: 'framing slipped', askedOn: '2026-09-05' }}
-        gc={{ state: 'asked', gcName: 'Summit General', shownSince: null }}
+        gc={{ state: 'asked', gcName: 'Selwick General', shownSince: null }}
         subName="Behar Kraja"
         subLine="offer out since 2026-09-04 · no pick yet"
         offDays={['2026-09-24']}
@@ -38,7 +38,7 @@ describe('StageCalendarModal', () => {
         onAnswer={onAnswer}
       />,
     )
-    expect(screen.getByRole('dialog', { name: 'Top-out · #880 · Knight Contracting' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Top-out · #880 · Kestrin Contracting' })).toBeTruthy()
     expect(screen.getByRole('grid', { name: 'September 2026' })).toBeTruthy()
     expect(screen.getByRole('grid', { name: 'October 2026' })).toBeTruthy()
     expect(screen.getByRole('gridcell', { name: '2026-09-07, today' })).toBeTruthy()

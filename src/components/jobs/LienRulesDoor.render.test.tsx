@@ -69,12 +69,12 @@ describe('LienRulesDoor', () => {
   })
   it('names the desk\'s job with its two dates and lights its row in the clock table; no job, no strip and live months around today', async () => {
     const months = [{ key: '2026-06' }, { key: '2026-07' }]
-    const job = lienRulesJobFrom({ label: '804 · Summit GC- Auto Zone', propertyKind: 'non_residential', isSub: true, months, earliestDeadline: '2026-10-15' }, '2026-10-07')
+    const job = lienRulesJobFrom({ label: '804 · Selwick GC- Tire Barn', propertyKind: 'non_residential', isSub: true, months, earliestDeadline: '2026-10-15' }, '2026-10-07')
     render(<LienRulesDoor where="desk_notice" job={job} todayYmd="2026-10-07" />)
     fireEvent.click(screen.getByTestId('lien-rules-door'))
     await screen.findByTestId('lien-rules-modal')
     const strip = screen.getByTestId('lien-rules-job')
-    expect(strip.textContent).toContain('804 · Summit GC- Auto Zone')
+    expect(strip.textContent).toContain('804 · Selwick GC- Tire Barn')
     expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Oct 15')
     expect(screen.getByTestId('lien-rules-job-lien').textContent).toBe('Nov 16')
     const body = screen.getByTestId('lien-rules-body')

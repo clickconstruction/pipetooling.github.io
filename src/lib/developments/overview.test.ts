@@ -94,35 +94,35 @@ describe('jobOpen and jobOpenOnBill', () => {
 
 describe('the site address', () => {
   const members = {
-    bids: [bid({ id: 'b1', address: 'Gun Dog Trl, Neeses SC' }), bid({ id: 'b2', address: 'Gun Dog Trail, Neeses, SC' }), bid({ id: 'b3', address: '' })],
-    jobs: [job({ id: 'j1', job_address: 'Gun Dog Trail, Neeses, SC' }), job({ id: 'j2', job_address: '12925 FM 20, Kingsbury, Texas 78638' })],
+    bids: [bid({ id: 'b1', address: 'Gray Fox Trl, Neeses SC' }), bid({ id: 'b2', address: 'Gray Fox Trail, Neeses, SC' }), bid({ id: 'b3', address: '' })],
+    jobs: [job({ id: 'j1', job_address: 'Gray Fox Trail, Neeses, SC' }), job({ id: 'j2', job_address: '12925 FM 20, Kingsbury, Texas 78638' })],
   }
   it('memberAddressKeys normalizes and dedupes', () => {
-    expect([...memberAddressKeys(members)]).toEqual(['gun dog trail neeses sc', '12925 fm 20 kingsbury texas'])
+    expect([...memberAddressKeys(members)]).toEqual(['gray fox trail neeses sc', '12925 fm 20 kingsbury texas'])
     expect(memberAddressKeys({ bids: [], jobs: [] }).size).toBe(0)
   })
   it('sharedAddressWords prints the most common spelling of the most common key', () => {
-    expect(sharedAddressWords(members)).toBe('Gun Dog Trail, Neeses, SC')
+    expect(sharedAddressWords(members)).toBe('Gray Fox Trail, Neeses, SC')
     expect(sharedAddressWords({ bids: [], jobs: [] })).toBeNull()
     expect(sharedAddressWords({ bids: [bid({ id: 'b', address: '  ' })], jobs: [] })).toBeNull()
   })
 
   it('sharedAddressWords prints the state in capitals however the rows typed it', () => {
-    const typed = { bids: [], jobs: [job({ id: 'j1', job_address: 'Gun Dog Trail, Neeses, Sc' }), job({ id: 'j2', job_address: 'Gun Dog Trail, Neeses, Sc' })] }
-    expect(sharedAddressWords(typed)).toBe('Gun Dog Trail, Neeses, SC')
-    expect(stateUppercased('Gun Dog Trail, Neeses, sc 29107')).toBe('Gun Dog Trail, Neeses, SC 29107')
+    const typed = { bids: [], jobs: [job({ id: 'j1', job_address: 'Gray Fox Trail, Neeses, Sc' }), job({ id: 'j2', job_address: 'Gray Fox Trail, Neeses, Sc' })] }
+    expect(sharedAddressWords(typed)).toBe('Gray Fox Trail, Neeses, SC')
+    expect(stateUppercased('Gray Fox Trail, Neeses, sc 29107')).toBe('Gray Fox Trail, Neeses, SC 29107')
     expect(stateUppercased('5501 Balcones Dr, Austin, TX')).toBe('5501 Balcones Dr, Austin, TX')
     expect(stateUppercased('12921 FM 20, Kingsbury')).toBe('12921 FM 20, Kingsbury')
-    expect(stateUppercased('Gun Dog Trail')).toBe('Gun Dog Trail')
+    expect(stateUppercased('Gray Fox Trail')).toBe('Gray Fox Trail')
   })
   it('addressSearchPattern keeps the words before the first street suffix, at most three', () => {
-    expect(addressSearchPattern('gun dog trail neeses sc')).toBe('%gun%dog%')
+    expect(addressSearchPattern('gray fox trail neeses sc')).toBe('%gray%fox%')
     expect(addressSearchPattern('12925 fm 20 kingsbury texas')).toBe('%12925%fm%20%')
     expect(addressSearchPattern('road')).toBe('%road%')
     expect(addressSearchPattern('')).toBe('')
   })
   it('splitMembers keeps the members and the exact-key matches not in it', () => {
-    const other = bid({ id: 'b9', development_id: 'ridgeway', address: 'gun dog trail neeses sc' })
+    const other = bid({ id: 'b9', development_id: 'ridgeway', address: 'gray fox trail neeses sc' })
     const elsewhere = job({ id: 'j9', development_id: null, job_address: '1 Main St' })
     const { inIt, atAddress } = splitMembers({ developmentId: 'harlow', bids: [...members.bids, other], jobs: [...members.jobs, elsewhere] })
     expect(inIt.bids.map((b) => b.id)).toEqual(['b1', 'b2', 'b3'])
@@ -204,7 +204,7 @@ describe('pulseWords', () => {
   })
 })
 
-describe('the robot estimators\' shadow bids (the Gun Dog spike, 2026-11-02)', () => {
+describe('the robot estimators\' shadow bids (the Gray Fox spike, 2026-11-02)', () => {
   const bids = [
     { id: 'b-live', estimator_id: 'u-wendi' },
     { id: 'b-shadow', estimator_id: 'u-twin' },

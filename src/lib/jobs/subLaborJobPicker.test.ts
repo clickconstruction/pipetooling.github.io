@@ -15,29 +15,29 @@ const keith = {
   id: 'j1',
   hcp_number: '925',
   click_number: null,
-  job_name: 'Keith Stadtmueller',
-  customer_name: 'Keith Stadtmueller',
+  job_name: 'Keith Stadlow',
+  customer_name: 'Keith Stadlow',
   job_address: '106 Lenz Dr, Seguin, TX',
 }
 const clickOnly = {
   id: 'j2',
   hcp_number: null,
   click_number: '961',
-  job_name: 'Cop Properties',
-  customer_name: 'Todd Cop',
+  job_name: 'Crayle Properties',
+  customer_name: 'Todd Crayle',
   job_address: '10 Cascade Gln',
 }
 const bare = { id: 'j3', hcp_number: null, click_number: null, job_name: null, customer_name: null, job_address: null }
 
 describe('subLaborJobDisplayLabel / searchLabel', () => {
   it('leads with the effective number (HCP wins, Click fallback)', () => {
-    expect(subLaborJobDisplayLabel(keith)).toBe('J925 · Keith Stadtmueller')
-    expect(subLaborJobDisplayLabel(clickOnly)).toBe('J961 · Cop Properties')
+    expect(subLaborJobDisplayLabel(keith)).toBe('J925 · Keith Stadlow')
+    expect(subLaborJobDisplayLabel(clickOnly)).toBe('J961 · Crayle Properties')
     expect(subLaborJobDisplayLabel(bare)).toBe('— · Job')
   })
 
   it('search label includes customer and address so substrings match', () => {
-    expect(subLaborJobSearchLabel(clickOnly)).toBe('J961 · Cop Properties · Todd Cop · 10 Cascade Gln')
+    expect(subLaborJobSearchLabel(clickOnly)).toBe('J961 · Crayle Properties · Todd Crayle · 10 Cascade Gln')
   })
 })
 

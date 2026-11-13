@@ -15,6 +15,7 @@ import {
   type PackageRowInput,
 } from './buildBidPricingPackageHtml'
 import {
+  buildBidPricingPackagePlainText as edgePlainText,
   buildBidPricingPackageTableHtml as edgeTableHtml,
   packageMoneyHtml as edgeMoneyHtml,
 } from '../../supabase/functions/_shared/bidPricingPackage'
@@ -431,12 +432,12 @@ describe('Send both (v2.3685): one package, two labeled prices, ★ first', () =
     const text = buildBidPricingPackagePlainText({
       externalRows: star.externalRows,
       totalRevenue: star.totalRevenue,
-      bidLabel: 'BP385 Galloway Park',
+      bidLabel: 'BP385 Gallenby Park',
       plansLink: null,
       sections: [star, other],
     })
     const lines = text.split('\n')
-    expect(lines[0]).toBe('Bid: BP385 Galloway Park')
+    expect(lines[0]).toBe('Bid: BP385 Gallenby Park')
     expect(lines).toContain('★ Value Engineered — customer\'s price')
     expect(lines).toContain('Written to Plan — second price')
     expect(lines.filter((l) => l.startsWith('Total')).length).toBe(2)
@@ -496,5 +497,31 @@ describe('cents in smaller type (v2.7065)', () => {
     const cells = (html: string): string[] => html.match(/\$[\d,]+<span[^>]*>\.\d\d<\/span>/g) ?? []
     expect(cells(edgeTableHtml(args))).toEqual(cells(buildBidPricingPackageTableHtml(args)))
     expect(cells(edgeTableHtml(args)).length).toBe(3)
+  })
+})
+
+describe('one name for the price column (v2.7081)', () => {
+  const rows = [
+    ext({ fixture: 'LAV-A', count: 3, unitPrice: 2900, revenue: 8700 }),
+    ext({ fixture: 'ft of copper', count: 180.4, unitPrice: 12.5, revenue: 2255 }),
+  ]
+
+  it('the email Send for me sends heads the column Sale Price, as the window does', () => {
+    const html = edgeTableHtml({ externalRows: rows, totalRevenue: 10955 })
+    expect(html).toContain('>Sale Price</th>')
+    expect(html).not.toContain('Unit price')
+  })
+
+  it('the edge function\'s table is the window\'s table, character for character', () => {
+    const args = { externalRows: rows, totalRevenue: 10955 }
+    expect(edgeTableHtml(args)).toBe(buildBidPricingPackageTableHtml(args))
+  })
+
+  it('the plain-text part of the sent email names the column the same way', () => {
+    const args = { externalRows: rows, totalRevenue: 10955, bidLabel: 'BE1 Sample Clinic', plansLink: null }
+    const text = edgePlainText(args)
+    expect(text).toContain('Sale Price')
+    expect(text).not.toContain('Unit price')
+    expect(text).toBe(buildBidPricingPackagePlainText(args))
   })
 })

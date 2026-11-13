@@ -114,22 +114,22 @@ last_updated: 2026-09-05
 > | # | Reference | Project | Axis | Miles |
 > |---|---|---|---|---|
 > | R2-BT-1 | b357 | Crunch William Cannon | mid-size TI (fitness) | 43 |
-> | R2-BT-2 | b344 | Take 5 – Richmond TX | proto/auto-service | 140 |
+> | R2-BT-2 | b344 | Tune 5 – Richmond TX | proto/auto-service | 140 |
 > | R2-BT-3 | b339 | SAISD – Davis MS Phase II | institutional | 43 |
-> | R2-BT-4 | b335 | Take 5 – Eastchase Pkwy FW | proto/auto-service | 214 |
-> | R2-BT-5 | b333 | Take 5 S Post Oak Rd | proto/auto-service | (unset — say so) |
-> | R2-BT-6 | b331 | Take 5 – Sherman | proto/auto-service | 300 |
-> | R2-BT-7 | b297 | Take 5 611 San Pedro Ave | proto/auto-service | 44 |
-> | R2-BT-8 | b306 | Take 5 Katy TX | proto/auto-service | (unset — say so) |
+> | R2-BT-4 | b335 | Tune 5 – Eastchase Pkwy FW | proto/auto-service | 214 |
+> | R2-BT-5 | b333 | Tune 5 S Post Oak Rd | proto/auto-service | (unset — say so) |
+> | R2-BT-6 | b331 | Tune 5 – Sherman | proto/auto-service | 300 |
+> | R2-BT-7 | b297 | Tune 5 611 San Pedro Ave | proto/auto-service | 44 |
+> | R2-BT-8 | b306 | Tune 5 Katy TX | proto/auto-service | (unset — say so) |
 > | R2-BT-9 | b293 | Bonilla Law Firm | small TI | 49 |
-> | R2-BT-10 | b254 | Take 5 Cypress | proto/auto-service | 141 |
-> | R2-BT-11 | b251 | Take 5 Dickinson | proto/auto-service | 186 |
+> | R2-BT-10 | b254 | Tune 5 Cypress | proto/auto-service | 141 |
+> | R2-BT-11 | b251 | Tune 5 Dickinson | proto/auto-service | 186 |
 > | R2-BT-12 | b227 | LCRA Narrows Recreation Area | institutional (park) | 75 |
 > | R2-BT-13 | b214 | Tye Preston Memorial Library Alternate 04 | institutional | 32 |
 > | R2-BT-14 | b147 | Tye Preston Memorial Library | institutional | 32 |
 > | R2-BT-15 | b150 | Garison Park Buda | institutional (park) | 33 |
 > | R2-BT-16 | b182 | MPH LIVARG – Med Gas Only | vet-clinic (med gas) | 262 |
-> | R2-BT-17 | b118 | Connell House – Curvatura | small TI | 37 |
+> | R2-BT-17 | b118 | Corbray House – Curvatura | small TI | 37 |
 > | R2-BT-18 | b159 | SVP LIVARG | vet-clinic | 262 |
 >
 > Notes for wave A: b214 is an alternate of b147 — do b147 first and treat b214 as a
@@ -143,14 +143,14 @@ last_updated: 2026-09-05
 > report them honestly as regression runs, and expect `gate_eligible` to be judged by the
 > owner, not by you:
 >
-> b269 Hawaiian Bros #142 (kitchen/occupied) · b298 Take 5 6811 San Pedro (proto) ·
+> b269 Hawaiian Bros #142 (kitchen/occupied) · b298 Tune 5 6811 San Pedro (proto) ·
 > b351 Pepper Lunch Leander (kitchen/occupied) · b190 Church Video Cafe Reno (small TI) ·
 > b200 HEB CStore San Marcos · b168 HEB CStore & Carwash Converse · b201 AISD Garcia
 > School Renovation (institutional; delta quoted in doctrine) · b323 TSAOG Rogers Rd MOB
 > (institutional; round 1 was void — check the plan set is the tenant fit-out, not
-> core/shell, before counting) · **NOT BLIND:** b370 Hyper Kidz, b280 Crunch Fitness
-> Potranco, b375 SpaceX BA-02N Architectural, b376 MPH Casa Linda, b166 Take 5 Seguin,
-> b237 Take 5 Liberty Hill.
+> core/shell, before counting) · **NOT BLIND:** b370 Jumpy Kidz, b280 Crunch Fitness
+> Potranco, b375 SkyLab BA-02N Architectural, b376 MPH Casa Linda, b166 Tune 5 Seguin,
+> b237 Tune 5 Liberty Hill.
 >
 > Skip b396 and b397 — they are live shadows, not backtests.
 >

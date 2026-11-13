@@ -101,7 +101,7 @@ describe('BridgeSalesDesk on the shared frame (punch list #318)', () => {
     expect(how.textContent).toContain('A job made from a bid does not make it won.')
     expect(how.textContent).not.toMatch(/expected dollars|win share|win rate/i)
     expect(how.textContent).toContain('A loss with no reason opens on its bid, where Why we lost is written.')
-    expect(how.textContent).toContain("The week's call is recorded on the link desk above, not here.")
+    expect(how.textContent).not.toContain('call is recorded')
     expect(how.textContent).toContain('Read Mon, Oct 26 · pay week Oct 25–31')
     // No column of the database is named.
     expect(how.textContent).not.toMatch(/[a-z]_[a-z]/)

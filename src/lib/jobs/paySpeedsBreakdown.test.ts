@@ -7,22 +7,22 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 const speeds: PaySpeedData = {
   company: { medianDays: 16, samples: 40 },
   customers: {
-    knight: { medianDays: 25, samples: 6 },
-    harper: { medianDays: 44, samples: 3 },
-    holub: { medianDays: 7, samples: 4 },
-    weiss: { medianDays: 30, samples: 2 }, // two payments — ranks on their own median since v2.4376 (the floor was 3)
+    kestrin: { medianDays: 25, samples: 6 },
+    halden: { medianDays: 44, samples: 3 },
+    holmby: { medianDays: 7, samples: 4 },
+    welby: { medianDays: 30, samples: 2 }, // two payments — ranks on their own median since v2.4376 (the floor was 3)
   },
   segments: {
     residential: { medianDays: 7, samples: 8 },
     commercial: { medianDays: 25, samples: 32 },
   },
-  customerTypes: { knight: 'commercial', harper: 'commercial', holub: 'residential', weiss: 'commercial' },
+  customerTypes: { kestrin: 'commercial', halden: 'commercial', holmby: 'residential', welby: 'commercial' },
   receipts: {
-    knight: [
+    kestrin: [
       { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: null, jobName: null, address: null },
       { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
     ],
-    weiss: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
+    welby: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
   },
   quality: null,
 }
@@ -45,32 +45,32 @@ function invRow(customerId: string | null, name: string, amount: number, invoice
 describe('buildPaySpeedsBreakdown', () => {
   it('groups open dollars per customer and splits real-median vs thin-history tiers', () => {
     const rows = [
-      invRow('knight', 'Knight Contracting', 1200),
-      invRow('knight', 'Knight Contracting', 600, 'inv-k2'),
-      invRow('harper', 'TF Harper', 2918),
-      invRow('holub', 'Michael Holub', 2375),
-      invRow('weiss', 'Weiss Services', 1625),
+      invRow('kestrin', 'Kestrin Contracting', 1200),
+      invRow('kestrin', 'Kestrin Contracting', 600, 'inv-k2'),
+      invRow('halden', 'TF Halden', 2918),
+      invRow('holmby', 'Michael Holmby', 2375),
+      invRow('welby', 'Welby Services', 1625),
       invRow('newco', 'New Co', 500),
     ]
     const b = buildPaySpeedsBreakdown(rows, speeds)
-    expect(b.ranked.map((c) => c.customerId)).toEqual(['harper', 'weiss', 'knight', 'holub'])
+    expect(b.ranked.map((c) => c.customerId)).toEqual(['halden', 'welby', 'kestrin', 'holmby'])
     expect(b.ranked[0]).toMatchObject({ medianDays: 44, samples: 3, open: 2918, segment: 'commercial' })
-    expect(b.ranked[1]).toMatchObject({ customerId: 'weiss', medianDays: 30, samples: 2, open: 1625 })
-    expect(b.ranked[2]?.open).toBe(1800) // both Knight bills summed
+    expect(b.ranked[1]).toMatchObject({ customerId: 'welby', medianDays: 30, samples: 2, open: 1625 })
+    expect(b.ranked[2]?.open).toBe(1800) // both Kestrin bills summed
     expect(b.thin).toHaveLength(1) // only a customer with no measurable payment
     expect(b.thin[0]).toMatchObject({ customerId: 'newco', medianDays: null, samples: 0, open: 500 })
   })
 
   it('attaches each customer’s receipts (empty when the payload has none)', () => {
-    const rows = [invRow('knight', 'Knight Contracting', 1200), invRow('harper', 'TF Harper', 2918), invRow('weiss', 'Weiss Services', 1625)]
+    const rows = [invRow('kestrin', 'Kestrin Contracting', 1200), invRow('halden', 'TF Halden', 2918), invRow('welby', 'Welby Services', 1625)]
     const b = buildPaySpeedsBreakdown(rows, speeds)
-    expect(b.ranked.find((c) => c.customerId === 'knight')?.receipts).toHaveLength(2)
-    expect(b.ranked.find((c) => c.customerId === 'harper')?.receipts).toEqual([])
-    expect(b.ranked.find((c) => c.customerId === 'weiss')?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }])
+    expect(b.ranked.find((c) => c.customerId === 'kestrin')?.receipts).toHaveLength(2)
+    expect(b.ranked.find((c) => c.customerId === 'halden')?.receipts).toEqual([])
+    expect(b.ranked.find((c) => c.customerId === 'welby')?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }])
   })
 
   it('skips job rows, fully-paid rows, and rows without a customer', () => {
-    const paid = invRow('knight', 'Knight Contracting', 500)
+    const paid = invRow('kestrin', 'Kestrin Contracting', 500)
     ;(paid as { inv: { amount: number } }).inv.amount = 0
     const rows = [
       { kind: 'job', job: { id: 'jx' } } as unknown as StageRow,
@@ -83,7 +83,7 @@ describe('buildPaySpeedsBreakdown', () => {
   })
 
   it('treats every customer as thin history when pay speeds are unavailable', () => {
-    const b = buildPaySpeedsBreakdown([invRow('knight', 'Knight Contracting', 1200)], null)
+    const b = buildPaySpeedsBreakdown([invRow('kestrin', 'Kestrin Contracting', 1200)], null)
     expect(b.ranked).toHaveLength(0)
     expect(b.thin).toHaveLength(1)
     expect(b.thin[0]).toMatchObject({ medianDays: null, samples: 0 })

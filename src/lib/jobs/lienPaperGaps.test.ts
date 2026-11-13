@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gapToken, lienPaperBannerWords, lienPaperFilledSince, lienPaperFixButtonWords, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens } from './lienPaperGaps'
 
-const whole = { ownerName: 'Elbel Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', county: 'Guadalupe', legalDescription: 'Lot 1, Block 2', gcName: 'Loberg Contracting', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
+const whole = { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', county: 'Guadalupe', legalDescription: 'Lot 1, Block 2', gcName: 'Lowbeck Contracting', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
 
 describe('lienPaperGaps (v2.4632)', () => {
   it('a whole paper has no gaps, on either form', () => {

@@ -12,7 +12,7 @@ import type { GcNoticeBandWrongItem } from '../../lib/jobs/gcNoticeJobsBand'
  */
 export type GcNoticeWrongListProps = {
   items: ReadonlyArray<GcNoticeBandWrongItem>
-  /** "372 · Dudley Mason" */
+  /** "372 · Dunmere Mallin" */
   labelOf: (jobId: string) => string
   onPick: (jobId: string) => void
   isMobile: boolean

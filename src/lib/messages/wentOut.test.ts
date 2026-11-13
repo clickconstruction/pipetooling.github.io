@@ -30,11 +30,11 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
       ['A number nobody has named', 'Dana, your estimate is ready.'],
     ])
     // A customer's own thread still reads the customer's name, whatever the channel.
-    expect(wentOutRows([line({ id: 'e2', name: null, customerName: 'Evan Johnson', channel: 'email', subject: 'Thursday' })], 'all')[0]?.name).toBe('Evan Johnson')
+    expect(wentOutRows([line({ id: 'e2', name: null, customerName: 'Evan Jarrow', channel: 'email', subject: 'Thursday' })], 'all')[0]?.name).toBe('Evan Jarrow')
   })
   it('a customer’s own thread reads the customer’s name, since the app keeps that contact’s name null (v2.5696)', () => {
-    const rows = wentOutRows([line({ name: null, customerName: 'Evan Johnson' }), line({ id: 'm2', name: null, customerName: null })], 'all')
-    expect(rows.map((r) => r.name)).toEqual(['Evan Johnson', 'A number nobody has named'])
+    const rows = wentOutRows([line({ name: null, customerName: 'Evan Jarrow' }), line({ id: 'm2', name: null, customerName: null })], 'all')
+    expect(rows.map((r) => r.name)).toEqual(['Evan Jarrow', 'A number nobody has named'])
   })
   it('carries Quo’s answer beside the time, and the dial when the text did not reach them (v2.5703)', () => {
     const rows = wentOutRows([line({ delivery: 'delivered', number: '(830) 555-0121' }), line({ id: 'm2', delivery: 'undelivered', number: '(830) 555-0121' }), line({ id: 'm3', delivery: 'failed', number: null }), line({ id: 'm4' })], 'all')
@@ -74,7 +74,7 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
       line({ id: 'y1', atMs: AT_131 }),
       line({ id: 'y2', atMs: AT_900, who: '' }),
       line({ id: 't1', atMs: Date.parse('2026-10-21T05:01:00Z'), name: 'Pete Alvarez', kind: 'sub' }),
-      line({ id: 'o1', atMs: Date.parse('2026-10-19T16:00:00Z'), name: 'Kim Coe' }),
+      line({ id: 'o1', atMs: Date.parse('2026-10-19T16:00:00Z'), name: 'Kim Corl' }),
     ]
     const days = wentOutDays(lines, 'all', now)
     expect(days.map((d) => [d.ymd, d.label, d.rows.map((r) => r.id)])).toEqual([

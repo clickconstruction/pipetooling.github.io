@@ -56,6 +56,8 @@ The count becomes the truth for that box. A short count is what the office reads
 
 Tap {{button:outline|Add a container}} to add a cage or box with its stencil and its place on the site. On a box, tap **Add a part** for a part that came without a delivery.
 
+Type the part's name. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it.
+
 ## Take a photo
 
 On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put away the button is blue. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.

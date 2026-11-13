@@ -31,18 +31,18 @@ describe('stageRank', () => {
 })
 
 describe('recognizeStages', () => {
-  // J931 Heron Construction, 2026-09-14: the generator's preset, every row kind `any`.
-  const heron = [row('1', 'Rough In', 19_480), row('2', 'Top Out', 19_480), row('3', 'Trim Set', 9_740)]
+  // J931 Hadlow Construction, 2026-09-14: the generator's preset, every row kind `any`.
+  const hadlow = [row('1', 'Rough In', 19_480), row('2', 'Top Out', 19_480), row('3', 'Trim Set', 9_740)]
 
   it('reads Rough In · Top Out · Trim Set as three Order stages', () => {
-    expect(recognizeStages(heron)).toEqual({ recognized: true, orderIds: ['1', '2', '3'], reason: null })
-    const applied = applyRecognizedStages(heron)
+    expect(recognizeStages(hadlow)).toEqual({ recognized: true, orderIds: ['1', '2', '3'], reason: null })
+    const applied = applyRecognizedStages(hadlow)
     expect(applied.recognized).toBe(true)
     expect(applied.fixtures.map((f) => f.stage_kind)).toEqual(['order', 'order', 'order'])
   })
 
   it('leaves unranked rows as Any inside a recognized plan (a change order beside the stages)', () => {
-    const r = recognizeStages([...heron, row('4', 'CHANGE ORDER: add hose bib', 850)])
+    const r = recognizeStages([...hadlow, row('4', 'CHANGE ORDER: add hose bib', 850)])
     expect(r.recognized).toBe(true)
     expect(r.orderIds).toEqual(['1', '2', '3'])
   })
@@ -68,7 +68,7 @@ describe('recognizeStages', () => {
   it('an explicit Order row switches recognition off — the office declared the plan', () => {
     const r = recognizeStages([row('1', 'Rough In', 1000, { stage_kind: 'order' }), row('2', 'Top Out'), row('3', 'Trim Set')])
     expect(r).toEqual({ recognized: false, orderIds: [], reason: 'explicit' })
-    expect(applyRecognizedStages(heron.map((f, i) => (i === 0 ? { ...f, stage_kind: 'order' } : f))).recognized).toBe(false)
+    expect(applyRecognizedStages(hadlow.map((f, i) => (i === 0 ? { ...f, stage_kind: 'order' } : f))).recognized).toBe(false)
   })
 
   it('a deliberate plain row (kind null) and an unpriced row are never recognized', () => {

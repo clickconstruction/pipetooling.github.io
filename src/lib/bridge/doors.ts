@@ -5,7 +5,7 @@
  *
  * Where the old scroll went:
  * - The flow: the rule, the five steps and their desks, the dial and the usual fixes, the three
- *   resources, the link's desk, the last call in full, the weekly email's switch.
+ *   resources, the link's desk, the weekly email's switch.
  * - Money: cash for eight weeks with the bank's accounts, bills and receipts, net position with
  *   the truth check inside it, money owed, the eight week chart.
  * - People: who moved the number, the day grid, crew hours.

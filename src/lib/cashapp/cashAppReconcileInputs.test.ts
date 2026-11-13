@@ -52,15 +52,15 @@ describe('countLanes + buildAgentSummary', () => {
     const text = buildAgentSummary({
       counts,
       review: [
-        { id: '#D-2', occurredDate: '2026-09-02', personName: 'Darren', counterparty: 'Darren Phelps', amount: -200, note: 'Week' },
-        { id: '#D-1', occurredDate: '2026-09-01', personName: 'Darren', counterparty: 'Darren Phelps', amount: -300, note: '' },
+        { id: '#D-2', occurredDate: '2026-09-02', personName: 'Darren', counterparty: 'Darren Phelby', amount: -200, note: 'Week' },
+        { id: '#D-1', occurredDate: '2026-09-01', personName: 'Darren', counterparty: 'Darren Phelby', amount: -300, note: '' },
       ],
-      unknownNames: [{ counterparty: 'Cale Yarbrough', count: 2, total: 2908.97 }],
+      unknownNames: [{ counterparty: 'Cale Yarwick', count: 2, total: 2908.97 }],
       latestImportDate: '2026-09-11',
     })
     expect(text).toContain('export through 2026-09-11')
     expect(text).toContain('Recorded: 1 · $500.00')
-    expect(text).toContain('Cale Yarbrough · 2 payments · $2,908.97')
+    expect(text).toContain('Cale Yarwick · 2 payments · $2,908.97')
     expect(text).toContain('Darren · 2 · $500.00')
     expect(text.indexOf('#D-1 · 2026-09-01')).toBeLessThan(text.indexOf('#D-2 · 2026-09-02 · $200.00 · "Week"'))
   })

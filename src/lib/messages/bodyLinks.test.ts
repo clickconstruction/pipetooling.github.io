@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { bodyHtml, bodyLinks, bodyPieces } from './bodyLinks'
 
-// Glenn Geling's invitation of 2026-10-22 as the bids@ reader kept it: the sender's bold as stars, the plans link
+// Glenn Gelwin's invitation of 2026-10-22 as the bids@ reader kept it: the sender's bold as stars, the plans link
 // written twice, once bare and once in angle brackets, a bold span across a line break.
 const GLENN = [
   'Wendi,',
   '',
-  'We at *Maxx Builders* are currently working on a project called *Northeast',
+  'We at *Marrex Builders* are currently working on a project called *Northeast',
   'Bible Church Elementary Building* located at *19185 FM 2252 Northeast Bible',
   'Church, Garden Ridge, TX 78266*',
   '',
@@ -43,7 +43,7 @@ describe('bodyPieces: the words of an email as the viewer draws them (v2.6508)',
       .filter((p) => p.bold && p.kind === 'text')
       .map((p) => (p.kind === 'text' ? p.text : ''))
     expect(bold).toEqual([
-      'Maxx Builders',
+      'Marrex Builders',
       'Northeast\nBible Church Elementary Building',
       '19185 FM 2252 Northeast Bible\nChurch, Garden Ridge, TX 78266',
       'Scope of Work',
@@ -59,9 +59,9 @@ describe('bodyPieces: the words of an email as the viewer draws them (v2.6508)',
       { kind: 'text', text: 'Scope of Work', bold: true },
       { kind: 'text', text: ': plumbing', bold: false },
     ])
-    expect(bodyPieces('We at *Maxx Builders* are')).toEqual([
+    expect(bodyPieces('We at *Marrex Builders* are')).toEqual([
       { kind: 'text', text: 'We at ', bold: false },
-      { kind: 'text', text: 'Maxx Builders', bold: true },
+      { kind: 'text', text: 'Marrex Builders', bold: true },
       { kind: 'text', text: ' are', bold: false },
     ])
     expect(bodyPieces('**Note** and *one*')).toEqual([

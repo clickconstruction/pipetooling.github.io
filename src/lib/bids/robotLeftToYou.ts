@@ -27,7 +27,7 @@ export function robotLeftTitle(project: string): string {
   return `Left to you. Robots leave ${project} alone. Tap to let the robot back in.`
 }
 
-/** The sheet's heading line under the title: "b510 · AutoZone New Braunfels". */
+/** The sheet's heading line under the title: "b510 · TireBarn New Braunfels". */
 export function robotLeftLabel(bid: { bid_number: string | null; project_name: string | null }): string {
   return `b${bid.bid_number ?? '?'} · ${bid.project_name?.trim() || 'bid'}`
 }

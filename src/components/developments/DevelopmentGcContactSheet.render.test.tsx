@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The GC contact sheet (the Gun Dog spike, 2026-11-02): the three fields, the button that names the count,
+ * The GC contact sheet (the Gray Fox spike, 2026-11-02): the three fields, the button that names the count,
  * the caption that says which bids keep their own, the draft rule, Escape and Cancel. Made-up names only.
  */
 import { cleanup, fireEvent, screen } from '@testing-library/react'

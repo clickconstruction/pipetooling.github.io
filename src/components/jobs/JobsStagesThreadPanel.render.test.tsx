@@ -63,17 +63,17 @@ const activity = [
   note('n1', '2026-08-12T14:45:00Z', 'Arrived at job', 'Abraham'),
   statusEvent('ev1', '2026-08-12T15:00:00Z', 'Working → Ready to Bill'),
   report('r1', '2026-08-12T15:10:00Z'),
-  note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DRF', 'Roxi'),
+  note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DLF', 'Roxi'),
 ]
 
 const baseProps = {
-  job: makeJob({ job_name: 'Shearer Pinpoint' }),
+  job: makeJob({ job_name: 'Shellan Pinpoint' }),
   activity,
   loading: false,
   upcoming: null,
   fullscreen: false,
   onToggleFullscreen: vi.fn(),
-  fullscreenHeader: <span>Job: 951 Shearer Pinpoint</span>,
+  fullscreenHeader: <span>Job: 951 Shellan Pinpoint</span>,
 }
 
 describe('JobsStagesThreadPanel', () => {

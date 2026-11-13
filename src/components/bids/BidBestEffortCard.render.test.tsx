@@ -60,7 +60,7 @@ vi.mock('../../lib/supabase', () => ({
   },
 }))
 
-const bid = { id: 'h431', bid_number: '431', project_name: 'PALMER WINERY', bid_date_sent: null, bid_value: null, robot_opt_out: false, reviewed_at: null }
+const bid = { id: 'h431', bid_number: '431', project_name: 'PALVERN WINERY', bid_date_sent: null, bid_value: null, robot_opt_out: false, reviewed_at: null }
 
 describe('BidBestEffortCard', () => {
   it('records the letter amount, names the sealed robot, then shows the stamp and the envelope door once scored', async () => {

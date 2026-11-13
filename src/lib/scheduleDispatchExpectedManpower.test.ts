@@ -20,7 +20,7 @@ import {
 const block = (id: string, user: string, work_date: string, time_start: string, time_end: string, anchor: { job_id?: string; bid_id?: string } = { job_id: 'J1' }): JobScheduleBlockRow =>
   ({ id, assignee_user_id: user, work_date, time_start, time_end, job_id: anchor.job_id ?? null, bid_id: anchor.bid_id ?? null }) as unknown as JobScheduleBlockRow
 
-const titles: Record<string, string> = { J1: 'Smith residence', J2: 'acme warehouse', 'bid:B1': 'Hyper Kidz bid' }
+const titles: Record<string, string> = { J1: 'Smith residence', J2: 'acme warehouse', 'bid:B1': 'Jumpy Kidz bid' }
 const names: Record<string, string> = { u1: 'Dana', u2: 'Marcus', u3: 'Paige' }
 const title = (id: string) => titles[id] ?? id
 const name = (id: string) => names[id] ?? id
@@ -66,7 +66,7 @@ describe('rows', () => {
     expect(rows[0]!.windowLabel).toBe(scheduleFormatWindow('08:00:00', '09:00:00'))
     const bidRows = expectedManpowerRowsForDay(blocks, '2026-09-02', title, name)
     expect(bidRows).toHaveLength(1)
-    expect(bidRows[0]).toMatchObject({ jobId: 'bid:B1', jobTitle: 'Hyper Kidz bid', assigneeUserId: 'u1', workDate: '2026-09-02' })
+    expect(bidRows[0]).toMatchObject({ jobId: 'bid:B1', jobTitle: 'Jumpy Kidz bid', assigneeUserId: 'u1', workDate: '2026-09-02' })
   })
 
   it('expectedManpowerRowsForVisibleDays spans several days and returns nothing for no days', () => {

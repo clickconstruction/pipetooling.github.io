@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { buildPortalPropertyNotices, portalNoticeMonthsWords, type PortalNoticeFilingRow, type PortalNoticeJobRow } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { parsePortalPayload } from './portalPayload'
 
-// 9703 Lenox Hl: the viewer owns it; RMC- Dudley Mason is the GC.
-const OWNER = 'umar'
-const job = (id: string, over: Partial<PortalNoticeJobRow> = {}): PortalNoticeJobRow => ({ id, hcp_number: id.replace('j', ''), click_number: null, job_address: '9703 Lenox Hl, San Antonio, TX', customer_id: OWNER, gc_customer_id: 'rmc', revenue: 17585, payments_made: 0, ...over })
-const fields = { claimantName: 'Click Plumbing and Electrical', originalContractorName: 'RMC- Dudley Mason', contactPerson: 'Malachi Whites, Master Plumber' }
+// 9703 Linmor Hl: the viewer owns it; RLC- Dunmere Mallin is the GC.
+const OWNER = 'ulric'
+const job = (id: string, over: Partial<PortalNoticeJobRow> = {}): PortalNoticeJobRow => ({ id, hcp_number: id.replace('j', ''), click_number: null, job_address: '9703 Linmor Hl, San Antonio, TX', customer_id: OWNER, gc_customer_id: 'rlc', revenue: 17585, payments_made: 0, ...over })
+const fields = { claimantName: 'Click Plumbing and Electrical', originalContractorName: 'RLC- Dunmere Mallin', contactPerson: 'Malachi Whites, Master Plumber' }
 const filing = (id: string, jobId: string, over: Partial<PortalNoticeFilingRow> = {}): PortalNoticeFilingRow => ({
   id,
   job_id: jobId,
@@ -35,9 +35,9 @@ describe('buildPortalPropertyNotices (v2.3825)', () => {
     const [n] = buildPortalPropertyNotices({ jobs: [job('j273')], filings: [filing('f1', 'j273')], viewerCustomerId: OWNER })
     expect(n).toEqual({
       key: 'f1',
-      address: '9703 Lenox Hl, San Antonio, TX',
+      address: '9703 Linmor Hl, San Antonio, TX',
       jobNumbers: ['273'],
-      gcName: 'RMC- Dudley Mason',
+      gcName: 'RLC- Dunmere Mallin',
       claimantName: 'Click Plumbing and Electrical',
       contactPerson: 'Malachi Whites, Master Plumber',
       claim: 17585,
@@ -48,7 +48,7 @@ describe('buildPortalPropertyNotices (v2.3825)', () => {
   })
   it('never for the GC viewing, a voided filing, another kind, or a job paid off', () => {
     const one = (j: PortalNoticeJobRow, f: PortalNoticeFilingRow, viewer = OWNER) => buildPortalPropertyNotices({ jobs: [j], filings: [f], viewerCustomerId: viewer })
-    expect(one(job('j273'), filing('f1', 'j273'), 'rmc')).toEqual([])
+    expect(one(job('j273'), filing('f1', 'j273'), 'rlc')).toEqual([])
     expect(one(job('j273'), filing('f1', 'j273', { voided_at: '2026-09-26T00:00:00Z' }))).toEqual([])
     expect(one(job('j273'), filing('f1', 'j273', { kind: 'affidavit' }))).toEqual([])
     expect(one(job('j273', { payments_made: 17585 }), filing('f1', 'j273'))).toEqual([])
@@ -77,10 +77,10 @@ describe('buildPortalPropertyNotices (v2.3825)', () => {
 })
 
 describe('parsePortalPayload · propertyNotices', () => {
-  const base = { company: {}, customerName: 'Umar Khan', audience: 'all', bills: [], sharedBills: [], requestableJobs: [], requestableProperties: [] }
+  const base = { company: {}, customerName: 'Ulric Karrow', audience: 'all', bills: [], sharedBills: [], requestableJobs: [], requestableProperties: [] }
   it('reads the notices, and a function from before them reads none', () => {
-    const p = parsePortalPayload({ ...base, propertyNotices: [{ key: 'f1', address: '9703 Lenox Hl', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25' }] })
-    expect(p?.propertyNotices).toEqual([{ key: 'f1', address: '9703 Lenox Hl', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25', courtesyOn: '' }])
+    const p = parsePortalPayload({ ...base, propertyNotices: [{ key: 'f1', address: '9703 Linmor Hl', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25' }] })
+    expect(p?.propertyNotices).toEqual([{ key: 'f1', address: '9703 Linmor Hl', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25', courtesyOn: '' }])
     expect(parsePortalPayload(base)?.propertyNotices).toEqual([])
   })
 })

@@ -4,7 +4,7 @@ import { printNeedsDeclarant, statementPdfFilename, statementPrintFooter, statem
 
 const alvarez = { kind: 'team' as const, userId: 'u-da', name: 'Daniel Alvarez', role: 'RMP of record' }
 const draft: StatementDraft = { title: 'Affidavit of Daniel Alvarez', affiant: alvarez, incidentOn: '2026-09-03', incidentTo: '', form: 'notary', venueCounty: 'Guadalupe', body: 'Northline never called us back.\nI drove past the site.' }
-const declaration: StatementDraft = { ...draft, title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', userId: null, name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', venueCounty: 'Williamson' }
+const declaration: StatementDraft = { ...draft, title: 'Declaration of Tobin Newell', affiant: { kind: 'witness', userId: null, name: 'Tobin Newell', role: 'the foreman' }, form: 'declaration', venueCounty: 'Williamson' }
 const details = { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
 
 describe('the printed statement (punch list #220, v2.6211)', () => {
@@ -13,7 +13,7 @@ describe('the printed statement (punch list #220, v2.6211)', () => {
     expect(printNeedsDeclarant(declaration, 'signing', { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14' })).toBe(true)
     expect(printNeedsDeclarant(declaration, 'whole', details)).toBe(false)
     // v2.6243: a one-word name waits even with the details held; the statute asks for a first and a last name.
-    expect(printNeedsDeclarant({ ...declaration, affiant: { ...declaration.affiant, name: 'Thanh' } }, 'whole', details)).toBe(true)
+    expect(printNeedsDeclarant({ ...declaration, affiant: { ...declaration.affiant, name: 'Tobin' } }, 'whole', details)).toBe(true)
     expect(printNeedsDeclarant(declaration, 'statement', null)).toBe(false)
     expect(printNeedsDeclarant(draft, 'whole', null)).toBe(false)
   })
@@ -37,7 +37,7 @@ describe('the printed statement (punch list #220, v2.6211)', () => {
     expect(statementPrintFooter(draft, 'statement', 'Northline Builders')).toBe('Affidavit of Daniel Alvarez · the statement alone · Northline Builders')
     expect(statementPrintFooter(draft, 'whole', '')).toBe('Affidavit of Daniel Alvarez')
     expect(statementPdfFilename(draft, 'whole')).toBe('affidavit-of-daniel-alvarez.pdf')
-    expect(statementPdfFilename(declaration, 'signing')).toBe('declaration-declaration-of-thanh-nguyen.pdf')
+    expect(statementPdfFilename(declaration, 'signing')).toBe('declaration-declaration-of-tobin-newell.pdf')
     expect(statementPdfFilename({ title: '', form: 'notary' }, 'whole')).toBe('affidavit.pdf')
     expect(statementPrintRecordText(draft, 'whole').split('\n')).toHaveLength(3)
     expect(statementPrintRecordText(draft, 'statement')).toBe(statementPrintRecordText(draft, 'whole'))

@@ -7,7 +7,7 @@
  * role that does not read it, and the empty site.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeUseAuthValue, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, Movement, MovementReason, Place } from '../../lib/materials/onSite'
 import { readSiteView } from '../../lib/materials/siteMaterialsViewPrefs'
@@ -29,17 +29,45 @@ function row(jobId: string, reason: MovementReason, name: string, quantity: numb
 const box = (id: string, jobId: string, label: string, locationId: string | null): Container => ({ id, jobId, label, kind: 'cage', where: '', locationId, lat: null, lng: null, retiredAt: null, createdAt: ago(30) })
 const place = (id: string, jobId: string, name: string): Place => ({ id, jobId, name, createdAt: ago(30) })
 
-const store = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, places: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]> }))
+const store = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, places: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]>, loadBookPrices: vi.fn(async () => {}) }))
 vi.mock('../../lib/materials/onSiteStore', () => ({
   listContainers: (id: string) => store.containers[id] ?? [],
   listPlaces: (id: string) => store.places[id] ?? [],
   listMovements: (id: string) => store.movements[id] ?? [],
   serverSummary: () => null,
   priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
+  // The worth (PR 4): the drop ear carries an invoice price, and one parts-book part has a book price.
+  priceFor: (key: string) =>
+    key === 'text:1/2" pex drop ear'
+      ? { price: 4, from: 'invoice', supplyHouse: null, checkedOn: null, ageDays: null, stale: false }
+      : key === 'id:book-9'
+        ? { price: 1.5, from: 'book', supplyHouse: 'Pecan Supply', checkedOn: '2026-10-03', ageDays: 40, stale: false }
+        : null,
+  loadBookPrices: store.loadBookPrices,
+}))
+
+// The answers table, in memory (punch list #330, PR 3).
+const tiesDb = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, failRead: false, n: 0 }))
+vi.mock('../../lib/materials/partTiesIo', () => ({
+  fetchPartTies: async () => {
+    if (tiesDb.failRead) throw new Error('relation "on_site_part_ties" does not exist')
+    return [...tiesDb.rows]
+  },
+  insertPartTie: async (_scope: unknown, tie: Record<string, unknown>, byName: string) => {
+    tiesDb.n += 1
+    const row = { id: `t${tiesDb.n}`, ...tie, byName, at: new Date().toISOString() }
+    tiesDb.rows.push(row)
+    return row
+  },
+  deletePartTie: async (id: string) => {
+    tiesDb.rows = tiesDb.rows.filter((r) => r.id !== id)
+  },
 }))
 
 function fill() {
   seq = 0
+  tiesDb.rows = []
+  tiesDb.failRead = false
   store.containers = { ja: [box('r12', 'ja', 'R12', 'ya'), box('r58', 'ja', 'R58', 'ya'), box('r22', 'ja', 'R22', null)], jb: [box('p1', 'jb', 'P1', 'yb')] }
   store.places = { ja: [place('ya', 'ja', 'Laydown yard')], jb: [place('yb', 'jb', 'Laydown yard')] }
   store.movements = {
@@ -70,6 +98,14 @@ function setup(props: Partial<Parameters<typeof SiteMaterialsView>[0]> = {}) {
 afterEach(() => {
   window.localStorage.clear()
 })
+
+/** The Same part? ask, once the answers so far were read. */
+const findAsk = () =>
+  waitFor(() => {
+    const el = document.querySelector('[data-same-part-ask]')
+    if (!el) throw new Error('no ask yet')
+    return el as HTMLElement
+  })
 
 describe('SiteMaterialsView', () => {
   it('draws the figures: how fresh the record is, the boxes, what is on hand, the week', () => {
@@ -137,6 +173,8 @@ describe('SiteMaterialsView', () => {
   it('draws no money for a role that does not read it, and no Development door without one', () => {
     setup({ showMoney: false, developmentHref: null })
     expect(screen.queryByText('$12.00')).toBeNull()
+    expect(screen.queryByText('Worth')).toBeNull()
+    expect(document.querySelector('[data-row-worth]')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Open the Development page' })).toBeNull()
   })
 
@@ -147,5 +185,85 @@ describe('SiteMaterialsView', () => {
     expect(screen.getByText('No part is on hand on this site yet.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Back to Materials desk' }))
     expect(onBack).toHaveBeenCalled()
+  })
+
+  it('asks Same part? once for two names that are nearly the same, joins them on a yes, and Undo separates them', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    const ask = await findAsk()
+    expect(ask.textContent).toContain('Same part?')
+    expect(ask.textContent).toContain('2" 90 and 2" 90 pvc')
+    expect(ask.textContent).toContain('One name has one more word.')
+    expect(screen.getByRole('button', { name: 'Same part? · 1' })).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Same part' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(2))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
+    const joined = screen.getByRole('button', { name: /2" 90 pvc.*3 spellings/ })
+    expect(within(joined).getByText('156')).toBeTruthy()
+    fireEvent.click(joined)
+    const list = screen.getByTestId('names-joined-here')
+    expect(list.textContent).toContain('by Dana')
+    fireEvent.click(within(list).getByRole('button', { name: /^Undo joining/ }))
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(tiesDb.rows).toHaveLength(0)
+  })
+
+  it('Different is kept too, so the pair is not asked again and the rows stay apart', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    const ask = await findAsk()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Different' }))
+    await waitFor(() => expect(document.querySelector('[data-same-part-ask]')).toBeNull())
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3)
+    expect(tiesDb.rows[0]).toMatchObject({ verdict: 'different' })
+    expect(screen.queryByRole('button', { name: /^Same part\? ·/ })).toBeNull()
+  })
+
+  it('a role that may not answer is asked nothing, and a read that is refused leaves the same-words rows', async () => {
+    setup()
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
+  })
+
+  it('before the table exists the screen asks nothing and still draws', async () => {
+    fill()
+    tiesDb.failRead = true
+    renderWithProviders(<SiteMaterialsView site={{ id: 'dev1', name: 'Juniper Ridge' }} jobs={jobs} showMoney canTie onBack={() => {}} backLabel="Materials desk" boxHref={() => '/'} />)
+    await waitFor(() => expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3))
+    expect(document.querySelector('[data-same-part-ask]')).toBeNull()
+  })
+
+  it('Worth says what is known with its cover, and a press lists the rows with no price, most pieces first', async () => {
+    setup()
+    const glance = screen.getByRole('group', { name: 'This site at a glance' })
+    const worth = within(glance).getByRole('button', { name: /Worth/ })
+    expect(worth.textContent).toContain('$100.00 known')
+    expect(worth.textContent).toContain('1 of 4 lines have a price')
+    fireEvent.click(worth)
+    const rows = [...document.querySelectorAll('[data-site-part-row]')]
+    expect(rows.map((r) => r.querySelector('button')!.textContent!.slice(0, 9))).toEqual(['2" 90 pvc', '2" 9042R5'])
+    expect(screen.getByTestId('site-shown-total').textContent).toContain('the rows with a line that has no price')
+    expect(document.querySelector('[data-row-worth]')).toBeNull()
+  })
+
+  it('This is a parts-book part ties a typed name to the book, and the row takes the book’s name and price', async () => {
+    const searchBook = vi.fn(async () => [{ id: 'book-9', name: '2 PVC 90 DWV', manufacturer: 'Charlotte' }])
+    setup({ canTie: true, byName: 'Dana', searchBook })
+    await findAsk()
+    fireEvent.click(screen.getByRole('button', { name: /^2" 90\b(?! pvc)/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'This is a parts-book part' }))
+    const picker = screen.getByTestId('book-part-picker')
+    expect((within(picker).getByRole('searchbox', { name: 'Find it in the parts book' }) as HTMLInputElement).value).toBe('2 90')
+    fireEvent.click(await within(picker).findByRole('button', { name: 'Tie to 2 PVC 90 DWV' }))
+    const tied = await screen.findByRole('button', { name: /2 PVC 90 DWV/ })
+    expect(tied.textContent).toContain('$63.00 · parts book · checked Oct 3')
+    expect(searchBook).toHaveBeenCalledWith('2 90')
+    expect(store.loadBookPrices).toHaveBeenCalledWith(['book-9'])
+    expect(tiesDb.rows[0]).toMatchObject({ aKey: 'id:book-9', aName: '2 PVC 90 DWV', bName: '2" 90', verdict: 'same' })
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    expect(worth.textContent).toContain('$163.00 known')
+    expect(worth.textContent).toContain('2 of 4 lines have a price')
+    // The tie is undone like any other.
+    fireEvent.click(tied)
+    fireEvent.click(within(screen.getByTestId('names-joined-here')).getByRole('button', { name: /^Undo joining/ }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /2 PVC 90 DWV/ })).toBeNull())
   })
 })

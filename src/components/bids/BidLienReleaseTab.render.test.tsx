@@ -29,11 +29,11 @@ function bid(p: Partial<BidWithBuilder> = {}): BidWithBuilder {
   return {
     id: 'bid-1',
     bid_number: '482',
-    project_name: 'Take 5 Seguin',
-    address: '380 TX-123, Seguin, TX 78155',
+    project_name: 'Tune 5 Seguin',
+    address: '410 TX-123, Seguin, TX 78155',
     agreed_value: 38625,
     customers: null,
-    bids_gc_builders: { name: 'Southern Post Construction' },
+    bids_gc_builders: { name: 'Southern Pine Construction' },
     ...p,
   } as unknown as BidWithBuilder
 }
@@ -62,7 +62,7 @@ describe('BidLienReleaseTab', () => {
     renderTab()
     expect(screen.getByText(/§ 53\.284\(b\)/)).toBeTruthy()
     expect(screen.getByText(/conditional upon actual receipt and clearance/)).toBeTruthy()
-    expect(screen.getByText(/check from Southern Post Construction in the sum of \$38,625\.00/)).toBeTruthy()
+    expect(screen.getByText(/check from Southern Pine Construction in the sum of \$38,625\.00/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copy for email' })).toBeTruthy()
     expect(screen.queryByTestId('bid-lien-waiver-hold')).toBeNull()
   })

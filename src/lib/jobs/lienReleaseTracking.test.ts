@@ -52,8 +52,8 @@ describe('form type guards and labels', () => {
 
 describe('lienReleaseFieldsFromSnapshot', () => {
   it('extracts known string fields and ignores junk', () => {
-    expect(lienReleaseFieldsFromSnapshot({ checkFrom: 'Knight', amount: '2200', bogus: 1, signerName: 42 })).toEqual({
-      checkFrom: 'Knight',
+    expect(lienReleaseFieldsFromSnapshot({ checkFrom: 'Kestrin', amount: '2200', bogus: 1, signerName: 42 })).toEqual({
+      checkFrom: 'Kestrin',
       amount: '2200',
     })
     expect(lienReleaseFieldsFromSnapshot(null)).toEqual({})
@@ -165,7 +165,7 @@ describe('lienReleasesOwingUnconditional', () => {
 
 describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
   const jobs = new Map([
-    ['job-1', { id: 'job-1', hcp_number: '1042', click_number: 'C77', job_name: 'Mission Hills — Bldg C', customer_name: 'Harvey Builders', job_address: '4410 Mission Hills Dr' }],
+    ['job-1', { id: 'job-1', hcp_number: '1042', click_number: 'C77', job_name: 'Mission Flats — Bldg C', customer_name: 'Harvey Builders', job_address: '4410 Mission Flats Dr' }],
     ['job-2', { id: 'job-2', hcp_number: '', click_number: 'C88', job_name: 'Lakeline Medical', customer_name: null, job_address: '' }],
   ])
   const payment = (p: Partial<LienQueuePayment> & { invoice_id: string; amount: number }): LienQueuePayment => ({
@@ -190,7 +190,7 @@ describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
     expect(rows.map((r) => r.releaseId)).toEqual(['r2', 'r1'])
     const r1 = rows[1]!
     expect(r1.jobNumber).toBe('1042')
-    expect(r1.jobName).toBe('Mission Hills — Bldg C')
+    expect(r1.jobName).toBe('Mission Flats — Bldg C')
     expect(r1.customerName).toBe('Harvey Builders')
     expect(r1.issuedOn).toBe('2026-08-22')
     expect(r1.clearedOn).toBe('2026-09-01')

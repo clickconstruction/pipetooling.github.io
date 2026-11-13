@@ -37,12 +37,12 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: stub }
 })
 
-const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmer@example.com', revenue: 31400 })
+const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palvern', customer_name: 'Michael Palvern', customer_email: 'palvern@example.com', revenue: 31400 })
 const draftRow = () => ({
   id: 'c1', job_id: 'j1', status: 'draft', revision: 1,
   fields: { scope_lines: ['Water heater'], amount_cents: 3_140_000, payment_terms_key: 'half_down', payment_terms_text: '', start_date: '2026-10-01', completion_date: null },
-  body_html: 'terms', body_format: 'plain', template_name: 'Service agreement', template_document_id: null, recipient_name: 'Michael Palmer', recipient_email: 'palmer@example.com', recipient_phone: null, cc_emails: [],
-  co_signer_name: 'Grace Palmer', co_signer_email: null, co_signed_at: null, co_signer_printed_name: null, co_signer_mode: null, co_signer_consented_at: null,
+  body_html: 'terms', body_format: 'plain', template_name: 'Service agreement', template_document_id: null, recipient_name: 'Michael Palvern', recipient_email: 'palvern@example.com', recipient_phone: null, cc_emails: [],
+  co_signer_name: 'Grace Palvern', co_signer_email: null, co_signed_at: null, co_signer_printed_name: null, co_signer_mode: null, co_signer_consented_at: null,
   public_token: null, public_token_expires_at: null, sent_at: null, last_sent_at: null, send_count: 0, first_viewed_at: null, last_viewed_at: null, view_count: 0,
   reminders_enabled: true, reminder_count: 0, next_reminder_at: null, signed_at: null, signer_mode: null, voided_at: null, sent_channel: null, created_at: '2026-09-20T14:00:00Z', updated_at: '2026-09-20T15:00:00Z',
 })
@@ -61,8 +61,8 @@ describe('JobContractModal — filing a paper signed by two', () => {
     db.updates = []
     fireEvent.click(screen.getByTestId('contract-exit-file'))
     const sheet = await screen.findByTestId('contract-file-sheet')
-    expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Michael Palmer')
-    expect((within(sheet).getByLabelText('Second signer') as HTMLInputElement).value).toBe('Grace Palmer')
+    expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Michael Palvern')
+    expect((within(sheet).getByLabelText('Second signer') as HTMLInputElement).value).toBe('Grace Palvern')
     fireEvent.change(within(sheet).getByLabelText('Google Doc link'), { target: { value: 'https://docs.google.com/document/d/1' } })
     fireEvent.change(within(sheet).getByLabelText('Date the contract was signed'), { target: { value: '2026-09-30' } })
     fireEvent.click(screen.getByTestId('contract-file-record'))
@@ -70,10 +70,10 @@ describe('JobContractModal — filing a paper signed by two', () => {
       expect(db.updates[0]).toMatchObject({
         status: 'signed',
         signer_mode: 'paper',
-        signer_printed_name: 'Michael Palmer',
+        signer_printed_name: 'Michael Palvern',
         signed_at: '2026-09-30T12:00:00Z',
-        co_signer_name: 'Grace Palmer',
-        co_signer_printed_name: 'Grace Palmer',
+        co_signer_name: 'Grace Palvern',
+        co_signer_printed_name: 'Grace Palvern',
         co_signed_at: '2026-09-30T12:00:00Z',
         co_signer_mode: 'paper',
         co_signer_consented_at: null,
@@ -82,7 +82,7 @@ describe('JobContractModal — filing a paper signed by two', () => {
   })
 
   it("on a builder's job, the subcontract door files it as signed by the GC, with no second signer from our draft", async () => {
-    const gcJob = makeJob({ id: 'j1', hcp_number: '804', job_name: 'Auto Zone', customer_name: 'Michael Palmer', customer_email: 'palmer@example.com', customer_id: 'c1', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Summit GC' }, revenue: 32600 } as Parameters<typeof makeJob>[0])
+    const gcJob = makeJob({ id: 'j1', hcp_number: '804', job_name: 'Tire Barn', customer_name: 'Michael Palvern', customer_email: 'palvern@example.com', customer_id: 'c1', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Selwick GC' }, revenue: 32600 } as Parameters<typeof makeJob>[0])
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={gcJob} />)
     await screen.findByText('Saved as you type.')
     await settle()
@@ -91,11 +91,11 @@ describe('JobContractModal — filing a paper signed by two', () => {
     expect(go.textContent).toBe('File their subcontract')
     fireEvent.click(go)
     const sheet = await screen.findByTestId('contract-file-sheet')
-    expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Summit GC')
+    expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Selwick GC')
     expect((within(sheet).getByLabelText('Second signer') as HTMLInputElement).value).toBe('')
     fireEvent.change(within(sheet).getByLabelText('Google Doc link'), { target: { value: 'https://docs.google.com/document/d/1' } })
     fireEvent.click(screen.getByTestId('contract-file-record'))
-    await waitFor(() => expect(db.updates[0]).toMatchObject({ status: 'signed', signer_mode: 'paper', signer_printed_name: 'Summit GC' }))
+    await waitFor(() => expect(db.updates[0]).toMatchObject({ status: 'signed', signer_mode: 'paper', signer_printed_name: 'Selwick GC' }))
     expect(db.updates[0]).not.toHaveProperty('co_signer_printed_name')
   })
 })

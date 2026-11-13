@@ -9,11 +9,11 @@ const row = (o: Partial<PursuitRow> & { bidId: string }): PursuitRow => ({
 
 // William: two open with time, one won with no time, one lost with time. Wendi: one won with time, one lost without. A bid with no estimator.
 const rows: PursuitRow[] = [
-  row({ bidId: 'w1', estimatorName: 'William', gcName: 'Summit GC', hours: 19.8, totalUsd: 494.99, bidValue: 148000 }),
+  row({ bidId: 'w1', estimatorName: 'William', gcName: 'Selwick GC', hours: 19.8, totalUsd: 494.99, bidValue: 148000 }),
   row({ bidId: 'w2', estimatorName: 'William', gcName: 'TCT Construction', hours: 18.25, totalUsd: 456.1, bidValue: 380000 }),
-  row({ bidId: 'w3', estimatorName: 'William', gcName: 'Summit GC', outcome: 'won', bidValue: 153000 }),
-  row({ bidId: 'w4', estimatorName: 'William', gcName: 'Summit GC', outcome: 'lost', hours: 7, totalUsd: 175, bidValue: 90000 }),
-  row({ bidId: 'e1', estimatorName: 'Wendi', gcName: 'Summit GC', outcome: 'won', hours: 9.1, totalUsd: 136.48, bidValue: 38000 }),
+  row({ bidId: 'w3', estimatorName: 'William', gcName: 'Selwick GC', outcome: 'won', bidValue: 153000 }),
+  row({ bidId: 'w4', estimatorName: 'William', gcName: 'Selwick GC', outcome: 'lost', hours: 7, totalUsd: 175, bidValue: 90000 }),
+  row({ bidId: 'e1', estimatorName: 'Wendi', gcName: 'Selwick GC', outcome: 'won', hours: 9.1, totalUsd: 136.48, bidValue: 38000 }),
   row({ bidId: 'e2', estimatorName: 'Wendi', outcome: 'lost', bidValue: 95000 }),
   row({ bidId: 'n1', outcome: 'unsent', hours: 4.83, totalUsd: 121.66 }),
 ]
@@ -32,7 +32,7 @@ describe('costToWinByEstimator', () => {
   })
   it('groups by GC the same way and the footer folds everyone', () => {
     const byGc = costToWinByGc(rows)
-    expect(byGc.map((r) => `${r.label} ${r.bids}`)).toEqual(['Summit GC 4', 'TCT Construction 1', 'No GC 2'])
+    expect(byGc.map((r) => `${r.label} ${r.bids}`)).toEqual(['Selwick GC 4', 'TCT Construction 1', 'No GC 2'])
     expect(byGc[0]).toMatchObject({ won: 2, lost: 1, open: 1, wonValue: 191000 })
     const t = costToWinTotal(rows)
     expect(t).toMatchObject({ label: 'Everyone', bids: 7, bidsWithTime: 5, won: 2, lost: 2, open: 2, unsent: 1, wonValue: 191000, lostValue: 185000 })

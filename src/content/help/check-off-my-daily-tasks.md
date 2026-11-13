@@ -63,6 +63,8 @@ Some tasks have a place, like *Pump house*. The place's name sits under the task
 
 Tap the task to open it. Under its details you see a small picture of the spot from above. Tap the picture to open the map full size, where you can drag and zoom.
 
+The person who gave the task may have added a photo of the spot. The photo sits beside the picture from above. Tap the photo to see it full size.
+
 - {{button:blue|Directions}} opens your phone's maps app at the spot. Off a road, the maps app gets you to the nearest road. The picture does the rest.
 - {{button:outline|How far am I?}} asks your phone where it is and answers, like *250 ft north-east of you*. The answer also says how sure your phone is.
 
@@ -71,6 +73,21 @@ The app asks your phone where it is only when you tap **How far am I?**. Your lo
 The line under the buttons says who set the place and when. A machine moves and a gate gets rebuilt. If the place looks wrong, say so in a note.
 
 With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
+
+## Add a place to a task that has none
+
+Some tasks come with no place. If you are standing at the task, you can add its place yourself.
+
+1. Tap the task to open it.
+2. Tap **Standing at this task? Add its place**. Your phone looks up where you are.
+3. Read the line that says how sure your phone is. Type a name, like *Shop bay 2*.
+4. Tap {{button:blue|Add this place}}.
+
+The next person who gets this task sees the place and can get directions.
+
+- Your phone has to be sure within about 150 feet. If it is not, step out into the open and tap **Try again**.
+- This saves where you stand as the task's place. The app does not follow you after that.
+- A task that already has a place does not show this line. If its place is wrong, say so in a note.
 
 ## See all my tasks on a map
 

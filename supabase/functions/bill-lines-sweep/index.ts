@@ -10,6 +10,7 @@ import { driveFileBytes } from '../_shared/driveJobFolder.ts'
 import { textFromBytes } from '../_shared/fileText.ts'
 import { newPassSpend, type PassSpend, type PdfReadLimits } from '../_shared/fileIndexKernel.ts'
 import { BILL_BETAS, BILL_FILE_MAX_BYTES, BILL_MODEL, billCostCents, billMedia, type BillMedia } from '../_shared/billRead.ts'
+import { CHECK_RULES, type PaperKind } from '../_shared/paperChecks.ts'
 import {
   BILL_SWEEP_DAILY_CAP,
   BILL_SWEEP_SWITCH_KEY,
@@ -17,6 +18,8 @@ import {
   PAGES_PER_READ,
   PAPERS_SCHEMA,
   PAPERS_SYSTEM,
+  RECHECK_FILES,
+  RECHECK_PAPERS,
   SWEEP_CONCURRENCY,
   SWEEP_FILES,
   SWEEP_FILES_MAX,
@@ -25,6 +28,7 @@ import {
   SWEEP_START_BUDGET_MS,
   billSweepIsOn,
   joinPapers,
+  lineOfStoredRow,
   matchRows,
   pageRanges,
   paperRowOf,
@@ -32,6 +36,8 @@ import {
   papersUserMessage,
   probePick,
   probeWords,
+  recheckStored,
+  recheckWords,
   seenKey,
   statusWords,
   sweepPlan,
@@ -40,6 +46,7 @@ import {
   type FilePaper,
   type HoldWhy,
   type PaperText,
+  type StoredLineRow,
   type SweepHold,
   type SweepInvoice,
   type SweepRun,
@@ -68,11 +75,16 @@ import {
  *        the read was refused or cut. Nothing is written for a file whose read did not come back whole.
  *     4. Every model read is a `supply_bill_reads` row with `source = 'sweep'`, which the sweep's own cap counts
  *        (BILL_SWEEP_DAILY_CAP, 600 a rolling day) and the form's cap does not.
+ *     5. Checks again the papers it held off under older rules (PR 1c, v2.7103): up to twelve a run, from the lines on
+ *        file, with no model read (`recheckStored`). One that would now add up has its file opened once more for the
+ *        PDF's text, three files a run, so its part codes are held to the paper as on a first read; then its turned
+ *        lines are written, and its state after. Each paper is checked once (`supply_papers.check_rules`).
  *   POST { probe: { n? } }       asks Drive about `n` (20) linked files, newest to oldest, and reads nothing
  *   POST { status: {} }          the counts and the line, nothing read
  *
  *   → { ok, ran, run: { files, kept, addUp, unowned, held, reads, cents, capped }, files: [{ fileId, kept, held,
- *       unowned, why? }], status: { bills, noPdf, read, held, heldTotal, ready, readyFiles }, line }
+ *       unowned, why? }], recheck: { checked, addUp }, status: { bills, noPdf, read, held, heldTotal, ready,
+ *       readyFiles }, line }
  *
  * The switch `app_settings.bill_lines_sweep_on_v1` must read 'true' for the cron; a dev may run it off. Refusals: 401
  * with neither door, 403 for a caller who is not a dev, 405 for anything but POST, 409 `off` / `noKey`, 503 without
@@ -433,6 +445,109 @@ async function readFile(s: RunState, job: FileJob, holds: ReadonlyMap<string, Sw
   }
 }
 
+type OffPaperRow = { id: string; invoice_id: string; kind: string; subtotal_cents: number | null; tax_cents: number | null; freight_cents: number | null; total_cents: number | null; drive_file_id: string | null; text_layer: boolean | null }
+
+/**
+ * One more check for the papers held off under older rules, from the lines on file. A paper that stays off is stamped
+ * and left for a person. One that would add up is held to the PDF's text first, as a first read is: the file is
+ * opened again (no model), and a paper whose file this run has no room for waits for the next. A file Drive no longer
+ * hands over leaves its paper off, since the part codes cannot be held to the paper.
+ */
+async function recheckOff(admin: SupabaseClient, google: () => Promise<string>, invoices: readonly SweepInvoice[], spend: PassSpend, startedMs: number): Promise<{ checked: number; addUp: number }> {
+  const out = { checked: 0, addUp: 0 }
+  const { data: paperData, error: paperError } = await admin
+    .from('supply_papers')
+    .select('id, invoice_id, kind, subtotal_cents, tax_cents, freight_cents, total_cents, drive_file_id, text_layer')
+    .eq('check_state', 'off')
+    .not('invoice_id', 'is', null)
+    .like('read_by', 'sweep:%')
+    .lt('check_rules', CHECK_RULES)
+    .order('id')
+    .limit(RECHECK_PAPERS)
+  if (paperError) {
+    // Before migration 20261113070000 is pushed the column is not there: nothing is due, and the sweep goes on.
+    console.warn('[bill-lines-sweep] recheck', paperError.message)
+    return out
+  }
+  const papers = (paperData ?? []) as OffPaperRow[]
+  if (!papers.length) return out
+  const { data: lineData, error: lineError } = await admin
+    .from('supply_paper_lines')
+    .select('paper_id, line_no, line_kind, house_code, mfr_number, description, unit, qty_ordered, qty_shipped, qty_backordered, unit_price, pricing_unit, extended_cents')
+    .in('paper_id', papers.map((p) => p.id))
+    .order('paper_id')
+    .order('line_no')
+    .range(0, 4999)
+  if (lineError) {
+    console.warn('[bill-lines-sweep] recheck lines', lineError.message)
+    return out
+  }
+  const linesOf = new Map<string, StoredLineRow[]>()
+  for (const l of (lineData ?? []) as (StoredLineRow & { paper_id: string })[]) linesOf.set(l.paper_id, [...(linesOf.get(l.paper_id) ?? []), l])
+  const amountOf = new Map(invoices.map((i) => [i.id, i.amountCents]))
+  /** A file's text this run: the text layer, null where there is none to check against, 'gone' when Drive will not hand the file over. */
+  const texts = new Map<string, string | null | 'gone'>()
+  let opened = 0
+
+  for (const p of papers) {
+    if (Date.now() - startedMs >= SWEEP_START_BUDGET_MS) break
+    const paper = {
+      kind: p.kind as PaperKind,
+      lines: (linesOf.get(p.id) ?? []).map(lineOfStoredRow),
+      subtotalCents: p.subtotal_cents,
+      taxCents: p.tax_cents,
+      freightCents: p.freight_cents,
+      totalCents: p.total_cents,
+    }
+    const rowAmountCents = amountOf.get(p.invoice_id) ?? null
+    let again = recheckStored({ paper, rowAmountCents })
+    let gone = false
+    // text_layer false is a scan: there was no text on the first read and there is none now.
+    if (again.check.state === 'adds_up' && p.text_layer !== false && p.drive_file_id) {
+      if (!texts.has(p.drive_file_id)) {
+        if (opened >= RECHECK_FILES || spend.ms >= TEXT_LIMITS.passBudgetMs) continue
+        opened += 1
+        const token = await google()
+        const got = await driveMeta(token, p.drive_file_id)
+        if ('status' in got) {
+          if (got.status !== 404 && got.status !== 403) continue
+          texts.set(p.drive_file_id, 'gone')
+        } else {
+          const bytes = await driveFileBytes(token, p.drive_file_id, BILL_FILE_MAX_BYTES)
+          if (!bytes || bytes === 'tooBig') continue
+          const layer = await textFromBytes(bytes, { name: got.meta.name ?? 'bill', mimeType: 'application/pdf' }, { limits: TEXT_LIMITS, spend }).catch(() => ({ why: 'error' as const }))
+          const whole = 'text' in layer && (layer.pagesRead == null || layer.pages == null || layer.pagesRead >= layer.pages)
+          texts.set(p.drive_file_id, 'text' in layer && whole ? layer.text : null)
+        }
+      }
+      const text = texts.get(p.drive_file_id)
+      if (text === 'gone') gone = true
+      else if (text) again = recheckStored({ paper, rowAmountCents, text })
+    }
+
+    let failed = false
+    for (const fix of again.lineFixes) {
+      const { line_no, ...columns } = fix
+      const { error } = await admin.from('supply_paper_lines').update(columns).eq('paper_id', p.id).eq('line_no', line_no)
+      if (error) {
+        console.error('[bill-lines-sweep] recheck line', error.message)
+        failed = true
+      }
+    }
+    if (failed) continue
+    // A person who fixed or accepted the paper while this run read keeps their word: only a paper still off is written.
+    const update = gone ? { check_rules: CHECK_RULES } : again.paper
+    const { error } = await admin.from('supply_papers').update(update).eq('id', p.id).eq('check_state', 'off')
+    if (error) {
+      console.error('[bill-lines-sweep] recheck paper', error.message)
+      continue
+    }
+    out.checked += 1
+    if (!gone && again.check.state === 'adds_up') out.addUp += 1
+  }
+  return out
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'badRequest', words: 'Ask for the sweep with POST.' }, 405)
@@ -506,14 +621,17 @@ serve(async (req) => {
     const jobs = plan.files.slice(0, limit)
     const run: SweepRun = { ...EMPTY_SWEEP_RUN, capped: left <= 0 && jobs.length > 0 }
     const results: FileResult[] = []
+    const spend = newPassSpend()
+    let googleToken: Promise<string> | null = null
+    const google = () => (googleToken ??= googleAccessToken(saJson))
     if (jobs.length && left > 0) {
       const houseIds = [...new Set(jobs.flatMap((j) => j.rows.map((r) => r.supplyHouseId)).filter((id): id is string => Boolean(id)))]
       const { data: houses } = houseIds.length ? await admin.from('supply_houses').select('id, name').in('id', houseIds) : { data: [] }
       const s: RunState = {
         admin,
-        google: await googleAccessToken(saJson),
+        google: await google(),
         client: new Anthropic({ apiKey: key }),
-        spend: newPassSpend(),
+        spend,
         startedMs: started,
         left,
         run,
@@ -541,10 +659,16 @@ serve(async (req) => {
       await Promise.all(Array.from({ length: Math.min(SWEEP_CONCURRENCY, jobs.length) }, worker))
     }
 
+    // The papers held off under older rules get one more check, from the lines on file: no model read, so no cap.
+    const recheck = await recheckOff(admin, google, state.invoices, spend, started).catch((e) => {
+      console.error('[bill-lines-sweep] recheck', e instanceof Error ? e.message : String(e))
+      return { checked: 0, addUp: 0 }
+    })
+
     const after = sweepPlan({ ...(await loadState(admin)), nowMs: Date.now() })
-    const line = sweepWords(run, after.status)
+    const line = [sweepWords(run, after.status), recheckWords(recheck.checked, recheck.addUp)].filter(Boolean).join(' ')
     console.log(`[bill-lines-sweep] ${line}`)
-    return json({ ok: true, ran: true, run, files: results, status: after.status, ms: Date.now() - started, line })
+    return json({ ok: true, ran: true, run, files: results, recheck, status: after.status, ms: Date.now() - started, line })
   } catch (e) {
     const refusal = modelRefusalWhy(e)
     console.error('[bill-lines-sweep]', refusal.status ?? '', refusal.why)

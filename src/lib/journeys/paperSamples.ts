@@ -14,7 +14,9 @@ import { SAMPLE_HOMEOWNER, ymdPlusDays } from '../customerSample'
 import { buildPhysicalInvoiceDocument, buildPhysicalInvoiceEmailBodies, physicalInvoiceEmailSubject, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildHazmatFeeNoticeHtml, type HazmatNoticeJobInfo } from '../jobsDocuments/hazmatFeeNotice'
 import type { HazmatIncidentDraft } from '../hazmatFee'
-import { buildDemandLetterPrintHtml, type DemandLetterFields } from '../jobsDocuments/demandLetter'
+import { buildDemandLetterPrintHtml, demandDate, feeClockDate, interestBasisFor, lienLineBlockedReason, type DemandLetterFields, type DemandStatementInvoice } from '../jobsDocuments/demandLetter'
+import type { PayPageAssets } from '../jobs/lienNoticePayPage'
+import { SAMPLE_PAY_CODE_ID, SAMPLE_PAY_CODE_SVG } from './samplePayCode'
 import { sampleLetterTwo, sampleLienAffidavit, sampleLienCoverLetter, sampleOwnerNotice, sampleReleaseOfRecord, sampleRetainageNotice } from './lienLetterSamples'
 import { buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverFootLines, lienWaiverTitle, type LienWaiverFields, type LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
 
@@ -112,7 +114,18 @@ export function sampleHazmatNotice(todayYmd: string): PaperSample {
   }
 }
 
+/**
+ * The demand letter as the Lien window builds one today (v2.7086): the bill as a statement of account, its pay
+ * code, the fee and interest lines by their own rules, a dated notice history and the two exhibits a letter
+ * carries by default. The job is a house, so the lien line is off for the reason the window gives.
+ */
 export function sampleDemandLetterFields(todayYmd: string): DemandLetterFields {
+  const sentYmd = ymdPlusDays(todayYmd, -52)
+  const amount = SAMPLE_JOB.amount.toFixed(2)
+  const statement: DemandStatementInvoice[] = [
+    { invoiceNumber: `#${SAMPLE_JOB.number}`, sentYmd, dueYmd: ymdPlusDays(sentYmd, 14), lines: [{ description: SAMPLE_JOB.lineDescription, qty: '1', amount }], total: amount, paid: '0', balance: amount, invoiceId: SAMPLE_PAY_CODE_ID, payable: true },
+  ]
+  const interest = interestBasisFor(statement)
   return {
     businessName: PORTAL_COMPANY.name,
     senderName: 'The office',
@@ -123,24 +136,48 @@ export function sampleDemandLetterFields(todayYmd: string): DemandLetterFields {
     recipientName: SAMPLE_HOMEOWNER.name,
     recipientEmail: SAMPLE_HOMEOWNER.email,
     recipientAddress: SAMPLE_HOMEOWNER.address,
+    statement,
     serviceAddress: SAMPLE_JOB.address,
-    invoiceNumber: SAMPLE_JOB.number,
-    invoiceDate: ymdPlusDays(todayYmd, -52),
+    enclosures: [
+      { label: 'A', kind: 'invoice', title: `Invoice #${SAMPLE_JOB.number}, as sent ${demandDate(sentYmd)}`, pages: 1 },
+      { label: 'B', kind: 'delivery', title: 'Delivery record', pages: 1 },
+    ],
+    feeClockYmd: feeClockDate(todayYmd),
+    interestBasis: interest.basis,
+    interestFromYmd: interest.fromYmd,
+    lienBlockedReason: lienLineBlockedReason({ lienFilingDeadline: '', todayYmd, homestead: true, hasWorkMonth: false }),
+    invoiceNumber: `#${SAMPLE_JOB.number}`,
+    invoiceDate: sentYmd,
     serviceDescription: SAMPLE_JOB.lineDescription,
-    invoiceTotal: SAMPLE_JOB.amount.toFixed(2),
+    invoiceTotal: amount,
     paymentsReceived: '0.00',
-    outstanding: SAMPLE_JOB.amount.toFixed(2),
+    outstanding: amount,
     deadlineDate: ymdPlusDays(todayYmd, 10),
-    // A whole sentence: the letter sets it in front of the dispute line as it is typed.
-    paymentMethod: 'Pay by card or bank transfer from the bill link, or by check to the office.',
+    paymentMethod: '',
     includeSmallClaims: true,
     includeLien: false,
     lienFilingDeadline: '',
     includeTheftOfServices: false,
-    includeLateFees: true,
+    includeLateFees: interest.basis !== 'none',
     includeNotarial: false,
-    priorNotices: [],
+    includePayCodes: true,
+    layout: 'letter-first',
+    priorNotices: [
+      { date: sentYmd, label: 'Invoice sent' },
+      { date: ymdPlusDays(sentYmd, 21), label: 'Invoice re-sent by email' },
+    ],
   }
+}
+
+/** The sample letter's one code: the kept drawing for the page, and its picture for the PDF when a browser can make one. */
+async function sampleDemandPayAssets(): Promise<PayPageAssets> {
+  let png: string | null = null
+  try {
+    png = await (await import('../billing/payQr')).svgMarkupToPngDataUrl(SAMPLE_PAY_CODE_SVG, 480)
+  } catch {
+    png = null
+  }
+  return { [SAMPLE_PAY_CODE_ID]: { svg: SAMPLE_PAY_CODE_SVG, png } }
 }
 
 export function sampleDemandLetter(todayYmd: string): PaperSample {
@@ -148,9 +185,9 @@ export function sampleDemandLetter(todayYmd: string): PaperSample {
   return {
     title: 'Final demand letter',
     subject: `Final demand for payment — invoice ${SAMPLE_JOB.number}`,
-    html: buildDemandLetterPrintHtml(f, todayYmd, SAMPLE_JOB.number),
+    html: buildDemandLetterPrintHtml(f, todayYmd, SAMPLE_JOB.number, { payAssets: { [SAMPLE_PAY_CODE_ID]: { svg: SAMPLE_PAY_CODE_SVG, png: null } } }),
     filename: `Demand-letter-${SAMPLE_JOB.number}-sample.pdf`,
-    pdf: async () => (await import('../jobsDocuments/demandLetter')).buildDemandLetterPdfBlob(f, todayYmd),
+    pdf: async () => (await import('../jobsDocuments/demandLetter')).buildDemandLetterPdfBlob(f, todayYmd, { payAssets: await sampleDemandPayAssets() }),
   }
 }
 

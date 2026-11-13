@@ -35,7 +35,7 @@ export type CallScriptOpening = {
   key: CallOpening
   /** "Paid my builder" — the chip. */
   chip: string
-  /** "“I already paid RMC — everything.”" — in the owner's words. */
+  /** "“I already paid RLC — everything.”" — in the owner's words. */
   words: string
   /** Counsel's next line, from the call sheet's own card. */
   say: string

@@ -6,7 +6,7 @@ const note: ReleaseNote = {
   title: 'Call lenses: bid pills say the project name',
   kind: 'feature',
   highlights: [
-    'The bid pills on Why we lost and Waiting to hear now show the project name — "Take 5 Dickinson" instead of three identical "s. access rd." pills.',
+    'The bid pills on Why we lost and Waiting to hear now show the project name — "Tune 5 Dickinson" instead of three identical "s. access rd." pills.',
     'Hover a pill for the full project and address; unnamed bids still fall back to the street, and the open bid\'s Maps address button is unchanged.',
   ],
 }

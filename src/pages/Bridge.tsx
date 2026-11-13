@@ -45,23 +45,25 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, deskMovesFoot, firstName, topPerson, topPersonId, type WeekCallInput } from '../lib/bridge/weekCall'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, firstName, topPerson, type WeekCallInput } from '../lib/bridge/weekCall'
+import { NOW_CARD_LABEL, nowDeskFoot } from '../lib/bridge/pulseWords'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { buildRecordedReading, buildWaitingDays } from '../lib/bridge/waitingDays'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 import { buildFixSizes } from '../lib/bridge/fixSizes'
 import { buildFlowStrip } from '../lib/bridge/flowStrip'
-import type { CallPerson, MoveMark } from '../lib/bridge/callPeople'
-import { loadCallPeople, loadMoveMarks } from '../lib/bridge/callPeopleIo'
 import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
 import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
-import type { LeftOutRule } from '../lib/bridge/leftOut'
+import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
+import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
+import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
+import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { deskStatus, isStageLink, type BridgeCall, type CallLink } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { arRowInvoiceId } from '../lib/bridge/collect/collectBills'
@@ -72,11 +74,8 @@ import { buildCollectSheet, collectMoveFor } from '../lib/bridge/collect/collect
 import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
-import { collectScorecard } from '../lib/bridge/collect/collectScorecard'
-import { loadCollectScorecardReads, type CollectScorecardReads } from '../lib/bridge/collect/loadCollectScorecard'
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../lib/jobs/paymentChaseIo'
 import type { CollectOutcomeWriter } from '../components/bridge/BridgeCollectOutcome'
-import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { fieldPaceByHours } from '../lib/bridge/fieldPace'
 import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
@@ -132,8 +131,8 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-/** What the Bridge leaves out of the won rates. The list a person sets is not shipped yet (punch list #318), so the loaders take none. */
-const NOTHING_LEFT_OUT: ReadonlyArray<LeftOutRule> = []
+/** The page is a pulse (punch list #334, PR 7): it reads no call, so the model behind the first screen is told there are none. One list, so memos stay still. */
+const NO_CALLS: BridgeCall[] = []
 /** Where a door on the first screen lands: clear of the app's top bar. */
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
@@ -196,55 +195,84 @@ export default function Bridge() {
   // The breakdowns behind the two charts (link PR 11).
   const [netOpen, setNetOpen] = useState(false)
   const [cashOpen, setCashOpen] = useState(false)
-  // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
-  const [calls, setCalls] = useState<BridgeCall[] | null>(null)
-  const [callsError, setCallsError] = useState<string | null>(null)
-  // The Done presses people made on the calls' moves (PR 4); the card shows them beside what the numbers say.
-  const [moveMarks, setMoveMarks] = useState<MoveMark[]>([])
-  // The accounts a move can go to (PR 4): teammates with a Needs you card of their own.
-  const [pickable, setPickable] = useState<CallPerson[]>([])
-  const [recording, setRecording] = useState(false)
-  const [answering, setAnswering] = useState(false)
-  const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
   /** ZZ test jobs leave the Bridge's own reads, the Bill pile and the Bill desk for everyone but a dev who shows them, as on the Dashboard (v2.5834, v2.6807). */
   const hideZz = useZzTestJobsHidden(role)
-  /** The ids every Bridge read takes (v2.6813): the shared read while ZZ jobs are hidden, null for a dev who shows them. */
-  const readZzTestJobIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
-  const zzKey = hideZz ? 'hide' : 'show'
-
+  // What the Bridge leaves out (punch list #334, PR 2): a list set on the page, of developments, customers and addresses.
+  // The jobs it names leave through the same ids as the ZZ test jobs, so they are left out exactly where a test job is.
+  const [leftOutRead, setLeftOutRead] = useState<LeftOutRead | null>(null)
+  const [leftOutRules, setLeftOutRules] = useState<LeftOutRule[] | null>(null)
+  const [leftOutSaved, setLeftOutSaved] = useState(true)
+  const [leftOutJobIds, setLeftOutJobIds] = useState<ReadonlySet<string> | null>(null)
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
     let cancelled = false
     void (async () => {
       try {
-        const rows = await loadBridgeCalls(supabase)
-        if (!cancelled) setCalls(rows)
-        // A mark is one extra word on the card: a read that fails leaves the card as the numbers have it.
-        const [marks, people] = await Promise.all([loadMoveMarks(supabase).catch(() => [] as MoveMark[]), loadCallPeople(supabase).catch(() => [] as CallPerson[])])
-        if (!cancelled) {
-          setMoveMarks(marks)
-          setPickable(people)
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setCalls([])
-          setCallsError(formatErrorMessage(e))
-        }
+        const read = await loadLeftOut(supabase)
+        if (cancelled) return
+        setLeftOutRead(read)
+        setLeftOutRules(read.rules)
+        setLeftOutSaved(!read.isDefault)
+      } catch {
+        // A list that cannot be read leaves nothing out, and the page still loads.
+        if (!cancelled) setLeftOutRules([])
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey])
+  }, [role, user?.id])
+  useEffect(() => {
+    if (!leftOutRules) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const ids = await loadLeftOutJobIds(supabase, leftOutRules)
+        if (!cancelled) setLeftOutJobIds(ids)
+      } catch {
+        if (!cancelled) setLeftOutJobIds(new Set())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [leftOutRules])
+  const fin = useDashboardFinancials(isOwnerOrDev(role) && leftOutJobIds != null, refreshKey, role, user?.id ?? null, leftOutJobIds)
+  /** The ids every Bridge read takes (v2.6813): the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
+  const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
+    const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
+    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+  }, [hideZz, user?.id, leftOutJobIds])
+  /**
+   * The viewer's ZZ switch alone, for the won rates. There a set stands for the switch, and a bid on something left
+   * out leaves by the list's own rules, so a dev who shows ZZ bids keeps them when the list names something else.
+   */
+  const readZzSwitchIds = useCallback((): Promise<ReadonlySet<string> | null> => (hideZz ? loadZzTestJobIds(user?.id ?? null) : Promise.resolve(null)), [hideZz, user?.id])
+  const zzKey = `${hideZz ? 'hide' : 'show'}:${leftOutRules ? leftOutKey(leftOutRules) : ''}`
+  // The page follows a change at once and the list is saved behind it. A save that is refused says why and holds for the visit.
+  const changeLeftOut = useCallback(
+    async (next: LeftOutRule[]) => {
+      setLeftOutRules(next)
+      try {
+        await saveLeftOut(supabase, next)
+        setLeftOutSaved(true)
+      } catch (e) {
+        showToast(`Not saved, so it holds until you leave the page. ${formatErrorMessage(e)}`, 'error', 5000)
+      }
+    },
+    [showToast],
+  )
 
   useEffect(() => {
-    if (!isOwnerOrDev(role) || !user?.id) return
+    // The left-out list is read first, so the page is read once, without the jobs it names.
+    if (!isOwnerOrDev(role) || !user?.id || leftOutJobIds == null) return
     let cancelled = false
     setLoading(true)
     setError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const d = await loadBridgeData(supabase, { zzTestJobIds })
         if (cancelled) return
@@ -260,7 +288,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey, hideZz])
+  }, [role, user?.id, refreshKey, leftOutJobIds, readZzTestJobIds])
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -354,7 +382,6 @@ export default function Bridge() {
     }
   }, [fin.data, data, role, collectReads, collectReadKey])
   const collectDesk = useMemo(() => (collectReads && collectReads.forKey === collectReadKey ? buildCollectDeskFrom(fin.data, data as BridgeData, collectReads.reads) : null), [fin.data, data, collectReads, collectReadKey])
-  const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
   // Every payer's jobs, not only the cut's: a lien deadline on a small account still reaches the owner's strip (v2.5873).
   const collectChipJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.payers.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
   const collectChips = useArLienChips(collectOpen && collectChipJobIds.length > 0, collectChipJobIds, data?.todayYmd ?? '', role, hideZz)
@@ -421,7 +448,7 @@ export default function Bridge() {
     setBillError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const v = await loadBillPileJobs(supabase, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         if (!cancelled) setBillJobs(v)
@@ -432,7 +459,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, hideZz, user?.id])
+  }, [data, readZzTestJobIds])
   const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
 
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
@@ -475,7 +502,10 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const v = await loadEstimatesSent(supabase, { leftOut: NOTHING_LEFT_OUT })
+        // The viewer's ZZ switch, read the way the bids read it: a set leaves the ZZ test estimates out (punch list #334, PR 3).
+        const zzTestJobIds = await readZzSwitchIds()
+        if (cancelled) return
+        const v = await loadEstimatesSent(supabase, { leftOut: leftOutRules ?? [], zzTestJobIds })
         if (!cancelled) setEstimatesSent(v)
       } catch {
         if (!cancelled) setEstimatesSent(null)
@@ -484,7 +514,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data])
+  }, [data, leftOutRules, readZzSwitchIds])
   const estimateWins = useMemo(() => (data && estimatesSent ? buildEstimateWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, estimates: estimatesSent }) : null), [data, estimatesSent])
 
   // Bids through theirs, the same way: every bid ever sent and the jobs made from them.
@@ -494,9 +524,9 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const zzTestJobIds = await readZzTestJobIds()
+        const zzTestJobIds = await readZzSwitchIds()
         if (cancelled) return
-        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: NOTHING_LEFT_OUT })
+        const v = await loadBidsSent(supabase, { zzTestJobIds, leftOut: leftOutRules ?? [] })
         if (!cancelled) setBidsSent(v)
       } catch {
         if (!cancelled) setBidsSent(null)
@@ -505,7 +535,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, readZzTestJobIds])
+  }, [data, readZzSwitchIds, leftOutRules])
   const bidWins = useMemo(() => (data && bidsSent ? buildBidWins({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: bidsSent }) : null), [data, bidsSent])
   // What Market is worth: both kinds of ask, each through its own won rate. It waits for both reads, so the pipe is sized once.
   const marketWorth = useMemo(() => (bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null), [bidWins, estimateWins])
@@ -515,7 +545,7 @@ export default function Bridge() {
   const [billOpen, setBillOpen] = useState(false)
   const [billReads, setBillReads] = useState<{ forKey: string; reads: BillDeskReads } | null>(null)
   const [billReadsError, setBillReadsError] = useState<string | null>(null)
-  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${hideZz ? 'hide' : 'show'}` : ''
+  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${zzKey}` : ''
   useEffect(() => {
     if (!billOpen || !data || !billPile) return
     if (billReads && billReads.forKey === billReadKey) return
@@ -524,7 +554,7 @@ export default function Bridge() {
     setBillReadsError(null)
     void (async () => {
       try {
-        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        const zzTestJobIds = await readZzTestJobIds()
         if (cancelled) return
         const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id), zzTestJobIds })
         if (!cancelled) setBillReads({ forKey: key, reads })
@@ -535,7 +565,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [billOpen, data, billPile, billReads, billReadKey, hideZz, user?.id])
+  }, [billOpen, data, billPile, billReads, billReadKey, readZzTestJobIds])
 
   // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
   const [buildOpen, setBuildOpen] = useState(false)
@@ -622,9 +652,8 @@ export default function Bridge() {
     return buildSalesDesk({ ...salesReads.reads, todayYmd: data.todayYmd, fallbackRate: bidWins?.coefficient ?? null, bidSizeRates, estimateShare: estimateWins?.coefficient ?? null })
   }, [data, demand, salesReads, salesReadKey, bidWins, estimateWins])
 
-  // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
+  // The pay week today falls in.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
-  const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
 
   // The top line's weeks (the eight-week grid on recorded and approved time), read here because the stage cards take the field's pace from it.
   const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
@@ -694,8 +723,6 @@ export default function Bridge() {
     const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
-    // A call on a resource holds the stage it throttled at call time, so the red does not wander while the owner clears a pile.
-    const held = thisWeekCall ? heldStageFor(thisWeekCall) : null
     // Build's pace is the larger of built-by-percent and earned-by-hours; Bill's in-rate is what the field earned on recorded time.
     const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
     const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
@@ -712,11 +739,12 @@ export default function Bridge() {
           ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount }
           : null,
       build,
-      heldLinkId: held,
+      // No call holds a step for the week (punch list #334, PR 7): the red follows today's reading.
+      heldLinkId: null,
       // "reading…" on Market and Sales while their loader is in flight; the error line below the cards is the failure state.
       demandLoading: !demand && !demandError,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk, marketWorth, bidWins, estimateWins])
+  }, [data, fin.data, receipts, doubtful, buildPace, demand, demandError, fieldPace, billPile, collectDesk, marketWorth, bidWins, estimateWins])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The Bill desk's kernel (v2.5930): the facts the page knows at once, and the rows once the desk's own reads land.
   const billDesk = useMemo(() => {
@@ -850,7 +878,7 @@ export default function Bridge() {
     setDialUsd({})
   }, [])
 
-  // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
+  // Today's numbers behind the moves on the first screen's card.
   const moveNumbers = useMemo(
     () => ({
       bill: billPile ? billPile.knownUsd : null,
@@ -869,11 +897,6 @@ export default function Bridge() {
     }),
     [stageFlow, moveNumbers],
   )
-  const scorecard = useMemo(() => {
-    if (!data || !calls || !thisWeekStart) return null
-    const c = scoreCall(calls, thisWeekStart)
-    return c ? buildScorecard({ call: c, calls, now: nowReading, todayYmd: data.todayYmd, dayLabel: md }) : null
-  }, [data, calls, thisWeekStart, nowReading])
   const deskReading = useMemo(() => {
     if (litLink && !isStageLink(litLink)) {
       const r = resources?.find((x) => x.id === litLink)
@@ -886,28 +909,6 @@ export default function Bridge() {
   }, [stageFlow, litLink, resources])
 
   // PR C (v2.5854): the one move per payer with its words and paper, the owner's decisions, the what-if, read from the same pile.
-  // PR G (v2.5858): Friday's reads, once a plan is recorded on Collect: the payments since the plan and the lien papers that moved.
-  const [collectScoreReads, setCollectScoreReads] = useState<{ forKey: string; reads: CollectScorecardReads } | null>(null)
-  const collectScoreKey = thisWeekCall?.link === 'collect' && collectDesk ? `${thisWeekCall.id}:${thisWeekCall.calledOn}:${refreshKey}:${zzKey}:${collectJobIds.join(',')}` : ''
-  useEffect(() => {
-    if (!collectScoreKey || !thisWeekCall) return
-    if (collectScoreReads && collectScoreReads.forKey === collectScoreKey) return
-    let cancelled = false
-    const key = collectScoreKey
-    void (async () => {
-      try {
-        const zzTestJobIds = await readZzTestJobIds()
-        if (cancelled) return
-        const reads = await loadCollectScorecardReads(supabase, { sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds, zzTestJobIds })
-        if (!cancelled) setCollectScoreReads({ forKey: key, reads })
-      } catch {
-        if (!cancelled) setCollectScoreReads({ forKey: key, reads: { payments: [], notices: { drafted: 0, signed: 0, mailed: 0, affidavitsFiled: 0 } } })
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [collectScoreKey, thisWeekCall, collectScoreReads, collectJobIds, readZzTestJobIds])
   const collectPlan = useMemo(() => {
     if (!collectDesk || !data) return null
     const chipFor = (p: { bills: ReadonlyArray<{ jobId: string | null }> }) => {
@@ -918,69 +919,18 @@ export default function Bridge() {
       }
       return null
     }
-    const recordedMoves = thisWeekCall?.link === 'collect' ? thisWeekCall.moves : null
-    const sheet = buildCollectSheet(collectDesk.cut, (p) => collectMoveFor(p, { chip: chipFor(p), todayYmd: data.todayYmd, dayLabel: md, lienHref: lienArChipHref, recordedMoves: recordedMoves ? recordedMoves.map((m) => ({ ...m, title: m.title.replace(`${p.payerName}: `, '') })) : null }))
+    const sheet = buildCollectSheet(collectDesk.cut, (p) => collectMoveFor(p, { chip: chipFor(p), todayYmd: data.todayYmd, dayLabel: md, lienHref: lienArChipHref }))
     const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: (ids) => (ids.length === 1 ? `/jobs?tab=stages&edit=${ids[0]}` : '/jobs?tab=stages'), dayLabel: md })
     const collect = stageInput?.collect
     const whatIf = collect ? collectWhatIf({ pileUsd: collect.pileUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
-    const scorecard = thisWeekCall?.link === 'collect' && collectScoreReads && collectScoreReads.forKey === collectScoreKey && collectReads ? collectScorecard({ call: thisWeekCall, sheet, touches: collectReads.reads.touches, payments: collectScoreReads.reads.payments, notices: collectScoreReads.reads.notices, todayYmd: data.todayYmd }) : null
-    return { sheet, decisions, whatIf, scorecard }
-  }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow, collectScoreReads, collectScoreKey, collectReads])
+    return { sheet, decisions, whatIf }
+  }, [collectDesk, data, collectChips.chipsByJob, stageInput, stageFlow])
 
-  const recordCall = useCallback(
-    // `linkOverride` is the first screen's proposal (punch list #303): the page's own reading, or Capital in a week cash leads.
-    async (moves: CallMove[], note: string | null, linkOverride?: CallLink) => {
-      const link = linkOverride ?? litLink
-      if (!data || !thisWeekStart || !link || !stageFlow) return
-      setRecording(true)
-      try {
-        await recordBridgeCall(supabase, {
-          weekStart: thisWeekStart,
-          calledOn: data.todayYmd,
-          calledByName: profileName ?? '',
-          link,
-          moves,
-          measures: {
-            linkWeeks: stageFlow.stages.find((s) => s.id === link)?.weeks ?? null,
-            linkPileUsd: stageFlow.stages.find((s) => s.id === link)?.pile.usd ?? null,
-            throttles: isStageLink(link) ? null : stageFlow.linkId,
-            stageWeeks: nowReading.stageWeeks,
-            keys: moveNumbers,
-          },
-          note,
-        })
-        setCalls(await loadBridgeCalls(supabase))
-        showToast(`Recorded: ${link} is the link this week`, 'success', 2500)
-      } catch (e) {
-        showToast(formatErrorMessage(e), 'error', 4000)
-      } finally {
-        setRecording(false)
-      }
-    },
-    [data, thisWeekStart, litLink, stageFlow, nowReading, moveNumbers, profileName, showToast],
-  )
-  const answerCall = useCallback(
-    async (outcome: CallOutcome, note: string | null) => {
-      if (!calls || !thisWeekStart) return
-      const c = scoreCall(calls, thisWeekStart)
-      if (!c) return
-      setAnswering(true)
-      try {
-        await answerBridgeCall(supabase, c.id, outcome, note)
-        setCalls(await loadBridgeCalls(supabase))
-        showToast(outcome === 'moved' ? 'Recorded: the link moved' : 'Recorded: the link did not move', 'success', 2500)
-      } catch (e) {
-        showToast(formatErrorMessage(e), 'error', 4000)
-      } finally {
-        setAnswering(false)
-      }
-    },
-    [calls, thisWeekStart, showToast],
-  )
-
-  // The first screen (punch list #303, PR 1): three tiles and the week's call, proposed from the readings above.
+  // The first screen (punch list #303, PR 1): the tiles and the card *What to do now*, read from the readings above.
+  // The model is `buildWeekCall`'s, told there is no call on record and no pick (punch list #334, PR 7), so it always
+  // reads today: the slowest step, or cash in a week it leads.
   const weekInput = useMemo((): WeekCallInput | null => {
-    if (!data || !thisWeekStart || !calls) return null
+    if (!data || !thisWeekStart) return null
     const late = receipts.filter((r) => r.basis === 'late')
     return {
       todayYmd: data.todayYmd,
@@ -991,7 +941,7 @@ export default function Bridge() {
       cashNote: cashAccounts?.note ?? null,
       cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
       flow: stageFlow,
-      picked: pickedStage && pickedStage !== stageFlow?.linkId ? pickedStage : null,
+      picked: null,
       moveNumbers,
       counts: { billJobs: billPile?.knownJobs ?? null, lateInvoices: late.length + doubtful.length },
       people: {
@@ -999,21 +949,26 @@ export default function Bridge() {
         biller: topPerson(vectorInputs?.invoiceSends ?? [], vectorInputs?.people ?? [], data.windowStart),
         collector: topPerson(vectorInputs?.payments ?? [], vectorInputs?.people ?? [], data.windowStart),
       },
-      // The accounts behind those names (PR 4), so a move as proposed reaches its person's Needs you.
-      peopleIds: {
-        caller: user?.id ?? null,
-        biller: topPersonId(vectorInputs?.invoiceSends ?? [], data.windowStart),
-        collector: topPersonId(vectorInputs?.payments ?? [], data.windowStart),
-      },
-      marks: moveMarks,
       // The hazards are the supply invoices due, by day: the one bill a call can ask more days on.
       supplyDue: forecast ? (data.hazards.find((h) => h.ymd > data.todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
-      calls,
+      calls: NO_CALLS,
       now: nowReading,
       dayLabel: md,
     }
-  }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading, user?.id, moveMarks])
+  }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile, profileName, vectorInputs, nowReading])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
+  // The two balances on the first screen (punch list #334, PR 6). The accrual balance is the page's net position:
+  // cash, plus what customers owe, less what the company owes, the three figures Money owed walks through.
+  // Runway burns payroll and overhead alone, the two figures the cash forecast already spends.
+  const weekMoney = useMemo(() => {
+    if (!weekInput) return null
+    const burnPerDayUsd = data ? burnPerDay({ payrollPerWeekUsd: data.payrollWeeklyEstUsd, overheadPerDayUsd: data.dailyDrainUsd }) : null
+    return {
+      cash: cashLine({ ...weekInput, burnPerDayUsd }),
+      accrual: accrualLine({ cashUsd: cashToday, owedToYouUsd: fin.data ? fin.data.ar.total : null, owedByYouUsd: fin.data ? fin.data.ap.total : null, burnPerDayUsd }),
+      foot: runwayFoot(burnPerDayUsd),
+    }
+  }, [weekInput, cashToday, fin.data, data])
 
   // One account's switch: the page follows at once, the row is saved behind it, and a save that is refused says why.
   const flipAccount = useCallback(
@@ -1296,9 +1251,9 @@ export default function Bridge() {
   const deskList = useMemo(() => {
     if (!weekInput || !weekModel || !litLink) return { moves: [], foot: '' }
     const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
-    const proposing = weekModel.state === 'propose'
-    const moves = deskMoves(litLink, weekInput, proposing ? weekModel.card.moves.slice(0, cap) : weekModel.card.moves)
-    return { moves, foot: proposing && weekModel.link === litLink ? deskMovesFoot(moves.length, cap) : '' }
+    const moves = deskMoves(litLink, weekInput, weekModel.card.moves.slice(0, cap))
+    // With nothing to take off the card, the foot only says how many it shows.
+    return { moves, foot: weekModel.link === litLink ? nowDeskFoot(moves.length, cap) : '' }
   }, [weekInput, weekModel, litLink, narrow])
 
   // The open door. Soft numbers has none when nothing is soft, so a stale link opens nothing.
@@ -1387,6 +1342,8 @@ export default function Bridge() {
           <span style={det} data-testid="bridge-date">
             {new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
             {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
+            {/* The loaded page says the window it read, as its loading line does (punch list #334, PR 1). */}
+            <span data-testid="bridge-window"> · reads the last {BRIDGE_DAYS_BACK / 7} weeks, since {windowStartLabel}</span>
           </span>
         ) : (
           <span style={det}>Where we stand, where cash is going, what would change it.</span>
@@ -1395,28 +1352,38 @@ export default function Bridge() {
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
+      {leftOutRules && (
+        <BridgeLeftOut
+          rules={leftOutRules}
+          isDefault={!leftOutSaved}
+          developments={leftOutPickerNames(leftOutRead?.developments ?? [], hideZz)}
+          customers={leftOutPickerNames(leftOutRead?.customers ?? [], hideZz)}
+          jobCount={leftOutJobIds ? leftOutJobIds.size : null}
+          narrow={narrow}
+          onChange={(next) => void changeLeftOut(next)}
+        />
+      )}
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
-        <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
+        <p style={det}>{loading ? `Reading the last ${BRIDGE_DAYS_BACK / 7} weeks…` : '—'}</p>
       ) : (
         <>
-          {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. */}
-          {weekModel ? (
+          {/* The first screen (punch list #303, PR 1): where we stand in the tiles, and what to do now. */}
+          {weekModel && weekMoney ? (
             <BridgeWeek
               model={weekModel}
-              recording={recording}
-              answering={answering}
-              onRecord={(link, moves, note) => void recordCall(moves, note, link)}
-              onAnswer={(o) => void answerCall(o, null)}
-              onPickStep={() => pressDoor('flow', { keepOpen: true })}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
               strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
               stripSide={!pipeAcross}
-              people={pickable}
+              money={weekMoney}
+              onAccrual={() => {
+                setOpenCard('owed')
+                pressDoor('money', { keepOpen: true, scrollTo: 'bridge-money-owed' })
+              }}
             />
           ) : (
-            <p style={{ ...det, color: callsError ? 'var(--text-amber-800)' : undefined }} data-testid="bridge-week-wait">
-              {callsError ? `The week’s call could not be read. ${callsError}` : 'Reading the week’s call…'}
+            <p style={det} data-testid="bridge-week-wait">
+              Reading {NOW_CARD_LABEL.toLowerCase()}…
             </p>
           )}
 
@@ -1469,14 +1436,12 @@ export default function Bridge() {
           {/* What throttles the link (link PR 6): the three resources */}
           {resources && <BridgeResources resources={resources} pickedId={litLink && !isStageLink(litLink) ? (litLink as ResourceId) : null} onPick={setPickedStage} onOrder={setOrderFor} />}
 
-          {/* The link's desk (link PR 2): what the pressed link is and today's reading. The call on it is made on the first screen (cut 5). */}
+          {/* The link's desk (link PR 2): what the pressed link is and today's reading. */}
           {stageFlow && litLink && (
             <BridgeLinkDesk
               link={litLink}
-              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litLink })}
+              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: false })}
               todayReading={deskReading}
-              thisWeekCall={thisWeekCall}
-              dayLabel={md}
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
               onGoToCall={() => setDoorScroll((d) => ({ id: 'bridge-week', n: (d?.n ?? 0) + 1 }))}
               moves={deskList.moves}
@@ -1485,7 +1450,6 @@ export default function Bridge() {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
             {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} />}
-            {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           </div>
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
           {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
@@ -1644,8 +1608,8 @@ export default function Bridge() {
             {netOpen && truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
           </div>
 
-          {/* Money owed, both ways */}
-          <div style={{ marginTop: '0.6rem' }}>
+          {/* Money owed, both ways. The accrual balance on the first screen lands here. */}
+          <div id="bridge-money-owed" style={{ marginTop: '0.6rem', scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
             <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={label}>Money owed</div>
@@ -1784,10 +1748,6 @@ export default function Bridge() {
                 sheet={collectPlan?.sheet ?? null}
                 decisions={collectPlan?.decisions ?? null}
                 whatIf={collectPlan?.whatIf ?? null}
-                scorecard={collectPlan?.scorecard ?? null}
-                thisWeekCall={thisWeekCall}
-                recording={recording}
-                onRecordPlan={(moves) => void recordCall(moves, 'the Collect desk\u2019s sheet')}
                 customerHref={(id) => `/customers/${id}`}
                 outcomeWriter={collectOutcomeWriter}
                 onOutcomeRecorded={() => {

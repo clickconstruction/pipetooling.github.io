@@ -20,7 +20,7 @@ export type BilledAgingPoint = {
   /** Stable row key: the invoice id (only invoice-bearing rows plot). */
   invoiceId: string
   jobId: string
-  /** "964 PLUM · Pondhill demo" */
+  /** "964 PLUM · Penmoor demo" */
   label: string
   customerName: string | null
   days: number

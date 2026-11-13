@@ -57,11 +57,11 @@ The **Day** tab's person-row **+** offers {{button:outline|Create new job}} too.
 Every result carries its billing state: {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}}. Active jobs are listed first. Billed and paid ones are greyed under a **Finished jobs** divider. They are still pickable for warranty callbacks, just never by accident. Active rows also show how many blocks the job already has this week. A search may turn up **two jobs at the same address**, the classic repeat-customer trap. Then a warning banner says so. So you check the status chips before picking.
 
 :::example Two jobs, one address
-⚠ 2 jobs at 109 Tuscarora Trail — check the status before picking
+⚠ 2 jobs at 109 Tamberline Trail — check the status before picking
 
-**473 · Mike Holub** {{chip:yellow|Working}} ← the live one
+**473 · Mike Holmby** {{chip:yellow|Working}} ← the live one
 
-**346 · Mike Holub** {{chip:blue|Billed}} — greyed, under Finished jobs
+**346 · Mike Holmby** {{chip:blue|Billed}} — greyed, under Finished jobs
 :::
 
 You pick the job and a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill: {{chip:yellow|PLUM}}, ELEC, HVAC. It shows how long ago the job was added plus its address. The search box matches HCP number, job name, **address, and customer**. The small briefcase button sits at the left of a row. It opens that job's **Job Detail** right on top of the picker. From there **Edit job** swaps to the Edit Job form and back. Closing either one returns you to the picker exactly where you left it.

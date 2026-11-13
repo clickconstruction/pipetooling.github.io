@@ -11,6 +11,8 @@ export type TaskPlacesHost = {
   placeFor: (itemId: string | null | undefined) => TaskPlace | null
   /** How many of the asked tasks have a place. */
   count: number
+  /** Read the places again: a place was just added from where someone stands (PR 8). */
+  reload: () => Promise<void>
 }
 
 export function useTaskPlaces(itemIds: ReadonlyArray<string>): TaskPlacesHost {
@@ -41,5 +43,5 @@ export function useTaskPlaces(itemIds: ReadonlyArray<string>): TaskPlacesHost {
   }, [reload])
 
   const placeFor = useCallback((itemId: string | null | undefined) => (itemId ? places.get(itemId) ?? null : null), [places])
-  return useMemo(() => ({ placeFor, count: places.size }), [placeFor, places])
+  return useMemo(() => ({ placeFor, count: places.size, reload }), [placeFor, places, reload])
 }

@@ -24,8 +24,8 @@ import { plainWordsFailures } from '../plainWords'
 
 describe('bidLienWaiverPrefill', () => {
   it('fills the payor from the GC first, the customer second', () => {
-    expect(bidLienWaiverPayor({ bids_gc_builders: { name: 'Southern Post' }, customers: { name: 'Take 5' } })).toBe('Southern Post')
-    expect(bidLienWaiverPayor({ bids_gc_builders: null, customers: { name: 'Take 5' } })).toBe('Take 5')
+    expect(bidLienWaiverPayor({ bids_gc_builders: { name: 'Southern Pine' }, customers: { name: 'Tune 5' } })).toBe('Southern Pine')
+    expect(bidLienWaiverPayor({ bids_gc_builders: null, customers: { name: 'Tune 5' } })).toBe('Tune 5')
     expect(bidLienWaiverPayor({})).toBe('')
   })
 
@@ -37,21 +37,21 @@ describe('bidLienWaiverPrefill', () => {
   })
 
   it('joins project name and address with an em dash and dates both boxes today', () => {
-    const f = bidLienWaiverPrefill({ project_name: 'Take 5 Seguin', address: '380 TX-123, Seguin, TX 78155' }, '2026-10-26')
-    expect(f.projectDescription).toBe('Take 5 Seguin — 380 TX-123, Seguin, TX 78155')
+    const f = bidLienWaiverPrefill({ project_name: 'Tune 5 Seguin', address: '410 TX-123, Seguin, TX 78155' }, '2026-10-26')
+    expect(f.projectDescription).toBe('Tune 5 Seguin — 410 TX-123, Seguin, TX 78155')
     expect(f.throughDate).toBe('2026-10-26')
     expect(f.signedDate).toBe('2026-10-26')
     expect(f.companyName).toBe(BID_LIEN_WAIVER_COMPANY_DEFAULT)
-    expect(bidLienWaiverPrefill({ project_name: 'Take 5 Seguin' }, '2026-10-26').projectDescription).toBe('Take 5 Seguin')
+    expect(bidLienWaiverPrefill({ project_name: 'Tune 5 Seguin' }, '2026-10-26').projectDescription).toBe('Tune 5 Seguin')
   })
 })
 
 describe('bidLienWaiverPaper', () => {
   it("draws the kernel's own words for the chosen form", () => {
-    const fields = bidLienWaiverPrefill({ project_name: 'Take 5 Seguin', address: '380 TX-123', agreed_value: 34825, bids_gc_builders: { name: 'Southern Post' } }, '2026-10-26')
+    const fields = bidLienWaiverPrefill({ project_name: 'Tune 5 Seguin', address: '410 TX-123', agreed_value: 34825, bids_gc_builders: { name: 'Southern Pine' } }, '2026-10-26')
     const conditional = bidLienWaiverPaper('conditional_progress', fields)
     expect(conditional.title).toBe('Conditional Waiver and Release on Progress Payment')
-    expect(conditional.paragraphs.join(' ')).toContain('Upon receipt by the undersigned of a check from Southern Post in the sum of $34,825.00')
+    expect(conditional.paragraphs.join(' ')).toContain('Upon receipt by the undersigned of a check from Southern Pine in the sum of $34,825.00')
     const unconditional = bidLienWaiverPaper('unconditional_progress', fields)
     expect(unconditional.paragraphs.join(' ')).toContain('This release does not affect any retainage, pending change orders, or disputed claims for extra work.')
     expect(unconditional.foot.company).toBe(BID_LIEN_WAIVER_COMPANY_DEFAULT)
@@ -75,7 +75,7 @@ describe('the leader gate', () => {
 })
 
 describe('the waivers recorded on the bid (v2.5958)', () => {
-  const fields = { ...bidLienWaiverPrefill({ project_name: 'Take 5 Seguin', address: '380 TX-123', agreed_value: 34825, bids_gc_builders: { name: 'Southern Post' } }, '2026-10-26'), throughDate: '2026-09-21', signerName: 'Malachi Whites', signerTitle: 'Owner' }
+  const fields = { ...bidLienWaiverPrefill({ project_name: 'Tune 5 Seguin', address: '410 TX-123', agreed_value: 34825, bids_gc_builders: { name: 'Southern Pine' } }, '2026-10-26'), throughDate: '2026-09-21', signerName: 'Malachi Whites', signerTitle: 'Owner' }
   const row = (over: Partial<BidLienReleaseRow> = {}): BidLienReleaseRow =>
     ({
       id: 'r1',

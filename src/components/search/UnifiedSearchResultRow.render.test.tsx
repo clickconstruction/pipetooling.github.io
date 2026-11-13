@@ -23,8 +23,8 @@ const jobResult: Extract<UnifiedSearchResult, { source: 'job' }> = {
   id: 'j1',
   hcp_number: '927',
   click_number: null,
-  job_name: 'Mike Holub',
-  job_address: '109 Tuscarora Dr San Antonio, TX 78209',
+  job_name: 'Mike Holmby',
+  job_address: '109 Tamberline Dr San Antonio, TX 78209',
   service_type_id: 'st1',
   service_type_name: 'Plumbing',
 }
@@ -48,7 +48,7 @@ describe('UnifiedSearchResultRow', () => {
       <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={jobEvidence} />,
     )
     // Plain J (not the configured JP) because the plum pill carries the trade.
-    expect(screen.getByText(/J927 · Mike Holub - 109 Tuscarora Dr San Antonio, TX/)).toBeTruthy()
+    expect(screen.getByText(/J927 · Mike Holmby - 109 Tamberline Dr San Antonio, TX/)).toBeTruthy()
     expect(screen.queryByText(/JP927/)).toBeNull()
     expect(screen.getByText('plum')).toBeTruthy()
     expect(screen.getByText('Ready to Bill')).toBeTruthy()
@@ -119,7 +119,7 @@ describe('UnifiedSearchResultRow', () => {
 
   it('renders without evidence as a plain pill + label row', () => {
     renderWithProviders(<UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} />)
-    expect(screen.getByText(/J927 · Mike Holub/)).toBeTruthy()
+    expect(screen.getByText(/J927 · Mike Holmby/)).toBeTruthy()
     expect(screen.queryByText(/this wk/)).toBeNull()
   })
 
@@ -141,7 +141,7 @@ describe('UnifiedSearchResultRow', () => {
       renderWithProviders(
         <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={jobEvidence} />,
       )
-      const label = screen.getByText(/J927 · Mike Holub/)
+      const label = screen.getByText(/J927 · Mike Holmby/)
       const chip = screen.getByText('Ready to Bill')
       // Stacked: the chip lives on its own line — it must NOT share the desktop
       // layout's common flex-row ancestor with the identity span.
@@ -163,7 +163,7 @@ describe('UnifiedSearchResultRow', () => {
     renderWithProviders(
       <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={jobEvidence} stacked />,
     )
-    const label = screen.getByText(/J927 · Mike Holub/)
+    const label = screen.getByText(/J927 · Mike Holmby/)
     const chip = screen.getByText('Ready to Bill')
     const identityLine = label.closest('span[style*="flex"]')
     expect(identityLine).toBeTruthy()
@@ -181,16 +181,16 @@ describe('UnifiedSearchResultRow', () => {
       />,
     )
     // Identity carries ONLY the number + name; the address is its own element.
-    const label = screen.getByText('J927 · Mike Holub')
-    const address = screen.getByText('109 Tuscarora Dr San Antonio, TX')
-    expect(label.textContent).not.toContain('109 Tuscarora')
+    const label = screen.getByText('J927 · Mike Holmby')
+    const address = screen.getByText('109 Tamberline Dr San Antonio, TX')
+    expect(label.textContent).not.toContain('109 Tamberline')
     // Order: identity line < address < line summary < rail chip.
     const summary = screen.getByText('Water heater 50 gal, Expansion tank')
     const chip = screen.getByText('Ready to Bill')
     expect(address.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(summary.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // The full combined label survives in the tooltip.
-    expect((label as HTMLElement).title).toContain('109 Tuscarora')
+    expect((label as HTMLElement).title).toContain('109 Tamberline')
   })
 
   it('renders a bid with plain B prefix, outcome chip, value, and date', () => {
@@ -221,7 +221,7 @@ describe('UnifiedSearchResultRow', () => {
 describe('identity line never wraps (v2.1521)', () => {
   it('ellipsizes the title instead of wrapping, keeping the pill on the same line', () => {
     renderWithProviders(<UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} />)
-    const label = screen.getByText(/J927 · Mike Holub/)
+    const label = screen.getByText(/J927 · Mike Holmby/)
     const style = (label as HTMLElement).style
     expect(style.whiteSpace).toBe('nowrap')
     expect(style.textOverflow).toBe('ellipsis')

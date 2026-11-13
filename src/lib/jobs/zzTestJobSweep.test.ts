@@ -38,9 +38,9 @@ describe('the ZZ name rules', () => {
   })
 
   it('reads the job name or the customer name', () => {
-    expect(isZzTestJob({ job_name: 'Coe Trim', customer_name: 'ZZ TEST Owner On Notice' })).toBe(true)
-    expect(isZzTestJob({ job_name: 'ZZ TEST Row 4', customer_name: 'Kimberly Coe' })).toBe(true)
-    expect(isZzTestJob({ job_name: 'Coe Trim', customer_name: 'Kimberly Coe' })).toBe(false)
+    expect(isZzTestJob({ job_name: 'Corl Trim', customer_name: 'ZZ TEST Owner On Notice' })).toBe(true)
+    expect(isZzTestJob({ job_name: 'ZZ TEST Row 4', customer_name: 'Kimberly Corl' })).toBe(true)
+    expect(isZzTestJob({ job_name: 'Corl Trim', customer_name: 'Kimberly Corl' })).toBe(false)
   })
 
   it('the sink is a ZZ job whose own name carries the word sink', () => {
@@ -49,7 +49,7 @@ describe('the ZZ name rules', () => {
     expect(isZzSinkJob({ job_name: 'ZZ TEST kitchen sink rough-in' })).toBe(true)
     expect(isZzSinkJob({ job_name: 'ZZ TEST sinking fund' })).toBe(false)
     expect(isZzSinkJob({ job_name: 'Sink install', customer_name: 'ZZ TEST Owner' })).toBe(false)
-    expect(isZzSinkJob({ job_name: 'Sink install', customer_name: 'Kimberly Coe' })).toBe(false)
+    expect(isZzSinkJob({ job_name: 'Sink install', customer_name: 'Kimberly Corl' })).toBe(false)
   })
 })
 
@@ -61,7 +61,7 @@ describe('planZzTestJobSweep', () => {
         row({ id: 'old-b', created_at: daysAgo(20) }),
         sinkRow(),
         row({ id: 'old-a', created_at: daysAgo(40) }),
-        row({ id: 'real', job_name: 'Coe Trim', customer_name: 'Kimberly Coe' }),
+        row({ id: 'real', job_name: 'Corl Trim', customer_name: 'Kimberly Corl' }),
       ],
       { now: NOW, minAgeDays: 7 },
     )
@@ -86,7 +86,7 @@ describe('planZzTestJobSweep', () => {
   })
 
   it('has no sink when the only "sink" job is a customer\'s', () => {
-    const plan = planZzTestJobSweep([row({ id: 'customer', job_name: 'Sink replacement', customer_name: 'Kimberly Coe' }), row({ id: 'zz' })], {
+    const plan = planZzTestJobSweep([row({ id: 'customer', job_name: 'Sink replacement', customer_name: 'Kimberly Corl' }), row({ id: 'zz' })], {
       now: NOW,
       minAgeDays: 7,
     })

@@ -15,7 +15,7 @@ describe('rowsTableShape', () => {
 })
 
 describe('rowFilterChips', () => {
-  // The SpaceX draft, in small: sheets owed, one row with no product, some answered.
+  // The SkyLab draft, in small: sheets owed, one row with no product, some answered.
   const rows = [
     row({ sheet_pages: [6] }),
     row(),

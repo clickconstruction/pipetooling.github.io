@@ -21,13 +21,13 @@ const detailJob = makeJob({
   revenue: 2630,
   payments_made: 0,
   customer_id: 'cust-1',
-  customer_name: 'Knight Contracting',
-  customer_email: 'ap@knight.test',
+  customer_name: 'Kestrin Contracting',
+  customer_email: 'ap@kestrin.test',
   gc_customer_id: 'gc-1',
   invoices: [draft],
 })
 
-const JOB = { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: 'ap@knight.test' }
+const JOB = { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test' }
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')

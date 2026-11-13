@@ -63,13 +63,13 @@ describe('jobsMapJobs', () => {
 
   it('labels number first, names the payer under the who-pays rule, and drops a job with no address to noAddress', () => {
     const { jobs, noAddress } = jobsMapJobs([
-      job({ id: 'gc', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Done Right Foundation' } } as Partial<JobWithDetails> & { id: string }),
-      job({ id: 'cust', hcp_number: '', click_number: '204', job_name: 'Coe remodel' }),
+      job({ id: 'gc', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Dead Level Foundation' } } as Partial<JobWithDetails> & { id: string }),
+      job({ id: 'cust', hcp_number: '', click_number: '204', job_name: 'Corl remodel' }),
       job({ id: 'none', job_address: '' }),
     ])
     expect(jobs[0]!.label).toBe('1019 · Vasquez pretest')
-    expect(jobs[0]!.payerName).toBe('Done Right Foundation')
-    expect(jobs[1]!.label).toBe('204 · Coe remodel')
+    expect(jobs[0]!.payerName).toBe('Dead Level Foundation')
+    expect(jobs[1]!.label).toBe('204 · Corl remodel')
     expect(jobs[1]!.payerName).toBe('Maria Vasquez')
     expect(noAddress.map((j) => j.id)).toEqual(['none'])
   })

@@ -29,10 +29,10 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     expect(
       billedAwaitingNextLine([
         { customerName: 'Structura, Inc.', total: 103386.4, worstAgeDays: 31 },
-        { customerName: 'TF Harper', total: 29323, worstAgeDays: 38 },
+        { customerName: 'TF Halden', total: 29323, worstAgeDays: 38 },
       ]),
-    ).toBe('Lean on TF Harper · $29,323 · 38 days')
-    expect(billedAwaitingNextLine([{ customerName: 'Loberg', total: 5622, worstAgeDays: null }])).toBe('Lean on Loberg · $5,622')
+    ).toBe('Lean on TF Halden · $29,323 · 38 days')
+    expect(billedAwaitingNextLine([{ customerName: 'Lowbeck', total: 5622, worstAgeDays: null }])).toBe('Lean on Lowbeck · $5,622')
     expect(billedAwaitingNextLine([])).toBeNull()
   })
 
@@ -68,10 +68,10 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
   })
 
   it('Missing job info: a customer first, then an email, then pictures', () => {
-    const job = { number: '1044', name: 'H & I Creekside' }
-    expect(missingJobInfoNextLine({ noCustomer: [job], noEmail: [job], noPictures: [] })).toBe('Link a customer to 1044 H & I Creekside')
-    expect(missingJobInfoNextLine({ noCustomer: [], noEmail: [job], noPictures: [job] })).toBe('Add a billing email to 1044 H & I Creekside')
-    expect(missingJobInfoNextLine({ noCustomer: [], noEmail: [], noPictures: [{ number: '', name: 'Cano Camera' }] })).toBe('Add a pictures link to Cano Camera')
+    const job = { number: '1044', name: 'B & D Creekside' }
+    expect(missingJobInfoNextLine({ noCustomer: [job], noEmail: [job], noPictures: [] })).toBe('Link a customer to 1044 B & D Creekside')
+    expect(missingJobInfoNextLine({ noCustomer: [], noEmail: [job], noPictures: [job] })).toBe('Add a billing email to 1044 B & D Creekside')
+    expect(missingJobInfoNextLine({ noCustomer: [], noEmail: [], noPictures: [{ number: '', name: 'Carrow Camera' }] })).toBe('Add a pictures link to Carrow Camera')
     expect(missingJobInfoNextLine({ noCustomer: [], noEmail: [], noPictures: [] })).toBeNull()
   })
 
@@ -86,10 +86,10 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
   })
 
   it('Missing bill dates, Complete no bill (lowest number first) and Unassigned field time (oldest day first)', () => {
-    expect(undatedBillsNextLine([{ customerName: 'Loberg', amount: 5622, hcpNumber: '650' }])).toBe("Date Loberg's $5,622 bill on 650")
+    expect(undatedBillsNextLine([{ customerName: 'Lowbeck', amount: 5622, hcpNumber: '650' }])).toBe("Date Lowbeck's $5,622 bill on 650")
     // The rows come ordered from the kernel (v2.6750): the first row's first gap is the verb.
-    expect(completeNoBillNextLine([{ job: { hcp_number: '995', job_name: 'Locks' }, gaps: ['total', 'work'] }, { job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work'] }])).toBe('Set the Total Bill on 995 Locks')
-    expect(completeNoBillNextLine([{ job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to 1060 Cano Camera')
+    expect(completeNoBillNextLine([{ job: { hcp_number: '995', job_name: 'Locks' }, gaps: ['total', 'work'] }, { job: { hcp_number: '1060', job_name: 'Carrow Camera' }, gaps: ['work'] }])).toBe('Set the Total Bill on 995 Locks')
+    expect(completeNoBillNextLine([{ job: { hcp_number: '1060', job_name: 'Carrow Camera' }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to 1060 Carrow Camera')
     // A job with no HCP number reads by its Click number, as the row does.
     expect(completeNoBillNextLine([{ job: { hcp_number: null, click_number: 'C1061', job_name: null }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to C1061')
     expect(completeNoBillNextLine([])).toBeNull()
@@ -105,11 +105,11 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     expect(jobsCleanupNextLine([{ contractor: 'Intertec', total: 1850, typedNumber: '1048', address: '' }], 2)).toBe("Link Intertec's $1,850 sheet · 1048 to a job")
     expect(jobsCleanupNextLine([], 2)).toBe('Work the 2 money cards below')
     expect(jobsCleanupNextLine([], 0)).toBeNull()
-    expect(fieldPhotosNextLine([{ label: 'CO #78 — Herber Custom Homes', photos: [1, 2, 3] }])).toBe('Move 3 photos for CO #78 — Herber Custom Homes to Drive')
+    expect(fieldPhotosNextLine([{ label: 'CO #78 — Helbrow Custom Homes', photos: [1, 2, 3] }])).toBe('Move 3 photos for CO #78 — Helbrow Custom Homes to Drive')
   })
 
   it('Texts replies first, then calls about a text that never arrived; Email clears the box most past the limit', () => {
-    expect(textsNextLine({ needsReply: [{ name: 'Megan Connell', waiting: 'waiting 2 h' }], notDelivered: [] })).toBe('Reply to Megan Connell · waiting 2 h')
+    expect(textsNextLine({ needsReply: [{ name: 'Megan Corbray', waiting: 'waiting 2 h' }], notDelivered: [] })).toBe('Reply to Megan Corbray · waiting 2 h')
     expect(textsNextLine({ needsReply: [], notDelivered: [{ name: 'Tom Coyle' }] })).toBe('Call Tom Coyle · the text never arrived')
     expect(textsNextLine({ needsReply: [], notDelivered: [] })).toBeNull()
     expect(
@@ -154,7 +154,7 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     ]
     expect(boxesNextLine(items, (id) => id === 'b')).toBe('Tick: Turn on the lights')
     expect(boxesNextLine(items, () => false)).toBeNull()
-    expect(jobFollowupsNextLine({ hcpNumber: '651', jobName: 'Dudley Mason', quietDays: 160 })).toBe('Call about 651 Dudley Mason · quiet 160 days')
+    expect(jobFollowupsNextLine({ hcpNumber: '651', jobName: 'Dunmere Mallin', quietDays: 160 })).toBe('Call about 651 Dunmere Mallin · quiet 160 days')
     expect(jobFollowupsNextLine(null)).toBeNull()
     // The Idle lane (v2.6093): what the job needs leads, then the field-day gap.
     expect(jobFollowupsIdleNextLine({ hcpNumber: '983', jobName: 'Water Heater removal', idleDays: 46, need: 'Schedule the next visit or close it' })).toBe('Schedule the next visit or close it · 983 Water Heater removal · no field work in 46 days')
