@@ -3,7 +3,7 @@ import { bidScopeLines, bidSubLaborTotals, buildWorkOrderDocument, renderWorkOrd
 
 const snapshot = {
   anchor: 'job',
-  sheetLabel: 'J977 · 415 Springtown Way',
+  sheetLabel: 'J977 · 415 Stonewick Way',
   lines: [{ label: 'Furnish and install all plumbing fixtures per contract documents', amount: null }, { label: 'Rough In · 22 fixtures: 4 WC, 6 Lav', amount: null }],
   exclusions: ['Sales tax on materials'],
   references: [
@@ -14,7 +14,7 @@ const snapshot = {
   acknowledgements: ['My insurance certificate stays current for the whole job.'],
   bond: 'none',
   specialProvisions: 'Owner supplies the water heater.',
-  facts: { jobLabel: 'J977', jobAddress: '415 Springtown Way, Austin TX', customerName: 'Hospital', trade: 'Plumbing', recordId: 'WO-977-01', issuedOn: '2026-09-04', issuerName: 'Maria Mendez', issuerTitle: 'Project Coordinator', subCompany: 'Kraja Mechanical LLC', msaSignedOn: '2026-01-12' },
+  facts: { jobLabel: 'J977', jobAddress: '415 Stonewick Way, Austin TX', customerName: 'Hospital', trade: 'Plumbing', recordId: 'WO-977-01', issuedOn: '2026-09-04', issuerName: 'Maria Mendez', issuerTitle: 'Project Coordinator', subCompany: 'Kraja Mechanical LLC', msaSignedOn: '2026-01-12' },
 }
 
 const issuer = { companyName: 'Click Plumbing', companyLine: 'Plumbing, Electrical, and HVAC', address: '5501 Balcones Dr., Austin TX', phone: '(512) 360-0599' }
@@ -31,7 +31,7 @@ describe('buildWorkOrderDocument', () => {
     expect(doc.amountLabel).toBe('$6,400.00')
     expect(doc.retainageLabel).toBe('10% retainage')
     expect(doc.windowLabel).toBe('Sep 15 → Sep 26')
-    expect(doc.project.name).toBe('J977 · 415 Springtown Way')
+    expect(doc.project.name).toBe('J977 · 415 Stonewick Way')
     expect(doc.subcontractor.lines).toEqual(['Kraja Mechanical LLC', 'Master Subcontract Agreement signed Jan 12, 2026'])
     expect(doc.sections.map((s) => s.key)).toEqual(['scope', 'exclusions', 'terms', 'references', 'acknowledgements'])
     const terms = doc.sections.find((s) => s.key === 'terms')!.items

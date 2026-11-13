@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep was started 2026-11-12 and stopped at its map: the senders on the server are traced under Left, the screens are not, and nothing of it is built
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,7 +11,7 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: The sweep of the readers under Left. December 2026's credit comes from its Needs you line.
+next: The sweep of the readers, from the map under Left. Trace the screens first, then two small PRs, the screens and the senders. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
 ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848
 blocker: none
@@ -88,14 +88,44 @@ The owner widened the ask the same day: *sometimes we trade with others for grav
 ## Left
 
 - **Nothing on the first arrangement.** It was set up on 2026-11-10 through *Set up paying in kind*, and November 2026's credit of $1,000 was entered the same day through *Enter it early* (v2.6841), ahead of the bank. If the rent paid in November turns out different, take that line back and enter the month again. The customer's one job that was off the deal was put on it and its bill recorded in kind the same day, on the owner's word.
-- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips. Each has its own row list and select. (The Customers list's open balance is split since v2.6845.)
-- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. Still open beside them: the Pay speeds window's **By customer** list colours a deal's bill late, and the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips.
-- **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history. A hold on the contact stops a reminder today.
+- **Readers that still read these bills as open and aged**: the Dashboard's receivables card, *Who owes what*, the Bridge's Collect pile, the Pipeline's 30/90-day chips. Each has its own row list and select. (The Customers list's open balance is split since v2.6845.) None of these screens is traced yet: see *The sweep, where it stopped* below.
+- **The money emails, closed in v2.6931 (2026-11-11).** The emailed Payment forecast counted a deal's bill as money coming, and Money waiting listed the customer as slow over it, on the Pay speeds window and in its email. Both leave such a bill out now and count it in one line. Still open beside them: the Pay speeds window's **By customer** list colours a deal's bill late, and the **Billed awaiting payment** report email (`billed-report-email`) ages it into its 30 to 90 and 90+ chips. Two more emails do the same, found 2026-11-12: the office's statement week and the Monday Bridge sheet, both in the table below.
+- **The residential reminder flow** (`messages-nudge-dispatch`, `residentialLoad`) still reads an in-kind bill's expected day from pay history, so the Paid step reads late. Read on prod 2026-11-12: that step is set to *offer*, so a person is asked each morning and nothing sends by itself. A hold on the contact stops the offer until the hold's day, then it comes back.
 - **Cost readers that do not see in-kind lines**: the Bridge's profit grid and People Review. And the lines are the office's to read, so a primary or a superintendent sees a job's cost without them.
 - **A combine of two jobs** carries no line across (`migrate_job_ledger_costs_and_delete` does not name the tables).
 - **A job billed to its GC, closed in v2.6946 (2026-11-11), the owner's call.** The Job window's strip read the job's customer while Bill Customer read the GC, so the two could disagree. Both read the GC's arrangement now, since the GC owes the bill. Still open beside it: a GC-billed job put on its *customer's* arrangement through **Change the terms** reads Scheduled in kind everywhere, yet Bill Customer opens a money window to the GC. No job is in that state today.
 - **Bill Customer with two open arrangements, closed in v2.6934 (2026-11-11).** The question required exactly one open deal, so a customer with two got an ordinary money window. It asks now. *In kind* holds every press and opens the customer's page, where a person puts the job on a deal, and *With money* bills as usual. No picker in the window: a wrong pick would put a bill on the wrong deal's ledger.
 - **Not walked live**, covered by the database bed or unit tests only: a line on a bill row (the walk's ZZ jobs were billed with no bill row), a bill on Stripe passed over, the forecast's last line, the overhead pool's display.
+
+### The sweep, where it stopped (2026-11-12)
+
+A session started the sweep and was closed before it built anything. It read prod, traced the senders on the server and wrote the plan. No code changed.
+
+**The rule every reader takes.** A job on a deal carries `jobs_ledger.in_kind_arrangement_id`, and ending a deal releases its jobs, so the column alone is the truth. The shared kernel is `jobIsScheduledInKind` (`src/lib/inKind/inKindLedger.ts`). A reader skips such a bill, counts it in `inKind: { count, dollars }` and says one line, as the forecast and Money waiting do. A total that shrinks with no word reads as money lost. A job is on a deal or off it, whole. So *partly covered* means a payer with some bills on a deal and some off, and the bills off the deal still read as money owed (`moneyApart` in `inKindChip.ts`).
+
+**Prod on 2026-11-12.** One arrangement, open, with a credit each month. Sixteen jobs are on it: eight paid, eight billed and open. None is billed to a GC.
+
+**Senders on the server that still age a deal's bill.** None reads the column today.
+
+| Reader | Where its rows load | What it shows for a deal's bill | Who gets it |
+|---|---|---|---|
+| `billed-report-email` | `get_billed_report_email_payload`, drawn by `_shared/billedReportEmail.ts` | listed with its dollars, its days in red, in the 90+ chip | staff |
+| `messages-nudge-dispatch`, the residential Paid step | `PIPELINE_SELECTS.jobs` in `src/lib/flows/residentialRows.ts`; `paidRounds` in `residentialLoad.ts` | the step reads late, and a pay reminder with the open amount is offered each morning | the customer, by text, on a person's press |
+| `statement-round-email-dispatch` | `get_statement_week_for_office`, drawn by `renderOfficeWeek.ts` | counted in *over 90 days* and in the red *oldest bill* chip | staff |
+| `bridge-weekly-sheet` | `loadDashboardFinancials`; `buildReceipts` in `src/lib/bridge/sheetBuild.ts` | expected cash marked late, or on the doubtful list | the owner and devs |
+| `gc-statement-email-dispatch`, `send-gc-statement-email` | `get_gc_statement_email_payload` | listed as outstanding with its dollars, no late words | the GC |
+| `customer-portal` | the function's own job select | owed, with a pay link, no late words | the customer's page |
+| dev-mcp `get_customer`, `get_job` | `devMcpComposites.ts`: neither select carries the column | counted in the 90-day aging; *scheduled in kind* reads zero | devs |
+
+The lien months and deadlines stay as they are, on the desk and in counsel's lien book. v2.6834 decided that: a credit does not move a deadline.
+
+**A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state.
+
+**The screens are not traced.** For each one the next session still needs its select, its kernel and what it shows: the four in the first bullet above, the Pay speeds window's By customer list, Accounts Receivable and its aging chips, Quickfill's Billed awaiting payment, GC Review's statements, the customer's profile window, Call mode and the map's pins.
+
+**Neighbours.** Pay calendar (#323) edits the Stages row, the chase and the Pipeline's money windows. The Bridge's train (#334) edits its Collect desk and money card, and redeploys `bridge-weekly-sheet`. Read main and the open PRs for a file before touching it. A reader held by an open PR is left and named.
+
+**The plan.** Two small PRs, one armed at a time. The screens first: one helper beside `jobIsScheduledInKind` that splits rows into the money and the in kind count with its line, read by each screen's kernel. Then the senders: the report email and the statement week stamped through `_shared/inKindPayloadRows.ts`, as v2.6931 did, and the column added to the reminder flow's job select so `paidRounds` passes a deal's bill over. Each reader gets three tests: a covered bill, a payer part covered, an ordinary late bill. Then a walk on prod with every write refused.
 
 ## Where it plugs in
 

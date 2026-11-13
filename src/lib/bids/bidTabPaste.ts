@@ -39,7 +39,7 @@ export type BidTabPasteResult = {
 /**
  * Parse pasted tab text line by line. Rules, matched to how GC emails read:
  * - An amount needs a `$` prefix, or the whole line must be one bare number
- *   ("39,400") — this keeps "Take 5" from becoming a $5 bid.
+ *   ("39,400") — this keeps "Tune 5" from becoming a $5 bid.
  * - The line's first amount is the bid; "(alternate $X)" attaches X to it.
  * - Whatever text remains after stripping amounts/punctuation is the bidder
  *   name; a line matching OURS_PATTERN is auto-flagged ours (first match only).

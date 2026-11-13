@@ -76,6 +76,20 @@ Leave the calendar unset for a customer who pays some days after each bill. The 
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
+## From a contract on their form
+
+A general contractor's own subcontract is recorded as **Their paper** on the job. The record keeps the key terms with their clause numbers. One of them is **Pay calendar**.
+
+:::steps
+1. Open **Their paper** from the job's contract strip.
+2. Type the clause number and a few of its words beside **Pay calendar**.
+3. Press *Set their pay calendar…* under the key terms. The line carries the customer's name.
+4. Pick the days in the window that opens. The clause is already filled in.
+5. Save the calendar, then save the paper.
+:::
+
+The paper holds the clause. The calendar holds the days. You set the calendar for that job, or for every job that customer pays.
+
 ## One job on a different calendar
 
 Most of a customer's jobs follow one calendar. One job may have a contract of its own, or none.
@@ -139,6 +153,7 @@ Every bill that customer pays reads the calendar.
 - The line under the row says when their money usually lands.
 - The payment forecast puts the bill in the week their money usually lands, and shows its due day.
 - The Lien desk weighs its deadlines against the day their money usually lands.
+- **Money waiting** and the Dashboard's Accounts Receivable judge them by each bill's expected day. See [A customer on a pay calendar](/help/see-which-customers-pay-slowly#a-customer-on-a-pay-calendar).
 
 A customer with no calendar reads exactly as before. So does a job with **This job has no pay calendar** ticked.
 

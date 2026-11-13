@@ -173,9 +173,9 @@ describe('words', () => {
 
   it('names a job by its street when the name only repeats the customer, the payer or the GC', () => {
     expect(timelineJobLabel('Ridgeway Builders', '77 Pecan St, Kyle, TX', ['Ridgeway Builders'])).toBe('77 Pecan St')
-    expect(timelineJobLabel('Ridgeway', '77 Pecan St, Kyle, TX', ['RMC- Ridgeway Builders'])).toBe('77 Pecan St')
+    expect(timelineJobLabel('Ridgeway', '77 Pecan St, Kyle, TX', ['RLC- Ridgeway Builders'])).toBe('77 Pecan St')
     // On the owner's timeline, a job named after its GC.
-    expect(timelineJobLabel('Ridgeway Builders', '77 Pecan St, Kyle, TX', ['Lee Park', 'Lee Park', 'RMC- Ridgeway Builders'])).toBe('77 Pecan St')
+    expect(timelineJobLabel('Ridgeway Builders', '77 Pecan St, Kyle, TX', ['Lee Park', 'Lee Park', 'RLC- Ridgeway Builders'])).toBe('77 Pecan St')
     expect(timelineJobLabel('Ridgeway - Pecan St', '77 Pecan St, Kyle, TX', ['Ridgeway Builders'])).toBe('Ridgeway - Pecan St')
     expect(timelineJobLabel('Bluff Springs clinic', '12 Bluff Springs Rd, Austin', ['Ridgeway Builders'])).toBe('Bluff Springs clinic')
     expect(timelineJobLabel(null, null, ['Ridgeway Builders'])).toBe('job')

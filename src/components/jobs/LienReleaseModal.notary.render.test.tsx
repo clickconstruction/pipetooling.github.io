@@ -5,7 +5,7 @@
  * notary sent back (an online notary's sealed file, or the scan of the stamped paper) beside the Drive link. The file
  * goes in the release's own folder of the private bucket, and the row signs in mode notary_paper. A file that is not a
  * PDF, or too big to email, is refused before anything is stored; a failed store changes nothing. A waiver just signed
- * by link takes the file too. Take 5 Seguin's numbers (job 878, $3,800 retainage). v2.6006: *Print it again* on the
+ * by link takes the file too. Tune 5 Seguin's numbers (job 878, $3,800 retainage). v2.6006: *Print it again* on the
  * hold is a reprint — the page prints and files again, the hold stays and its print day refreshes.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -85,10 +85,10 @@ const bill2 = makeInvoice({ id: 'b2', status: 'billed', amount: 1200, sequence_o
 const job = makeJob({
   id: 'j878',
   hcp_number: '878',
-  job_name: 'Take 5- Seguin',
-  customer_name: 'Southern Post Construction, LLC',
+  job_name: 'Tune 5- Seguin',
+  customer_name: 'Southern Pine Construction, LLC',
   gc_customer_id: 'gc-southern',
-  gcCustomer: { id: 'gc-southern', name: 'Southern Post Construction' },
+  gcCustomer: { id: 'gc-southern', name: 'Southern Pine Construction' },
   master_user_id: 'master-1',
   invoices: [bill1, bill2],
   revenue: 38625,
@@ -107,10 +107,10 @@ const HELD = {
   notary_printed_at: '2026-10-27T15:01:00Z',
   signer_user_id: 'master-1',
   signer_signature_mode: null,
-  fields: { amount: '3800', companyName: 'Click Plumbing and Electrical', checkFrom: 'Southern Post Construction, LLC', projectDescription: 'Take 5 Seguin', throughDate: '', signedDate: '2026-10-28', signerName: 'Malachi Whites', signerTitle: 'Owner' },
+  fields: { amount: '3800', companyName: 'Click Plumbing and Electrical', checkFrom: 'Southern Pine Construction, LLC', projectDescription: 'Tune 5 Seguin', throughDate: '', signedDate: '2026-10-28', signerName: 'Malachi Whites', signerTitle: 'Owner' },
 }
 
-const pdf = (name = 'Take 5 notarized.pdf', bytes = 2048, type = 'application/pdf') => new File([new Uint8Array(bytes)], name, { type })
+const pdf = (name = 'Tune 5 notarized.pdf', bytes = 2048, type = 'application/pdf') => new File([new Uint8Array(bytes)], name, { type })
 const pick = (file: File) => fireEvent.change(screen.getByLabelText('The notarized PDF'), { target: { files: [file] } })
 
 async function openOnTheHold() {

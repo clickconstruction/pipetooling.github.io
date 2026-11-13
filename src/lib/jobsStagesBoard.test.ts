@@ -374,7 +374,7 @@ describe('buildReadyToBillStageRows', () => {
 
 describe('filterJobsByStagesSearch', () => {
   it('finds a job by a number it answered to before a combine (v2.6226)', () => {
-    const a = jobStub({ id: 'job-a', hcp_number: '468', job_name: 'Diamondback', job_address: 'Gun Dog Trail', invoices: [], prior_numbers: ['HCP 550', 'C# 543'] })
+    const a = jobStub({ id: 'job-a', hcp_number: '468', job_name: 'Diamondback', job_address: 'Gray Fox Trail', invoices: [], prior_numbers: ['HCP 550', 'C# 543'] })
     const b = jobStub({ id: 'job-b', hcp_number: '200', job_name: 'Beta', job_address: '2 Oak', invoices: [], prior_numbers: [] })
     expect(filterJobsByStagesSearch([a, b], '550').map((j) => j.id)).toEqual(['job-a'])
     expect(filterJobsByStagesSearch([a, b], '543').map((j) => j.id)).toEqual(['job-a'])
@@ -441,14 +441,14 @@ describe('filterJobsByStagesSearch', () => {
   })
 
   it('GC filter: options are distinct + name-sorted; filter matches id or the no-GC sentinel (v2.1183)', () => {
-    const k1 = jobStub({ id: 'j1', invoices: [], gcCustomer: { id: 'gc-k', name: 'Knight Contracting' } })
-    const k2 = jobStub({ id: 'j2', invoices: [], gcCustomer: { id: 'gc-k', name: 'Knight Contracting' } })
+    const k1 = jobStub({ id: 'j1', invoices: [], gcCustomer: { id: 'gc-k', name: 'Kestrin Contracting' } })
+    const k2 = jobStub({ id: 'j2', invoices: [], gcCustomer: { id: 'gc-k', name: 'Kestrin Contracting' } })
     const a = jobStub({ id: 'j3', invoices: [], gcCustomer: { id: 'gc-a', name: 'achilles austin' } })
     const none = jobStub({ id: 'j4', invoices: [] })
     const jobsList = [k1, k2, a, none]
     expect(gcFilterOptionsFromJobs(jobsList)).toEqual([
       { id: 'gc-a', name: 'achilles austin' },
-      { id: 'gc-k', name: 'Knight Contracting' },
+      { id: 'gc-k', name: 'Kestrin Contracting' },
     ])
     expect(filterJobsByGcCustomer(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
     expect(filterJobsByGcCustomer(jobsList, 'gc-k').map((j) => j.id)).toEqual(['j1', 'j2'])
@@ -477,7 +477,7 @@ describe('filterJobsByStagesSearch', () => {
       job_name: 'Pizza Buildout',
       job_address: '3 Elm',
       invoices: [],
-      gcCustomer: { id: 'gc-1', name: 'Knight Contracting' },
+      gcCustomer: { id: 'gc-1', name: 'Kestrin Contracting' },
     })
     const withoutGc = jobStub({
       id: 'job-plain',
@@ -486,20 +486,20 @@ describe('filterJobsByStagesSearch', () => {
       job_address: '4 Oak',
       invoices: [],
     })
-    expect(filterJobsByStagesSearch([withGc, withoutGc], 'knight', null).map((j) => j.id)).toEqual(['job-gc'])
+    expect(filterJobsByStagesSearch([withGc, withoutGc], 'kestrin', null).map((j) => j.id)).toEqual(['job-gc'])
     // null gcCustomer never throws or matches
-    expect(filterJobsByStagesSearch([withoutGc], 'knight', null)).toHaveLength(0)
+    expect(filterJobsByStagesSearch([withoutGc], 'kestrin', null)).toHaveLength(0)
   })
 
   it('development filter: options are distinct + name-sorted; filter matches id or the none sentinel (v2.1204)', () => {
-    const s1 = jobStub({ id: 'j1', invoices: [], development: { id: 'dev-s', name: 'Sagebrush Phase 2' } })
-    const s2 = jobStub({ id: 'j2', invoices: [], development: { id: 'dev-s', name: 'Sagebrush Phase 2' } })
+    const s1 = jobStub({ id: 'j1', invoices: [], development: { id: 'dev-s', name: 'Sagemoor Phase 2' } })
+    const s2 = jobStub({ id: 'j2', invoices: [], development: { id: 'dev-s', name: 'Sagemoor Phase 2' } })
     const w = jobStub({ id: 'j3', invoices: [], development: { id: 'dev-a', name: 'ash creek' } })
     const none = jobStub({ id: 'j4', invoices: [] })
     const jobsList = [s1, s2, w, none]
     expect(developmentFilterOptionsFromJobs(jobsList)).toEqual([
       { id: 'dev-a', name: 'ash creek' },
-      { id: 'dev-s', name: 'Sagebrush Phase 2' },
+      { id: 'dev-s', name: 'Sagemoor Phase 2' },
     ])
     expect(filterJobsByDevelopment(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
     expect(filterJobsByDevelopment(jobsList, 'dev-s').map((j) => j.id)).toEqual(['j1', 'j2'])
@@ -513,7 +513,7 @@ describe('filterJobsByStagesSearch', () => {
       job_name: 'Lot 12',
       job_address: '12 Bluestem',
       invoices: [],
-      development: { id: 'dev-1', name: 'Sagebrush Phase 2' },
+      development: { id: 'dev-1', name: 'Sagemoor Phase 2' },
     })
     const withoutDev = jobStub({
       id: 'job-plain2',
@@ -522,9 +522,9 @@ describe('filterJobsByStagesSearch', () => {
       job_address: '4 Oak',
       invoices: [],
     })
-    expect(filterJobsByStagesSearch([withDev, withoutDev], 'sagebrush', null).map((j) => j.id)).toEqual(['job-dev'])
+    expect(filterJobsByStagesSearch([withDev, withoutDev], 'sagemoor', null).map((j) => j.id)).toEqual(['job-dev'])
     // null development never throws or matches
-    expect(filterJobsByStagesSearch([withoutDev], 'sagebrush', null)).toHaveLength(0)
+    expect(filterJobsByStagesSearch([withoutDev], 'sagemoor', null)).toHaveLength(0)
   })
 })
 
@@ -1473,20 +1473,20 @@ describe('bankPaymentTargetsFromStageRows — payer names in targets and search'
       id: 'job-c',
       status: 'billed',
       job_name: 'American Eagle',
-      customer_name: 'Weiss Services LLC',
-      gcCustomer: { id: 'gc-1', name: 'TF Harper Associates' },
+      customer_name: 'Welby Services LLC',
+      gcCustomer: { id: 'gc-1', name: 'TF Halden Associates' },
       invoices: [inv] as JobWithDetails['invoices'],
     })
     const rows = buildBilledStageRows([job], [])
     const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-c')
-    expect(t?.customerName).toBe('Weiss Services LLC')
-    expect(t?.gcName).toBe('TF Harper Associates')
-    expect(t?.searchLabel).toContain('Weiss Services LLC')
-    expect(t?.searchLabel).toContain('TF Harper Associates')
+    expect(t?.customerName).toBe('Welby Services LLC')
+    expect(t?.gcName).toBe('TF Halden Associates')
+    expect(t?.searchLabel).toContain('Welby Services LLC')
+    expect(t?.searchLabel).toContain('TF Halden Associates')
     // The visible option line carries the payers too.
     const cues = bankPaymentTargetCuesAfterAmount(t!)
-    expect(cues).toContain('Weiss Services LLC')
-    expect(cues).toContain('TF Harper Associates')
+    expect(cues).toContain('Welby Services LLC')
+    expect(cues).toContain('TF Halden Associates')
   })
 
   it('customer identical to the GC appears once, not twice', () => {
@@ -1494,15 +1494,15 @@ describe('bankPaymentTargetsFromStageRows — payer names in targets and search'
     const job = jobStub({
       id: 'job-k',
       status: 'billed',
-      job_name: 'Springtown- HVAC',
-      customer_name: 'Knight Contracting',
-      gcCustomer: { id: 'gc-k', name: 'Knight Contracting' },
+      job_name: 'Stonewick- HVAC',
+      customer_name: 'Kestrin Contracting',
+      gcCustomer: { id: 'gc-k', name: 'Kestrin Contracting' },
       invoices: [inv] as JobWithDetails['invoices'],
     })
     const rows = buildBilledStageRows([job], [])
     const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-k')
-    expect(t?.searchLabel.match(/Knight Contracting/g)?.length).toBe(1)
-    expect(bankPaymentTargetCuesAfterAmount(t!).match(/Knight Contracting/g)?.length).toBe(1)
+    expect(t?.searchLabel.match(/Kestrin Contracting/g)?.length).toBe(1)
+    expect(bankPaymentTargetCuesAfterAmount(t!).match(/Kestrin Contracting/g)?.length).toBe(1)
   })
 
   it('skips a payer name already contained in the job name and blanks stay empty', () => {
@@ -1510,16 +1510,16 @@ describe('bankPaymentTargetsFromStageRows — payer names in targets and search'
     const job = jobStub({
       id: 'job-d',
       status: 'billed',
-      job_name: 'Weiss Services LLC- American Eagle',
-      customer_name: 'Weiss Services LLC',
+      job_name: 'Welby Services LLC- American Eagle',
+      customer_name: 'Welby Services LLC',
       invoices: [inv] as JobWithDetails['invoices'],
     })
     const rows = buildBilledStageRows([job], [])
     const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-d')
-    expect(t?.customerName).toBe('Weiss Services LLC')
+    expect(t?.customerName).toBe('Welby Services LLC')
     expect(t?.gcName).toBe('')
     // Not duplicated: the job name already carries it.
-    expect(t?.searchLabel.match(/Weiss Services LLC/g)?.length).toBe(1)
+    expect(t?.searchLabel.match(/Welby Services LLC/g)?.length).toBe(1)
   })
 })
 

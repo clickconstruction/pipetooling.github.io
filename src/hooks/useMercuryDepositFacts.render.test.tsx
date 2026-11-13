@@ -26,7 +26,7 @@ describe('useMercuryDepositFacts — the posted day', () => {
   it('reads posted_at as its day in the company zone, evenings included', async () => {
     db.rows = [
       // 7:30 pm CDT on Oct 2, as PostgREST returns it; 6:30 pm CST on Dec 1; noon UTC; never posted.
-      { id: 'a', posted_at: '2026-10-03T00:30:00+00:00', status: 'sent', kind: 'checkDeposit', counterparty_name: 'Loberg Contracting', failure_reason: null },
+      { id: 'a', posted_at: '2026-10-03T00:30:00+00:00', status: 'sent', kind: 'checkDeposit', counterparty_name: 'Lowbeck Contracting', failure_reason: null },
       { id: 'b', posted_at: '2026-12-02T00:30:00Z', status: 'sent', kind: 'checkDeposit', counterparty_name: null, failure_reason: null },
       { id: 'c', posted_at: '2026-10-03T12:00:00Z', status: 'sent', kind: 'checkDeposit', counterparty_name: null, failure_reason: null },
       { id: 'd', posted_at: null, status: 'pending', kind: 'checkDeposit', counterparty_name: null, failure_reason: null },
@@ -35,7 +35,7 @@ describe('useMercuryDepositFacts — the posted day', () => {
     const { result } = renderHook(() => useMercuryDepositFacts(payments))
     await waitFor(() => expect(Object.keys(result.current)).toHaveLength(4))
     expect(result.current.a?.postedYmd).toBe('2026-10-02')
-    expect(result.current.a?.counterparty).toBe('Loberg Contracting')
+    expect(result.current.a?.counterparty).toBe('Lowbeck Contracting')
     expect(result.current.b?.postedYmd).toBe('2026-12-01')
     expect(result.current.c?.postedYmd).toBe('2026-10-03')
     expect(result.current.d?.postedYmd).toBeNull()

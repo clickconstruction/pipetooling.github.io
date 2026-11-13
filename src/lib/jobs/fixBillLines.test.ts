@@ -8,8 +8,8 @@ function job(p: Partial<Record<string, unknown>>): JobWithDetails {
     id: 'j1',
     hcp_number: '964',
     click_number: null,
-    job_name: 'Pondhill demo',
-    customer_name: 'Knight Contracting',
+    job_name: 'Penmoor demo',
+    customer_name: 'Kestrin Contracting',
     revenue: 500,
     payments_made: 0,
     payments: [],
@@ -30,7 +30,7 @@ describe('buildFixBillLineItems', () => {
     } as unknown as StageRow
     const items = buildFixBillLineItems([small, big, paid, invoiceRow])
     expect(items.map((i) => i.jobId)).toEqual(['b', 'a'])
-    expect(items[0]).toEqual({ jobId: 'b', label: '964 · Big job', customerName: 'Knight Contracting', open: 900 })
+    expect(items[0]).toEqual({ jobId: 'b', label: '964 · Big job', customerName: 'Kestrin Contracting', open: 900 })
   })
 
   it('falls back to the bare number when the job has no name', () => {

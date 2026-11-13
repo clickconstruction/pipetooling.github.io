@@ -16,8 +16,8 @@ function row(over: Partial<BidLossLearnRow>): BidLossLearnRow {
   seq += 1
   return {
     id: `b${seq}`,
-    builderKey: 'gc-knight',
-    builderName: 'Knight Contracting',
+    builderKey: 'gc-kestrin',
+    builderName: 'Kestrin Contracting',
     value: 274_249,
     sentIso: '2026-07-17',
     tab: { low: 230_000, high: 310_000, rankFromLow: 2, bidderCount: 6 },
@@ -53,7 +53,7 @@ describe('buildBidLossLearnStats', () => {
     expect(s.medianPct).toBeCloseTo(5.0, 1)
     expect(s.deltaBuckets.map((b) => b.count)).toEqual([1, 1, 1, 0]) // 5.0% sits in the 5–10% bucket
     expect(s.rankBuckets.map((b) => `${b.label}:${b.count}`)).toEqual(['#2:2', '#3:0', '#4:0', '#5+:1'])
-    expect(s.gcRows[0]!.builderName).toBe('Knight Contracting') // closest first
+    expect(s.gcRows[0]!.builderName).toBe('Kestrin Contracting') // closest first
     expect(s.gcRows[0]!.medianPct).toBeCloseTo(4.0, 1)
     expect(s.gcRows[0]!.usualRank).toBe(2)
     expect(s.gcRows[1]!.read).toBe('far')

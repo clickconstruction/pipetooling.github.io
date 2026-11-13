@@ -40,10 +40,10 @@ vi.mock('../../lib/jobs/jobContractReopen', async () => {
 
 afterEach(cleanup)
 
-const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmer@example.com', revenue: 31400 })
+const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palvern', customer_name: 'Michael Palvern', customer_email: 'palvern@example.com', revenue: 31400 })
 const sentRow = (p: Record<string, unknown> = {}) => ({
   id: 'c1', job_id: 'j1', status: 'sent', revision: 1, fields: { scope_lines: ['Water heater'], amount_cents: 3_140_000, payment_terms_key: 'half_down', payment_terms_text: '' },
-  body_html: 'terms', body_format: 'plain', template_name: 'Service agreement', template_document_id: null, recipient_name: 'Michael Palmer', recipient_email: 'palmer@example.com', recipient_phone: null, cc_emails: [],
+  body_html: 'terms', body_format: 'plain', template_name: 'Service agreement', template_document_id: null, recipient_name: 'Michael Palvern', recipient_email: 'palvern@example.com', recipient_phone: null, cc_emails: [],
   public_token: 'tok', public_token_expires_at: '2026-12-20T00:00:00Z', sent_at: '2026-09-20T15:00:00Z', last_sent_at: '2026-09-20T15:00:00Z', send_count: 1, first_viewed_at: null, last_viewed_at: null, view_count: 0,
   reminders_enabled: true, reminder_count: 0, next_reminder_at: null, signed_at: null, signer_mode: null, voided_at: null, sent_channel: null, created_at: '2026-09-20T14:00:00Z', updated_at: '2026-09-20T15:00:00Z', ...p,
 })

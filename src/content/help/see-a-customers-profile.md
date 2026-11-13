@@ -11,7 +11,7 @@ Every job row on Jobs → Pipeline shows the customer's name with a small contac
 
 The profile is everything the app knows about the customer.
 
-:::example Done Right Foundation
+:::example Dead Level Foundation
 {{chip:blue|Commercial}} · Customer since Mar 2024
 
 **Open balance $11,040** {{chip:green|none 30+ days}} · **Lifetime collected $86,410** · **Pays in ~9 days**

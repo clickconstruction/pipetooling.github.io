@@ -57,7 +57,7 @@ beforeEach(() => {
 const BID = {
   id: 'bid-1',
   bid_number: '482',
-  project_name: 'Pondhill Building 2',
+  project_name: 'Penmoor Building 2',
   customer_id: null,
   service_type_id: 'st-p',
   bid_date_sent: null,
@@ -101,7 +101,7 @@ describe('useBidEditController — the doors', () => {
     expect(result.current.bidWindow.bidFormOpen).toBe(true)
     expect(result.current.bidWindow.editingBid?.id).toBe('bid-1')
     expect(result.current.bidWindow.bidWindowInitialTab).toBe('edit')
-    expect(result.current.bidForm.values.projectName).toBe('Pondhill Building 2')
+    expect(result.current.bidForm.values.projectName).toBe('Penmoor Building 2')
   })
 
   it('New Bid opens an empty window in the page’s trade; close forgets the bid', () => {
@@ -121,12 +121,12 @@ describe('useBidEditController — delete', () => {
   it('writes nothing until the project name is typed, then deletes that bid once and closes', async () => {
     const { result, deps } = setup()
     act(() => result.current.controller.openEditBid(BID))
-    act(() => result.current.bidWindow.setDeleteConfirmProjectName('Pondhill'))
+    act(() => result.current.bidWindow.setDeleteConfirmProjectName('Penmoor'))
     await act(async () => { await result.current.controller.deleteBid() })
     expect(db.writes).toEqual([])
     expect(result.current.bidWindow.bidFormOpen).toBe(true)
 
-    act(() => result.current.bidWindow.setDeleteConfirmProjectName('  Pondhill Building 2 '))
+    act(() => result.current.bidWindow.setDeleteConfirmProjectName('  Penmoor Building 2 '))
     await act(async () => { await result.current.controller.deleteBid() })
     expect(db.writes).toEqual([{ table: 'bids', op: 'delete', payload: undefined, eq: [['id', 'bid-1']] }])
     expect(deps.loadBids).toHaveBeenCalledTimes(1)
@@ -138,7 +138,7 @@ describe('useBidEditController — delete', () => {
     db.answer = { data: null, error: { message: 'permission denied', code: '42501' } }
     const { result, deps } = setup()
     act(() => result.current.controller.openEditBid(BID))
-    act(() => result.current.bidWindow.setDeleteConfirmProjectName('Pondhill Building 2'))
+    act(() => result.current.bidWindow.setDeleteConfirmProjectName('Penmoor Building 2'))
     await act(async () => { await result.current.controller.deleteBid() })
     expect(deps.setError).toHaveBeenLastCalledWith('permission denied')
     expect(deps.loadBids).not.toHaveBeenCalled()

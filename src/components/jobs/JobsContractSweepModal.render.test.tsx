@@ -87,10 +87,10 @@ vi.mock('./JobContractModal', () => ({
 function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): JobWithDetails {
   return {
     click_number: '',
-    job_name: 'Mission Hills',
+    job_name: 'Mission Flats',
     job_address: '2100 Independence Dr, New Braunfels, TX',
-    customer_name: 'TF Harper',
-    customer_email: 'kcallison@tfharper.com',
+    customer_name: 'TF Halden',
+    customer_email: 'kc@tfhalden.example',
     customer_phone: null,
     customer_id: 'c1',
     gc_customer_id: null,
@@ -109,11 +109,11 @@ function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): J
 
 const JOBS: JobWithDetails[] = [
   job({ id: 'j523', hcp_number: '523' }),
-  job({ id: 'j363', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmertexashomes@gmail.com', revenue: 31400, created_at: '2026-09-02T00:00:00Z' }),
+  job({ id: 'j363', hcp_number: '363', job_name: 'Michael Palvern', customer_name: 'Michael Palvern', customer_email: 'palverntexashomes@example.com', revenue: 31400, created_at: '2026-09-02T00:00:00Z' }),
   // v2.3707: the amount is the job's — a thin scope with a number on the job (no fixture rows: an import), so typing the scope alone makes it Ready.
-  job({ id: 'j683', hcp_number: '683', job_name: 'Job', customer_name: 'The Learning Experience', customer_email: 'may@corewellpartners.com', revenue: 2400, fixtures: [] }),
+  job({ id: 'j683', hcp_number: '683', job_name: 'Job', customer_name: 'The Reading Corner', customer_email: 'may@corewell.example', revenue: 2400, fixtures: [] }),
   job({ id: 'j778', hcp_number: '778', job_name: 'Austin Real Estate', customer_email: null, revenue: null }),
-  job({ id: 'j804', hcp_number: '804', job_name: 'Auto Zone', customer_name: 'Summit GC', customer_email: 'estimating@summitgc.net', customer_id: 'c9', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Summit GC' }, revenue: 32600 }),
+  job({ id: 'j804', hcp_number: '804', job_name: 'Tire Barn', customer_name: 'Selwick GC', customer_email: 'estimating@selwickgc.example', customer_id: 'c9', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Selwick GC' }, revenue: 32600 }),
   job({ id: 'jpaid', hcp_number: '900', status: 'paid' }),
 ]
 const COVERAGE = new Map(JOBS.map((j) => [j.id, { kind: 'none' as const }]))
@@ -147,12 +147,12 @@ describe('JobsContractSweepModal', () => {
     expect((ways.getByRole('radio', { name: /Email the PDF to sign by hand/ }) as HTMLInputElement).checked).toBe(true)
     expect(ways.getByRole('radio', { name: /Email a signing link/ })).toBeTruthy()
     expect(ways.getByRole('radio', { name: /Download to print/ })).toBeTruthy()
-    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to kcallison@tfharper.com · then J363')
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to kc@tfhalden.example · then J363')
     expect(screen.getByRole('button', { name: 'Email PDF & next' })).toBeTruthy()
     // v2.3706: the ways are one row; the line under says what the chosen one does.
     expect(screen.getByTestId('sweep-way-detail').textContent).toContain('the signing link rides along as a second way')
     fireEvent.click(ways.getByRole('radio', { name: /Email a signing link/ }))
-    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails kcallison@tfharper.com · then J363')
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails kc@tfhalden.example · then J363')
     expect(screen.getByTestId('sweep-way-detail').textContent).toBe('They sign on screen, no printing')
     expect(screen.getByRole('button', { name: 'Send link & next' })).toBeTruthy()
     // One primary: the one-job send and the full editor sit under ⋯ More.
@@ -193,12 +193,12 @@ describe('JobsContractSweepModal', () => {
     // filing sheet is simply there (it used to take two clicks). Ours is one door away, not gone.
     fireEvent.click(look[2]!)
     await waitFor(() => expect(screen.getByTestId('contract-file-sheet')).toBeTruthy())
-    expect(screen.getAllByText("File Summit GC's subcontract").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("File Selwick GC's subcontract").length).toBeGreaterThan(0)
     const doors = within(screen.getByTestId('sweep-doors'))
     expect(doors.getByRole('button', { name: /We already have one/ }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(doors.getByRole('button', { name: /We need a signature/ }))
     expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
-    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Summit GC's subcontract is the agreement")
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Selwick GC's subcontract is the agreement")
     const gc = within(screen.getByTestId('sweep-signing-ways'))
     expect(gc.getAllByRole('radio')).toHaveLength(1)
     fireEvent.click(screen.getByTestId('sweep-send-ours'))
@@ -215,8 +215,8 @@ describe('JobsContractSweepModal', () => {
     await waitFor(() => expect(sendSpy).toHaveBeenCalledTimes(1))
     // The done card names the job and what went, and J363 — still in the list — is not selected, so nothing is armed on it.
     const done = await screen.findByTestId('sweep-done')
-    expect(done.textContent).toContain('J523 · Mission Hills')
-    expect(done.textContent).toContain('PDF emailed to kcallison@tfharper.com to sign by hand')
+    expect(done.textContent).toContain('J523 · Mission Flats')
+    expect(done.textContent).toContain('PDF emailed to kc@tfhalden.example to sign by hand')
     expect(screen.queryByTestId('sweep-pane')).toBeNull()
     const rows = screen.getAllByTestId('sweep-row')
     expect(rows.map((r) => r.getAttribute('data-job'))).toEqual(['363'])
@@ -264,7 +264,7 @@ describe('JobsContractSweepModal', () => {
     expect(payload.fields.scope_lines).toEqual(['Water heater swap', 'Haul away the old unit'])
     expect(payload.fields.amount_cents).toBe(240000)
     await waitFor(() => expect(screen.getByTestId('sweep-save-state').textContent).toBe('Saved to the job’s draft'))
-    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to may@corewellpartners.com · then J778')
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to may@corewell.example · then J778')
     // Ready now, with a row after it: the fast path becomes the primary (v2.3706).
     await waitFor(() => expect(screen.getByTestId('sweep-way-go-next').textContent).toBe('Email PDF & next'))
     expect(within(screen.getAllByTestId('sweep-row')[0]!).getByText('Ready')).toBeTruthy()
@@ -274,7 +274,7 @@ describe('JobsContractSweepModal', () => {
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
     // The pane says which job it is about, and asks the first question first.
-    expect(screen.getByTestId('sweep-pane-job').textContent).toContain('J523 · Mission Hills')
+    expect(screen.getByTestId('sweep-pane-job').textContent).toContain('J523 · Mission Flats')
     expect(screen.queryByRole('button', { name: 'Already signed? File it' })).toBeNull() // no longer a buried footer link
     const doors = within(screen.getByTestId('sweep-doors'))
     expect(doors.getByRole('button', { name: /We need a signature/ }).getAttribute('aria-pressed')).toBe('true')
@@ -289,9 +289,9 @@ describe('JobsContractSweepModal', () => {
     expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
 
     const rows = screen.getAllByTestId('sweep-row')
-    const file = new File(['%PDF'], 'Palmer subcontract (signed).pdf', { type: 'application/pdf' })
+    const file = new File(['%PDF'], 'Palvern subcontract (signed).pdf', { type: 'application/pdf' })
     fireEvent.drop(rows[1]!, { dataTransfer: { files: [file], types: ['Files'] } })
-    await waitFor(() => expect(screen.getByTestId('contract-file-chosen').textContent).toContain('Palmer subcontract (signed).pdf'))
+    await waitFor(() => expect(screen.getByTestId('contract-file-chosen').textContent).toContain('Palvern subcontract (signed).pdf'))
     expect(screen.getAllByTestId('sweep-row')[1]!.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText('File a signed contract')).toBeTruthy()
   })
@@ -348,7 +348,7 @@ describe('JobsContractSweepModal', () => {
 
   it('the Drive pass runs by itself: a confident find marks the row, adds an In Drive tab, and opens that job on "We already have one" with the link and the file’s date filled in', async () => {
     driveScan.files = [
-      { id: 'f1', name: 'TF Harper - Mission Hills Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-08-14T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/abc123/view', size: 1000, folderId: 'fo1', folderName: 'J523 Mission Hills' },
+      { id: 'f1', name: 'TF Halden - Mission Flats Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-08-14T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/abc123/view', size: 1000, folderId: 'fo1', folderName: 'J523 Mission Flats' },
     ]
     try {
       mount()
@@ -360,7 +360,7 @@ describe('JobsContractSweepModal', () => {
       expect(within(first).getByTestId('sweep-drive-chip').textContent).toBe('📄 in Drive')
 
       // J523 is selected first, and it has a confident find — so the pane is already on the filing door, pre-filled.
-      await waitFor(() => expect(screen.getByTestId('sweep-drive-found').textContent).toContain('Mission Hills Subcontract (signed).pdf'))
+      await waitFor(() => expect(screen.getByTestId('sweep-drive-found').textContent).toContain('Mission Flats Subcontract (signed).pdf'))
       expect(within(screen.getByTestId('sweep-doors')).getByRole('button', { name: /We already have one/ }).getAttribute('aria-pressed')).toBe('true')
       expect(screen.getByText(/Google Doc linked/)).toBeTruthy()
       expect((screen.getByLabelText('Date the contract was signed') as HTMLInputElement).value).toBe('2026-08-14')
@@ -399,7 +399,7 @@ describe('JobsContractSweepModal', () => {
 
   it("v2.4657 · a builder's subcontract files as signed by the GC, and a second signer on our draft stays off it", async () => {
     contractRows.rows = [
-      { id: 'd804', job_id: 'j804', status: 'draft', revision: 1, voided_at: null, fields: { scope_lines: ['Rough-in'], amount_cents: 3_260_000, payment_terms_key: 'half_down', payment_terms_text: '' }, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: 'Summit GC', recipient_email: null, co_signer_name: 'Grace Palmer', co_signed_at: null, co_signer_printed_name: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null },
+      { id: 'd804', job_id: 'j804', status: 'draft', revision: 1, voided_at: null, fields: { scope_lines: ['Rough-in'], amount_cents: 3_260_000, payment_terms_key: 'half_down', payment_terms_text: '' }, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: 'Selwick GC', recipient_email: null, co_signer_name: 'Grace Palvern', co_signed_at: null, co_signer_printed_name: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null },
     ]
     try {
       mount()
@@ -414,7 +414,7 @@ describe('JobsContractSweepModal', () => {
       fireEvent.click(row)
       const sheet = await screen.findByTestId('contract-file-sheet')
       await settle()
-      expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Summit GC')
+      expect((within(sheet).getByLabelText('Who signed') as HTMLInputElement).value).toBe('Selwick GC')
       expect((within(sheet).getByLabelText('Second signer') as HTMLInputElement).value).toBe('')
     } finally {
       contractRows.rows = []

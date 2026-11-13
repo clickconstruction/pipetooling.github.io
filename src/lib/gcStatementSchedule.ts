@@ -83,7 +83,7 @@ export type PendingGcStatementSend = {
   repeat_weekly: boolean
 }
 
-/** "Knight Contracting → ap@knight.com" / "All GCs → book@keeper.com" for pending lists. */
+/** "Kestrin Contracting → ap@kestrin.com" / "All GCs → book@keeper.com" for pending lists. */
 export function describePendingGcStatementSend(row: Pick<PendingGcStatementSend, 'entity_name' | 'sent_to'>): string {
   const name = row.entity_name.trim() || 'Statement'
   return `${name} → ${row.sent_to}`

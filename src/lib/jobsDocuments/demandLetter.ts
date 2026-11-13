@@ -124,6 +124,12 @@ export type DemandLetterFields = {
   includeNotarial: boolean
   /** Pay codes under the amount box (v2.4849): one per covered Stripe bill, ON by default; absent on letters saved before. */
   includePayCodes?: boolean
+  /**
+   * How the letter is laid out (v2.7086, punch list #333). `'letter-first'`: the whole letter runs to its
+   * signature before the account starts, so it reads complete on page 1, and the statement of account, the
+   * notice history and the enclosures sit behind it. Absent on a letter recorded before, which draws as it was sent.
+   */
+  layout?: 'letter-first'
   priorNotices: DemandPriorNotice[]
 }
 
@@ -237,7 +243,10 @@ export type DemandLetterBlock =
   /** The label over the subject, the subject, the line under it, and the one-line "Re:" the plain-text letter carries. */
   | { kind: 'subject'; kicker: string; text: string; detail: string; re: string }
   /** How much and by when — the two facts the reader must not have to look for. */
-  | { kind: 'amountBox'; balance: string; deadline: string }
+  /** `code` (letter-first, v2.7086): the letter's one pay code, drawn in the box as a third cell. */
+  | { kind: 'amountBox'; balance: string; deadline: string; code?: DemandPayCodeRow }
+  /** Letter-first: the letter ends here and the account starts on the next page. */
+  | { kind: 'pageBreak' }
   | { kind: 'payCodes'; rows: DemandPayCodeRow[] }
   | { kind: 'paragraph'; text: string }
   /** `keepMm`: start a new page unless this much room is left, so a section is not split across the fold. */
@@ -318,30 +327,44 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, 
     if (rows.length) blocks.push({ kind: 'payCodes', rows })
   }
   const statement = (f.statement ?? []).filter((i) => i.lines.length > 0 || i.invoiceNumber.trim())
+  // Letter-first (v2.7086): the letter runs to its signature before the account starts. The short form has no account to move.
+  const letterFirst = f.layout === 'letter-first' && statement.length > 0
+  /** What sits behind the letter in the letter-first layout. */
+  const account: DemandLetterBlock[] = []
   if (statement.length > 0) {
     // v2.3425: the letter reads the bill. The Re line carries the number the
     // customer saw, the opening names the dates, and the debt is a statement
     // of account, one block per invoice — never a retyped summary.
     blocks.push({ kind: 'subject', kicker: KICKER, ...demandSubject(statement, f.serviceAddress ?? ''), re: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
-    blocks.push(box)
-    pushPayCodes()
+    if (letterFirst) {
+      // One code rides in the box, beside the amount and the day. Several sit with the bills they pay, behind the letter.
+      const codes = f.includePayCodes === false ? [] : demandPayCodeRows(f.statement ?? [], opts.payAssets)
+      blocks.push(codes.length === 1 ? { ...box, code: codes[0]! } : box)
+      if (codes.length > 1) account.push({ kind: 'payCodes', rows: codes })
+    } else {
+      blocks.push(box)
+      pushPayCodes()
+    }
     const first = statement[0]!
     const sentDates = statement.map((i) => i.sentYmd).filter((d) => d)
     const dueDates = statement.map((i) => i.dueYmd).filter((d) => d)
     const where = (f.serviceAddress ?? '').trim()
+    // The statement is no longer under this sentence in the letter-first layout, so the sentence says where it is.
+    const work = letterFirst ? `for the work on the statement of account behind this letter${where ? `, at ${where}` : ''}` : `for the work below${where ? ` at ${where}` : ''}`
     const billedClause =
       statement.length === 1
-        ? `You were billed ${demandMoney(first.total)}${first.sentYmd ? ` on ${demandDate(first.sentYmd)}` : ''} for the work below${where ? ` at ${where}` : ''}.${first.dueYmd ? ` The bill was due ${demandDate(first.dueYmd)}.` : ''}`
-        : `You were billed ${statement.length} invoices totaling ${demandMoney(String(statement.reduce((a, i) => a + Number(i.total || 0), 0)))}${sentDates.length > 0 ? ` between ${demandDate(sentDates.slice().sort()[0]!)} and ${demandDate(sentDates.slice().sort()[sentDates.length - 1]!)}` : ''} for the work below${where ? ` at ${where}` : ''}.${dueDates.length > 0 ? ` The last of them was due ${demandDate(dueDates.slice().sort()[dueDates.length - 1]!)}.` : ''}`
+        ? `You were billed ${demandMoney(first.total)}${first.sentYmd ? ` on ${demandDate(first.sentYmd)}` : ''} ${work}.${first.dueYmd ? ` The bill was due ${demandDate(first.dueYmd)}.` : ''}`
+        : `You were billed ${statement.length} invoices totaling ${demandMoney(String(statement.reduce((a, i) => a + Number(i.total || 0), 0)))}${sentDates.length > 0 ? ` between ${demandDate(sentDates.slice().sort()[0]!)} and ${demandDate(sentDates.slice().sort()[sentDates.length - 1]!)}` : ''} ${work}.${dueDates.length > 0 ? ` The last of them was due ${demandDate(dueDates.slice().sort()[dueDates.length - 1]!)}.` : ''}`
     const paidTotal = statement.reduce((a, i) => a + Number(i.paid || 0), 0)
     blocks.push({
       kind: 'paragraph',
       text: `${billedClause} ${paidTotal > 0 ? `${demandMoney(String(paidTotal))} has been paid and ${out} remains.` : 'Nothing has been paid.'} This letter is ${f.businessName.trim() ? `${f.businessName.trim()}'s` : 'our'} final formal demand for the balance of ${out}, and our presentment of the claim.`,
     })
-    blocks.push({ kind: 'heading', text: 'Statement of account' })
-    blocks.push({ kind: 'statement', invoices: statement, balance: out })
+    const into = letterFirst ? account : blocks
+    into.push({ kind: 'heading', text: 'Statement of account' })
+    into.push({ kind: 'statement', invoices: statement, balance: out })
     const exhibitsText = exhibitsSentence(f.enclosures ?? [])
-    blocks.push({ kind: 'paragraph', text: `${exhibitsText ? `${exhibitsText} ` : ''}All payments and credits have been allowed.` })
+    into.push({ kind: 'paragraph', text: `${exhibitsText ? `${exhibitsText} ` : ''}All payments and credits have been allowed.` })
   } else {
     blocks.push({ kind: 'subject', kicker: KICKER, text: `Invoice #${f.invoiceNumber.trim() || '—'}`, detail: '', re: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
     blocks.push(box)
@@ -356,7 +379,8 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, 
     blocks.push({ kind: 'listItem', text: `Payments received: ${demandMoney(f.paymentsReceived)}` })
     blocks.push({ kind: 'listItem', text: `Outstanding balance: ${out}` })
   }
-  blocks.push({ kind: 'heading', text: 'Demand', keepMm: 72 })
+  // The keep held the section off a page's foot when the statement sat above it; letter-first has nothing above to break from.
+  blocks.push(letterFirst ? { kind: 'heading', text: 'Demand' } : { kind: 'heading', text: 'Demand', keepMm: 72 })
   blocks.push({
     kind: 'paragraph',
     text: `Unless payment in full is received by ${demandDate(f.deadlineDate)}, we will pursue all legal remedies available, including but not limited to:`,
@@ -416,25 +440,32 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, 
       })
     }
   }
-  blocks.push({ kind: 'heading', text: 'Notice history' })
+  const history: DemandLetterBlock[] = [{ kind: 'heading', text: 'Notice history' }]
   if (f.priorNotices.length === 0) {
-    blocks.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
+    history.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
   }
   for (const n of f.priorNotices) {
-    blocks.push({ kind: 'listItem', lead: demandDate(n.date), text: n.label })
+    history.push({ kind: 'listItem', lead: demandDate(n.date), text: n.label })
   }
+  if (!letterFirst) blocks.push(...history)
+  // Letter-first: the letterhead already carries the phone and the email, so the signature is who signs and for whom.
+  // A phone or an email the letterhead does not show stays under the name.
+  const onLetterhead = new Set(letterheadContactLines(f.businessAddress, f.businessPhone, f.businessEmail))
   blocks.push({
     kind: 'signature',
     lines: ['Sincerely,', f.senderName.trim() || '—', f.businessName.trim(), f.businessPhone.trim(), f.businessEmail.trim()].filter(
-      (l) => l,
+      (l, i) => l && !(letterFirst && i >= 3 && onLetterhead.has(l)),
     ),
   })
+  if (letterFirst && f.includeNotarial) blocks.push({ kind: 'notarial' })
+  // Behind the letter: the account, then the dated notices, then what is enclosed.
+  if (letterFirst) blocks.push({ kind: 'pageBreak' }, ...account, ...history)
   const enclosures = enclosuresLine(f.enclosures ?? [])
   if (enclosures) blocks.push({ kind: 'enclosures', items: enclosureEntries(f.enclosures ?? []), line: enclosures })
   // Copies to (v2.6741, punch list #174): after the enclosures, as a letter lists them; nothing when nobody gets a copy.
   const copies = copiesLines(f.copies ?? [])
   if (copies.length) blocks.push({ kind: 'copies', lines: copies })
-  if (f.includeNotarial) blocks.push({ kind: 'notarial' })
+  if (!letterFirst && f.includeNotarial) blocks.push({ kind: 'notarial' })
   return blocks
 }
 
@@ -487,12 +518,25 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
         )
         break
       case 'amountBox': {
+        // With the letter's one pay code (letter-first) the box has a third cell and the two values step down to make room.
+        const c = b.code
         const cell = (label: string, value: string, rule: boolean) =>
-          `<td style="width:50%;padding:0.6em 0.9em;${rule ? `border-right:1px solid ${INK};` : ''}font-family:${SANS}">` +
-          `<div style="font-size:0.75em;color:${MUTED}">${esc(label)}</div><div style="font-size:1.55em;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums">${esc(value)}</div></td>`
-        parts.push(`<table data-demand-amount-box style="border-collapse:collapse;width:100%;border:1px solid ${INK};margin:0 0 1.1em 0"><tr>${cell('Balance due', b.balance, true)}${cell('Pay in full by', b.deadline, false)}</tr></table>`)
+          `<td style="width:${c ? '31%' : '50%'};padding:${c ? '0.6em 0.6em' : '0.6em 0.9em'};${rule ? `border-right:1px solid ${INK};` : ''}font-family:${SANS}">` +
+          `<div style="font-size:0.75em;color:${MUTED}">${esc(label)}</div><div style="font-size:${c ? '1.25em' : '1.55em'};font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums">${esc(value)}</div></td>`
+        const codeCell = c
+          ? // The words wrap under the code on a narrow screen, so the box never runs wider than a phone.
+            `<td data-demand-pay-code="${esc(c.invoiceId)}" style="padding:0.5em 0.6em;font-family:${SANS};vertical-align:middle"><div style="display:flex;flex-wrap:wrap;gap:0.3em 0.7em;align-items:center">` +
+            `<div style="flex:0 0 72px;width:72px;height:72px;line-height:0">${c.svg ? sizedSvg(c.svg, 72) : `<div style="width:72px;height:72px;border:1px dashed ${MUTED};box-sizing:border-box"></div>`}</div>` +
+            `<div style="flex:1 1 5.5em;min-width:0"><div style="font-size:0.75em;color:${MUTED}">Pay online</div><div style="font-size:1.05em;font-weight:700;line-height:1.3">Scan to pay</div>` +
+            `<div style="font-size:0.68em;color:${MUTED};line-height:1.3;word-break:break-all">or go to ${esc(c.address)}</div></div></div></td>`
+          : ''
+        parts.push(`<table data-demand-amount-box style="border-collapse:collapse;width:100%;border:1px solid ${INK};margin:0 0 1.1em 0"><tr>${cell('Balance due', b.balance, true)}${cell('Pay in full by', b.deadline, Boolean(c))}${codeCell}</tr></table>`)
         break
       }
+      case 'pageBreak':
+        // A new sheet in print. On a screen and in an email, a rule: the letter above it, the account under it.
+        parts.push(`<div data-demand-page-break style="break-before:page;page-break-before:always;border-top:1px solid ${HAIR};margin:2.2em 0 0 0;padding-top:0.4em"></div>`)
+        break
       case 'payCodes': {
         const code = (r: DemandPayCodeRow) =>
           `<td data-demand-pay-code="${esc(r.invoiceId)}" style="vertical-align:top;padding:0.5em 0.6em 0.6em 0;font-family:${SANS};width:${Math.floor(100 / Math.min(4, Math.max(1, b.rows.length)))}%">` +
@@ -545,6 +589,11 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
     }
   }
   return parts.join('')
+}
+
+/** A pay code's SVG at `px` square: the markup carries its own size, and the letter draws it at two. */
+function sizedSvg(svg: string, px: number): string {
+  return svg.replace(/^<svg\b/, `<svg style="width:${px}px;height:${px}px;display:block"`)
 }
 
 /** The statement rows in reading order — shared by the HTML, text and PDF renderers. */
@@ -646,7 +695,10 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string, o
         lines.push(b.re)
         break
       case 'amountBox':
-        lines.push(`Balance due: ${b.balance} · Pay in full by: ${b.deadline}`)
+        lines.push(`Balance due: ${b.balance} · Pay in full by: ${b.deadline}${b.code ? `\nPay online: ${b.code.address}` : ''}`)
+        break
+      case 'pageBreak':
+        // Plain text has no page: the blank line between blocks is the break.
         break
       case 'payCodes':
         lines.push(`Pay online — each address opens that bill's own payment page:\n${b.rows.map((r) => `  ${r.label} · ${r.amount} · ${r.address}`).join('\n')}`)
@@ -682,12 +734,19 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string, o
 
 /** Full standalone print document — pinned light like all customer-facing paper. */
 export function buildDemandLetterPrintHtml(f: DemandLetterFields, todayYmd: string, jobNumber: string, opts: DemandLetterRenderOptions = {}): string {
+  // Letter-first (v2.7086): on paper the letter holds its own sheet, so the print page sets its lines closer and
+  // starts at the sheet's own margin; the rule that parts the letter from the account on a screen is not printed.
+  // A letter recorded before prints as it did.
+  const print = f.layout === 'letter-first' ? `body { margin: 0 auto; line-height: ${DEMAND_LETTER_PRINT_LEADING}; } [data-demand-page-break] { border-top: 0 !important; margin: 0 !important; padding: 0 !important; }` : 'body { margin: 0.5in auto; }'
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Final Demand for Payment — Job ${esc(jobNumber)}</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: ${INK}; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.6; }
-  @media print { body { margin: 0.5in auto; } }
+  @media print { ${print} }
 </style></head><body>${buildDemandLetterEmailHtml(f, todayYmd, opts)}</body></html>`
 }
+
+/** The print page's leading for a letter-first letter: close enough that the letter, with its lien line, ends on its own sheet. */
+export const DEMAND_LETTER_PRINT_LEADING = 1.4
 
 // ---------- PDF ----------
 
@@ -700,9 +759,45 @@ const PAGE_MARGIN = 20
 const MAX_TEXT_WIDTH_MM = 176
 const PAGE_CONTENT_MAX_Y = 264
 
+/** How the letter's running text is set in the PDF: the type size (pt), the line height, the gap under a paragraph and the room left for the ink (mm). */
+export type DemandLetterSet = { size: number; line: number; gap: number; ink: number }
+
+/** The usual setting: 11 pt Times on a 5.4 mm line. */
+export const DEMAND_LETTER_SET: DemandLetterSet = { size: 11, line: 5.4, gap: 1.8, ink: 11 }
+
+/**
+ * Tighter settings, tried in order when the letter would run onto a second page (v2.7080): the first
+ * that holds it on one page is the one drawn. In the letter-first layout (v2.7086) "the letter" is
+ * everything through the signature, and the account behind it is not counted. The first step keeps the type size and closes the lines;
+ * the floor is 10 pt, the lien letters' own. A letter no step holds on one page keeps the usual setting.
+ */
+export const DEMAND_LETTER_FIT_STEPS: readonly DemandLetterSet[] = [
+  { size: 11, line: 5, gap: 1.5, ink: 9 },
+  { size: 10.5, line: 4.8, gap: 1.4, ink: 9 },
+  { size: 10, line: 4.6, gap: 1.3, ink: 8 },
+]
+
 export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): Promise<Blob> {
   const JsPDF = await loadJsPDF()
+  const blocks = buildDemandLetterModel(f, todayYmd, opts)
+  const usual = drawDemandLetterPdf(JsPDF, blocks, f, DEMAND_LETTER_SET)
+  // Letter-first (v2.7086): the letter is what must hold on one page, and the account has its own.
+  const over = (d: typeof usual) => (d.letterPages > 0 ? d.letterPages > 1 : d.doc.getNumberOfPages() > 1)
+  if (!over(usual)) return usual.doc.output('blob')
+  // A page that holds only the end of the letter (the signature, often) is a page nobody needed.
+  for (const step of DEMAND_LETTER_FIT_STEPS) {
+    const tighter = drawDemandLetterPdf(JsPDF, blocks, f, step)
+    if (!over(tighter)) return tighter.doc.output('blob')
+  }
+  return usual.doc.output('blob')
+}
+
+function drawDemandLetterPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: readonly DemandLetterBlock[], f: Pick<DemandLetterFields, 'businessName' | 'businessPhone'>, set: DemandLetterSet) {
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
+  /** Letter-first: how many pages the letter took before the account began. 0 when the letter has no account page. */
+  let letterPages = 0
+  /** The signature and the address sit a hair closer than the running text, as they always have. */
+  const closeLine = set.line - 0.2
   const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
   let y = PAGE_MARGIN + 4
 
@@ -733,7 +828,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     ink()
   }
 
-  for (const b of buildDemandLetterModel(f, todayYmd, opts)) {
+  for (const b of blocks) {
     switch (b.kind) {
       case 'senderBlock': {
         const contactH = b.contactLines.length * 3.7
@@ -763,13 +858,13 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
       }
       case 'addressBlock': {
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         doc.text(b.date, rightX, y, { align: 'right' })
         for (const l of b.recipient) {
           const wrapped = doc.splitTextToSize(l, MAX_TEXT_WIDTH_MM - 50) as string[]
           for (const line of wrapped) {
             doc.text(line, PAGE_MARGIN, y)
-            y += 5.2
+            y += closeLine
           }
         }
         y += 5.5
@@ -791,27 +886,61 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         }
         y += 1.5
         break
+      case 'pageBreak':
+        letterPages = doc.getNumberOfPages()
+        doc.addPage()
+        y = PAGE_MARGIN + 6
+        break
       case 'amountBox': {
-        const h = 17
+        // With one pay code the box grows a third cell for it: the amount, the day and how to pay, in one place.
+        const qr = 20
+        const h = b.code ? qr + 6 : 17
         ensureRoom(h + 4)
         const top = y - 2.5
-        const mid = PAGE_MARGIN + MAX_TEXT_WIDTH_MM / 2
+        const codeW = b.code ? 68 : 0
+        const cellW = (MAX_TEXT_WIDTH_MM - codeW) / 2
+        const mid = PAGE_MARGIN + cellW
         doc.setDrawColor(28, 26, 23)
         doc.setLineWidth(0.35)
         doc.rect(PAGE_MARGIN, top, MAX_TEXT_WIDTH_MM, h)
         doc.line(mid, top, mid, top + h)
+        const drop = b.code ? 4 : 0
         const cell = (x: number, name: string, value: string) => {
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(8)
           muted()
-          doc.text(name, x + 4.5, top + 5.6)
+          doc.text(name, x + 4.5, top + 5.6 + drop)
           doc.setFont('helvetica', 'bold')
-          doc.setFontSize(16)
+          doc.setFontSize(b.code ? 14 : 16)
           ink()
-          doc.text(value, x + 4.5, top + 13)
+          doc.text(value, x + 4.5, top + 13 + drop)
         }
         cell(PAGE_MARGIN, 'Balance due', b.balance)
         cell(mid, 'Pay in full by', b.deadline)
+        if (b.code) {
+          const cx = mid + cellW
+          doc.line(cx, top, cx, top + h)
+          if (b.code.png) doc.addImage(b.code.png, 'PNG', cx + 3, top + 3, qr, qr, undefined, 'FAST')
+          else {
+            doc.setDrawColor(150, 145, 136)
+            doc.setLineWidth(0.25)
+            doc.rect(cx + 3, top + 3, qr, qr)
+          }
+          const tx = cx + qr + 6
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(8)
+          muted()
+          doc.text('Pay online', tx, top + 5.6 + drop)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          ink()
+          doc.text('Scan to pay', tx, top + 11 + drop)
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(6.5)
+          muted()
+          ;(doc.splitTextToSize(`or go to ${b.code.address}`, codeW - qr - 9) as string[]).slice(0, 3).forEach((l, i) => doc.text(l, tx, top + 15 + drop + i * 2.8))
+          ink()
+        }
         y = top + h + 8
         break
       }
@@ -820,7 +949,13 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         const perRow = 4
         const colW = MAX_TEXT_WIDTH_MM / perRow
         const qr = 22
-        const rowH = qr + 13
+        // The address is wrapped to its column (v2.7086): a bill's own address is longer than a column, and two ran into each other.
+        const addressLines = (r: DemandPayCodeRow) => {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7)
+          return (doc.splitTextToSize(r.address, colW - 4) as string[]).slice(0, 3)
+        }
+        const rowH = qr + 13 + (Math.max(1, ...b.rows.map((r) => addressLines(r).length)) - 1) * 2.8
         ensureRoom(8 + rowH)
         label('Pay online', [95, 90, 82])
         y += 4
@@ -833,7 +968,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
           ensureRoom(rowH)
           b.rows.slice(i, i + perRow).forEach((r, j) => {
             const x = PAGE_MARGIN + j * colW
-            if (r.png) doc.addImage(r.png, 'PNG', x, y, qr, qr)
+            if (r.png) doc.addImage(r.png, 'PNG', x, y, qr, qr, undefined, 'FAST')
             else {
               doc.setDrawColor(150, 145, 136)
               doc.setLineWidth(0.25)
@@ -845,9 +980,9 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
             doc.text(r.label, x, y + qr + 3.6)
             doc.setFont('helvetica', 'normal')
             doc.text(r.amount, x, y + qr + 7.2)
-            doc.setFontSize(7)
+            const address = addressLines(r)
             muted()
-            doc.text(r.address, x, y + qr + 10.6)
+            address.forEach((l, k) => doc.text(l, x, y + qr + 10.6 + k * 2.8))
             ink()
           })
           y += rowH + 2
@@ -863,30 +998,30 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         break
       case 'paragraph':
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
-        writeWrapped(b.text, 5.4)
-        y += 1.8
+        doc.setFontSize(set.size)
+        writeWrapped(b.text, set.line)
+        y += set.gap
         break
       case 'listItem':
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         if (b.lead) {
           // Two columns: the day, then what happened on it.
-          ensureRoom(5.4)
+          ensureRoom(set.line)
           doc.text(b.lead, PAGE_MARGIN, y)
-          writeWrapped(b.text, 5.4, { indent: 46 })
-        } else writeWrapped(b.text, 5.4, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
+          writeWrapped(b.text, set.line, { indent: 46 })
+        } else writeWrapped(b.text, set.line, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
         y += 0.8
         break
       case 'signature':
-        // "Sincerely," — then room for the ink — then who signed.
-        ensureRoom(18 + b.lines.length * 5.2)
+        // "Sincerely," — then room for the ink — then who signed. The block asks for the room it uses, so it never starts a page it did not need.
+        ensureRoom(5 + set.ink + b.lines.length * closeLine)
         y += 5
         doc.setFont('times', 'normal')
-        doc.setFontSize(11)
+        doc.setFontSize(set.size)
         b.lines.forEach((l, i) => {
-          writeWrapped(l, 5.2)
-          if (i === 0) y += 11
+          writeWrapped(l, closeLine)
+          if (i === 0) y += set.ink
         })
         break
       case 'statement': {
@@ -1000,8 +1135,8 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
       case 'notarial':
         y += 8
         doc.setFont('times', 'normal')
-        doc.setFontSize(10.5)
-        for (const l of NOTARIAL_TEXT_LINES) writeWrapped(l, 5.4)
+        doc.setFontSize(Math.min(10.5, set.size))
+        for (const l of NOTARIAL_TEXT_LINES) writeWrapped(l, set.line)
         break
     }
   }
@@ -1019,7 +1154,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     if (footerLeft) doc.text(footerLeft, PAGE_MARGIN, 274)
     doc.text(`Page ${p} of ${pages}`, rightX, 274, { align: 'right' })
   }
-  return doc.output('blob')
+  return { doc, letterPages }
 }
 
 // ---------- Exhibit C: the delivery record (v2.3429) ----------
@@ -1284,6 +1419,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     includeLateFees: interest.basis !== 'none',
     includeNotarial: false,
     includePayCodes: true,
+    layout: 'letter-first',
     priorNotices,
   }
 }

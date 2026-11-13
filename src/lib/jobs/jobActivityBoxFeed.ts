@@ -12,7 +12,7 @@ import { messageChannelWord, messageLineParts, messageTone, messageWho, type Job
  * Schedule/clock/event synthetic items are excluded: they're timeline texture,
  * not conversation, and the unified activity view carries them. One kind of
  * event is conversation and comes in since v2.5633: a bill sent to the
- * customer (Stripe's email, the app's), the owner's catch on the Palmer row.
+ * customer (Stripe's email, the app's), the owner's catch on the Palvern row.
  * Since v2.5636 the papers that follow a bill come in too: a paper bill
  * emailed again, a demand letter, a lien or retainage notice. They take no
  * number, so "check note 3" still never shifts. Since v2.6690 (punch list

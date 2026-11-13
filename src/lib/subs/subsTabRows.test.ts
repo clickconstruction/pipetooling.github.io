@@ -4,8 +4,8 @@ import type { WorkOrderBoardRow } from '../subWorkOrders/workOrderBoardRows'
 import type { StageWindowLike } from './stageWindow'
 
 const JOBS = [
-  { id: 'j-1004', hcp_number: '1004', customer_name: 'Summit General', job_address: '2210 Goforth Rd' },
-  { id: 'j-1009', hcp_number: '1009', customer_name: 'Mission Hills LLC', job_address: '88 Mission Hills Dr' },
+  { id: 'j-1004', hcp_number: '1004', customer_name: 'Selwick General', job_address: '2210 Goforth Rd' },
+  { id: 'j-1009', hcp_number: '1009', customer_name: 'Mission Flats LLC', job_address: '88 Mission Flats Dr' },
   { id: 'j-1017', hcp_number: '1017', customer_name: 'Kyle Homes', job_address: '415 Bunton Creek Rd' },
 ]
 const FIX: SubsFixtureLike[] = [
@@ -26,7 +26,7 @@ const row = (over: Partial<WorkOrderBoardRow> & { key: string }): WorkOrderBoard
     recordId: null,
     jobId: 'j-1004',
     jobNumber: '1004',
-    primary: '#1004 · Summit General',
+    primary: '#1004 · Selwick General',
     secondary: '2210 Goforth Rd',
     notInPipeline: false,
     subNames: ['Behar Kraja'],
@@ -47,7 +47,7 @@ const row = (over: Partial<WorkOrderBoardRow> & { key: string }): WorkOrderBoard
 describe('buildSubsTabGroups', () => {
   const board = [
     row({ key: 'sheet:s-rough', sheetId: 's-rough', commitmentId: 'c-rough', recordId: 'WO-1004-1', group: 'signed', rail: { position: 4, group: 'signed' } as WorkOrderBoardRow['rail'] }),
-    row({ key: 'sheet:s-1009', sheetId: 's-1009', jobId: 'j-1009', jobNumber: '1009', primary: '#1009 · Mission Hills LLC', secondary: '88 Mission Hills Dr', group: 'no_agreement', rail: { position: 0, group: 'no_agreement' } as WorkOrderBoardRow['rail'], open: 4200, agreed: 4200 }),
+    row({ key: 'sheet:s-1009', sheetId: 's-1009', jobId: 'j-1009', jobNumber: '1009', primary: '#1009 · Mission Flats LLC', secondary: '88 Mission Flats Dr', group: 'no_agreement', rail: { position: 0, group: 'no_agreement' } as WorkOrderBoardRow['rail'], open: 4200, agreed: 4200 }),
     row({ key: 'order:c-loose', jobId: null, jobNumber: '', primary: 'Water heater · Kyle', secondary: null, commitmentId: 'c-loose', group: 'sent', rail: { position: 2, group: 'sent' } as WorkOrderBoardRow['rail'] }),
   ]
   const out = buildSubsTabGroups({ board, windows: WIN, windowIdByCommitmentId: new Map([['c-rough', 'w-rough']]), fixtures: FIX, jobs: JOBS })
@@ -55,7 +55,7 @@ describe('buildSubsTabGroups', () => {
   it('groups by job, attention first, unlinked last', () => {
     // every job owes one move, so newest job number first; unlinked orders last
     expect(out.groups.map((g) => g.key)).toEqual(['j-1017', 'j-1009', 'j-1004', 'unlinked:order:c-loose'])
-    expect(out.groups[2]!.primary).toBe('#1004 · Summit General')
+    expect(out.groups[2]!.primary).toBe('#1004 · Selwick General')
     expect(out.groups[2]!.attention).toBe(1) // Top-out stage row, no order yet
     expect(out.groups[1]!.attention).toBe(1) // 1009 sheet on a handshake
     expect(out.groups[3]!.primary).toBe('Water heater · Kyle')
@@ -89,7 +89,7 @@ describe('buildSubsTabGroups', () => {
 
   it('searches job, sub, stage and WO number', () => {
     const g = out.groups[2]!
-    expect(subsGroupMatches(g, 'summit')).toBe(true)
+    expect(subsGroupMatches(g, 'selwick')).toBe(true)
     expect(subsGroupMatches(g, 'top-out')).toBe(true)
     expect(subsGroupMatches(g, 'behar')).toBe(true)
     expect(subsGroupMatches(g, 'WO-1004')).toBe(true)

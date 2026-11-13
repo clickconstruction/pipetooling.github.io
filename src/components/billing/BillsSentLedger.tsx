@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  BILLS_SENT_BY_HAND_HOWS,
   BILLS_SENT_GAP_LABEL,
+  BILLS_SENT_PATH,
   BILLS_SENT_ROUTE_CHIPS,
   billsSentAgainWords,
   billsSentByWords,
   billsSentCopyLabel,
+  billsSentCsv,
+  billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
   billsSentFilter,
@@ -15,25 +19,38 @@ import {
   billsSentGapHeading,
   billsSentGaps,
   billsSentLines,
+  billsSentListHtml,
   billsSentMoney,
   billsSentPaidWords,
+  billsSentRecord,
+  billsSentRecordHtml,
+  billsSentRecordPath,
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  byHandFiling,
+  byHandProblem,
+  type BillsSentByHandDraft,
+  type BillsSentByHandHow,
   type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
+  type BillsSentRecord,
   type BillsSentRoute,
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
-import { readBillsSent } from '../../lib/billing/billsSentIo'
+import { readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { saveBlobAs } from '../../lib/storageSave'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -48,6 +65,14 @@ import { EmptyState } from '../EmptyState'
  *
  * PR 3: an email line says whether it arrived (*Delivered 9:28 AM*, *Opened*, *Bounced. It did not arrive.*), a paid
  * bill says the day, and a red tile counts the sends that did not arrive on a bill still open.
+ *
+ * PR 4: a bill's name on a line opens that bill's record, every send of it in order, at `?bill=<id>`, so the
+ * address is the link to keep or paste. **Print this record** prints it as one page.
+ *
+ * PR 5: **Print** and **Download CSV** take what the list shows out of the app, in the screen's order and words.
+ *
+ * PR 6: a row of the strip offers **Say how it went…**: how the bill went, to whom and on what day, saved as a
+ * record made by hand. The bill then leaves the strip and reads as a line on that day.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -79,6 +104,8 @@ const strong: CSSProperties = { color: 'var(--text-strong)', fontWeight: 700 }
 const money: CSSProperties = { ...strong, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const press: CSSProperties = { font: 'inherit', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--text-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
 const jobLink: CSSProperties = { color: 'var(--text-green-700)', fontWeight: 600, textDecoration: 'none' }
+/** A bill's name as a press: the underline alone marks it, in the words' own colour. */
+const billLink: CSSProperties = { ...strong, textDecoration: 'underline', textUnderlineOffset: 2 }
 
 const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color: string }>> = {
   email: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
@@ -86,6 +113,7 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   statement: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   text: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
   housecall_pro: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
+  by_hand: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
@@ -130,7 +158,13 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
     <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto', ...(line.stillMissed ? { borderColor: 'var(--text-red-700)' } : {}) }}>
       <div style={phone ? { ...strong, gridColumn: '1 / -1', fontVariantNumeric: 'tabular-nums' } : { ...strong, gridRow: '1 / span 3', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{time}</div>
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <b style={strong}>{line.what}</b>
+        {line.billId ? (
+          <Link to={billsSentRecordPath(line.billId)} style={billLink} title="Open every send of this bill">
+            {line.what}
+          </Link>
+        ) : (
+          <b style={strong}>{line.what}</b>
+        )}
         {line.jobWords ? (
           <>
             {' · '}
@@ -184,11 +218,83 @@ const GAPS_SHOWN = 5
 const gapBox: CSSProperties = { border: '1px solid var(--border-amber, var(--border-strong))', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.55rem 0.7rem', fontSize: '0.8125rem', minWidth: 0 }
 const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.6rem', paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }
 
-function GapRow({ gap }: { gap: BillsSentGap }) {
+const fieldLabel: CSSProperties = { display: 'grid', gap: '0.15rem', fontSize: '0.75rem', color: 'var(--text-700)', minWidth: 0 }
+const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0, boxSizing: 'border-box', width: '100%' }
+
+/**
+ * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
+ * made by hand; the list reads again and the bill moves from the strip to its day.
+ */
+function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () => void; onClose: () => void }) {
+  const { showToast } = useToastContext()
+  const today = todayYmdInAppTz()
+  const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
+  const [saving, setSaving] = useState(false)
+  const problem = byHandProblem(draft, today)
+  const save = async () => {
+    if (problem || saving) return
+    setSaving(true)
+    try {
+      await recordBillByHand(byHandFiling(gap, draft))
+      showToast('Recorded. The bill is on the list on the day it went.', 'success')
+      onSaved()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The record was not saved.'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <label style={fieldLabel}>
+        How the bill went
+        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value as BillsSentByHandHow | '' }))} style={field}>
+          <option value="">Pick one</option>
+          {BILLS_SENT_BY_HAND_HOWS.map((h) => (
+            <option key={h.key} value={h.key}>
+              {h.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={fieldLabel}>
+        Who it went to
+        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
+      </label>
+      <label style={fieldLabel}>
+        The day it went
+        <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+      </label>
+      <label style={fieldLabel}>
+        A note, if you want one
+        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
+      </label>
+      <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!!problem || saving}
+          style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid transparent', cursor: problem || saving ? 'default' : 'pointer', background: problem || saving ? DEAD_PRESS_FILL : '#2563eb', color: problem || saving ? DEAD_PRESS_TEXT : '#fff' }}
+        >
+          {saving ? 'Saving…' : 'Record how it went'}
+        </button>
+        <button type="button" onClick={onClose} style={press}>
+          Cancel
+        </button>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{problem || 'The record says it is your word, with your name. It cannot be changed once saved.'}</span>
+      </div>
+    </div>
+  )
+}
+
+function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
+  const [saying, setSaying] = useState(false)
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <b style={strong}>Bill</b>
+        <Link to={billsSentRecordPath(gap.billId)} style={billLink} title="Open this bill's record">
+          Bill
+        </Link>
         {gap.jobWords ? (
           <>
             {' · '}
@@ -205,8 +311,14 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
       </div>
       <div style={money}>{gap.amount != null ? billsSentMoney(gap.amount) : ''}</div>
       <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
-        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}
+        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}{' '}
+        {saying ? null : (
+          <button type="button" style={press} onClick={() => setSaying(true)}>
+            Say how it went…
+          </button>
+        )}
       </div>
+      {saying ? <ByHandForm gap={gap} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -215,7 +327,7 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean }) {
+function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   if (open.length === 0 && paid.length === 0) return null
@@ -225,7 +337,7 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
       {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} />
+        <GapRow key={g.billId} gap={g} onSaved={onSaved} />
       ))}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
@@ -242,7 +354,62 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} />) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} onSaved={onSaved} />) : null}
+    </div>
+  )
+}
+
+/** One bill's record: every send of it, newest first, with the copy of each and a print of the whole. */
+function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void }) {
+  return (
+    <div data-testid="bills-sent-record" style={{ ...lineBox, display: 'block', padding: '0.7rem 0.8rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.6rem', alignItems: 'baseline' }}>
+        <h2 style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+          {record.what}
+          {record.jobWords ? (
+            <>
+              {' · '}
+              {record.jobTo ? (
+                <Link to={record.jobTo} style={jobLink}>
+                  {record.jobWords}
+                </Link>
+              ) : (
+                record.jobWords
+              )}
+            </>
+          ) : null}
+        </h2>
+        <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? billsSentMoney(record.amount) : ''}</span>
+      </div>
+      <p style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>{[record.payer, record.stateWords].filter(Boolean).join(' · ')}</p>
+      {record.events.length === 0 ? (
+        <p style={{ margin: '0.4rem 0', color: 'var(--text-amber-800)' }} data-testid="bills-sent-record-none">
+          This bill has no send on record. The app sent no email, text or print for it.
+        </p>
+      ) : (
+        record.events.map((e) => (
+          <div key={e.id} data-testid="bills-sent-record-event" style={{ borderTop: '1px solid var(--border)', padding: '0.4rem 0' }}>
+            <div>
+              <b style={strong}>{e.when}</b> · {e.head}
+            </div>
+            <div style={{ color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+              {e.detail}{' '}
+              {e.line.copy?.copyPath ? (
+                <button type="button" style={press} onClick={() => onOpen(e.line)}>
+                  {e.line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))
+      )}
+      {record.madeWords ? <p style={{ margin: '0.4rem 0 0', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>{record.madeWords}</p> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.6rem' }}>
+        <button type="button" onClick={onPrint} style={{ ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }}>
+          Print this record
+        </button>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Delivered means their mail server took it. It does not mean someone read it.</span>
+      </div>
     </div>
   )
 }
@@ -250,6 +417,8 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
+  const [params] = useSearchParams()
+  const billParam = params.get('bill')
   const [route, setRoute] = useState<BillsSentChip>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
@@ -303,8 +472,56 @@ export function BillsSentLedger() {
     [showToast],
   )
 
+  const record = useMemo(() => (billParam && data ? billsSentRecord(billParam, lines, data) : null), [billParam, data, lines])
+  const printRecord = () => {
+    if (record && !openHtmlPrintWindow(billsSentRecordHtml(record, new Date().toISOString()))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+
+  if (billParam) {
+    return (
+      <section aria-label="One bill's record" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div>
+          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
+            ← All bills sent
+          </Link>
+        </div>
+        {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
+        {data == null && !failure ? (
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
+        ) : record ? (
+          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} />
+        ) : data != null ? (
+          <EmptyState main="That bill is not on this list." next={{ label: 'See all bills sent', to: BILLS_SENT_PATH }} />
+        ) : null}
+      </section>
+    )
+  }
+
+  // What goes out of the app is what the list shows: the lines the chip and the search leave, and the open gaps with them.
+  const outGaps = stripVisible ? gapsShown.open : []
+  const shownWords = [BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? 'All', typed.trim() ? `“${typed.trim()}”` : ''].filter(Boolean).join(' · ') + '.'
+  const printList = () => {
+    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+  const saveCsv = () => {
+    // The byte order mark lets a spreadsheet read the file's accents and dots as written.
+    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today))
+  }
+  const nothingShown = shown.length === 0 && outGaps.length === 0
+  const outPress: CSSProperties = { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }
+
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      {data != null && !nothingShown ? (
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={printList} style={outPress}>
+            Print
+          </button>
+          <button type="button" onClick={saveCsv} style={outPress}>
+            Download CSV
+          </button>
+        </div>
+      ) : null}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
@@ -330,7 +547,7 @@ export function BillsSentLedger() {
         ))}
       </div>
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
-      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} /> : null}
+      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} onSaved={retry} /> : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (

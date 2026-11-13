@@ -5,7 +5,7 @@ describe('the saved copy on a lien filing (v2.3763)', () => {
   it('takes a Drive link as typed, gives a bare host a scheme, and refuses a note as a link', () => {
     expect(normalizeDocumentUrl(' https://drive.google.com/file/d/abc/view ')).toBe('https://drive.google.com/file/d/abc/view')
     expect(normalizeDocumentUrl('drive.google.com/file/d/abc/view')).toBe('https://drive.google.com/file/d/abc/view')
-    expect(normalizeDocumentUrl('in the Dudley folder')).toBe('')
+    expect(normalizeDocumentUrl('in the Dunmere folder')).toBe('')
     expect(normalizeDocumentUrl('')).toBe('')
     expect(normalizeDocumentUrl(null)).toBe('')
   })

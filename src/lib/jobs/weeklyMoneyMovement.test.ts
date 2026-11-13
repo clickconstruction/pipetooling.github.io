@@ -14,7 +14,7 @@ const job = (over: Partial<WeeklyMoneyPayloadJob>): WeeklyMoneyPayloadJob => ({
   job_id: 'j1',
   hcp_number: '523',
   click_number: null,
-  job_name: 'Mission Hills',
+  job_name: 'Mission Flats',
   job_address: '2100 Independence Dr',
   status: 'working',
   revenue: 123600,

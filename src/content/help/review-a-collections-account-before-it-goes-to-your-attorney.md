@@ -57,7 +57,7 @@ Six tabs, built from the records the firm's portal is built from:
 Most section titles carry an ↗ door to where their data is edited.
 
 :::example A red gap that is not really red
-The Learning Experience has no signed contract on either job. With a sent Stripe invoice and 22 GPS clock sessions on the property, the desk reads {{chip:yellow|Sworn account}} and the contract gap is a note, not a stop. The day a dispute is logged in call mode, the theory drops to {{chip:red|None yet}} and the gap turns red — that is the desk telling you the dispute has to be answered before the account is worth referring.
+The Reading Corner has no signed contract on either job. With a sent Stripe invoice and 22 GPS clock sessions on the property, the desk reads {{chip:yellow|Sworn account}} and the contract gap is a note, not a stop. The day a dispute is logged in call mode, the theory drops to {{chip:red|None yet}} and the gap turns red — that is the desk telling you the dispute has to be answered before the account is worth referring.
 :::
 
 ## See every case on the map
@@ -128,7 +128,7 @@ Something already happened and nobody planned it? Open the same form and pick th
 The firm sees the same timeline on its portal. The firm can plan a step there too. Each step shows who at the firm planned it. A dev's agent can add planned steps through the dev MCP. The agent's steps read *dev MCP* beside the name.
 
 :::example The plan for one account
-Burd & Assoc. owes on the Take 5 job and the lawyer is away. The office plans the response letter for Oct 27, the GC's answer for Nov 3 and the offer's end for Nov 11. Two lien notices follow on Nov 13 and Nov 20, and the affidavit on Dec 15 if nothing lands. Each step carries a note on who mails what. When the letter goes out, the office marks that step done and the line shows the day it went.
+Brund & Assoc. owes on the Tune 5 job and the lawyer is away. The office plans the response letter for Oct 27, the GC's answer for Nov 3 and the offer's end for Nov 11. Two lien notices follow on Nov 13 and Nov 20, and the affidavit on Dec 15 if nothing lands. Each step carries a note on who mails what. When the letter goes out, the office marks that step done and the line shows the day it went.
 :::
 
 ## Run a case in house

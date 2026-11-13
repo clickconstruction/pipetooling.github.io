@@ -210,7 +210,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
     expect(SERVER).toContain('ninety-seven verbs')
   })
@@ -271,7 +271,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
   })
   it('refuses in words an add without its matter, day, title, body or affiant, a bad form, kind or day, a witness with a user_id, and the caps', () => {
     expect(writeRpcBody('plan_matter_statement', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs statement') })
-    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, matter_id: 'burd' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, matter_id: 'brund' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
     expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, on: undefined } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, on: 'Oct 20' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, title: ' ' } })).toMatchObject({ ok: false })
@@ -308,7 +308,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(writeRpcBody('apply_matter_statement', { statement: { action: 'update', entry_id: ENTRY, body: 'New text.' }, plan_hash: HASH })).toMatchObject({ ok: true, step: 'apply', body: { p: { action: 'update', entry_id: ENTRY, body: 'New text.' }, p_dry_run: false }, planHash: HASH })
   })
   it('the plan hash commits to the draft as it would be written and the live statement count, and a JSON null survives the canonical form', async () => {
-    const reply = { dry_run: true, action: 'add', matter: { id: MATTER, payer_name: 'Burd & Assoc.', stage: 'demand' }, before: null, after: { kind: 'statement', state: 'draft', state_words: 'Draft · not signed.', source: 'mcp', incident_to: null }, statements_on_matter: 0, firm_reads_it: true }
+    const reply = { dry_run: true, action: 'add', matter: { id: MATTER, payer_name: 'Brund & Assoc.', stage: 'demand' }, before: null, after: { kind: 'statement', state: 'draft', state_words: 'Draft · not signed.', source: 'mcp', incident_to: null }, statements_on_matter: 0, firm_reads_it: true }
     expect(planCommitment('plan_matter_statement', reply)).toEqual({ action: 'add', matter: reply.matter, before: null, after: reply.after, statements_on_matter: 0, firm_reads_it: true })
     const p = pOf(writeRpcBody('plan_matter_statement', { statement: ADD }))
     const a = await planHash('plan_matter_statement', p, reply)
@@ -328,7 +328,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -363,7 +363,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(writeRpcBody('plan_matter_document', { document: { ...doc, sha256: 'nope' } })).toMatchObject({ ok: false, error: expect.stringContaining('content_base64') })
     expect(writeRpcBody('plan_matter_document', { document: { ...doc, size_bytes: 0 } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_document', { document: { ...doc, shows: ' ' } })).toMatchObject({ ok: false })
-    expect(writeRpcBody('plan_matter_document', { document: { ...doc, matter_id: 'burd' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, matter_id: 'brund' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_document', { document: { ...doc, dated_on: 'Oct 27' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_matter_document', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs document') })
   })
@@ -437,7 +437,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
   })
 })
 
@@ -537,7 +537,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
   })
 })
 
@@ -567,7 +567,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
   })
   it('refuses in words a gap without its matter, key or line, a line over 500, a label over 300, a bad document id and an unknown action', () => {
     expect(writeRpcBody('plan_gap_answer', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs gap') })
-    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: 'the burd matter', gap_key: 'never_asked', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: 'the brund matter', gap_key: 'never_asked', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
     expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: ' ', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('gap_key') })
     expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'k'.repeat(121), answer: 'x' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: '  ' } })).toMatchObject({ ok: false, error: expect.stringContaining('under 500') })
@@ -586,7 +586,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('Writes are ninety-seven verbs and nothing else')
   })
 })
@@ -595,13 +595,13 @@ describe('the bid verbs (v2.6183)', () => {
   const CUSTOMER = '9d16a3ce-2d4a-45ca-8cd7-0df73357fcc5'
   const SERVICE = 'd53845ab-79ed-498b-88d1-d3a069cf2e73'
   const SITE = '7d7b2580-3301-42bd-af10-85d75b941918'
-  const BID = { project_name: ' 231 Gun Dog Trail Bunker & Lodge ', customer_id: CUSTOMER, service_type_id: SERVICE, address: '231 Gun Dog Trail, Neeses, SC 29107', development_id: SITE, distance_from_office: 1158.5, bid_due_date: '2026-11-13', robot_opt_out: false }
+  const BID = { project_name: ' 231 Gray Fox Trail Bunker & Lodge ', customer_id: CUSTOMER, service_type_id: SERVICE, address: '231 Gray Fox Trail, Neeses, SC 29107', development_id: SITE, distance_from_office: 1158.5, bid_due_date: '2026-11-13', robot_opt_out: false }
   it('are on the allowlist, plan before apply, and POST { p: { action: create, … }, p_dry_run } with the name trimmed and the distance as text', () => {
     expect(isWriteVerb('plan_bid')).toBe(true)
     expect(isWriteVerb('apply_bid')).toBe(true)
     expect(planVerbFor('apply_bid')).toBe('plan_bid')
     const plan = writeRpcBody('plan_bid', { bid: BID })
-    expect(plan).toMatchObject({ ok: true, rpc: 'dev_bid_write', step: 'plan', target: '231 Gun Dog Trail Bunker & Lodge', body: { p: { action: 'create', project_name: '231 Gun Dog Trail Bunker & Lodge', customer_id: CUSTOMER, service_type_id: SERVICE, development_id: SITE, distance_from_office: '1158.5', bid_due_date: '2026-11-13', robot_opt_out: false }, p_dry_run: true } })
+    expect(plan).toMatchObject({ ok: true, rpc: 'dev_bid_write', step: 'plan', target: '231 Gray Fox Trail Bunker & Lodge', body: { p: { action: 'create', project_name: '231 Gray Fox Trail Bunker & Lodge', customer_id: CUSTOMER, service_type_id: SERVICE, development_id: SITE, distance_from_office: '1158.5', bid_due_date: '2026-11-13', robot_opt_out: false }, p_dry_run: true } })
     expect(pOf(plan)).not.toHaveProperty('estimator_id')
     const apply = writeRpcBody('apply_bid', { bid: BID, plan_hash: HASH })
     expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
@@ -610,7 +610,7 @@ describe('the bid verbs (v2.6183)', () => {
   it('refuses a missing name, a bad id, a wrong date or time, a negative distance — and carries allow_duplicate_name only when true', () => {
     expect(writeRpcBody('plan_bid', { bid: { ...BID, project_name: ' ' } })).toMatchObject({ ok: false, error: expect.stringContaining('project_name') })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, customer_id: 'DSI' } })).toMatchObject({ ok: false })
-    expect(writeRpcBody('plan_bid', { bid: { ...BID, development_id: 'gun dog' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, development_id: 'gray fox' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_date: 'Nov 13' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_time: '2pm' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, distance_from_office: -3 } })).toMatchObject({ ok: false })
@@ -650,7 +650,7 @@ describe('the history verbs (v2.6044)', () => {
   })
   it('refuses in words a line without its site, time, source, body or robot, two pieces, a body over 20,000 and a bad id', () => {
     expect(writeRpcBody('plan_history_entry', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs line') })
-    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, development_id: 'gun dog' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, development_id: 'gray fox' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_history_entry', { line: { ...LINE, happened_at: 'yesterday' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_history_entry', { line: { ...LINE, source: 'fax' } })).toMatchObject({ ok: false, error: expect.stringContaining('on_site') })
     expect(writeRpcBody('plan_history_entry', { line: { ...LINE, body: '   ' } })).toMatchObject({ ok: false })
@@ -810,7 +810,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('Writes are ninety-seven verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -902,7 +902,7 @@ describe('the Materials on site move (v2.6808, punch list #209)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     expect(SERVER).toContain('plan_materials_move → apply_materials_move')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('Writes are ninety-seven verbs and nothing else')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(97)
   })
@@ -1020,7 +1020,7 @@ describe('the narrative verbs (v2.4814)', () => {
 describe('the plan set verbs (v2.6185)', () => {
   const BID_ID = '0e4dcd2b-a524-4056-b93c-16713041a6e7'
   const SHA = 'c'.repeat(64)
-  const PLANS = { bid: BID_ID, file_name: '231 Gun Dog Trail Bunker & Lodge - plans for the robot.pdf', size_bytes: 25274441, sha256: SHA.toUpperCase() }
+  const PLANS = { bid: BID_ID, file_name: '231 Gray Fox Trail Bunker & Lodge - plans for the robot.pdf', size_bytes: 25274441, sha256: SHA.toUpperCase() }
   it('are on the allowlist over the same RPC, plan before apply, and POST { p: { action: file_plans, … }, p_dry_run } with the sha lowered', () => {
     expect(isWriteVerb('plan_file_plans')).toBe(true)
     expect(planVerbFor('apply_file_plans')).toBe('plan_file_plans')
@@ -1215,7 +1215,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('ninety-seven verbs')
   })
@@ -1299,7 +1299,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')

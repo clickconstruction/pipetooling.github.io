@@ -15,8 +15,8 @@
 
 export const THEIR_PAPER_KIND = 'their_paper'
 
-/** The key terms the record keeps, in the order the Burd matter needed them. */
-export const THEIR_PAPER_TERM_KEYS = ['termination', 'notice_to_proceed', 'default_cure', 'retainage_release', 'payment_contingency', 'change_orders', 'venue', 'fees_arbitration'] as const
+/** The key terms the record keeps, in the order the Brund matter needed them. */
+export const THEIR_PAPER_TERM_KEYS = ['termination', 'notice_to_proceed', 'default_cure', 'retainage_release', 'payment_contingency', 'pay_calendar', 'change_orders', 'venue', 'fees_arbitration'] as const
 export type TheirPaperTermKey = (typeof THEIR_PAPER_TERM_KEYS)[number]
 
 export const THEIR_PAPER_TERM_WORDS: Record<TheirPaperTermKey, { label: string; hint: string }> = {
@@ -25,6 +25,8 @@ export const THEIR_PAPER_TERM_WORDS: Record<TheirPaperTermKey, { label: string; 
   default_cure: { label: 'Default and cure', hint: '5 days to cure after written notice' },
   retainage_release: { label: 'Retainage release', hint: '10%, 30 days after their final acceptance' },
   payment_contingency: { label: 'Payment contingency', hint: 'pay-when-paid by the owner' },
+  // Punch list #323, PR 7: the cutoff and the pay day, where the paper names them. The Pay calendar itself is set on the payer or the job.
+  pay_calendar: { label: 'Pay calendar', hint: 'in by the 25th, paid the 30th of the next month' },
   change_orders: { label: 'Change orders', hint: 'written and signed before the work' },
   venue: { label: 'Venue', hint: 'the county and state' },
   fees_arbitration: { label: 'Fees and arbitration', hint: 'prevailing party; arbitration' },

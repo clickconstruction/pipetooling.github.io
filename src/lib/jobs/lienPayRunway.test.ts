@@ -269,7 +269,7 @@ describe('a sub job: the § 53.056 notice comes first (v2.4096)', () => {
 })
 
 describe('every work month: the notice that counts is the earliest one still owed (v2.4308)', () => {
-  // Job 878, Take 5 – Seguin, read live on 2026-10-01: a commercial sub job worked June through
+  // Job 878, Tune 5 – Seguin, read live on 2026-10-01: a commercial sub job worked June through
   // September with no notice recorded. June's window closed Sep 15; July's notice is due Oct 15,
   // August's Nov 16 (Nov 15 is a Sunday), September's Dec 15. The lien still counts from September.
   const seguin = (over: Partial<LienRunwayInput> = {}) =>
@@ -334,7 +334,7 @@ describe('every work month: the notice that counts is the earliest one still owe
   })
 
   it('no property kind: every month on the residential clock, the earlier one (927)', () => {
-    // Job 927, Mike Holub – Candelaria: worked July through September, no kind on the property record.
+    // Job 927, Mike Holmby – Candelaria: worked July through September, no kind on the property record.
     const r = buildLienPayRunway(seguin({ propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] }))
     expect(r.kindAssumed).toBe(true)
     expect(r.noticeMonths).toEqual([

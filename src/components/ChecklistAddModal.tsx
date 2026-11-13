@@ -21,7 +21,10 @@ import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
 import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
 import { TaskPlaceRow } from './checklist/TaskPlaceRow'
+import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
+import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -99,6 +102,8 @@ export default function ChecklistAddModal({
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
   // Punch list #328: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
+  // PR 6: the giver's photo of the spot, held here until the task has an id to file it under.
+  const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
   const asksForPhoto = asksForPhotoPick ?? asksForPhotoDefault(lineCount)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -283,6 +288,7 @@ export default function ChecklistAddModal({
       setCustomTimeOpen(false)
       setFormError(null)
       setPlace(null)
+      setSpotPhoto(null)
       // The job bar already shows its link, so the Links section stays folded behind it (v2.3751).
       setLinksSectionOpen(presetLinks.length > 0 && !preset?.job)
       setWhen(preset?.when ?? 'today')
@@ -440,6 +446,18 @@ export default function ChecklistAddModal({
           }))
         )
         await generateInstances(newId, { ...form, repeat_type: effRepeatType, start_date: effStartDate, repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date : '' })
+        // The photo of the spot (#328, PR 6) is filed under the task's id, so it goes now. The task is sent either way; a
+        // photo that did not land says so and leaves the dialog open, since sending again would make a second task.
+        if (spotPhoto?.kind === 'new') {
+          const put = await putTaskSpotPhoto({ kind: 'item', id: newId }, spotPhoto.id, spotPhoto.blob)
+          if ('error' in put) {
+            setFormError(`The task was sent, but its photo did not save: ${put.error} Add it from Checklist → Manage → Edit.`)
+            setSpotPhoto(null)
+            modalContext.onSaved?.(newId)
+            window.dispatchEvent(new CustomEvent('checklist-item-saved'))
+            return
+          }
+        }
         // Task cards (#273, PR 2): the Done when… lines. The task is sent either way; a line that did not land says so
         // and leaves the dialog open, since sending again would make a second task.
         const lines = parseLines(linesText)
@@ -457,6 +475,7 @@ export default function ChecklistAddModal({
       setLinesOpen(false)
       setAsksForPhotoPick(null)
       setPlace(null)
+      setSpotPhoto(null)
       modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
       window.dispatchEvent(new CustomEvent('checklist-item-saved'))
@@ -481,9 +500,9 @@ export default function ChecklistAddModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="checklist-add-modal-title"
-      // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
-      // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1012 }}
+      // Above Job Detail (1004) and Edit Job (1010) so the header send-as-task buttons stack this over either
+      // (v2.1529), and above a thread's window (1200) so Ask a tech… and Send as a task do too (v2.7069).
+      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: ADD_TASK_WINDOW_Z }}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header, Cancel, or a successful Send.
     >
@@ -902,6 +921,7 @@ export default function ChecklistAddModal({
               </div>
             </div>
             <TaskPlaceRow value={place} onChange={setPlace} />
+            <TaskSpotPhotoField value={spotPhoto} onChange={setSpotPhoto} busy={submitting} />
             {linksSectionOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {form.links.map((url, i) => (
@@ -1291,6 +1311,7 @@ export default function ChecklistAddModal({
                 <div style={{ minWidth: 200, flex: '1 1 200px' }}>
                   <SearchableSelect
                     id="checklist-add-notify-on-complete"
+                    portalZIndex={ADD_TASK_PICKER_Z}
                     value={form.notify_on_complete_user_id}
                     onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
                     options={assignToSelectOptions}

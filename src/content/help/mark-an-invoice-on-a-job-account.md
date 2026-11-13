@@ -64,7 +64,7 @@ A job whose account at the house is marked not needed leaves the window. The Das
 
 ## The account itself lives on the house
 
-Whether a job **has** an account at a house is its own record, separate from this invoice flag. Open **Materials → Supply houses** and expand the house. **Job accounts** lists every job with an account there. Each shows {{chip:green|open}} with the house's reference, {{chip:purple|requested}}, or {{chip:gray|not needed}}. It also lists every job that bought there with none on record. {{button:green|Mark opened…}} records it in two taps after the call. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).
+Whether a job **has** an account at a house is its own record, separate from this invoice flag. Open **Materials → Supply houses** and expand the house. Press **Job accounts** under its invoices. The roster lists every job with an account there. Each shows {{chip:green|open}} with the house's reference, {{chip:purple|requested}}, or {{chip:gray|not needed}}. It also lists every job that bought there with none on record. {{button:green|Mark opened…}} records it in two taps after the call. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).
 
 ## The Dashboard keeps an eye on it
 

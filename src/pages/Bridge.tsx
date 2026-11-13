@@ -62,6 +62,7 @@ import { loadBidsSent } from '../lib/bridge/loadBidWins'
 import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
+import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { answerBridgeCall, buildScorecard, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -1080,6 +1081,18 @@ export default function Bridge() {
     }
   }, [data, thisWeekStart, calls, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, pickedStage, moveNumbers, billPile, profileName, vectorInputs, nowReading, user?.id, moveMarks])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
+  // The two balances on the first screen (punch list #334, PR 6). The accrual balance is the page's net position:
+  // cash, plus what customers owe, less what the company owes, the three figures Money owed walks through.
+  // Runway burns payroll and overhead alone, the two figures the cash forecast already spends.
+  const weekMoney = useMemo(() => {
+    if (!weekInput) return null
+    const burnPerDayUsd = data ? burnPerDay({ payrollPerWeekUsd: data.payrollWeeklyEstUsd, overheadPerDayUsd: data.dailyDrainUsd }) : null
+    return {
+      cash: cashLine({ ...weekInput, burnPerDayUsd }),
+      accrual: accrualLine({ cashUsd: cashToday, owedToYouUsd: fin.data ? fin.data.ar.total : null, owedByYouUsd: fin.data ? fin.data.ap.total : null, burnPerDayUsd }),
+      foot: runwayFoot(burnPerDayUsd),
+    }
+  }, [weekInput, cashToday, fin.data, data])
 
   // One account's switch: the page follows at once, the row is saved behind it, and a save that is refused says why.
   const flipAccount = useCallback(
@@ -1480,7 +1493,7 @@ export default function Bridge() {
       ) : (
         <>
           {/* The first screen (punch list #303, PR 1): where we stand in three tiles, and the week's call. */}
-          {weekModel ? (
+          {weekModel && weekMoney ? (
             <BridgeWeek
               model={weekModel}
               recording={recording}
@@ -1491,6 +1504,11 @@ export default function Bridge() {
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
               strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
               stripSide={!pipeAcross}
+              money={weekMoney}
+              onAccrual={() => {
+                setOpenCard('owed')
+                pressDoor('money', { keepOpen: true, scrollTo: 'bridge-money-owed' })
+              }}
               people={pickable}
             />
           ) : (
@@ -1723,8 +1741,8 @@ export default function Bridge() {
             {netOpen && truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
           </div>
 
-          {/* Money owed, both ways */}
-          <div style={{ marginTop: '0.6rem' }}>
+          {/* Money owed, both ways. The accrual balance on the first screen lands here. */}
+          <div id="bridge-money-owed" style={{ marginTop: '0.6rem', scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
             <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={label}>Money owed</div>

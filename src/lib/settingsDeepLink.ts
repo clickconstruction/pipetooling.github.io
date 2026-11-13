@@ -116,6 +116,10 @@ export function resolveSettingsDeepLink(search: string, hash: string): SettingsD
     } else if (!tabId) {
       // A hash that names a tab directly (e.g. #settings-data) acts like ?tab=.
       tabId = rawHash
+    } else if (rawHash === tabId) {
+      // `?tab=X#X`: the hash repeats the tab, so the link means the card that carries the tab's own id. On Activity
+      // logs that is Most recent notifications, which sits under an owner's sent emails: land on it (v2.7132).
+      anchorId = rawHash
     }
   }
 

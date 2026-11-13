@@ -36,8 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # The whole history, not the newest commit alone: the build replays every change of to-dos/ for the burndown
+      # on /punch-list (`todoHistoryPlugin`, v2.7128). A clone cut at one commit still builds; the page then says
+      # it has no history to draw.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

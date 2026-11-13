@@ -3,8 +3,8 @@ import { gcDisplayName, UNNAMED_GC_LABEL } from './gcDisplayName'
 
 describe('gcDisplayName', () => {
   it('returns the trimmed name when there is one', () => {
-    expect(gcDisplayName('Southern Post ')).toBe('Southern Post')
-    expect(gcDisplayName({ name: ' Burd & Assoc.' })).toBe('Burd & Assoc.')
+    expect(gcDisplayName('Southern Pine ')).toBe('Southern Pine')
+    expect(gcDisplayName({ name: ' Brund & Assoc.' })).toBe('Brund & Assoc.')
   })
   it('names an unnamed GC the same way from every input shape', () => {
     expect(gcDisplayName(null)).toBe(UNNAMED_GC_LABEL)

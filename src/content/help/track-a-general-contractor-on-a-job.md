@@ -23,7 +23,7 @@ You can link a GC to any job. The job's **Bills go to** row then decides whether
 On **New Job**, the same pick sits in the Customer section, under ***GC/Builder (customer)***. That GC saves when you press **Create Job**.
 
 :::example Linked to a bid? Mostly automatic.
-Jobs **created from a bid** inherit the bid's GC/Builder automatically, and **Bills go to** is set to the GC. A bid sent to several GCs asks *Which GC gave you this job?* first. Linking a bid to an existing job fills the GC if it's empty. For anything else, the {{chip:blue|Use bid's GC: Knight Homes}} button copies it over in one click.
+Jobs **created from a bid** inherit the bid's GC/Builder automatically, and **Bills go to** is set to the GC. A bid sent to several GCs asks *Which GC gave you this job?* first. Linking a bid to an existing job fills the GC if it's empty. For anything else, the {{chip:blue|Use bid's GC: Kestrin Homes}} button copies it over in one click.
 :::
 
 ## Who gets the bills
@@ -88,7 +88,7 @@ Job 1058 · Service Visit · Sep 21 · $2,000.00
 
 Prefer the app to send it? You choose **Draft Message** from the same Share menu. The top of the dialog reads like the email it becomes: **From**, **To**, **Cc**, **Reply to**, **Subject**. From is the company name the GC sees and cannot be changed. To is the GC's address from their customer record. The To line shows their name with the address beside it. You press **Change** to pick someone else.
 
-One menu serves To and Cc. The GC's own contact people come first, then the office. The contacts come from Customers → contacts. The ones ticked *Gets a copy of every bill* wear a *gets bill copies* mark here. You type a name to find one. Or you type a whole address and pick **Use …** to send anywhere. A sentence under the header says the send back before it goes. The sentence reads *Goes to RMC- Dudley Mason. Their reply goes to Malachi. You get a copy*. You hit {{button:blue|Send statement}} and the app emails the same table from the company's address.
+One menu serves To and Cc. The GC's own contact people come first, then the office. The contacts come from Customers → contacts. The ones ticked *Gets a copy of every bill* wear a *gets bill copies* mark here. You type a name to find one. Or you type a whole address and pick **Use …** to send anywhere. A sentence under the header says the send back before it goes. The sentence reads *Goes to RLC- Dunmere Mallin. Their reply goes to Malachi. You get a copy*. You hit {{button:blue|Send statement}} and the app emails the same table from the company's address.
 
 To read it first, you press {{button:outline|Preview}}. Preview lays the exact email over the dialog, full size. **← Back** returns you to the dialog with everything you typed still there. Esc does the same. Nothing has been sent. After a send, the opened row shows a blue **Sent Oct 7** pill. A send from an earlier week reads *last sent* with its date instead. So the office sees at a glance which GCs already got their statement this week.
 
@@ -115,7 +115,7 @@ The statement lists what is owed. Sometimes the GC wants the bills themselves. Y
 - A row that is a job balance with no bill behind it has no invoice to print. The message that follows says how many invoices printed and names anything left out.
 
 :::example After the PDF opens
-19 unpaid invoices for RMC- Dudley Mason.
+19 unpaid invoices for RLC- Dunmere Mallin.
 :::
 
 If the tab does not open, you allow pop-ups for the app and pick it again.

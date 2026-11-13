@@ -19,7 +19,7 @@ function job(id: string, revenue: number, over: Partial<JobWithDetails> = {}): J
     hcp_number: '957',
     click_number: null,
     job_name: 'Creekside repipe',
-    customer_name: 'H & I Construction',
+    customer_name: 'B & D Construction',
     revenue,
     ...over,
   } as unknown as JobWithDetails

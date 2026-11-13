@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   roles: ['dev', 'master_technician'],
   highlights: [
-    'A GC set to “Send notices without asking” now shows each notice its rule put in the run, in Sent on your word at the top of the Lien desk. Each reads “by Loberg Contracting’s rule”, apart from the ones sent on your word.',
+    'A GC set to “Send notices without asking” now shows each notice its rule put in the run, in Sent on your word at the top of the Lien desk. Each reads “by Lowbeck Contracting’s rule”, apart from the ones sent on your word.',
     'Notices printed and in the mail stay on that list too. Before, a notice dropped off it from the day its packet printed until its mailing was recorded.',
   ],
 }

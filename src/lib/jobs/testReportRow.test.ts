@@ -76,12 +76,12 @@ describe('row ↔ data', () => {
 describe('job reads', () => {
   const job = {
     hcp_number: ' 1014 ',
-    job_name: 'Johnson Pretest',
-    job_address: '112 Seidel St, Marion, TX 78124',
-    customer_name: 'Anna & Jeffrey Johnson',
+    job_name: 'Jarrow Pretest',
+    job_address: '112 Sedlow St, Marion, TX 78124',
+    customer_name: 'Anna & Jeffrey Jarrow',
     customer_email: '',
     customer_phone: '(830) 555-0142',
-    gcCustomer: { id: 'gc', name: 'Done Right Foundation Repair' },
+    gcCustomer: { id: 'gc', name: 'Dead Level Foundation Repair' },
     invoices: [
       { id: 'i1', status: 'paid', hosted_invoice_url: 'https://invoice.stripe.com/old', billed_at: '2026-08-01', sequence_order: 1, amount: 250 },
       { id: 'i2', status: 'billed', hosted_invoice_url: 'https://invoice.stripe.com/new', billed_at: '2026-09-11', sequence_order: 2, amount: 250 },
@@ -92,12 +92,12 @@ describe('job reads', () => {
   it('builds the paper header from the job and the GC', () => {
     expect(testReportJobInfoFromJob(job)).toEqual({
       jobNumber: '1014',
-      jobName: 'Johnson Pretest',
-      jobAddress: '112 Seidel St, Marion, TX 78124',
-      customerName: 'Anna & Jeffrey Johnson',
+      jobName: 'Jarrow Pretest',
+      jobAddress: '112 Sedlow St, Marion, TX 78124',
+      customerName: 'Anna & Jeffrey Jarrow',
       customerEmail: null,
       customerPhone: '(830) 555-0142',
-      customerCompany: 'Done Right Foundation Repair',
+      customerCompany: 'Dead Level Foundation Repair',
     })
   })
 

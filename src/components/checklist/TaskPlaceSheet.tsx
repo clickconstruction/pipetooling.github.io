@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { requestMyLocation, type MyFix } from '../../lib/materials/myLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { ADD_TASK_PICKER_Z } from '../../lib/windowLayers'
 import {
   TASK_PLACE_NAME_MAX,
   TASK_PLACE_START_WAIT_MS,
@@ -25,6 +26,8 @@ type Props = {
   initial: TaskPlaceDraft | null
   onUse: (place: TaskPlaceDraft) => void
   onClose: () => void
+  /** The sheet's layer. Over Add a task unless the window that opens it sits higher, as a roadmap task's does. */
+  zIndex?: number
 }
 
 /**
@@ -37,7 +40,7 @@ type Props = {
  * on the map before anything is kept, with how sure the phone is, and a reading too wide to trust
  * asks for the ring instead of being taken (`taskPlaceFixWords`).
  */
-export function TaskPlaceSheet({ start, initial, onUse, onClose }: Props) {
+export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TASK_PICKER_Z }: Props) {
   const [ring, setRing] = useState<TaskPlacePoint | null>(null)
   const [fly, setFly] = useState<TaskPlacePoint | null>(null)
   const [fix, setFix] = useState<MyFix | null>(null)
@@ -100,7 +103,7 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose }: Props) {
   return createPortal(
     <div
       data-task-place-sheet
-      style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
+      style={{ position: 'fixed', inset: 0, zIndex, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
       onClick={(e) => {
         // The Add window sits behind: this press closes the sheet alone.
         e.stopPropagation()
@@ -194,6 +197,7 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose }: Props) {
         </div>
       </div>
     </div>,
-    document.body,
+    // The roadmap's canvas can fill the screen, and then only what is inside it shows.
+    document.fullscreenElement ?? document.body,
   )
 }

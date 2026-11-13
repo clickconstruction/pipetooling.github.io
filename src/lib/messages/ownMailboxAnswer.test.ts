@@ -7,7 +7,7 @@ const row = (over: Partial<MyMailRow> = {}): MyMailRow => ({
   gmailId: 'g-1',
   threadId: 't-1',
   direction: 'out',
-  who: { name: 'Rusty Cottar', address: 'rusty@cottarbuilders.example' },
+  who: { name: 'Rusty Cotterby', address: 'rusty@cotterbybuilders.example' },
   subject: 'Re: Bid request',
   snippet: 'Numbers attached.',
   at: '2026-11-07T20:00:00.000Z',
@@ -31,8 +31,8 @@ describe('showOwnMailboxStrip: while the court is ours by their last word (punch
 
 describe('sentMailQuery: the search over the person\'s own Sent', () => {
   it('asks for a mail to any of their addresses in the last 30 days, and nothing with no address', () => {
-    expect(sentMailQuery(['rusty@cottarbuilders.example'])).toBe('to:rusty@cottarbuilders.example newer_than:30d')
-    expect(sentMailQuery(['rusty@cottarbuilders.example', 'r.cottar@gmail.example'])).toBe('(to:rusty@cottarbuilders.example OR to:r.cottar@gmail.example) newer_than:30d')
+    expect(sentMailQuery(['rusty@cotterbybuilders.example'])).toBe('to:rusty@cotterbybuilders.example newer_than:30d')
+    expect(sentMailQuery(['rusty@cotterbybuilders.example', 'r.cotterby@gmail.example'])).toBe('(to:rusty@cotterbybuilders.example OR to:r.cotterby@gmail.example) newer_than:30d')
     expect(sentMailQuery([])).toBeNull()
     expect(sentMailQuery([' '])).toBeNull()
   })
@@ -42,11 +42,11 @@ describe('sentMailQuery: the search over the person\'s own Sent', () => {
       contactEmailAddresses({
         channels: [
           { id: '1', kind: 'phone', value: '(210) 555-0113', optedOutAt: null },
-          { id: '2', kind: 'email', value: ' Rusty@cottarbuilders.example ', optedOutAt: null },
-          { id: '3', kind: 'email', value: 'rusty@cottarbuilders.example', optedOutAt: null },
+          { id: '2', kind: 'email', value: ' Rusty@cotterbybuilders.example ', optedOutAt: null },
+          { id: '3', kind: 'email', value: 'rusty@cotterbybuilders.example', optedOutAt: null },
         ],
       }),
-    ).toEqual(['rusty@cottarbuilders.example'])
+    ).toEqual(['rusty@cotterbybuilders.example'])
   })
 })
 

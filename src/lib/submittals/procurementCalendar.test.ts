@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CALENDAR_MAX_DAYS, calendarAxis, groupMark } from './procurementCalendar'
 import { orderSections } from './procurementOrders'
-import { row, spacexLater as later, spacexToday as today } from './procurementSpacex.fixtures'
+import { row, skylabLater as later, skylabToday as today } from './procurementSkylab.fixtures'
 
 const STAGES = { rough_in: '2026-10-20', top_out: '2026-11-10', trim_set: '2026-12-08' }
 const ASOF = '2026-10-26'
