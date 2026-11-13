@@ -34,7 +34,7 @@ const RFQS = [
   { id: 'r-quoted', sent_via: 'outside', supply_house_id: 'nws', sent_to: 'National Wholesale', sent_email: null, status: 'sent', token: null, created_at: '2026-09-10T15:00:00Z', created_by: 'robert', viewed_at: null, needed_by: null, requested_on: '2026-09-10', request_url: 'https://mail.google.com/thread/1', quote_url: 'https://drive.google.com/file/d/q1', last_reminded_at: null, reminder_count: 0 },
   { id: 'r-wait', sent_via: 'outside', supply_house_id: 'nws', sent_to: 'National Wholesale', sent_email: null, status: 'sent', token: null, created_at: '2026-09-12T15:00:00Z', created_by: 'robert', viewed_at: null, needed_by: null, requested_on: '2026-09-12', request_url: null, quote_url: null, last_reminded_at: null, reminder_count: 0 },
 ]
-const REPS = [{ supply_house_id: 'nws', label: 'Kim', name: 'Kim Ammon', email: 'k.ammon@nws-inc.com', is_default: true, phone: '(210) 555-0142' }]
+const REPS = [{ supply_house_id: 'nws', label: 'Kim', name: 'Kim Amwell', email: 'k.amwell@nws.example', is_default: true, phone: '(210) 555-0142' }]
 
 vi.mock('../../lib/supabase', () => {
   const listResult = (data: unknown[]) => {

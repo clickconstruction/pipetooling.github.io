@@ -3,7 +3,7 @@ import { GC_STATEMENT_CC_MAX, ccTextIncludes, formatCcSummary, parseCcEmails, to
 
 describe('parseCcEmails', () => {
   it('splits on commas/semicolons/whitespace, lower-cases, dedupes, drops the To', () => {
-    const r = parseCcEmails(' Malachi@Click.com, robert@click.com; malachi@click.com  ap@rmc.com ', 'AP@rmc.com')
+    const r = parseCcEmails(' Malachi@Click.com, robert@click.com; malachi@click.com  ap@rlc.com ', 'AP@rlc.com')
     expect(r.emails).toEqual(['malachi@click.com', 'robert@click.com'])
     expect(r.invalid).toEqual([])
     expect(r.overflow).toBe(false)
@@ -26,10 +26,10 @@ describe('parseCcEmails', () => {
 
 describe('toggleCcEmailInText / ccTextIncludes', () => {
   it('adds then removes a chip email, preserving typed addresses', () => {
-    const t1 = toggleCcEmailInText('ap@rmc.com', 'Malachi@click.com')
-    expect(t1).toBe('ap@rmc.com, malachi@click.com')
+    const t1 = toggleCcEmailInText('ap@rlc.com', 'Malachi@click.com')
+    expect(t1).toBe('ap@rlc.com, malachi@click.com')
     expect(ccTextIncludes(t1, 'MALACHI@click.com')).toBe(true)
-    expect(toggleCcEmailInText(t1, 'malachi@click.com')).toBe('ap@rmc.com')
+    expect(toggleCcEmailInText(t1, 'malachi@click.com')).toBe('ap@rlc.com')
   })
   it('formatCcSummary', () => {
     expect(formatCcSummary([])).toBe('')

@@ -117,9 +117,13 @@ export function officeTicketWhyWords(row: Pick<OfficeTicketRow, 'why' | 'fitChar
   }
 }
 
-/** The green chip on a charge line: *Ticket · JP1042 first*, or *Ticket* when it names no job. */
-export function ticketChipWords(ticketJobLabel: string | null): string {
-  return ticketJobLabel ? `Ticket · ${ticketJobLabel} first` : 'Ticket'
+/**
+ * The green chip on a charge line: *Ticket · JP1042 first*, or *Ticket* when it names no job. A photo that came through
+ * the charge's receipt link (punch list #299) reads *Receipt from the link*, so the office sees which door it came by.
+ */
+export function ticketChipWords(ticketJobLabel: string | null, source?: string | null): string {
+  const what = source === 'link' ? 'Receipt from the link' : 'Ticket'
+  return ticketJobLabel ? `${what} · ${ticketJobLabel} first` : what
 }
 
 /** The office's Tickets tab label with its count. */

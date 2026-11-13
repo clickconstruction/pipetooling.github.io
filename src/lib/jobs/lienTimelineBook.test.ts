@@ -11,7 +11,7 @@ function row(job_id: string, work_month: string, deadline: string, extra: Partia
 }
 
 function job(id: string, over: Partial<LienBookJob> = {}): LienBookJob {
-  return { id, label: `${id.slice(1)} · Job ${id}`, address: `${id} Main St`, gcId: 'gc1', gcName: 'Loberg Contracting', propertyKind: 'non_residential', homestead: false, county: 'Comal', ownerName: 'Elbel Holdings LLC', openBalance: 10_000, lastWorkDate: '2026-08-20', isSub: true, ...over }
+  return { id, label: `${id.slice(1)} · Job ${id}`, address: `${id} Main St`, gcId: 'gc1', gcName: 'Lowbeck Contracting', propertyKind: 'non_residential', homestead: false, county: 'Comal', ownerName: 'Elwick Holdings LLC', openBalance: 10_000, lastWorkDate: '2026-08-20', isSub: true, ...over }
 }
 
 const filing = (over: Partial<JobLienFilingRow>): JobLienFilingRow =>
@@ -37,7 +37,7 @@ function input(): LienTimelineBookInput {
     filingsByJob: { j707: [filing({})] },
     jobs: {
       j891: job('j891', { openBalance: 27_199 }),
-      j650: job('j650', { openBalance: 21_800, gcId: 'gc2', gcName: 'Burd & Assoc.', lastWorkDate: '2026-06-25' }),
+      j650: job('j650', { openBalance: 21_800, gcId: 'gc2', gcName: 'Brund & Assoc.', lastWorkDate: '2026-06-25' }),
       j912: job('j912', { openBalance: 4_000, lastWorkDate: '2026-09-10' }),
       j707: job('j707', { openBalance: 12_400, lastWorkDate: '2026-03-28' }),
     },
@@ -54,8 +54,8 @@ describe('buildLienTimelineBook', () => {
   })
   it('names the GCs with their counts', () => {
     expect(book.gcs).toEqual([
-      { id: 'gc2', name: 'Burd & Assoc.', count: 1 },
-      { id: 'gc1', name: 'Loberg Contracting', count: 3 },
+      { id: 'gc2', name: 'Brund & Assoc.', count: 1 },
+      { id: 'gc1', name: 'Lowbeck Contracting', count: 3 },
     ])
   })
   it('the filed job reads the tail from its filing', () => {
@@ -87,13 +87,13 @@ describe('the grid', () => {
   it('has counsel’s columns, with blanks where the app holds no fact', () => {
     const g = lienGridRows(filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' }), TODAY)
     expect(g.map((r) => r.job)).toEqual(['891 · Job j891', '912 · Job j912', '707 · Job j707'])
-    expect(g[0]!).toMatchObject({ owner: 'Elbel Holdings LLC', kind: 'Com · —', lastOnSite: 'Aug 2026', unpaid: 'Jul, Aug · $27,199', notices: 'Jul: Oct 15 · Aug: Nov 16', affidavit: 'Dec 15', bond: '', paidOut: '', reserved: '', contractCompleted: '' })
+    expect(g[0]!).toMatchObject({ owner: 'Elwick Holdings LLC', kind: 'Com · —', lastOnSite: 'Aug 2026', unpaid: 'Jul, Aug · $27,199', notices: 'Jul: Oct 15 · Aug: Nov 16', affidavit: 'Dec 15', bond: '', paidOut: '', reserved: '', contractCompleted: '' })
     expect(g[2]!.affidavit).toBe('filed Jul 14')
     expect(g[2]!.notices).toBe('')
   })
   it('prints as one landscape page per GC with the footnote on the blanks', () => {
-    const html = lienGridHtml(filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' }), { title: 'Loberg Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })
-    expect(html).toContain('<title>Lien grid — Loberg Contracting</title>')
+    const html = lienGridHtml(filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' }), { title: 'Lowbeck Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })
+    expect(html).toContain('<title>Lien grid — Lowbeck Contracting</title>')
     expect(html).toContain('size: letter landscape')
     expect(html).toContain('3 jobs · $43,599 open')
     expect(html).toContain('<th>Paid out to GC</th>')
@@ -109,7 +109,7 @@ describe('the grid', () => {
     expect(html).toContain('<tr class="sect"><th colspan="12">Hays County · Justice Court, Precinct 2 · 2 jobs · $1</th></tr>')
     expect(html.indexOf('Hays County')).toBeLessThan(html.indexOf('County not on the record'))
     expect(html).toContain('3 jobs · $43,599 open')
-    expect(lienGridHtml(rows, { title: 'Loberg Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })).not.toContain('class="sect"')
+    expect(lienGridHtml(rows, { title: 'Lowbeck Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })).not.toContain('class="sect"')
   })
 })
 

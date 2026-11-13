@@ -11,7 +11,7 @@ vi.mock('../../../lib/legal/statementPrint', async (orig) => ({ ...(await orig<t
 afterEach(() => { cleanup(); saved.blobs = [] })
 
 const draft: StatementDraft = { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', userId: 'u', name: 'Daniel Alvarez', role: 'RMP' }, incidentOn: '2026-09-03', incidentTo: '', form: 'notary', venueCounty: 'Guadalupe', body: 'Northline never called us back.' }
-const declaration: StatementDraft = { ...draft, affiant: { kind: 'witness', userId: null, name: 'Thanh Van Nguyen', role: 'the foreman' }, form: 'declaration', title: 'Declaration of Thanh Van Nguyen' }
+const declaration: StatementDraft = { ...draft, affiant: { kind: 'witness', userId: null, name: 'Tobin Van Newell', role: 'the foreman' }, form: 'declaration', title: 'Declaration of Tobin Van Newell' }
 const held = { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
 
 describe('LegalStatementPrintSheet (punch list #220, v2.6211)', () => {
@@ -42,7 +42,7 @@ describe('LegalStatementPrintSheet (punch list #220, v2.6211)', () => {
     const form = document.querySelector('[data-legal-declarant-form]')!
     expect(form.textContent).toContain('never saved to the record')
     // v2.6243: the name is the statement's, shown here and changed there, so the paper cannot name them two ways.
-    expect(document.querySelector('[data-legal-declarant-name]')!.textContent).toContain('Thanh Van Nguyen')
+    expect(document.querySelector('[data-legal-declarant-name]')!.textContent).toContain('Tobin Van Newell')
     expect(screen.queryByLabelText('First name')).toBeNull()
     expect(screen.queryByLabelText('Middle name')).toBeNull()
     expect(screen.queryByLabelText('Last name')).toBeNull()
@@ -65,8 +65,8 @@ describe('LegalStatementPrintSheet (punch list #220, v2.6211)', () => {
   it('with the declarant held, the whole declaration draws with the details on the paper', () => {
     render(<LegalStatementPrintSheet draft={declaration} face="whole" onFace={vi.fn()} accountWords="" declarant={held} onDeclarant={vi.fn()} onPrinted={vi.fn(async () => {})} onBack={vi.fn()} busy={false} />)
     const frame = document.querySelector('[data-legal-print-frame]') as HTMLIFrameElement
-    expect(frame.getAttribute('srcdoc')).toContain('My name is Thanh Van Nguyen, my date of birth is March 14, 1988, and my address is 1400 Example Rd, Round Rock, Texas 78664, and United States of America.')
-    expect(frame.getAttribute('srcdoc')).toContain('1. My name is Thanh Van Nguyen. I am over eighteen')
+    expect(frame.getAttribute('srcdoc')).toContain('My name is Tobin Van Newell, my date of birth is March 14, 1988, and my address is 1400 Example Rd, Round Rock, Texas 78664, and United States of America.')
+    expect(frame.getAttribute('srcdoc')).toContain('1. My name is Tobin Van Newell. I am over eighteen')
   })
   it('a one-word name holds the declaration with its reason, even with the details held (v2.6243)', () => {
     const onBack = vi.fn()

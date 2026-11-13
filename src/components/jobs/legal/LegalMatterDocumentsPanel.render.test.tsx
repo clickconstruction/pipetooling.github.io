@@ -112,7 +112,7 @@ describe('LegalMatterDocumentsPanel · the paper’s day and its state (punch li
     const docs = [
       dated('d-letter', 'Response letter', { dated_on: '2026-10-27', state: 'draft' }),
       dated('d-receipt', 'Certified mail receipt', { dated_on: '2026-10-27', state: 'final' }),
-      dated('d-sent', 'Demand letter', { dated_on: '2026-09-02', state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Burd & Assoc.', proof_document_id: 'd-receipt' }),
+      dated('d-sent', 'Demand letter', { dated_on: '2026-09-02', state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Brund & Assoc.', proof_document_id: 'd-receipt' }),
     ]
     render(<LegalMatterDocumentsPanel matterId="m-1" documents={docs} canEdit onChanged={onChanged} />)
     const letter = document.querySelector('[data-legal-document="d-letter"]')!
@@ -124,7 +124,7 @@ describe('LegalMatterDocumentsPanel · the paper’s day and its state (punch li
     expect(sent.querySelector('[data-legal-document-state-chip]')!.textContent).toBe('sent · email')
     expect(sent.querySelector('[data-legal-document-state-words]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Actions for Demand letter' }))
-    expect(screen.getByRole('menu').querySelector('[data-legal-document-state-words]')!.textContent).toBe('Sent Sep 2 by email to Burd & Assoc. · proof: Certified mail receipt')
+    expect(screen.getByRole('menu').querySelector('[data-legal-document-state-words]')!.textContent).toBe('Sent Sep 2 by email to Brund & Assoc. · proof: Certified mail receipt')
     expect(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Not sent after all' })).toBeTruthy()
     // Mark the draft letter sent, from its menu.
     fireEvent.click(screen.getByRole('button', { name: 'Actions for Response letter' }))
@@ -133,7 +133,7 @@ describe('LegalMatterDocumentsPanel · the paper’s day and its state (punch li
     const save = () => form.querySelector('button[type="submit"]') as HTMLButtonElement
     expect(save().disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('How it went out'), { target: { value: 'certified_mail' } })
-    fireEvent.change(screen.getByLabelText('Who it went to'), { target: { value: 'Burd & Assoc., attn. the president' } })
+    fireEvent.change(screen.getByLabelText('Who it went to'), { target: { value: 'Brund & Assoc., attn. the president' } })
     fireEvent.change(screen.getByLabelText('Document that proves the send'), { target: { value: 'd-receipt' } })
     // The panel reads the real today, so the day is one safely in the past.
     fireEvent.change(screen.getByLabelText('Day it went out'), { target: { value: '2026-10-20' } })
@@ -220,7 +220,7 @@ describe('LegalMatterDocumentsPanel · by whose paper it is (punch list #214, v2
 
 describe('LegalMatterDocumentsPanel · Show on Evidence lands here (v2.6166)', () => {
   const dated = (id: string, title: string, over: Partial<LegalMatterDocumentRow> = {}): LegalMatterDocumentRow => ({ ...row(id, title), added_at: '2026-10-24T15:00:00Z', ...over })
-  const docs = () => [dated('d-sent', 'Demand letter', { state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Burd & Assoc.' }), dated('d-final', 'Final invoice 891')]
+  const docs = () => [dated('d-sent', 'Demand letter', { state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Brund & Assoc.' }), dated('d-final', 'Final invoice 891')]
   const landed = () => document.querySelector('[data-legal-document-landed="yes"]') as HTMLElement | null
 
   it('the named row scrolls into view and wears the tint, which goes after a few seconds; a press on it lets the address go', () => {

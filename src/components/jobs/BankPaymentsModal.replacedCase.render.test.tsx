@@ -30,9 +30,9 @@ const deposit = (id: string, name: string, amount: number, postedAt: string) => 
 })
 
 const DEPOSITS = [
-  deposit('mtx-drf', 'DRF', 250, '2026-09-29T15:00:00Z'),
-  // The new check from Southern Post, after theirs came back.
-  deposit('mtx-sp-new', 'SOUTHERN POST CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
+  deposit('mtx-dlf', 'DLF', 250, '2026-09-29T15:00:00Z'),
+  // The new check from Southern Pine, after theirs came back.
+  deposit('mtx-sp-new', 'SOUTHERN PINE CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
 ]
 
 const caseRow = (over: Record<string, unknown>) => ({
@@ -54,13 +54,13 @@ const caseRow = (over: Record<string, unknown>) => ({
 const CASES = [
   caseRow({
     mercury_transaction_id: 'mtx-sp',
-    counterparty_name: 'Southern Post',
+    counterparty_name: 'Southern Pine',
     amount: 13680,
     posted_at: '2026-09-18T22:00:58Z',
     failed_at: '2026-09-23T15:00:00Z',
     opened_at: '2026-09-23T15:00:00Z',
     bank_reason: 'Insufficient funds',
-    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
+    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
   }),
   caseRow({
     mercury_transaction_id: 'mtx-kcg',
@@ -71,8 +71,8 @@ const CASES = [
     opened_at: '2026-09-29T15:00:00Z',
     bank_reason: 'Stop payment',
     live_payments: [
-      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
-      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Springtown', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
+      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
+      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Stonewick', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
     ],
   }),
 ]
@@ -84,7 +84,7 @@ const TRAILS = [
     live: false,
     job_id: 'job-878',
     job_number: '878',
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     invoice_id: 'inv-878',
     amount: 13680,
     applied_at: '2026-09-21T16:00:00Z',
@@ -134,16 +134,16 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: stub }
 })
 
-/** Another Southern Post job. The returned check never paid it. */
+/** Another Southern Pine job. The returned check never paid it. */
 function job900(): JobWithDetails {
   return {
     id: 'job-900',
     status: 'billed',
     hcp_number: '900',
     click_number: null,
-    job_name: 'Take 5- Luling',
+    job_name: 'Tune 5- Luling',
     job_address: '2 Main St, Luling, TX',
-    customer_name: 'Southern Post Construction',
+    customer_name: 'Southern Pine Construction',
     revenue: 13680,
     payments_made: 0,
     materials: [],
@@ -163,7 +163,7 @@ describe('BankPaymentsModal · the new check and the case it replaces (render sm
       <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={buildBilledStageRows([job900()], [])} onApplied={() => {}} />,
       { loaded: async () => (await screen.findAllByTestId('ar-return-case-row'))[0]! },
     )
-    fireEvent.click(screen.getByRole('button', { name: /13,680\.00 from SOUTHERN POST CONSTRUCTION/ }))
+    fireEvent.click(screen.getByRole('button', { name: /13,680\.00 from SOUTHERN PINE CONSTRUCTION/ }))
     fireEvent.click(await screen.findByTestId('ar-replacement-fill'))
     expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/pick a bill/)
     fireEvent.click(await screen.findByRole('button', { name: /Apply allocation: \$13,680\.00 · 900/ }))

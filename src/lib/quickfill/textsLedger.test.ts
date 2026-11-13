@@ -17,7 +17,7 @@ const contacts: LedgerContact[] = [
   { id: 'priya', name: 'Priya Natarajan', kind: 'customer' },
   { id: 'alvarez', name: '', kind: 'trade', company: 'Alvarez Mechanical' },
   { id: 'hill', name: 'Hill Country Electric', kind: 'trade' },
-  { id: 'nolan', name: 'Nolan Tressler', kind: 'customer' },
+  { id: 'nolan', name: 'Nolan Tresco', kind: 'customer' },
   { id: 'unknown1', name: '', kind: 'unknown' },
   { id: 'unknown2', name: '', kind: 'unknown' },
 ]

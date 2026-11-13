@@ -126,7 +126,7 @@ describe('legacyMultiDecisionNote', () => {
 
 // v2.3232: pre-rule multi-decision asks leave the panel for the owner memo.
 describe('groupStandingRulings · legacy asks', () => {
-  const legacy = 'Three decisions: (1) SMALL-TI — approve a residual? (2) TAKE 5 — mint the package entry? Also confirm: CA piping is ours?'
+  const legacy = 'Three decisions: (1) SMALL-TI — approve a residual? (2) TUNE 5 — mint the package entry? Also confirm: CA piping is ours?'
   it('sets a legacy multi-decision ask aside — not a ruling, not a single, not in the count', () => {
     const view = groupStandingRulings([
       q({ id: 'old', question: legacy, mission: 'backtest-slate-2026-08-31' }),

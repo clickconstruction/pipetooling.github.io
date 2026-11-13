@@ -33,6 +33,7 @@ import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEX
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite } from '../../lib/materials/siteRollup'
+import { onHandNames, onHandNameWords } from '../../lib/materials/onSiteNames'
 import { useOnSiteSites } from '../../hooks/useOnSiteSites'
 import SiteMaterialsView from '../materials/SiteMaterialsView'
 import { photoMarkWords } from '../../lib/materials/photo'
@@ -385,6 +386,9 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
   const lines = containerLines(movements)
   const diffs = countDiffs(movements)
   const sum = jobMaterialsSummaryFor(jobId, now)
+  /** The names this job already holds (punch list #330): a delivery line's Part box offers them as the office types, so an invoice's wording lands on the line the crew counts. */
+  const namesListId = `on-site-names-${jobId}`
+  const knownNames = onHandNames(lines, containers)
   const [section, setSection] = useState<'onsite' | 'missing' | 'deliveries' | 'history'>('onsite')
   /** The green pill's two views: the list of boxes, or the site map (#209: the map is a view of On site, not a fifth step). */
   const [onSiteView, setOnSiteView] = useState<'list' | 'map'>('list')
@@ -721,6 +725,9 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                   <p style={{ ...muted, margin: 0 }}>No line read as a quantity and a part. A line reads when it starts with a count, like “25 EA 3/4 copper 90”, or ends with one.</p>
                 ) : (
                   <>
+                    <datalist id={namesListId} data-testid="delivery-known-names">
+                      {knownNames.map((n) => <option key={n.key} value={n.partName}>{onHandNameWords(n)}</option>)}
+                    </datalist>
                     <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                       <thead><tr><th style={{ ...th, ...num }}>Qty</th><th style={th}>Unit</th><th style={th}>Part, as the invoice names it</th><th style={{ ...th, ...num }}>Price</th><th style={th}></th></tr></thead>
                       <tbody>
@@ -728,7 +735,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                           <tr key={i}>
                             <td style={{ ...td, ...num }}><input type="number" value={l.quantity} aria-label="Quantity" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, quantity: Math.max(0, Math.round(Number(e.target.value))) } : x)))} style={{ width: 64, minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...muted }}>{l.unit ?? ''}</td>
-                            <td style={td}><input value={l.name} aria-label="Part" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
+                            <td style={td}><input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...num }}>{l.unitPrice != null ? money(l.unitPrice) : <span style={muted}>—</span>}</td>
                             <td style={{ ...td, ...num }}><button type="button" aria-label="Leave this line out" title="Leave this line out" style={{ ...btn, minHeight: 30, minWidth: 30, padding: 0, fontWeight: 500 }} onClick={() => setParsed(parsed.filter((_, j) => j !== i))}>×</button></td>
                           </tr>

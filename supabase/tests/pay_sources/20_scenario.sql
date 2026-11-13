@@ -15,7 +15,7 @@ INSERT INTO public.pay_stub_deductions (pay_stub_id, amount, source, description
 INSERT INTO public.pay_stub_additional_lines (pay_stub_id, description, quantity, rate, line_total) VALUES ('00000000-0000-0000-0000-00000000000e', 'bonus', 1, 10, 10);
 INSERT INTO public.cashapp_transactions (id, occurred_date, amount, counterparty, note, lane, person_name) VALUES
   ('#D-E5D2547JO', '2026-09-03', -700, 'Taunya Villarreal', 'Advance', 'review', 'Taunya'),
-  ('#D-9E364VRM4', '2026-09-10', -1500, 'michael Archambault', 'Advance', 'review', 'Michael A'),
+  ('#D-9E364VRM4', '2026-09-10', -1500, 'michael Archley', 'Advance', 'review', 'Michael A'),
   ('#D-K1E736G97', '2026-07-20', -349.63, 'Taunya Villarreal', 'Last week', 'review', 'Taunya'),
   ('#D-XYZ', '2026-07-21', -25, 'Taunya Villarreal', 'Reimbursement', 'review', 'Taunya'),
   ('#D-TWO', '2026-09-14', -391.32, 'Taunya Villarreal', 'Week', 'review', 'Taunya');

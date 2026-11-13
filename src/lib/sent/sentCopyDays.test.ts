@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SentCopy, SentCopyLine } from './sentCopies'
 import { sentCopyDayGroups, sentCopyTimeOnly } from './sentCopyDays'
 
-const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement', how: 'email', recipientName: 'RMC', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-11-01T16:30:00Z', sentByName: 'Dana', sourceSnapshot: null, ...over })
+const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement', how: 'email', recipientName: 'RLC', recipientEmails: [], subject: '', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-11-01T16:30:00Z', sentByName: 'Dana', sourceSnapshot: null, ...over })
 const line = (over: Partial<SentCopy>): SentCopyLine => ({ row: row(over), times: [row(over).sentAt] })
 
 describe('sentCopyDayGroups', () => {

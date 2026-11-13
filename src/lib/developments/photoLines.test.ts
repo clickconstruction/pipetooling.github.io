@@ -41,7 +41,7 @@ function row(over: Partial<UploadedPhotoRow> & { id: string; taken_at: string })
 const labels = {
   job: (id: string) => (id === 'j629' ? { kind: 'job' as const, id, label: 'JP629 Lot 14' } : id === 'j631' ? { kind: 'job' as const, id, label: 'JP631 Lot 16' } : null),
   bid: (id: string) => (id === 'b503' ? { kind: 'bid' as const, id, label: 'BP503 Lot 20' } : null),
-  siteName: 'Gun Dog Trail',
+  siteName: 'Gray Fox Trail',
 }
 
 describe('foldPhotoBatches — same piece, same person, within the hour', () => {
@@ -92,7 +92,7 @@ describe('foldPhotoBatches — same piece, same person, within the hour', () => 
     ]
     const lines = foldPhotoBatches(rows, labels)
     expect(lines[0]).toMatchObject({ about: { kind: 'bid', id: 'b503', label: 'BP503 Lot 20' }, by: 'from Greg Paulk', detail: '1 photo · “IMG_2231.jpg”' })
-    expect(lines[1]).toMatchObject({ about: { kind: 'site', id: null, label: 'Gun Dog Trail' }, by: 'someone' })
+    expect(lines[1]).toMatchObject({ about: { kind: 'site', id: null, label: 'Gray Fox Trail' }, by: 'someone' })
     expect(lines[2]).toMatchObject({ about: { kind: 'job', id: 'j-gone', label: 'a job no longer here' } })
   })
   it('the search finds a caption, a stage or a person on the line', () => {

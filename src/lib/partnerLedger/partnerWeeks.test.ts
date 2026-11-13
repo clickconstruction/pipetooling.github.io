@@ -16,8 +16,8 @@ import {
 const summary = (over?: Partial<PartnerSummary>): PartnerSummary => ({
   exists: true,
   partnership_id: 'pp1',
-  display_name: 'Bryan Herber',
-  company_name: 'Herber Electric',
+  display_name: 'Bryan Helbrow',
+  company_name: 'Helbrow Electric',
   started_on: '2026-03-22',
   status: 'active',
   balance: 3173.75,
@@ -67,9 +67,9 @@ describe('parsePartnerSummary', () => {
     expect(s?.company_name).toBeNull()
     expect(s?.started_on).toBeNull()
     expect(s?.status).toBeNull()
-    const t = parsePartnerSummary({ exists: true, company_name: '  Herber Electric ', started_on: '2026-03-22', status: 'draft' })
+    const t = parsePartnerSummary({ exists: true, company_name: '  Helbrow Electric ', started_on: '2026-03-22', status: 'draft' })
     expect(t?.status).toBe('draft')
-    expect(t?.company_name).toBe('Herber Electric')
+    expect(t?.company_name).toBe('Helbrow Electric')
     expect(t?.started_on).toBe('2026-03-22')
     expect(parsePartnerSummary({ exists: true, company_name: '   ' })?.company_name).toBeNull()
   })

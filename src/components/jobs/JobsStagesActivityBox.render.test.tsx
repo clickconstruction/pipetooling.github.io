@@ -54,7 +54,7 @@ const note = (id: string, at: string, body: string, author = 'Roxi') => ({
 describe('JobsStagesActivityBox', () => {
   it('renders the stats teaser before the feed loads and requests the load on pointerover', async () => {
     const loadActivityForJob = vi.fn()
-    const job = makeJob({ job_name: 'Cop Properties' })
+    const job = makeJob({ job_name: 'Crayle Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -75,12 +75,12 @@ describe('JobsStagesActivityBox', () => {
     )
     await settle()
     expect(screen.getByText(/I think the job is 1% complete/)).toBeTruthy()
-    fireEvent.pointerOver(screen.getByLabelText('Job activity for Cop Properties'))
+    fireEvent.pointerOver(screen.getByLabelText('Job activity for Crayle Properties'))
     expect(loadActivityForJob).toHaveBeenCalledWith(job.id)
   })
 
   it('numbered feed after load: 1 = oldest at top, newest at the bottom (v2.2062); empty state when nothing', async () => {
-    const job = makeJob({ job_name: 'Cop Properties' })
+    const job = makeJob({ job_name: 'Crayle Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -101,7 +101,7 @@ describe('JobsStagesActivityBox', () => {
   })
 
   it('a bill sent to the customer sits in the feed unnumbered with a Sent tag, and the notes keep their numbers (v2.5633)', async () => {
-    const job = makeJob({ job_name: 'Calvin Barrett Pump' })
+    const job = makeJob({ job_name: 'Calvin Barlow Pump' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -136,7 +136,7 @@ describe('JobsStagesActivityBox', () => {
   })
 
   it('+ Add pill opens the composer; Escape closes it and brings the pill back', async () => {
-    const job = makeJob({ job_name: 'Cop Properties' })
+    const job = makeJob({ job_name: 'Crayle Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -156,7 +156,7 @@ describe('JobsStagesActivityBox', () => {
 
   it('See all under the box names the count and opens the shared full-page modal via ctx (v2.4302)', async () => {
     const openJobActivityExpand = vi.fn()
-    const job = makeJob({ job_name: 'Shearer Pinpoint' })
+    const job = makeJob({ job_name: 'Shellan Pinpoint' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -219,7 +219,7 @@ describe('JobsStagesActivityBox', () => {
   })
 
   it('an empty box has no See all; the composer takes the strip’s place under the box (v2.4302)', async () => {
-    const job = makeJob({ job_name: 'Cop Properties' })
+    const job = makeJob({ job_name: 'Crayle Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}
@@ -236,7 +236,7 @@ describe('JobsStagesActivityBox', () => {
 
   it('submits through the note pipeline on Enter', async () => {
     const submitNoteWithBody = vi.fn(async () => true)
-    const job = makeJob({ job_name: 'Cop Properties' })
+    const job = makeJob({ job_name: 'Crayle Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
         job={job}

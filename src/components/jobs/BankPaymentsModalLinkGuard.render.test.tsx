@@ -27,9 +27,9 @@ vi.mock('../../lib/supabase', async () => {
       return Promise.resolve({
         data: [
           {
-            mercury_transaction_id: 'mtx-harper',
+            mercury_transaction_id: 'mtx-halden',
             amount: 2918.22,
-            counterparty_name: 'TF HARPER ASSOC',
+            counterparty_name: 'TF HALDEN ASSOC',
             note: null,
             external_memo: null,
             posted_at: '2026-08-26T15:00:00Z',
@@ -53,7 +53,7 @@ vi.mock('../../lib/supabase', async () => {
             payment_type: 'Check',
             hcp_number: '883',
             click_number: null,
-            job_name: 'TF Harper- Mission Hills',
+            job_name: 'TF Halden- Mission Flats',
             stripe_hosted: false,
           },
         ],
@@ -65,15 +65,15 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: stub }
 })
 
-function harperJob(): JobWithDetails {
+function haldenJob(): JobWithDetails {
   return {
     id: 'job-883',
     status: 'billed',
     hcp_number: '883',
     click_number: null,
-    job_name: 'TF Harper- Mission Hills',
+    job_name: 'TF Halden- Mission Flats',
     job_address: '2100 Independence Dr, New Braunfels, TX',
-    customer_name: 'TF Harper Associates',
+    customer_name: 'TF Halden Associates',
     revenue: 2918.22,
     payments_made: 0,
     materials: [],
@@ -104,7 +104,7 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
         onClose={() => {}}
         authUserId="smoke-auth-user-1"
         authRole="dev"
-        billedRows={buildBilledStageRows([harperJob()], [])}
+        billedRows={buildBilledStageRows([haldenJob()], [])}
         onApplied={() => {}}
       />,
     )
@@ -141,7 +141,7 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
         onClose={() => {}}
         authUserId="smoke-auth-user-1"
         authRole="dev"
-        billedRows={buildBilledStageRows([harperJob()], [])}
+        billedRows={buildBilledStageRows([haldenJob()], [])}
         onApplied={() => {}}
       />,
     )

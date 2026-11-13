@@ -34,8 +34,8 @@ describe('lienDeskEmptyWords (punch list #184, sweep C)', () => {
 
   it('a find that empties the affidavit or retainage list reads as the notice list’s find, with the box’s own clear', () => {
     const clear = vi.fn()
-    const words = lienListFindEmptyWords(' Loberg ', clear)
-    expect(read(words)).toBe('Nothing matches “Loberg”. Clear the find')
+    const words = lienListFindEmptyWords(' Lowbeck ', clear)
+    expect(read(words)).toBe('Nothing matches “Lowbeck”. Clear the find')
     expect(words.next?.label).toBe(LIEN_CLEAR_THE_FIND)
     press(words)
     expect(clear).toHaveBeenCalledTimes(1)
@@ -75,8 +75,8 @@ describe('lienDeskEmptyWords (punch list #184, sweep C)', () => {
     press(none)
     expect(back).toHaveBeenCalledTimes(1)
     const clear = vi.fn()
-    const miss = lienOwnerRecordsSearchEmptyWords('terrell', clear)
-    expect(read(miss)).toBe('No owners match ‘terrell’. Clear the search')
+    const miss = lienOwnerRecordsSearchEmptyWords('tarrow', clear)
+    expect(read(miss)).toBe('No owners match ‘tarrow’. Clear the search')
     press(miss)
     expect(clear).toHaveBeenCalledTimes(1)
   })
@@ -85,7 +85,7 @@ describe('lienDeskEmptyWords (punch list #184, sweep C)', () => {
     const noop = () => {}
     const all = [
       lienPileEmptyWords(noop),
-      lienListFindEmptyWords('Loberg', noop),
+      lienListFindEmptyWords('Lowbeck', noop),
       lienAffidavitsEmptyWords(noop),
       LIEN_CALENDAR_EMPTY,
       lienCalendarSearchEmptyWords('Ridgeway', noop),
@@ -93,7 +93,7 @@ describe('lienDeskEmptyWords (punch list #184, sweep C)', () => {
       lienBookEmptyWords('all', noop),
       LIEN_RUN_EMPTY,
       lienOwnerRecordsEmptyWords(noop),
-      lienOwnerRecordsSearchEmptyWords('terrell', noop),
+      lienOwnerRecordsSearchEmptyWords('tarrow', noop),
     ]
     for (const w of all) expect(plainWordsFailures(read(w)), read(w)).toEqual([])
   })

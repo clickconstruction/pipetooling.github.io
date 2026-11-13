@@ -1,10 +1,10 @@
 ---
-name: "Development page: two reads the Gun Dog spike left for later"
+name: "Development page: two reads the Gray Fox spike left for later"
 number: 280
 group: residual
 status: built and measured 2026-11-08 — PR 1 the heads view (v2.6735, #7357) and PR 2 the payers' pace (v2.6739, #7363) on main, both migrations on prod, the after under the before below; the types PR #7395 on main; nothing left to build
 summary: >
-  The Gun Dog spike (punch list #208, 2026-11-02) cut the Development page's read from seven
+  The Gray Fox spike (punch list #208, 2026-11-02) cut the Development page's read from seven
   round trips to four and left two reads as they were. The pay-speed read for the Money look's
   expected day calls `get_billed_customer_pay_speeds`, which returns every billed customer's pace
   when the page wants one payer's; a by-customer RPC is a migration. The History look's entries
@@ -19,11 +19,11 @@ opinion: later — the page opens in about four seconds on the real site after t
 ver: v2.6735 (PR 1, the heads view and the body read on *more ›* and for a search) · v2.6739 (PR 2, `get_customer_pay_speeds(uuid[])` and the Money look's read of the site's payers alone)
 ---
 
-# Development page: two reads the Gun Dog spike left for later (#280)
+# Development page: two reads the Gray Fox spike left for later (#280)
 
 ## Where this came from
 
-The Gun Dog design spike with the owner on 2026-11-02 (its notes lived in `to-dos/developments/SPIKE_GUNDOG.md` until #208 retired on 2026-11-07; the deleting commit holds them) flattened the page's read: the row and the members go out together, the pay-speed RPC leaves at once, the prior numbers ride in the fan-out, and only the names wait on everything (v2.6377, `fetchDevelopmentPage.ts`). It measured the Jobs & bids table at about 4.1 seconds from about 5.5 on the dev server with StrictMode's double effects, and wrote two reads down as *left for later, not in the stack*. This card is their one home.
+The Gray Fox design spike with the owner on 2026-11-02 (its notes lived in `to-dos/developments/SPIKE_GRAYFOX.md` until #208 retired on 2026-11-07; the deleting commit holds them) flattened the page's read: the row and the members go out together, the pay-speed RPC leaves at once, the prior numbers ride in the fan-out, and only the names wait on everything (v2.6377, `fetchDevelopmentPage.ts`). It measured the Jobs & bids table at about 4.1 seconds from about 5.5 on the dev server with StrictMode's double effects, and wrote two reads down as *left for later, not in the stack*. This card is their one home.
 
 ## The two reads
 
@@ -32,7 +32,7 @@ The Gun Dog design spike with the owner on 2026-11-02 (its notes lived in `to-do
 
 ## What the open costs (measured 2026-11-08)
 
-The dev server as the dev, the Gun Dog development, three client-side opens in a row (Settings → the page), a wrapper on the page's own `fetch` recording every Supabase call's time and bytes. StrictMode runs every effect twice on the dev server, so each read appears twice an open; prod runs each once.
+The dev server as the dev, the Gray Fox development, three client-side opens in a row (Settings → the page), a wrapper on the page's own `fetch` recording every Supabase call's time and bytes. StrictMode runs every effect twice on the dev server, so each read appears twice an open; prod runs each once.
 
 | Open | Supabase calls | Bytes | First lines drawn | Last call ended |
 | --- | --- | --- | --- | --- |

@@ -40,7 +40,7 @@ vi.mock('../../lib/supabase', async () => {
           {
             mercury_transaction_id: 'mtx-combo',
             amount: 4091.5,
-            counterparty_name: 'RELIANT HEALTH PROVIDERS',
+            counterparty_name: 'RELWYN HEALTH PROVIDERS',
             note: null,
             external_memo: null,
             posted_at: '2026-08-29T15:00:00Z',
@@ -58,15 +58,15 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: stub }
 })
 
-function reliantJob(id: string, hcp: string, jobName: string, amount: number): JobWithDetails {
+function relwynJob(id: string, hcp: string, jobName: string, amount: number): JobWithDetails {
   return {
     id,
     status: 'billed',
     hcp_number: hcp,
     click_number: null,
     job_name: jobName,
-    job_address: '150 E Sonterra Blvd, San Antonio, TX',
-    customer_name: 'Reliant Health',
+    job_address: '150 E Sonmere Blvd, San Antonio, TX',
+    customer_name: 'Relwyn Health',
     revenue: amount,
     payments_made: 0,
     materials: [],
@@ -92,7 +92,7 @@ function reliantJob(id: string, hcp: string, jobName: string, amount: number): J
 describe('BankPaymentsModal combo chip (render smoke)', () => {
   it('offers the unique 2-bill combo and fills both allocation lines on tap', async () => {
     const billedRows = buildBilledStageRows(
-      [reliantJob('job-915', '915', 'Reliant Health', 2711.5), reliantJob('job-880', '880', 'Reliant Health- HVAC', 1380)],
+      [relwynJob('job-915', '915', 'Relwyn Health', 2711.5), relwynJob('job-880', '880', 'Relwyn Health- HVAC', 1380)],
       [],
     )
     renderWithProviders(

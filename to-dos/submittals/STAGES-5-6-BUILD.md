@@ -20,7 +20,7 @@ Every robot verb lands on a surface that now exists. A person confirms every row
 
 **6b · three verbs on twin-mcp.** `put_specified_products` reads the fixture schedule off the plan substrate into `bid_specified_products` with `source='robot'`, unconfirmed until a person taps Save in the same *Plug in the fixture schedule* modal (stage 1) — the board reads *Robot read P002 · 18 tags · 15 sure · 3 want a look*. `file_cut_sheets` splits a house's whole PDF by tag into pre-tapped pages on the sheet strip (stage 3) as dashed guess chips; **Confirm 14 · pick 2** turns them into the green chips the strip already draws, then *Done with this file* as today. `read_redlines` reads a redlined PDF's annotations into proposed decisions on the older revision — *10 annotations · 6 read as decisions · 2 unsure · 2 are questions for the thread* — each landing on the room's thread as *read from Dana's PDF, confirmed by Wendi*, never as Dana's typed decision; the questions post as thread entries for the office to answer.
 
-**6c · Drive.** Every shared package is filed in the bid's job folder beside the plans — *Jobs / SpaceX BA-02N / Architectural / Submittals / Rev 3 · 2026-09-17.pdf* — the folder `drive-intake` already makes. Shared revisions only, never a draft.
+**6c · Drive.** Every shared package is filed in the bid's job folder beside the plans — *Jobs / SkyLab BA-02N / Architectural / Submittals / Rev 3 · 2026-09-17.pdf* — the folder `drive-intake` already makes. Shared revisions only, never a draft.
 
 ---
 
@@ -74,7 +74,7 @@ The pattern is the pricing robot: `supabase/functions/twin-mcp/index.ts` registe
 - `read_redlines` — `{ file, annotations: [{ page, tag?, text, proposed: 'approved' | 'revise' | 'rejected' | 'question', confidence }] }` → proposed decisions listed on the tab's reviewer-file card (5b) with **Confirm 6 · settle 2**; confirmed ones go through 5b's *entered* path with `decision_source = 'robot'` and the thread entry *read from Dana's PDF, confirmed by Wendi*; `question` items post as thread entries from the office to answer. Never writes a decision without a confirm.
 - The kickoff prompt in the pricing robot's style lives beside the others (`briefs.ts` in twin-mcp; `docs/twins/HANDOFF.md` has the open thread). The twin's write blocks: `apply_digital_twin_write_blocks()` fences the new table for the twin role the way it fences the others — read that function before writing the policies.
 - The office queues a task from the tab (**Ask the robot to read the schedule / split this file / read the redlines** — three quiet buttons that insert the task row) and the Robots board lists it like a price-matrix request. Tests: kernels for each result → rows mapping (`robotSchedule.ts`, `robotSheets.ts`, `robotRedlines.ts` in `src/lib/submittals/`), the twin verb tests in `src/lib/twins/` style. Guide: `build-a-submittal-package.md` → **Let the robot read it first**; `docs/twins/` gets the verb reference.
-- Live gate 6b: one bid where the robot read the schedule and the office only confirmed; one house PDF split by the robot onto the strip; SpaceX's Sep 1 redlined PDF read back as proposed decisions against B375 Rev 1 and compared to Logan's real email, as a regression check.
+- Live gate 6b: one bid where the robot read the schedule and the office only confirmed; one house PDF split by the robot onto the strip; SkyLab's Sep 1 redlined PDF read back as proposed decisions against B375 Rev 1 and compared to Logan's real email, as a regression check.
 
 ## PR 6c — Drive · shipped v2.3552 (2026-09-17) · live gate passed
 
@@ -104,7 +104,7 @@ Lift `uploadFromUrl` / `findOrCreateFolder` / `googleAccessToken` out of `supaba
 
 - **BP398 ZZ Test** (`a5a3a840-0a7b-4c67-8b59-3e95d0d80150`): the schedule (4 tags), one NWS pick, Rev 1 superseded, Rev 2 shared (Dana's Revise on WC-1 with a note), Rev 3 draft with the one row sent back; the room is open with Dana Whitfield (architect, deciding) and Pat Ortega (builder / GC, watching); its outcome reads started / complete after the 4c test job (deleted). Its room token is on the tab's *Copy link*.
 - **B403 ZZ Twin LIVSTE**: unsent, no schedule, no revisions — the empty-state bed (the *Not needed on this job* toggle was tested here and undone).
-- **B375 SpaceX**: the real one; Rev 3 rebuild and the Sep 1 redlined PDF are the owner's regression material for 6b.
+- **B375 SkyLab**: the real one; Rev 3 rebuild and the Sep 1 redlined PDF are the owner's regression material for 6b.
 - Reads from the page: `fetch` against `https://yewfzhbofbbyvkvtaatw.supabase.co/rest/v1/...` with `apikey` = the anon key from `.env.local` and `Authorization: Bearer` = `access_token` from `localStorage['sb-yewfzhbofbbyvkvtaatw-auth-token']`. Writes through the app, never the REST probe.
 
 ## Order and gates

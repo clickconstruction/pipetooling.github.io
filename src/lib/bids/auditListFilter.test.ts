@@ -4,15 +4,15 @@ import { auditFilterCounts, auditKind, filterAuditList } from './auditListFilter
 
 const items = [
   { id: 'a', projectName: 'ZZ Twin BONILLA LAW FIRM (backtest R2)', openQuestions: 12 },
-  { id: 'b', projectName: 'ZZ Shadow PALMER WINERY', openQuestions: 0 },
-  { id: 'c', projectName: 'zz shadow galloway park', openQuestions: 2 },
+  { id: 'b', projectName: 'ZZ Shadow PALVERN WINERY', openQuestions: 0 },
+  { id: 'c', projectName: 'zz shadow gallenby park', openQuestions: 2 },
   { id: 'd', projectName: null, openQuestions: 0 },
   { id: 'e', projectName: 'ZZ Shadow SEALED ONE', openQuestions: 3, sealed: true },
 ]
 
 describe('auditKind', () => {
   it('reads the ZZ convention — Shadow is a live-bid shadow, anything else a backtest', () => {
-    expect(auditKind('ZZ Shadow PALMER WINERY')).toBe('shadow')
+    expect(auditKind('ZZ Shadow PALVERN WINERY')).toBe('shadow')
     expect(auditKind('  zz shadow x')).toBe('shadow')
     expect(auditKind('ZZ Twin LIVSTE')).toBe('backtest')
     expect(auditKind('ZZ Shadowy Name')).toBe('backtest')

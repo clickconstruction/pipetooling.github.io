@@ -30,7 +30,7 @@ const byJob = buildLienSupplierJobs({
   houses: [{ id: 'h', name: 'Reece' }, { id: 'f', name: 'Ferguson' }],
 })
 const job = byJob.get('j')!
-const base = { job, propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 12_000, payerName: 'Burd & Assoc.', jobLabel: '891', isMobile: false }
+const base = { job, propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 12_000, payerName: 'Brund & Assoc.', jobLabel: '891', isMobile: false }
 
 describe('LienJobSuppliersCard · Mark paid… (v2.5838)', () => {
   it('shows the door only with markPaid, and only on the owed house', () => {

@@ -70,7 +70,8 @@ export function paperReadOfRow(paper: PaperRow): PaperRead {
 /** The first problem's words, with the row's line, for the strip at the top of the Look window. */
 export function gapWords(check: PaperCheck): { tone: 'ok' | 'off'; title: string; detail: string[] } {
   if (check.state === 'adds_up') {
-    return { tone: 'ok', title: `The ${lineWords(check.lineCount)} add up.`, detail: [`They sum to ${moneyWords(check.sumCents)}, and the subtotal, the tax and the total agree with the paper and the bill's row.`] }
+    // What the check allowed is said under the sum (v2.7103): a pack priced by the piece, a charge outside the subtotal.
+    return { tone: 'ok', title: `The ${lineWords(check.lineCount)} add up.`, detail: [`They sum to ${moneyWords(check.sumCents)}, and the subtotal, the tax and the total agree with the paper and the bill's row.`, ...check.notes] }
   }
   const first = check.paperProblems[0] ?? check.lineProblems[0]
   const detail: string[] = []

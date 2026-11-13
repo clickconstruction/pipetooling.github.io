@@ -8,7 +8,7 @@ const base: SubDispatchOrder = {
   pickedStart: '2026-09-09', pickedEnd: '2026-09-10', proposedStart: '2026-09-08', proposedEnd: '2026-09-19', windowStart: '2026-09-08', windowEnd: '2026-09-19', stageName: 'Rough-in', recordId: 'WO-1004-1',
 }
 const windowOnly: SubDispatchOrder = { ...base, id: 'c2', pickedStart: null, pickedEnd: null, stageName: 'Top-out', windowStart: '2026-09-10', windowEnd: '2026-09-18', proposedStart: null, proposedEnd: null }
-const offered: SubDispatchOrder = { ...windowOnly, id: 'c3', status: 'offered', personId: 'p-mig', personName: 'Miguel Rodriguez', jobId: 'j-1009', jobLabel: '#1009 · 88 Mission Hills Dr', stageName: null }
+const offered: SubDispatchOrder = { ...windowOnly, id: 'c3', status: 'offered', personId: 'p-mig', personName: 'Miguel Rodriguez', jobId: 'j-1009', jobLabel: '#1009 · 88 Mission Flats Dr', stageName: null }
 
 describe('subDispatch', () => {
   it('reads a pick as definite, a window as a maybe, an offer as dashed, and nothing for closed orders', () => {

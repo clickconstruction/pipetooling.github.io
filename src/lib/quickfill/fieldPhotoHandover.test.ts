@@ -13,7 +13,7 @@ const est = (over: Partial<HandoverEstimateRow>): HandoverEstimateRow => ({
   doc_kind: 'change_order',
   title: '',
   status: 'draft',
-  customerName: 'Herber Custom Homes',
+  customerName: 'Helbrow Custom Homes',
   ...over,
 })
 
@@ -28,7 +28,7 @@ const photo = (over: Partial<HandoverPhotoRow>): HandoverPhotoRow => ({
 
 describe('handoverGroupLabel', () => {
   it('CO with customer', () => {
-    expect(handoverGroupLabel(est({}))).toBe('CO #78 — Herber Custom Homes')
+    expect(handoverGroupLabel(est({}))).toBe('CO #78 — Helbrow Custom Homes')
   })
   it('estimate falls back to title, then bare', () => {
     expect(

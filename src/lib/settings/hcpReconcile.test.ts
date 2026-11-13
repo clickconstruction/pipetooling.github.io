@@ -52,7 +52,7 @@ describe('parsers', () => {
   it('parses the invoices export and rejects other files', () => {
     const rows = parseHcpInvoicesExport(
       'Invoice #,Customer name,Invoice status,Amount due,Due date,Latest send date,Job #\n' +
-        '612,Michael Palmer,Paid,$0.00,2026-07-18,2026-07-18 17:02:31 -0500,363\n' +
+        '612,Michael Palvern,Paid,$0.00,2026-07-18,2026-07-18 17:02:31 -0500,363\n' +
         '614,Curt Hoover,Open,$885.00,"","",833\n',
     )
     expect(rows).toHaveLength(2)
@@ -64,17 +64,17 @@ describe('parsers', () => {
   it('parses the payments export into Chicago calendar days', () => {
     const rows = parseHcpPaymentsExport(
       'Job ID,Payment Received Date,Job Created Date,Job Completed Date,Customer ID,Customer Name,Invoice Number,Job Duration,Job Description,Invoice Status,Assigned Employee Name,Job Status,Payment Amount,Tax Amount,Tip Amount,Payment Type,Fee Amount,Fee Type,Job Location Longitude,Job Location Latitude,Job Location Zip Code\n' +
-        '360482432,2026-07-23T17:50:00-05:00,2025-04-28T15:07:31-05:00,x,c,Michael Palmer,612,"",d,PAID,e,completed,"6,280.00",0,0,checkout check,0,f,0,0,0\n',
+        '360482432,2026-07-23T17:50:00-05:00,2025-04-28T15:07:31-05:00,x,c,Michael Palvern,612,"",d,PAID,e,completed,"6,280.00",0,0,checkout check,0,f,0,0,0\n',
     )
     expect(rows).toHaveLength(1)
-    expect(rows![0]).toMatchObject({ customer: 'Michael Palmer', paidYmd: '2026-07-23', amount: 6280 })
+    expect(rows![0]).toMatchObject({ customer: 'Michael Palvern', paidYmd: '2026-07-23', amount: 6280 })
   })
 
   it('parses the jobs-export bridge with Excel-quoted numbers', () => {
     const rows = parseHcpJobsBridge(
-      'Job #,Customer name,Job name,Job created date\n' + '"=""363""",Michael Palmer,x,2025-04-28T15:07:31-05:00\n',
+      'Job #,Customer name,Job name,Job created date\n' + '"=""363""",Michael Palvern,x,2025-04-28T15:07:31-05:00\n',
     )
-    expect(rows).toEqual([{ jobNumber: '363', customer: 'Michael Palmer', createdIso: '2025-04-28T15:07:31-05:00' }])
+    expect(rows).toEqual([{ jobNumber: '363', customer: 'Michael Palvern', createdIso: '2025-04-28T15:07:31-05:00' }])
   })
 })
 

@@ -13,7 +13,7 @@ The **Currently In** bar sits on the Dashboard, on People → Hours and on Quick
 **A pin is a job, not a person.** Everyone clocked on one job shares a pin. The number on it is the head count. Jobs are {{chip:blue|blue}}, bids {{chip:purple|violet}}. These are the same colors as the Dashboard and Bid Board maps. The office is the navy diamond with its distance ring. Anyone clocked on the office job sits there rather than on a pin of their own.
 
 :::example A Tuesday at 11:45
-Seven people in. Abraham and Paige share the Vecchio Pinpoint pin with a **2** on it, three other jobs have one pin each, Grace is on the office diamond, and Isiah — clocked in with no job yet — is named under the list with an Assign button.
+Seven people in. Abraham and Paige share the Vellano Pinpoint pin with a **2** on it, three other jobs have one pin each, Grace is on the office diamond, and Isiah — clocked in with no job yet — is named under the list with an Assign button.
 :::
 
 ## The stops beside the map

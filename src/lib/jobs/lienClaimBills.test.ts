@@ -10,9 +10,9 @@ const inv = (id: string, amount: number, seq: number, status = 'billed', over: R
 const job = {
   id: 'j922',
   hcp_number: '922',
-  job_name: 'Michael Palmer',
+  job_name: 'Michael Palvern',
   job_address: '1 Example Ln, Austin, TX',
-  customer_name: 'Michael Palmer',
+  customer_name: 'Michael Palvern',
   customer_email: '',
   customer_id: 'c1',
   gc_customer_id: 'gc1',

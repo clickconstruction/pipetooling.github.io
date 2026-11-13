@@ -18,7 +18,7 @@ describe('propertyKind', () => {
   })
 
   it('finds the other jobs at the same saved property', () => {
-    const addr: Record<string, string | null> = { j273: 'lenox', j881: 'lenox', j258: 'terrell', j608: 'terrell', j651: null, j706: null }
+    const addr: Record<string, string | null> = { j273: 'lenox', j881: 'lenox', j258: 'tarrow', j608: 'tarrow', j651: null, j706: null }
     const ids = Object.keys(addr)
     expect(jobsSharingProperty('j273', ids, (id) => addr[id])).toEqual(['j881'])
     expect(jobsSharingProperty('j651', ids, (id) => addr[id])).toEqual([])

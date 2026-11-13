@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { ESTIMATE_DOOR_WORDS, estimateDoorFor, estimateDoorHref, textDoorsFrom } from './estimateDoor'
 
-const SUBJECT = 'Estimate #166 — Estimate for Evan Johnson — $6,250 · Click Plumbing and Electrical'
+const SUBJECT = 'Estimate #166 — Estimate for Evan Jarrow — $6,250 · Click Plumbing and Electrical'
 const line = (set: Partial<{ channel: string; direction: string; subject: string | null; body: string }> = {}) => ({ channel: 'email', direction: 'out', subject: SUBJECT, body: SUBJECT, ...set })
 
 describe('estimateDoorFor (v2.5698, punch list #139)', () => {

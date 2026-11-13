@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'A copy of a Stripe bill now ends with "See your statement any time" — the customer\'s people get the customer\'s portal, a GC copied on a homeowner\'s bill gets the GC\'s own portal.',
-    'The Send Email invoice confirm\'s history shows, under each past send, who got a copy that time — so "did DRF get it?" has an answer per send.',
+    'The Send Email invoice confirm\'s history shows, under each past send, who got a copy that time — so "did DLF get it?" has an answer per send.',
   ],
 }
 

@@ -26,7 +26,7 @@ const row = (p: Partial<SortedTeamPurchaseRow>): SortedTeamPurchaseRow => ({
 
 const ROWS = [
   row({ mercury_transaction_id: 'short', amount: -595.54, counterparty_name: 'The Home Depot', invoice_links: [{ invoice_id: 'i1', invoice_number: '88231', supply_house_name: 'Home Depot', amount: 412.1 }] }),
-  row({ mercury_transaction_id: 'job', amount: -100.02, counterparty_name: 'QuikTrip', job_splits: [{ job_id: 'j1', amount: -100.02, hcp_number: '1048', job_name: 'Loberg remodel' }] }),
+  row({ mercury_transaction_id: 'job', amount: -100.02, counterparty_name: 'QuikTrip', job_splits: [{ job_id: 'j1', amount: -100.02, hcp_number: '1048', job_name: 'Lowbeck remodel' }] }),
 ]
 
 describe('TeamPurchasesSortedList', () => {
@@ -38,7 +38,7 @@ describe('TeamPurchasesSortedList', () => {
     // The Dashboard window passes no onUndo, so no row offers Undo there.
     expect(screen.queryByTestId('team-purchases-sorted-undo')).toBeNull()
     expect(screen.getByText('$183.44 of the charge has no invoice yet')).toBeTruthy()
-    expect(screen.getByText(/1048 · Loberg remodel/)).toBeTruthy()
+    expect(screen.getByText(/1048 · Lowbeck remodel/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add invoice' }))
     expect(onInvoices.mock.calls[0]![0].mercury_transaction_id).toBe('short')

@@ -70,9 +70,9 @@ describe('buildOffsetPaymentTimeline', () => {
 
 describe('pay statement build', () => {
   const workDays = [
-    { workDate: '2026-07-28', hours: 8, jobLabel: 'Terrell Road sewer repair' },
-    { workDate: '2026-07-29', hours: 8, jobLabel: 'Terrell Road sewer repair' },
-    { workDate: '2026-07-31', hours: 6, jobLabel: 'Shearer pinpoint' },
+    { workDate: '2026-07-28', hours: 8, jobLabel: 'Tarrow Road sewer repair' },
+    { workDate: '2026-07-29', hours: 8, jobLabel: 'Tarrow Road sewer repair' },
+    { workDate: '2026-07-31', hours: 6, jobLabel: 'Shellan pinpoint' },
     { workDate: '2026-08-05', hours: 8, jobLabel: 'Outside the period' },
   ]
   it('groups the paid period days by job and attaches applied offsets', () => {
@@ -85,8 +85,8 @@ describe('pay statement build', () => {
     })
     expect(payments.length).toBe(1)
     expect(payments[0]?.jobLines).toEqual([
-      { label: 'Terrell Road sewer repair', hours: 16 },
-      { label: 'Shearer pinpoint', hours: 6 },
+      { label: 'Tarrow Road sewer repair', hours: 16 },
+      { label: 'Shellan pinpoint', hours: 6 },
     ])
     expect(payments[0]?.offsets).toEqual([{ label: 'Windshield', amount: -425 }])
   })
@@ -111,7 +111,7 @@ describe('pay statement build', () => {
     })
     expect(html).toContain('Pay statement — Abraham')
     expect(html).toContain('Paid Aug 8, 2026 — $1,840.00')
-    expect(html).toContain('Terrell Road sewer repair')
+    expect(html).toContain('Tarrow Road sewer repair')
     expect(html).toContain('16 h')
     expect(html).toContain('Less: Windshield')
     expect(html).toContain('−$425.00')
