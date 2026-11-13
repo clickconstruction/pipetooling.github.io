@@ -228,7 +228,8 @@ export class FakeDb {
           return { data: matched, error: null }
         }
         case 'insert': {
-          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...v }))
+          // notification_history stamps its own sent_at, as the database's default does.
+          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...(name === 'notification_history' ? { sent_at: new Date().toISOString() } : {}), ...v }))
           // contact_jobs holds one row a person and a job: its partial unique indexes, one a job column.
           if (name === 'contact_jobs') {
             for (const m of made) {

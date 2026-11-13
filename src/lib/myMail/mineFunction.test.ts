@@ -59,6 +59,13 @@ import {
   myMailTagEventWords,
   tagAllFiled,
   myMailTaggedBy,
+  MAIL_SAVED_BODY,
+  MAIL_SAVED_BATCH_MINUTES,
+  MAIL_SAVED_CHANNEL,
+  MAIL_SAVED_TEMPLATE,
+  mailSavedBatchSince,
+  mailSavedFacts,
+  mailSavedTitle,
   MY_MAIL_TAGGED_PAGE,
   inAskedBoxes,
   taggedNextToken,
@@ -674,6 +681,43 @@ describe('what a tag writes', () => {
     expect(myMailFileRow(copy!)).toMatchObject({ left_in_gmail: 'not_copied' })
     expect(myMailFileRow(big!)).toMatchObject({ kind: 'file', name: 'plans.zip', left_in_gmail: 'too_big' })
     expect(myMailFileRow(link!)).toEqual({ kind: 'link', name: 'elm-plans.pdf', url: 'https://www.dropbox.com/scl/fi/abc/elm-plans.pdf?dl=0', host: 'dropbox' })
+  })
+})
+
+describe('the owner is told that someone else saved their mail (v2.7068)', () => {
+  const row = (by: string | null, job: string, over: Record<string, unknown> = {}) => ({ tagged_by: by, bid_id: null, project_id: null, jobs_ledger_id: job, person_id: null, ...over })
+  const names = { 'u-dev': 'Nadia Reyes', 'u-dev-2': 'Omar Diaz' }
+  const elm = { key: `pipeline:${ELM}`, words: 'JP1077 4 Elm Ct' }
+
+  it('stands on one kind, shown in the app only, with a batch of half an hour', () => {
+    expect([MAIL_SAVED_TEMPLATE, MAIL_SAVED_CHANNEL, MAIL_SAVED_BATCH_MINUTES]).toEqual(['mail_saved_for_you', 'app', 30])
+    expect(mailSavedBatchSince('2026-11-12T21:30:00.000Z')).toBe('2026-11-12T21:00:00.000Z')
+  })
+
+  it('counts only what someone else saved onto a job: never the owner’s own tag, and never an HR file’s row', () => {
+    const facts = mailSavedFacts(
+      [row('u-dev', ELM), row('u-dev', ELM), row('u-dev', HARBOR), row(MARISOL, MILL), row(null, MILL), row('u-dev', ELM, { jobs_ledger_id: null, person_id: 'p-1' }), row('u-dev', ELM, { jobs_ledger_id: null })],
+      MARISOL,
+      names,
+      elm,
+    )
+    expect(facts).toEqual({ savers: ['Nadia Reyes'], conversations: 3, jobs: 2, job: null })
+    expect(mailSavedFacts([], MARISOL, names, elm)).toEqual({ savers: [], conversations: 0, jobs: 0, job: null })
+  })
+
+  it('says one save by its job, and a batch as one line with its counts', () => {
+    const one = mailSavedFacts([row('u-dev', ELM)], MARISOL, names, elm)
+    expect(mailSavedTitle(one)).toBe('Nadia Reyes saved a conversation from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev', ELM), row('u-dev', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes saved 3 conversations from your mail to JP1077 4 Elm Ct.')
+    // Seventeen saves onto seven jobs in two minutes read as one line.
+    const jobs = [ELM, HARBOR, CLUB, CLINIC, MILL, '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a06', '0f6c1a3e-2b4d-4e8f-9a1b-1c2d3e4f5a07']
+    const batch = mailSavedFacts(Array.from({ length: 17 }, (_, i) => row('u-dev', jobs[i % 7]!)), MARISOL, names, elm)
+    expect(mailSavedTitle(batch)).toBe('Nadia Reyes saved 17 conversations from your mail to 7 jobs.')
+    // Two people, a job that is not the one in hand, and nobody named.
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', ELM), row('u-dev-2', ELM)], MARISOL, names, elm))).toBe('Nadia Reyes and Omar Diaz saved 2 conversations from your mail to JP1077 4 Elm Ct.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-dev', HARBOR)], MARISOL, names, elm))).toBe('Nadia Reyes saved a conversation from your mail to a job.')
+    expect(mailSavedTitle(mailSavedFacts([row('u-gone', ELM)], MARISOL, names, elm))).toBe('A developer saved a conversation from your mail to JP1077 4 Elm Ct.')
+    for (const words of [mailSavedTitle(batch), mailSavedTitle(one), MAIL_SAVED_BODY]) expect(plainWordsFailures(words), words).toEqual([])
   })
 })
 

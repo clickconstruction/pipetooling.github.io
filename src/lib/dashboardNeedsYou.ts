@@ -51,6 +51,7 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
+import { MAIL_SAVED_WORDS, type MailSavedNeed } from './myMail/savedForYou'
 import { MY_MOVES_WORDS, type MyMovesNeed } from './bridge/callPeople'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
@@ -763,6 +764,9 @@ export type NeedsYouInputs = {
    */
   bridgeMovesEnabled?: boolean
   bridgeMoves?: MyMovesNeed | null
+  /** The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job. */
+  mailSavedEnabled?: boolean
+  mailSaved?: MailSavedNeed | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1487,6 +1491,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       actionLabel: b.door ? b.door.label : MY_MOVES_WORDS.markDone,
       // With a page to open, Done is the link beside the button; with none, Done is the button.
       ...(b.door ? { secondary: [{ key: 'done', label: MY_MOVES_WORDS.done }] } : {}),
+    })
+  }
+
+  // The owner is told (v2.7068): someone else saved the viewer's mail onto a job. Blue: news, with nothing to do.
+  if (inputs.mailSavedEnabled && inputs.mailSaved && inputs.mailSaved.count > 0) {
+    const m = inputs.mailSaved
+    items.push({
+      key: 'mail-saved',
+      severity: 'blue',
+      kicker: MAIL_SAVED_WORDS.kicker,
+      title: m.title,
+      detail: m.detail,
+      figure: m.count > 99 ? '99+' : String(m.count),
+      actionLabel: MAIL_SAVED_WORDS.action,
     })
   }
 

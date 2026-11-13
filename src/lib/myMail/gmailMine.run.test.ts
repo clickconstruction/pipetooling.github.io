@@ -1496,6 +1496,77 @@ describe('gmail-mine: a tag onto a job through the dev seat names the dev, never
   })
 })
 
+describe('gmail-mine: the owner is told, in the app only, when the dev seat saves their mail (v2.7068)', () => {
+  const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
+  const DEV = 'robert@douglasmining.example'
+  const BODY = 'They did it for you, through the dev seat. The mail is on the job in Messages, where the office reads it. Nothing changed in your Gmail.'
+  const save = (threadId: string, job: string, as: string = MARISOL) => seat({ action: 'tag', threadId, job: { kind: 'pipeline', id: job }, as })
+  const notices = () => db.rows('notification_history')
+  /** A second conversation in the same box, with Dale, to save onto another job. */
+  const harborThread = (): FakeMail[] => [mail('g-harbor-1', 't-harbor', '2026-11-02T09:00:00.000Z', { From: DALE, Subject: '19 Harbor Ln rough-in', 'Message-ID': '<harbor-1@ridgeway.example>' }, 'Rough-in is Thursday.')]
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = [...elmThread(), ...harborThread()]
+    db.tables.messages = []
+    db.tables.notification_history = []
+    db.tables.people = [{ id: PERSON, name: 'ZZ Test Person' }]
+    db.tables.person_file_entries = []
+  })
+
+  it('writes one notice of the owner’s own: who saved it and onto which job, and sends nothing', async () => {
+    expect((await save('t-elm', ELM)).status).toBe(200)
+    expect(notices()).toEqual([
+      expect.objectContaining({ recipient_user_id: 'u-marisol', template_type: 'mail_saved_for_you', channel: 'app', title: 'Robert saved a conversation from your mail to JP1077 4 Elm Ct.', body_preview: BODY }),
+    ])
+    // In the app only: no mail was sent as anyone, and nothing in the mailbox changed.
+    expect(google.sent).toEqual([])
+    expect(gmailChanges()).toEqual([])
+    // Counts and ids in the log, never an address or a subject.
+    const told = logged.filter((l) => l.includes('"event":"gmail_mine_owner_told"'))
+    expect(told).toEqual([JSON.stringify({ event: 'gmail_mine_owner_told', user: 'u-marisol', dev: 'u-dev', batch: false, conversations: 1, jobs: 1 })])
+  })
+
+  it('says a batch as one notice: a second save soon after rewrites the line with the count, and adds no second one', async () => {
+    await save('t-elm', ELM)
+    await save('t-harbor', HARBOR)
+    expect(notices()).toHaveLength(1)
+    expect(notices()[0]).toMatchObject({ title: 'Robert saved 2 conversations from your mail to 2 jobs.', channel: 'app' })
+    // Onto the same job, the batch still names the job.
+    db.tables.notification_history = []
+    db.tables.email_tag_threads = []
+    await save('t-elm', ELM)
+    await save('t-harbor', ELM)
+    expect(notices().map((n) => n.title)).toEqual(['Robert saved 2 conversations from your mail to JP1077 4 Elm Ct.'])
+  })
+
+  it('starts a new notice once the batch is over', async () => {
+    await save('t-elm', ELM)
+    // The first notice was written two hours ago, and so was its save.
+    const longAgo = new Date(Date.now() - 2 * 3_600_000).toISOString()
+    notices()[0]!.sent_at = longAgo
+    db.rows('email_tag_threads')[0]!.tagged_at = longAgo
+    await save('t-harbor', HARBOR)
+    expect(notices().map((n) => n.title)).toEqual(['Robert saved a conversation from your mail to JP1077 4 Elm Ct.', 'Robert saved a conversation from your mail to JP1081 19 Harbor Ln.'])
+  })
+
+  it('tells nobody for a person’s own press, the seat’s plan, a save onto an HR file, or the developer’s own box', async () => {
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    await seat({ action: 'tag', threadId: 't-harbor', job: { kind: 'pipeline', id: HARBOR }, as: MARISOL, plan: true })
+    await seat({ action: 'tag', threadId: 't-harbor', person: { personId: PERSON }, as: MARISOL })
+    google.boxes[DEV] = { mails: [mail('g-own-1', 't-own', '2026-11-02T09:00:00.000Z', { From: DALE, To: DEV, Subject: 'A note', 'Message-ID': '<own-1@ridgeway.example>' }, 'A note.')], labels: [{ id: 'INBOX', name: 'INBOX' }] }
+    expect((await save('t-own', ELM, DEV)).status).toBe(200)
+    expect(notices()).toEqual([])
+  })
+
+  it('never fails the save when the notice will not write, and logs that the owner was not told', async () => {
+    db.refuse['admin insert notification_history'] = 'new row violates check constraint "notification_history_channel_check"'
+    const res = await save('t-elm', ELM)
+    expect(res).toMatchObject({ status: 200, body: { ok: true, lines: 3 } })
+    expect(notices()).toEqual([])
+    expect(logged.some((l) => l.includes('"event":"gmail_mine_owner_not_told"') && l.includes('"dev":"u-dev"'))).toBe(true)
+  })
+})
+
 describe('gmail-mine: a conversation onto a person’s HR file (punch list #289)', () => {
   const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
   const ask = (over: Row = {}): Row => ({ action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL, ...over })
