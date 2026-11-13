@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { payerTodo, pctTodo, projectTodo, todoLinkPaths } from './callTodo'
-import { NO_TODO, TODO_DONE_SHOWN_DAYS, handedOutWords, todoCheckLabel, todoKeyOfLink, todoStateFor, todoStateWords, todoStates, todoWindowLines, whoWords, type TodoCard } from './callTodoState'
+import { NO_TODO, TODO_DONE_SHOWN_DAYS, cardKeys, handedOutWords, todoCheckLabel, todoKeyOfLink, todoStateFor, todoStateWords, todoStates, todoWindowLines, whoWords, type TodoCard } from './callTodoState'
 
 // Made-up customers, jobs and people.
 const dayLabel = (ymd: string): string => `d${ymd.slice(8)}`
@@ -23,6 +23,21 @@ describe('where a line stands as a to-do', () => {
     expect(todoKeyOfLink('https://app.example/customers/c1?todo=payer.c1#top')).toBe('payer.c1')
     expect(todoKeyOfLink('https://app.example/customers/c1')).toBeNull()
     expect(todoKeyOfLink('https://app.example/jobs?jobDetail=j201')).toBeNull()
+  })
+
+  it('finds a card by its own tag, which stays when the link is taken off the card (#334, PR 12)', () => {
+    // The link is gone from the card: its own tag still says what it is about.
+    const noLink: TodoCard = { ...card({ for: pct }), links: ['https://app.example/jobs?jobDetail=j201'], tag: pct.key }
+    expect(cardKeys(noLink)).toEqual(['pct.j201'])
+    expect(todoStates([noLink], TODAY).get(pct.key)).toMatchObject({ kind: 'open', who: 'Dana' })
+    // A card made before the column has no tag of its own, and is found by its link as before.
+    expect(cardKeys(card({ for: pct }))).toEqual(['pct.j201'])
+    expect(cardKeys({ ...card({ for: pct }), tag: null })).toEqual(['pct.j201'])
+    // Tag and link agree: the thing is counted once.
+    expect(cardKeys({ ...card({ for: pct }), tag: pct.key })).toEqual(['pct.j201'])
+    // Neither: the card is about nothing on the Bridge.
+    expect(cardKeys({ links: ['https://app.example/jobs'], tag: '  ' })).toEqual([])
+    expect(todoStates([{ ...card({ for: pct }), links: [], tag: null }], TODAY).size).toBe(0)
   })
 
   it('reads a card with an open day as with its person, and counts the days', () => {

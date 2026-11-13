@@ -1046,7 +1046,8 @@ export default function Bridge() {
     }
   }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours])
   // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
-  // cards whose links carry one of its own tagged addresses, and reads again after a card is made or changed here.
+  // cards that carry one of its own tags (PR 12), or one of its tagged addresses in a link, and reads again after a
+  // card is made or changed here.
   const todoList = useMemo(() => {
     const out: CallTodo[] = []
     if (!weekModel || !callDives) return out
@@ -1059,6 +1060,7 @@ export default function Bridge() {
     return out
   }, [weekModel, callDives])
   const todoLinksKey = useMemo(() => [...new Set(todoList.map((t) => `${APP_ORIGIN}${todoLinkPaths(t)[0]}`))].sort().join('\n'), [todoList])
+  const todoTagsKey = useMemo(() => [...new Set(todoList.map((t) => t.key))].sort().join('\n'), [todoList])
   const [todoCards, setTodoCards] = useState<TodoCard[] | null>(null)
   const [todoTick, setTodoTick] = useState(0)
   const [todoSeen, setTodoSeen] = useState<Extract<TodoState, { kind: 'open' | 'covered' | 'done' }> | null>(null)
@@ -1072,7 +1074,7 @@ export default function Bridge() {
       try {
         const { loadTodoCards } = await import('../lib/bridge/callTodoIo')
         // A card's days are the company's days, as today is.
-        const cards = await loadTodoCards(supabase, todoLinksKey.split('\n'), calendarYmdInAppTzFromIso, NO_NAMES)
+        const cards = await loadTodoCards(supabase, todoTagsKey.split('\n').filter(Boolean), todoLinksKey.split('\n'), calendarYmdInAppTzFromIso, NO_NAMES)
         if (!cancelled) setTodoCards(cards)
       } catch {
         // The checks are an extra reading: a read that fails leaves every check grey, and the list as it was.
@@ -1082,7 +1084,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [todoLinksKey, todoTick, refreshKey])
+  }, [todoLinksKey, todoTagsKey, todoTick, refreshKey])
   const todoStatesByKey = useMemo(() => (todoCards && data ? todoStates(todoCards, data.todayYmd) : null), [todoCards, data])
   const readTodoLines = useCallback<TodoLinesRead>(async (itemId, instanceIds) => (await import('../lib/taskLinesIo')).loadTaskLines({ itemIds: [itemId], taskIds: [], instanceIds }), [])
 
@@ -1520,7 +1522,7 @@ export default function Bridge() {
                 else if (target.kind === 'money') pressDoor('money', { keepOpen: true, scrollTo: 'bridge-bills-due' })
                 // One thing as a to-do card: the app's own Add task window, written for it. The person is picked there.
                 // Its link is the app's public address, so a card opens for whoever gets it, wherever it was written.
-                else if (target.kind === 'todo') addTask?.openAddModal({ preset: { title: target.todo.title, links: todoLinkPaths(target.todo).map((p) => `${APP_ORIGIN}${p}`), doneWhen: target.todo.doneWhen, asksForPhoto: false }, onSaved: () => setTodoTick((t) => t + 1) })
+                else if (target.kind === 'todo') addTask?.openAddModal({ preset: { title: target.todo.title, links: todoLinkPaths(target.todo).map((p) => `${APP_ORIGIN}${p}`), doneWhen: target.todo.doneWhen, asksForPhoto: false, sourceTag: target.todo.key }, onSaved: () => setTodoTick((t) => t + 1) })
                 // A job's percent: the app's own percent window, where the reader stands.
                 else if (target.kind === 'pct') setPctFor(target.job)
                 // A job's hours: who worked them and when, with the percent window one press on.
