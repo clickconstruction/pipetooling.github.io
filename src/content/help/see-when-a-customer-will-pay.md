@@ -67,6 +67,8 @@ The contract says when a bill is due. The record says when the money lands. The 
 
 A date the customer names still wins. The row reads *They said Nov 20*, and the due day sits under it.
 
+The job window reads the same day. Its bills list says *due Nov 10 · 2 d past* for the same bill. Call mode judges the same customer against the same calendar.
+
 ## The pay history under it
 
 Under the Expected row, a small line reads how this customer actually pays. The line reads like *Pays in 9–41d · keeps 3 of 7 · slips ~9d*. With four or more payments, the range is the middle half of their payments. With fewer, it runs from their quickest to their slowest. One payment reads *Pays in ~9d*. The promise part appears once they have named dates. See *know whether a customer keeps their word*. The forecast uses the same record. A promise from a customer who usually slips nine days is filed nine days later than the date they gave.
