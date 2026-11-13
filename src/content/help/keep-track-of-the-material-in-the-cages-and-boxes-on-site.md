@@ -44,6 +44,8 @@ Tap a box to open it. Each line has four presses.
 - {{button:outline-amber|Can't find}} says the box should have it and it is not there. The office sees it that day.
 - {{button:outline-blue|Short}} asks the office for more. Type how many more you need and tap **Ask the office for 4**. The request lands on the job's Parts tab, the same as Send to Office. A part from the parts book also gets a draft purchase order. A line with none left keeps Short beside its words.
 
+The office and a job's primary can file that request. A helper or a subcontractor reads **Only the office can file a parts request on this job.** The message then gives the words to tell the office.
+
 Every press but Short is one row in the ledger. A wrong press gets a new press. Nothing is edited. Short writes a request, not a row in the box.
 
 ## Count a box
