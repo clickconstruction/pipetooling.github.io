@@ -6,7 +6,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   title: 'Partner statement: company on the letterhead',
   highlights: [
-    'The partner statement’s letterhead now names the partner’s company ("Partner account · Herber Electric") and "partner since" comes from the deal’s actual start date.',
+    'The partner statement’s letterhead now names the partner’s company ("Partner account · Helbrow Electric") and "partner since" comes from the deal’s actual start date.',
   ],
 }
 

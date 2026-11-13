@@ -10,7 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BillsSentCopy, BillsSentInput } from '../../lib/billing/billsSent'
 import { BillsSentLedger } from './BillsSentLedger'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], fail: null as null | Error }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], refuse: null as null | Error, fail: null as null | Error }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
@@ -21,6 +21,13 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     if (io.fail) throw io.fail
     return io.data
   },
+  recordBillByHand: async (filing: unknown) => {
+    if (io.refuse) throw io.refuse
+    io.filed.push(filing)
+  },
+}))
+vi.mock('../../lib/storageSave', () => ({
+  saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
 }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({
   openSentCopy: async (row: { id: string }) => (io.opened.push(row.id), true),
@@ -62,6 +69,9 @@ beforeEach(() => {
   io.data = data([])
   io.asks = []
   io.opened = []
+  io.saved = []
+  io.filed = []
+  io.refuse = null
   io.fail = null
 })
 afterEach(() => cleanup())
@@ -190,6 +200,54 @@ describe('BillsSentLedger', () => {
     renderWithProviders(<BillsSentLedger />)
     await screen.findAllByTestId('bills-sent-line')
     expect(screen.getByRole('link', { name: 'Bill 1412-0002' }).getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
+  })
+
+  it('prints and saves what the list shows, and offers neither on an empty list', async () => {
+    const printed: string[] = []
+    const opener = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (h: string) => printed.push(h), close: () => {}, images: [] }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    io.data = data([copy({}), copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s' })])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    fireEvent.click(screen.getByRole('button', { name: 'Statement' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }))
+    expect(printed[0]).toContain('<p>Statement. Newest first.')
+    expect(printed[0]).toContain('<b>Statement</b> · 12 jobs · Ridgeway Builders')
+    expect(printed[0]).not.toContain('Bill 1412-0002')
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }))
+    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d\.csv$/), type: 'text/csv;charset=utf-8' }])
+    fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
+    expect(screen.queryByRole('button', { name: 'Print' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Download CSV' })).toBeNull()
+    opener.mockRestore()
+  })
+
+  it('records by hand how a bill with no send went, then reads the list again', async () => {
+    const GAP = 'dddddddd-4444-4444-8444-444444444444'
+    io.data = { ...data([copy({})]), unsent: [{ billId: GAP, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findByTestId('bills-sent-gap')
+    fireEvent.click(screen.getByRole('button', { name: 'Say how it went…' }))
+    const form = screen.getByTestId('bills-sent-by-hand')
+    const save = screen.getByRole('button', { name: 'Record how it went' }) as HTMLButtonElement
+    // The customer's name is offered; the press waits for how it went.
+    expect((screen.getByLabelText('Who it went to') as HTMLInputElement).value).toBe('Sable Ridge Builders')
+    expect(save.disabled).toBe(true)
+    expect(form.textContent).toContain('Pick how the bill went.')
+    fireEvent.change(screen.getByLabelText('How the bill went'), { target: { value: 'handed' } })
+    fireEvent.change(screen.getByLabelText('The day it went'), { target: { value: '2026-11-09' } })
+    expect(save.disabled).toBe(false)
+    // A refusal says its reason and keeps the form.
+    io.refuse = Object.assign(new Error('new row violates row-level security policy for table "sent_documents"'), { code: '42501' })
+    fireEvent.click(save)
+    await waitFor(() => expect(save.disabled).toBe(false))
+    expect(io.filed).toEqual([])
+    expect(screen.getByTestId('bills-sent-by-hand')).toBeTruthy()
+    io.refuse = null
+    const asksBefore = io.asks.length
+    fireEvent.click(save)
+    await waitFor(() => expect(io.filed).toHaveLength(1))
+    expect(io.filed[0]).toMatchObject({ kind: 'bill_by_hand', how: 'hand', recipientName: 'Sable Ridge Builders', source: { table: 'jobs_ledger_invoices', id: GAP }, sourceSnapshot: { how: 'handed', went_on: '2026-11-09' } })
+    await waitFor(() => expect(io.asks.length).toBeGreaterThan(asksBefore))
   })
 
   it('says what fills an empty list, and offers the Pipeline', async () => {

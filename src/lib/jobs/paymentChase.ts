@@ -24,15 +24,9 @@ import { listPayer, paySpeedPayer } from './billToParty'
 import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { batchOutcomeWords, type BatchOutcome } from '../batchWords'
-import {
-  billedExpectedPayModel,
-  billedReferenceYmd,
-  daysBetweenYmd,
-  type CustomerSegment,
-  type ExpectedPayModel,
-  type PaySpeedData,
-  type PromisedPayDate,
-} from './billedExpectedPay'
+import { billedReferenceYmd, daysBetweenYmd, type CustomerSegment, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel, type BilledPayModel } from './billedDuePay'
+import { calendarFor, type PayCalendarIndex } from './payCalendar'
 
 /** Default can't-reach snooze when the caller doesn't pick one. */
 export const DEFAULT_SNOOZE_DAYS = 7
@@ -54,7 +48,7 @@ export type ChaseBill = {
   sentAtIso: string | null
   stripeInvoiceId: string | null
   stripePaid: boolean
-  model: ExpectedPayModel
+  model: BilledPayModel
 }
 
 export type ChaseWaitReason =
@@ -107,6 +101,9 @@ export function buildPaymentChaseQueue(
   temperatureByGcId?: ReadonlyMap<string, { temperature: 'hot' | 'warm' | 'cool' | 'cold' }> | null,
   /** The GC facts and the GC pace here (v2.6034): a first-job GC is late against the GC pace, not the company's. */
   pace?: PaceContext | null,
+  /** The stored Pay calendars and the accepted days (punch list #323): a payer on a calendar is late against its due day plus its usual lateness. */
+  payCalendars?: PayCalendarIndex | null,
+  acceptedByInvoice?: ReadonlyMap<string, string> | null,
 ): PaymentChaseQueue {
   const tempRank = (t: string | null | undefined) => (t === 'cold' ? 0 : t === 'cool' ? 1 : t === 'warm' ? 2 : t === 'hot' ? 3 : 4)
   const touchesByCustomer = new Map<string, ChaseTouch[]>()
@@ -150,17 +147,19 @@ export function buildPaymentChaseQueue(
     const customerId = payer.id
     if (!customerId) continue
     const pace_ = paySpeedPayer(job, r.inv)
-    const model = billedExpectedPayModel(
+    const model = billedPayModel(
       {
         billedAtIso: r.inv.billed_at,
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
         customerId: pace_.id,
         payerName: pace_.name,
+        acceptedYmd: acceptedByInvoice?.get(r.inv.id) ?? null,
       },
       paySpeeds,
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId: pace_.id, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
+      calendarFor(payCalendars, { payerId: pace_.id, jobId: job.id }),
     )
     if (!model) continue // no clock to be late against — the forecast's 'unknown' bucket
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
