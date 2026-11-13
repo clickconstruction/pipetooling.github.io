@@ -1,8 +1,8 @@
 ---
 name: "Messages: old mail lands for the record, and a thread can be closed in plain sight"
 number: 324
-group: ready
-status: proposed 2026-11-12 on the dev's ask · approved the same day ("build the entire PR train") after a second look that changed five things · building as five PRs · PR 1, the migration, open
+group: close
+status: built 2026-11-12 as five PRs, all merged and live · the migration pushed, gmail-mine and dev-mcp deployed · left: the first tag a person presses in My email, and the dev's call on the batch of 2026-11-09
 summary: >
   On 2026-11-09 a batch of old email conversations was tagged from a teammate's own mailbox onto
   jobs through the dev seat. Every mail landed at its own date, months back, and Messages read each
@@ -15,10 +15,11 @@ summary: >
   nobody's move; the age decides and a person overrules in one press; No reply needed and the
   thread's state sit in plain sight, on New's cards too; and a fold lists what was done with no
   reply this week, each with Reopen. No new lane, no new state, no third word.
-next: PR 1 merges, the migration is pushed, then PRs 2 to 5 in order. Call 2, whether the batch of 2026-11-09 stays on its jobs, is still the dev's.
-size: M as a train of five (S · S · S · S · S)
-blocker: Nothing. PR 2 and PR 5 touch the tag's grey line and the seat's arguments, which PR 7778 changes, so they rebase on it.
-opinion: build — approved 2026-11-12; the first two PRs remove the cause, the third removes the reason he thought no exit existed
+next: Watch the first tag an office person presses in Messages → My email, and read the line the green bar prints after it. Then the dev's call 2, whether the batch of 2026-11-09 stays on its jobs. Delete the folder after both.
+size: M as a train of five (S · S · S · S · S), all built; left: a look at one real press (XS)
+blocker: Nobody in the office has tagged by their own press yet, so the line after a tag is unproven by use.
+ver: v2.7026 · 7027 · 7029 · 7030 · 7032
+opinion: built — the cause is gone and the exit is in sight; watch one real press, then close the card
 ---
 
 # Messages: old mail lands for the record, and a thread can be closed in plain sight
@@ -224,4 +225,22 @@ Five PRs, each shippable alone, smallest first.
 
 ## Where it stands
 
-2026-11-12, later: approved. PR 1 (v2.7026, the migration) is open. Nothing is on prod yet. The four stale threads are still open until the migration is pushed, which closes them.
+2026-11-13: built and live. Five PRs merged on 2026-11-12 and 11-13 (UTC): v2.7026 the migration, v2.7027 the tag files old mail, v2.7029 No reply needed in plain sight, v2.7030 the fold, v2.7032 the line after a tag and the seat's `for_record`. Each `docs/recent-features/v2.NNNN.md` says how.
+
+**On prod.** The migration was pushed on 2026-11-12 after a dry run inside a transaction that rolled back. It marked 38 lines and set 4 threads to Done, as measured, and left no thread open on filed mail alone. `gmail-mine` and `dev-mcp` were deployed from `main` twice, after v2.7027 and after v2.7032. The seat answers as server 0.80.0.
+
+**Checked live, with nothing written.**
+
+- The site serves the new words of all five PRs.
+- A read-only walk of the stack against prod on 2026-11-12: the fold read *5 done with no reply this week*, and a thread of filed mail showed the *filed Nov 9* chip, *Nothing waits* and *Done · old mail, filed Nov 9* with **Reopen**. The walk found one defect, fixed in v2.7029: the header said *They have not written yet* on a thread of filed mail.
+- The seat's dry run on a ZZ Test job. A mail from August would be filed (`lands: record`). Three mails from the same day would land on Follow up (`lands: followUp`). With `for_record: true` all three would be filed, and the commitment carries the flag.
+
+**Not built.** The thread's **No answer needed** for when our word is last (section 4). The thread's read carries no line keys, so it would show on threads Waiting on them had already cleared. The lane's **Heard back ▾** stays the way.
+
+**Left.**
+
+- The first tag a person in the office presses in My email. Every tag so far came through the seat, so the green bar's line and its press have run only in tests.
+- No apply has run with this code: the live checks were plans. The first real apply is the seat's or a person's next tag.
+- Call 2, the batch of 2026-11-09: it stays on its jobs until the dev says otherwise. Its threads are Done and read as filed either way.
+
+**Found, not fixed.** At 375 px wide the Messages page measured about 1,000 px wide in headless Chrome, on `main` before this train as well. It was seen with the page's writes refused and needs a look on a real phone.
