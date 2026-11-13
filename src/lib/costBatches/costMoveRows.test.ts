@@ -47,7 +47,7 @@ function bank(p: Partial<CostMoveBankRow> = {}): CostMoveBankRow {
   }
 }
 function supply(p: Partial<CostMoveSupplyRow> = {}): CostMoveSupplyRow {
-  return { source: 'supply', invoiceId: INV, supplyHouse: 'Reece', invoiceNumber: '4471', invoiceYmd: '2026-10-08', amount: 507.8, pct: 100, isPaid: false, purchaseOrder: 'Gun Dog', ...p }
+  return { source: 'supply', invoiceId: INV, supplyHouse: 'Reece', invoiceNumber: '4471', invoiceYmd: '2026-10-08', amount: 507.8, pct: 100, isPaid: false, purchaseOrder: 'Gray Fox', ...p }
 }
 function clock(p: Partial<CostMoveClockRow> = {}): CostMoveClockRow {
   return { source: 'clock', sessionId: S1, userId: 'u1', personName: 'Malachi', workYmd: '2026-10-26', minutes: 570, approved: true, rejected: false, bidId: null, ...p }

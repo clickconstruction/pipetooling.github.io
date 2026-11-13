@@ -15,8 +15,8 @@ function bid(over: Partial<CallQueueBid>): CallQueueBid {
   seq += 1
   return {
     id: `b${seq}`,
-    builderKey: 'gc-knight',
-    builderName: 'Knight',
+    builderKey: 'gc-kestrin',
+    builderName: 'Kestrin',
     phone: '6025550000',
     value: 100_000,
     outcome: 'pending',
@@ -57,7 +57,7 @@ describe('bidNeedsReason / bidTabGettable', () => {
 describe('buildCallQueue', () => {
   it('computes the collect list, done counts, and totals', () => {
     const rows = [
-      // Knight: 2 pending (1 fresh, 1 quiet), 1 lost-no-reason, 1 lost-with-reason+tab, 1 won
+      // Kestrin: 2 pending (1 fresh, 1 quiet), 1 lost-no-reason, 1 lost-with-reason+tab, 1 won
       bid({ outcome: 'pending', sentIso: '2026-08-10', lastContactIso: '2026-08-21T10:00:00Z' }), // fresh, too new for a tab
       bid({ outcome: 'pending', sentIso: '2026-07-15', lastContactIso: '2026-08-01T10:00:00Z', value: 250_000 }), // quiet 21d + tab gettable
       bid({ outcome: 'lost', value: 300_000 }), // needs reason + tab gettable
@@ -68,18 +68,18 @@ describe('buildCallQueue', () => {
       bid({ builderKey: 'gc-str', builderName: 'Structura', outcome: 'pending', sentIso: '2026-08-20', lastContactIso: '2026-08-21T10:00:00Z' }),
     ]
     const { builders, totals } = buildCallQueue(rows, NOW)
-    expect(builders.map((b) => b.builderName)).toEqual(['Knight', 'Structura']) // work first
-    const knight = builders[0]!
-    expect(knight.hasWork).toBe(true)
-    expect(knight.stats).toEqual({ won: 1, lost: 2, pending: 2, hitRatePct: 33, pendingValue: 350_000 })
-    expect(knight.chase.todo).toHaveLength(1)
-    expect(knight.chase.freshCount).toBe(1)
-    expect(knight.chase.oldestQuietDays).toBe(21)
-    expect(knight.reasons.todo).toHaveLength(1)
-    expect(knight.reasons.dollars).toBe(300_000)
-    expect(knight.reasons.recordedCount).toBe(1)
-    expect(knight.tabs.todo.map((b) => b.value).sort()).toEqual([250_000, 300_000])
-    expect(knight.tabs.recordedCount).toBe(1)
+    expect(builders.map((b) => b.builderName)).toEqual(['Kestrin', 'Structura']) // work first
+    const kestrin = builders[0]!
+    expect(kestrin.hasWork).toBe(true)
+    expect(kestrin.stats).toEqual({ won: 1, lost: 2, pending: 2, hitRatePct: 33, pendingValue: 350_000 })
+    expect(kestrin.chase.todo).toHaveLength(1)
+    expect(kestrin.chase.freshCount).toBe(1)
+    expect(kestrin.chase.oldestQuietDays).toBe(21)
+    expect(kestrin.reasons.todo).toHaveLength(1)
+    expect(kestrin.reasons.dollars).toBe(300_000)
+    expect(kestrin.reasons.recordedCount).toBe(1)
+    expect(kestrin.tabs.todo.map((b) => b.value).sort()).toEqual([250_000, 300_000])
+    expect(kestrin.tabs.recordedCount).toBe(1)
     const structura = builders[1]!
     expect(structura.hasWork).toBe(false)
     expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, chasePacketRows: 1, reasonsCount: 1, reasonsPacketRows: 1, reasonsDollars: 300_000, tabsCount: 2, dueCount: 0, overdueCount: 0, noDateCount: 1, laterCount: 0, laterValue: 0 })
@@ -109,13 +109,13 @@ describe('queue order (J14-F4)', () => {
   it('never-contacted builders tie-break by who has waited longest, not by name', () => {
     const { builders } = buildCallQueue(
       [
-        bid({ builderKey: 'aaron', builderName: 'Aaron Berg', sentIso: '2026-08-15', lastContactIso: null }),
+        bid({ builderKey: 'aaron', builderName: 'Aaron Birkby', sentIso: '2026-08-15', lastContactIso: null }),
         bid({ builderKey: 'zed', builderName: 'Zed Builders', sentIso: '2026-05-01', lastContactIso: null }),
         bid({ builderKey: 'mid', builderName: 'Mid Co', sentIso: '2026-07-01', lastContactIso: null }),
       ],
       NOW,
     )
-    expect(builders.map((b) => b.builderName)).toEqual(['Zed Builders', 'Mid Co', 'Aaron Berg'])
+    expect(builders.map((b) => b.builderName)).toEqual(['Zed Builders', 'Mid Co', 'Aaron Birkby'])
     expect(builders[0]!.chase.oldestQuietDays).toBeGreaterThan(builders[2]!.chase.oldestQuietDays!)
   })
 
@@ -198,12 +198,12 @@ describe('a promised day orders the queue', () => {
     const later = bid({ sentIso: '2026-01-01', lastContactIso: null, nextFollowupYmd: '2026-12-01' })
     const fresh = bid({ sentIso: '2026-08-10', lastContactIso: '2026-08-21T16:00:00Z' })
     const { builders } = buildCallQueue([quiet, due, late, later, fresh], NOW)
-    const knight = builders[0]!
-    expect(knight.chase.todo).toEqual([late, due, quiet])
-    expect(knight.chase.later).toEqual([later])
-    expect(knight.chase.freshCount).toBe(1)
-    expect(knight.chase.oldestQuietDays).toBe(82) // the quiet bid sent Jun 1, not the parked one from January
-    expect(knight.due).toEqual({ state: 'overdue', earliestYmd: '2026-08-20' })
+    const kestrin = builders[0]!
+    expect(kestrin.chase.todo).toEqual([late, due, quiet])
+    expect(kestrin.chase.later).toEqual([later])
+    expect(kestrin.chase.freshCount).toBe(1)
+    expect(kestrin.chase.oldestQuietDays).toBe(82) // the quiet bid sent Jun 1, not the parked one from January
+    expect(kestrin.due).toEqual({ state: 'overdue', earliestYmd: '2026-08-20' })
   })
 
   it('a bid with no day of its own takes its builder\'s', () => {

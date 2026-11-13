@@ -52,12 +52,12 @@ import { DEFAULT_TEST_REPORT_SETTINGS, emptyTestReportData, type TestReportJobIn
 
 const job: TestReportJobInfo = {
   jobNumber: '1014',
-  jobName: 'Johnson Pretest',
-  jobAddress: '112 Seidel St, Marion, TX 78124',
-  customerName: 'Anna & Jeffrey Johnson',
+  jobName: 'Jarrow Pretest',
+  jobAddress: '112 Sedlow St, Marion, TX 78124',
+  customerName: 'Anna & Jeffrey Jarrow',
   customerEmail: null,
   customerPhone: '(830) 351-4600',
-  customerCompany: 'Done Right Foundation Repair',
+  customerCompany: 'Dead Level Foundation Repair',
 }
 
 describe('renderTestReportPdf', () => {
@@ -74,8 +74,8 @@ describe('renderTestReportPdf', () => {
     expect(texts).toContain('September 10, 2026 · Job 1014')
     expect(texts).toContain('CUSTOMER')
     expect(texts).toContain('TEST LOCATION')
-    expect(texts).toContain('112 Seidel St')
-    expect(texts).toContain('Done Right Foundation Repair')
+    expect(texts).toContain('112 Sedlow St')
+    expect(texts).toContain('Dead Level Foundation Repair')
     expect(texts).toContain('PASS')
     expect(texts).toContain(' — No leaks or pressure loss detected')
     expect(texts).toContain('Conclusion:')

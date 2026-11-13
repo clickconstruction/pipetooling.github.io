@@ -13,8 +13,8 @@ function job(over: Partial<PropertyJobRow> & { id: string }): PropertyJobRow {
 
 describe('splitAddress', () => {
   it('drops state and zip, splits street from city', () => {
-    expect(splitAddress('150 E Sonterra Blvd 200B San Antonio, TX 78258')).toEqual({
-      street: '150 E Sonterra Blvd 200B San Antonio',
+    expect(splitAddress('150 E Sonmere Blvd 200B San Antonio, TX 78258')).toEqual({
+      street: '150 E Sonmere Blvd 200B San Antonio',
       city: null,
     })
     expect(splitAddress('4110 N Main St, Taylor, TX 76574')).toEqual({ street: '4110 N Main St', city: 'Taylor' })
@@ -22,38 +22,38 @@ describe('splitAddress', () => {
   })
 
   it('handles trailing zip without state and addresses with no city', () => {
-    expect(splitAddress('416 Springtown Way 78666')).toEqual({ street: '416 Springtown Way', city: null })
+    expect(splitAddress('416 Stonewick Way 78666')).toEqual({ street: '416 Stonewick Way', city: null })
     expect(splitAddress('900 Broadway')).toEqual({ street: '900 Broadway', city: null })
   })
 })
 
 describe('normalizeAddressKey', () => {
   it('is case/whitespace-insensitive but never fuzzy', () => {
-    expect(normalizeAddressKey('150 E Sonterra  Blvd 200B, San Antonio')).toBe(
-      normalizeAddressKey('150 e sonterra blvd 200b, san antonio'),
+    expect(normalizeAddressKey('150 E Sonmere  Blvd 200B, San Antonio')).toBe(
+      normalizeAddressKey('150 e sonmere blvd 200b, san antonio'),
     )
-    expect(normalizeAddressKey('150 E Sonterra Blvd 200B')).not.toBe(normalizeAddressKey('150 E Sonterra Blvd 200A'))
+    expect(normalizeAddressKey('150 E Sonmere Blvd 200B')).not.toBe(normalizeAddressKey('150 E Sonmere Blvd 200A'))
   })
 
-  it('merges comma/zip/state-typo variants of one address (the Springtown case)', () => {
-    const a = normalizeAddressKey('415 Springtown Way San Marcos, TX 78666')
-    expect(normalizeAddressKey('415 Springtown Way, San Marcos, TX 7866')).toBe(a)
-    expect(normalizeAddressKey('415 Springtown Way, San Marcos')).toBe(a)
-    expect(normalizeAddressKey('Hospital-415 Springtown Way San Marcos, TX')).not.toBe(a)
+  it('merges comma/zip/state-typo variants of one address (the Stonewick case)', () => {
+    const a = normalizeAddressKey('415 Stonewick Way San Marcos, TX 78666')
+    expect(normalizeAddressKey('415 Stonewick Way, San Marcos, TX 7866')).toBe(a)
+    expect(normalizeAddressKey('415 Stonewick Way, San Marcos')).toBe(a)
+    expect(normalizeAddressKey('Hospital-415 Stonewick Way San Marcos, TX')).not.toBe(a)
   })
 })
 
 describe('buildPortalProperties', () => {
   it('collapses same-address jobs to one row backed by the newest job', () => {
     const props = buildPortalProperties([
-      job({ id: 'a', hcp_number: '789', job_address: '150 E Sonterra Blvd 200B San Antonio, TX 78258' }),
-      job({ id: 'b', hcp_number: '915', job_address: '150 E Sonterra Blvd 200B  San Antonio, TX 78258' }),
-      job({ id: 'c', hcp_number: '880', job_address: '150 e sonterra blvd 200b san antonio, tx 78258' }),
-      job({ id: 'd', hcp_number: '963', job_address: '415 Springtown Way, San Marcos, TX 78666' }),
+      job({ id: 'a', hcp_number: '789', job_address: '150 E Sonmere Blvd 200B San Antonio, TX 78258' }),
+      job({ id: 'b', hcp_number: '915', job_address: '150 E Sonmere Blvd 200B  San Antonio, TX 78258' }),
+      job({ id: 'c', hcp_number: '880', job_address: '150 e sonmere blvd 200b san antonio, tx 78258' }),
+      job({ id: 'd', hcp_number: '963', job_address: '415 Stonewick Way, San Marcos, TX 78666' }),
     ])
     expect(props).toHaveLength(2)
-    expect(props[0]).toMatchObject({ jobId: 'd', street: '415 Springtown Way', city: 'San Marcos' })
-    expect(props[1]).toMatchObject({ jobId: 'b' }) // 915 is the newest Sonterra job
+    expect(props[0]).toMatchObject({ jobId: 'd', street: '415 Stonewick Way', city: 'San Marcos' })
+    expect(props[1]).toMatchObject({ jobId: 'b' }) // 915 is the newest Sonmere job
   })
 
   it('drops paid jobs and jobs without an address', () => {

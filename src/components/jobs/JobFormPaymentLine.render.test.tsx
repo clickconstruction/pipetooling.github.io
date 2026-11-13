@@ -33,7 +33,7 @@ function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
 const billA = { id: 'inv-a', status: 'billed', amount: 26800, sent_to_customer_at: '2026-07-15T12:00:00Z' } as unknown as JobsLedgerInvoiceRow
 const stripeBill = { id: 'inv-s', status: 'billed', amount: 1500, sent_to_customer_at: '2026-09-21T12:00:00Z', stripe_invoice_id: 'in_1', external_send_channel: 'stripe' } as unknown as JobsLedgerInvoiceRow
 const job = (invoices: JobsLedgerInvoiceRow[]) => ({ id: 'job1', invoices }) as unknown as JobWithDetails
-const bank: MercuryDepositFacts = { postedYmd: '2026-09-14', counterparty: 'Loberg Contracting', kind: 'checkDeposit', status: 'sent', failureReason: null }
+const bank: MercuryDepositFacts = { postedYmd: '2026-09-14', counterparty: 'Lowbeck Contracting', kind: 'checkDeposit', status: 'sent', failureReason: null }
 
 function actions(over: Partial<PaymentLineActions> = {}): PaymentLineActions {
   return {
@@ -101,7 +101,7 @@ describe('JobFormPaymentLine — a bank deposit', () => {
     const line = screen.getByTestId('payment-line')
     expect(line.getAttribute('data-source')).toBe('bank')
     expect(within(line).getByLabelText('Payment amount 11,700.00 dollars').textContent).toBe('$11,700.00')
-    expect(within(line).getByText(/Sep 14 · check from Loberg Contracting/)).toBeTruthy()
+    expect(within(line).getByText(/Sep 14 · check from Lowbeck Contracting/)).toBeTruthy()
     expect(within(line).getByText('· 61 d')).toBeTruthy()
     expect(line.textContent).not.toContain('4ed')
     expect(within(line).queryByLabelText('Payment amount')).toBeNull()
@@ -271,12 +271,12 @@ describe('JobFormPaymentLine — an in-kind row (v2.6816)', () => {
 describe('JobFormPaymentLine — three cells, so a long line wraps inside its words (v2.4300)', () => {
   it('the line is amount · one middle cell (words, chips, buttons) · ⋯, and nothing else', () => {
     const row = paymentRow({ amount: 500, invoice_id: null, paid_on: '2026-09-22', mercury_transaction_id: 'mt1' })
-    renderLine(row, { bankFacts: { mt1: { ...bank, counterparty: 'Lober’s Construction Co', status: 'failed', failureReason: 'Insufficient funds' } } })
+    renderLine(row, { bankFacts: { mt1: { ...bank, counterparty: 'Lowbe’s Construction Co', status: 'failed', failureReason: 'Insufficient funds' } } })
     const main = screen.getByTestId('payment-line').firstElementChild as HTMLElement
     expect(main.className).toBe('jobPaymentLineMain')
     expect([...main.children].map((c) => c.className)).toEqual(['amt', 'mid', 'jobPaymentLineMenu'])
     const mid = main.children[1] as HTMLElement
-    expect(mid.querySelector('.words')?.textContent).toContain('check from Lober’s Construction Co')
+    expect(mid.querySelector('.words')?.textContent).toContain('check from Lowbe’s Construction Co')
     expect(within(mid).getByText('no bill picked')).toBeTruthy()
     expect(within(mid).getByTestId('edit-job-payment-bank-returned-p1')).toBeTruthy()
     expect(within(mid).getByRole('button', { name: 'Unlink bank deposit and remove this payment line' })).toBeTruthy()

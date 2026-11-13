@@ -53,7 +53,7 @@ describe('UncollectibleListSettingsBlock (punch list #94, v2.4795)', () => {
         payments_made: 0,
         uncollectible_at: '2026-10-07T19:00:00Z',
         uncollectible_reason: 'He does not have the money and owes us for advances.',
-        customer: { name: 'Bryan Herber' },
+        customer: { name: 'Bryan Helbrow' },
       },
     ]
     const { container } = renderWithProviders(folded())

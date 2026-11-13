@@ -18,7 +18,7 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-00000000a001', 'Bed Plumbing');
 INSERT INTO public.bids (id, created_by, service_type_id, project_name, materials_model)
-VALUES ('00000000-0000-0000-0000-00000000b1d1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000a001', 'SpaceX BA', 'rough');
+VALUES ('00000000-0000-0000-0000-00000000b1d1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000a001', 'SkyLab BA', 'rough');
 INSERT INTO public.bids_count_rows (id, bid_id, fixture, count, sequence_order, unit) VALUES
   ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-00000000b1d1', 'ft of 3/4IN WATER', 1489.04, 1, 'ft'),
   ('00000000-0000-0000-0000-00000000c002', '00000000-0000-0000-0000-00000000b1d1', 'EWC-1', 5, 2, 'ea');
@@ -52,15 +52,15 @@ SET LOCAL ROLE authenticated;
 SELECT cst.as_user('00000000-0000-0000-0000-0000000000e1');
 -- Taunya's project came first: an explicit earlier day, since both inserts share this transaction's now().
 INSERT INTO public.bid_count_sources (id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at)
-VALUES ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'SpaceX BA', 'all', '00000000-0000-0000-0000-0000000000e1', now() - interval '4 days', now() - interval '4 days');
+VALUES ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'SkyLab BA', 'all', '00000000-0000-0000-0000-0000000000e1', now() - interval '4 days', now() - interval '4 days');
 INSERT INTO public.bid_count_sources (id, bid_id, link, token, project_name, scope, imported_by)
-VALUES ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=11111111-2222-3333-4444-555555555555', '11111111-2222-3333-4444-555555555555', 'SpaceX BA', 'all', '00000000-0000-0000-0000-0000000000e1');
+VALUES ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=11111111-2222-3333-4444-555555555555', '11111111-2222-3333-4444-555555555555', 'SkyLab BA', 'all', '00000000-0000-0000-0000-0000000000e1');
 UPDATE public.bids_count_rows SET count = 1827.45, source_shares = '{"00000000-0000-0000-0000-00000000d001": 1489.04, "00000000-0000-0000-0000-00000000d002": 338.41}'::jsonb
 WHERE id = '00000000-0000-0000-0000-00000000c001';
 UPDATE public.bids_count_rows SET source_shares = '{"00000000-0000-0000-0000-00000000d001": 5}'::jsonb WHERE id = '00000000-0000-0000-0000-00000000c002';
 SELECT cst.same('the estimator reads both projects, first import first',
   (SELECT string_agg(project_name || ' · ' || token, ' | ' ORDER BY first_imported_at, token) FROM public.bid_count_sources WHERE bid_id = '00000000-0000-0000-0000-00000000b1d1'),
-  'SpaceX BA · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee | SpaceX BA · 11111111-2222-3333-4444-555555555555');
+  'SkyLab BA · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee | SkyLab BA · 11111111-2222-3333-4444-555555555555');
 SELECT cst.same('a row both counted holds two shares that sum to its count',
   (SELECT (source_shares->>'00000000-0000-0000-0000-00000000d001')::numeric + (source_shares->>'00000000-0000-0000-0000-00000000d002')::numeric = count FROM public.bids_count_rows WHERE id = '00000000-0000-0000-0000-00000000c001')::text,
   'true');

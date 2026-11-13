@@ -22,8 +22,8 @@ describe('helpGuideMarkdownToSafeHtml (DOM sanitizer)', () => {
   })
 
   it('v2.4868: an example email address prints as text, not as a link that does nothing', () => {
-    const out = helpGuideMarkdownToSafeHtml('Bills go to ap@knight.com and taunya@clickplumbing.com.')
-    expect(out).toContain('ap@knight.com')
+    const out = helpGuideMarkdownToSafeHtml('Bills go to ap@kestrin.com and taunya@clickplumbing.com.')
+    expect(out).toContain('ap@kestrin.com')
     expect(out).not.toContain('<a')
   })
 

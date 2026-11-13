@@ -74,6 +74,8 @@ function fixture() {
     job_schedule_blocks: [{ job_id: 'j2', assignee_user_id: LOGIN }],
     jobs_ledger: [{ id: 'j1', job_name: 'Lodge rough-in', development_id: 'dv1' }, { id: 'j2', job_name: 'Clubhouse', development_id: 'dv1' }],
     developments: [{ id: 'dv1', name: 'Quail Ridge' }],
+    // Punch list #315: the correction links, a source of their own; this person has none (devMcpAmendments.test.ts has the linked file).
+    person_file_amendments: [] as Record<string, unknown>[],
   }
 }
 const history = { dev_history_read: { count: 2, lines: [{ at: '2026-10-07T10:00:00Z', body: 'Lift stations in.\nMore.', kind: 'note' }, { at: '2026-09-20T10:00:00Z', body: 'The funeral weekend.', kind: 'note' }] } }
@@ -133,7 +135,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')

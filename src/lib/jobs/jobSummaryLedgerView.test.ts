@@ -381,9 +381,9 @@ describe('cut by (v2.2820)', () => {
   })
   const rows = enrichJobSummaryRows({
     rows: [
-      mk('a', { gc_customer_id: 'g1', gcCustomer: { name: 'Knight' }, master_user_id: 'u1', last_bill_date: '2026-08-03' }, 1000, 200),
-      mk('b', { gc_customer_id: 'g1', gcCustomer: { name: 'Knight' }, master_user_id: 'u2', last_bill_date: '2026-08-20' }, 500, 100),
-      mk('c', { gc_customer_id: 'g2', gcCustomer: { name: 'RMC' }, master_user_id: 'u1', last_bill_date: '2026-07-30' }, 2000, 1900),
+      mk('a', { gc_customer_id: 'g1', gcCustomer: { name: 'Kestrin' }, master_user_id: 'u1', last_bill_date: '2026-08-03' }, 1000, 200),
+      mk('b', { gc_customer_id: 'g1', gcCustomer: { name: 'Kestrin' }, master_user_id: 'u2', last_bill_date: '2026-08-20' }, 500, 100),
+      mk('c', { gc_customer_id: 'g2', gcCustomer: { name: 'RLC' }, master_user_id: 'u1', last_bill_date: '2026-07-30' }, 2000, 1900),
       mk('d', {}, 300, 0),
     ],
     reportPctByJobId: new Map(),
@@ -392,7 +392,7 @@ describe('cut by (v2.2820)', () => {
   })
 
   it('names the group per cut, with a "none" bucket, and resolves techs through the users map', () => {
-    expect(jobSummaryCutKey(rows[0]!.row.job, 'gc')).toEqual({ key: 'g1', label: 'Knight' })
+    expect(jobSummaryCutKey(rows[0]!.row.job, 'gc')).toEqual({ key: 'g1', label: 'Kestrin' })
     expect(jobSummaryCutKey(rows[3]!.row.job, 'gc')).toEqual({ key: '__none', label: 'No GC (direct)' })
     expect(jobSummaryCutKey(rows[0]!.row.job, 'tech', { userNameById: new Map([['u1', 'Abraham']]) })).toEqual({ key: 'u1', label: 'Abraham' })
     expect(jobSummaryCutKey(rows[0]!.row.job, 'billMonth')).toEqual({ key: '2026-08', label: 'Aug 2026' })
@@ -405,8 +405,8 @@ describe('cut by (v2.2820)', () => {
     const byGc = groupJobSummaryRows(rows, 'gc')
     // no ledger → true profit unknown everywhere → ranked by revenue
     expect(byGc.map((g) => [g.label, g.rows.length, g.totals.revenueUsd])).toEqual([
-      ['RMC', 1, 2000],
-      ['Knight', 2, 1500],
+      ['RLC', 1, 2000],
+      ['Kestrin', 2, 1500],
       ['No GC (direct)', 1, 300],
     ])
     expect(byGc[1]!.totals.grossUsd).toBe(1200)

@@ -62,8 +62,8 @@ export function startBidName(line: { subject?: string | null }, invitation: { pr
 
 /**
  * The one line *Put it on a bid* writes on the bid's log: what came in, from whom and on what day, so the bid's history
- * says it reached us by email too. "Invitation to bid came in by email from Glenn Geling, Oct 22." A plain email names
- * its subject: "An email came in from Glenn Geling, Oct 22: Re: fixture schedule."
+ * says it reached us by email too. "Invitation to bid came in by email from Glenn Gelwin, Oct 22." A plain email names
+ * its subject: "An email came in from Glenn Gelwin, Oct 22: Re: fixture schedule."
  */
 export function putOnBidLogLine(line: { who: string; at: string; subject?: string | null }, kind: InvitationKind | null): string {
   const who = line.who.trim() || 'someone'

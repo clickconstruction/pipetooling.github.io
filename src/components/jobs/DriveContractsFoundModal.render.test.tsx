@@ -32,12 +32,12 @@ vi.mock('../../lib/jobs/jobContractFileWrite', () => ({
 }))
 
 function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): JobWithDetails {
-  return { click_number: '', job_name: 'Mission Hills', job_address: '2100 Independence Dr, New Braunfels, TX', customer_name: 'TF Harper', revenue: 123600, gcCustomer: null, ...p } as unknown as JobWithDetails
+  return { click_number: '', job_name: 'Mission Flats', job_address: '2100 Independence Dr, New Braunfels, TX', customer_name: 'TF Halden', revenue: 123600, gcCustomer: null, ...p } as unknown as JobWithDetails
 }
 const JOBS = [
   job({ id: 'j523', hcp_number: '523' }),
-  job({ id: 'j651', hcp_number: '651', job_name: 'Dudley Mason', job_address: '233 Palomino Trail, Natalia, TX', customer_name: 'RMC- Dudley Mason', revenue: 21950 }),
-  job({ id: 'j683', hcp_number: '683', job_name: 'Job', job_address: '15054 State Hwy 71, Bee Cave, TX', customer_name: 'The Learning Experience', revenue: null }),
+  job({ id: 'j651', hcp_number: '651', job_name: 'Dunmere Mallin', job_address: '233 Palomino Trail, Natalia, TX', customer_name: 'RLC- Dunmere Mallin', revenue: 21950 }),
+  job({ id: 'j683', hcp_number: '683', job_name: 'Job', job_address: '15054 State Hwy 71, Bee Cave, TX', customer_name: 'The Reading Corner', revenue: null }),
 ]
 
 describe('DriveContractsFoundModal', () => {
@@ -52,8 +52,8 @@ describe('DriveContractsFoundModal', () => {
         scanned_at: new Date(Date.now() - 5 * 60_000).toISOString(),
         cached: true,
         files: [
-          { id: 'f1', name: 'TF Harper – Mission Hills – Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/f1/view', size: 100, folderId: 'a', folderName: '2100 Independence Dr' },
-          { id: 'f2', name: 'Palomino Trail service agreement', mimeType: 'application/vnd.google-apps.document', modifiedTime: '2026-08-03T15:00:00.000Z', webViewLink: 'https://docs.google.com/document/d/f2', size: null, folderId: 'b', folderName: 'Dudley Mason – Palomino' },
+          { id: 'f1', name: 'TF Halden – Mission Flats – Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/f1/view', size: 100, folderId: 'a', folderName: '2100 Independence Dr' },
+          { id: 'f2', name: 'Palomino Trail service agreement', mimeType: 'application/vnd.google-apps.document', modifiedTime: '2026-08-03T15:00:00.000Z', webViewLink: 'https://docs.google.com/document/d/f2', size: null, folderId: 'b', folderName: 'Dunmere Mallin – Palomino' },
           { id: 'f3', name: 'Plans A-1.pdf', mimeType: 'application/pdf', modifiedTime: null, webViewLink: 'https://drive.google.com/file/d/f3/view', size: 1, folderId: 'c', folderName: 'TLE Bee Cave' },
         ],
       },
@@ -69,7 +69,7 @@ describe('DriveContractsFoundModal', () => {
     fireEvent.click(screen.getByTestId('drive-file-confident'))
     await waitFor(() => expect(onFiled).toHaveBeenCalledWith(['j523']))
     expect(fileSpy).toHaveBeenCalledTimes(1)
-    expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobId: 'j523', link: 'https://drive.google.com/file/d/f1/view', signedOn: '2026-06-14', signerName: 'TF Harper' })
+    expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobId: 'j523', link: 'https://drive.google.com/file/d/f1/view', signedOn: '2026-06-14', signerName: 'TF Halden' })
     await waitFor(() => expect(screen.getByTestId('drive-summary').textContent).toContain('1 filed'))
     // The confident group is empty now: its empty state offers Check, the segment that still holds a row (#184).
     const empty = document.querySelector('[data-empty-state]') as HTMLElement

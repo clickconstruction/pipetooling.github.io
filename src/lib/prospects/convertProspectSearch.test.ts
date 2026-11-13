@@ -21,7 +21,7 @@ function prospect(overrides: Partial<ConvertSearchProspect> & { id: string }): C
 describe('searchConvertProspects', () => {
   const rows = [
     prospect({ id: 'sub', company_name: 'Big Drywall Co' }),
-    prospect({ id: 'pre', company_name: 'Drymalla Construction' }),
+    prospect({ id: 'pre', company_name: 'Drymoor Construction' }),
     prospect({ id: 'contact', company_name: 'Acme', contact_name: 'Dryden Smith' }),
     prospect({ id: 'conv', company_name: 'Drylock Inc', prospect_fit_status: 'converted' }),
     prospect({ id: 'phone', company_name: 'Beta', phone_number: '979-732-5731' }),

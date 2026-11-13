@@ -7,8 +7,8 @@ const base: SignedAgreementEmailInput = {
   estimateNumber: 412,
   title: 'Hunter Road Sound Studio',
   projectAddress: '2530 Hunter Rd, San Marcos, TX',
-  customerName: 'Knight Contracting',
-  signerName: 'Mark Knight',
+  customerName: 'Kestrin Contracting',
+  signerName: 'Mark Kestrin',
   optionName: 'To Plans',
   totalCents: 5_634_300,
   signedAtLabel: 'Sept 4, 2026 · 9:12 AM',
@@ -19,7 +19,7 @@ const base: SignedAgreementEmailInput = {
 
 describe('signedAgreementEmail (v2.2743)', () => {
   it('subject leads with who signed and how much; the work only when someone named it', () => {
-    expect(sharedBuild(base).subject).toBe('Knight Contracting signed $56,343 · Hunter Road Sound Studio')
+    expect(sharedBuild(base).subject).toBe('Kestrin Contracting signed $56,343 · Hunter Road Sound Studio')
     const est = { ...base, kind: 'estimate' as const, optionName: null, customerName: null, signerName: 'Dana Ruiz', totalCents: 425_000 }
     expect(sharedBuild({ ...est, title: 'Second-floor rough-in' }).subject).toBe('Dana Ruiz signed $4,250 · Second-floor rough-in')
     // The app's default title repeats the signer — left out of the subject, the heading and the text.

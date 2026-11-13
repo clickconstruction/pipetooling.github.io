@@ -22,7 +22,7 @@ You click the **globe icon** next to any customer's name. The globe is on the **
 
 Some customers have **never** been given a portal. For them, the window opens to **No portal link yet**. Just looking creates nothing. You click {{button:blue|Create their link}} when you're ready. Their page goes live, and a "Portal link created" toast confirms it. The window switches to the address view below. Everyone who already has a portal opens straight to it.
 
-The top of the window is their **portal address**, something like `my.clickplumbing.com/knight-contracting-x7kq`:
+The top of the window is their **portal address**, something like `my.clickplumbing.com/kestrin-contracting-x7kq`:
 
 - The address is **editable until it's first shared**. The address starts as their name **plus a short random tail**. A bare name alone would not be safe. Anyone who knows our short address and who we work for could open the statement. The 🎲 beside the address rolls a new tail. You can type anything short and recognizable instead, using letters, numbers and dashes. A meter tells you if it's ⚠ easy or ✓ hard to guess, **and why**. A plain company name is graded easy on purpose: *it's just their name*. The meter never blocks you.
 - {{button:blue|Copy link}} copies the address for a text or email, and **locks** it. Printed and texted copies should never go stale. The link is the key, with no password needed.

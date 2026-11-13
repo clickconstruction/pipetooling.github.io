@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildPipelineBurnAlert, burnProjectedMarginForSort, projectJobSummaryBurn } from './jobSummaryBurn'
 
-const heron = { contractUsd: 48700, spentUsd: 19860, pct: 62, finished: false, fieldDays: 20, overheadUsd: 1590, targetMarginPct: 40 }
+const hadlow = { contractUsd: 48700, spentUsd: 19860, pct: 62, finished: false, fieldDays: 20, overheadUsd: 1590, targetMarginPct: 40 }
 
 describe('projectJobSummaryBurn', () => {
   it('the worked example: 68% of a 40%-target budget at 62% done is hot, with the overhead only in the true margin', () => {
-    const b = projectJobSummaryBurn(heron)
+    const b = projectJobSummaryBurn(hadlow)
     expect(b.budget).toMatchObject({ usd: 29220, source: 'target_margin', targetMarginPct: 40 })
     expect(b.targetMarginUsd).toBeCloseTo(19480, 5)
     expect(b.spentPct).toBeCloseTo(67.97, 1)
@@ -20,20 +20,20 @@ describe('projectJobSummaryBurn', () => {
   })
 
   it('reads ok when progress keeps up, early under 3 field days or 10 %, and no_budget without a price', () => {
-    expect(projectJobSummaryBurn({ ...heron, pct: 75 }).status).toBe('ok')
-    expect(projectJobSummaryBurn({ ...heron, fieldDays: 2 }).status).toBe('early')
-    expect(projectJobSummaryBurn({ ...heron, pct: 8 }).status).toBe('early')
-    expect(projectJobSummaryBurn({ ...heron, pct: null }).status).toBe('early')
+    expect(projectJobSummaryBurn({ ...hadlow, pct: 75 }).status).toBe('ok')
+    expect(projectJobSummaryBurn({ ...hadlow, fieldDays: 2 }).status).toBe('early')
+    expect(projectJobSummaryBurn({ ...hadlow, pct: 8 }).status).toBe('early')
+    expect(projectJobSummaryBurn({ ...hadlow, pct: null }).status).toBe('early')
     // Unknown field days (no ledger yet): the 3-day rule is skipped, the % rule still applies.
-    expect(projectJobSummaryBurn({ ...heron, fieldDays: null }).status).toBe('hot')
-    expect(projectJobSummaryBurn({ ...heron, fieldDays: null }).projectedTrueMarginUsd).toBeNull()
-    const nb = projectJobSummaryBurn({ ...heron, contractUsd: 0 })
+    expect(projectJobSummaryBurn({ ...hadlow, fieldDays: null }).status).toBe('hot')
+    expect(projectJobSummaryBurn({ ...hadlow, fieldDays: null }).projectedTrueMarginUsd).toBeNull()
+    const nb = projectJobSummaryBurn({ ...hadlow, contractUsd: 0 })
     expect(nb.status).toBe('no_budget')
     expect(nb.eacUsd).toBeNull()
   })
 
   it('a finished job is done: the projection is what happened', () => {
-    const b = projectJobSummaryBurn({ ...heron, pct: 100, finished: true, spentUsd: 31008, contractUsd: 33500, overheadUsd: 3874 })
+    const b = projectJobSummaryBurn({ ...hadlow, pct: 100, finished: true, spentUsd: 31008, contractUsd: 33500, overheadUsd: 3874 })
     expect(b.status).toBe('done')
     expect(b.eacUsd).toBe(31008)
     expect(b.projectedMarginUsd).toBeCloseTo(2492, 5)
@@ -42,12 +42,12 @@ describe('projectJobSummaryBurn', () => {
   })
 
   it('falls back to the 35 % default when the Target chip is off', () => {
-    expect(projectJobSummaryBurn({ ...heron, targetMarginPct: 0 }).budget).toMatchObject({ usd: 48700 * 0.65, targetMarginPct: 35 })
+    expect(projectJobSummaryBurn({ ...hadlow, targetMarginPct: 0 }).budget).toMatchObject({ usd: 48700 * 0.65, targetMarginPct: 35 })
   })
 
   it('sorts on the true margin when known, else the direct margin', () => {
-    expect(burnProjectedMarginForSort(projectJobSummaryBurn(heron))).toBeCloseTo(projectJobSummaryBurn(heron).projectedTrueMarginUsd!, 5)
-    expect(burnProjectedMarginForSort(projectJobSummaryBurn({ ...heron, overheadUsd: null }))).toBeCloseTo(16667.74, 1)
+    expect(burnProjectedMarginForSort(projectJobSummaryBurn(hadlow))).toBeCloseTo(projectJobSummaryBurn(hadlow).projectedTrueMarginUsd!, 5)
+    expect(burnProjectedMarginForSort(projectJobSummaryBurn({ ...hadlow, overheadUsd: null }))).toBeCloseTo(16667.74, 1)
     expect(burnProjectedMarginForSort(null)).toBeNull()
   })
 })
@@ -55,10 +55,10 @@ describe('projectJobSummaryBurn', () => {
 describe('buildPipelineBurnAlert', () => {
   it('collects hot unfinished jobs, sums the shortfall against the target margin, worst three first', () => {
     const rows = [
-      { jobId: 'a', label: 'J927 Mike Holub', burn: projectJobSummaryBurn({ contractUsd: 12400, spentUsd: 9880, pct: 70, finished: false, fieldDays: 8, overheadUsd: null, targetMarginPct: 40 }) },
-      { jobId: 'b', label: 'J931 Heron', burn: projectJobSummaryBurn(heron) },
-      { jobId: 'c', label: 'J650 done', burn: projectJobSummaryBurn({ ...heron, pct: 100, finished: true }) },
-      { jobId: 'd', label: 'J1007 fine', burn: projectJobSummaryBurn({ ...heron, pct: 80 }) },
+      { jobId: 'a', label: 'J927 Mike Holmby', burn: projectJobSummaryBurn({ contractUsd: 12400, spentUsd: 9880, pct: 70, finished: false, fieldDays: 8, overheadUsd: null, targetMarginPct: 40 }) },
+      { jobId: 'b', label: 'J931 Hadlow', burn: projectJobSummaryBurn(hadlow) },
+      { jobId: 'c', label: 'J650 done', burn: projectJobSummaryBurn({ ...hadlow, pct: 100, finished: true }) },
+      { jobId: 'd', label: 'J1007 fine', burn: projectJobSummaryBurn({ ...hadlow, pct: 80 }) },
       { jobId: 'e', label: 'no burn', burn: null },
     ]
     const alert = buildPipelineBurnAlert(rows)!
@@ -70,25 +70,25 @@ describe('buildPipelineBurnAlert', () => {
     expect(alert.marginAtRiskUsd).toBeCloseTo(alert.worst[0]!.atRiskUsd + alert.worst[1]!.atRiskUsd, 5)
   })
   it('is null when nothing is hot', () => {
-    expect(buildPipelineBurnAlert([{ jobId: 'd', label: 'fine', burn: projectJobSummaryBurn({ ...heron, pct: 80 }) }])).toBeNull()
+    expect(buildPipelineBurnAlert([{ jobId: 'd', label: 'fine', burn: projectJobSummaryBurn({ ...hadlow, pct: 80 }) }])).toBeNull()
     expect(buildPipelineBurnAlert([])).toBeNull()
   })
 })
 
 describe('the budget footing (v2.3300)', () => {
   it('a bid or typed footing replaces the assumed budget and is named on the burn; none = assumed', () => {
-    const onBid = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 31_000, source: 'bid' } })
+    const onBid = projectJobSummaryBurn({ ...hadlow, budgetFooting: { usd: 31_000, source: 'bid' } })
     expect(onBid.footing).toBe('bid')
     expect(onBid.budget).toMatchObject({ usd: 31_000, source: 'bid_estimate' })
     expect(onBid.spentPct).toBeCloseTo((19_860 / 31_000) * 100, 3)
-    const typed = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 25_000, source: 'typed' } })
+    const typed = projectJobSummaryBurn({ ...hadlow, budgetFooting: { usd: 25_000, source: 'typed' } })
     expect(typed.footing).toBe('typed')
-    expect(projectJobSummaryBurn(heron).footing).toBe('assumed')
-    expect(projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 0, source: 'bid' } }).footing).toBe('assumed')
+    expect(projectJobSummaryBurn(hadlow).footing).toBe('assumed')
+    expect(projectJobSummaryBurn({ ...hadlow, budgetFooting: { usd: 0, source: 'bid' } }).footing).toBe('assumed')
   })
   it('the Pipeline alert carries each hot job\'s glyph and counts the ones on an assumption', () => {
-    const hotAssumed = projectJobSummaryBurn(heron)
-    const hotBid = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 25_000, source: 'bid' } })
+    const hotAssumed = projectJobSummaryBurn(hadlow)
+    const hotBid = projectJobSummaryBurn({ ...hadlow, budgetFooting: { usd: 25_000, source: 'bid' } })
     const alert = buildPipelineBurnAlert([
       { jobId: 'a', label: 'J1', burn: hotAssumed },
       { jobId: 'b', label: 'J2', burn: hotBid },

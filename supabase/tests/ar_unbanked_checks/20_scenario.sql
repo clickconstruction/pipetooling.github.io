@@ -19,21 +19,21 @@ INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000000a1', 'assistant@bed.test', 'Bed Assistant', 'assistant'),
   ('00000000-0000-0000-0000-0000000000a2', 'sub@bed.test', 'Bed Sub', 'subcontractor');
 INSERT INTO public.customers (id, name) VALUES
-  ('00000000-0000-0000-0000-0000000000c1', 'DRF'),
+  ('00000000-0000-0000-0000-0000000000c1', 'DLF'),
   ('00000000-0000-0000-0000-0000000000c2', 'Owner Person'),
-  ('00000000-0000-0000-0000-0000000000c3', 'Heron Construction');
+  ('00000000-0000-0000-0000-0000000000c3', 'Hadlow Construction');
 INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, gc_customer_id, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000a0001', '777', 'DRF pool house', 'DRF', '00000000-0000-0000-0000-0000000000c1', NULL, 'customer', 3000, 3000, 'paid'),
-  ('00000000-0000-0000-0000-0000000a0002', '1002', 'Terrell sewer', 'Owner Person', '00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000c3', 'gc', 4000, 2000, 'billed');
+  ('00000000-0000-0000-0000-0000000a0001', '777', 'DLF pool house', 'DLF', '00000000-0000-0000-0000-0000000000c1', NULL, 'customer', 3000, 3000, 'paid'),
+  ('00000000-0000-0000-0000-0000000a0002', '1002', 'Tarrow sewer', 'Owner Person', '00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000c3', 'gc', 4000, 2000, 'billed');
 
 -- The deposits: $300 two days before p5 (inside the window), $400 four days before p6 (outside it),
 -- $600 the day after p7 but used up by another payment, $700 the day after p8 but failed.
 INSERT INTO public.mercury_transactions (id, amount, kind, status, posted_at, counterparty_name) VALUES
   ('00000000-0000-0000-0000-0000000d0300', 300, 'checkDeposit', 'sent', '2026-09-08T15:00:00Z', 'Owner Person'),
   ('00000000-0000-0000-0000-0000000d0400', 400, 'checkDeposit', 'sent', '2026-09-06T15:00:00Z', 'Owner Person'),
-  ('00000000-0000-0000-0000-0000000d0600', 600, 'checkDeposit', 'sent', '2026-09-13T15:00:00Z', 'DRF'),
-  ('00000000-0000-0000-0000-0000000d0700', 700, 'checkDeposit', 'failed', '2026-09-13T15:00:00Z', 'Heron'),
-  ('00000000-0000-0000-0000-0000000d0250', 250, 'checkDeposit', 'sent', '2026-08-20T15:00:00Z', 'DRF');
+  ('00000000-0000-0000-0000-0000000d0600', 600, 'checkDeposit', 'sent', '2026-09-13T15:00:00Z', 'DLF'),
+  ('00000000-0000-0000-0000-0000000d0700', 700, 'checkDeposit', 'failed', '2026-09-13T15:00:00Z', 'Hadlow'),
+  ('00000000-0000-0000-0000-0000000d0250', 250, 'checkDeposit', 'sent', '2026-08-20T15:00:00Z', 'DLF');
 
 INSERT INTO public.jobs_ledger_payments (id, job_id, amount, paid_on, payment_type, reference_number, mercury_transaction_id) VALUES
   -- p1: a $1,000 check, and no unused check deposit that large since Aug 16 → a case.
@@ -101,7 +101,7 @@ SELECT bedt.ok('the case''s own id rides in mercury_transaction_id, the payment 
   JOIN public.ar_unbanked_check_cases c ON c.id = l.mercury_transaction_id
   WHERE c.payment_id = '00000000-0000-0000-0000-0000000000f7'));
 SELECT bedt.ok('the payer on a job the GC pays is the GC', (
-  SELECT l.counterparty_name = 'Heron Construction'
+  SELECT l.counterparty_name = 'Hadlow Construction'
   FROM public.list_ar_return_cases(false) l
   JOIN public.ar_unbanked_check_cases c ON c.id = l.mercury_transaction_id
   WHERE c.payment_id = '00000000-0000-0000-0000-0000000000f8'));

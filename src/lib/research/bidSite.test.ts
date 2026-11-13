@@ -160,7 +160,7 @@ describe('readBidAddress: not a street address', () => {
     expect(why('Loop 1604 at Oak Hollow')).toBe('no_number')
     expect(why('Mill Street, San Antonio, TX')).toBe('no_number')
     expect(why('1558 pams')).toBe('no_city')
-    expect(why('2401 MISSION HILL PARK RA#2401')).toBe('no_city')
+    expect(why('2401 MISSION FLAT PARK RA#2401')).toBe('no_city')
     expect(why('4120 San Antonio, TX')).toBe('no_street')
     expect(why('281 and Gerald Drive, San Antonio, TX')).toBe('crossing')
     expect(why('100 Sample St & Main, San Antonio, TX')).toBe('crossing')

@@ -49,7 +49,7 @@ beforeEach(() => {
 })
 
 const bid = (over: Partial<BidWithBuilder>): BidWithBuilder =>
-  ({ id: 'bid-1', bid_number: '482', project_name: 'Pondhill Building 2', customer_id: 'cust-1', service_type_id: 'st-p', ...over }) as BidWithBuilder
+  ({ id: 'bid-1', bid_number: '482', project_name: 'Penmoor Building 2', customer_id: 'cust-1', service_type_id: 'st-p', ...over }) as BidWithBuilder
 
 const DENIED = { message: 'permission denied', code: '42501' }
 
@@ -79,9 +79,9 @@ function setup(over: { editingBid?: BidWithBuilder | null; bids?: BidWithBuilder
 describe('useBidTradeSwitch — the siblings', () => {
   it('reads the customer’s other bids and groups the same project’s by trade', async () => {
     db.siblingRows = [
-      { id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'pondhill building 2 ' },
+      { id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'penmoor building 2 ' },
       { id: 'bid-x', bid_number: '484', service_type_id: 'st-e', project_name: 'Another job' },
-      { id: 'bid-h', bid_number: '485', service_type_id: 'st-h', project_name: 'Pondhill Building 2' },
+      { id: 'bid-h', bid_number: '485', service_type_id: 'st-h', project_name: 'Penmoor Building 2' },
     ]
     const { result } = setup()
     expect(result.current.siblings).toEqual({})
@@ -106,7 +106,7 @@ describe('useBidTradeSwitch — the siblings', () => {
   })
 
   it('a failed read shows no siblings', async () => {
-    db.siblingRows = [{ id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'Pondhill Building 2' }]
+    db.siblingRows = [{ id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'Penmoor Building 2' }]
     const { result } = setup()
     await act(async () => { await result.current.refreshSiblings() })
     expect(Object.keys(result.current.siblings)).toEqual(['st-e'])
@@ -116,7 +116,7 @@ describe('useBidTradeSwitch — the siblings', () => {
   })
 
   it('clearSiblings forgets them', async () => {
-    db.siblingRows = [{ id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'Pondhill Building 2' }]
+    db.siblingRows = [{ id: 'bid-e', bid_number: '483', service_type_id: 'st-e', project_name: 'Penmoor Building 2' }]
     const { result } = setup()
     await act(async () => { await result.current.refreshSiblings() })
     act(() => result.current.clearSiblings())

@@ -54,13 +54,13 @@ The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's c
 A § 53.056 notice goes to the **owner of record** at a mailing address. The county appraisal roll already knows both. The appraisal roll is the county's list of who owns each property. So on **Jobs → Pipeline**, the Fix-ups strip shows {{chip:yellow|Owner of record to confirm · 35}}. It shows whenever an open GC job has no confirmed owner on its property record, with or without approved hours. Click it and the list looks every property up on the roll as it opens. It reads *Looking up 12 of 31…* meanwhile. The list is grouped by property and sorted by the first notice due. So one click covers every job at that address, now and later.
 
 :::example One row of the list
-**628 Terrell Rd, San Antonio** · J258 · J608 · RMC- Dudley Mason · Bexar {{chip:yellow|due Sep 15}}
-**Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima** · Mail to 704 Garraty Ct, San Antonio 78209 · Bexar Appraisal District · 2025 · *this parcel on Bexar CAD ↗* {{button:blue|Use}}
+**628 Tarrow Rd, San Antonio** · J258 · J608 · RLC- Dunmere Mallin · Bexar {{chip:yellow|due Sep 15}}
+**Rilvo Sorn Zelmar & Kestmere Quillan Fenna** · Mail to 704 Garwick Ct, San Antonio 78209 · Bexar Appraisal District · 2025 · *this parcel on Bexar CAD ↗* {{button:blue|Use}}
 :::
 
 - {{button:blue|Use}} saves the owner, mailing address, legal description and where they came from on the property record. It links every job at that address to it. It marks the owner **confirmed**. A value someone already typed is never overwritten. Use confirms it.
 - {{button:blue|Use all found}} in the footer does the whole pile in one click. It skips rows that read as a **public owner** on purpose. Press their own Use with your eyes open.
-- The chips say what the roll reads as. {{chip:red|public owner — bond claim, not a lien}} is a city, county, school district or the State. A mechanic's lien does not attach there. The remedy is a claim on the GC's payment bond. A payment bond is a bonding company's promise to pay the subs when the GC does not. {{chip:yellow|landlord · ATI Schertz is the tenant}} means the notice goes to the owner and the customer is copied. {{chip:red|likely homestead}} is an individual who gets mail at the property. A homestead lien needs a contract signed by both spouses and recorded before work starts. Confirm the exemption on the CAD page and talk to the attorney. CAD is the county appraisal district.
+- The chips say what the roll reads as. {{chip:red|public owner — bond claim, not a lien}} is a city, county, school district or the State. A mechanic's lien does not attach there. The remedy is a claim on the GC's payment bond. A payment bond is a bonding company's promise to pay the subs when the GC does not. {{chip:yellow|landlord · AXO Schertz is the tenant}} means the notice goes to the owner and the customer is copied. {{chip:red|likely homestead}} is an individual who gets mail at the property. A homestead lien needs a contract signed by both spouses and recorded before work starts. Confirm the exemption on the CAD page and talk to the attorney. CAD is the county appraisal district.
 - A row the roll cannot place reads *No parcel under the pin — paste the CAD page…*. It opens the property record's paste box right there. Open the district's page, select all, copy, paste, then {{button:blue|Save the owner}}.
 - A saved row turns green and stays for the sitting. The footer reads *k of N confirmed*. The chip's count falls as you go. The Lien desk's *Needs the owner* pile empties with it.
 
@@ -73,8 +73,8 @@ The roll lags sales and carries no exemptions. So the CAD link sits on every row
 **Earlier still, on the job itself.** You do not have to wait for the Fix-ups chip. Open a GC job, or a job whose customer is a builder. A builder is one that is the GC on other jobs. The **Property record** row on the Edit tab looks the site up by itself. It does so the moment the job has an address and no confirmed owner. Nobody is asked. The row says {{chip:blue|1 suggestion}} and the answer appears under it as a card. It is a suggestion until you save it, so it is not green:
 
 :::example The Property record row on a GC job
-**The appraisal roll's answer for 9703 Lenox Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
-*Owner of record, mails to* **Khan Umar & Bangash Shazmeena** · 3203 Spider Lily · San Antonio, TX 78258
+**The appraisal roll's answer for 9703 Linmor Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
+*Owner of record, mails to* **Karrow Ulric & Barrowby Shelmina** · 3203 Spider Lily · San Antonio, TX 78258
 *Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar
 {{button:blue|Save this owner}} *Not right? Paste the CAD page…*
 :::
@@ -90,7 +90,7 @@ The address is laid out the way the envelope will read. First the owner, then st
 
 The same answer meets you in two more places, so no notice is ever blocked on a missing owner:
 
-- **Bill Customer** is one. Billing a GC job is a last chance to catch a missing owner before the notice is due. When the job has no confirmed owner, the Send-to block shows one green line on every bill. It reads *Owner of record for 5498 Cibolo Valley Dr: Schertz Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* Then {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.
+- **Bill Customer** is one. Billing a GC job is a last chance to catch a missing owner before the notice is due. When the job has no confirmed owner, the Send-to block shows one green line on every bill. It reads *Owner of record for 5498 Cinder Valley Dr: Sample Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* Then {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.
 - **The Lien desk** is the other. An item in *Needs the owner* shows *Found at:* with the district and year, the chips, the CAD link and {{button:blue|Use this owner}}. {{button:outline|Find the owner ›}} stays as the fallback. Once Use this owner is pressed the row moves to *To draft* on its own.
 
 :::example Save owners from the appraisal roll automatically (Settings → Jobs, bills and liens, master and dev)

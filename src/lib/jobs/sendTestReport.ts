@@ -20,7 +20,7 @@ export type SendTestReportArgs = {
   bodyText: string
   payUrl: string | null
   amountLabel: string | null
-  /** "Done Right Foundation Repair" — for the activity line. */
+  /** "Dead Level Foundation Repair" — for the activity line. */
   recipientLabel: string | null
 }
 

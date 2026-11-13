@@ -23,7 +23,7 @@ Every place a win gets recorded offers the same door:
 - **Followup → Waiting to hear.** You tap **Won** on the bid you are chasing. The bid leaves the queue. A green **You won it** strip stays at the top with {{button:green|Open the job}}. The strip stays until you use it or dismiss it.
 
 :::example What comes over
-B398 · Take 5 Seguin goes to Southern Post. Tap Won, then Open the job: New Job opens as *Take 5 Seguin*, at the bid's address, with Southern Post as the GC/Builder and Bills go to set to the GC. The bid's Project Folder lands in Customer Files, the Job Plans link comes over, and the bid chip is set. Fill in the crew, press **Create Job**, and the job is born linked to the bid.
+B398 · Tune 5 Seguin goes to Southern Pine. Tap Won, then Open the job: New Job opens as *Tune 5 Seguin*, at the bid's address, with Southern Pine as the GC/Builder and Bills go to set to the GC. The bid's Project Folder lands in Customer Files, the Job Plans link comes over, and the bid chip is set. Fill in the crew, press **Create Job**, and the job is born linked to the bid.
 :::
 
 ## The price is offered, not assumed
@@ -36,7 +36,7 @@ What does **not** come over: the bid's own line items, schedule blocks, crew, da
 
 ## Or hand it to Dispatch
 
-Won it but not the one who sets up the crew? Beside {{button:green|Open the job}} there is a quieter {{button:outline|Ask Dispatch to open it}}. One press files a to-do in the **Dispatch inbox** with the bid attached. The to-do reads *Open the job for B398 · ZZ Test — won with Southern Post*. Dispatch's phones get the usual push, a phone notification. The bid then shows {{chip:yellow|Dispatch asked · by Wendi · 2 min ago}} where the button was. So nobody asks twice.
+Won it but not the one who sets up the crew? Beside {{button:green|Open the job}} there is a quieter {{button:outline|Ask Dispatch to open it}}. One press files a to-do in the **Dispatch inbox** with the bid attached. The to-do reads *Open the job for B398 · ZZ Test — won with Southern Pine*. Dispatch's phones get the usual push, a phone notification. The bid then shows {{chip:yellow|Dispatch asked · by Wendi · 2 min ago}} where the button was. So nobody asks twice.
 
 :::example What Dispatch sees
 On the Dashboard's Dispatch inbox (and Dispatch Mode → Inbox) the to-do carries one button: {{button:outline|Open the job}}. It opens New Job filled in from the bid exactly as it would from the bid itself — customer, address, links, the price question, and *which GC* on a multi-GC bid. Press **Create Job** and the to-do closes on its own: *J1007 opened from B398 · ZZ Test*, and you get the "Handled" push.
@@ -59,7 +59,7 @@ An estimator cannot open a job. Their Job block shows {{button:green|Send to Dis
 The Job block reads {{chip:yellow|Sent to Dispatch Oct 20 · waiting}}. Once Dispatch opens the job, it reads {{chip:green|J878 opened from this bid}}, with the money line under it.
 :::
 
-Dispatch's row shows the draft in one line, like *Wendi's draft: GC Southern Post · starts at $38,625.00 · wanted by Oct 30*. Its {{button:outline|Open the job}} opens New Job with the estimator's choices. New Job asks no GC question and no price question. The assistant adds the crew and the schedule. Then they press **Create Job**. Scheduling stays with the assistant.
+Dispatch's row shows the draft in one line, like *Wendi's draft: GC Southern Pine · starts at $38,625.00 · wanted by Oct 30*. Its {{button:outline|Open the job}} opens New Job with the estimator's choices. New Job asks no GC question and no price question. The assistant adds the crew and the schedule. Then they press **Create Job**. Scheduling stays with the assistant.
 
 ## The bid shows its job
 
@@ -85,7 +85,7 @@ A bid may be sent to more than one GC with no GC marked won yet. Then Open the j
 
 ## The submittals question
 
-After the contract and job-accounts questions may come a third one, about submittals. A submittal is the product paperwork the GC approves before anything is ordered. The question reads ***Submittals for 964 · Pondhill?***. It comes only when the bid has picked lines or a fixture schedule and no submittal yet. A bid priced only from the takeoff, with no fixture schedule, gets no question. Build its Rev 1 on the Submittals tab with **Choose from the takeoff**. See [build a submittal package](/help/build-a-submittal-package).
+After the contract and job-accounts questions may come a third one, about submittals. A submittal is the product paperwork the GC approves before anything is ordered. The question reads ***Submittals for 964 · Penmoor?***. It comes only when the bid has picked lines or a fixture schedule and no submittal yet. A bid priced only from the takeoff, with no fixture schedule, gets no question. Build its Rev 1 on the Submittals tab with **Choose from the takeoff**. See [build a submittal package](/help/build-a-submittal-package).
 
 Rev 1, the first version, is built from what Pricing already knows on the bid. Pricing knows the fixture schedule and the products from the supply houses you picked. Pricing also holds the reasons and lead times you gave at the pick. A lead time is how long a product takes to arrive. Each answer does something different:
 

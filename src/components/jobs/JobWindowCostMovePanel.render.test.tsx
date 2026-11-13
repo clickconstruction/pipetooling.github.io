@@ -29,7 +29,7 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   mercury_transaction_job_allocations: [
     { id: 'a1', amount: -84.1, note: null, mercury_transaction_id: TX, mercury_transactions: { id: TX, posted_at: '2026-09-10T15:00:00Z', counterparty_name: 'Shell', amount: -84.1, raw: { details: { debitCardInfo: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' } } }, mercury_category: 'Fuel' } },
   ],
-  supply_house_invoice_job_allocations: [{ invoice_id: INV, pct: 100, supply_house_invoices: { id: INV, invoice_number: '4471', invoice_date: '2026-10-08', amount: 507.8, is_paid: false, purchase_order_number: 'Gun Dog', supply_houses: { name: 'Reece' } } }],
+  supply_house_invoice_job_allocations: [{ invoice_id: INV, pct: 100, supply_house_invoices: { id: INV, invoice_number: '4471', invoice_date: '2026-10-08', amount: 507.8, is_paid: false, purchase_order_number: 'Gray Fox', supply_houses: { name: 'Reece' } } }],
   clock_sessions: [
     { id: SESSION, user_id: 'u1', work_date: '2026-10-26', clocked_in_at: '2026-10-26T13:00:00Z', clocked_out_at: '2026-10-26T22:30:00Z', quick_add_minutes: null, approved_at: '2026-10-27T00:00:00Z', rejected_at: null, bid_id: null, users: { name: 'Malachi' } },
     { id: '55555555-5555-4555-8555-555555555556', user_id: 'u1', work_date: '2026-10-27', clocked_in_at: '2026-10-27T13:00:00Z', clocked_out_at: '2026-10-27T14:00:00Z', quick_add_minutes: null, approved_at: null, rejected_at: '2026-10-28T00:00:00Z', bid_id: null, users: { name: 'Malachi' } },

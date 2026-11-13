@@ -3,10 +3,10 @@ import { suggestCustomerType } from './suggestCustomerType'
 
 describe('suggestCustomerType', () => {
   it('flags business words as commercial with the matched word', () => {
-    expect(suggestCustomerType('Loberg Contracting')).toEqual({ suggested: 'commercial', matchedWord: 'Contracting' })
+    expect(suggestCustomerType('Lowbeck Contracting')).toEqual({ suggested: 'commercial', matchedWord: 'Contracting' })
     expect(suggestCustomerType('Big Easy Saloon')).toEqual({ suggested: 'commercial', matchedWord: 'Saloon' })
     expect(suggestCustomerType('City of Seguin')).toEqual({ suggested: 'commercial', matchedWord: 'City of' })
-    expect(suggestCustomerType('Limitless Renovations & Design LLC').suggested).toBe('commercial')
+    expect(suggestCustomerType('Linwick Renovations & Design LLC').suggested).toBe('commercial')
     expect(suggestCustomerType('Hamilton Valley Management').suggested).toBe('commercial')
     expect(suggestCustomerType('San Marcos Housing Authority').suggested).toBe('commercial')
   })

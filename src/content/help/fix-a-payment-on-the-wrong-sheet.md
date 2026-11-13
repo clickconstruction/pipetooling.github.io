@@ -14,10 +14,10 @@ Open the sheet with **Edit sheet**. [The expanded row](/help/sub-labor-outstandi
 - {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}} or {{chip:gray|Something else}}. The window also has **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
 - A backcharge stays on the sheet it was raised on. Its {{button:outline|Move…}} says so on the row and opens nothing. To take one off, use {{button:outline|Remove}}.
 
-A move and a removal both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
+A move and a removal both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palvern · Taunya · wrong job*, *Moved here from 880 Relwyn Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
 
 :::example The check on the wrong job
-Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
+Taunya recorded Airlowe's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
 :::
 
 ## More on paying subs

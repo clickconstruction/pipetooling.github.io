@@ -17,7 +17,7 @@ vi.mock('../lib/supabase', () => {
       clocked_in_at: '2026-09-05T13:33:00Z',
       clocked_out_at: '2026-09-05T14:16:12Z',
       work_date: '2026-09-05',
-      notes: 'Blanco and ati job',
+      notes: 'Blanco and axo job',
       job_ledger_id: null,
       bid_id: null,
       approved_at: '2026-09-05T20:00:00Z',
@@ -38,7 +38,7 @@ vi.mock('../lib/supabase', () => {
   const RPCS: Record<string, unknown[]> = {
     list_people_pay_flags: [{ person_name: 'Isiah', person_id: null, is_salary: false, record_hours_but_salary: false }],
     search_jobs_ledger: [
-      { id: 'j1', hcp_number: '523', click_number: '523', job_name: 'Mission Hills', job_address: '2100 Independence Dr', service_type_id: null },
+      { id: 'j1', hcp_number: '523', click_number: '523', job_name: 'Mission Flats', job_address: '2100 Independence Dr', service_type_id: null },
     ],
   }
   function makeBuilder(table: string, listResult: unknown[], singleResult: unknown) {
@@ -124,11 +124,11 @@ describe('HoursUnassignedModal (v2.2966 — no split without a clock session)', 
     fireEvent.click(screen.getByRole('button', { name: '+ Search jobs & bids' }))
     const input = screen.getByPlaceholderText('Search HCP, bid #, job name, project, address…')
     fireEvent.change(input, { target: { value: 'mission' } })
-    const result = await screen.findByText(/Mission Hills/, {}, { timeout: 3000 })
+    const result = await screen.findByText(/Mission Flats/, {}, { timeout: 3000 })
     fireEvent.click(result.closest('button') as HTMLButtonElement)
     await waitFor(() => expect(updateCalls.length).toBe(1))
     expect(updateCalls[0]).toEqual({ patch: { job_ledger_id: 'j1', bid_id: null }, ids: ['s1'] })
-    expect(await screen.findByText(/Linked 1 session \(0\.72 h\) to .*Mission Hills — split recomputed from the clock/)).toBeTruthy()
+    expect(await screen.findByText(/Linked 1 session \(0\.72 h\) to .*Mission Flats — split recomputed from the clock/)).toBeTruthy()
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     // No crew-table write happened — the only mutation was the session update.
     expect(updateCalls.every((c) => 'job_ledger_id' in (c.patch as object))).toBe(true)

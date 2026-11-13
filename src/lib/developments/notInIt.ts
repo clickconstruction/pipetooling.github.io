@@ -7,8 +7,8 @@
  * functions, so the two never disagree about who is at the address.
  *
  * The match is on normalized addresses: case, punctuation and spacing are dropped, a trailing
- * zip code is dropped, and the common street suffixes are spelled one way, so *Gun Dog Trl,
- * Neeses SC 29107* and *gun dog trail, neeses, sc* are the same place. Nothing else is guessed:
+ * zip code is dropped, and the common street suffixes are spelled one way, so *Gray Fox Trl,
+ * Neeses SC 29107* and *gray fox trail, neeses, sc* are the same place. Nothing else is guessed:
  * a different street number is a different address.
  */
 import { pluralNoun } from '../batchWords'

@@ -3,7 +3,7 @@
  * docs/PRICE_MATRIX_PLAN.md). Pure; the compare kernel and the modal call it,
  * nothing here reads or writes anywhere.
  *
- * What a real fixture quote looks like (NWS S6277623, SpaceX BA-2, 2026-09-02):
+ * What a real fixture quote looks like (NWS S6277623, SkyLab BA-2, 2026-09-02):
  *
  *   WC-1 & WC-2 WATER CLOSET
  *     1ea  CT728CUVG#01 TOTO wall mount bowl          (no unit price)
