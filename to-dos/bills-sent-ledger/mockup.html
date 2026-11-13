@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bills sent: one list of every bill that left, to whom, and the minute it went</title>
+<style>
+  /* Punch list #327. The master asked for a ledger of every bill that has gone out: to whom, and when exactly.
+     Drawn 2026-11-12, with that day as today. Nothing here is built. Every name, job, address, bill number,
+     amount and count on this page is made up: Northgate Plumbing Co., Ridgeway Builders, Larkfield Construction,
+     Sable Ridge Builders, Priya and Marcus in the office, jobs J1389 to J1433. No live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af; --text-violet-700: #6d28d9;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff; --bg-violet-tint: #f5f3ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd; --text-violet-700: #c4b5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46; --bg-violet-tint: #2a2350;
+    --border-amber: #92400e; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .two.desk { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1100px) { .two.desk { grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); } }
+  .two.phones { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 380px)); justify-content: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .frame.phone { border-radius: 26px; max-width: 380px; }
+  .pad { padding: 12px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* drawn app pieces */
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 15px; }
+  .bar .right { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 12px 0; background: var(--surface); }
+  .tabs span { font-size: 12.5px; padding: 5px 9px; border-radius: 6px 6px 0 0; color: var(--text-700); white-space: nowrap; }
+  .tabs span.on { background: var(--bg-blue-tint); color: var(--text-blue-800); font-weight: 700; }
+  .find { display: block; width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-muted); font-size: 13px; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .chipb { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  .chipb.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); font-weight: 700; }
+  .chipb.green.on { background: var(--bg-green-tint); color: var(--text-green-700); border-color: var(--text-green-700); }
+  .chipb.warn { border-color: var(--border-amber); background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 600; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 30px; padding: 3px 11px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .day { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; margin: 12px 0 4px; padding: 6px 10px; border-radius: 6px; background: var(--bg-subtle); border-left: 3px solid var(--text-blue-800); font-size: 13.5px; font-weight: 800; color: var(--text-strong); }
+  .day small { font-weight: 500; color: var(--text-muted); font-size: 12.5px; }
+  .day .sum { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  /* Now: a Sent copies row */
+  .srow { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 10px; font-size: 13px; min-width: 0; }
+  .srow .kind { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--bg-green-tint); color: var(--text-green-700); margin-right: 6px; }
+  .srow .ttl { font-weight: 600; color: var(--text-link); }
+  .srow .facts { display: block; color: var(--text-muted); font-size: 12.5px; margin-top: 1px; }
+  .srow .job { color: var(--text-green-700); font-weight: 600; font-size: 12.5px; }
+  .srow .att { display: inline-block; margin-top: 4px; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-700); }
+  ul.miss { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+  ul.miss li { margin: 0 0 3px; }
+
+  /* My suggestion: the ledger */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 6px; }
+  .tile { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 9px; min-width: 0; }
+  .tile small { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile b { font-size: 15px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile span { font-size: 12px; color: var(--text-muted); }
+  .tile.red { background: var(--bg-red-tint); border-color: transparent; } .tile.red b, .tile.red small { color: var(--text-red-700); }
+  .tile.amber { background: var(--bg-amber-tint); border-color: var(--border-amber); } .tile.amber b, .tile.amber small { color: var(--text-amber-800); }
+  .gap { margin-top: 10px; border: 1px solid var(--border-amber); background: var(--bg-amber-tint); border-radius: 10px; padding: 9px 11px; font-size: 13px; min-width: 0; }
+  .gap h4 { margin: 0 0 4px; font-size: 13px; color: var(--text-amber-800); }
+  .gap .g { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 0 0; margin-top: 6px; border-top: 1px dashed var(--border-amber); }
+  .gap .g b { color: var(--text-strong); }
+  .gap .g .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; }
+  .gap .g p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--text-700); font-size: 12.5px; }
+  .gap .quiet { margin: 8px 0 0; font-size: 12.5px; color: var(--text-700); }
+  .gap u, .ln u, .rec u { text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+  .ln { display: grid; grid-template-columns: 68px minmax(0, 1fr) auto; gap: 1px 10px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 0; }
+  .ln + .ln { margin-top: 4px; }
+  .ln .t { grid-row: 1 / span 3; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ln .t small { display: block; font-weight: 500; font-size: 11.5px; color: var(--text-muted); }
+  .ln .what { min-width: 0; }
+  .ln .what b { color: var(--text-strong); }
+  .ln .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; white-space: nowrap; }
+  .ln .to { grid-column: 2 / -1; color: var(--text-700); min-width: 0; overflow-wrap: anywhere; }
+  .ln .to .addr { color: var(--text-strong); font-weight: 600; }
+  .ln .how { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); min-width: 0; }
+  .ln.bad { border-color: var(--text-red-700); }
+  .ln.soft { background: var(--bg-subtle); }
+  .rt { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; white-space: nowrap; background: var(--bg-green-tint); color: var(--text-green-700); }
+  .rt.again { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .rt.text { background: var(--bg-violet-tint); color: var(--text-violet-700); }
+  .rt.stmt { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .rt.plain { background: var(--bg-muted); color: var(--text-700); }
+  .ok { color: var(--text-green-700); font-weight: 600; }
+  .no { color: var(--text-red-700); font-weight: 700; }
+  .dim { color: var(--text-muted); }
+  .foot { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); }
+
+  /* phone, and the desk drawing on a narrow screen: the time moves above the line */
+  .frame.phone .ln { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 9px; }
+  .frame.phone .ln .t { grid-row: auto; grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; }
+  .frame.phone .ln .t small { display: inline; }
+  .frame.phone .ln .to, .frame.phone .ln .how { grid-column: 1 / -1; }
+  @media (max-width: 640px) {
+    .ln { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 9px; }
+    .ln .t { grid-row: auto; grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; }
+    .ln .t small { display: inline; }
+    .ln .to, .ln .how { grid-column: 1 / -1; }
+  }
+  .frame.phone .tiles { grid-template-columns: 1fr 1fr; }
+  .frame.phone .chips { flex-wrap: nowrap; overflow: hidden; }
+  .frame.phone .srow .ttl { overflow-wrap: anywhere; }
+
+  /* one bill's record */
+  .rec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; min-width: 0; }
+  .rec h4 { margin: 0; font-size: 14px; color: var(--text-strong); display: flex; flex-wrap: wrap; gap: 2px 10px; }
+  .rec h4 span { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .rec .sub { margin: 0 0 8px; color: var(--text-muted); font-size: 12.5px; }
+  .ev { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 0 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+  .ev i { width: 9px; height: 9px; border-radius: 50%; background: var(--text-green-700); margin-top: 5px; }
+  .ev i.ring { background: transparent; border: 2px solid var(--text-muted); }
+  .ev b { color: var(--text-strong); }
+  .ev p { margin: 0; color: var(--text-700); font-size: 12.5px; overflow-wrap: anywhere; }
+  .stamp { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .stamp .mini { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; }
+  .stamp .mini b { font-weight: 600; color: var(--text-700); border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 5px; }
+
+  table.t { width: 100%; border-collapse: collapse; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .scroll { overflow-x: auto; max-width: 100%; }
+  .scroll table.t { min-width: 680px; }
+  table.t th, table.t td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  ol.calls { margin: 12px 0 0; padding-left: 22px; max-width: 96ch; }
+  ol.calls li { margin: 0 0 8px; }
+  ol.calls b { color: var(--text-strong); }
+  .doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; margin-top: 12px; }
+  .door { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .door h4 { margin: 0 0 4px; font-size: 13px; color: var(--text-strong); }
+  .door .draw { margin-top: 8px; padding: 7px 9px; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; overflow-wrap: anywhere; }
+  .newb { border: 2px solid var(--new); color: var(--new); background: var(--new-tint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #327 · a plan to decide on · nothing is built</p>
+    <h1>Bills sent</h1>
+    <p>The master asked for one place to see every bill that has gone out. He wants to know who got it and the minute it went. This page shows what he can open today, and the one list I suggest. Today on this page is Thursday, Nov 12. Every name and number is made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a>
+  <a href="#desk">1 · At a desk</a>
+  <a href="#phone">2 · On a phone</a>
+  <a href="#bill">3 · One bill's record</a>
+  <a href="#routes">What each line can say</a>
+  <a href="#doors">Where he finds it</a>
+  <a href="#calls">The calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<p class="lede"><b>The idea makes sense, and most of it already exists. My recommendation: do not build a new ledger. Build one screen, Bills sent, that reads the records the app already keeps.</b></p>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>Every bill the app emails is already kept: who, the exact time, the address, and a copy.</li>
+      <li>It sits in Documents, under Sent copies, mixed with every other paper.</li>
+      <li>That list shows no amount, no address, no total, and no statement.</li>
+      <li>A bill that never went out is not on any list.</li>
+    </ul>
+    <p>The master can open it today. Nobody would think to look there.</p>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>One screen with its own address. One line each time a bill goes out.</li>
+      <li>Each line says the minute, the bill, the job, the amount, the person and the address.</li>
+      <li>It says who pressed send, and whether the email arrived.</li>
+      <li>A bill with no send on record is shown at the top, not hidden.</li>
+    </ul>
+    <p>No new record of the same sends. The first step needs no database change.</p>
+  </div>
+</div>
+<p class="note"><b>What the count found.</b> I read the last 30 days of the live app, with every write refused. 39 bills went out. 36 went by email from the app, and all 36 have the full record. 3 were entered from Housecall Pro, with a day and nothing else. 9 more bills were made and never emailed. So the gap is the shape, plus three small holes. It is not missing data.</p>
+
+<!-- 1 -->
+<h2 id="desk">1 · At a desk <small>the same question, asked two ways</small></h2>
+<p class="lede">The question is the master's: did that bill go out, when, and to which address?</p>
+<div class="two desk">
+  <div class="col">
+    <div class="cap">Now · Documents, Sent copies, the Bills chip</div>
+    <div class="frame">
+      <div class="tabs"><span>Search</span><span>Estimates</span><span>Bids</span><span>Jobs</span><span class="on">Sent copies</span><span>Photos</span></div>
+      <div class="pad">
+        <span class="find">Find a copy: a name, an address, a subject</span>
+        <div class="chips"><span class="chipb">All</span><span class="chipb green on">Bills</span><span class="chipb">Lien and legal</span><span class="chipb">Contracts and estimates</span><span class="chipb">Statements and reports</span></div>
+        <div class="day">Today · Thu, Nov 12 <small>3</small></div>
+        <div class="srow"><span class="kind">Bill</span><span class="ttl">Invoice #1398-3 from Northgate Plumbing Co.</span>
+          <span class="facts">Emailed 11:02 AM · to Larkfield Construction · by Marcus</span>
+          <span class="job">J1398 · Larkfield Clinic</span><br><span class="att">Invoice-1398-3.pdf</span></div>
+        <div class="srow"><span class="kind">Bill</span><span class="ttl">Invoice #1412-2 from Northgate Plumbing Co.</span>
+          <span class="facts">Emailed 9:28 AM · to Sable Ridge Builders · by Priya</span>
+          <span class="job">J1412 · Sable Ridge Lot 14</span><br><span class="att">Invoice-1412-2.pdf</span></div>
+        <div class="srow"><span class="kind">Bill pay code</span><span class="ttl">Pay code · Bill 1420-1 · Whitfield repipe</span>
+          <span class="facts">Printed 9:05 AM · by Priya</span></div>
+        <div class="day">Yesterday · Wed, Nov 11 <small>1</small></div>
+        <div class="srow"><span class="kind">Bill</span><span class="ttl">Invoice #1433-1 from Northgate Plumbing Co.</span>
+          <span class="facts">Emailed 4:47 PM · to Ines Carvalho · by Priya</span>
+          <span class="job">J1433 · Carvalho remodel</span><br><span class="att">Invoice-1433-1.pdf</span></div>
+      </div>
+    </div>
+    <p class="say">The record is good. The list was made for finding a paper, not for reading the day's billing.</p>
+    <ul class="miss">
+      <li>No amount and no total.</li>
+      <li>The address shows only after you open the copy.</li>
+      <li>The bounced email reads the same as the others.</li>
+      <li>The statement, the text and the Housecall Pro bill are elsewhere or nowhere.</li>
+      <li>The Bills chip is not in the address, so it cannot be bookmarked.</li>
+    </ul>
+  </div>
+
+  <div class="col sug">
+    <div class="cap">My suggestion · Bills sent <span class="tag">new</span></div>
+    <div class="frame">
+      <div class="bar"><b>Bills sent</b> <span>All times Central</span>
+        <span class="right"><span class="btn">Print</span><span class="btn">Download CSV</span></span></div>
+      <div class="pad">
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$8,270.00</span></div>
+          <div class="tile"><small>This week</small><b>6 bills</b> <span>$34,555.00</span></div>
+          <div class="tile red"><small>Did not arrive</small><b>1</b></div>
+          <div class="tile amber"><small>No send on record</small><b>2</b></div>
+        </div>
+        <span class="find" style="margin-top:8px">Find a bill: a job, a customer, an address, a bill number</span>
+        <div class="chips"><span class="chipb on">All</span><span class="chipb">Email</span><span class="chipb">Text</span><span class="chipb">Printed</span><span class="chipb">Statement</span><span class="chipb">Housecall Pro</span><span class="chipb warn">No send on record · 2</span></div>
+
+        <div class="gap">
+          <h4>2 bills are billed with no send on record</h4>
+          The app made these bills. It has no email, text or print for them.
+          <div class="g"><div><b>Bill 1427-1</b> · J1427 Brannigan slab leak · Tom Brannigan</div><div class="amt">$2,140.00</div>
+            <p>Billed Mon, Nov 9 at 3:26 PM by Priya. Not paid. It may have been handed over on site. <u>Open the bill</u></p></div>
+          <p class="quiet">1 more was paid in person the same day. <u>Show it</u></p>
+        </div>
+
+        <div class="day">Today · Thu, Nov 12 <span class="sum">2 bills · $8,270.00</span> <small>2 sent again · 1 statement</small></div>
+
+        <div class="ln">
+          <div class="t">2:14 PM</div>
+          <div class="what"><b>Bill 1431-1</b> · J1431 Okafor water heater</div><div class="amt">$1,280.00</div>
+          <div class="to">To Maya Okafor · <span class="addr">(512) 555-0142</span></div>
+          <div class="how"><span class="rt text">Text with pay link</span><span>by Priya</span><span class="ok">Delivered 2:14 PM</span><span>2nd send. The email went Tue 3:40 PM.</span></div>
+        </div>
+        <div class="ln">
+          <div class="t">11:02 AM</div>
+          <div class="what"><b>Bill 1398-3</b> · J1398 Larkfield Clinic · Larkfield Construction</div><div class="amt">$9,750.00</div>
+          <div class="to">To Accounts Payable · <span class="addr">ap@larkfield.example</span></div>
+          <div class="how"><span class="rt again">Email, sent again</span><span>by Marcus</span><span class="ok">Delivered 11:02 AM</span><span>2nd send. First sent Tue, Nov 3.</span><u>Copy as sent</u></div>
+        </div>
+        <div class="ln">
+          <div class="t">9:28 AM</div>
+          <div class="what"><b>Bill 1412-2</b> · J1412 Sable Ridge Lot 14 · Sable Ridge Builders</div><div class="amt">$4,860.00</div>
+          <div class="to">To Hal Jensen · <span class="addr">hal@sableridge.example</span> · copy to <span class="addr">pm@sableridge.example</span></div>
+          <div class="how"><span class="rt">Email</span><span>by Priya</span><span class="ok">Delivered 9:28 AM</span><span>Opened 9:41 AM</span><u>Copy as sent</u></div>
+        </div>
+        <div class="ln soft">
+          <div class="t">9:05 AM</div>
+          <div class="what"><b>Bill 1420-1</b> · J1420 Whitfield repipe · Dana Whitfield</div><div class="amt">$3,410.00</div>
+          <div class="to">Printed. The app cannot know who it was handed to.</div>
+          <div class="how"><span class="rt plain">Printed</span><span>by Priya</span><u>Copy as printed</u></div>
+        </div>
+        <div class="ln">
+          <div class="t">7:00 AM</div>
+          <div class="what"><b>Statement</b> · Ridgeway Builders · 12 jobs</div><div class="amt dim">$48,210.00</div>
+          <div class="to">To Billing · <span class="addr">billing@ridgeway.example</span></div>
+          <div class="how"><span class="rt stmt">Statement</span><span>by the app, on Marcus's schedule</span><span class="ok">Delivered 7:00 AM</span><span>Lists bills already sent. Not in the day's total.</span><u>Copy as sent</u></div>
+        </div>
+
+        <div class="day">Yesterday · Wed, Nov 11 <span class="sum">2 bills · $3,605.00</span> <small>1 did not arrive</small></div>
+        <div class="ln bad">
+          <div class="t">4:47 PM</div>
+          <div class="what"><b>Bill 1433-1</b> · J1433 Carvalho remodel · Ines Carvalho</div><div class="amt">$2,965.00</div>
+          <div class="to">To Ines Carvalho · <span class="addr">ines.carvalho@mail.example</span></div>
+          <div class="how"><span class="rt">Email</span><span>by Priya</span><span class="no">Bounced 4:47 PM. She has not received this bill.</span><u>Open the bill</u></div>
+        </div>
+        <div class="ln soft">
+          <div class="t">Day only<small>no time kept</small></div>
+          <div class="what"><b>Bill 1429-1</b> · J1429 Pruitt drain · Lena Pruitt</div><div class="amt">$640.00</div>
+          <div class="to">Sent from Housecall Pro. The app has the day. It has no address, no sender and no copy.</div>
+          <div class="how"><span class="rt plain">Housecall Pro</span><span>entered in the app that day</span></div>
+        </div>
+        <p class="foot">Older days follow. Before Oct 5, 2026 a line has its time and no address, because no copy was kept then.</p>
+      </div>
+    </div>
+    <p class="say">One line each time a bill leaves. The day's total counts each bill once. A resend and a statement are listed and not added.</p>
+  </div>
+</div>
+
+<!-- 2 -->
+<h2 id="phone">2 · On a phone <small>375 wide</small></h2>
+<p class="lede">The same list, the same order. The live count is about three lines a working day, so a week fits in two screens.</p>
+<div class="two phones">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame phone">
+      <div class="tabs"><span>Search</span><span>Jobs</span><span class="on">Sent copies</span><span>Photos</span></div>
+      <div class="pad">
+        <span class="find">Find a copy</span>
+        <div class="chips"><span class="chipb">All</span><span class="chipb green on">Bills</span><span class="chipb">Lien and legal</span><span class="chipb">Contracts</span></div>
+        <div class="day">Today · Thu, Nov 12 <small>3</small></div>
+        <div class="srow"><span class="kind">Bill</span><span class="ttl">Invoice #1398-3 from Northgate Plumbing Co.</span>
+          <span class="facts">Emailed 11:02 AM · to Larkfield Construction · by Marcus</span>
+          <span class="job">J1398 · Larkfield Clinic</span></div>
+        <div class="srow"><span class="kind">Bill</span><span class="ttl">Invoice #1412-2 from Northgate Plumbing Co.</span>
+          <span class="facts">Emailed 9:28 AM · to Sable Ridge Builders · by Priya</span>
+          <span class="job">J1412 · Sable Ridge Lot 14</span></div>
+      </div>
+    </div>
+    <p class="say">It reads, but it answers which paper, not how much went out or whether it arrived.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion <span class="tag">new</span></div>
+    <div class="frame phone">
+      <div class="bar"><b>Bills sent</b> <span>Central time</span></div>
+      <div class="pad">
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$8,270.00</span></div>
+          <div class="tile"><small>This week</small><b>6 bills</b> <span>$34,555.00</span></div>
+          <div class="tile red"><small>Did not arrive</small><b>1</b></div>
+          <div class="tile amber"><small>No send on record</small><b>2</b></div>
+        </div>
+        <span class="find" style="margin-top:8px">Find a bill</span>
+        <div class="day">Today · Thu, Nov 12 <span class="sum">2 bills · $8,270.00</span></div>
+        <div class="ln">
+          <div class="t">11:02 AM <small>Email, sent again</small></div>
+          <div class="what"><b>Bill 1398-3</b> · Larkfield Clinic</div><div class="amt">$9,750.00</div>
+          <div class="to">To Accounts Payable · <span class="addr">ap@larkfield.example</span></div>
+          <div class="how"><span>by Marcus</span><span class="ok">Delivered</span><span>2nd send</span></div>
+        </div>
+        <div class="ln">
+          <div class="t">9:28 AM <small>Email</small></div>
+          <div class="what"><b>Bill 1412-2</b> · Sable Ridge Lot 14</div><div class="amt">$4,860.00</div>
+          <div class="to">To Hal Jensen · <span class="addr">hal@sableridge.example</span></div>
+          <div class="how"><span>by Priya</span><span class="ok">Delivered</span><span>Opened 9:41 AM</span></div>
+        </div>
+        <div class="ln soft">
+          <div class="t">9:05 AM <small>Printed</small></div>
+          <div class="what"><b>Bill 1420-1</b> · Whitfield repipe</div><div class="amt">$3,410.00</div>
+          <div class="to">The app cannot know who it was handed to.</div>
+          <div class="how"><span>by Priya</span></div>
+        </div>
+        <div class="ln">
+          <div class="t">7:00 AM <small>Statement</small></div>
+          <div class="what"><b>Ridgeway Builders</b> · 12 jobs</div><div class="amt dim">$48,210.00</div>
+          <div class="to">To <span class="addr">billing@ridgeway.example</span></div>
+          <div class="how"><span>by the app</span><span class="ok">Delivered</span></div>
+        </div>
+        <div class="gap">
+          <h4>2 bills have no send on record</h4>
+          <div class="g"><div><b>Bill 1427-1</b> · Brannigan slab leak</div><div class="amt">$2,140.00</div>
+            <p>Billed Mon, Nov 9. Not paid. <u>Open the bill</u></p></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">A tap on a line opens that bill's record. The address is on the line, so most questions need no tap.</p>
+  </div>
+</div>
+
+<!-- 3 -->
+<h2 id="bill">3 · One bill's record <small>the copy and the proof, one press away</small></h2>
+<p class="lede">A bill can go out more than once, and by more than one route. Its record puts every send in order.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now · the billed row on Jobs, Stages</div>
+    <div class="frame"><div class="pad">
+      <div class="stamp">
+        <b>J1398 · Larkfield Clinic</b><br><span class="dim">4410 Mesa Verde Dr · Larkfield Construction</span>
+        <div class="mini"><b>Resend</b> Email sent Thu 11:02 AM (today)</div>
+      </div>
+    </div></div>
+    <p class="say">The row keeps one stamp, and a resend writes over it. The first send, the address and the sender are not shown.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · the record of Bill 1398-3 <span class="tag">new</span></div>
+    <div class="frame"><div class="pad">
+      <div class="rec">
+        <h4>Bill 1398-3 · J1398 Larkfield Clinic <span>$9,750.00</span></h4>
+        <p class="sub">Larkfield Construction · not paid</p>
+        <div class="ev"><i></i><div><b>Thu, Nov 12 · 11:02 AM</b> · Emailed again by Marcus
+          <p>To Accounts Payable, ap@larkfield.example. Delivered 11:02 AM. <u>Copy as sent</u></p></div></div>
+        <div class="ev"><i></i><div><b>Mon, Nov 9 · 7:00 AM</b> · Listed on a statement, sent by the app
+          <p>To ap@larkfield.example. Delivered 7:00 AM. <u>Copy as sent</u></p></div></div>
+        <div class="ev"><i></i><div><b>Tue, Nov 3 · 4:41 PM</b> · Emailed by Marcus
+          <p>To Accounts Payable, ap@larkfield.example. Delivered 4:41 PM. Opened Wed, Nov 4 at 8:12 AM. <u>Copy as sent</u></p></div></div>
+        <div class="ev"><i class="ring"></i><div><b>Tue, Nov 3 · 4:38 PM</b> · Bill made by Marcus</div></div>
+        <p class="foot"><span class="btn">Print this record</span> &nbsp;Delivered means their mail server took it. It does not mean someone read it.</p>
+      </div>
+    </div></div>
+    <p class="say">Each copy is the email as it was read, with the bill attached. It is stored once and cannot be edited.</p>
+  </div>
+</div>
+
+<!-- routes -->
+<h2 id="routes">What each line can honestly say</h2>
+<p class="lede">The list never guesses. Where the app does not know, the line says so.</p>
+<div class="scroll">
+<table class="t">
+  <tr><th>How the bill left</th><th>When</th><th>To whom</th><th>Who sent</th><th>Copy</th><th>Arrived</th></tr>
+  <tr><td>Email from the app, with the pay link</td><td>To the second</td><td>Name and each address</td><td>Yes</td><td>The email and the bill</td><td>Delivered, bounced or opened</td></tr>
+  <tr><td>The same bill, sent again</td><td>To the second</td><td>Name and each address</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+  <tr><td>A statement to a general contractor</td><td>To the second</td><td>Address and copies</td><td>A person, or the app on a schedule</td><td>Yes</td><td>Yes</td></tr>
+  <tr><td>A text with the pay link</td><td>To the second</td><td>The number</td><td>Yes</td><td>The words</td><td>Delivered or failed</td></tr>
+  <tr><td>A printed pay sheet</td><td>To the second</td><td>Not known</td><td>Yes</td><td>Yes</td><td>Not known</td></tr>
+  <tr><td>Entered from Housecall Pro</td><td>The day only</td><td>Not kept</td><td>Not kept</td><td>None</td><td>Not known</td></tr>
+  <tr><td>Emailed from a person's own mailbox, or handed over</td><td colspan="5">No record. The bill shows under No send on record until someone says how it went.</td></tr>
+  <tr><td>Any send before Oct 5, 2026</td><td>To the second</td><td>Not kept</td><td>Not kept</td><td>None</td><td>Not known</td></tr>
+</table>
+</div>
+
+<!-- doors -->
+<h2 id="doors">Where he finds it <small>without being told</small></h2>
+<p class="lede">One screen, one address. Three doors lead to it, each where a person is already looking at bills.</p>
+<div class="doors">
+  <div class="door"><h4>Jobs, Stages, the Billed header</h4>Beside Payment forecast, where billed money is already read.
+    <div class="draw"><b>Billed · Awaiting Payment</b><span class="btn">Payment forecast</span><span class="btn newb">Bills sent</span></div></div>
+  <div class="door"><h4>Its own address</h4>A link he can bookmark or put on a phone's home screen.
+    <div class="draw">clicktooling.com<b>/bills-sent</b></div></div>
+  <div class="door"><h4>Documents, Sent copies</h4>The Bills chip gains one line that leads here.
+    <div class="draw"><span class="chipb green on">Bills</span><span>See these with amounts and totals: <u style="text-decoration:underline">Bills sent</u></span></div></div>
+  <div class="door"><h4>The Monday email he already gets</h4>The weekly Bridge email gains one block, with a link to the list.
+    <div class="draw"><b>Bills sent last week</b><span>6 bills · $34,555.00 · 1 did not arrive</span></div></div>
+</div>
+
+<!-- calls -->
+<h2 id="calls">The calls <small>Grace's and the master's</small></h2>
+<ol class="calls">
+  <li><b>Build it this way?</b> One screen over the records the app keeps. Or a new ledger table, which I advise against.</li>
+  <li><b>What a line is.</b> Every send is its own line, and the total counts each bill once. Or one line a bill, with its sends inside.</li>
+  <li><b>The gap strip.</b> A billed bill with no send is shown at the top. Or it is left off the list.</li>
+  <li><b>Who may open it.</b> The four office roles that read Sent copies today. Or the master and developers only.</li>
+  <li><b>The main door.</b> The Billed header on Jobs, Stages. Or a line in the menu. Or the Dashboard.</li>
+  <li><b>The Monday email.</b> A block in the weekly Bridge email he already gets. Or no email, the screen is enough.</li>
+  <li><b>By-hand sends.</b> Add a press that says how a bill went and to whom. Or leave them as No send on record.</li>
+  <li><b>Proof for counsel.</b> Keep every delivery answer, not only the last. Or wait until counsel asks.</li>
+</ol>
+<p class="note"><b>One thing only the master has.</b> Which bill made him ask. I would test the first build on that bill before calling it done.</p>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+  })();
+</script>
+</body>
+</html>

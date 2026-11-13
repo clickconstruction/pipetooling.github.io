@@ -52,6 +52,7 @@ import type { SavedPayApplication } from '../../lib/aiaPayApplications'
 import { lienWaiverTickForBill } from '../../lib/jobsDocuments/lienWaiverRelease'
 import BillCustomerOwnerLine from './BillCustomerOwnerLine'
 import { BillCustomerReturnedChecksLine } from './BillCustomerReturnedChecksLine'
+import { BillCustomerPayCutoffLine } from './BillCustomerPayCutoffLine'
 import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -2414,6 +2415,8 @@ export default function SendRecordInvoiceModal({
         <BillCustomerOwnerLine jobId={job.id} userId={authUser?.id ?? null} />
         {/* v2.4333 (punch list #76): the payer's checks the bank sent back this past year — never a gate. */}
         <BillCustomerReturnedChecksLine payerCustomerId={contactsCustomerId} />
+        {/* Punch list #323: a payer on a Pay calendar — what sending today makes the bill, and what waiting costs. Never a gate. */}
+        <BillCustomerPayCutoffLine payerCustomerId={contactsCustomerId} jobId={job.id} />
       </>
     )
   }

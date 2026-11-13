@@ -13,10 +13,10 @@ describe('personDeskGates (v2.2713 widenings)', () => {
     expect(canOpenPersonDesk(null)).toBe(false)
   })
 
-  it('the `/` quick sheet is the Desk gate minus Farm Mode (journey-map Tier-2 #41)', () => {
+  it('the `/` quick sheet is the Desk gate minus Task Mode (journey-map Tier-2 #41)', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
       expect(canOpenPersonQuickSheet(role, false), `${role} off`).toBe(true)
-      expect(canOpenPersonQuickSheet(role, true), `${role} farm`).toBe(false)
+      expect(canOpenPersonQuickSheet(role, true), `${role} in Task Mode`).toBe(false)
     }
     for (const role of ['helpers', 'subcontractor', 'estimator', 'primary', 'superintendent', null]) {
       expect(canOpenPersonQuickSheet(role, false), `${role}`).toBe(false)

@@ -11810,8 +11810,10 @@ export type Database = {
           code_hash: string
           contact_id: string | null
           drive_folder_id: string | null
+          drive_job_folder_at: string | null
           expires_at: string
           id: string
+          job_id: string | null
           label: string
           looked_at: string | null
           looked_by: string | null
@@ -11830,8 +11832,10 @@ export type Database = {
           code_hash: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11850,8 +11854,10 @@ export type Database = {
           code_hash?: string
           contact_id?: string | null
           drive_folder_id?: string | null
+          drive_job_folder_at?: string | null
           expires_at?: string
           id?: string
+          job_id?: string | null
           label?: string
           looked_at?: string | null
           looked_by?: string | null
@@ -11882,6 +11888,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_looks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -27450,6 +27463,7 @@ export type Database = {
           estimate_id: string | null
           gmail_id: string | null
           gmail_thread_id: string | null
+          history: boolean
           id: string
           introduces_user_id: string | null
           invitation: Json | null
@@ -27493,6 +27507,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -27536,6 +27551,7 @@ export type Database = {
           estimate_id?: string | null
           gmail_id?: string | null
           gmail_thread_id?: string | null
+          history?: boolean
           id?: string
           introduces_user_id?: string | null
           invitation?: Json | null
@@ -28984,6 +29000,73 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payer_pay_calendars: {
+        Row: {
+          clause: string
+          cutoff_day: number | null
+          id: string
+          job_id: string | null
+          months_after: number
+          off: boolean
+          pay_day: number | null
+          pay_when_paid: boolean
+          payer_customer_id: string
+          set_at: string
+          set_by: string | null
+          words: string
+        }
+        Insert: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Update: {
+          clause?: string
+          cutoff_day?: number | null
+          id?: string
+          job_id?: string | null
+          months_after?: number
+          off?: boolean
+          pay_day?: number | null
+          pay_when_paid?: boolean
+          payer_customer_id?: string
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payer_pay_calendars_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_payer_customer_id_fkey"
+            columns: ["payer_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payer_pay_calendars_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -45044,6 +45127,7 @@ export type Database = {
       }
       messages_tech_on_job: { Args: { p_job_id: string }; Returns: boolean }
       messages_tech_team: { Args: never; Returns: boolean }
+      messages_unfile: { Args: { p_contact_id: string }; Returns: undefined }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
@@ -46369,6 +46453,10 @@ export type Database = {
         Args: { p_contact_id: string; p_job_id: string; p_job_kind: string }
         Returns: undefined
       }
+      set_first_look_job: {
+        Args: { p_job_id: string; p_look_id: string }
+        Returns: Json
+      }
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
@@ -46432,6 +46520,14 @@ export type Database = {
       }
       set_pay_config: {
         Args: { p_changes: Json; p_person: string; p_reason: string }
+        Returns: Json
+      }
+      set_payer_pay_calendar: {
+        Args: {
+          p_calendar: Json
+          p_job_id: string
+          p_payer_customer_id: string
+        }
         Returns: Json
       }
       set_person_hours: {

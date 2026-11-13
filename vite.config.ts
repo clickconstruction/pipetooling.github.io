@@ -10,6 +10,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
 import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
+import { formerHelpGuideSlugs } from './src/lib/helpGuideFormerSlugs'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
 import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
 import { parseThemeTokens } from './src/lib/lens/lensTokens'
@@ -176,6 +177,7 @@ function helpSharePagesPlugin() {
       }
       let count = 0
       let cards = 0
+      let formerPages = 0
       for (const g of guides) {
         const dir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), g.slug)
         mkdirSync(dir, { recursive: true })
@@ -189,11 +191,19 @@ function helpSharePagesPlugin() {
             console.warn(`help-share-pages: card for ${g.slug} failed (${String(e).split('\n')[0]}) — site card`)
           }
         }
-        writeFileSync(join(dir, 'index.html'), helpSharePageHtml({ slug: g.slug, title: g.title, category: g.category, description: helpShareDescription(g.body), origin: 'https://clicktooling.com', image }))
+        const html = helpSharePageHtml({ slug: g.slug, title: g.title, category: g.category, description: helpShareDescription(g.body), origin: 'https://clicktooling.com', image })
+        writeFileSync(join(dir, 'index.html'), html)
         count += 1
+        // A renamed guide's old share address (v2.7050): the same page, so a link sent under the old name shows the guide's card and opens the guide.
+        for (const former of formerHelpGuideSlugs(g.slug)) {
+          const formerDir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), former)
+          mkdirSync(formerDir, { recursive: true })
+          writeFileSync(join(formerDir, 'index.html'), html)
+          formerPages += 1
+        }
       }
       await browser?.close()
-      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}`)
+      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}${formerPages > 0 ? `, and ${formerPages} at a renamed guide's old address` : ''}`)
     },
   }
 }

@@ -1,4 +1,5 @@
 import { GUIDE_MISSING_CONTROL, GUIDE_OPENED_CONTROL, parseGuideOpenedTarget } from './guideOpenTelemetry'
+import { currentHelpGuideSlug } from './helpGuideFormerSlugs'
 import { ERROR_SHOWN_CONTROL, parseErrorShownTarget } from './errorShownSink'
 /**
  * Settings → Usage (v2.2342): pure shaping for the dev-only usage readout.
@@ -259,8 +260,10 @@ export function guideOpens(rows: UsageClickRow[], guideCount: number, limit = 20
   let totalClicks = 0
   for (const r of rows) {
     if (r.control !== GUIDE_OPENED_CONTROL && r.control !== GUIDE_MISSING_CONTROL) continue
-    const parsed = parseGuideOpenedTarget(r.target)
-    if (!parsed) continue
+    const read = parseGuideOpenedTarget(r.target)
+    if (!read) continue
+    // A renamed guide's old rows are the same guide's (v2.7050): one row in the list, one in the never-opened count.
+    const parsed = { ...read, slug: currentHelpGuideSlug(read.slug) }
     if (r.control === GUIDE_MISSING_CONTROL) {
       missing.set(parsed.slug, (missing.get(parsed.slug) ?? 0) + r.clicks)
       continue
