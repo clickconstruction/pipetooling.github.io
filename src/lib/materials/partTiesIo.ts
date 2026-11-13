@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { fetchAllRows } from '../supabasePaging'
 import type { PartTie, TieVerdict } from './partTies'
 
 // The table is younger than the generated types; the next types PR removes this cast.
@@ -19,10 +20,12 @@ const COLS = 'id, a_key, b_key, a_name, b_name, verdict, by_name, at'
 const tieOf = (r: Row): PartTie => ({ id: r.id, aKey: r.a_key, bKey: r.b_key, aName: r.a_name, bName: r.b_name, verdict: r.verdict, byName: r.by_name, at: r.at })
 
 export async function fetchPartTies(scope: TieScope): Promise<PartTie[]> {
-  const q = db.from('on_site_part_ties').select(COLS).order('at').limit(2000)
-  const { data, error } = 'developmentId' in scope ? await q.eq('development_id', scope.developmentId) : await q.eq('job_id', scope.jobId)
-  if (error) throw error
-  return ((data ?? []) as Row[]).map(tieOf)
+  // Paged (v2.7160): `.limit(2000)` was cut at PostgREST's 1,000 rows without a word.
+  const rows = await fetchAllRows<Row>((from, to) => {
+    const q = db.from('on_site_part_ties').select(COLS)
+    return ('developmentId' in scope ? q.eq('development_id', scope.developmentId) : q.eq('job_id', scope.jobId)).order('at').order('id').range(from, to)
+  }, 'read the names joined here')
+  return rows.map(tieOf)
 }
 
 export async function insertPartTie(scope: TieScope, tie: { aKey: string; bKey: string; aName: string; bName: string; verdict: TieVerdict }, byName: string): Promise<PartTie> {

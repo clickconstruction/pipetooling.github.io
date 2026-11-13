@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint a map: walk it or draw it, save the line on the job, share it by a link</title>
+<style>
+  /* Punch list #345. Paint a map. Drawn 2026-11-13, with that day as today. Nothing here is built.
+     Every name and place is made up: Dana Whitlock paints, Priya Anand is the office, the land is a made-up new
+     development called Juniper Ridge on a made-up County Road 218, with a truck gate, a sales entrance, a laydown
+     yard, a row of lots and a lift station. The view from above is a drawing, not a real aerial picture, and the
+     photos are drawings too. No live job, person, customer or address is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe; --border-green: #bbf7d0; --border-red: #fecaca;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --paint: #ff5a1f;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a; --border-green: #166534; --border-red: #7f1d1d;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 2px solid var(--new); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 400px; }
+  .frame.wide { max-width: 1120px; }
+  .frame.public { border-color: var(--border-strong); }
+  .pad { padding: 12px; }
+
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+
+  /* drawn app pieces */
+  .hdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .hdr b { color: var(--text-strong); }
+  .hdr .x { margin-left: auto; color: var(--text-muted); font-size: 18px; line-height: 1; }
+  .h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; color: var(--text-strong); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-width: 0; }
+  .card + .card { margin-top: 10px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 36px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.red { background: #dc2626; border-color: #dc2626; color: #fff; }
+  .btn.big { min-height: 48px; font-size: 15px; flex: 1 1 0; }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--text-link); text-decoration: underline; text-underline-offset: 2px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .muted { color: var(--text-muted); font-size: 12px; }
+  .field { display: grid; gap: 4px; margin-top: 12px; }
+  .field:first-child { margin-top: 0; }
+  .field label { font-size: 12px; font-weight: 700; color: var(--text-700); }
+  .inp { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 8px 10px; font-size: 14px; color: var(--text-base); min-height: 38px; }
+  .inp.ph { color: var(--text-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pchip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 5px 11px; font-size: 13px; color: var(--text-strong); font-weight: 600; min-height: 32px; }
+  .pchip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .choice { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; border: 1.5px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; background: var(--surface); margin-top: 8px; }
+  .choice.on { border-color: #2563eb; background: var(--bg-blue-tint); }
+  .choice i { grid-row: 1 / 3; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-strong); }
+  .choice.on i { border: 6px solid #2563eb; }
+  .choice b { color: var(--text-strong); font-size: 14px; }
+  .choice span { font-size: 12.5px; color: var(--text-700); }
+  .box { margin-top: 10px; border-radius: 9px; padding: 8px 10px; font-size: 13px; background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .box.grey { background: var(--bg-muted); color: var(--text-700); border-color: var(--border); }
+  .box.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); border-color: var(--border-blue); }
+  .box.green { background: var(--bg-green-tint); color: var(--text-green-700); border-color: var(--border-green); }
+  .box ul { margin: 4px 0 0; padding-left: 18px; }
+  .tile { display: grid; place-items: center; text-align: center; border: 1.5px dashed var(--border-strong); border-radius: 8px; min-height: 64px; font-size: 12.5px; color: var(--text-muted); padding: 6px; }
+
+  /* the map */
+  .map { position: relative; background: #8b7d5e; line-height: 0; }
+  .map svg { display: block; width: 100%; }
+  .map .lay { position: absolute; right: 6px; top: 6px; display: flex; border-radius: 7px; overflow: hidden; border: 1px solid rgba(0,0,0,.35); font: 700 11px/1 var(--font); }
+  .map .lay span { padding: 5px 7px; background: rgba(255,255,255,.92); color: #111827; }
+  .map .lay span.on { background: #111827; color: #fff; }
+  .map .pill { position: absolute; left: 8px; right: 8px; display: flex; justify-content: center; }
+  .map .pill.t { top: 8px; } .map .pill.b { bottom: 8px; }
+  .map .pill span { background: rgba(17,24,39,.84); color: #fff; font: 600 12px/1.25 var(--font); padding: 6px 10px; border-radius: 999px; text-align: center; }
+  .map .pill span.amber { background: #92400e; }
+  .map .me { position: absolute; left: 6px; bottom: 6px; padding: 6px 9px; border-radius: 999px; background: rgba(255,255,255,.95); color: #111827; border: 1px solid rgba(0,0,0,.3); font: 700 11.5px/1 var(--font); }
+  .rec { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: #b91c1c; color: #fff; font-weight: 700; font-size: 14px; }
+  .rec i { width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.3); flex: none; }
+  .rec span { margin-left: auto; font-weight: 600; font-size: 12.5px; opacity: .95; }
+  .rec.paused { background: #4b5563; }
+  .read { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 12px; background: var(--surface); border-top: 1px solid var(--border); font-size: 13px; color: var(--text-700); }
+  .read b { font-size: 20px; color: var(--text-strong); }
+  .sure { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 12.5px; }
+  .sure i { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; }
+  .sure.poor { color: var(--text-amber-800); } .sure.poor i { background: #d97706; }
+  .sure.good { color: var(--text-green-700); }
+  .bar3 { display: flex; gap: 8px; padding: 10px 12px 12px; background: var(--surface); }
+  .mapcard { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .mapfoot { padding: 9px 11px; font-size: 13px; color: var(--text-700); border-top: 1px solid var(--border); }
+  .mapfoot b { color: var(--text-strong); }
+  .plist { display: grid; gap: 8px; margin-top: 10px; }
+  .prow { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+  .prow svg { width: 64px; height: 48px; border-radius: 6px; display: block; }
+  .prow b { color: var(--text-strong); }
+  .num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #111827; border: 2px solid #111827; font-size: 11px; font-weight: 800; flex: none; }
+  .link { font: 600 13px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg-muted); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text-strong); overflow-wrap: anywhere; }
+  .lh { display: flex; align-items: center; gap: 10px; padding: 12px; background: #fff; border-bottom: 3px solid #1e3a8a; color: #111827; }
+  .lh .logo { width: 34px; height: 34px; border-radius: 8px; background: #1e3a8a; color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .lh small { display: block; color: #6b7280; font-size: 12px; }
+
+  /* sending it further */
+  .cap2 { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+  .cap2:first-child { margin-top: 0; }
+  .srow { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: center; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); margin-top: 6px; }
+  .srow b { color: var(--text-strong); font-size: 13.5px; }
+  .srow span { grid-column: 1; font-size: 12px; color: var(--text-muted); }
+  .srow::after { content: "›"; grid-column: 2; grid-row: 1 / 3; color: var(--text-muted); font-size: 20px; line-height: 1; }
+  .os { background: #e5e7eb; color: #111827; padding: 10px 10px 14px; border-radius: 14px 14px 0 0; }
+  .os .prev { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: #374151; }
+  .os .prev b { display: block; color: #111827; font-size: 13.5px; }
+  .os .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; text-align: center; font-size: 11px; color: #374151; }
+  .os .apps i { display: block; width: 46px; height: 46px; border-radius: 12px; margin: 0 auto 4px; background: #9ca3af; }
+  .os .acts { margin-top: 12px; background: #fff; border-radius: 10px; font-size: 13.5px; }
+  .os .acts div { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+  .os .acts div:last-child { border-bottom: 0; }
+  .dim { background: rgba(17,24,39,.45); padding-top: 90px; }
+  .thread { background: #fff; color: #111827; padding: 12px; display: grid; gap: 8px; }
+  .thread .them { justify-self: start; max-width: 78%; background: #e5e7eb; border-radius: 16px 16px 16px 4px; padding: 8px 11px; font-size: 13.5px; }
+  .thread .us { justify-self: end; max-width: 86%; background: #2563eb; color: #fff; border-radius: 16px 16px 4px 16px; padding: 8px 11px; font-size: 13.5px; }
+  .thread .pic { justify-self: end; width: 86%; border-radius: 14px; overflow: hidden; border: 1px solid #cfd4db; background: #fff; line-height: 0; }
+  .thread .pic .key { line-height: 1.35; font-size: 11px; color: #374151; padding: 6px 9px 7px; }
+  .thread .pic .key b { color: #111827; font-size: 12.5px; }
+  .thread small { justify-self: end; font-size: 10.5px; color: #6b7280; }
+  .paper { background: #fff; color: #111827; margin: 12px; padding: 16px 16px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.25); font-size: 10.5px; line-height: 1.35; }
+  .paper .ph { display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #1e3a8a; padding-bottom: 7px; }
+  .paper .ph .logo { width: 24px; height: 24px; border-radius: 6px; background: #1e3a8a; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 10px; }
+  .paper h5 { margin: 9px 0 1px; font-size: 15px; }
+  .paper .two { display: grid; grid-template-columns: 1fr 76px; gap: 10px; align-items: start; margin-top: 8px; }
+  .paper .prow { font-size: 10.5px; gap: 7px; }
+  .paper .prow svg { width: 44px; height: 33px; border-radius: 4px; }
+  .paper .num { width: 17px; height: 17px; font-size: 9.5px; border-width: 1.5px; }
+  .paper .foot { margin-top: 10px; border-top: 1px solid #cfd4db; padding-top: 5px; color: #6b7280; font-size: 9.5px; display: flex; justify-content: space-between; gap: 8px; }
+  table.who td:nth-child(2) { font-weight: 600; color: var(--text-strong); }
+
+  /* the honest ruler */
+  .ruler { display: grid; gap: 14px; margin-top: 14px; max-width: 980px; }
+  .rrow { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .rrow h4 { margin: 0 0 2px; font-size: 14px; color: var(--text-strong); }
+  .rrow p { margin: 0 0 8px; font-size: 13px; }
+  .rrow svg { display: block; width: 100%; height: auto; }
+  .rrow text { font: 600 11px var(--font); fill: var(--text-700); }
+
+  /* desk */
+  .desk { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+  .desk .map { background: #6b8450; }
+  .desk .side { border-left: 1px solid var(--border); background: var(--surface); padding: 12px; font-size: 13px; }
+  .desk .side h4 { margin: 14px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .desk .side h4:first-child { margin-top: 0; }
+  .lrow { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .lrow i { grid-row: 1 / 3; width: 22px; height: 5px; border-radius: 3px; background: var(--paint); align-self: center; }
+  .lrow i.hand { background: repeating-linear-gradient(90deg, var(--paint) 0 6px, transparent 6px 9px); }
+  .lrow b { color: var(--text-strong); }
+  @media (max-width: 760px) { .desk { grid-template-columns: 1fr; } .desk .side { border-left: 0; border-top: 1px solid var(--border); } }
+
+  table.plan { border-collapse: collapse; width: 100%; max-width: 1040px; margin-top: 12px; font-size: 13px; background: var(--surface); border-radius: 10px; overflow: hidden; }
+  table.plan th, table.plan td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  table.plan th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  table.plan td:first-child { white-space: nowrap; font-weight: 700; color: var(--text-strong); }
+  table.plan tr.stop td { background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 700; }
+  .scroll { overflow-x: auto; }
+  ol.calls { max-width: 96ch; padding-left: 22px; }
+  ol.calls li { margin: 0 0 6px; }
+  footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--border-strong); font-size: 12.5px; color: var(--text-muted); max-width: 96ch; }
+</style>
+</head>
+<body>
+
+<!-- The land, drawn once and used by every map on the page. 720 by 440 units, about 1.8 ft to a unit.
+     A drawing, not an aerial picture. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="land" viewBox="0 0 720 440" preserveAspectRatio="none">
+      <rect width="720" height="440" fill="#8b7d5e"/>
+      <polygon points="0,0 250,0 208,118 0,150" fill="#6f8650"/>
+      <polygon points="560,0 720,0 720,150 604,124" fill="#72894f"/>
+      <polygon points="0,292 92,286 98,392 0,392" fill="#6b8450"/>
+      <polygon points="596,282 720,272 720,392 588,392" fill="#6f8650"/>
+      <polygon points="250,0 560,0 604,124 566,232 300,224 208,118" fill="#9a8a66"/>
+      <polygon points="150,300 330,270 350,360 160,380" fill="#94845f"/>
+      <!-- creek and trees, top left -->
+      <path d="M-10 60 C 60 40, 110 96, 190 70 S 250 20, 262 -10" fill="none" stroke="#3a565c" stroke-width="12" stroke-linecap="round"/>
+      <path d="M-10 60 C 60 40, 110 96, 190 70 S 250 20, 262 -10" fill="none" stroke="#52757c" stroke-width="5" stroke-linecap="round"/>
+      <g fill="#36552f"><circle cx="30" cy="34" r="12"/><circle cx="62" cy="72" r="10"/><circle cx="104" cy="52" r="12"/><circle cx="150" cy="96" r="11"/><circle cx="196" cy="48" r="12"/><circle cx="232" cy="30" r="9"/><circle cx="26" cy="112" r="10"/><circle cx="660" cy="34" r="10"/><circle cx="694" cy="110" r="12"/><circle cx="36" cy="330" r="12"/><circle cx="60" cy="362" r="9"/><circle cx="664" cy="330" r="12"/><circle cx="696" cy="300" r="9"/></g>
+      <!-- County Road 218 -->
+      <rect x="0" y="392" width="720" height="34" fill="#55585e"/>
+      <path d="M0 409 H720" stroke="#e6c34a" stroke-width="2" stroke-dasharray="14 12"/>
+      <rect x="0" y="426" width="720" height="14" fill="#6b8450"/>
+      <!-- the paved sales entrance, the wrong way in for a truck -->
+      <path d="M560 394 L560 330 L606 304" stroke="#5f6268" stroke-width="16" fill="none" stroke-linejoin="round"/>
+      <rect x="600" y="270" width="56" height="38" fill="#b9c0c8" stroke="#6b7280"/><path d="M600 289 L656 289" stroke="#7b8490"/>
+      <!-- the dirt truck drive -->
+      <path d="M120 394 L126 300 L200 266 L300 250 L400 240 L470 228 L512 150 L560 96 L636 84" stroke="#a8946a" stroke-width="14" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M120 394 L126 300 L200 266 L300 250 L400 240 L470 228 L512 150 L560 96 L636 84" stroke="#cdbb93" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- fence along the road with the truck gate -->
+      <path d="M0 384 H108 M134 384 H548 M574 384 H720" stroke="#3f3a2e" stroke-width="2" stroke-dasharray="3 4"/>
+      <rect x="108" y="380" width="26" height="6" fill="#d9d2c0" stroke="#3f3a2e"/>
+      <!-- laydown yard with boxes -->
+      <rect x="214" y="296" width="96" height="58" fill="none" stroke="#3f3a2e" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <rect x="224" y="306" width="30" height="12" fill="#3e6a8a"/><rect x="224" y="324" width="30" height="12" fill="#b45f3c"/><rect x="262" y="306" width="36" height="14" fill="#7a8088"/><rect x="264" y="328" width="22" height="16" fill="#c9b458"/>
+      <!-- lots along the drive: slabs and framed houses -->
+      <g stroke="#6f6248" stroke-width="1">
+        <rect x="318" y="172" width="52" height="40" fill="#c9c6bd"/>
+        <rect x="382" y="166" width="52" height="40" fill="#b08a62"/><path d="M382 186 L434 186"/>
+        <rect x="446" y="150" width="46" height="44" fill="#b08a62"/><path d="M446 172 L492 172"/>
+        <rect x="430" y="92" width="50" height="40" fill="#c9c6bd"/>
+        <rect x="528" y="170" width="44" height="40" fill="#c9c6bd"/>
+        <rect x="350" y="268" width="52" height="38" fill="#b08a62"/><path d="M350 287 L402 287"/>
+        <rect x="420" y="262" width="52" height="38" fill="#c9c6bd"/>
+      </g>
+      <!-- lift station at the back -->
+      <rect x="628" y="58" width="56" height="48" fill="none" stroke="#3f3a2e" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="656" cy="82" r="13" fill="#7b8490" stroke="#4b5563"/><rect x="636" y="64" width="12" height="10" fill="#4d7a52"/>
+    </symbol>
+    <!-- the way in, as one path every frame strokes its own way -->
+    <path id="way" d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240 L452 232 L466 198" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- a drawn code to scan: a pattern, not a real code -->
+    <symbol id="code" viewBox="-1 -1 27 27"><rect x="-1" y="-1" width="27" height="27" fill="#fff"/><path d="M9 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM9 3h1v1h-1zM16 3h1v1h-1zM12 4h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM8 7h1v1h-1zM12 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM11 8h1v1h-1zM14 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM19 8h1v1h-1zM21 8h1v1h-1zM24 8h1v1h-1zM0 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM20 9h1v1h-1zM22 9h1v1h-1zM24 9h1v1h-1zM0 10h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM5 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM13 10h1v1h-1zM17 10h1v1h-1zM1 11h1v1h-1zM2 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM9 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM14 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM1 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM14 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM23 14h1v1h-1zM1 15h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM18 15h1v1h-1zM20 15h1v1h-1zM24 15h1v1h-1zM1 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM23 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM11 17h1v1h-1zM13 17h1v1h-1zM19 17h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM14 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM23 18h1v1h-1zM11 19h1v1h-1zM15 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM11 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM8 21h1v1h-1zM9 21h1v1h-1zM10 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM18 21h1v1h-1zM21 21h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM8 23h1v1h-1zM9 23h1v1h-1zM10 23h1v1h-1zM13 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM8 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM15 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1z" fill="#111827"/><rect x="0" y="0" width="7" height="7" fill="#111827"/><rect x="1" y="1" width="5" height="5" fill="#fff"/><rect x="2" y="2" width="3" height="3" fill="#111827"/><rect x="18" y="0" width="7" height="7" fill="#111827"/><rect x="19" y="1" width="5" height="5" fill="#fff"/><rect x="20" y="2" width="3" height="3" fill="#111827"/><rect x="0" y="18" width="7" height="7" fill="#111827"/><rect x="1" y="19" width="5" height="5" fill="#fff"/><rect x="2" y="20" width="3" height="3" fill="#111827"/></symbol>
+    <!-- drawn photos -->
+    <symbol id="ph-gate" viewBox="0 0 96 72"><rect width="96" height="72" fill="#9fc3e0"/><rect y="44" width="96" height="28" fill="#a8946a"/><rect x="6" y="26" width="5" height="30" fill="#4b4436"/><rect x="85" y="26" width="5" height="30" fill="#4b4436"/><g stroke="#d9d2c0" stroke-width="2.5"><path d="M11 30 H85 M11 38 H85 M11 46 H85 M11 30 L85 46"/></g><rect x="40" y="33" width="16" height="10" fill="#f4d03f"/></symbol>
+    <symbol id="ph-yard" viewBox="0 0 96 72"><rect width="96" height="72" fill="#9fc3e0"/><rect y="40" width="96" height="32" fill="#94845f"/><rect x="10" y="28" width="34" height="24" fill="#3e6a8a"/><rect x="50" y="34" width="34" height="18" fill="#b45f3c"/><path d="M10 40 H44" stroke="#2c4d66"/></symbol>
+    <symbol id="ph-stub" viewBox="0 0 96 72"><rect width="96" height="72" fill="#b9a57c"/><rect x="0" y="0" width="96" height="22" fill="#b08a62"/><rect x="42" y="18" width="10" height="34" fill="#2f6fb5"/><rect x="38" y="14" width="18" height="6" fill="#1e4f86"/><ellipse cx="47" cy="54" rx="20" ry="6" fill="#8b7d5e"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #345 · a mock-up · nothing here is built</p>
+    <h1>Paint a map</h1>
+    <p>Walk it, drive it or draw it by hand. The line is saved on its job with the places along it, and one link shows it to a customer or a driver with no sign-in. Every frame is a phone unless it says desk. Juniper Ridge, County Road 218 and every person here are made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button data-t="light" aria-pressed="true">Light</button>
+    <button data-t="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a>
+  <a href="#start">1 Start</a>
+  <a href="#walk">2 Walking</a>
+  <a href="#place">3 A place</a>
+  <a href="#done">4 Look, fix, save</a>
+  <a href="#hand">5 By hand</a>
+  <a href="#measure">6 Measuring, honestly</a>
+  <a href="#saved">7 On the job</a>
+  <a href="#share">8 The shared page</a>
+  <a href="#send">9 Sending it further</a>
+  <a href="#desk">10 At a desk</a>
+  <a href="#plan">The train and the calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>What a phone's browser can do</h3>
+    <ul>
+      <li>Follow a person who walks or drives <b>with the screen on</b>, and hold the screen on for them.</li>
+      <li>Place them within about 16 ft under open sky. That is plenty for a route, a gate or a meter.</li>
+      <li>Work with no cell signal. The line is kept on the phone and sent later.</li>
+    </ul>
+  </div>
+  <div>
+    <h3>What it cannot do</h3>
+    <ul>
+      <li><b>Follow a locked phone.</b> No browser reads location with the screen off, on any phone. A phone in a pocket draws nothing.</li>
+      <li><b>Measure a length you will price.</b> A walked 50 ft can read 35 or 65.</li>
+      <li>Find anyone indoors. The line ends at the door and the photo does the rest.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>What I would build first</h3>
+    <ul>
+      <li>One thing, a <b>painted map</b>: lines, places with a photo, a name, a job.</li>
+      <li>Two ways to make a line: <b>walk or drive it</b>, or <b>draw it by hand</b> on the view from above.</li>
+      <li>One link, no sign-in, with a dot for where the reader is.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2 id="start">1 · Starting one <small>from a job, a development or the ＋ in the header</small></h2>
+<p class="lede">The first press costs nothing. Location is not asked for until <b>Start painting</b>, and only when the person picked walking.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">On the job, nothing painted yet</div>
+    <div class="frame">
+      <div class="hdr"><b>Juniper Ridge · Lot 14</b><span class="x">✕</span></div>
+      <div class="pad">
+        <div class="card">
+          <div class="h3">Painted maps</div>
+          <p class="say">Nothing painted for this job yet. Paint the way in, or mark what is where, and send it by a link.</p>
+          <div class="btnrow"><span class="btn blue big">Paint a map</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The empty block says what fills it and offers the press, as the app's empty states do.</p>
+  </div>
+  <div class="col">
+    <div class="cap">The start sheet</div>
+    <div class="frame">
+      <div class="hdr"><b>Paint a map</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="field"><label>What is it?</label><div class="inp">The way in for deliveries</div></div>
+        <div class="field"><label>For</label><div class="chips"><span class="pchip on">Juniper Ridge · Lot 14</span><span class="pchip">Juniper Ridge, all lots</span><span class="pchip">Nothing yet</span></div></div>
+        <div class="field"><label>How will you make the line?</label></div>
+        <div class="choice on"><i></i><b>Walk or drive it</b><span>This phone draws the line as you move.</span></div>
+        <div class="choice"><i></i><b>Draw it by hand</b><span>Press along the route on the view from above. Best from a desk, and best for a length.</span></div>
+        <div class="box grey">
+          <b>Before you start</b>
+          <ul>
+            <li>Keep this screen on and in your hand. The line stops if the phone locks.</li>
+            <li>The line stays on this phone until you press Save.</li>
+            <li>Painting stops by itself after 5 minutes standing still.</li>
+          </ul>
+        </div>
+        <div class="btnrow"><span class="btn red big">Start painting</span></div>
+        <p class="muted" style="margin:8px 0 0">Your phone will ask to share where you are. It is read only while this screen says Painting.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">Location is off, or only approximate</div>
+    <div class="frame">
+      <div class="hdr"><b>Paint a map</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="box">
+          <b>Your phone is giving a rough location, within about 2 miles.</b> A line cannot be painted from that.
+          <ul>
+            <li>iPhone: Settings, Privacy and Security, Location Services, Safari Websites. Turn on Precise Location.</li>
+            <li>Android: press the lock beside the address, Permissions, Location, Use precise location.</li>
+          </ul>
+        </div>
+        <div class="btnrow"><span class="btn blue big">Try again</span></div>
+        <div class="btnrow"><span class="btn big">Draw it by hand instead</span></div>
+      </div>
+    </div>
+    <p class="say">A refusal never dead-ends. Drawing by hand needs no location at all.</p>
+  </div>
+</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="walk">2 · Walking, with the line growing <small>the screen stays on by itself</small></h2>
+<p class="lede">The red bar is on every second the phone is being read, and it is the only time. The phone's own location arrow shows in its status bar too. How sure the phone is sits beside the length the whole way.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Open sky: a good line</div>
+    <div class="frame">
+      <div class="rec"><i></i>Painting · 2:14<span>The way in for deliveries</span></div>
+      <div class="map">
+        <svg viewBox="150 120 300 300" aria-label="The line grows from the gate along the dirt drive">
+          <use href="#land" width="720" height="440"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250" fill="none" stroke="#111827" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250" fill="none" stroke="#ff5a1f" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="300" cy="250" r="16" fill="rgba(37,99,235,.2)" stroke="rgba(37,99,235,.6)"/>
+          <circle cx="300" cy="250" r="6.5" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+          <circle cx="250" cy="296" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300" text-anchor="middle" font-size="10" font-weight="800" fill="#111827" font-family="sans-serif">2</text>
+        </svg>
+        <div class="lay"><span class="on">From above</span><span>Streets</span></div>
+      </div>
+      <div class="read"><span><b>about 470 ft</b> so far</span><span class="sure good"><i></i>Sure within 12 ft</span></div>
+      <div class="bar3"><span class="btn big">＋ Place</span><span class="btn big">Pause</span><span class="btn blue big">Done</span></div>
+    </div>
+    <p class="say">Three presses, each 48 tall, for a hand in a glove. <b>Pause</b> stops the reading at once. The blue ring is how sure the phone is.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Beside a building: the phone says so</div>
+    <div class="frame">
+      <div class="rec"><i></i>Painting · 4:02<span>The way in for deliveries</span></div>
+      <div class="map">
+        <svg viewBox="330 110 250 250" aria-label="Near the framed houses the line wanders and is drawn faint">
+          <use href="#land" width="720" height="440"/>
+          <path d="M330 247 L400 240" fill="none" stroke="#111827" stroke-width="8" stroke-linecap="round"/>
+          <path d="M330 247 L400 240" fill="none" stroke="#ff5a1f" stroke-width="5" stroke-linecap="round"/>
+          <path d="M400 240 L428 220 L420 250 L452 246 L444 214 L474 224 L466 198" fill="none" stroke="#ff5a1f" stroke-width="4" stroke-dasharray="3 6" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+          <circle cx="466" cy="198" r="46" fill="rgba(217,119,6,.18)" stroke="rgba(217,119,6,.75)" stroke-dasharray="5 4"/>
+          <circle cx="466" cy="198" r="6" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+        </svg>
+        <div class="pill t"><span class="amber">Only sure within 60 ft here. This part is drawn faint.</span></div>
+      </div>
+      <div class="read"><span><b>about 830 ft</b> so far</span><span class="sure poor"><i></i>Sure within 60 ft</span></div>
+      <div class="bar3"><span class="btn big">＋ Place</span><span class="btn big">Pause</span><span class="btn blue big">Done</span></div>
+    </div>
+    <p class="say">Walls and trees bend the signal. The app keeps the faint part out of the length and offers to fix it by hand at the end. It never draws a guess as if it were sure.</p>
+  </div>
+  <div class="col">
+    <div class="cap">The phone locked, then came back</div>
+    <div class="frame">
+      <div class="rec paused"><i></i>Paused · 2:14<span>Nothing is being read</span></div>
+      <div class="map">
+        <svg viewBox="110 150 300 280" aria-label="The line has a gap where the screen was off">
+          <use href="#land" width="720" height="440"/>
+          <path d="M120 392 L123 352 L126 300 L152 288" fill="none" stroke="#111827" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M120 392 L123 352 L126 300 L152 288" fill="none" stroke="#ff5a1f" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M152 288 L300 250" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="4 7" stroke-linecap="round"/>
+          <circle cx="300" cy="250" r="16" fill="rgba(37,99,235,.2)" stroke="rgba(37,99,235,.6)"/>
+          <circle cx="300" cy="250" r="6.5" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="box"><b>The screen was off for 2 minutes, so the line has a gap.</b> A phone's browser cannot read where you are while it is locked.</div>
+        <div class="btnrow"><span class="btn red big">Keep painting from here</span></div>
+        <div class="btnrow"><span class="btn big">Join the gap with a straight line</span><span class="btn big">Done</span></div>
+      </div>
+    </div>
+    <p class="say">This is the honest answer to <i>phone in my pocket</i>. A call, another app or the lock button all pause it. Each restart is a new stroke of the same map.</p>
+  </div>
+</div>
+
+<!-- ============ 3 ============ -->
+<h2 id="place">3 · A place along the way <small>what things are</small></h2>
+<p class="lede">A place is the same thing a task carries since v2.7058: a named point, with a photo. Here a map holds several. The line keeps painting behind the sheet.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">＋ Place, standing on it</div>
+    <div class="frame">
+      <div class="rec"><i></i>Painting · 0:48<span>still painting</span></div>
+      <div class="hdr"><b>What is here?</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="chips"><span class="pchip on">Gate</span><span class="pchip">Park here</span><span class="pchip">Door</span><span class="pchip">Meter</span><span class="pchip">Shutoff</span><span class="pchip">Cleanout</span></div>
+        <div class="field"><label>Name</label><div class="inp">Truck gate</div></div>
+        <div class="field"><label>A word for whoever comes next</label><div class="inp">Chain is looped, not locked. Close it behind you.</div></div>
+        <div class="field"><label>Photo</label>
+          <div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:stretch">
+            <svg viewBox="0 0 96 72" style="border-radius:8px;width:96px;height:72px"><use href="#ph-gate"/></svg>
+            <div class="tile">＋ Another photo</div>
+          </div>
+        </div>
+        <p class="sure good" style="margin:10px 0 0"><i></i>Sure within 12 ft</p>
+        <div class="btnrow"><span class="btn blue big">Add this place</span></div>
+      </div>
+    </div>
+    <p class="say">One press on a chip names it. A gate code is never typed here: a shared link would carry it to anyone who has the link.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Places on the line</div>
+    <div class="frame">
+      <div class="rec"><i></i>Painting · 3:31<span>The way in for deliveries</span></div>
+      <div class="map">
+        <svg viewBox="70 150 420 280" aria-label="Three numbered places along the painted line">
+          <use href="#land" width="720" height="440"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240" fill="none" stroke="#111827" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240" fill="none" stroke="#ff5a1f" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+            <circle cx="123" cy="372" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+            <circle cx="250" cy="296" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+          </g>
+          <circle cx="400" cy="240" r="14" fill="rgba(37,99,235,.2)" stroke="rgba(37,99,235,.6)"/>
+          <circle cx="400" cy="240" r="6" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <div class="read"><span><b>about 650 ft</b> so far · 2 places</span><span class="sure good"><i></i>Sure within 15 ft</span></div>
+      <div class="bar3"><span class="btn big">＋ Place</span><span class="btn big">Pause</span><span class="btn blue big">Done</span></div>
+    </div>
+    <p class="say">A place need not sit on the line. The laydown yard, number 2, is off to one side.</p>
+  </div>
+</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="done">4 · Done: look, fix, then save <small>confirm</small></h2>
+<p class="lede">Nothing has left the phone yet. The person sees exactly what will be kept, trims the scribble at each end, redraws a part that wandered, and only then saves. Throwing it away leaves no trace.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">The whole line, before it is saved</div>
+    <div class="frame">
+      <div class="hdr"><b>Look it over</b><span class="x">✕</span></div>
+      <div class="map">
+        <svg viewBox="70 130 440 300" aria-label="The whole line with a handle at each end and a faint wandering part">
+          <use href="#land" width="720" height="440"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240" fill="none" stroke="#111827" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240" fill="none" stroke="#ff5a1f" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M400 240 L428 220 L420 250 L452 246 L444 214 L474 224 L466 198" fill="none" stroke="#ff5a1f" stroke-width="3.5" stroke-dasharray="3 6" stroke-linejoin="round" stroke-linecap="round"/>
+          <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+            <circle cx="123" cy="372" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+            <circle cx="250" cy="296" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+            <circle cx="482" cy="186" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+          </g>
+          <rect x="112" y="384" width="16" height="16" rx="3" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+          <rect x="458" y="190" width="16" height="16" rx="3" fill="#fff" stroke="#7c3aed" stroke-width="3"/>
+        </svg>
+        <div class="pill t"><span>Drag an end to trim it. Press the faint part to redraw it.</span></div>
+      </div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="box">The last 180 ft wandered beside the houses. <u>Redraw that part</u></div>
+        <div class="field"><label>Length</label>
+          <div style="font-size:15px;color:var(--text-strong)"><b>About 830 ft</b> <span class="muted">give or take 40 ft · walked, read from the phone</span></div>
+          <span class="btn quiet" style="justify-content:flex-start;padding-left:0">Type a length measured with a wheel or a tape</span>
+        </div>
+        <div class="field"><label>For</label><div class="inp">Juniper Ridge · Lot 14</div></div>
+        <div class="btnrow"><span class="btn blue big">Save the map</span></div>
+        <div class="btnrow"><span class="btn big">Throw it away</span><span class="btn big">Keep painting</span></div>
+        <p class="muted" style="margin:8px 0 0">Nothing has left this phone yet. Saving keeps the line and the places. It keeps no clock along the line.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">Redraw a part by finger</div>
+    <div class="frame">
+      <div class="hdr"><b>Redraw this part</b><span class="x">✕</span></div>
+      <div class="map">
+        <svg viewBox="340 130 220 200" aria-label="The wandering part in faint, and the corrected line drawn by finger">
+          <use href="#land" width="720" height="440"/>
+          <path d="M340 246 L400 240" fill="none" stroke="#111827" stroke-width="7" stroke-linecap="round"/>
+          <path d="M340 246 L400 240" fill="none" stroke="#ff5a1f" stroke-width="4.5" stroke-linecap="round"/>
+          <path d="M400 240 L428 220 L420 250 L452 246 L444 214 L474 224 L466 198" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 5" stroke-linejoin="round" opacity=".8"/>
+          <path d="M400 240 L452 232 L466 198" fill="none" stroke="#111827" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M400 240 L452 232 L466 198" fill="none" stroke="#7c3aed" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <g fill="#fff" stroke="#7c3aed" stroke-width="2.5"><circle cx="400" cy="240" r="6"/><circle cx="452" cy="232" r="6"/><circle cx="466" cy="198" r="6"/></g>
+        </svg>
+        <div class="pill t"><span>Press along the right way. Each press is a corner.</span></div>
+      </div>
+      <div class="pad" style="background:var(--surface)">
+        <p class="say">The white dashes are what the phone read. The purple line is yours, along the drive and up to the slab.</p>
+        <div class="btnrow"><span class="btn big">Undo a corner</span><span class="btn blue big">Use my line</span></div>
+      </div>
+    </div>
+    <p class="say">The same tool as drawing by hand, used on one stretch. A redrawn part says <i>drawn by hand</i> on the saved line, so nobody takes it for a reading.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Saved with no signal</div>
+    <div class="frame">
+      <div class="hdr"><b>The way in for deliveries</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="box blue"><b>Saved on this phone.</b> It will send itself when the phone has signal. You can close this.</div>
+        <p class="say" style="margin-top:10px">The phone finds itself without a cell signal, so the line paints the same. Only the picture under it may be blank until the signal is back.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="hand">5 · Draw it by hand <small>no walking, no location</small></h2>
+<p class="lede">For <i>where to drive</i> this is often the better way: the office draws the route in a minute without anyone going out. It is also the better ruler when both ends can be seen from above.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Press along the route</div>
+    <div class="frame">
+      <div class="hdr"><b>Draw it by hand</b><span class="x">✕</span></div>
+      <div class="map">
+        <svg viewBox="70 130 440 300" aria-label="A hand-drawn line with a corner at each press">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="8"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5" stroke-dasharray="12 5"/>
+          <g fill="#fff" stroke="#111827" stroke-width="2"><circle cx="120" cy="392" r="5.5"/><circle cx="123" cy="352" r="5.5"/><circle cx="126" cy="300" r="5.5"/><circle cx="200" cy="266" r="5.5"/><circle cx="300" cy="250" r="5.5"/><circle cx="400" cy="240" r="5.5"/><circle cx="452" cy="232" r="5.5"/><circle cx="466" cy="198" r="5.5"/></g>
+        </svg>
+        <div class="lay"><span class="on">From above</span><span>Streets</span></div>
+        <div class="pill b"><span>Press the next corner. Drag a corner to move it.</span></div>
+      </div>
+      <div class="read"><span><b>about 830 ft</b> · 8 corners</span><span class="muted">drawn by hand</span></div>
+      <div class="bar3"><span class="btn big">Undo</span><span class="btn big">＋ Place</span><span class="btn blue big">Done</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">Where the picture is old</div>
+    <div class="frame">
+      <div class="hdr"><b>Draw it by hand</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="box"><b>A new development may not be in the picture yet.</b> The view from above can be a year or two old and show a bare field. If you cannot see the drive, walk or drive it once and the line shows what the picture does not.</div>
+      </div>
+    </div>
+    <p class="say">This is where walking earns its keep: roads that are on no map yet.</p>
+  </div>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="measure">6 · Measuring, honestly <small>what each way is good for</small></h2>
+<p class="lede">The bars are my reckoning from the published 16 ft figure for a phone under open sky. Each bar is drawn as a share of its own run. The one-day try on your own phones, step 0 of the plan, replaces them with measured numbers.</p>
+<div class="ruler">
+  <div class="rrow">
+    <h4>A 50 ft run, walked</h4>
+    <p>Each end can be off by 10 to 15 ft, so it can read anywhere from about 35 to 65. Not a measurement.</p>
+    <svg viewBox="0 0 700 52" role="img" aria-label="A 50 ft run, walked: reads 35 to 65">
+      <rect x="10" y="18" width="680" height="8" rx="4" fill="var(--bg-muted)"/>
+      <rect x="146" y="14" width="408" height="16" rx="5" fill="#dc2626" opacity=".6"/>
+      <rect x="348" y="8" width="4" height="28" fill="var(--text-strong)"/>
+      <text x="350" y="46" text-anchor="middle">50 ft true</text><text x="132" y="26" text-anchor="end">35</text><text x="568" y="26" text-anchor="start">65</text>
+    </svg>
+  </div>
+  <div class="rrow">
+    <h4>A 50 ft run, drawn by hand on the view from above</h4>
+    <p>Each press lands within a few feet when the end can be seen in the picture. Better, and still not a tape.</p>
+    <svg viewBox="0 0 700 52" role="img" aria-label="A 50 ft run, drawn by hand on the view from above: reads 46 to 54">
+      <rect x="10" y="18" width="680" height="8" rx="4" fill="var(--bg-muted)"/>
+      <rect x="296" y="14" width="108" height="16" rx="5" fill="#d97706" opacity=".6"/>
+      <rect x="348" y="8" width="4" height="28" fill="var(--text-strong)"/>
+      <text x="350" y="46" text-anchor="middle">50 ft true</text><text x="282" y="26" text-anchor="end">46</text><text x="418" y="26" text-anchor="start">54</text>
+    </svg>
+  </div>
+  <div class="rrow">
+    <h4>A 500 ft run, walked in the open</h4>
+    <p>The same 15 to 25 ft at the ends is now 3 to 5 in a hundred. Fine for <i>about how far</i>. Beside buildings or under trees, double it. Not for a length that gets priced.</p>
+    <svg viewBox="0 0 700 52" role="img" aria-label="A 500 ft run, walked in the open: reads 475 to 525">
+      <rect x="10" y="18" width="680" height="8" rx="4" fill="var(--bg-muted)"/>
+      <rect x="316" y="14" width="68" height="16" rx="5" fill="#d97706" opacity=".6"/>
+      <rect x="348" y="8" width="4" height="28" fill="var(--text-strong)"/>
+      <text x="350" y="46" text-anchor="middle">500 ft true</text><text x="302" y="26" text-anchor="end">475</text><text x="398" y="26" text-anchor="start">525</text>
+    </svg>
+  </div>
+  <div class="rrow">
+    <h4>A 500 ft run, drawn by hand on the view from above</h4>
+    <p>The same few feet at each end, now under 1 in a hundred. The better way to get a length from the app.</p>
+    <svg viewBox="0 0 700 52" role="img" aria-label="A 500 ft run, drawn by hand on the view from above: reads 496 to 504">
+      <rect x="10" y="18" width="680" height="8" rx="4" fill="var(--bg-muted)"/>
+      <rect x="343" y="14" width="14" height="16" rx="5" fill="#16a34a" opacity=".6"/>
+      <rect x="348" y="8" width="4" height="28" fill="var(--text-strong)"/>
+      <text x="350" y="46" text-anchor="middle">500 ft true</text><text x="329" y="26" text-anchor="end">496</text><text x="371" y="26" text-anchor="start">504</text>
+    </svg>
+  </div>
+  <div class="rrow">
+    <h4>A wheel or a tape, typed onto the line</h4>
+    <p>The number to price from. The line shows it in place of the phone's guess: <b>612 ft, measured with a wheel</b>.</p>
+  </div>
+</div>
+<p class="note"><b>How the app says a length.</b> Always <i>about</i>, rounded to the nearest 10 ft, with its give or take, and with how it was made: walked, driven, drawn by hand or measured. Never <i>638.4 ft</i>. A typed length wins over every other.</p>
+
+<!-- ============ 7 ============ -->
+<h2 id="saved">7 · Saved, on its job <small>and restarted later</small></h2>
+<div class="three">
+  <div class="col">
+    <div class="cap">The job's Painted maps</div>
+    <div class="frame">
+      <div class="hdr"><b>Juniper Ridge · Lot 14</b><span class="x">✕</span></div>
+      <div class="pad">
+        <div class="h3">Painted maps</div>
+        <div class="mapcard">
+          <div class="map">
+            <svg viewBox="70 150 440 270" aria-label="The saved line with three places">
+              <use href="#land" width="720" height="440"/>
+              <use href="#way" stroke="#111827" stroke-width="8"/>
+              <use href="#way" stroke="#ff5a1f" stroke-width="5"/>
+              <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+                <circle cx="123" cy="372" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+                <circle cx="250" cy="296" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+                <circle cx="482" cy="186" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+              </g>
+            </svg>
+          </div>
+          <div class="mapfoot">
+            <b>The way in for deliveries</b><br>
+            About 830 ft · 3 places · walked, the end drawn by hand<br>
+            <span class="muted">Painted by Dana Whitlock on Nov 13</span>
+            <div class="btnrow"><span class="btn blue">Share</span><span class="btn">Directions to the start</span><span class="btn">Add to it</span></div>
+          </div>
+        </div>
+        <div class="btnrow"><span class="btn">Paint another map</span></div>
+      </div>
+    </div>
+    <p class="say"><b>Add to it</b> is the restart on another day: a new stroke or a new place on the same map, by anyone who may open the job.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Share: one sheet for every way out</div>
+    <div class="frame">
+      <div class="hdr"><b>Share this map</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="cap2">A link · stays current · can be ended</div>
+        <div class="link">clicktooling.com/way/q7m2kd4x9p</div>
+        <div class="btnrow"><span class="btn blue big">Text it…</span><span class="btn big">Copy the link</span></div>
+        <div class="srow"><b>Send it another way…</b><span>Mail, a group chat, a phone nearby</span></div>
+        <div class="srow"><b>Show a code to scan</b><span>For someone standing beside you</span></div>
+        <div class="cap2">A copy · cannot be taken back</div>
+        <div class="srow"><b>A picture</b><span>Shows in a text thread without a press</span></div>
+        <div class="srow"><b>A page to print</b><span>The map, the places and a code back to the link</span></div>
+        <div class="srow"><b>A file for another map</b><span>Google Earth, a hiking app, an engineer</span></div>
+        <div class="box grey">
+          <b>They see</b> the name, the line, the places with their words and photos.<br>
+          <b>They do not see</b> who painted it, when, or anything else about the job.
+        </div>
+        <p class="muted" style="margin:10px 0 0">The link ends by itself on Feb 11. <u>End this link now</u></p>
+      </div>
+    </div>
+    <p class="say">The link is first because it is the only one that can be ended and the only one that shows a place added next week. Each row is drawn in <a href="#send" style="color:var(--text-link)">section 9</a>.</p>
+  </div>
+  <div class="col">
+    <div class="cap">On a task: where the work is, as a way</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="card">
+          <div style="font-size:14px;color:var(--text-strong);font-weight:600">Set the water stub at Lot 14</div>
+          <div class="muted">Due today · from Priya Anand</div>
+          <div class="mapcard" style="margin-top:10px">
+            <div class="map">
+              <svg viewBox="70 170 440 240" aria-label="The task shows the painted way to its place">
+                <use href="#land" width="720" height="440"/>
+                <use href="#way" stroke="#111827" stroke-width="8"/>
+                <use href="#way" stroke="#ff5a1f" stroke-width="5"/>
+                <circle cx="466" cy="198" r="10" fill="#2563eb" stroke="#fff" stroke-width="3"/>
+              </svg>
+            </div>
+            <div class="mapfoot"><b>Water stub, Lot 14</b> · the way in is painted, about 830 ft from the truck gate
+              <div class="btnrow"><span class="btn blue">Directions to the gate</span><span class="btn">How far am I?</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="say">Later in the train. A task's place gains the painted map that leads to it, so the dot comes with its way in.</p>
+  </div>
+</div>
+
+<!-- ============ 8 ============ -->
+<h2 id="share">8 · What the customer or the driver opens <small>no sign-in, always light</small></h2>
+<p class="lede">A page of its own at <code>/way/&lt;code&gt;</code>. It draws the line and the places and nothing else from the app. The reader's own dot is asked for on a press and never leaves their phone.</p>
+<div class="three" data-theme="light">
+  <div class="col">
+    <div class="cap">The link, opened on a phone</div>
+    <div class="frame public" style="background:#f0f2f5;color:#1a1a1a">
+      <div class="lh"><div class="logo">YC</div><div><b>Your company's name</b><small>sent you a map</small></div></div>
+      <div style="padding:12px 12px 4px;font-size:17px;font-weight:700;color:#111827">The way in for deliveries</div>
+      <div style="padding:0 12px 10px;font-size:13px;color:#374151">Juniper Ridge. Start at the truck gate on County Road 218, not the sales entrance.</div>
+      <div class="map">
+        <svg viewBox="60 130 600 310" aria-label="The shared map with the line and three places">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="9"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5.5"/>
+          <g font-family="sans-serif" font-size="12" font-weight="800" text-anchor="middle" fill="#111827">
+            <circle cx="123" cy="372" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+            <circle cx="250" cy="296" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+            <circle cx="482" cy="186" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+          </g>
+        </svg>
+        <div class="lay"><span class="on">From above</span><span>Streets</span></div>
+        <div class="me">◎ Show where I am</div>
+      </div>
+      <div style="padding:12px;background:#fff">
+        <div class="btnrow" style="margin-top:0"><span class="btn blue big">Directions to the start</span></div>
+        <div class="plist" style="color:#374151">
+          <div class="prow"><span class="num">1</span><div><b style="color:#111827">Truck gate</b><br>Chain is looped, not locked. Close it behind you.</div><svg viewBox="0 0 96 72"><use href="#ph-gate"/></svg></div>
+          <div class="prow"><span class="num">2</span><div><b style="color:#111827">Laydown yard</b><br>Drop pipe by the blue box.</div><svg viewBox="0 0 96 72"><use href="#ph-yard"/></svg></div>
+          <div class="prow"><span class="num">3</span><div><b style="color:#111827">Water stub, Lot 14</b><br>Blue riser at the back of the slab.</div><svg viewBox="0 0 96 72"><use href="#ph-stub"/></svg></div>
+        </div>
+        <p style="margin:12px 0 0;font-size:12px;color:#6b7280">About 830 ft from the gate to Lot 14.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">After Show where I am</div>
+    <div class="frame public" style="background:#f0f2f5;color:#1a1a1a">
+      <div class="lh"><div class="logo">YC</div><div><b>Your company's name</b><small>sent you a map</small></div></div>
+      <div class="map">
+        <svg viewBox="60 200 420 240" aria-label="The reader's dot on the county road, short of the gate">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="8"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5"/>
+          <circle cx="123" cy="372" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#111827">1</text>
+          <circle cx="330" cy="410" r="20" fill="rgba(37,99,235,.2)" stroke="rgba(37,99,235,.6)"/>
+          <circle cx="330" cy="410" r="7" fill="#2563eb" stroke="#fff" stroke-width="2.5"/>
+        </svg>
+        <div class="me">◎ Hide where I am</div>
+      </div>
+      <div style="padding:12px;background:#fff;font-size:13px;color:#374151">
+        <div style="border-radius:9px;padding:8px 10px;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe"><b>The start is 380 ft west of you.</b> Your phone is sure within 20 ft.</div>
+        <p style="margin:8px 0 0;font-size:12px;color:#6b7280">Where you are stays on your phone. We never see it. Keep this page open and the dot moves with you.</p>
+      </div>
+    </div>
+    <p class="say">The dot follows the reader while the page is open and the screen is on, the same limit as painting. A driver follows the line with it.</p>
+  </div>
+  <div class="col">
+    <div class="cap">A link that was ended</div>
+    <div class="frame public" style="background:#f0f2f5;color:#1a1a1a">
+      <div class="lh"><div class="logo">YC</div><div><b>Your company's name</b><small>&nbsp;</small></div></div>
+      <div style="padding:16px 12px 20px;background:#fff;font-size:14px;color:#374151"><b style="color:#111827">This map is no longer shared.</b><br>Ask whoever sent it for a new link.</div>
+    </div>
+    <p class="say">An ended link, an expired one and a wrong code all read the same, so a guess learns nothing.</p>
+  </div>
+</div>
+
+<!-- ============ 9 ============ -->
+<h2 id="send">9 · Sending it further <small>beyond the link in a text</small></h2>
+<p class="lede">Asked 2026-11-13, after the first look. One rule sorts every option: <b>a link can be ended and stays current, and a copy cannot be taken back and goes stale.</b> So the link is always first, and every copy carries a code back to it and the day it was made.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Send it another way…</div>
+    <div class="frame">
+      <div class="dim">
+        <div class="os">
+          <div class="prev"><svg viewBox="70 150 440 290" style="width:44px;height:44px;border-radius:8px" preserveAspectRatio="xMidYMid slice"><use href="#land" width="720" height="440"/><use href="#way" stroke="#ff5a1f" stroke-width="14"/></svg><div><b>The way in for deliveries</b>clicktooling.com</div></div>
+          <div class="apps"><div><i></i>Messages</div><div><i></i>Mail</div><div><i></i>A chat app</div><div><i></i>A phone nearby</div></div>
+          <div class="acts"><div>Copy</div><div>Add to notes</div><div>Print</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">This is the phone's own sheet, not ours. One press hands the link to any app the person has. The app already does this for a job and for the lien desk.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Show a code to scan</div>
+    <div class="frame">
+      <div class="hdr"><b>The way in for deliveries</b><span class="x">✕</span></div>
+      <div class="pad" style="background:#fff;text-align:center;color:#111827">
+        <svg viewBox="-1 -1 27 27" style="width:230px;height:230px;margin:8px auto 4px;display:block"><use href="#code"/></svg>
+        <div style="font-size:15px;font-weight:700">Point a phone's camera here</div>
+        <div style="font-size:12.5px;color:#6b7280;margin-top:2px">It opens the map. No app, no sign-in.</div>
+      </div>
+    </div>
+    <p class="say">For the driver at the gate or a sub on site. The screen goes bright while the code shows. The same code is printed on the page.</p>
+  </div>
+  <div class="col">
+    <div class="cap">A picture, as it lands in a text</div>
+    <div class="frame public">
+      <div class="thread">
+        <div class="them">Which gate do your guys want the pipe at?</div>
+        <div class="pic">
+          <svg viewBox="70 150 440 270" style="display:block;width:100%" aria-label="The map as a picture with the line and three places">
+            <use href="#land" width="720" height="440"/>
+            <use href="#way" stroke="#111827" stroke-width="9"/>
+            <use href="#way" stroke="#ff5a1f" stroke-width="5.5"/>
+            <g font-family="sans-serif" font-size="12" font-weight="800" text-anchor="middle" fill="#111827">
+              <circle cx="123" cy="372" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+              <circle cx="250" cy="296" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+              <circle cx="482" cy="186" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+            </g>
+          </svg>
+          <div class="key"><b>The way in for deliveries</b><br>1 Truck gate · 2 Laydown yard · 3 Water stub, Lot 14<br>About 830 ft · Your company's name · Nov 13</div>
+        </div>
+        <div class="us">Truck gate on County Road 218, not the sales entrance. Live map: clicktooling.com/way/q7m2kd4x9p</div>
+        <small>Delivered</small>
+      </div>
+    </div>
+    <p class="say">A picture is seen without a press, by people who will not open a link. It carries the places as a key, the day, and the map makers' credit line. Sent with the link under it.</p>
+  </div>
+</div>
+<div class="three">
+  <div class="col">
+    <div class="cap">A page to print</div>
+    <div class="frame public" style="background:#9ca3af">
+      <div class="paper">
+        <div class="ph"><div class="logo">YC</div><b style="font-size:12px">Your company's name</b><span style="margin-left:auto;color:#6b7280">Juniper Ridge</span></div>
+        <h5>The way in for deliveries</h5>
+        <div>Start at the truck gate on County Road 218, not the sales entrance. About 830 ft from the gate to Lot 14.</div>
+        <svg viewBox="40 120 640 320" style="display:block;width:100%;margin-top:8px;border:1px solid #cfd4db" aria-label="The printed map">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="8"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5"/>
+          <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+              <circle cx="123" cy="372" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+              <circle cx="250" cy="296" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+              <circle cx="482" cy="186" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+            </g>
+        </svg>
+        <div class="two">
+          <div class="plist" style="margin-top:0;gap:6px">
+            <div class="prow"><span class="num">1</span><div><b>Truck gate</b><br>Chain is looped, not locked. Close it behind you.</div><svg viewBox="0 0 96 72"><use href="#ph-gate"/></svg></div>
+            <div class="prow"><span class="num">2</span><div><b>Laydown yard</b><br>Drop pipe by the blue box.</div><svg viewBox="0 0 96 72"><use href="#ph-yard"/></svg></div>
+            <div class="prow"><span class="num">3</span><div><b>Water stub, Lot 14</b><br>Blue riser at the back of the slab.</div><svg viewBox="0 0 96 72"><use href="#ph-stub"/></svg></div>
+          </div>
+          <div style="text-align:center;color:#6b7280;font-size:9px"><svg viewBox="-1 -1 27 27" style="width:76px;height:76px;display:block"><use href="#code"/></svg>Scan for the map as it is today</div>
+        </div>
+        <div class="foot"><span>Printed Nov 13. The map may have changed since.</span><span>Page 1 of 1</span></div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 12px"><span class="btn blue" style="flex:1">Print</span><span class="btn" style="flex:1">Save as a PDF</span><span class="btn" style="flex:1">File it on the job</span></div>
+    </div>
+    <p class="say">One Letter page. For a gate guard, a delivery ticket, the binder in the truck, a general contractor's site packet. <b>File it on the job</b> puts the PDF in the job's Drive folder.</p>
+  </div>
+  <div class="col">
+    <div class="cap">A file for another map</div>
+    <div class="frame">
+      <div class="hdr"><b>A file for another map</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="srow"><b>For Google Earth or Google My Maps</b><span>A .kml file: the lines and the places with their words</span></div>
+        <div class="srow"><b>For a hiking app or a handheld</b><span>A .gpx file: the lines as tracks, the places as waypoints</span></div>
+        <div class="box grey"><b>Google Maps itself cannot show a drawn line from a link.</b> A link to it carries points, not a line, and it routes along its own roads. So Directions go to the start, and the line travels as a file the other person opens in their own map.</div>
+        <div class="box">A file cannot be taken back, and it carries no photos.</div>
+      </div>
+    </div>
+    <p class="say">For the few who keep a map of their own: an engineer, a surveyor, a general contractor with the site in Google Earth. Cheap to build, and the last thing most people will press.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Who gets what</div>
+    <div class="scroll">
+    <table class="plan who" style="margin-top:0">
+      <tr><th>For</th><th>Send</th></tr>
+      <tr><td>A customer</td><td>The link by text</td></tr>
+      <tr><td>A delivery driver</td><td>The link by text, or the picture</td></tr>
+      <tr><td>A supply house's desk</td><td>The page, on the delivery ticket</td></tr>
+      <tr><td>Someone beside you</td><td>The code to scan</td></tr>
+      <tr><td>A sub or a group chat</td><td>Send it another way, or the picture</td></tr>
+      <tr><td>A general contractor</td><td>The link, and the page for the packet</td></tr>
+      <tr><td>An engineer or a surveyor</td><td>The file</td></tr>
+      <tr><td>The next tech, next year</td><td>Nothing to send: it is on the job</td></tr>
+    </table>
+    </div>
+    <p class="say">Later, inside the app: on a task, on a sub's work order, and on the customer's and the general contractor's portal pages.</p>
+  </div>
+</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="desk">10 · At a desk <small>the office draws, reads and sends</small></h2>
+<p class="lede">The same map, wide. The office draws a route by hand with a mouse, moves a place that landed a few feet off, types a measured length, and sends the link.</p>
+<div class="frame wide" style="margin-top:14px">
+  <div class="hdr"><b>Juniper Ridge · Lot 14</b> <span class="muted">› Painted maps › The way in for deliveries</span><span class="x">✕</span></div>
+  <div class="desk">
+    <div class="map">
+      <svg viewBox="0 60 720 380" aria-label="The whole site with two lines and four places">
+        <use href="#land" width="720" height="440"/>
+        <use href="#way" stroke="#111827" stroke-width="7"/>
+        <use href="#way" stroke="#ff5a1f" stroke-width="4.5"/>
+        <path d="M470 228 L512 150 L560 96 L636 84" fill="none" stroke="#111827" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M470 228 L512 150 L560 96 L636 84" fill="none" stroke="#ff5a1f" stroke-width="4.5" stroke-dasharray="11 5" stroke-linejoin="round" stroke-linecap="round"/>
+        <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+          <circle cx="123" cy="372" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+          <circle cx="250" cy="296" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+          <circle cx="482" cy="186" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+          <circle cx="656" cy="82" r="9" fill="#fff" stroke="#111827" stroke-width="2"/><text x="656" y="86">4</text>
+        </g>
+      </svg>
+      <div class="lay" style="right:auto;left:6px"><span class="on">From above</span><span>Streets</span></div>
+    </div>
+    <div class="side">
+      <h4>Lines</h4>
+      <div class="lrow"><i></i><b>Truck gate to Lot 14</b><span>About 830 ft · walked by Dana Whitlock, Nov 13 · end drawn by hand</span></div>
+      <div class="lrow"><i class="hand"></i><b>On to the lift station</b><span>About 410 ft · drawn by hand by Priya Anand, Nov 13 · <u style="color:var(--text-link)">type a measured length</u></span></div>
+      <h4>Places</h4>
+      <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">1</span><b>Truck gate</b><span>photo · within 12 ft</span></div>
+      <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">2</span><b>Laydown yard</b><span>photo · within 15 ft</span></div>
+      <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">3</span><b>Water stub, Lot 14</b><span>photo · moved by hand</span></div>
+      <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">4</span><b>Lift station</b><span>no photo yet · placed by hand</span></div>
+      <h4>Do</h4>
+      <div class="btnrow" style="margin-top:0"><span class="btn">Draw a line</span><span class="btn">＋ Place</span><span class="btn blue">Share</span><span class="btn">Print</span></div>
+      <p class="muted" style="margin:10px 0 0">Shared since Nov 13 · opened 3 times · ends Feb 11 · <u>End this link now</u></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ plan ============ -->
+<h2 id="plan">The train and the calls</h2>
+<div class="scroll">
+<table class="plan">
+  <tr><th>Step</th><th>What</th><th>Needs</th><th>Size</th></tr>
+  <tr><td>0</td><td><b>A one-day try on your own phones.</b> A page for devs only that paints a walk on the screen and saves nothing. Walk a taped 50 ft and 500 ft on an iPhone and an Android, in the open and beside a building. Lock the phone mid-walk.</td><td>no migration, no public door</td><td>S</td></tr>
+  <tr class="stop"><td colspan="4">Read the numbers. If a walked line is worse than this card says, the train starts at drawing by hand and walking waits.</td></tr>
+  <tr><td>1</td><td>The painted map itself, no screen: the table, the kernels for length, cleaning and the words.</td><td>one migration: <code>painted_maps</code>, <code>painted_map_lines</code>, <code>painted_map_places</code></td><td>S</td></tr>
+  <tr><td>2</td><td>Draw it by hand, the Painted maps block on a job and a development, places with a photo.</td><td>none</td><td>M</td></tr>
+  <tr><td>3</td><td>Walk or drive it: the red bar, the screen held on, pause and restart, the faint part, look and fix, kept on the phone with no signal.</td><td>none</td><td>M</td></tr>
+  <tr><td>4</td><td>The link: Share, the page at <code>/way/&lt;code&gt;</code>, Show where I am, Directions to the start, End this link, Text it, Send it another way, Show a code to scan.</td><td>one migration, <code>painted_map_links</code>, and the one door for a signed-out reader, the <code>painted-map-link</code> function</td><td>M</td></tr>
+  <tr><td>4b</td><td>The copies: a picture, and a page to print with its code, Save as a PDF and File it on the job.</td><td>none</td><td>M</td></tr>
+  <tr class="stop"><td colspan="4">Stop. Count the maps painted and the links opened for two weeks.</td></tr>
+  <tr><td>5</td><td>A task's place carries the painted map that leads to it.</td><td>one small migration</td><td>S</td></tr>
+  <tr><td>5b</td><td>A file for another map: .kml and .gpx.</td><td>none</td><td>S</td></tr>
+  <tr><td>6</td><td>Painted maps as a layer on the Map page and on Materials on site's map.</td><td>none</td><td>S</td></tr>
+</table>
+</div>
+<p class="note"><b>Left for later, on purpose.</b> An area (a closed shape and its square feet). Height along the line. Sharing a walk live while it is walked. A native app that could follow a locked phone. Bringing in a line recorded by a hiking app. Map pictures kept on the phone for no signal.</p>
+
+<h3 style="margin:26px 0 6px;font-size:16px;color:var(--text-strong)">The owner's calls</h3>
+<ol class="calls">
+  <li><b>Screen on.</b> Is <i>walk with the screen on, in your hand</i> good enough to build? My pick: yes. A locked phone would take a native app.</li>
+  <li><b>Measuring.</b> May the app show a walked length at all? My pick: yes, as <i>about</i>, with its give or take, and a typed length wins.</li>
+  <li><b>Try first.</b> Step 0 on your own phones before the train? My pick: yes, it is one day.</li>
+  <li><b>Who may paint.</b> Anyone who may open the job? My pick: yes. Who may share a link: the office and the painter.</li>
+  <li><b>The link's life.</b> Ends by itself after 90 days, or lives until ended? My pick: 90 days.</li>
+  <li><b>The painter's name on the shared page.</b> My pick: no. The company's name only.</li>
+  <li><b>The stop.</b> Five minutes standing still pauses it, an hour ends it. Or other numbers.</li>
+  <li><b>The map under it.</b> The free maps the app draws today, or Google's, which bills past a monthly count. My pick: the free ones, with Directions opening Google Maps.</li>
+  <li><b>Which copies first.</b> The picture and the page with the link (my pick), the files after the count. Or the files sooner, if a general contractor or an engineer is asking today.</li>
+  <li><b>Who may send a copy.</b> A copy cannot be taken back. My pick: the same people who may share the link, with those words on the sheet.</li>
+  <li><b>Filing the page.</b> On a press (my pick), or by itself the first time a map is shared.</li>
+</ol>
+
+<footer>
+  Punch list #345 · drawn 2026-11-13 · the card is <code>to-dos/paint-a-map/README.md</code>. The land, the people, the company and the photos are drawings and made-up names, and the code to scan is a drawn pattern that opens nothing. The lengths and the give or take on this page are reckoned, not measured: step 0 measures them.
+</footer>
+
+</div>
+<script>
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.dataset.theme = b.dataset.t;
+      document.querySelectorAll('.themes button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+</script>
+</body>
+</html>

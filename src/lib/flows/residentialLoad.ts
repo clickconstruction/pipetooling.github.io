@@ -9,8 +9,10 @@
  */
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isSettledRemainder, openRemainder } from '../billing/billTruth'
-import { billedExpectedPayModel, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay'
+import type { PaySpeedData, PromisedPayDate } from '../jobs/billedExpectedPay'
+import { billHeldDay, billedPayModel } from '../jobs/billedDuePay'
 import { paySpeedPayer } from '../jobs/billToParty'
+import { calendarFor, type PayCalendarIndex } from '../jobs/payCalendar'
 import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
 import { jobReportPreviewLine } from '../jobReportsTimeline'
 import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
@@ -104,6 +106,10 @@ export type ResidentialRows = {
   paySpeeds?: PaySpeedData | null
   /** A promised pay day by job (`list_job_promised_pay_dates`), which wins over the pay speeds. */
   promisedPay?: Readonly<Partial<Record<string, PromisedPayDate>>>
+  /** The stored Pay calendars (punch list #323, v2.7140): a bill whose payer is on one is due on its calendar's day. Left out, the pay speeds read as before. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id; the calendar counts from it. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
 const oldest = <T>(rows: readonly T[], at: (r: T) => string | null | undefined): T | null =>
@@ -213,9 +219,10 @@ export function billedRounds(rows: ResidentialRows, jobId: string): RoundStamp[]
 /**
  * The sent bills on one job: one `paid` round each, keyed by the bill as the billed round is. Paid once main's one rule
  * covers it (`attributeJobPayments`: its own payments, then the job's unlinked money oldest bill first) or it is marked
- * paid, on the day of the last payment it took; else waiting on them since it went. Due the day the expected pay chip
- * reads (their own pace, or their promise). No column keeps a customer's days to pay: `customers.payment_terms` is a
- * policy, not a count of days, so the due day is a model, not their terms.
+ * paid, on the day of the last payment it took; else waiting on them since it went. Due the day the bill is held to
+ * (`billHeldDay`): their promise, else the due day of a payer on a Pay calendar (v2.7140), else the day the expected
+ * pay chip reads from their own pace. No column keeps a customer's days to pay: `customers.payment_terms` is a policy,
+ * not a count of days, so with no calendar the due day is a model, not their terms.
  */
 export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): RoundStamp[] {
   const job = rows.jobs.find((j) => j.id === jobId)
@@ -228,16 +235,20 @@ export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): Rou
     const share = paid.byBill.get(inv.id)
     const covered = inv.status === 'paid' || isSettledRemainder(openRemainder(inv.amount, share?.applied ?? 0))
     const lastPaid = newest(share?.slices ?? [], (s) => s.payment.paid_on)?.payment.paid_on ?? null
-    // The Stages tab's call (`JobsStagesTab`'s lien runway); `billDueDay` in `followUp/theyOweUs.ts` makes it once it lands.
+    // The Stages tab's call (`JobsStagesTab`'s lien runway), as `billDueDay` in `followUp/theyOweUs.ts` makes it.
     const payer = job ? paySpeedPayer(job, inv) : null
     const due =
       job && payer
-        ? billedExpectedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name },
-            rows.paySpeeds ?? null,
-            today,
-            rows.promisedPay?.[jobId] ?? null,
-          )?.expectedYmd ?? null
+        ? billHeldDay(
+            billedPayModel(
+              { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name, acceptedYmd: rows.acceptedByInvoice?.get(inv.id) ?? null },
+              rows.paySpeeds ?? null,
+              today,
+              rows.promisedPay?.[jobId] ?? null,
+              null,
+              calendarFor(rows.payCalendars, { payerId: payer.id, jobId }),
+            ),
+          )?.ymd ?? null
         : null
     return [{ key: inv.id, name: billName(i + 1), opened: sentOn, due, stamps: [covered ? stamp('paid', 'ok', lastPaid) : stamp('paid', 'wait', sentOn)] }]
   })

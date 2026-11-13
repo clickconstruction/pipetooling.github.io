@@ -4,13 +4,14 @@ import { containerLines } from '../lib/materials/onSite'
 import type { OnSiteFindJob } from '../lib/materials/onSiteFind'
 import { jobIdsWithData, listContainers, listMovements, listPlaces } from '../lib/materials/onSiteStore'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { onSiteJobNumber } from '../lib/materials/onSiteJobWords'
 import { useOnSiteDesk } from './useOnSiteStore'
 
-export type OnSiteDeskJobRow = { id: string; hcp_number: string | null; job_name: string | null; job_address?: string | null; google_drive_link?: string | null }
+export type OnSiteDeskJobRow = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162). */ click_number?: string | null; job_name: string | null; job_address?: string | null; google_drive_link?: string | null }
 
 /** How a job reads in a row: its number and name, or the start of its id when the viewer cannot read the job itself. */
-export function onSiteJobLabel(row: Pick<OnSiteDeskJobRow, 'hcp_number' | 'job_name'> | undefined, id: string): string {
-  return [row?.hcp_number, row?.job_name].filter(Boolean).join(' · ') || `job ${id.slice(0, 8)}`
+export function onSiteJobLabel(row: Pick<OnSiteDeskJobRow, 'hcp_number' | 'click_number' | 'job_name'> | undefined, id: string): string {
+  return [onSiteJobNumber(row), row?.job_name].filter(Boolean).join(' · ') || `job ${id.slice(0, 8)}`
 }
 
 /**
@@ -33,7 +34,7 @@ export function useOnSiteDeskJobs(enabled: boolean, known: ReadonlyArray<OnSiteD
     missing.forEach((id) => askedRef.current.add(id))
     let live = true
     void withSupabaseRetry(
-      () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link').in('id', missing),
+      () => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, google_drive_link').in('id', missing),
       'load on-site job names',
     )
       .then((data) => {

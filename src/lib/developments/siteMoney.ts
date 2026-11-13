@@ -7,7 +7,9 @@
  * sorted inside its section, the paid jobs one folded section. Pure: the component draws, the
  * device remembers folds and settings (`devicePrefs.ts`).
  */
-import { billedExpectedPayModel, type ExpectedPayModel, type PaySpeedData } from '../jobs/billedExpectedPay'
+import { type PaySpeedData } from '../jobs/billedExpectedPay'
+import { billHeldDay, billedPayModel, type BilledPayModel } from '../jobs/billedDuePay'
+import { calendarBasisWords, calendarFor, type PayCalendarIndex } from '../jobs/payCalendar'
 import { daysBetweenYmd, lienByForJob } from '../jobs/lienPayRunway'
 import { jobsLedgerStatusDotColor, normalizeJobsLedgerStatus } from '../jobsLedgerStatusPipeline'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -31,10 +33,24 @@ export const MONEY_SORT_COLUMN: Record<MoneySortMode, 'job' | 'progress' | 'mone
 /** As the Pipeline does it: an order that is a setting is kept on the device; a look is forgotten on leaving. */
 export const MONEY_SORT_IS_SETTING: ReadonlySet<MoneySortMode> = new Set<MoneySortMode>(['tightest', 'number'])
 
+/** A bill's due day on its payer's Pay calendar, as the Dates cell draws it in place of Expected. */
+export type MoneyDue = {
+  ymd: string
+  /** Days past the due day; 0 while it is ahead. */
+  daysPast: number
+  /** Days until the due day; 0 on it and once it has passed. */
+  daysTo: number
+  /** "pay calendar · lands ~6d after the pay day". */
+  basis: string
+}
+
 export type MoneyDates = {
   billedYmd: string | null
   billedAgoDays: number | null
-  expected: ExpectedPayModel | null
+  /** The pace guess, or on a Pay calendar the due day plus the payer's usual lateness (`billedPayModel`). */
+  expected: BilledPayModel | null
+  /** The calendar's due day (punch list #323, v2.7140); null for a payer with no Pay calendar, who reads Expected as before. */
+  due: MoneyDue | null
   lien: { ymd: string; daysLeft: number | null; kindAssumed: boolean } | null
 }
 
@@ -98,6 +114,10 @@ export type SiteMoneyInputs = {
   teamMembers: ReadonlyArray<{ job_id: string; user_id: string }>
   jobLabel: (j: MemberJob) => string
   paySpeed: PaySpeedData | null
+  /** The stored Pay calendars (punch list #323); null or absent and every bill reads the pace guess. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id; the calendar counts from it. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
   todayYmd: string
 }
 
@@ -136,14 +156,38 @@ function datesFor(job: MemberJob, inp: SiteMoneyInputs): MoneyDates {
   const newest = bills[0] ?? null
   const billedYmd = newest?.billed_at ? calendarYmdInAppTzFromIso(newest.billed_at) : job.last_bill_date ? job.last_bill_date.slice(0, 10) : null
   const billedAgoDays = billedYmd ? daysBetweenYmd(billedYmd, inp.todayYmd) : null
-  const expected = billedExpectedPayModel(
-    { billedAtIso: newest?.billed_at ?? null, estBillYmd: job.last_bill_date ? job.last_bill_date.slice(0, 10) : null, customerId: job.gc_customer_id ?? job.customer_id, payerName: job.customer_name },
+  const payerId = job.gc_customer_id ?? job.customer_id
+  const expected = billedPayModel(
+    {
+      billedAtIso: newest?.billed_at ?? null,
+      estBillYmd: job.last_bill_date ? job.last_bill_date.slice(0, 10) : null,
+      customerId: payerId,
+      payerName: job.customer_name,
+      acceptedYmd: newest ? inp.acceptedByInvoice?.get(newest.id) ?? null : null,
+    },
     inp.paySpeed,
     inp.todayYmd,
+    null,
+    null,
+    calendarFor(inp.payCalendars, { payerId, jobId: job.id }),
   )
+  const held = billHeldDay(expected)
+  const due: MoneyDue | null =
+    held?.onCalendar && expected
+      ? { ymd: held.ymd, daysPast: held.daysLate, daysTo: Math.max(0, daysBetweenYmd(inp.todayYmd, held.ymd) ?? 0), basis: calendarBasisWords(expected.lateness) }
+      : null
   const lienBy = lienByForJob(job.last_work_date, '')
   const lien = lienBy.ymd ? { ymd: lienBy.ymd, daysLeft: daysBetweenYmd(inp.todayYmd, lienBy.ymd), kindAssumed: lienBy.kindAssumed } : null
-  return { billedYmd, billedAgoDays, expected, lien }
+  return { billedYmd, billedAgoDays, expected, due, lien }
+}
+
+/**
+ * Days a billed row is past the day it is held to: the due day on a Pay calendar, else the expected day. 0 while that
+ * day is ahead, and with no day at all. *Ask for a date*, the *past due* counts and the tightest order all read it.
+ */
+export function moneyPastDays(dates: MoneyDates | null | undefined): number {
+  if (!dates) return 0
+  return dates.due ? dates.due.daysPast : (dates.expected?.daysLate ?? 0)
 }
 
 function rowFor(job: MemberJob, inp: SiteMoneyInputs): MoneyRow {
@@ -158,7 +202,8 @@ function rowFor(job: MemberJob, inp: SiteMoneyInputs): MoneyRow {
   const doneNotBilled = !isPaid && !isBilled && pct != null ? Math.max(0, (pct / 100) * value - paid) : 0
   const left = Math.max(0, value - paid)
   const dates = isBilled ? datesFor(job, inp) : null
-  const askForDate = !!dates?.expected && dates.expected.state === 'late'
+  // Past the day the bill is held to: the calendar's due day for a payer on one, else the expected day.
+  const askForDate = moneyPastDays(dates) > 0
   const notice = !!dates?.lien
   let words: string | null = null
   if (!isBilled && !isPaid) {
@@ -193,7 +238,7 @@ function numberKey(label: string): number {
 
 /**
  * The order inside a section. *tightest first* is the default and means what needs you first: in
- * Billed the shortest lien runway, then the longest past the expected day; elsewhere the last work,
+ * Billed the shortest lien runway, then the longest past the expected day (the due day on a Pay calendar); elsewhere the last work,
  * newest first; in Paid the number. The other three are the column heads' orders, the same in every section.
  */
 export function sortMoneyRows(rows: readonly MoneyRow[], mode: MoneySortMode, sectionKey: string): MoneyRow[] {
@@ -215,8 +260,8 @@ export function sortMoneyRows(rows: readonly MoneyRow[], mode: MoneySortMode, se
           const la = a.dates?.lien?.daysLeft ?? 100_000
           const lb = b.dates?.lien?.daysLeft ?? 100_000
           if (la !== lb) return la - lb
-          const ea = a.dates?.expected?.daysLate ?? -1
-          const eb = b.dates?.expected?.daysLate ?? -1
+          const ea = a.dates?.expected ? moneyPastDays(a.dates) : -1
+          const eb = b.dates?.expected ? moneyPastDays(b.dates) : -1
           if (ea !== eb) return eb - ea
           return byNumberDesc(a, b)
         })

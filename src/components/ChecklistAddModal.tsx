@@ -245,6 +245,12 @@ export default function ChecklistAddModal({
       setRowsKey((k) => k + 1)
       setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
+      // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
+      const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
+      setLinesText(presetLines.join('\n'))
+      // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
+      if (presetLines.length > 0) setRowsOpen('lines')
+      setAsksForPhotoPick(preset?.asksForPhoto ?? null)
     }
   }, [
     modalContext?.isOpen,
@@ -477,29 +483,6 @@ export default function ChecklistAddModal({
       cardTestId="checklist-add-modal-card"
       headActions={
         <>
-          {/* Header Send (v2.2740): a second Send at the top of a phone, once a title is typed. The bar's Send
-              sits above the keyboard since v2.7085; this one stays until a walk on a real phone shows that holds. */}
-          {phone && form.title.trim() ? (
-            <button
-              type="button"
-              onClick={saveItem}
-              disabled={submitting}
-              aria-label="Send"
-              style={{
-                padding: '0.3rem 0.85rem',
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: 999,
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                opacity: submitting ? 0.7 : 1,
-              }}
-            >
-              {submitting ? 'Sending…' : 'Send'}
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => {

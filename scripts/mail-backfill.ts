@@ -5,15 +5,18 @@
  * what that rule is sure of, always for the record (`for_record`), so nothing opens on Follow up.
  *
  *   npm run mail:backfill -- count                      every open job, read-only: what would be filed, held, left out
- *   npm run mail:backfill -- plan --job JP1077          the seat's dry run for each sure conversation of one job
+ *   npm run mail:backfill -- plan --job JP1077          the seat's dry run for each sure conversation of one job, and
+ *                                                       who each mail would be filed under (`backfillContact.ts`)
  *   npm run mail:backfill -- apply --job JP1077 --approved   files the planned conversations of one job
  *   npm run mail:backfill -- undo --job JP1077          takes that job's filings back off, through the seat's untag
  *
  * It needs `PT_DEV_MCP_TOKEN` (a dev key, Settings → Your account → Dev MCP keys) and a folder OUTSIDE the repo for
  * what holds real names: the never-tag list, the sheets and the ledger (`--dir`, default ~/.pipetooling/mail-backfill).
- * The repo is public: nothing this writes may be committed. `count` and `plan` write nothing to the app. `apply` asks
- * for `--approved`, files at most `--max` conversations a run (25), pauses between calls, and stops at the first
- * refusal it does not expect. The runbook is `docs/MAIL_BACKFILL.md`.
+ * The repo is public: nothing this writes may be committed. `count` and `plan` write nothing to the app. A conversation
+ * whose sender has no named contact is held on the sheet with the press that names them, and is never planned: the run
+ * makes no contact and no unnamed sender. `apply` asks for `--approved`, refuses in office hours, files at most `--max`
+ * conversations a run (25), pauses between calls, and stops at the first refusal it does not expect, or at a filing
+ * that made an unnamed sender after all. The runbook is `docs/MAIL_BACKFILL.md`.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -21,7 +24,25 @@ import { join } from 'node:path'
 import { domainOf, OPEN_MAIL_DOMAINS } from '../src/lib/emailIn/leftOutSenders'
 import { subjectJobs } from '../src/lib/emailIn/subjectJobs'
 import { buildLedgerPrefixMap } from '../src/lib/ledgerDisplayPrefixes'
+import { BOXES_SETTINGS_KEY, parseBoxSettings } from '../src/lib/messages/boxes'
 import {
+  addressesOf,
+  BACKFILL_TEAM_ROLES,
+  contactTally,
+  contactVerdict,
+  filedUnderWords,
+  inOfficeHours,
+  partyCandidates,
+  unnamedWords,
+  type ContactBook,
+  type ContactMail,
+  type ContactVerdict,
+  type JobParty,
+  type KnownContact,
+  type OurSide,
+} from '../src/lib/myMail/backfillContact'
+import {
+  BACKFILL_WORDS,
   backfillTally,
   backfillVerdict,
   conversationsOf,
@@ -123,6 +144,14 @@ interface Loaded {
   labelOf: Map<string, string>
   accounts: string[]
   skippedAccounts: number
+  /** Whose addresses are ours as a tag reads them, but for the mailbox: the team, the boxes Settings names, our domains. */
+  side: Omit<OurSide, 'account'>
+  /** Whether Settings' boxes could be read. When not, a box's own copy reads as an unclear sender and holds its conversation. */
+  boxesRead: boolean
+  /** Each customer's record: the address its own contact would carry, and every other address on it. */
+  records: Map<string, { own: string | null; others: Set<string> }>
+  /** The jobs as the rows hold them, by key, for a sheet's words. */
+  jobRows: Map<string, JobRow>
 }
 
 /** Everything the rule reads: the jobs, their customers' addresses, the company's own addresses, the never-tag list. */
@@ -144,11 +173,21 @@ async function load(counting = false): Promise<Loaded> {
   for (const column of ['customer_id', 'gc_customer_id']) for (const j of (await rowsIn('jobs_ledger', JOB_COLUMNS, column, customerIds, 15)) as JobRow[]) all.set(j.id, j)
 
   const customers = new Map<string, Set<string>>(customerIds.map((id) => [id, new Set<string>()]))
+  const records = new Map<string, { own: string | null; others: Set<string> }>(customerIds.map((id) => [id, { own: null, others: new Set<string>() }]))
   for (const c of await rowsIn('customers', 'id,contact_info,billing_email', 'id', customerIds)) {
     const info = (c.contact_info ?? {}) as { email?: unknown }
     for (const a of [info.email, c.billing_email]) if (lower(a).includes('@')) customers.get(String(c.id))?.add(lower(a))
+    // The one address contact_for_customer copies onto the customer's own contact, and the rest of the record.
+    const record = records.get(String(c.id))
+    if (record && lower(info.email).includes('@')) record.own = lower(info.email)
+    if (record && lower(c.billing_email).includes('@') && lower(c.billing_email) !== record.own) record.others.add(lower(c.billing_email))
   }
-  for (const p of await rowsIn('customer_contact_persons', 'customer_id,email', 'customer_id', customerIds)) if (lower(p.email).includes('@')) customers.get(String(p.customer_id))?.add(lower(p.email))
+  for (const p of await rowsIn('customer_contact_persons', 'customer_id,email', 'customer_id', customerIds)) {
+    if (!lower(p.email).includes('@')) continue
+    customers.get(String(p.customer_id))?.add(lower(p.email))
+    const record = records.get(String(p.customer_id))
+    if (record && lower(p.email) !== record.own) record.others.add(lower(p.email))
+  }
 
   const prefixes = buildLedgerPrefixMap((await rows('service_types', 'id,ledger_job_prefix,ledger_bid_prefix')) as { id: string }[])
   const labelled = subjectJobs({ bids: [], projects: [], pipeline: [...all.values()], prefixes }, new Set())
@@ -164,7 +203,7 @@ async function load(counting = false): Promise<Loaded> {
   const labelOf = new Map(jobs.map((j) => [j.key, j.labels[0] ?? j.name ?? j.key]))
 
   // The company's own: every login, and each login's domain unless it is an open mail service.
-  const users = await rows('users', 'email,archived_at,my_mail_on,role')
+  const users = await rows('users', 'email,archived_at,my_mail_on,role,is_walk_tester')
   const ours = { addresses: new Set(users.map((u) => lower(u.email)).filter(Boolean)), domains: new Set<string>() }
   for (const a of ours.addresses) if (domainOf(a) && !OPEN_MAIL_DOMAINS.has(domainOf(a))) ours.domains.add(domainOf(a))
   // Whose mailboxes: the logins the seat can read (one probe search names them, and the ones Google has no mailbox
@@ -175,6 +214,19 @@ async function load(counting = false): Promise<Loaded> {
   const readable = (probe.accounts ?? []).map((a) => lower(a.account)).filter((a) => a && !gone.has(a))
   const on = new Set(users.filter((u) => !u.archived_at && u.my_mail_on === true).map((u) => lower(u.email)))
   const accounts = readable.filter((a) => on.has(a))
+
+  // Whose addresses are ours as the tag reads them (gmail-mine's loadTeam and loadOurBoxes), for the contact step.
+  const team = new Set(users.filter((u) => BACKFILL_TEAM_ROLES.includes(String(u.role)) && u.is_walk_tester !== true).map((u) => lower(u.email)).filter(Boolean))
+  const boxes = new Set<string>()
+  let boxesRead = false
+  try {
+    const got = await seat<{ data?: Row[] }>('read_rows', { table: 'app_settings', select: 'key,value_text', filters: [{ column: 'key', op: 'eq', value: BOXES_SETTINGS_KEY }], limit: 1 })
+    const settings = parseBoxSettings(String(got.data?.[0]?.value_text ?? ''))
+    for (const box of settings ? [settings.team, settings.bids] : []) if (lower(box.address).includes('@')) boxes.add(lower(box.address))
+    boxesRead = settings !== null
+  } catch {
+    // The run reads on without them: a box's own copy then reads as an unclear sender, which holds, never files.
+  }
 
   // The customers who also have a bid or a GC project with us: their mail may be about that, not the job.
   const busyCustomers = new Set<string>()
@@ -188,7 +240,66 @@ async function load(counting = false): Promise<Loaded> {
     ours,
     neverTag,
   }
-  return { facts, targets, labelOf, accounts, skippedAccounts: readable.length - accounts.length }
+  return { facts, targets, labelOf, accounts, skippedAccounts: readable.length - accounts.length, side: { team, boxes, domains: ours.domains }, boxesRead, records, jobRows: new Map([...all].map(([id, j]) => [`pipeline:${id}`, j])) }
+}
+
+// ---------- the customer's contact step ----------
+
+/** The contacts that hold each address as an email, as the tag's own `contact_for_channel` would find them. Read-only. */
+async function contactsHolding(addresses: readonly string[]): Promise<Map<string, KnownContact[]>> {
+  const channels: Row[] = []
+  for (const part of chunk(addresses, 30)) channels.push(...(await rows('contact_channels', 'key,contact_id', [{ column: 'kind', op: 'eq', value: 'email' }, { column: 'key', op: 'in', value: part }])))
+  const ids = [...new Set(channels.map((ch) => String(ch.contact_id)))]
+  const contacts = ids.length ? await rowsIn('contacts', 'id,kind,name,customer_id,customer_contact_person_id', 'id', ids) : []
+  const personIds = [...new Set(contacts.map((c) => c.customer_contact_person_id).filter((x): x is string => typeof x === 'string'))]
+  const persons = new Map((personIds.length ? await rowsIn('customer_contact_persons', 'id,name,customer_id', 'id', personIds) : []).map((p) => [String(p.id), p]))
+  const customerIds = [...new Set(contacts.map((c) => c.customer_id).filter((x): x is string => typeof x === 'string'))]
+  const customerName = new Map((customerIds.length ? await rowsIn('customers', 'id,name', 'id', customerIds) : []).map((c) => [String(c.id), String(c.name ?? '').trim()]))
+  const known = new Map(
+    contacts.map((c): [string, KnownContact] => {
+      const person = typeof c.customer_contact_person_id === 'string' ? persons.get(c.customer_contact_person_id) : undefined
+      const customerId = typeof c.customer_id === 'string' ? c.customer_id : person ? String(person.customer_id) : null
+      // Its name as the thread reads it: its own, else its record's.
+      const name = String(c.name ?? '').trim() || String(person?.name ?? '').trim() || (typeof c.customer_id === 'string' ? (customerName.get(c.customer_id) ?? '') : '')
+      return [String(c.id), { id: String(c.id), kind: String(c.kind), name, customerId }]
+    }),
+  )
+  const by = new Map<string, KnownContact[]>()
+  for (const ch of channels) {
+    const contact = known.get(String(ch.contact_id))
+    if (contact) by.set(lower(ch.key), [...(by.get(lower(ch.key)) ?? []), contact])
+  }
+  return by
+}
+
+/** The customers who have their own contact already: on their row, with no name, as `contact_find_or_make` looks for it. */
+async function customersWithContact(customerIds: readonly string[]): Promise<Set<string>> {
+  const own = customerIds.length ? await rowsIn('contacts', 'id,customer_id,name', 'customer_id', customerIds) : []
+  return new Set(own.filter((c) => c.name === null).map((c) => String(c.customer_id)))
+}
+
+/** A job's customer and GC with the addresses their records hold. */
+function partiesOf(l: Loaded, jobKey: string, made: ReadonlySet<string>): JobParty[] {
+  const row = l.jobRows.get(jobKey)
+  const out: JobParty[] = []
+  for (const [customerId, role] of [[row?.customer_id, 'customer'], [row?.gc_customer_id, 'gc']] as const) {
+    if (!customerId || out.some((p) => p.customerId === customerId)) continue
+    const record = l.records.get(customerId)
+    out.push({ customerId, role, own: record?.own ?? null, others: [...(record?.others ?? [])], hasContact: made.has(customerId) })
+  }
+  return out
+}
+
+const mailOf = (m: { from: string; to: readonly string[] | string; cc: readonly string[] | string; labels: readonly string[] }): ContactMail => ({ from: m.from ?? '', to: addressesOf(m.to), cc: addressesOf(m.cc), labels: m.labels ?? [] })
+
+/** The contact step for a set of conversations, each with the job it would be filed on and the mails a tag would write. */
+async function contactStep(l: Loaded, asks: readonly { account: string; jobKey: string; mails: readonly ContactMail[] }[]): Promise<ContactVerdict[]> {
+  const sides = asks.map((a): OurSide => ({ account: a.account, ...l.side }))
+  const addresses = new Set<string>()
+  asks.forEach((a, i) => a.mails.forEach((m) => partyCandidates(m, sides[i]!).forEach((x) => addresses.add(x))))
+  const byAddress = await contactsHolding([...addresses])
+  const made = await customersWithContact([...new Set(asks.flatMap((a) => partiesOf(l, a.jobKey, new Set()).map((p) => p.customerId)))])
+  return asks.map((a, i) => contactVerdict(a.mails, sides[i]!, { byAddress, parties: partiesOf(l, a.jobKey, made) } satisfies ContactBook))
 }
 
 interface Hit {
@@ -305,6 +416,18 @@ const stamp = () => new Date().toISOString()
 const ledgerPath = () => join(dir, 'ledger.jsonl')
 const record = (entry: LedgerEntry) => appendFileSync(ledgerPath(), ledgerLine(entry))
 
+/** A sheet's four cells for the contact step: ready or held, who it is filed under, who is not named, the press. */
+function contactCells(v: ContactVerdict | undefined): string[] {
+  if (!v) return ['', '', '', '']
+  return v.kind === 'named' ? ['ready', filedUnderWords(v.under), '', ''] : ['held', filedUnderWords(v.under), unnamedWords(v.unnamed), v.door]
+}
+
+/** A job as someone who knows it would name it: its number, its name, its address. */
+function jobWords(l: Loaded, key: string): string {
+  const row = l.jobRows.get(key)
+  return [l.labelOf.get(key) ?? key, (row?.job_name ?? '').trim(), (row?.job_address ?? '').trim()].filter((x, i, xs) => x && xs.indexOf(x) === i).join(' · ')
+}
+
 async function count(): Promise<void> {
   const l = await load(true)
   console.log(`open jobs: ${l.targets.length} · every job of their customers: ${l.facts.jobs.length} · customers: ${l.facts.customers.length}, of whom ${l.facts.busyCustomers?.size ?? 0} also have a bid or a project · mailboxes searched: ${l.accounts.length} (${l.skippedAccounts} left out: My email switched off, or no longer a current login)`)
@@ -314,24 +437,25 @@ async function count(): Promise<void> {
   const tally = backfillTally(verdicts.map(([, v]) => v))
   // One conversation in two mailboxes is planned once for each; say how many distinct threads the sure ones are.
   const sure = verdicts.filter(([, v]) => v.kind === 'sure')
-  const perJob = new Map<string, { conversations: number; mails: number; accounts: Set<string>; rules: Record<string, number> }>()
+  const perJob = new Map<string, { conversations: number; mails: number; accounts: Set<string>; rules: Record<string, number>; named: number }>()
   for (const [c, v] of sure) {
     if (v.kind !== 'sure') continue
-    const row = perJob.get(v.jobKey) ?? { conversations: 0, mails: 0, accounts: new Set<string>(), rules: {} }
+    const row = perJob.get(v.jobKey) ?? { conversations: 0, mails: 0, accounts: new Set<string>(), rules: {}, named: 0 }
     row.conversations += 1
     row.mails += c.mails.length
     row.accounts.add(c.account)
     row.rules[v.rule] = (row.rules[v.rule] ?? 0) + 1
     perJob.set(v.jobKey, row)
   }
-  // The senders a filing would make unnamed: outside addresses on a sure conversation that no contact holds yet.
-  const outside = new Set<string>()
-  for (const [c] of sure) for (const m of c.mails) for (const a of [m.from, ...m.to, ...m.cc]) {
-    const address = lower(/<([^<>]+)>\s*$/.exec(a)?.[1] ?? a)
-    if (address.includes('@') && !l.facts.ours.addresses.has(address) && !l.facts.ours.domains.has(domainOf(address))) outside.add(address)
+  // The customer's contact step: who each sure conversation would be filed under, by the mails the searches found.
+  // A plan reads every mail the seat would write, so a job's own sheet may hold one this count calls named.
+  const contacts = await contactStep(l, sure.map(([c, v]) => ({ account: c.account, jobKey: v.kind === 'sure' ? v.jobKey : '', mails: c.mails.map(mailOf) })))
+  const contactOf = new Map(sure.map(([c], i) => [`${c.account}\n${c.threadId}`, contacts[i]!]))
+  const named = contactTally(contacts)
+  for (const [i, [, v]] of sure.entries()) {
+    const row = v.kind === 'sure' ? perJob.get(v.jobKey) : undefined
+    if (row && contacts[i]!.kind === 'named') row.named += 1
   }
-  const held = new Set<string>()
-  for (const part of chunk([...outside], 30)) for (const ch of await rows('contact_channels', 'key', [{ column: 'kind', op: 'eq', value: 'email' }, { column: 'key', op: 'in', value: part }])) held.add(lower(ch.key))
   const years: Record<string, number> = {}
   for (const [c] of sure) {
     const y = (c.mails[c.mails.length - 1]?.date ?? '').slice(0, 4) || 'no date'
@@ -345,13 +469,15 @@ async function count(): Promise<void> {
   console.log(`  distinct threads among the sure ones: ${new Set(sure.map(([c]) => c.threadId)).size} · mails in them: ${sure.reduce((n, [c]) => n + c.mails.length, 0)}`)
   console.log(`  sure conversations by the year of their newest mail: ${JSON.stringify(years)}`)
   console.log(`open jobs with at least one sure conversation: ${perJob.size} of ${l.targets.length}` + (sizes.length ? ` · conversations a job, least/middle/most: ${sizes[0]}/${sizes[Math.floor(sizes.length / 2)]}/${sizes[sizes.length - 1]}` : ''))
-  console.log(`outside addresses on sure conversations: ${outside.size} · with no contact yet (a filing would make each an unnamed sender): ${outside.size - held.size}`)
+  console.log(`the contact step, over the sure ones: every sender named, ready to plan: ${named.named} · held for a contact: ${named.held} ${JSON.stringify(named.by)}`)
+  console.log(`  customers whose thread one press opens: ${named.onePress.customers}, which would name ${named.onePress.conversations} of the held` + (l.boxesRead ? '' : ' · NOTE: Settings’ boxes could not be read, so a box’s own copy holds its conversation'))
+  console.log(`open jobs whose every sure conversation is named: ${[...perJob.values()].filter((r) => r.named === r.conversations).length} · with at least one named: ${[...perJob.values()].filter((r) => r.named > 0).length}`)
   const sheet = join(dir, 'sheets', `count-${stamp().slice(0, 10)}.csv`)
   mkdirSync(join(dir, 'sheets'), { recursive: true })
   writeFileSync(
     sheet,
     sheetCsv(
-      ['kind', 'rule or reason', 'job', 'other jobs it could be', 'mailbox', 'thread', 'mails', 'newest mail', 'subject'],
+      ['kind', 'rule or reason', 'job', 'other jobs it could be', 'mailbox', 'thread', 'mails', 'newest mail', 'subject', 'contact step', 'filed under', 'not named', 'what to press'],
       verdicts.map(([c, v]) => [
         v.kind,
         v.kind === 'sure' ? v.rule : v.reason,
@@ -362,11 +488,41 @@ async function count(): Promise<void> {
         String(c.mails.length),
         (c.mails[c.mails.length - 1]?.date ?? '').slice(0, 10),
         c.mails[c.mails.length - 1]?.subject ?? '',
+        ...contactCells(contactOf.get(`${c.account}\n${c.threadId}`)),
+      ]),
+    ),
+  )
+  // A job a row, for whoever picks the pilot: how much each open job would take, and how much of it is ready.
+  const openJobsOf = new Map<string, number>()
+  for (const j of l.targets) for (const id of new Set([j.customer_id, j.gc_customer_id])) if (id) openJobsOf.set(id, (openJobsOf.get(id) ?? 0) + 1)
+  const jobsSheet = join(dir, 'sheets', `count-jobs-${stamp().slice(0, 10)}.csv`)
+  writeFileSync(
+    jobsSheet,
+    sheetCsv(
+      ['job', 'sure conversations', 'senders named', 'held for a contact', 'mails', 'mailboxes', 'by rule', 'open jobs of its customer'],
+      [...perJob].sort((a, b) => a[1].conversations - b[1].conversations).map(([key, r]) => [
+        l.labelOf.get(key) ?? key,
+        String(r.conversations),
+        String(r.named),
+        String(r.conversations - r.named),
+        String(r.mails),
+        String(r.accounts.size),
+        Object.entries(r.rules).map(([rule, n]) => `${rule} ${n}`).join(' · '),
+        String(openJobsOf.get(l.jobRows.get(key)?.customer_id ?? '') ?? 0),
       ]),
     ),
   )
   console.log(`the sheet, with real names, outside the repo: ${sheet}`)
+  console.log(`a job a row, for picking the pilot: ${jobsSheet}`)
 }
+
+interface PlanMail {
+  gmailId: string
+  kind: 'write' | 'tie' | 'skip'
+  at: string | null
+  files?: number
+}
+type MailRead = { from?: string; to?: string[]; cc?: string[]; labels?: string[]; files?: { name?: string }[] }
 
 async function plan(): Promise<void> {
   const l = await load()
@@ -378,30 +534,68 @@ async function plan(): Promise<void> {
     return v.kind === 'sure' && v.jobKey === job.key
   })
   console.log(`${l.labelOf.get(job.key)}: ${sure.length} sure conversations of ${g.conversations.length} found. Planning each, nothing is written.`)
+  const day = (iso: string | null | undefined) => (iso ?? '').slice(0, 10)
   const lines: string[][] = []
+  const totals = { planned: 0, held: 0, refused: 0, write: 0, tie: 0, files: 0 }
+  const holds: ContactVerdict[] = []
   for (const c of sure) {
     const v = backfillVerdict(c, l.facts)
+    const rule = v.kind === 'sure' ? v.rule : ''
+    const head = [jobWords(l, job.key), day(c.mails[0]?.date), day(c.mails[c.mails.length - 1]?.date), c.account, v.kind === 'sure' ? BACKFILL_WORDS[v.rule] : '']
+    const tail = [c.mails[c.mails.length - 1]?.subject ?? '', c.threadId]
     const tag = { account: c.account, thread_id: c.threadId, job: { jobs_ledger_id: job.key.slice('pipeline:'.length) }, for_record: true }
     try {
-      const p = await seat<{ plan_hash: string; counts: Record<string, number>; reading: string; moving_from: string | null }>('plan_mail_tag', { tag })
-      record({ at: stamp(), kind: 'plan', jobKey: job.key, account: c.account, threadId: c.threadId, planHash: p.plan_hash, counts: p.counts, rule: v.kind === 'sure' ? v.rule : '' })
-      lines.push([c.account, c.threadId, v.kind === 'sure' ? v.rule : '', String(p.counts.lines ?? 0), String(p.counts.tied ?? 0), String(p.counts.files ?? 0), String(p.counts.filed ?? 0), p.moving_from ?? '', c.mails[c.mails.length - 1]?.subject ?? '', ''])
+      const p = await seat<{ plan_hash: string; counts: Record<string, number>; reading: string; moving_from: string | null; mails?: PlanMail[] }>('plan_mail_tag', { tag })
+      // Who each mail the seat would write lands on: every such mail read whole, its headers and the names of its files.
+      const written: ContactMail[] = []
+      const fileNames: string[] = []
+      for (const m of (p.mails ?? []).filter((x) => x.kind === 'write')) {
+        const whole = await seat<MailRead>('read_mail', { account: c.account, id: m.gmailId })
+        written.push(mailOf({ from: whole.from ?? '', to: whole.to ?? [], cc: whole.cc ?? [], labels: whole.labels ?? [] }))
+        for (const f of whole.files ?? []) if (f.name) fileNames.push(f.name)
+        await sleep(250)
+      }
+      const [contact] = await contactStep(l, [{ account: c.account, jobKey: job.key, mails: written }])
+      const counts = [String((p.mails ?? []).length), String(p.counts.lines ?? 0), String(p.counts.tied ?? 0), String(p.counts.files ?? 0), fileNames.join(' · '), p.moving_from ?? '']
+      if (contact!.kind === 'held') {
+        // Held for a contact: no plan line, so `apply` cannot file it. A person names the sender, then plans again.
+        record({ at: stamp(), kind: 'held', jobKey: job.key, account: c.account, threadId: c.threadId, rule, words: contact!.reason })
+        holds.push(contact!)
+        totals.held += 1
+      } else {
+        record({ at: stamp(), kind: 'plan', jobKey: job.key, account: c.account, threadId: c.threadId, planHash: p.plan_hash, counts: p.counts, rule })
+        totals.planned += 1
+        totals.write += Number(p.counts.lines ?? 0)
+        totals.tie += Number(p.counts.tied ?? 0)
+        totals.files += Number(p.counts.files ?? 0)
+      }
+      lines.push([...head, ...contactCells(contact), ...counts, ...tail, ''])
     } catch (e) {
       record({ at: stamp(), kind: 'refused', jobKey: job.key, account: c.account, threadId: c.threadId, words: String((e as Error).message) })
-      lines.push([c.account, c.threadId, '', '', '', '', '', '', c.mails[c.mails.length - 1]?.subject ?? '', String((e as Error).message)])
+      totals.refused += 1
+      lines.push([...head, '', '', '', '', '', '', '', '', '', '', ...tail, String((e as Error).message)])
     }
     await sleep(400)
   }
   const sheet = join(dir, 'sheets', `plan-${(l.labelOf.get(job.key) ?? 'job').replace(/[^A-Za-z0-9]+/g, '-')}-${stamp().slice(0, 10)}.csv`)
   mkdirSync(join(dir, 'sheets'), { recursive: true })
-  writeFileSync(sheet, sheetCsv(['mailbox', 'thread', 'rule', 'lines to write', 'lines to tie', 'files', 'filed for the record', 'moves off', 'subject', 'refused'], lines))
-  const totals = lines.reduce((t, r) => ({ write: t.write + Number(r[3] || 0), tie: t.tie + Number(r[4] || 0), files: t.files + Number(r[5] || 0), refused: t.refused + (r[9] ? 1 : 0) }), { write: 0, tie: 0, files: 0, refused: 0 })
-  console.log(`planned: ${lines.length - totals.refused} · refused: ${totals.refused} · lines to write: ${totals.write} · to tie: ${totals.tie} · files: ${totals.files}`)
+  writeFileSync(
+    sheet,
+    sheetCsv(
+      ['job', 'first mail', 'newest mail', 'mailbox', 'why it is sure', 'contact step', 'filed under', 'not named', 'what to press', 'mails', 'lines to write', 'lines to tie', 'files', 'file names', 'moves off', 'subject', 'thread', 'refused'],
+      lines,
+    ),
+  )
+  const held = contactTally(holds)
+  console.log(`planned, every sender named: ${totals.planned} · held for a contact: ${totals.held} ${JSON.stringify(held.by)} · refused: ${totals.refused}`)
+  console.log(`of the planned: lines to write: ${totals.write} · to tie: ${totals.tie} · files: ${totals.files}`)
+  if (held.onePress.customers > 0) console.log(`one press names ${held.onePress.conversations} of the held: open the customer's thread in the app (the speech bubble beside their name), then plan this job again.`)
   console.log(`the sheet for a person to approve, outside the repo: ${sheet}`)
 }
 
 async function apply(): Promise<void> {
   if (!flagOf(argv, '--approved')) throw new Error('apply files mail onto a job. A person reads the plan sheet first, then the run is given --approved.')
+  if (inOfficeHours(new Date())) throw new Error('apply writes lines and files while the crew uses the app. It runs outside office hours: after 7 pm or before 6 am Central, or on a Sunday.')
   const l = await load()
   const job = jobOf(l, argOf(argv, '--job') ?? '')
   const max = Number(argOf(argv, '--max') ?? 25)
@@ -412,8 +606,14 @@ async function apply(): Promise<void> {
     const tag = { account: p.account, thread_id: p.threadId, job: { jobs_ledger_id: job.key.slice('pipeline:'.length) }, for_record: true }
     try {
       const done = await seat<Record<string, unknown>>('apply_mail_tag', { tag, plan_hash: p.planHash })
-      record({ at: stamp(), kind: 'applied', jobKey: job.key, account: p.account, threadId: p.threadId, planHash: p.planHash, words: String(done.tagged ?? '') })
+      const unnamed = done.unknown_sender !== null && done.unknown_sender !== undefined
+      record({ at: stamp(), kind: 'applied', jobKey: job.key, account: p.account, threadId: p.threadId, planHash: p.planHash, words: String(done.tagged ?? ''), ...(unnamed ? { unnamed: true } : {}) })
       filed += 1
+      if (unnamed) {
+        // The contact step said every sender was named, and the filing made an unnamed sender all the same.
+        console.error('stopped: this filing made an unnamed sender, which the contact step should have held. Name them in Messages, Who is this?, or take the job back with undo, and say so on the card before the next run.')
+        break
+      }
     } catch (e) {
       // A plan that no longer holds is planned again by a person's next `plan`; anything else stops the run.
       const words = String((e as Error).message)
@@ -472,7 +672,8 @@ if (!token) {
   process.exit(2)
 }
 mkdirSync(dir, { recursive: true })
-MODES[mode]!().catch((e: unknown) => {
+/** The run itself, so a rehearsal against a made-up seat can wait for it (`mailBackfillRehearsal.test.ts`). */
+export const run: Promise<void> = MODES[mode]!().catch((e: unknown) => {
   console.error(String((e as Error).message ?? e))
   process.exit(1)
 })

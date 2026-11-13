@@ -563,7 +563,7 @@ export default function AdditionalReportModal({
               background: 'var(--surface)',
               cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
               opacity: jobLinksLoading ? 0.85 : 1,
-              color: jobLinksLoading ? '#9ca3af' : customerFilesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
+              color: jobLinksLoading ? 'var(--text-faint)' : customerFilesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
             }}
           >
             <Folder size={22} strokeWidth={2} aria-hidden />
@@ -604,7 +604,7 @@ export default function AdditionalReportModal({
               background: 'var(--surface)',
               cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
               opacity: jobLinksLoading ? 0.85 : 1,
-              color: jobLinksLoading ? '#9ca3af' : customerPicturesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
+              color: jobLinksLoading ? 'var(--text-faint)' : customerPicturesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
             }}
           >
             <Images size={22} strokeWidth={2} aria-hidden />

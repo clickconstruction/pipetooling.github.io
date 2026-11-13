@@ -28,10 +28,10 @@ const facts: DiveFacts = {
 }
 const jobsDoor = { to: '/jobs?tab=stages', label: 'Price the jobs' }
 
-// An item without its cells, which the tests of the cells read by themselves.
-const bareOne = <T extends object>(x: T): Omit<T, 'row'> => {
-  const { row: _row, ...rest } = x as T & { row?: unknown }
-  return rest as Omit<T, 'row'>
+// An item without its to-do card, which `callTodo.test.ts` reads by itself, and without its cells.
+const bareOne = <T extends object>(x: T): Omit<T, 'todo' | 'row'> => {
+  const { todo: _todo, row: _row, ...rest } = x as T & { todo?: unknown; row?: unknown }
+  return rest as Omit<T, 'todo' | 'row'>
 }
 const bare = <T extends { projects?: ReadonlyArray<object> }>(items: ReadonlyArray<T> | undefined) =>
   items?.map((i) => {
@@ -174,13 +174,43 @@ describe('moveDive', () => {
     expect(bill?.columns).toEqual({ name: 'Job', a: 'To bill', b: '', text: '' })
     expect(bill?.items[0]?.row).toEqual({ a: { text: '$18.0k', phone: '$18.0k to bill' } })
     const pct = moveDive({ key: 'pct', title: '', door: null }, { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000 }, { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, setPct: 60 }] })
-    expect(pct?.columns).toEqual({ name: 'Job', a: '', b: 'Contract', text: '' })
+    expect(pct?.columns).toEqual({ name: 'Job', a: 'Hours', b: 'Contract', text: 'Worked by' })
     expect(pct?.items[0]?.row).toEqual({ b: { text: '$30.0k', phone: '$30.0k contract', muted: true } })
     expect(pct?.items[1]?.row).toEqual({ text: { text: 'Set to 60% just now' } })
     const supply = moveDive({ key: 'other', title: 'Ask the supply houses for more days.', door: null }, facts)
     expect(supply?.columns).toEqual({ name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' })
     expect(supply?.items[0]?.row).toEqual({ a: { text: '$7.2k', phone: '$7.2k due' }, b: { text: '4', phone: '4 bills', muted: true }, text: { text: 'd04' } })
     expect(supply?.items[1]?.row).toEqual({ a: { text: '$1.1k', phone: '$1.1k due' }, b: { text: '1', phone: '1 bill', muted: true } })
+  })
+
+  it('says a job’s hours and who worked them, as a cell that opens the detail (#334, PR 10)', () => {
+    const pctJob = { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' }
+    const withHours: DiveFacts = {
+      ...facts,
+      noPctJobs: [
+        { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob, hoursLine: '24 hours by Dana and Sam', hoursCell: { text: '24', phone: '24 hours', by: 'Dana and Sam' } },
+        { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, hoursLine: 'No hours yet', hoursCell: { text: '0', phone: 'No hours yet', by: '' } },
+        { id: 'j303', label: '303 · Fir Lane', revenueUsd: null, pctJob, setPct: 40, hoursLine: '8 hours by Lee', hoursCell: { text: '8', phone: '8 hours', by: 'Lee' } },
+      ],
+    }
+    const d = moveDive({ key: 'pct', title: '', door: null }, withHours)
+    const hours = { kind: 'hours', jobId: 'j301', jobLabel: '301 · Pine Row', pctJob }
+    expect(d?.items[0]?.row).toEqual({ a: { text: '24', phone: '24 hours', target: hours, label: 'See the hours on 301 · Pine Row: 24 hours by Dana and Sam' }, b: { text: '$30.0k', phone: '$30.0k contract', muted: true }, text: { text: 'Dana and Sam', muted: true } })
+    // No hours yet: the cell still opens the window, which says so. A job the percent window cannot take hands it none.
+    expect(d?.items[1]?.row).toEqual({ a: { text: '0', phone: 'No hours yet', target: { kind: 'hours', jobId: 'j302', jobLabel: '302 · Spruce Hall', pctJob: null }, label: 'See the hours on 302 · Spruce Hall: No hours yet' } })
+    // A percent set on this visit says so where the people were.
+    expect(d?.items[2]?.row?.text).toEqual({ text: 'Set to 40% just now' })
+  })
+
+  it('hands every named thing a to-do card of its own', () => {
+    const chase = moveDive({ key: 'chase', title: 'Chase the 9 late invoices.', door: null }, facts)
+    expect(chase?.items[0]?.todo?.title).toBe('Call Alder Builders about $40.0k late. Get a pay date for each bill.')
+    expect(moveDive({ key: 'bill', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Bill 201 · Maple Lofts. $18.0k is finished and not billed.')
+    expect(moveDive({ key: 'pct', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Set the percent done on 301 · Pine Row. It is a $30.0k contract.')
+    expect(moveDive({ key: 'price', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Put a price on 401 · Willow Walk. Its hours earn nothing until then.')
+    expect(moveDive({ key: 'other', title: 'Ask the supply houses for more days.', door: null }, facts)?.items[0]?.todo).toMatchObject({ title: 'Ask Northside Supply for more days on $7.2k due d04, on 4 bills.', paths: ['/materials?tab=supply-houses&house=h-north&due=2026-03-04'] })
+    // A job whose percent was set on this visit needs no card.
+    expect(moveDive({ key: 'pct', title: '', door: null }, { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, setPct: 60 }] })?.items[0]?.todo).toBeUndefined()
   })
 
   it('leaves a move alone when there is nothing to name and nowhere to send', () => {

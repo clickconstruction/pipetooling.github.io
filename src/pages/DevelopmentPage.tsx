@@ -382,7 +382,7 @@ export default function DevelopmentPage() {
   // The Timeline's jobs: the cost rows the Costs column totals, the clock's days and the page's payments, in the Money look's order; nothing until the reads are in. A clock that would not read leaves team labor off and the chart says so.
   const timelineJobs = useMemo(() => {
     if (!timelineOpen || !counted || !data || costsByJobId?.state !== 'read' || !costsByJobId.rows || !laborRead || laborRead.state === 'reading' || timelineRead.state !== 'read') return null
-    const siteMoneyNow = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
+    const siteMoneyNow = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, payCalendars: data.payCalendars, acceptedByInvoice: data.acceptedByInvoice, todayYmd: todayYmdInAppTz() })
     const order = siteMoneyNow.sections.flatMap((s) => sortMoneyRows(s.rows, moneySort, s.key).map((r) => r.jobId))
     return assembleSiteTimelineJobs({
       jobIds: counted.jobs.map((j) => j.id),
@@ -987,7 +987,7 @@ export default function DevelopmentPage() {
   const whoIsThis = data.gcCustomer?.name ?? data.customer?.name ?? null
   const openQuestions = data.requests.filter(requestIsOpen).length
   // The Money look: the site's band and the live jobs in stage sections, from the same rows.
-  const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
+  const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, payCalendars: data.payCalendars, acceptedByInvoice: data.acceptedByInvoice, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
   // The scoreboard (v2.6407): the same members the Money look reads, the nine measures, the site's totals as the column heads.
   const scoreboardWhole = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })

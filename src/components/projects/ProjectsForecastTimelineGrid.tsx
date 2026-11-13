@@ -521,8 +521,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: isToday ? '#fff7ed' : weekend ? 'var(--bg-slate-100)' : 'var(--surface)',
-                      color: isToday ? '#b45309' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
+                      background: isToday ? 'var(--bg-orange-tint)' : weekend ? 'var(--bg-slate-100)' : 'var(--surface)',
+                      color: isToday ? 'var(--text-amber-700)' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
                       fontWeight: digit?.isFirstOfMonth ? 700 : 400,
                       borderRight: '1px solid var(--border)',
                     }}
