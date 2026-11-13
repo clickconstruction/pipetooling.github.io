@@ -9,8 +9,6 @@ import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import { buildCollectSheet, collectMoveFor } from '../../lib/bridge/collect/collectMoves'
 import { collectDecisions } from '../../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
-import { collectScorecard } from '../../lib/bridge/collect/collectScorecard'
-import type { BridgeCall } from '../../lib/bridge/calls'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { collectCountedLines, collectHeadline, collectPileLead, collectPlanLine } from './BridgeCollectCounted'
 
@@ -81,13 +79,12 @@ describe('BridgeCollectDesk (v2.5853, on the step frame since punch list #334)',
     expect(screen.getByTestId('bridge-collect-summary').textContent).toBe('$12k not yet due · $0 late · $0 doubtful')
   })
 
-  it('draws the moves, the owner’s strip, the what-if and records the plan with the owners typed (v2.5854)', () => {
+  it('draws the moves, the owner’s strip and the what-if, with no plan to record (v2.5854; #334, PR 7)', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
     const decisions = collectDecisions(cut, { chipFor: () => null, customerHref: (id) => `/customers/${id}`, jobsHref: (ids) => (ids.length === 1 ? `/jobs?tab=stages&edit=${ids[0]}` : '/jobs?tab=stages'), dayLabel: md })
     const whatIf = collectWhatIf({ pileUsd: pile.latePileUsd + pile.byState.doubtful.usd, askUsd: sheet.askUsd, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
-    const onRecordPlan = vi.fn()
     const onClose = vi.fn()
-    renderWithProviders(<BridgeCollectDesk {...desk} todayYmd="2026-10-25" readStamp="Sun, Oct 25" onClose={onClose} sheet={sheet} decisions={decisions} whatIf={whatIf} thisWeekCall={null} recording={false} onRecordPlan={onRecordPlan} customerHref={(id) => `/customers/${id}`} outcomeWriter={{ write: vi.fn().mockResolvedValue(undefined) }} />)
+    renderWithProviders(<BridgeCollectDesk {...desk} todayYmd="2026-10-25" readStamp="Sun, Oct 25" onClose={onClose} sheet={sheet} decisions={decisions} whatIf={whatIf} customerHref={(id) => `/customers/${id}`} outcomeWriter={{ write: vi.fn().mockResolvedValue(undefined) }} />)
     expect(screen.getByTestId('bridge-step-group-call').textContent).toContain('Call this week')
     // The first row: the payer and its money, the move, the words to say, and the one blue press.
     const firstRow = screen.getAllByTestId('bridge-step-row')[0]!
@@ -117,36 +114,28 @@ describe('BridgeCollectDesk (v2.5853, on the step frame since punch list #334)',
     expect((screen.getByRole('link', { name: 'Open the job' }) as HTMLAnchorElement).getAttribute('href')).toBe('/jobs?tab=stages&edit=j-rw')
     fireEvent.click(screen.getByText('What if half of it lands ›'))
     expect(screen.getByText(/If half of the/)).toBeTruthy()
-    expect(plainWordsFailures(screen.getByTestId('bridge-collect-plan-line').textContent ?? '')).toEqual([])
+    // The foot says what the sheet asks for. It offers no plan to record, keeps no scorecard and asks nothing on Friday.
+    const planLine = screen.getByTestId('bridge-collect-plan-line').textContent ?? ''
+    expect(planLine).toBe(collectPlanLine(sheet))
+    expect(planLine).toMatch(/^3 moves ask for \$/)
+    expect(planLine).not.toMatch(/Friday|plan/)
+    expect(plainWordsFailures(planLine)).toEqual([])
+    expect(screen.queryByTestId('bridge-collect-record-plan')).toBeNull()
+    expect(screen.queryByTestId('bridge-collect-scorecard')).toBeNull()
+    // The owner and the day are still typed on a row, for the copied call sheet.
     fireEvent.change(screen.getByLabelText('Owner and day for Pinestone Construction'), { target: { value: 'Dana · Mon' } })
-    fireEvent.click(screen.getByTestId('bridge-collect-record-plan'))
-    expect(onRecordPlan).toHaveBeenCalledTimes(1)
-    const recorded = onRecordPlan.mock.calls[0]![0] as Array<{ title: string; who: string; then: number | null }>
-    expect(recorded).toHaveLength(3)
-    expect(recorded.find((m) => m.title.startsWith('Pinestone'))).toMatchObject({ title: 'Pinestone Construction: Call: the Oct 16 promise', who: 'Dana · Mon', then: 38_625 })
+    expect((screen.getByLabelText('Owner and day for Pinestone Construction') as HTMLInputElement).value).toBe('Dana · Mon')
     expect((screen.getByRole('link', { name: 'Open Billing' }) as HTMLAnchorElement).getAttribute('href')).toBe('/jobs?tab=billing')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('draws Friday’s card once a plan is recorded: landed, dated calls, the notices, Monday carries (v2.5858)', () => {
-    const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
-    const call: BridgeCall = { id: 'c1', weekStart: '2026-10-25', calledOn: '2026-10-26', calledByName: 'Sam', link: 'collect', moves: sheet.rows.map((r) => ({ key: 'chase' as const, title: `${r.payer.payerName}: ${r.move.title}`, who: 'Dana', then: r.move.askUsd })), measures: { linkWeeks: 10.2, stageWeeks: {}, keys: {} }, note: null, outcome: null, outcomeAt: null, outcomeNote: null }
-    const scorecard = collectScorecard({ call, sheet, touches: [], payments: [{ payerId: 'oak', payerName: 'Oak Hollow HOA', usd: 10_000, paidOn: '2026-10-28' }], notices: { drafted: 2, signed: 2, mailed: 0, affidavitsFiled: 0 }, todayYmd: '2026-10-30' })
-    renderWithProviders(<BridgeCollectDesk {...desk} todayYmd="2026-10-30" readStamp="Fri, Oct 30" onClose={() => {}} sheet={sheet} thisWeekCall={call} scorecard={scorecard} />)
-    const cardEl = screen.getByTestId('bridge-collect-scorecard')
-    expect(cardEl.textContent).toContain('Since the plan, recorded Oct 26')
-    expect(cardEl.textContent).toContain('$10k · ')
-    expect(cardEl.textContent).toContain('2 signed · 0 mailed')
-    expect(cardEl.textContent).toContain('Monday carries:')
-    expect(screen.getByTestId('bridge-collect-plan-line').textContent).toContain('This week’s plan is recorded, Oct 26.')
-    expect(screen.queryByTestId('bridge-collect-record-plan')).toBeNull()
-  })
-
   it('holds the window’s own words to the plain-words rule', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
-    const words = [collectHeadline(pile, cut).words, collectPileLead(pile, { paidPerWeekUsd: 29_200 }, 6.8), collectPlanLine(null, null), collectPlanLine(sheet, null), collectPlanLine({ ...sheet, calls: 1, moves: 1, waiting: 2 }, { on: 'Oct 26' }), ...collectCountedLines(pile, cut, { commercial: 12, residential: 2, company: 7 })]
+    const words = [collectHeadline(pile, cut).words, collectPileLead(pile, { paidPerWeekUsd: 29_200 }, 6.8), collectPlanLine(null), collectPlanLine(sheet), collectPlanLine({ ...sheet, calls: 1, moves: 1, waiting: 2 }), ...collectCountedLines(pile, cut, { commercial: 12, residential: 2, company: 7 })]
     expect(words.length).toBeGreaterThan(15)
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
+    // With no plan to record, the foot promises no Friday.
+    for (const w of [collectPlanLine(null), collectPlanLine(sheet), collectPlanLine({ ...sheet, moves: 1, waiting: 2 })]) expect(w).not.toMatch(/Friday|plan/)
   })
 })
