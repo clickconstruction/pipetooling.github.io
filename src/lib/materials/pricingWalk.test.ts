@@ -28,6 +28,8 @@ describe('the pricing walk', () => {
     expect(currentKey(w, open('a'))).toBeNull()
     expect(walkEndWords(w, 1)).toBe('1 row priced. 1 row still has no price.')
     expect(walkEndWords(w, 0)).toBe('1 row priced.')
+    expect(walkEndWords(w, 2, 'old')).toBe('1 row priced. 2 rows are still on an old price.')
+    expect(walkEndWords(w, 1, 'old')).toBe('1 row priced. 1 row is still on an old price.')
   })
   it('Undo returns to the row that was answered', () => {
     let w = startWalk(['a', 'b', 'c'])
