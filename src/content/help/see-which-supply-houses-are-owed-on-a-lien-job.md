@@ -9,7 +9,7 @@ The Lien desk shows which jobs still owe a supply house. A supply house can send
 
 ## Find the jobs
 
-Open the [Lien desk](/lien-desk?tab=notices) on its Notices tab, under By paper. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
+Open the [Lien desk](/lien-desk?tab=notices) on its Monthly notices tab, under By paper. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
 
 :::example the mark on a row
 3 houses owed $13,058
@@ -17,7 +17,7 @@ Open the [Lien desk](/lien-desk?tab=notices) on its Notices tab, under By paper.
 
 A teal storefront means a house has a job account open for that job. A job with every house paid shows no mark.
 
-The mark shows on the By date tab. It also shows on the Notices, Affidavits and Retainage lists.
+The mark shows on the By date tab. It also shows on the three lists under By paper.
 
 ## See only those jobs
 
@@ -27,7 +27,7 @@ The By date tab then shows only those jobs, still sorted by month. Press it agai
 
 ## Read the card
 
-Press a job on the Notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
+Press a job on the Monthly notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.

@@ -1335,7 +1335,7 @@ describe('the suit watch card (v2.3781)', () => {
     expect(card.detail).toContain('$12,400 is still open behind a recorded affidavit')
     expect(card.detail).toContain('counsel on the suit by 2027-04-16')
     expect(card.figure).toBe('$12,400')
-    expect(card.actionLabel).toBe('Open the Timeline')
+    expect(card.actionLabel).toBe('Open By job')
     const soon = buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], suitDue: [{ suitDate: '2027-07-15', daysLeft: 20, openBalance: 12_400 }, { suitDate: '2027-09-01', daysLeft: 68, openBalance: 3_000 }] } })).find((i) => i.key === 'lien-suit-year')!
     expect(soon.severity).toBe('red')
     expect(soon.title).toBe('2 filed liens’ years to sue end soon (first: 2027-07-15)')

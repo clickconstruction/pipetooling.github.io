@@ -128,7 +128,7 @@ A form the statute sets. It goes to the owner of record and to the GC, by certif
 
 **What it says.** The notice is a form the statute sets. It goes to the owner of record and to the original contractor. The owner of record is the owner the county's records name. It is due by the 15th of the third month after the work month. On a residential property it is due by the 15th of the second month. It goes by certified mail or another service that can be traced. It may include the invoice.
 
-**What you do.** Draft it on the Lien desk under Notices. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/lien-desk?tab=notices).
+**What you do.** Draft it on the Lien desk, on the **Monthly notices** tab. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056(a-1) to (a-3), § 53.003*
 

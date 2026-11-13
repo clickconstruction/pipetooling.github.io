@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * The Lien desk's three views, renamed (v2.7207, the owner's pick of 2026-11-13):
+ * The Lien desk's views and papers, renamed in two steps on the owner's picks of 2026-11-13.
+ * Step one (v2.7207), the three views:
  *
  *   Do now       →  To do      (the count stays: To do · 34)
  *   Deadlines    →  By date
  *   All filings  →  By paper
  *
- * The first tab is the work; the other two are the same jobs sorted two ways. The lists under the
- * third keep their names (Notices, Affidavits, Retainage, Timeline) and so do the addresses
- * (`?tab=deadlines`, `notices`, `affidavits`), so old links and printed codes still open.
+ * The first tab is the work; the others are the same jobs sorted. Step two (v2.7219) names the
+ * three papers under By paper and moves the fourth list up as a view, By job: see PAPER_RULES below.
+ * The addresses keep their words (`?tab=deadlines`, `notices`, `affidavits`, `retainage`,
+ * `timeline`), so old links and printed codes still open.
  *
  * What it changes: string literals, JSX text, comments, test names, the guides and the living docs.
  * What it never touches: identifiers (none holds a space, and `openDeadlines`, `lienDeadlines`,
@@ -85,6 +87,50 @@ const RULES = [
 ]
 
 /**
+ * The second row, renamed with the fourth view (v2.7219, the owner's pick of 2026-11-13):
+ *
+ *   Notices     →  Monthly notices     (under By paper)
+ *   Affidavits  →  Lien affidavits     (under By paper)
+ *   Retainage   →  Retainage notices   (under By paper)
+ *   Timeline    →  By job              (a view of its own, beside By paper)
+ *
+ * All four are everyday words, so these rules run only in the files listed here, each read first,
+ * and only on the tab's name: the word before "tab", the word in bold in a lien guide, and
+ * *on Notices* / *on Affidavits* in a door. *The Notices list*, *the Affidavits pane*, the rails
+ * on To do, the lien month's zones and the Legal desk's own Timeline tab keep their words.
+ */
+const PAPER_FILES = new Set([
+  'src/components/jobs/LienDesk.tsx',
+  'src/components/jobs/LienDesk.render.test.tsx',
+  'src/components/jobs/LienDeskAffidavitPane.tsx',
+  'src/components/jobs/LienDeskAffidavitPane.render.test.tsx',
+  'src/components/jobs/LienDeskCalendarTab.tsx',
+  'src/components/jobs/LienDeskRetainagePane.tsx',
+  'src/content/help/answer-an-owner-who-calls-about-a-lien-letter.md',
+  'src/content/help/file-a-lien-and-never-miss-its-deadlines.md',
+  'src/content/help/read-the-pipeline-money-view.md',
+  'src/content/help/see-what-is-due-on-the-lien-calendar.md',
+  'src/content/help/see-which-supply-houses-are-owed-on-a-lien-job.md',
+  'src/content/help/send-lien-notices-from-the-lien-desk.md',
+  'src/content/help/share-your-attorney-their-portal.md',
+  'docs/LIEN_DESK_ARCHITECTURE.md',
+])
+/** The lien month's second zone is named Notices too, and stays. */
+const PAPER_KEEP = [/- \*\*Notices\*\*, days 6 to 9/g]
+const PAPER_RULES = [
+  [/\bNotices tab\b/g, 'Monthly notices tab'],
+  [/\bAffidavits tab\b/g, 'Lien affidavits tab'],
+  [/\bRetainage tab\b/g, 'Retainage notices tab'],
+  [/\bTimeline tab\b/g, 'By job tab'],
+  [/\*\*Notices\*\*/g, '**Monthly notices**'],
+  [/\*\*Affidavits\*\*/g, '**Lien affidavits**'],
+  [/\*\*Retainage\*\*/g, '**Retainage notices**'],
+  [/\*\*Timeline\*\*/g, '**By job**'],
+  [/\bon Notices\b(?! (?:list|pane|and|week)\b)/g, 'on Monthly notices'],
+  [/\bon Affidavits\b(?! (?:list|pane|and)\b)/g, 'on Lien affidavits'],
+]
+
+/**
  * The sentences the rules leave reading oddly (*on By date*, *To do stops asking*), each rewritten
  * in plain words, and the guides' search words. Per file: the words as the rules leave them, then
  * the words wanted. Applied after the rules; one already rewritten is left alone, and one that is
@@ -132,34 +178,87 @@ const SENTENCES = [
     ' * to paste. `?tab=` is the view by a plain word — `deadlines` for the By date grid, and under All\n * filings `notices`, `affidavits`, `retainage` or `timeline`; To do is the default and never written.\n',
     ' * to paste. `?tab=` is the view by a plain word — `deadlines` for the By date grid (Deadlines until\n * v2.7207; the word stays, so old links and printed codes still open), and under By paper `notices`,\n * `affidavits`, `retainage` or `timeline`; To do is the default and never written.\n',
   ],
+  // ── v2.7219: the second row's names and By job. Each starts from the words the rules above leave. ──
+  [DESK_GUIDE, 'keywords: lien desk, to do, by date, by paper, do now,', 'keywords: lien desk, to do, by date, by paper, by job, monthly notices, lien affidavits, retainage notices, timeline, do now,'],
+  [DESK_GUIDE, '## The three views', '## The four views'],
+  [DESK_GUIDE, 'The top of the desk has three tabs. **To do** is the work. The other two show the same jobs sorted two ways.', 'The top of the desk has four tabs. **To do** is the work. The other three show the same jobs sorted three ways.'],
+  [DESK_GUIDE, 'They are **Monthly notices**, **Lien affidavits**, **Retainage notices** and **By job**.', 'They are **Monthly notices**, **Lien affidavits** and **Retainage notices**.\n- **By job** lists every job with its whole path. The job with the nearest date comes first.'],
+  [DESK_GUIDE, 'This guide names those four tabs often.', 'This guide names those three tabs often.'],
+  [DESK_GUIDE, 'and of the By job tab. On the Notices, Affidavits and Retainage tabs it is at', 'and of the **By job** tab. On the three tabs under **By paper** it is at'],
+  [DESK_GUIDE, 'The three tabs sit under it, each as tall as a thumb.', 'The four tabs sit under it, each as tall as a thumb.'],
+  [`${HELP}file-a-lien-and-never-miss-its-deadlines.md`, '{{button:outline|Open the Timeline}}', '{{button:outline|Open By job}}'],
+  [`${HELP}see-which-supply-houses-are-owed-on-a-lien-job.md`, 'It also shows on the Notices, Affidavits and Retainage lists.', 'It also shows on the three lists under By paper.'],
+  [`${HELP}understand-how-liens-work-and-which-lien-tool-to-use.md`, 'Lien desk, To do, By date, By paper, Do now, liens on job', 'Lien desk, To do, By date, By paper, By job, Do now, liens on job'],
+  [`${HELP}understand-how-liens-work-and-which-lien-tool-to-use.md`, '**By paper → Retainage**.', '**By paper → Retainage notices**.'],
+  [`${HELP}understand-how-liens-work-and-which-lien-tool-to-use.md`, "under the desk's Affidavits switch", "on the desk's **Lien affidavits** tab"],
+  [`${HELP}understand-how-liens-work-and-which-lien-tool-to-use.md`, "The desk's other two views are *By date* and *By paper*.", "The desk's other three views are *By date*, *By paper* and *By job*."],
+  [`${HELP}texas-lien-rules-the-app-follows.md`, 'Draft it on the Lien desk under Notices.', 'Draft it on the Lien desk, on the **Monthly notices** tab.'],
+  ['src/lib/dashboardNeedsYou.ts', 'The Lien desk’s Timeline lists each job with its date.', 'The Lien desk’s By job tab lists each job with its date.'],
+  ['src/lib/dashboardNeedsYou.ts', "actionLabel: 'Open the Timeline'", "actionLabel: 'Open By job'"],
+  ['src/lib/dashboardNeedsYou.test.ts', "toBe('Open the Timeline')", "toBe('Open By job')"],
+  ['src/lib/jobs/lienDeskLegend.ts', ' * Seven parts in the order', ' * Eight parts in the order'],
+  [
+    'src/lib/jobs/lienDeskLegend.ts',
+    "note: 'Every paper by its state, under Notices, Affidavits, Retainage and Timeline.' },\n",
+    "note: 'Every paper by its state, under Monthly notices, Lien affidavits and Retainage notices.' },\n    { key: 'by-job', label: 'By job', note: 'Every job with its whole path, the nearest date first.' },\n",
+  ],
+  ['src/lib/customerJourneys.ts', "Lien desk → By paper → Retainage'", "Lien desk → By paper → Retainage notices'"],
+  ['src/lib/lien/lienDeskRoute.ts', 'To do, By date, and the four lists under By paper. */', 'To do, By date, the three papers under By paper, and By job (`timeline`; a fourth list under By paper until v2.7219). */'],
+  ['docs/GLOSSARY.md', '; Notices, Affidavits, Retainage and Timeline are a second row under By paper.', '; Monthly notices, Lien affidavits and Retainage notices are a second row under By paper, and since **v2.7219** By job is a fourth view beside it (the row read Notices, Affidavits, Retainage and Timeline until then; `?tab=timeline` still opens it).'],
+  ['docs/GLOSSARY.md', '**The Timeline tab** (v2.3768): the fourth switch', '**By job** (the Timeline tab under By paper until v2.7219; v2.3768): the fourth view'],
+  ['docs/GLOSSARY.md', '→ the Timeline tab (`/lien-desk?tab=timeline`)', '→ By job (`/lien-desk?tab=timeline`)'],
+  ['docs/twins/APP_DIRECTORY.md', 'one desk, three views (Do now, Deadlines and All filings until v2.7207)', 'one desk, four views (Do now, Deadlines and All filings until v2.7207)'],
+  ['docs/twins/APP_DIRECTORY.md', "on the shared axis) and **By paper** (Notices · Affidavits · Retainage · Timeline),", "on the shared axis), **By paper** (Monthly notices · Lien affidavits · Retainage notices) and **By job** (every job's whole path; the Timeline tab under By paper until v2.7219),"],
+  ['docs/PROJECT_DOCUMENTATION.md', '`LienDeskPage.tsx` — the ⏱ Lien desk as a page at `/lien-desk` (punch list #182, v2.6777;', '`LienDeskPage.tsx` — the ⏱ Lien desk as a page at `/lien-desk`, four views since v2.7219, **To do · By date · By paper · By job**, with **Monthly notices · Lien affidavits · Retainage notices** under By paper (punch list #182, v2.6777;'],
+  ['docs/LIEN_DESK_ARCHITECTURE.md', 'then the three views at the full width', 'then the four views at the full width'],
+  ['docs/LIEN_DESK_ARCHITECTURE.md', 'the last with its own row of paper kinds)', 'the third with its own row of the three papers, *Monthly notices · Lien affidavits · Retainage notices*; since v2.7219 a fourth view, *By job*, is the list that was *Timeline* in that row, when the row read *Notices · Affidavits · Retainage · Timeline*)'],
+  ['docs/LIEN_DESK_ARCHITECTURE.md', '("Kind of paper": Notices · Affidavits · Retainage · Timeline). `kind` keeps its six values', '("Kind of paper": Notices · Affidavits · Retainage · Timeline; since v2.7219 the three papers alone, and the timeline is the fourth view, By job, so `paperShown` and `lastPaperKind` no longer hold `timeline`). `kind` keeps its six values'],
   // A comment whose *the Deadlines* is the view, with none of the rules' shapes around it.
   ['src/hooks/useLienWatchNudge.ts', 'the rule the desk and the Deadlines count by', 'the rule the desk and its By date view count by'],
 ]
+
+/** One pass of the line rules over a text. */
+function ruled(f, text) {
+  const md = f.endsWith('.md')
+  const papers = PAPER_FILES.has(f)
+  return text
+    .split('\n')
+    .map((line) => {
+      if (md && /^keywords:/.test(line)) return line
+      const kept = []
+      let l = line
+      for (const re of [...KEEP, ...(papers ? PAPER_KEEP : [])]) l = l.replace(re, (m) => `\u0000${kept.push(m) - 1}\u0000`)
+      for (const [re, rep] of RULES) l = l.replace(re, rep)
+      if (papers) for (const [re, rep] of PAPER_RULES) l = l.replace(re, rep)
+      // eslint-disable-next-line no-control-regex
+      return l.replace(/\u0000(\d+)\u0000/g, (_, i) => kept[+i])
+    })
+    .join('\n')
+}
+/** The rules and the file's sentences, again until nothing moves: a sentence's new words may be a later sentence's old ones. */
+function settle(f, text, sentences) {
+  let t = text
+  for (let pass = 0; pass < 8; pass++) {
+    const before = t
+    t = ruled(f, t)
+    for (const [, from, to] of sentences) if (!t.includes(to) && t.includes(from)) t = t.replace(from, to)
+    if (t === before) break
+  }
+  return t
+}
 
 let total = 0
 const lost = []
 for (const f of files) {
   const src = readFileSync(f, 'utf8')
   const sentences = SENTENCES.filter(([file]) => file === f)
-  if (!/Do now|Deadlines|All filings/.test(src) && sentences.length === 0) continue
-  const md = f.endsWith('.md')
-  const ruled = src
-    .split('\n')
-    .map((line) => {
-      if (md && /^keywords:/.test(line)) return line
-      const kept = []
-      let l = line
-      for (const re of KEEP) l = l.replace(re, (m) => `\u0000${kept.push(m) - 1}\u0000`)
-      for (const [re, rep] of RULES) l = l.replace(re, rep)
-      // eslint-disable-next-line no-control-regex
-      return l.replace(/\u0000(\d+)\u0000/g, (_, i) => kept[+i])
-    })
-    .join('\n')
-  let out = ruled
+  if (!/Do now|Deadlines|All filings/.test(src) && sentences.length === 0 && !PAPER_FILES.has(f)) continue
+  const out = settle(f, src, sentences)
+  // A sentence is lost when its new words are not in the file: neither whole, nor as they settle, nor
+  // by their opening (a later sentence may have rewritten the end of them).
   for (const [, from, to] of sentences) {
-    if (out.includes(to)) continue
-    if (out.includes(from)) out = out.replace(from, to)
-    else lost.push(`${f} · ${from.split('\n')[0]}`)
+    const settled = settle(f, to, sentences)
+    if (![to, settled, to.slice(0, 30), settled.slice(0, 30)].some((w) => out.includes(w))) lost.push(`${f} · ${from.split('\n')[0]}`)
   }
   if (out === src) continue
   const before = new Set(src.split('\n'))
