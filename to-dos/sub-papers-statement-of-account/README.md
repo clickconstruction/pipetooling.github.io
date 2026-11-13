@@ -174,7 +174,7 @@ Never applied silently. A sub reads the payment record and must find their own a
 3. **A number per sending**, never reused. If #347 mints it, this card prints it. If not, PR 3 here mints it on the register.
 4. **A Date sent on every new payment and a day on a back-charge** (#347's PR 4).
 5. **The office note kept apart from the memo the sub reads** (#7992's call 3). A paper prints the memo only.
-6. **An answer on overpayment** (#7992's call 1). If it becomes a credit, the statement of account needs a credit line.
+6. **An answer on overpayment** (#7992's call 1). **Answered 2026-11-13: it becomes a credit**, so the statement of account needs a credit line. Card #347's call 6 holds what the credit is.
 
 ## The plan
 
