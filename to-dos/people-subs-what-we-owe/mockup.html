@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People → Subs · what we owe</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e5e7eb; color: #1a1a1a; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.45; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  h2 { margin: 40px 0 6px; font-size: 17px; }
+  p.lead { margin: 0 0 14px; color: #374151; max-width: 940px; }
+  .note { color: #374151; max-width: 940px; margin: 8px 0 0; font-size: 13px; }
+  .pair { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #6b7280; }
+  .label.now { color: #b91c1c; }
+  .label.next { color: #15803d; }
+  .label.alt { color: #1d4ed8; }
+  .page { background: #ffffff; border-radius: 10px; padding: 18px; box-sizing: border-box; width: 1040px; max-width: 100%; overflow-x: auto; }
+  .phone { background: #64748b; border-radius: 22px; padding: 12px; width: 390px; max-width: 100%; box-sizing: border-box; }
+  .phone .page { width: 100%; padding: 12px; border-radius: 12px; overflow: hidden; }
+  .band { border: 1px solid #f59e0b; background: #fffbeb; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+  .band .h { font-weight: 700; color: #78350f; }
+  .band .s { font-size: 12.5px; color: #92400e; margin: 2px 0 6px; }
+  .band .r { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 6px 0; border-top: 1px solid #fde68a; font-size: 13px; }
+  .num { font-family: ui-monospace, monospace; font-size: 11.5px; font-weight: 700; background: #fef3c7; color: #78350f; border-radius: 5px; padding: 1px 5px; }
+  .chip { font-size: 11px; font-weight: 650; border-radius: 999px; padding: 1px 8px; white-space: nowrap; display: inline-block; }
+  .chip.blue { background: #dbeafe; color: #1d4ed8; }
+  .chip.red { background: #fee2e2; color: #b91c1c; }
+  .chip.grey { background: #f3f4f6; color: #6b7280; }
+  .chip.green { background: #dcfce7; color: #15803d; }
+  .chip.amber { background: #fef3c7; color: #92400e; }
+  .chip.violet { background: #ede9fe; color: #6d28d9; }
+  .btn { border: 1px solid #cbd5e1; background: #ffffff; border-radius: 6px; padding: 2px 8px; font-size: 12px; white-space: nowrap; display: inline-block; }
+  .btn.p { background: #2563eb; color: #ffffff; border-color: #2563eb; font-weight: 600; }
+  .btn.lg { padding: 6px 12px; font-size: 13px; }
+  .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .muted { color: #6b7280; }
+  .small { font-size: 12px; color: #6b7280; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .pill { font-size: 12.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px; border: 1px solid #cbd5e1; background: #ffffff; color: #374151; }
+  .pill.on { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; padding: 6px 9px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+  td { padding: 9px; border-bottom: 1px solid #e5e7eb; vertical-align: top; font-size: 13.5px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .name { font-weight: 650; color: #2563eb; text-decoration: underline dotted; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 5px; }
+  .due { font-weight: 700; }
+  .due.link { color: #1d4ed8; text-decoration: underline; }
+  .mark { display: inline-flex; width: 18px; height: 18px; border-radius: 999px; background: #b91c1c; color: #ffffff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; margin-left: 5px; vertical-align: middle; flex: none; }
+  .mark.g { background: #15803d; }
+  ol.marks { margin: 8px 0 0 20px; padding: 0; max-width: 940px; color: #374151; font-size: 13px; }
+  ol.marks li { margin-bottom: 3px; }
+  .open { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin: 2px 0 6px; }
+  .open .hd { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+  .open .hd b { font-size: 14.5px; }
+  .eq { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-variant-numeric: tabular-nums; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+  .eq > span:not(.right) b { display: block; font-size: 16px; }
+  .eq > span:not(.right) { font-size: 11.5px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+  .eq i { font-style: normal; font-size: 16px; color: #9ca3af; align-self: flex-end; }
+  .eq .tot b { color: #15803d; }
+  .job { font-weight: 700; margin: 10px 0 2px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .job a, .door { color: #2563eb; font-weight: 600; font-size: 12.5px; text-decoration: none; white-space: nowrap; }
+  .sheet { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .sheet .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .sheet .top .n4 { margin-left: auto; display: grid; grid-template-columns: repeat(4, 86px); text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .sheet .top .n4 b { font-weight: 700; }
+  .heads { display: grid; grid-template-columns: repeat(4, 86px); text-align: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; justify-content: end; padding-right: 11px; }
+  .lines { margin: 6px 0 0; padding: 6px 0 0; border-top: 1px dashed #e5e7eb; font-size: 12.5px; color: #374151; }
+  .lines div { display: flex; justify-content: space-between; padding: 1px 0; }
+  .lines .pay { color: #15803d; }
+  .lines .bc { color: #b91c1c; }
+  .sum { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 13px; }
+  .ok { color: #15803d; font-weight: 700; }
+  .strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+  .tile { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; min-width: 150px; }
+  .tile .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; }
+  .tile .v { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tile.g { background: #f0fdf4; border-color: #bbf7d0; }
+  .search { border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 9px; color: #9ca3af; font-size: 13px; min-width: 180px; }
+  .calm { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+  .calm .h { font-weight: 700; }
+  .calm .r { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 6px 0 0; font-size: 13px; }
+  .win { background: #ffffff; border-radius: 10px; padding: 16px; box-sizing: border-box; width: 470px; max-width: 100%; box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18); }
+  .win h3 { margin: 0 0 4px; font-size: 16px; }
+  .choice { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+  .choice.on { border-color: #2563eb; background: #eff6ff; }
+  .choice > b { display: block; }
+  .splitrow { display: grid; grid-template-columns: 1fr 150px 70px; gap: 6px; align-items: center; padding: 3px 0; font-size: 13px; }
+  .sel { border: 1px solid #cbd5e1; border-radius: 5px; padding: 2px 6px; font-size: 12.5px; background: #ffffff; }
+  .warn { border: 1px solid #fca5a5; background: #fef2f2; color: #7f1d1d; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 8px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .card .row1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .drawer { background: #ffffff; border-radius: 10px; padding: 16px; width: 430px; max-width: 100%; box-sizing: border-box; box-shadow: -6px 0 24px rgba(15, 23, 42, 0.18); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin: 8px 0 10px; }
+  .tabs span { padding: 5px 10px; font-size: 13px; color: #6b7280; }
+  .tabs span.on { color: #1d4ed8; font-weight: 700; border-bottom: 2px solid #2563eb; }
+  table.own td, table.own th { font-size: 13px; padding: 6px 9px; }
+  table.own { background: #ffffff; border-radius: 10px; max-width: 940px; }
+  @media (max-width: 720px) { body { padding: 12px; } .sheet .top .n4, .heads { grid-template-columns: repeat(4, 70px); } }
+</style>
+</head>
+<body>
+<h1>People → Subs: what makes up what we owe each sub</h1>
+<p class="lead">Punch list #346. Every name, job, street and amount on this page is made up. The first pair is the page as it stood on 2026-11-13 beside the recommended design. Then the phone, the same breakdown from a job, a sheet two subs share, the alternative, and which page owns each act.</p>
+
+<h2>1. The page: as it is, and with the row that opens</h2>
+<div class="pair">
+  <div class="col">
+    <div class="label now">As it is</div>
+    <div class="page">
+      <div class="band">
+        <div class="h">⚠ 4 sub sheets aren't linked to anyone on the roster <span class="mark">1</span></div>
+        <div class="s">Their open balances are missing from every sub's Balance due column until each sheet is linked.</div>
+        <div class="r"><span class="num">#2041</span><b>418 Larkspur Ln</b><span class="muted">Assigned to: <b style="color:#1a1a1a">Dana Whitlock, Harlan Mechanical</b></span><span class="chip blue">Multiple subs</span><b>$2,600 open</b><span class="mark">2</span><span class="right"><span class="btn">Open →</span><span class="btn">Assign…</span><span class="mark">3</span></span></div>
+        <div class="r"><span class="num">#2063</span><b>9 Pine St</b><span class="muted">Assigned to: <b style="color:#1a1a1a">Ridgeline Coring LLC, Marlow Tile</b></span><span class="chip blue">Multiple subs</span><b>$800 open</b><span class="right"><span class="btn">Open →</span><span class="btn">Assign…</span></span></div>
+        <div class="r"><span class="num">#2049</span><b>40 Mill St</b><span class="muted">Assigned to: <b style="color:#1a1a1a">Owen Farris</b></span><span class="chip red">No roster match</span><span class="muted">$0 open</span><span class="right"><span class="btn">Open →</span><span class="btn">Assign…</span></span></div>
+        <div class="small" style="color:#2563eb;margin-top:4px">Show all 4 sheets</div>
+      </div>
+      <div class="pills"><span class="pill on">Active · 4</span><span class="pill">On the bench · 0</span><span class="pill">All · 4</span></div>
+      <table>
+        <tr><th>Sub</th><th>Status</th><th>Open work orders</th><th class="n">Balance due</th><th>Compliance</th><th>Track record</th></tr>
+        <tr><td><span class="name">Harlan Mechanical</span><div class="small">▶ Documents (2)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Nov 6</div></td><td class="muted">—</td><td class="n due">$3,700.00 <span class="mark">4</span></td><td><span class="chip green">Agreement signed</span> <span class="chip grey">COI missing</span></td><td class="small">11 sheets · 9 settled</td></tr>
+        <tr><td><span class="name">Ridgeline Coring LLC</span><div class="small">▶ Documents (0)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Oct 30</div></td><td class="muted">—</td><td class="n due">$2,150.00</td><td><span class="chip grey">Agreement missing</span></td><td class="small">1 sheet · 0 settled</td></tr>
+        <tr><td><span class="name">Marlow Tile</span><div class="small">▶ Documents (1)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Oct 22</div></td><td class="muted">—</td><td class="n due">$900.00</td><td><span class="chip green">W-9 ✓</span> <span class="chip grey">COI missing</span></td><td class="small">4 sheets · 3 settled</td></tr>
+        <tr><td><span class="name">Dana Whitlock</span><div class="small">roster only — no login</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">never worked</div></td><td class="muted">—</td><td class="n muted">—</td><td><span class="chip grey">W-9 missing</span></td><td class="small">0 sheets · 0 settled <span class="mark">5</span></td></tr>
+      </table>
+    </div>
+    <ol class="marks">
+      <li>The band calls a sheet with a sub and a teammate broken. Until the counting fix (PR #7974) that sheet was on nobody's row, while Jobs → Subs → Pay showed it as owed to the sub.</li>
+      <li>The same words sit on a sheet with money open and on one that is paid in full.</li>
+      <li><b>Assign…</b> on a <i>Multiple subs</i> row wipes every other name off the sheet. The only other way to give each person a balance is a second sheet with the same lines. That owes the money twice.</li>
+      <li>A bare figure. Nothing says which jobs or sheets it is made of, and it is not a press.</li>
+      <li>A teammate with a row on the Subs roster reads as a sub who never worked.</li>
+    </ol>
+  </div>
+
+  <div class="col">
+    <div class="label next">Recommended: the row opens</div>
+    <div class="page">
+      <div class="strip">
+        <div class="tile"><div class="k">Owed to subs</div><div class="v">$10,150.00</div><div class="small">4 subs · 6 sheets <span class="mark g">1</span></div></div>
+        <div class="tile g"><div class="k">Ready to pay now</div><div class="v">$1,200.00</div><div class="small">1 sheet · <span class="door">Open the pay run ›</span></div></div>
+        <div class="tile"><div class="k">On nobody's row</div><div class="v">$800.00</div><div class="small">1 sheet two subs share</div></div>
+        <div class="tile" style="border-style:dashed"><div class="k">Adds up</div><div class="small" style="margin-top:4px">Rows $9,350.00<br>+ shared $800.00<br><b class="ok">= $10,150.00 ✓</b></div></div>
+      </div>
+      <div class="calm">
+        <div class="h">1 sheet needs a sub · $800.00 open <span class="mark g">2</span></div>
+        <div class="small">Its money is counted once, here. It is in no sub's Balance due until the sheet has one sub.</div>
+        <div class="r"><span class="num">#2063</span><b>Pine Street Duplex</b><span class="chip blue">Two subs</span><span class="muted">Ridgeline Coring LLC and Marlow Tile</span><b>$800.00 open</b><span class="right"><span class="btn">Open the sheet</span><span class="btn p">Whose is it…</span></span></div>
+      </div>
+      <div class="small" style="margin-bottom:6px">2 crew sheets have teammates on them and no sub. Crew sheets pay through payroll, so they are in nobody's Balance due.</div>
+      <div class="pills"><span class="pill on">Owed · 3</span><span class="pill">Active · 4</span><span class="pill">On the bench · 0</span><span class="pill">All · 4</span><span class="search">Search a sub or a job…</span><span class="right"><span class="btn">Sort: most owed</span><span class="btn">Export</span><span class="mark g">6</span></span></div>
+      <table>
+        <tr><th>Sub</th><th>Status</th><th>Open work orders</th><th class="n">Balance due</th><th>Compliance</th><th>Track record</th></tr>
+        <tr><td><span class="name">Harlan Mechanical</span><div class="small">▶ Documents (2)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Nov 6</div></td><td class="muted">—</td><td class="n"><span class="due link">$6,300.00 ▾</span> <span class="mark g">3</span><div class="small">3 sheets · 2 jobs</div></td><td><span class="chip green">Agreement signed</span> <span class="chip grey">COI missing</span></td><td class="small">12 sheets · 9 settled</td></tr>
+        <tr><td colspan="6" style="padding:0 6px 8px">
+          <div class="open">
+            <div class="hd"><b>What makes up $6,300.00</b><span class="muted">Harlan Mechanical · 3 open sheets on 2 jobs</span><span class="right"><span class="pill on">Open · 3</span><span class="pill">Paid · 9</span><span class="btn">Print statement</span></span></div>
+            <div class="eq">
+              <span>Agreed<b>$7,900.00</b></span><i>−</i>
+              <span>Paid<b>$1,500.00</b></span><i>−</i>
+              <span>Backcharged<b>$100.00</b></span><i>=</i>
+              <span class="tot">Still open<b>$6,300.00</b></span>
+              <span class="right ok">✓ the figure in the column <span class="mark g">4</span></span>
+            </div>
+            <div class="heads"><span>Agreed</span><span>Paid</span><span>Backch.</span><span>Open</span></div>
+
+            <div class="job"><span class="num">#2041</span>Cedar Hollow Clinic<span class="muted" style="font-weight:400">418 Larkspur Ln</span><span class="door">Open the job ›</span><span class="right"><b>$3,800.00 open</b></span></div>
+            <div class="sheet">
+              <div class="top"><span>▾ <b>Sheet of Oct 28</b></span><span class="muted">with Dana Whitlock</span><span class="chip amber">Waiting on customer</span><span class="door">Open the sheet ›</span>
+                <span class="n4"><span>$4,200.00</span><span>$1,500.00</span><span>$100.00</span><b>$2,600.00</b></span></div>
+              <div class="lines">
+                <div><span>Rough-in</span><span>$2,400.00</span></div>
+                <div><span>Top-out</span><span>$1,800.00</span></div>
+                <div class="pay"><span>Paid Oct 31 · check 1182</span><span>−$1,500.00</span></div>
+                <div class="bc"><span>Backcharge Nov 2 · cleanup after top-out</span><span>−$100.00</span></div>
+                <div style="margin-top:4px"><span class="muted">Dana Whitlock rode along and is paid through payroll. The whole sheet is Harlan Mechanical's.</span><span><span class="btn">Back-charge…</span></span></div>
+              </div>
+            </div>
+            <div class="sheet">
+              <div class="top"><span>▸ <b>Sheet of Nov 6</b></span><span class="muted">1 line</span><span class="chip green">Ready to pay</span><span class="door">Open the sheet ›</span><span class="btn p">Pay $1,200.00…</span><span class="mark g">5</span>
+                <span class="n4"><span>$1,200.00</span><span>—</span><span>—</span><b>$1,200.00</b></span></div>
+            </div>
+
+            <div class="job"><span class="num">#2057</span>Ridgeway Builders, Lot 12<span class="muted" style="font-weight:400">77 Quarry Rd</span><span class="door">Open the job ›</span><span class="right"><b>$2,500.00 open</b></span></div>
+            <div class="sheet">
+              <div class="top"><span>▸ <b>Sheet of Nov 3</b></span><span class="muted">1 line</span><span class="chip red">No agreement</span><span class="door">Open the sheet ›</span>
+                <span class="n4"><span>$2,500.00</span><span>—</span><span>—</span><b>$2,500.00</b></span></div>
+            </div>
+
+            <div class="sum"><span><b>3 sheets</b> · $3,800.00 + $2,500.00 = <b>$6,300.00</b></span><span class="ok">✓ adds up to Balance due</span><span class="right"><span class="door">Open Harlan Mechanical in the pay run ›</span></span></div>
+          </div>
+        </td></tr>
+        <tr><td><span class="name">Ridgeline Coring LLC</span><div class="small">▶ Documents (0)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Oct 30</div></td><td class="muted">—</td><td class="n"><span class="due link">$2,150.00 ▸</span><div class="small">1 sheet · 1 job</div></td><td><span class="chip grey">Agreement missing</span></td><td class="small">1 sheet · 0 settled</td></tr>
+        <tr><td><span class="name">Marlow Tile</span><div class="small">▶ Documents (1)</div></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span><div class="small">last worked Oct 22</div></td><td class="muted">—</td><td class="n"><span class="due link">$900.00 ▸</span><div class="small">1 sheet · 1 job</div></td><td><span class="chip green">W-9 ✓</span> <span class="chip grey">COI missing</span></td><td class="small">4 sheets · 3 settled</td></tr>
+        <tr><td><span class="name">Dana Whitlock</span> <span class="chip violet">Teammate · crew pay</span><div class="small">signs in as a superintendent</div></td><td><span class="dot"></span><b>Active</b></td><td class="muted">—</td><td class="n small">payroll</td><td><span class="chip grey">W-9 missing</span></td><td class="small">rode along on 4 sheets <span class="mark g">7</span></td></tr>
+      </table>
+    </div>
+    <ol class="marks">
+      <li>The tiles are the Pay view's own figures, read by the same kernels. A fourth box shows the rows and the shared sheets adding up to the total.</li>
+      <li>The band lists only a sheet with no sub or with two. It says where the money is counted, and its press asks whose sheet it is.</li>
+      <li>Balance due is a press. It opens the row, as Documents does today.</li>
+      <li>Agreed, less paid, less backcharged, is the figure in the column. The check mark is drawn only when the sums match.</li>
+      <li>Pay… and Back-charge… open the Pay view's own windows on that sheet. Nothing is recorded in a second place.</li>
+      <li>An Owed chip, a search across subs and jobs, a sort, and an export of what is on screen.</li>
+      <li>A teammate with a row on the Subs roster says so and is owed nothing here.</li>
+    </ol>
+  </div>
+</div>
+
+<h2>2. On a phone</h2>
+<div class="pair">
+  <div class="col">
+    <div class="label now">As it is</div>
+    <div class="phone"><div class="page">
+      <div class="band" style="margin-bottom:8px"><div class="h">⚠ 4 sub sheets aren't linked to anyone on the roster</div><div class="s">Their open balances are missing from every sub's Balance due column until each sheet is linked.</div></div>
+      <div style="overflow:hidden"><table style="width:640px">
+        <tr><th>Sub</th><th>Status</th><th>Open work orders</th><th class="n">Balance due</th></tr>
+        <tr><td><span class="name">Harlan Mechanical</span></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span></td><td class="muted">—</td><td class="n due">$3,700.00</td></tr>
+        <tr><td><span class="name">Ridgeline Coring LLC</span></td><td><span class="dot"></span><b>Active</b> <span class="btn">Bench…</span></td><td class="muted">—</td><td class="n due">$2,150.00</td></tr>
+      </table></div>
+      <div class="small" style="margin-top:6px">The six-column table scrolls sideways. Balance due is off the screen until you swipe.</div>
+    </div></div>
+  </div>
+  <div class="col">
+    <div class="label next">Recommended: a card per sub</div>
+    <div class="phone"><div class="page">
+      <div class="strip" style="margin-bottom:8px"><div class="tile" style="flex:1"><div class="k">Owed to subs</div><div class="v">$10,150.00</div><div class="small">4 subs · 6 sheets</div></div></div>
+      <div class="pills" style="margin-top:0"><span class="pill on">Owed · 3</span><span class="pill">Active · 4</span><span class="pill">All · 4</span></div>
+      <div class="card"><div class="row1"><span class="name">Harlan Mechanical</span><span class="due link">$6,300.00 ›</span></div><div class="small"><span class="dot"></span>Active · 3 sheets on 2 jobs · $1,200.00 ready</div><div style="margin-top:4px"><span class="chip green">Agreement signed</span> <span class="chip grey">COI missing</span></div></div>
+      <div class="card"><div class="row1"><span class="name">Ridgeline Coring LLC</span><span class="due link">$2,150.00 ›</span></div><div class="small"><span class="dot"></span>Active · 1 sheet on 1 job</div><div style="margin-top:4px"><span class="chip grey">Agreement missing</span></div></div>
+      <div class="card"><div class="row1"><span class="name">Marlow Tile</span><span class="due link">$900.00 ›</span></div><div class="small"><span class="dot"></span>Active · 1 sheet on 1 job</div></div>
+    </div></div>
+  </div>
+  <div class="col">
+    <div class="label next">The sheet a card opens</div>
+    <div class="phone"><div class="page">
+      <div class="row1" style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:15px">Harlan Mechanical</b><span class="btn">Close</span></div>
+      <div class="eq" style="margin-top:8px"><span>Agreed<b>$7,900</b></span><i>−</i><span>Paid<b>$1,500</b></span><i>−</i><span>Backch.<b>$100</b></span><i>=</i><span class="tot">Open<b>$6,300</b></span></div>
+      <div class="job" style="margin-top:4px"><span class="num">#2041</span>Cedar Hollow Clinic</div>
+      <div class="card" style="margin:6px 0"><div class="row1"><b>Sheet of Oct 28</b><b>$2,600.00</b></div><div class="small">Agreed $4,200.00 · paid $1,500.00 · backcharged $100.00</div><div class="small">with Dana Whitlock</div><div style="margin-top:5px"><span class="chip amber">Waiting on customer</span> <span class="door">Open the sheet ›</span></div></div>
+      <div class="card" style="margin:6px 0"><div class="row1"><b>Sheet of Nov 6</b><b>$1,200.00</b></div><div class="small">Agreed $1,200.00 · nothing paid</div><div style="margin-top:5px"><span class="chip green">Ready to pay</span> <span class="btn p">Pay $1,200.00…</span></div></div>
+      <div class="job"><span class="num">#2057</span>Ridgeway Builders, Lot 12</div>
+      <div class="card" style="margin:6px 0"><div class="row1"><b>Sheet of Nov 3</b><b>$2,500.00</b></div><div class="small">Agreed $2,500.00 · nothing paid</div><div style="margin-top:5px"><span class="chip red">No agreement</span> <span class="door">Open the sheet ›</span></div></div>
+      <div class="sum"><span><b>3 sheets</b> = <b>$6,300.00</b></span><span class="ok">✓ adds up</span></div>
+    </div></div>
+  </div>
+</div>
+
+<h2>3. The same breakdown from a job</h2>
+<p class="lead">A block in the job's window, and under the job's row on Jobs → Subs → Work. It is the same kernel turned the other way: the job, then each sub, then each sheet. The roles who see it are the roles who open Jobs → Subs → Pay today.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label next">Job window · Subs on this job</div>
+    <div class="win" style="width:620px">
+      <h3><span class="num">#2041</span> Cedar Hollow Clinic · subs on this job</h3>
+      <div class="eq" style="margin-top:8px"><span>Agreed<b>$6,300.00</b></span><i>−</i><span>Paid<b>$1,500.00</b></span><i>−</i><span>Backcharged<b>$100.00</b></span><i>=</i><span class="tot">Still open<b>$4,700.00</b></span></div>
+      <div class="job"><span class="name">Harlan Mechanical</span><span class="door">What we owe Harlan ›</span><span class="right"><b>$3,800.00 open</b></span></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Oct 28</b></span><span class="muted">with Dana Whitlock</span><span class="door">Open the sheet ›</span><span class="right"><b>$2,600.00</b></span></div></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Nov 6</b></span><span class="chip green">Ready to pay</span><span class="door">Open the sheet ›</span><span class="right"><b>$1,200.00</b></span></div></div>
+      <div class="job"><span class="name">Marlow Tile</span><span class="door">What we owe Marlow ›</span><span class="right"><b>$900.00 open</b></span></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Oct 22</b></span><span class="door">Open the sheet ›</span><span class="right"><b>$900.00</b></span></div></div>
+      <div class="job"><span class="chip violet">Crew pay</span>Owen Farris<span class="right muted">payroll · not owed here</span></div>
+      <div class="sum"><span><b>2 subs · 3 sheets</b> · $3,800.00 + $900.00 = <b>$4,700.00</b></span><span class="ok">✓ adds up</span></div>
+      <div class="warn">Two sheets on this job carry the line <b>Top-out · $1,800.00</b>. Check that one piece of work is not on both. <span class="door">Show the two sheets ›</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>4. A sheet two subs share</h2>
+<p class="lead">It is counted once, on nobody's row, until someone says whose it is. The window says what each choice does to each sub's Balance due before anything is saved. There is no press that links one sheet to both subs. Which split is right is the owner's call (the card, question 1). The drawing shows the pick: a sheet each, by line.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label next">Whose is it… on the band's row</div>
+    <div class="win">
+      <h3>Whose sheet is this?</h3>
+      <div class="small"><span class="num">#2063</span> Pine Street Duplex · sheet of Nov 4 · $800.00 open · written for Ridgeline Coring LLC and Marlow Tile</div>
+      <div class="choice on"><b>Each sub did part of it</b><span class="small">Give each line to the sub who did it. The sheet becomes two, one per sub.</span>
+        <div style="margin-top:6px">
+          <div class="splitrow"><span>Core two slab openings</span><span class="sel">Ridgeline Coring LLC ▾</span><span style="text-align:right">$500.00</span></div>
+          <div class="splitrow"><span>Patch and tile the curb</span><span class="sel">Marlow Tile ▾</span><span style="text-align:right">$300.00</span></div>
+        </div>
+        <div class="small" style="margin-top:6px">Ridgeline Coring LLC <b>+$500.00</b> · Marlow Tile <b>+$300.00</b> · <span class="ok">= $800.00 ✓ the sheet's open money, once</span></div>
+      </div>
+      <div class="choice"><b>It is one sub's sheet</b><span class="small">The other name comes off. Nothing is added to the other sub's balance.</span></div>
+      <div class="choice"><b>Leave it shared</b><span class="small">It stays on nobody's row and keeps its line in the band.</span></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><span class="btn lg">Cancel</span><span class="btn lg p">Make it two sheets</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">The sheet form, when a second sub is picked</div>
+    <div class="win">
+      <h3>Edit sub sheet · Crew</h3>
+      <div class="pills"><span class="pill on">Ridgeline Coring LLC ✓</span><span class="pill on">Marlow Tile ✓</span><span class="pill">Harlan Mechanical</span></div>
+      <div class="small">Teammates</div>
+      <div class="pills" style="margin-top:2px"><span class="pill on">Owen Farris ✓</span><span class="pill">Dana Whitlock</span></div>
+      <div class="warn"><b>Two subs on one sheet.</b> A sheet is owed to one sub. With two, its money is on nobody's Balance due. Teammates can ride along on either.<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="btn p">Start a sheet for Marlow Tile</span><span class="btn">Keep both on this one</span></div></div>
+      <div class="small" style="margin-top:8px">Saved as it is, the sheet reads: Ridgeline Coring LLC and Marlow Tile, with Owen Farris.</div>
+    </div>
+  </div>
+</div>
+
+<h2>5. The alternative: the breakdown lives on the sub's desk</h2>
+<p class="lead">Balance due opens the desk that a sub's name already opens, on a new Money tab. The Subs table stays as short as it is today, and the same drawer opens from the pay run and from a job. The cost is one more step, and two subs cannot be read side by side.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label alt">Alternative: a Money tab on the desk</div>
+    <div class="drawer">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:16px">Harlan Mechanical</b><span class="btn">Close</span></div>
+      <div class="small">Sub · Active · last worked Nov 6</div>
+      <div class="tabs"><span>Overview</span><span class="on">Money</span><span>Paperwork</span><span>Notes</span></div>
+      <div class="eq"><span>Agreed<b>$7,900.00</b></span><i>−</i><span>Paid<b>$1,500.00</b></span><i>−</i><span>Backch.<b>$100.00</b></span><i>=</i><span class="tot">Open<b>$6,300.00</b></span></div>
+      <div class="job"><span class="num">#2041</span>Cedar Hollow Clinic<span class="right"><b>$3,800.00</b></span></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Oct 28</b></span><span class="chip amber">Waiting on customer</span><span class="right"><b>$2,600.00</b></span></div></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Nov 6</b></span><span class="btn p">Pay $1,200.00…</span><span class="right"><b>$1,200.00</b></span></div></div>
+      <div class="job"><span class="num">#2057</span>Ridgeway Builders, Lot 12<span class="right"><b>$2,500.00</b></span></div>
+      <div class="sheet"><div class="top"><span>▸ <b>Sheet of Nov 3</b></span><span class="chip red">No agreement</span><span class="right"><b>$2,500.00</b></span></div></div>
+      <div class="sum"><span><b>3 sheets</b> = <b>$6,300.00</b></span><span class="ok">✓ adds up</span><span class="right"><span class="door">Open in the pay run ›</span></span></div>
+    </div>
+  </div>
+  <div class="col" style="max-width:440px">
+    <div class="label">Why the row is the pick</div>
+    <p class="note" style="margin-top:0">The owner asked to dig in from the page. The row opens where the figure is, with the rest of the roster still in sight, and Documents already opens this way. The desk is the better home on a phone, so the phone's card opens a sheet that is the same block. Both draw one component from one kernel, so the pick can change without new numbers.</p>
+  </div>
+</div>
+
+<h2>6. Which page owns each act</h2>
+<table class="own">
+  <tr><th>Act</th><th>Owner</th><th>From the other page</th></tr>
+  <tr><td>Record a payment, a backcharge. Move or remove a payment.</td><td>Jobs → Subs → Pay</td><td>People → Subs opens the Pay view's own window on that sheet.</td></tr>
+  <tr><td>Stage, payable after, hold, the pay run, a work order, a lien waiver, print one sheet.</td><td>Jobs → Subs → Pay</td><td><i>Open the sheet ›</i> and <i>Open in the pay run ›</i>.</td></tr>
+  <tr><td>Who a sheet is for: its sub, its teammates, a split.</td><td>The sheet form's Crew step</td><td>The band's <i>Whose is it…</i> on People → Subs writes through the same save.</td></tr>
+  <tr><td>What we owe one sub, by job and sheet. A statement to print or export.</td><td>People → Subs</td><td>The pay run's sub name and the job window link to it.</td></tr>
+  <tr><td>Who is owed what on one job.</td><td>The job window</td><td>People → Subs links each job with <i>Open the job ›</i>.</td></tr>
+  <tr><td>The roster, documents and compliance, the bench, the portal link.</td><td>People → Subs</td><td>The pay run's sub name opens the sub's row.</td></tr>
+</table>
+</body>
+</html>

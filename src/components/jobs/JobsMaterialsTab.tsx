@@ -24,7 +24,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
@@ -115,12 +115,13 @@ function jobLabel(j: MaterialsJob | undefined, id: string): string {
   if (!j) return `job ${id.slice(0, 8)}`
   return onSiteJobWords(j)
 }
-function unitPrice(line: Pick<ContainerLine, 'partKey'>): number | null {
-  return priceOf(line.partKey)
+/** A line's price on its job: the job's site's answers and ties are in the rule (punch list #342). */
+function unitPrice(jobId: string, line: Pick<ContainerLine, 'partKey'>): number | null {
+  return priceOfJob(jobId, line.partKey)
 }
 /** Beside a priced figure: where the price came from and the day it was checked (call 5); amber when the book's check is older than 90 days. */
-function PriceChip({ partKey: key }: { partKey: string }) {
-  const pick = priceFor(key)
+function PriceChip({ jobId, partKey: key }: { jobId: string; partKey: string }) {
+  const pick = priceForJob(jobId, key)
   if (!pick) return null
   const today = todayYmdInAppTz()
   return <span style={chip(pick.stale ? 'amber' : 'dim')} title={priceTitle(pick, today)}>{priceWords(pick, today)}</span>
@@ -401,6 +402,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [onSiteView, setOnSiteView] = useState<'list' | 'parts' | 'map'>('list')
   // By part (punch list #330): this job's parts as the site's screen rolls them up, with the names a person joined there.
   const partTies = usePartTies(siteId ? { developmentId: siteId } : { jobId })
+  const priceOf = (key: string) => priceOfJob(jobId, key)
   const flow = officeFlow(containers, movements, now, priceOf)
   const load = useOnSiteJob(jobId)
   /** The On site list narrowed to what needs a hand: boxes due a count, boxes with a Can't find since their last count. */
@@ -642,7 +644,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>{r.cannotFind || ''}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.left}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.walkedAway > 0 ? r.walkedAway : <span style={chip('green')}>0</span>}</td>
-                    <td style={{ ...td, ...num }}>{r.money != null ? <><Money n={r.money} /> <PriceChip partKey={r.partKey} /></> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
+                    <td style={{ ...td, ...num }}>{r.money != null ? <><Money n={r.money} /> <PriceChip jobId={jobId} partKey={r.partKey} /></> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
                     <td style={{ ...td, ...num }}>{r.lastCountAt ? <Stamp iso={r.lastCountAt} /> : <span style={chip('amber')}>never</span>}</td>
                   </tr>
                 ))}
@@ -658,7 +660,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <tbody>
               {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${window} days.`} /></td></tr> : null}
               {missingRows.map((d) => {
-                const price = unitPrice(d)
+                const price = unitPrice(jobId, d)
                 const m = missingMoney(d.diff, price)
                 return (
                   <tr key={d.movementId} style={d.diff < 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
@@ -667,14 +669,14 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>{d.expected}</td>
                     <td style={{ ...td, ...num }}>{d.counted}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{d.diff < 0 ? -d.diff : <span style={chip('blue')}>{d.diff} found</span>}</td>
-                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip partKey={d.partKey} /></>}</td>
+                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip jobId={jobId} partKey={d.partKey} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{d.byName} <Stamp iso={d.at} inline /></td>
                   </tr>
                 )
               })}
               {cannotRows.map((m) => {
                 const pk = partKey(m.partId, m.partName)
-                const price = unitPrice({ partKey: pk })
+                const price = unitPrice(jobId, { partKey: pk })
                 const mm = missingMoney(-m.quantity, price)
                 return (
                   <tr key={m.id} style={{ background: 'var(--bg-red-100)' }}>
@@ -683,12 +685,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{m.quantity} <span style={chip('red')}>can't find</span></td>
-                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <PriceChip partKey={pk} /></>}</td>
+                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <PriceChip jobId={jobId} partKey={pk} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{m.byName} <Stamp iso={m.at} inline />{m.note ? <span style={muted}> · {m.note}</span> : null}</td>
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice({ partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
             </tbody>
           </table>
         </div>
@@ -698,7 +700,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {section === 'deliveries' ? (
         <div style={{ display: 'grid', gap: '0.9rem' }}>
           <div style={sec}>
-            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. The app reads it from there and shows the lines for a once-over before they land.</span></h5>
+            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. Paste its text here and look the lines over before they land.</span></h5>
             <div style={{ padding: '0.75rem 0.9rem', display: 'grid', gap: '0.6rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {driveLink ? (
@@ -713,7 +715,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }} onClick={() => setAgentOpen(true)}>Or have your agent do it via MCP</button>
                 <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>Invoice #<input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-48812" aria-label="Invoice number" style={{ minHeight: 32, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', width: 130, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
               </div>
-              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo. The build reads new invoices from that folder with the model and lists them here; until then, paste the text.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
+              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo, so it is kept with the job. The app does not read the file yet. Paste the invoice’s text to land its lines.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
               {madeWords && madeFolders ? (
                 <p style={{ ...muted, margin: 0 }}>
                   {madeWords.line}{' '}

@@ -68,6 +68,8 @@ The ⋯ on a row holds **Payment…** while money is due, **Back-charge…**, **
 
 When you record a payment, the **Date sent** field lets you backdate it. The date can go back to the day the money actually went out. The field starts on today. The ledger's Payments list shows that date. You can fix it later with **Edit** on the payment row, inside **Edit sheet**.
 
+The row shows when a sheet was paid without opening it. The dates sit under the **Paid** amount. One or two payments show each date. More payments show the count and the last date. A paid sheet's Pay when line reads *paid in full* with the date. A payment with no Date sent shows the day it was recorded, and says *recorded*.
+
 ## More on paying subs
 
 - [Fix a payment on the wrong sheet](/help/fix-a-payment-on-the-wrong-sheet): move it, remove it, or undo a removal.

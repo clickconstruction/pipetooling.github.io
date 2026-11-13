@@ -67,6 +67,21 @@ vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async () => detailJob,
 }))
 
+// The text face's reads (punch list #343, PR 2) have their own kernel tests; here the window is handed what they return.
+const textFaceReads = vi.hoisted(() => ({ calls: 0 }))
+vi.mock('../../lib/billing/billCustomerFacesIo', () => ({
+  loadBillTextFace: async () => {
+    textFaceReads.calls += 1
+    return {
+      job: { customerId: 'cust-1', customerName: 'Kestrin Contracting', jobName: 'Penmoor demo', jobAddress: '12 Penmoor Ln', lang: 'en' },
+      lines: [],
+      textsOn: true,
+      me: 'Rosa Alvarez',
+      contact: { numbers: [{ channelId: 'ch-1', value: '5125550142', stopped: false }], lines: [] },
+    }
+  },
+}))
+
 // The owner-of-record line (v2.3450) has its own render smoke; here only its mount point is checked.
 vi.mock('./BillCustomerOwnerLine', () => ({
   default: ({ jobId }: { jobId: string }) => <div data-testid="owner-line-marker" data-job={jobId} />,
@@ -240,5 +255,54 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
     expect(within(physicalBox).getByText('One email goes now to ap@kestrin.test. The invoice PDF is attached.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Email the invoice to Kestrin' })).toBeTruthy()
     expect(screen.queryByTestId('bill-customer-send-to-phone')).toBeNull()
+  })
+
+  it('draws the bill, the email and the text as three faces, and reads the text only when its face is opened (punch list #343, PR 2)', async () => {
+    textFaceReads.calls = 0
+    const ensuresBefore = ensureCalls()
+    renderWithProviders(
+      <SendRecordInvoiceModal
+        payload={{
+          kind: 'job',
+          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test', job_address: '12 Penmoor Ln, Kyle, TX' },
+        }}
+        onClose={() => {}}
+        onSuccess={async () => {}}
+        jobUpdating={false}
+        invoiceUpdating={false}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('What Kestrin Contracting will get')).toBeTruthy()
+    })
+    // The bill is the face it opens on, under its own name, and nothing has been read for the text.
+    expect(screen.getByTestId('bill-customer-faces').getAttribute('data-face')).toBe('bill')
+    expect(screen.getByText('On the bill:')).toBeTruthy()
+    expect(textFaceReads.calls).toBe(0)
+
+    // The email: the send's own subject and message, for the plan's $2,630.00.
+    fireEvent.click(screen.getByRole('tab', { name: 'The email' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('bill-customer-face-email-subject').textContent).toBe('Subject: Invoice from Click Plumbing and Electrical')
+    })
+    const frame = screen.getByTestId('bill-customer-face-email-frame')
+    expect(frame.getAttribute('srcdoc')).toContain('$2,630.00')
+    expect(frame.getAttribute('srcdoc')).toContain('Pay now')
+    expect(frame.getAttribute('srcdoc')).toContain('12 Penmoor Ln, Kyle, TX')
+    expect(textFaceReads.calls).toBe(0)
+
+    // The text: read once, on the first look, and filled for this bill.
+    fireEvent.click(screen.getByRole('tab', { name: 'The text' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('bill-customer-face-text-words').textContent).toBe(
+        'Hi Kestrin, this is Rosa with Click Plumbing. Your bill for Penmoor demo is ready, $2,630.00. Text me here with any question. Pay it here: https://my.clickplumbing.com/pay/sample',
+      )
+    })
+    expect(screen.getByText('Text to (512) 555-0142')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'The bill' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'The text' }))
+    expect(textFaceReads.calls).toBe(1)
+    // Looking wrote nothing.
+    expect(ensureCalls()).toBe(ensuresBefore)
   })
 })

@@ -2,9 +2,9 @@
 // `npm run gen:edge-kernels`. The functions that import the copy are IMPORTERS in that script (the schedule's PR 14b).
 /**
  * The link's desk (link PR 2): what each link is, why it matters to
- * throughput, how the Bridge reads it, and the moves the week would make on
- * it. Static words per link; the numbers come from the page at call time
- * (`CallMove.then`, keyed so Friday can read them again). Pure.
+ * throughput, how the Bridge reads it, and the moves that would change it.
+ * Static words per link; the numbers come from the page (`WeekMove.then`,
+ * by the move's key). Pure.
  */
 import type { CallLink, MoveKey } from './calls.ts'
 

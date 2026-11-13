@@ -153,7 +153,7 @@ export function stripePreviewBlockerHint(b: StripePreviewBlocker): string | null
     case 'loading':
       return 'Preparing billing line…'
     case 'ensure_error':
-      return 'Fix the billing line error above, then edit due date in What the customer will see when ready.'
+      return 'Fix the billing line error above, then edit the due date on the bill when ready.'
     case 'no_customer':
       return 'Link a customer to this job and Stripe\'s exact preview appears here — the lines below are what the bill will list.'
     case 'no_email':

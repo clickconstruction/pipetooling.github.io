@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { MoreHorizontal } from 'lucide-react'
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -9,6 +10,7 @@ import { isRosterSubSheet, type NeedsWorkOrderRosterPerson } from '../../lib/sub
 import { sheetParties, type SheetParties } from '../../lib/subWorkOrders/sheetParties'
 import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS, PAY_RUN_FILTER_HINT, PAY_RUN_FILTER_LABEL, PAY_RUN_SEGMENTS, PAY_RUN_SEGMENT_LABEL, type PayRunFilter, type PayRunSegment, type PayRunSub, type SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
+import { sheetPaidInFullWords, sheetPaidLine, sheetPaymentDates } from '../../lib/subWorkOrders/sheetPaymentDates'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
 import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
@@ -250,9 +252,11 @@ export default function JobsSubLaborTab({
         .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByJobId))
         .map((job) => {
           const bal = subLaborJobBalance(job)
-          return { job, ...bal, ...spineFor(job, bal) }
+          // v2.7172 · when the payments were made, in the row's own words (punch list #347): the dates sat only in the opened row.
+          const paidDates = sheetPaymentDates(job.payments)
+          return { job, ...bal, ...spineFor(job, bal), paidLine: sheetPaidLine(paidDates, today), paidInFull: bal.balance === 0 ? sheetPaidInFullWords(paidDates, today) : null }
         }),
-    [laborJobs, subLaborSearch, laborJobNamesByJobId, spineFor],
+    [laborJobs, subLaborSearch, laborJobNamesByJobId, spineFor, today],
   )
   type LedgerRow = (typeof rows)[number]
   const rowById = useMemo(() => new Map(rows.map((r) => [r.job.id, r])), [rows])
@@ -549,7 +553,7 @@ export default function JobsSubLaborTab({
                             <span style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               <span style={{ flexShrink: 0 }}>{tag(r.payWhen.label, r.payWhen.tone)}</span>
                               {/* Two lines, not one cut short (v2.3895): the reason is the point of the row. */}
-                              <span style={{ minWidth: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.payWhen.detail}</span>
+                              <span style={{ minWidth: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.payWhen.kind === 'paid' && r.paidInFull ? r.paidInFull : r.payWhen.detail}</span>
                             </span>
                           </span>
                           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', fontSize: '0.8125rem', color: amount.tone === 'due' ? (r.rail.gap ? SHEET_RAIL_GAP : 'var(--text-red-700)') : amount.tone === 'paid' ? 'var(--text-green-600)' : 'var(--text-faint)' }}>{amount.words}</span>
@@ -607,7 +611,7 @@ export default function JobsSubLaborTab({
                   </tr>
                 )
                 const body = g.rows.flatMap((r) => {
-                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView } = r
+                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull } = r
                   const jobRate = job.labor_rate ?? 0
                   const dateInputValue = job.job_date ?? (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
@@ -654,7 +658,10 @@ export default function JobsSubLaborTab({
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? <AmountSmallCents value={totalCost} /> : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{paid > 0 ? <AmountSmallCents value={paid} /> : '—'}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {paid > 0 ? <AmountSmallCents value={paid} /> : '—'}
+                        {paidLine ? <div data-sub-pay-dates={job.id} title="When the payments were made" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap' }}>{paidLine}</div> : null}
+                      </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                         {totalCost > 0 ? (
                           balance > 0 ? (
@@ -683,7 +690,7 @@ export default function JobsSubLaborTab({
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
                         <div>{tag(payWhen.label, payWhen.tone, PAY_RUN_FILTER_HINT[payWhen.kind === 'work' || payWhen.kind === 'walk' || payWhen.kind === 'hold' ? 'due' : payWhen.kind === 'unpriced' || payWhen.kind === 'paid' ? 'paid' : payWhen.kind])}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
-                          {payWhen.detail}
+                          {payWhen.kind === 'paid' && paidInFull ? paidInFull : payWhen.detail}
                           {payWhen.kind === 'gap' && next.button && next.button !== 'nudge' && next.buttonLabel ? (
                             <div>
                               <button
@@ -713,8 +720,9 @@ export default function JobsSubLaborTab({
                         </div>
                       </td>
                       <td style={{ padding: '0.5rem', verticalAlign: 'middle', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story · Lien waiver" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>
-                          ⋯
+                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story · Lien waiver" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}>
+                          {/* v2.7168 · the Pipeline row's icon, centred by the button's own box: a typed ⋯ under the default button padding (13.6 px a side in a 30 px button) overflowed right and low. */}
+                          <MoreHorizontal size={18} strokeWidth={2.25} aria-hidden="true" />
                         </button>
                         {menuJobId === job.id ? (
                           <div role="menu" style={{ position: 'absolute', right: 8, top: '100%', zIndex: 20, minWidth: 170, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px -10px rgba(0,0,0,0.35)', padding: '0.25rem' }}>
@@ -850,7 +858,7 @@ export default function JobsSubLaborTab({
       {(() => {
         const r = narrow && phoneSheetId ? rowById.get(phoneSheetId) ?? null : null
         if (!r) return null
-        const { job, totalCost, paid, balance, next, coverage, jobId, personId, payWhen } = r
+        const { job, totalCost, paid, balance, next, coverage, jobId, personId, payWhen, paidLine } = r
         const writingLabel = next.button && next.button !== 'nudge' && next.buttonLabel ? next.buttonLabel : ''
         const close = () => {
           setPhoneSheetId(null)
@@ -875,7 +883,7 @@ export default function JobsSubLaborTab({
         return (
           <ScheduleSheet
             title={`${job.job_number ?? '—'}${jobName ? ` · ${jobName}` : ''}`}
-            subtitle={[r.parties.label || job.assigned_to_name, totalCost > 0 ? `agreed $${formatCurrency(totalCost)}` : 'unpriced', `paid $${formatCurrency(paid)}`, payWhen.label].filter(Boolean).join(' · ')}
+            subtitle={[r.parties.label || job.assigned_to_name, totalCost > 0 ? `agreed $${formatCurrency(totalCost)}` : 'unpriced', `paid $${formatCurrency(paid)}${paidLine ? ` (${paidLine})` : ''}`, payWhen.label].filter(Boolean).join(' · ')}
             onClose={close}
           >
             {editing ? (

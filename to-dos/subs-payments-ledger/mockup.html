@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub payments as a ledger</title>
+<style>
+  /* Punch list #347. Every payment made to a sub, by date, on Jobs → Subs and People → Subs. Drawn 2026-11-13, with
+     that day as today. Nothing here is built. Every sub, job, street, memo, date and amount is made up: Calloway Tile &
+     Stone, Brightline Electric LLC, Marco Estrada, Hill Country Coring and Luis Ortega are not on any roster, and Dana
+     Whitfield is a made-up person in the office. No live sheet, payment or person is here. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46; --bg-red-tint: #3b1a1a;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b, .lede b { color: var(--text-strong); }
+  ul.short { margin: 10px 0 0; padding-left: 20px; max-width: 96ch; }
+  ul.short li { margin: 4px 0; }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .two.phones { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 380px)); }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; margin-top: 14px; }
+  .two .frame { margin-top: 0; }
+  .col.sug .frame, .frame.sug { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .scroll { overflow-x: auto; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 6px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the app's own pieces, redrawn */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 10px; font-size: 13px; overflow-x: auto; }
+  .tabs span { padding: 9px 10px; color: var(--text-muted); white-space: nowrap; }
+  .tabs span.on { color: var(--text-strong); font-weight: 700; border-bottom: 2px solid var(--text-strong); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border: 0; background: transparent; color: var(--text-700); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #2563eb; color: #fff; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { font: inherit; font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; cursor: pointer; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .chip b { font-weight: 600; opacity: .7; margin-left: 3px; }
+  .inp { font: inherit; font-size: 13px; padding: 5px 9px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-base); min-width: 0; }
+  .btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; cursor: pointer; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .grow { flex: 1 1 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; }
+  .tile small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .tile strong { font-size: 19px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile > span { display: block; font-size: 12px; color: var(--text-muted); }
+  table { border-collapse: collapse; width: 100%; background: var(--surface); font-size: 13px; }
+  .card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  th { text-align: left; font-size: 12px; font-weight: 700; color: var(--text-strong); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  .r { text-align: right; } .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .c { font-size: .72em; }
+  .mut { color: var(--text-muted); } .red { color: var(--text-red-700); } .grn { color: var(--text-green-700); } .lnk { color: var(--text-link); }
+  .sm { font-size: 12px; } .b { font-weight: 700; color: var(--text-strong); }
+  tr.month td { background: var(--bg-muted); font-weight: 700; color: var(--text-strong); padding: 6px 10px; }
+  tr.month td > span:not(.c) { font-weight: 500; color: var(--text-muted); margin-left: 8px; }
+  tr.trace td { color: var(--text-muted); font-size: 12px; background: var(--bg-subtle); }
+  tr.sub td { background: var(--bg-subtle); font-weight: 700; color: var(--text-strong); }
+  tr.foot td { background: var(--bg-subtle); font-weight: 700; color: var(--text-strong); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.grn { background: var(--bg-green-tint); } .pill.red { background: var(--bg-red-tint); }
+  .pill.amb { background: var(--bg-amber-tint); color: var(--text-amber-800); } .pill.gry { background: var(--bg-muted); color: var(--text-700); }
+  .pill.blu { background: var(--bg-blue-tint); color: var(--text-link); }
+  input[type="checkbox"] { width: 16px; height: 16px; accent-color: #15803d; margin: 2px 0 0; cursor: pointer; }
+  .phone { max-width: 380px; }
+  .prow { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+  .prow .amt { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .phead { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; margin-top: 4px; }
+  .plainwrap { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; }
+  table.plain { font-size: 13px; }
+  table.plain th, table.plain .pill { white-space: normal; }
+  ol.plan { margin: 10px 0 0; padding-left: 22px; max-width: 96ch; } ol.plan li { margin: 6px 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #347 · mock-up · nothing here is built · every name and number is made up</p>
+    <h1>Sub payments as a ledger</h1>
+    <p>Every payment made to a sub, in date order, on <b>Jobs → Subs</b> and on <b>People → Subs</b>. Built to sit beside a bank statement and be checked off line by line.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set-theme="light" aria-pressed="true">Light</button>
+    <button type="button" data-set-theme="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a><a href="#dates">1 · Dates on the Pay rows</a><a href="#ledger">2 · The ledger, by date</a><a href="#bysub">3 · By sub, with a running balance</a><a href="#phone">4 · On a phone</a><a href="#bank">5 · Checking it against the bank</a><a href="#facts">6 · Where each fact comes from</a><a href="#calls">7 · Your calls</a><a href="#plan">8 · The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<ul class="short">
+  <li><b>Today the date of a payment is two presses deep.</b> The Pay view is one row per sheet. A payment's date shows only after the row is opened, one sheet at a time, and never on a phone. People → Subs loads every payment and shows none.</li>
+  <li><b>The fix is a third view, the Ledger:</b> one line per payment, newest first, grouped by month with the month's total. The same view groups by sub, oldest first, with a running balance. One screen, two doors.</li>
+  <li><b>The first three steps need no database change.</b> Every payment and its date are already loaded on the Pay view. The check mark against the bank is the first step that stores anything new.</li>
+</ul>
+
+<h2 id="dates">1 · Dates on the Pay rows <small>the small step, first</small></h2>
+<p class="lede">Your first ask: see the dates payments were made on this screen. The row says it without opening.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad"><div class="card scroll"><table>
+      <tr><th style="min-width:190px">Job</th><th class="r">Agreed</th><th class="r">Paid</th><th class="r">Due</th><th>Pay when</th></tr>
+      <tr><td><span class="b">2104 | Larkspur Lot 14</span><br><span class="lnk sm">418 Larkspur Bend</span></td><td class="r num">$3,600<span class="c">.00</span></td><td class="r num">$3,600<span class="c">.00</span></td><td class="r grn">Paid</td><td><span class="pill grn">Paid</span><br><span class="mut sm">balance is $0</span></td></tr>
+      <tr><td><span class="b">2117 | Alder Street Dental</span><br><span class="lnk sm">90 Alder St</span></td><td class="r num">$6,000<span class="c">.00</span></td><td class="r num">$4,500<span class="c">.00</span></td><td class="r num red b">$1,500<span class="c">.00</span> due</td><td><span class="pill amb">After inspection</span><br><span class="mut sm">sub has not said "done"</span></td></tr>
+    </table></div></div></div>
+    <p class="say">When was Larkspur paid? Open the row, find the Payments table, read the date. Then the next sheet.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad"><div class="card scroll"><table>
+      <tr><th style="min-width:190px">Job</th><th class="r">Agreed</th><th class="r">Paid</th><th class="r">Due</th><th>Pay when</th></tr>
+      <tr><td><span class="b">2104 | Larkspur Lot 14</span><br><span class="lnk sm">418 Larkspur Bend</span></td><td class="r num">$3,600<span class="c">.00</span></td><td class="r num">$3,600<span class="c">.00</span><br><span class="mut sm new">3 payments · last Nov 12</span></td><td class="r grn">Paid</td><td><span class="pill grn">Paid</span><br><span class="mut sm new">paid in full Nov 12</span></td></tr>
+      <tr><td><span class="b">2117 | Alder Street Dental</span><br><span class="lnk sm">90 Alder St</span></td><td class="r num">$6,000<span class="c">.00</span></td><td class="r num">$4,500<span class="c">.00</span><br><span class="mut sm new">Oct 21 · Nov 10</span></td><td class="r num red b">$1,500<span class="c">.00</span> due</td><td><span class="pill amb">After inspection</span><br><span class="mut sm">sub has not said "done"</span></td></tr>
+    </table></div></div></div>
+    <p class="say">Up to two payments: each date. More: the count and the last date. A payment with no <i>Date sent</i> reads <i>recorded Oct 28</i>. On a phone the row's line gets the same words.</p>
+  </div>
+</div>
+
+<h2 id="ledger">2 · The ledger, by date <small>Jobs → Subs → Ledger</small></h2>
+<p class="lede">A third view beside <b>Work</b> and <b>Pay</b>. One line per payment or back-charge. Newest first, a header for each month with its total. This is the screen to hold next to a bank statement. Press <b>By sub</b> below to see the other grouping.</p>
+
+<div class="frame sug">
+  <div class="tabs"><span>Crew P&amp;L</span><span>Reports</span><span>Pipeline</span><span>Stages</span><span class="on">Subs</span><span>Billing</span></div>
+  <div class="pad">
+    <div class="bar">
+      <div class="seg"><button type="button" aria-pressed="false">Work</button><button type="button" aria-pressed="false">Pay</button><button type="button" aria-pressed="true">Ledger</button></div><span class="tag">new</span>
+      <input class="inp grow" placeholder="Search a sub, a job, a memo, an amount…" aria-label="Search">
+      <button type="button" class="btn">Print</button><button type="button" class="btn">Download CSV</button>
+    </div>
+    <div class="bar">
+      <span class="chip">This month</span><span class="chip">Last month</span><span class="chip">This quarter</span><span class="chip">This year</span><span class="chip">All</span>
+      <span class="chip on">Oct 1 → Nov 13</span>
+      <select class="inp" aria-label="Paid to"><option>Paid to: everyone</option><option>Brightline Electric LLC</option><option>Calloway Tile &amp; Stone</option><option>Hill Country Coring</option><option>Marco Estrada</option></select>
+      <span class="grow"></span>
+      <div class="seg" role="group" aria-label="Group by"><button type="button" data-group="date" aria-pressed="true">By date</button><button type="button" data-group="sub" aria-pressed="false">By sub</button></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><small>Paid in this period</small><strong>$12,200<span class="c">.00</span></strong><span>8 payments to 5 people</span></div>
+      <div class="tile"><small>Back-charged</small><strong class="red">$150<span class="c">.00</span></strong><span>1 back-charge</span></div>
+      <div class="tile"><small>Checked against the bank</small><strong><span id="ticked">6</span> of 8</strong><span id="left">2 left · $3,600.00</span></div>
+      <div class="tile"><small>No date sent</small><strong>1</strong><span>shown by the day it was recorded</span></div>
+    </div>
+
+    <div class="card scroll" id="by-date">
+      <table>
+        <tr><th title="Checked against the bank">✓</th><th>Date sent</th><th>Paid to</th><th>Job · sheet</th><th>Memo</th><th class="r">Amount</th><th class="r">Left on the sheet</th></tr>
+        <tr class="month"><td colspan="5">November 2026 <span>5 payments · 1 back-charge</span></td><td class="r num">$9,000<span class="c">.00</span></td><td></td></tr>
+        <tr><td><input type="checkbox" data-amt="2400" aria-label="Checked against the bank"></td><td class="num b">Nov 12</td><td>Calloway Tile &amp; Stone</td><td><span class="lnk">2104 | Larkspur Lot 14</span><br><span class="mut sm">tile, two baths</span></td><td>Zelle · final on tile</td><td class="r num b">$2,400<span class="c">.00</span></td><td class="r"><span class="pill grn">paid in full</span></td></tr>
+        <tr><td><input type="checkbox" data-amt="3000" checked aria-label="Checked against the bank"></td><td class="num b">Nov 10</td><td>Brightline Electric LLC</td><td><span class="lnk">2117 | Alder Street Dental</span><br><span class="mut sm">rough-in</span></td><td>Check 1187 · rough-in draw</td><td class="r num b">$3,000<span class="c">.00</span></td><td class="r num">$1,500<span class="c">.00</span></td></tr>
+        <tr><td></td><td class="num"><span class="mut">Nov 6</span><br><span class="mut sm">recorded</span></td><td>Marco Estrada</td><td><span class="lnk">2090 | Pinecrest Remodel</span><br><span class="mut sm">trim-out</span></td><td><span class="pill red">Back-charge</span> Broken vanity top</td><td class="r num red b">−$150<span class="c">.00</span></td><td class="r"><span class="pill grn">paid in full</span></td></tr>
+        <tr><td><input type="checkbox" data-amt="850" checked aria-label="Checked against the bank"></td><td class="num b">Nov 5</td><td>Marco Estrada</td><td><span class="lnk">2090 | Pinecrest Remodel</span><br><span class="mut sm">trim-out</span></td><td>Cash App</td><td class="r num b">$850<span class="c">.00</span></td><td class="r num">$150<span class="c">.00</span></td></tr>
+        <tr><td><input type="checkbox" data-amt="2150" checked aria-label="Checked against the bank"></td><td class="num b">Nov 3</td><td>Hill Country Coring</td><td><span class="lnk">2121 | Juniper Ridge Clubhouse</span><br><span class="mut sm">slab cores</span></td><td>ACH</td><td class="r num b">$2,150<span class="c">.00</span></td><td class="r"><span class="pill grn">paid in full</span></td></tr>
+        <tr><td><input type="checkbox" data-amt="600" checked aria-label="Checked against the bank"></td><td class="num b">Nov 3</td><td>Luis Ortega <span class="pill gry">crew</span></td><td><span class="lnk">2104 | Larkspur Lot 14</span><br><span class="mut sm">weekend demo</span></td><td>Zelle</td><td class="r num b">$600<span class="c">.00</span></td><td class="r"><span class="pill grn">paid in full</span></td></tr>
+        <tr class="month"><td colspan="5">October 2026 <span>3 payments</span></td><td class="r num">$3,200<span class="c">.00</span></td><td></td></tr>
+        <tr><td><input type="checkbox" data-amt="1200" aria-label="Checked against the bank"></td><td class="num"><span class="mut">Oct 28</span><br><span class="pill amb">no date sent</span></td><td>Calloway Tile &amp; Stone</td><td><span class="lnk">2104 | Larkspur Lot 14</span><br><span class="mut sm">tile, two baths</span></td><td>deposit</td><td class="r num b">$1,200<span class="c">.00</span></td><td class="r num">$2,400<span class="c">.00</span></td></tr>
+        <tr><td><input type="checkbox" data-amt="1500" checked aria-label="Checked against the bank"></td><td class="num b">Oct 21</td><td>Brightline Electric LLC</td><td><span class="lnk">2117 | Alder Street Dental</span><br><span class="mut sm">rough-in</span></td><td>Check 1162</td><td class="r num b">$1,500<span class="c">.00</span></td><td class="r num">$4,500<span class="c">.00</span></td></tr>
+        <tr class="trace"><td></td><td class="num">Oct 15</td><td colspan="5">Moved $500.00 from <i>2090 | Pinecrest Remodel · rough-in</i> to <i>trim-out</i> · Dana Whitfield · "wrong sheet"</td></tr>
+        <tr><td><input type="checkbox" data-amt="500" checked aria-label="Checked against the bank"></td><td class="num b">Oct 14</td><td>Marco Estrada</td><td><span class="lnk">2090 | Pinecrest Remodel</span><br><span class="mut sm">trim-out</span></td><td>Zelle</td><td class="r num b">$500<span class="c">.00</span></td><td class="r num">$1,000<span class="c">.00</span></td></tr>
+        <tr class="foot"><td colspan="5">Oct 1 → Nov 13 · 8 payments, less 1 back-charge of $150.00</td><td class="r num">$12,200<span class="c">.00</span></td><td></td></tr>
+      </table>
+    </div>
+
+    <div class="card scroll" id="by-sub" hidden>
+      <table>
+        <tr><th>Sub</th><th class="r">Payments</th><th>First · last</th><th class="r">Paid in this period</th><th class="r">Back-charged</th><th class="r">We owe today</th></tr>
+        <tr><td><span class="lnk b">Brightline Electric LLC</span></td><td class="r num">2</td><td class="num">Oct 21 · Nov 10</td><td class="r num b">$4,500<span class="c">.00</span></td><td class="r mut">none</td><td class="r num red b">$3,300<span class="c">.00</span></td></tr>
+        <tr><td><span class="lnk b">Calloway Tile &amp; Stone</span></td><td class="r num">2</td><td class="num">Oct 28 · Nov 12</td><td class="r num b">$3,600<span class="c">.00</span></td><td class="r mut">none</td><td class="r grn">settled</td></tr>
+        <tr><td><span class="lnk b">Hill Country Coring</span></td><td class="r num">1</td><td class="num">Nov 3</td><td class="r num b">$2,150<span class="c">.00</span></td><td class="r mut">none</td><td class="r grn">settled</td></tr>
+        <tr><td><span class="lnk b">Marco Estrada</span></td><td class="r num">2</td><td class="num">Oct 14 · Nov 5</td><td class="r num b">$1,350<span class="c">.00</span></td><td class="r num red">$150<span class="c">.00</span></td><td class="r grn">settled</td></tr>
+        <tr><td><span class="lnk b">Luis Ortega</span> <span class="pill gry">crew</span></td><td class="r num">1</td><td class="num">Nov 3</td><td class="r num b">$600<span class="c">.00</span></td><td class="r mut">none</td><td class="r mut">payroll</td></tr>
+        <tr class="foot"><td>5 people</td><td class="r num">8</td><td></td><td class="r num">$12,200<span class="c">.00</span></td><td class="r num">$150<span class="c">.00</span></td><td class="r num">$3,300<span class="c">.00</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<p class="note"><b>What a line is.</b> One row of the payments table: the day sent, who, which job and sheet, the memo as typed, the amount, and what the sheet still owes after it. A back-charge is a line in red. A payment that was moved between sheets leaves its grey trace, with who moved it and why. A job's name opens the sheet. A sub's name, pressed in <b>By sub</b>, opens their statement, drawn next.</p>
+
+<h2 id="bysub">3 · By sub, with a running balance <small>People → Subs → Ledger, and one sub's statement</small></h2>
+<p class="lede">People → Subs gets the same switch, <b>Roster | Ledger</b>, opening on <b>By sub</b>. One sub's lines read oldest first, like a bank statement: what was agreed adds, what was paid takes away, and the last column is what we owe after each line.</p>
+<div class="frame sug">
+  <div class="tabs"><span>People</span><span>Users</span><span class="on">Subs</span><span>Person</span><span>Spending</span></div>
+  <div class="pad">
+    <div class="bar">
+      <div class="seg"><button type="button" aria-pressed="false">Roster</button><button type="button" aria-pressed="true">Ledger</button></div><span class="tag">new</span>
+      <span class="b" style="font-size:15px">Brightline Electric LLC</span><span class="mut sm">‹ all subs</span>
+      <span class="grow"></span>
+      <span class="chip">This month</span><span class="chip on">This year</span><span class="chip">All</span>
+      <button type="button" class="btn">Print statement</button><button type="button" class="btn">Download CSV</button>
+    </div>
+    <div class="card scroll"><table>
+      <tr><th>Date</th><th>What</th><th>Job · sheet</th><th>Memo</th><th class="r">Agreed</th><th class="r">Paid</th><th class="r">We owe</th></tr>
+      <tr><td class="num mut">Jan 1</td><td class="mut" colspan="5">Carried in from 2025</td><td class="r num mut">$0<span class="c">.00</span></td></tr>
+      <tr><td class="num b">Sep 30</td><td>Sheet agreed</td><td><span class="lnk">2117 | Alder Street Dental</span> · rough-in</td><td class="mut">3 lines</td><td class="r num">$6,000<span class="c">.00</span></td><td></td><td class="r num b">$6,000<span class="c">.00</span></td></tr>
+      <tr><td class="num b">Oct 21</td><td><span class="pill grn">Payment</span></td><td><span class="lnk">2117 | Alder Street Dental</span> · rough-in</td><td>Check 1162</td><td></td><td class="r num grn b">$1,500<span class="c">.00</span></td><td class="r num b">$4,500<span class="c">.00</span></td></tr>
+      <tr><td class="num b">Nov 2</td><td>Sheet agreed</td><td><span class="lnk">2121 | Juniper Ridge Clubhouse</span> · panel swap</td><td class="mut">1 line</td><td class="r num">$1,800<span class="c">.00</span></td><td></td><td class="r num b">$6,300<span class="c">.00</span></td></tr>
+      <tr><td class="num b">Nov 10</td><td><span class="pill grn">Payment</span></td><td><span class="lnk">2117 | Alder Street Dental</span> · rough-in</td><td>Check 1187 · rough-in draw</td><td></td><td class="r num grn b">$3,000<span class="c">.00</span></td><td class="r num b">$3,300<span class="c">.00</span></td></tr>
+      <tr class="foot"><td colspan="4">2026 so far · the last line matches Balance due on the roster <span class="grn">✓</span></td><td class="r num">$7,800<span class="c">.00</span></td><td class="r num">$4,500<span class="c">.00</span></td><td class="r num red">$3,300<span class="c">.00</span></td></tr>
+    </table></div>
+    <p class="say mut" style="margin:0">Paid in 2026: <b>$4,500.00</b>. On <b>This year</b> that line is the figure a 1099 starts from.</p>
+  </div>
+</div>
+<p class="note"><b>Beside card #346.</b> That card opens a sub's row into jobs, sheets and lines: <i>what makes up</i> what we owe. This one is the same money <i>by date</i>. Its open row gets a door, <b>By date ›</b>, that lands here on that sub. The statement to print in its step 5 is this one, built once.</p>
+
+<h2 id="phone">4 · On a phone</h2>
+<p class="lede">The Pay view on a phone has no payment list at all today. The ledger is a list of cards, a month at a time.</p>
+<div class="two phones">
+  <div class="col sug">
+    <div class="cap">By date</div>
+    <div class="frame phone"><div class="pad">
+      <div class="bar"><div class="seg"><button type="button" aria-pressed="false">Work</button><button type="button" aria-pressed="false">Pay</button><button type="button" aria-pressed="true">Ledger</button></div></div>
+      <div class="bar"><span class="chip on">This month</span><span class="chip">Last month</span><span class="chip">All</span></div>
+      <div class="phead"><span>November 2026</span><span>$9,000.00</span></div>
+      <div class="prow"><span class="b">Nov 12 · Calloway Tile &amp; Stone</span><span class="amt">$2,400<span class="c">.00</span></span><span class="mut sm">2104 | Larkspur Lot 14 · Zelle · final on tile</span><span class="mut sm r">not checked</span></div>
+      <div class="prow"><span class="b">Nov 10 · Brightline Electric LLC</span><span class="amt">$3,000<span class="c">.00</span></span><span class="mut sm">2117 | Alder Street Dental · Check 1187</span><span class="grn sm r">✓ checked</span></div>
+      <div class="prow"><span class="b">Nov 6 · Marco Estrada</span><span class="amt red">−$150<span class="c">.00</span></span><span class="mut sm">2090 | Pinecrest Remodel · Back-charge · Broken vanity top</span><span></span></div>
+      <div class="prow"><span class="b">Nov 5 · Marco Estrada</span><span class="amt">$850<span class="c">.00</span></span><span class="mut sm">2090 | Pinecrest Remodel · Cash App</span><span class="grn sm r">✓ checked</span></div>
+    </div></div>
+  </div>
+  <div class="col sug">
+    <div class="cap">One sub</div>
+    <div class="frame phone"><div class="pad">
+      <div class="b" style="font-size:15px">Brightline Electric LLC</div>
+      <div class="bar"><span class="chip on">This year</span><span class="chip">All</span></div>
+      <div class="prow"><span class="b">Sep 30 · Sheet agreed</span><span class="amt">+$6,000<span class="c">.00</span></span><span class="mut sm">2117 | Alder Street Dental · rough-in</span><span class="mut sm r">owe $6,000.00</span></div>
+      <div class="prow"><span class="b">Oct 21 · Payment</span><span class="amt grn">−$1,500<span class="c">.00</span></span><span class="mut sm">Check 1162</span><span class="mut sm r">owe $4,500.00</span></div>
+      <div class="prow"><span class="b">Nov 2 · Sheet agreed</span><span class="amt">+$1,800<span class="c">.00</span></span><span class="mut sm">2121 | Juniper Ridge Clubhouse · panel swap</span><span class="mut sm r">owe $6,300.00</span></div>
+      <div class="prow"><span class="b">Nov 10 · Payment</span><span class="amt grn">−$3,000<span class="c">.00</span></span><span class="mut sm">Check 1187 · rough-in draw</span><span class="red sm r b">owe $3,300.00</span></div>
+    </div></div>
+  </div>
+</div>
+
+<h2 id="bank">5 · Checking it against the bank <small>three depths, the first is free</small></h2>
+<p class="lede">The app does not know today how a sub was paid or whether the bank shows it. A payment row holds an amount, a date and a memo. So reconciling comes in three depths.</p>
+<div class="scroll plainwrap"><table class="plain">
+  <tr><th>Depth</th><th>What you get</th><th>What it costs</th></tr>
+  <tr><td class="b">A · Read and export</td><td>The ledger above, in date order with month totals, and a CSV to sort beside the bank's own export.</td><td>No database change. Steps 2 and 3 of the plan.</td></tr>
+  <tr><td class="b">B · A check mark and how it was paid</td><td>The <b>✓</b> column: tick a line once you have seen it at the bank. The line keeps who ticked it and when. A <b>Not checked</b> chip shows what is left. Each payment also gets <b>How paid</b> (check, ACH, Zelle, Cash App, cash) and a reference, so one account can be checked at a time.</td><td>One small migration: four columns on the payments table. Changing a ticked payment's amount or date clears its tick and says so.</td></tr>
+  <tr><td class="b">C · Match to the bank line</td><td>For a payment that left a Mercury account, the ledger offers the bank line with the same amount within three days: <span class="pill blu">Mercury · Nov 10 · −$3,000.00 · CHECK 1187</span> <b>Match</b>. A matched line ticks itself.</td><td>A link table and a matching kernel. Worth it only if most sub money leaves Mercury. Your call 2.</td></tr>
+</table></div>
+
+<h2 id="facts">6 · Where each fact comes from</h2>
+<div class="scroll plainwrap"><table class="plain">
+  <tr><th>On the ledger</th><th>Read from</th><th>New?</th></tr>
+  <tr><td>Date sent</td><td>The payment's <i>Date sent</i>. Where it is empty, the day the row was recorded, marked.</td><td>No. Already loaded on the Pay view.</td></tr>
+  <tr><td>Paid to</td><td>The sheet's sub, by the Pay view's own rule: a sheet is its sub's, teammates ride along.</td><td>No.</td></tr>
+  <tr><td>Job · sheet, memo, amount</td><td>The sheet and the payment row. A back-charge is a payment below zero.</td><td>No.</td></tr>
+  <tr><td>Left on the sheet</td><td>Agreed, less every payment and back-charge up to that line.</td><td>A new sum over loaded rows.</td></tr>
+  <tr><td>Moved and removed traces</td><td>The payment events the open row already shows.</td><td>No.</td></tr>
+  <tr><td>Sheet agreed, on a statement</td><td>The sheet's lines, dated by its Sheet date.</td><td>No.</td></tr>
+  <tr><td>✓, How paid, reference</td><td>Nothing today.</td><td><b>Yes</b>, depth B.</td></tr>
+  <tr><td>The bank line</td><td>Nothing links a sub payment to a bank line today.</td><td><b>Yes</b>, depth C.</td></tr>
+</table></div>
+
+<h2 id="calls">7 · Your calls</h2>
+<ol class="plan">
+  <li><b>Which date leads?</b> My pick: <i>Date sent</i>, the day the money left. A payment with none shows the day it was recorded, marked <i>no date sent</i>, with a door to set it. A back-charge has no date field today and gets one.</li>
+  <li><b>How are subs paid, and from where?</b> If most of it leaves Mercury, depth C is worth building. If it is Zelle, Cash App and checks from several places, depth B is the right stop. My pick until you say: stop at B.</li>
+  <li><b>Crew pay sheets in the ledger?</b> They are payments made to people, so my pick is yes, with a <i>crew</i> chip and a filter. They stay out of every <i>We owe</i>.</li>
+  <li><b>Who sees it?</b> My pick: whoever opens Jobs → Subs → Pay today, the office. A superintendent sees the Subs tab and no payments now, and would not see the Ledger.</li>
+  <li><b>Newest first or oldest first, by date?</b> My pick: newest first by date, oldest first on one sub's statement, since a running balance reads forward.</li>
+</ol>
+
+<h2 id="plan">8 · The plan <small>each step ships by itself</small></h2>
+<ol class="plan">
+  <li><b>Dates on the Pay rows.</b> Section 1. No database change.</li>
+  <li><b>The Ledger on Jobs → Subs, by date.</b> Section 2 without the ✓ column: periods, search, month totals, Print, CSV, the phone cards. No database change.</li>
+  <li><b>By sub, and People → Subs.</b> Section 3: the Roster | Ledger switch, one sub's statement with its running balance, the print. No database change.</li>
+  <li><b>The check mark and How paid.</b> Depth B. One migration.</li>
+  <li><b>Match to the bank.</b> Depth C. Only on your yes to call 2.</li>
+</ol>
+
+</div>
+<script>
+  // Theme switch.
+  for (const b of document.querySelectorAll('[data-set-theme]')) b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.setTheme)
+    for (const o of document.querySelectorAll('[data-set-theme]')) o.setAttribute('aria-pressed', String(o === b))
+  })
+  // By date | By sub.
+  for (const b of document.querySelectorAll('[data-group]')) b.addEventListener('click', () => {
+    for (const o of document.querySelectorAll('[data-group]')) o.setAttribute('aria-pressed', String(o === b))
+    document.getElementById('by-date').hidden = b.dataset.group !== 'date'
+    document.getElementById('by-sub').hidden = b.dataset.group !== 'sub'
+  })
+  // The check marks count themselves.
+  const boxes = [...document.querySelectorAll('#by-date input[type="checkbox"]')]
+  const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2 })
+  const count = () => {
+    const open = boxes.filter((x) => !x.checked)
+    document.getElementById('ticked').textContent = String(boxes.length - open.length)
+    document.getElementById('left').textContent = open.length ? `${open.length} left · ${money(open.reduce((s, x) => s + Number(x.dataset.amt), 0))}` : 'every line checked'
+  }
+  for (const x of boxes) x.addEventListener('change', count)
+  count()
+</script>
+</body>
+</html>

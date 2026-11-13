@@ -2,7 +2,7 @@
 name: "The dev seat files a bid's sent paper from Drive and links it: plan_bid_submission and read_drive_folder"
 number: 339
 group: ready
-status: built v2.7154 (2026-11-13), server 0.82.0: `read_drive_folder` and `plan_bid_submission` / `apply_bid_submission`, kernel `_shared/devMcpBidSubmission.ts`, tested over a stood-in database and Drive · NOT deployed and never run against Drive: `dev-mcp` goes out from main with the owner's yes · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13
+status: LIVE on `dev-mcp` 0.82.0 (2026-11-13, v2.7154, PR #7964): `read_drive_folder` and `plan_bid_submission` / `apply_bid_submission`, kernel `_shared/devMcpBidSubmission.ts` · walked on prod the same day on the owner's word: the read on b398's folder, on one file and on a folder the account cannot open, a dry run on b398 "ZZ Test", and one apply there (Drive's own copy into Team only › Sent by us, the link set, the note on its Notes, a second apply refused) · not yet walked: a bid with no project folder, a file outside the company's Shared Drive, and `replace: true` · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13
 summary: >
   Old proposal files are being copied into company Drive, a folder a bid, and each bid should
   link the paper that was sent. The dev seat can set the link, but it cannot read a Drive folder,
@@ -10,7 +10,7 @@ summary: >
   Drive through a browser and left the links in bid notes. Two verbs close it: a read of a Drive
   folder and a file's facts, and a plan → apply pair that files a sent paper into the bid's own
   folder and links it, as the Files window would if it had the press.
-next: Three steps, each with the owner's own yes. Deploy `dev-mcp` from main. Dry-run `plan_bid_submission` on b398 "ZZ Test", which writes nothing. Walk one `apply_bid_submission` on a ZZ bid with a made-up file. Then ask the owner the one design call below, and retire this card and #317.
+next: Ask the owner the one design call below (the link as the Sent by us folder once a bid holds several papers). The first real apply on a bid with no project folder, and the first on a file outside the Shared Drive, are the ones to read closely: neither leg has run on prod. Then retire this card and #317.
 size: M (one read verb, one write pair, no migration)
 blocker: none
 opinion: build — the old-proposals work waits on it, and every door it needs already exists on the server
@@ -104,6 +104,14 @@ Until it is built: `plan_bid_update` links a file that is already where it belon
 - The plan reads Drive on a `drive.readonly` token; the full token is minted in the copy alone, after the hash matched.
 - `read_drive_folder` runs with a dev's own key alone and is refused under `view_as`: the service account sees more than any one person.
 - The fragment is `docs/recent-features/v2.7154.md`; the README row says what the pair does not do.
+
+## Walked on prod (2026-11-13, server 0.82.0)
+
+- `read_drive_folder` on b398's project folder listed its five folders and three files, each marked as in the company's Shared Drive. The `drive.readonly` token minted. One file's facts came back with its path and its sharing. A made-up folder id was refused in the words that name the share.
+- `plan_bid_submission` on b398 with a made-up PDF from its own folder: how `copy`, the folder there already, Sent by us holding one other paper, the link before empty.
+- `apply_bid_submission` of that plan: the copy is in Team only › Sent by us with the same md5 and sha256, `bid_submission_link` points at it, the note is on the bid's Notes. b398 now carries that link, so a plan on it needs `replace: true`.
+- A second apply of the same plan was refused. The words were the plan's own ("already carries this paper"), since the dry run refuses before the call log is asked. The log's "already applied" sentence shows only where the dry run still passes.
+- Not walked: the folder made at the apply (`bid-photos` `make`), the read-and-upload leg through `drive-link`, and `replace: true`.
 
 ## How to verify
 

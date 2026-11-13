@@ -7,7 +7,7 @@ The Bridge's call reaches its people (punch list #303, PR 4). A call's moves are
 - Both are revoked from `PUBLIC`, `anon` and `authenticated` by name and granted to `authenticated` and `service_role`.
 - No table is created, so no fence call is owed; training mode is stopped by the table's own statement trigger.
 
-Held by `npm run test:pg:bridge-moves` (`supabase/tests/bridge_moves/`, in `scripts/sql-beds.txt`): the table stays closed to an assistant, each person reads only their own moves, every refusal, the stamp, and the moves leaving on an answer, a passed week, a newer call and an archived account.
+Held, until `20261113100000_drop_bridge_move_functions.sql` dropped both functions and their bed with them, by `npm run test:pg:bridge-moves` (`supabase/tests/bridge_moves/`, in `scripts/sql-beds.txt`): the table stays closed to an assistant, each person reads only their own moves, every refusal, the stamp, and the moves leaving on an answer, a passed week, a newer call and an archived account.
 
 Deploy order: the client reads through `bridge_my_moves` and answers with no moves while the function is missing, so the Needs you card is as it was until the push. Push right after the merge.
 

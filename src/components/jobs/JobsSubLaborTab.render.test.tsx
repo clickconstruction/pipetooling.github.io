@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, makeLaborJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobsSubLaborTab from './JobsSubLaborTab'
+import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 
 const narrow = { on: true }
 vi.mock('../../hooks/useIsNarrowScreen', () => ({ useIsNarrowScreen: () => narrow.on }))
@@ -77,6 +78,24 @@ describe('JobsSubLaborTab · the Pay view on a phone', () => {
     expect(document.querySelector('[data-sub-pay-phone]')).toBeNull()
   })
 
+  it("a desk row's More button centres its dots by its own box, keeps its name and opens its menu (v2.7168)", async () => {
+    narrow.on = false
+    renderWithProviders(<JobsSubLaborTab {...props()} />)
+    await settle()
+    const more = screen.getByRole('button', { name: 'More' })
+    // The dots are the Pipeline row's icon, not typed characters: text under the default button padding sat right and low.
+    expect(more.textContent).toBe('')
+    expect(more.querySelector('svg')).not.toBeNull()
+    expect(more.style.display).toBe('inline-flex')
+    expect(more.style.alignItems).toBe('center')
+    expect(more.style.justifyContent).toBe('center')
+    expect(more.style.padding).toBe('0px')
+    expect(more.style.width).toBe('30px')
+    expect(more.style.height).toBe('26px')
+    fireEvent.click(more)
+    expect(screen.getAllByRole('menuitem').map((x) => x.textContent)).toEqual(expect.arrayContaining(['Back-charge…', 'Edit sheet', 'Print', 'Story…', 'Lien waiver…']))
+  })
+
   it('the Sheet date saves a finished date only: a half-typed year hands over nothing, a finished date once', async () => {
     narrow.on = false
     const onUpdateLaborJobDate = vi.fn()
@@ -134,5 +153,40 @@ describe('JobsSubLaborTab · an empty ledger (#184)', () => {
     expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No sub sheets match ‘zzz’. Clear the search')
     fireEvent.click(press)
     expect(onSubLaborSearchChange).toHaveBeenCalledWith('')
+  })
+})
+
+describe('JobsSubLaborTab · when a sheet was paid (#347)', () => {
+  it('a desk row says when its payments were made, and a paid sheet says the day it was paid in full (#347)', async () => {
+    narrow.on = false
+    const part = makeLaborJob({ id: 'sheet-part', job_number: 'S-300', payments: [{ id: 'p1', amount: 10, memo: null, created_at: '2026-10-21T15:00:00Z', payment_date: '2026-10-21' }] })
+    const full = makeLaborJob({ id: 'sheet-full', job_number: 'S-301' })
+    full.payments = [{ id: 'p2', amount: subLaborJobBalance(full).totalCost, memo: 'Zelle', created_at: '2026-11-02T15:00:00Z', payment_date: '2026-11-02' }]
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [part, full] })} />)
+    await settle()
+    const year = new Date().getFullYear() === 2026 ? '' : ', 2026'
+    expect(document.querySelector('[data-sub-pay-dates="sheet-part"]')?.textContent).toBe(`Oct 21${year}`)
+    // The paid sheet sits behind the Paid chip, with its day in the Paid cell and in Pay when.
+    fireEvent.click(screen.getByRole('button', { name: /^Paid/ }))
+    expect(document.querySelector('[data-sub-pay-dates="sheet-full"]')?.textContent).toBe(`Nov 2${year}`)
+    expect(document.body.textContent).toContain(`paid in full Nov 2${year}`)
+    expect(document.body.textContent).not.toContain('balance is $0')
+  })
+
+  it('on a phone a paid sheet reads the day it was paid in full', async () => {
+    narrow.on = true
+    const full = makeLaborJob({ id: 'sheet-full-phone', job_number: 'S-302' })
+    full.payments = [{ id: 'p3', amount: subLaborJobBalance(full).totalCost, memo: null, created_at: '2026-11-02T15:00:00Z', payment_date: '2026-11-02' }]
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [full] })} />)
+    await settle()
+    const year = new Date().getFullYear() === 2026 ? '' : ', 2026'
+    fireEvent.click(screen.getByRole('button', { name: /^Paid/ }))
+    const row = document.querySelector('[data-sub-pay-phone-row="sheet-full-phone"]') as HTMLElement | null
+    if (!row) {
+      // A sub's group opens on a tap when it is not open already.
+      const group = [...document.querySelectorAll('[data-sub-pay-phone] button')].find((b) => b.textContent?.includes('Sub Sam')) as HTMLElement
+      fireEvent.click(group)
+    }
+    expect((document.querySelector('[data-sub-pay-phone-row="sheet-full-phone"]') as HTMLElement).textContent).toContain(`paid in full Nov 2${year}`)
   })
 })

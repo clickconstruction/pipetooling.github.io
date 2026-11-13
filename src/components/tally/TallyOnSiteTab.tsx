@@ -31,6 +31,7 @@ import { actIsFresh } from '../../lib/materials/photo'
 import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
+import { countWalkAt, countWalkKeys } from '../../lib/materials/countWalk'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
@@ -100,7 +101,7 @@ function PrinterGlyph() {
 /** Inline styles have no :disabled, so a dead press fades by hand. */
 const dis = (off: boolean): CSSProperties => (off ? { opacity: 0.45, cursor: 'default' } : {})
 
-type View = { kind: 'containers' } | { kind: 'container'; id: string } | { kind: 'count'; id: string; index: number; corrected: number }
+type View = { kind: 'containers' } | { kind: 'container'; id: string } | { kind: 'count'; id: string; /** The walk's lines by part key, fixed when it starts (`countWalkKeys`). */ keys: string[]; index: number; corrected: number }
 type Sheet =
   | null
   | { kind: 'qty'; reason: 'used' | 'cannot_find'; line: ContainerLine; container: Container }
@@ -482,28 +483,27 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   )
 
   if (view.kind === 'count') {
-    const countable = ls.filter((l) => l.onHand > 0)
-    const idx = Math.min(view.index, countable.length)
-    const line = countable[idx]
-    const finish = () => {
-      showToast(`${container.label} counted. ${countable.length} ${countable.length === 1 ? 'line' : 'lines'}, ${view.corrected} corrected.`, 'success')
+    // The walk's own list, fixed at its start (v2.7161): a line counted to none used to leave a list re-read on every
+    // step, and the walk stepped over the line after it.
+    const total = view.keys.length
+    const at = countWalkAt(view.keys, view.index, ls)
+    const done = (corrected: number) => {
+      showToast(`${container.label} counted. ${total} ${total === 1 ? 'line' : 'lines'}, ${corrected} corrected.`, 'success')
       setLastAct({ containerId: container.id, what: 'Count', at: Date.now() })
       setView({ kind: 'container', id: container.id })
     }
-    if (!line) {
-      finish()
+    if (!at) {
+      done(view.corrected)
       return null
     }
+    const { line, index: idx } = at
     const advance = (corrected: boolean) => {
-      const next = idx + 1
-      if (next >= countable.length) {
-        showToast(`${container.label} counted. ${countable.length} ${countable.length === 1 ? 'line' : 'lines'}, ${view.corrected + (corrected ? 1 : 0)} corrected.`, 'success')
-        setLastAct({ containerId: container.id, what: 'Count', at: Date.now() })
-        setView({ kind: 'container', id: container.id })
-      } else setView({ kind: 'count', id: container.id, index: next, corrected: view.corrected + (corrected ? 1 : 0) })
+      const sum = view.corrected + (corrected ? 1 : 0)
+      if (idx + 1 >= total) done(sum)
+      else setView({ kind: 'count', id: container.id, keys: view.keys, index: idx + 1, corrected: sum })
     }
     return (
-      <CountWalk key={line.partKey} container={container} line={line} index={idx} total={countable.length} onRight={() => { write('counted', line, line.onHand, container.id, null); advance(false) }} onSave={(n) => { write('counted', line, n, container.id, null); advance(n !== line.onHand) }} onSkip={() => advance(false)} onGone={() => { write('counted', line, 0, container.id, null); advance(line.onHand !== 0) }} onStop={() => setView({ kind: 'container', id: container.id })} />
+      <CountWalk key={line.partKey} container={container} line={line} index={idx} total={total} onRight={() => { write('counted', line, line.onHand, container.id, null); advance(false) }} onSave={(n) => { write('counted', line, n, container.id, null); advance(n !== line.onHand) }} onSkip={() => advance(false)} onGone={() => { write('counted', line, 0, container.id, null); advance(line.onHand !== 0) }} onStop={() => setView({ kind: 'container', id: container.id })} />
     )
   }
 
@@ -525,7 +525,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </div>
       ) : null}
       {photos.length > 0 ? <BoxPhotos photos={photos} canAct onToast={showToast} /> : null}
-      {ls.some((l) => l.onHand > 0) && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, index: 0, corrected: 0 })}>Count this box</button> : null}
+      {ls.some((l) => l.onHand > 0) && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
       {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
       {ls.map((l) => (
         <div key={l.partKey} style={{ ...card, borderColor: l.cannotFindSinceCount > 0 || (l.lastCountDiff ?? 0) < 0 ? 'var(--text-amber-800)' : 'var(--border)', display: 'grid', gap: '0.5rem' }}>

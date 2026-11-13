@@ -53,6 +53,11 @@ import { JobKindPresses } from './JobKindPresses'
 import { baselineRowRpcArgs, baselineTrailWords, type BaselineFillInRow } from '../../lib/needsYou/fillInBaselines'
 import { baselineFillInIo } from '../../lib/needsYou/fillInBaselinesIo'
 import { BaselinePresses } from './BaselinePresses'
+import { receiptTrailWords, type ReceiptFillInRow } from '../../lib/needsYou/fillInReceipts'
+import { receiptFillInIo } from '../../lib/needsYou/fillInReceiptsIo'
+import { receiptCopiedWords } from '../../lib/tickets/receiptLink'
+import { copyReceiptLinkFor } from '../../lib/tickets/receiptLinkIo'
+import { ReceiptChasePresses } from './ReceiptChasePresses'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -82,6 +87,8 @@ export type NeedsYouFillInDeckProps = {
   /** The station's Mark, offered at the end. */
   onMarkUpToDate?: () => void
   io?: FillInIo
+  /** The receipt kind's link maker, stood in for by a render smoke; the Team queue's own when absent. */
+  copyReceiptLinkOf?: (chargeId: string) => Promise<{ url: string; closesOn: string | null; copied: boolean }>
 }
 
 const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo, workOrders: workOrderFillInIo, jobKinds: jobKindFillInIo }
@@ -170,7 +177,7 @@ function LostBidFields({ decision, onChange, disabled }: { decision: LostBidDeci
   )
 }
 
-export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onRowSaved, onRowRestored, onExit, onMarkUpToDate, io = DEFAULT_IO }: NeedsYouFillInDeckProps) {
+export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onRowSaved, onRowRestored, onExit, onMarkUpToDate, io = DEFAULT_IO, copyReceiptLinkOf }: NeedsYouFillInDeckProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const [skippedKeys, setSkippedKeys] = useState<string[]>([])
@@ -178,6 +185,8 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [handled, setHandled] = useState<Handled[]>([])
   const [savedKeys, setSavedKeys] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  /** The receipt kind's Copy the receipt link is making its link. */
+  const [receiptCopying, setReceiptCopying] = useState(false)
   const [lostBid, setLostBid] = useState<LostBidDecision>(EMPTY_LOST_BID_DECISION)
   const [vehicle, setVehicle] = useState<VehicleDecision>(() => emptyVehicleDecision(todayYmdInAppTz()))
   const [jobAccount, setJobAccount] = useState<JobAccountDecision>(EMPTY_JOB_ACCOUNT_DECISION)
@@ -481,6 +490,47 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     })()
   }
 
+  /** The receipt kind (punch list #299, the step after PR 2): Got it takes the row off the office's list and moves on. */
+  const pressReceiptGotIt = (row: ReceiptFillInRow) => {
+    if (busy || !userId) return
+    setBusy(true)
+    void (async () => {
+      try {
+        const receiptsIo = io.receipts ?? receiptFillInIo
+        await receiptsIo.save(row.requestId)
+        recordNavClick(userId, role, 'needs-you', `#fill-save-receipt-${row.why}`)
+        const undo = async () => {
+          await receiptsIo.undo(row.requestId)
+        }
+        setHandled((t) => pushHandled(t, { row, how: 'saved', words: receiptTrailWords(row), undo }))
+        setSavedKeys((k) => [...k, row.key])
+        setRevisitKey(null)
+        onRowSaved(row)
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not mark the receipt request done'), 'error')
+      } finally {
+        setBusy(false)
+      }
+    })()
+  }
+
+  /** The row's link for sending by hand: the Team queue's own press, and the row stays. */
+  const copyReceiptLink = (row: ReceiptFillInRow) => {
+    if (busy || receiptCopying) return
+    setReceiptCopying(true)
+    void (async () => {
+      try {
+        const out = await (copyReceiptLinkOf ?? copyReceiptLinkFor)(row.chargeId)
+        if (out.copied) showToast(receiptCopiedWords(row.chargeWords, out.closesOn), 'success')
+        else showToast(`This browser did not copy it. The receipt link for ${row.chargeWords} is ${out.url}`, 'warning')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The receipt link was not made.'), 'error')
+      } finally {
+        setReceiptCopying(false)
+      }
+    })()
+  }
+
   const undo = (h: Handled) => {
     if (busy || !h.undo) return
     setBusy(true)
@@ -523,7 +573,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order'), 'job-kind': savedOf('job-kind'), baseline: savedOf('baseline') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order'), 'job-kind': savedOf('job-kind'), baseline: savedOf('baseline'), receipt: savedOf('receipt') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -578,6 +628,8 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
               <JobKindPresses lean={current.lean} disabled={busy} onPress={(kind) => pressJobKind(current, kind)} />
             ) : current.kind === 'baseline' ? (
               <BaselinePresses row={current} disabled={busy} onPress={(source) => pressBaseline(current, source)} />
+            ) : current.kind === 'receipt' ? (
+              <ReceiptChasePresses disabled={busy} copying={receiptCopying} onGotIt={() => pressReceiptGotIt(current)} onCopyLink={() => copyReceiptLink(current)} />
             ) : (
               <button
                 type="button"

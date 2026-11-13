@@ -12,7 +12,7 @@ The Pay view on a phone is a list, not a table.
 
 - **Who's owed** stacks: the name and the amount, the [bar](/help/sub-labor-outstanding#who-s-owed), then the {{button:green|Pay $1,500.00}} button.
 - Under it each sub is one row with what they are owed. Tap a sub to open their sheets.
-- A sheet is one row: its number and job, its [pay-when chip](/help/sub-labor-outstanding#the-ledger), and one amount. Tap it and its actions come up from the bottom. The agreement comes first when nothing is in writing. Then come **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story** and **Lien waiver**. A lien waiver releases the sub's lien rights for the money paid.
+- A sheet is one row: its number and job, its [pay-when chip](/help/sub-labor-outstanding#the-ledger), and one amount. A paid sheet's line says the day it was paid in full. Tap it and its actions come up from the bottom. The top of that window shows what was paid and when. The agreement comes first when nothing is in writing. Then come **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story** and **Lien waiver**. A lien waiver releases the sub's lien rights for the money paid.
 
 The **Work** view is rows too. Under each job there is a row per sheet or stage. The row shows who, where it stands and its window, and what is open. Tap a row for its moves. The next move comes first, like {{button:blue|Get it in writing}}, {{button:blue|Send it}} or {{button:green|Pay}}. Then come **Set a window** and the offer's own actions. **Show the whole card** shows the rail and the money in full. A row opens its card by itself when a form or a builder's ask is waiting on it.
 

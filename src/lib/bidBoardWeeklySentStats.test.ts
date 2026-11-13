@@ -28,7 +28,7 @@ describe('buildBidBoardWeeklySentSummaries', () => {
     const bids = [
       minimalBid({
         id: 'b1',
-        bid_date_sent: '2026-04-28T17:00:00.000Z',
+        bid_date_sent: '2026-04-28',
         bid_value: 1000,
         outcome: null,
         estimator_id: 'u1',
@@ -36,7 +36,7 @@ describe('buildBidBoardWeeklySentSummaries', () => {
       }),
       minimalBid({
         id: 'b2',
-        bid_date_sent: '2026-04-29T17:00:00.000Z',
+        bid_date_sent: '2026-04-29',
         bid_value: 500,
         outcome: 'won',
         estimator_id: 'u2',
@@ -73,14 +73,14 @@ describe('buildBidBoardWeeklySentSummaries', () => {
     const bids = [
       minimalBid({
         id: 'l1',
-        bid_date_sent: '2026-04-28T17:00:00.000Z',
+        bid_date_sent: '2026-04-28',
         outcome: 'lost',
         estimator_id: 'u1',
         estimator: { id: 'u1', name: 'A', email: 'a@x.com' },
       }),
       minimalBid({
         id: 'w1',
-        bid_date_sent: '2026-04-28T18:00:00.000Z',
+        bid_date_sent: '2026-04-28',
         outcome: 'started_or_complete',
         estimator_id: 'u1',
         estimator: { id: 'u1', name: 'A', email: 'a@x.com' },
@@ -97,7 +97,7 @@ describe('buildBidBoardWeeklySentSummaries', () => {
     const rows = buildBidBoardWeeklySentSummaries([
       minimalBid({
         id: 'u0',
-        bid_date_sent: '2026-04-28T17:00:00.000Z',
+        bid_date_sent: '2026-04-28',
         bid_value: 250,
         outcome: null,
         estimator_id: null,
@@ -116,6 +116,16 @@ describe('buildBidBoardWeeklySentSummaries', () => {
     ])
   })
 
+  it('puts a bid sent on a Sunday in the week that Sunday starts', () => {
+    // The send day is a date with no time. Read as a moment it fell on the evening before in Chicago.
+    const rows = buildBidBoardWeeklySentSummaries([
+      minimalBid({ id: 'sun', bid_date_sent: '2026-04-26', bid_value: 100 }),
+      minimalBid({ id: 'sat', bid_date_sent: '2026-04-25', bid_value: 200 }),
+    ])
+    expect(rows.map((r) => r.weekStart).sort()).toEqual(['2026-04-19', '2026-04-26'])
+    expect(rows.find((r) => r.weekStart === '2026-04-26')!.estimatorRows[0]!.bidIds).toEqual(['sun'])
+  })
+
   it('skips bids without bid_date_sent', () => {
     expect(buildBidBoardWeeklySentSummaries([minimalBid({ bid_date_sent: null })])).toEqual([])
   })
@@ -124,7 +134,7 @@ describe('buildBidBoardWeeklySentSummaries', () => {
     const rows = buildBidBoardWeeklySentSummaries([
       minimalBid({
         id: 'first',
-        bid_date_sent: '2026-04-28T12:00:00.000Z',
+        bid_date_sent: '2026-04-28',
         bid_value: 100,
         outcome: null,
         estimator_id: 'u1',
@@ -132,7 +142,7 @@ describe('buildBidBoardWeeklySentSummaries', () => {
       }),
       minimalBid({
         id: 'second',
-        bid_date_sent: '2026-04-29T12:00:00.000Z',
+        bid_date_sent: '2026-04-29',
         bid_value: 200,
         outcome: 'won',
         estimator_id: 'u1',
@@ -147,13 +157,13 @@ describe('buildBidBoardWeeklySentSummaries', () => {
   it('caps number of weeks with maxWeeks', () => {
     const older = minimalBid({
       id: 'older',
-      bid_date_sent: '2026-04-07T17:00:00.000Z',
+      bid_date_sent: '2026-04-07',
       estimator_id: 'u1',
       estimator: { id: 'u1', name: 'A', email: 'a@x.com' },
     })
     const newer = minimalBid({
       id: 'newer',
-      bid_date_sent: '2026-04-28T17:00:00.000Z',
+      bid_date_sent: '2026-04-28',
       estimator_id: 'u1',
       estimator: { id: 'u1', name: 'A', email: 'a@x.com' },
     })

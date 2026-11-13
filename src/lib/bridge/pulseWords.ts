@@ -3,16 +3,11 @@
  *
  * The owner: "Why would Friday ask if the numbers move? Shouldn't this page always be a direct reflection of whatever
  * the current status is, like a pulse?" So the card on the first screen is a reading of today. It is not named a
- * call, it records nothing and it promises no question on Friday. These are its few words, and the step desk's.
+ * call, it records nothing and it promises no question on Friday. The card's own name and lines are the model's
+ * (`weekCall.ts`, which the Monday email shares); these are the step desk's few words.
  *
  * Pure: words only.
  */
-
-/** The card's name on the first screen. */
-export const NOW_CARD_LABEL = 'What to do now'
-
-/** The card's line while the five steps are not read yet. */
-export const NOW_NOT_READ_LINE = 'The list opens once they are.'
 
 /** The step desk's press, which goes up to the card. */
 export const NOW_GO_PRESS = 'Go to what to do now'

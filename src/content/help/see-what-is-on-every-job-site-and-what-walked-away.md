@@ -57,9 +57,17 @@ The window shows parts from the parts book whose names hold every word of the ro
 
 Press an offer to use that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
 
-Under **What a bill paid** the window shows what a supply house charged for a line that fits. You can read that price. You cannot press it yet.
+An offer marked **a bill** is what a supply house charged for a line that fits. Press it to use that price for one piece. The offer names the house, the day and the unit the bill sold it by. A bill may sell pipe by the foot, so read the unit first.
+
+When nothing fits, type a price for one piece in the box and press {{button:blue|Save $3.12 for one}}. The button shows the price you typed.
+
+Some rows are not a part to price, such as scrap, tools or a mixed box. Press **Not a part** or the **N** key. The row leaves the count, and **Worth** says how many lines were left out.
 
 The foot of the window names your last answer. Press **Undo** there to take it back. Press **Done for now** to close the window. The rows you priced have left the list.
+
+To change an answer later, press the row on the list to open it. **Priced here** lists each answer with who gave it. Press **Undo** beside a price. Press **Bring back** beside a row that was left out.
+
+A price you accept here belongs to this site. Every device reads it, and so does the job's **Missing** table. A price older than 90 days stays and turns amber, as a parts-book price does.
 
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
@@ -89,11 +97,11 @@ The money uses the parts book's price. Beside each figure a small chip reads {{c
 
 ## Land a delivery
 
-Open **Deliveries**. Press **Open the job's Drive folder** and drop the invoice there. The app reads it from the folder.
+Open **Deliveries**. Press **Add the invoice to the job’s Drive folder** and drop the invoice there. That keeps the invoice with the job. The app does not read the file yet, so its lines land from pasted text.
 
 A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. Press it once. The app makes the job's folder under Jobs with Customer Pictures, Plans and Team only inside. The office sees it, and a box photo from the phone files there by itself. On the desk, **Make folders for 12 jobs** does the same for every live job without one. A job whose link is not a folder is held with the reason. A job with a folder but no pictures or plans link has the same press on its window's Documents tab. It fills in what is missing.
 
-To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
+To land the lines, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
 ## Print a label
 

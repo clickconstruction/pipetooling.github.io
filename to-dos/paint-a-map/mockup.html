@@ -141,13 +141,49 @@
   .lh .logo { width: 34px; height: 34px; border-radius: 8px; background: #1e3a8a; color: #fff; display: grid; place-items: center; font-weight: 800; }
   .lh small { display: block; color: #6b7280; font-size: 12px; }
 
+  /* the doors */
+  .band { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 12px; font-size: 13px; }
+  .band .t { font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .band .addr { color: var(--text-link); text-decoration: underline; text-underline-offset: 2px; margin-top: 3px; display: block; }
+  .wayline { display: flex; align-items: center; gap: 7px; margin-top: 6px; padding: 6px 9px; border-radius: 8px; background: var(--new-tint); border: 1.5px solid var(--new); color: var(--text-strong); font-weight: 600; font-size: 13px; }
+  .wayline i { width: 20px; height: 5px; border-radius: 3px; background: var(--paint); flex: none; }
+  .wayline span { margin-left: auto; color: var(--text-muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
+  .wayline.add { background: transparent; border-style: dashed; color: var(--text-link); }
+  .jtabs { display: flex; gap: 2px; padding: 6px 8px 0; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted); overflow: hidden; }
+  .jtabs span { padding: 5px 7px; white-space: nowrap; }
+  .jtabs span.on { color: var(--text-strong); font-weight: 700; border-bottom: 2px solid #2563eb; }
+  .press { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .press span { border: 1px solid var(--border-strong); border-radius: 8px; padding: 9px 4px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-strong); background: var(--surface); }
+  .press span.go { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .dcards { display: grid; gap: 6px; }
+  .dcards > div { border: 1px solid var(--border); border-radius: 9px; background: var(--surface); padding: 8px 10px; font-size: 13px; font-weight: 700; color: var(--text-strong); }
+  .dcards > div.newc { border: 2px solid var(--new); }
+  .dcards small { display: block; font-weight: 500; color: var(--text-muted); font-size: 12px; }
+  .find { display: flex; align-items: center; gap: 8px; border: 1.5px solid #2563eb; border-radius: 9px; padding: 8px 10px; background: var(--surface); font-size: 14px; color: var(--text-strong); }
+  .hit { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hit b { color: var(--text-strong); }
+  .hit small { grid-column: 1; color: var(--text-muted); font-size: 12px; }
+  .hit em { grid-row: 1 / 3; grid-column: 2; align-self: center; font-style: normal; font-size: 11px; font-weight: 700; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .hit.newc { background: var(--new-tint); }
+
+  /* the magnifying glass */
+  .glass { position: absolute; width: 132px; height: 132px; border-radius: 50%; overflow: hidden; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(0,0,0,.5), 0 0 0 1.5px rgba(17,24,39,.7); transform: translate(-50%, calc(-100% - 34px)); background: #8b7d5e; }
+  .glass.snap { border-color: #22c55e; }
+  .glass svg { width: 100%; height: 100%; }
+  .finger { position: absolute; width: 58px; height: 96px; border-radius: 29px 29px 22px 22px; background: rgba(226,190,160,.72); border: 1.5px solid rgba(90,60,40,.45); transform: translate(-42%, -14%) rotate(-14deg); transform-origin: 50% 14%; }
+  .finger::before { content: ""; position: absolute; left: 12px; right: 12px; top: 7px; height: 26px; border-radius: 13px 13px 9px 9px; background: rgba(255,255,255,.35); }
+  .gtag { position: absolute; transform: translate(-50%, calc(-100% - 8px)); background: rgba(17,24,39,.9); color: #fff; font: 700 11.5px/1.2 var(--font); padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .gtag.snap { background: #15803d; }
+
   /* sending it further */
   .cap2 { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
   .cap2:first-child { margin-top: 0; }
   .srow { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: center; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); margin-top: 6px; }
   .srow b { color: var(--text-strong); font-size: 13.5px; }
   .srow span { grid-column: 1; font-size: 12px; color: var(--text-muted); }
+  .srow.plain { grid-template-columns: 1fr; }
   .srow::after { content: "›"; grid-column: 2; grid-row: 1 / 3; color: var(--text-muted); font-size: 20px; line-height: 1; }
+  .srow.plain::after { content: none; }
   .os { background: #e5e7eb; color: #111827; padding: 10px 10px 14px; border-radius: 14px 14px 0 0; }
   .os .prev { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: #374151; }
   .os .prev b { display: block; color: #111827; font-size: 13.5px; }
@@ -280,11 +316,13 @@
 </header>
 <nav class="jump">
   <a href="#short">The short of it</a>
+  <a href="#doors">Where it is offered</a>
   <a href="#start">1 Start</a>
   <a href="#walk">2 Walking</a>
   <a href="#place">3 A place</a>
   <a href="#done">4 Look, fix, save</a>
   <a href="#hand">5 By hand</a>
+  <a href="#glass">The magnifying glass</a>
   <a href="#measure">6 Measuring, honestly</a>
   <a href="#saved">7 On the job</a>
   <a href="#share">8 The shared page</a>
@@ -321,23 +359,122 @@
   </div>
 </div>
 
+<!-- ============ doors ============ -->
+<h2 id="doors">Where it is offered <small>the owner's ask of 2026-11-13</small></h2>
+<p class="lede"><b>Wherever the app already shows an address.</b> A painted map is the address, continued: the part a street address cannot say. So it gets no page, no tab and no header button of its own. It is one line under the 📍 address, on the screens people already open. Purple marks what is new.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">1 · The job window, on every tab</div>
+    <div class="frame">
+      <div class="band">
+        <div class="t">Juniper Ridge · Lot 14</div>
+        <span class="addr">📍 County Road 218, Lot 14</span>
+        <div class="wayline"><i></i>The way in for deliveries<span>about 830 ft · 3 places ›</span></div>
+        <div class="wayline add">＋ Paint a map</div>
+      </div>
+      <div class="jtabs"><span class="on">Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span>Documents</span><span>Materials</span></div>
+      <div class="pad"><p class="say muted">The job's own screen, unchanged.</p></div>
+    </div>
+    <p class="say">The window's top band already holds the address and shows on all seven tabs. The line sits under it. No eighth tab. A press opens the map with its places, Share and Add to it.</p>
+  </div>
+  <div class="col">
+    <div class="cap">2 · A tech's own job, in the field</div>
+    <div class="frame">
+      <div class="pad">
+        <div class="card">
+          <div style="font-size:15px;font-weight:700;color:var(--text-strong)">Juniper Ridge · Lot 14</div>
+          <span class="addr" style="color:var(--text-link);text-decoration:underline;font-size:13px">📍 County Road 218, Lot 14</span>
+          <div class="wayline"><i></i>The way in for deliveries<span>open ›</span></div>
+          <div class="wayline add">＋ Paint a map</div>
+          <div class="press"><span>Clock In</span><span class="go">On my way</span><span>I'm here</span><span>% done</span><span>Leave report</span><span>Clock out</span></div>
+        </div>
+        <div class="card">
+          <div class="h3" style="font-size:14px;margin-bottom:4px">On my way</div>
+          <div class="wayline"><i></i>The way in is painted<span>open ›</span></div>
+          <p class="muted" style="margin:6px 0 0">The moment before the drive. Today this sheet shows no address at all.</p>
+        </div>
+      </div>
+    </div>
+    <p class="say">The person standing on the site is the one who can walk it, so the making press is on their job card. It is beside the address, not in the press bar, which is the day's own flow.</p>
+  </div>
+  <div class="col">
+    <div class="cap">3 · The Development page</div>
+    <div class="frame">
+      <div class="band">
+        <div class="t">Juniper Ridge</div>
+        <span class="addr">📍 County Road 218 · Map</span>
+      </div>
+      <div class="pad">
+        <div class="dcards">
+          <div>History</div><div>Jobs &amp; bids</div><div>Money</div><div>Plans</div>
+          <div class="newc">Painted maps<small>The way in for deliveries · about 830 ft · 3 places</small><small>On to the lift station · about 410 ft</small><span class="btn" style="margin-top:8px">＋ Paint a map</span></div>
+          <div>Questions</div><div>Photos</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">The best home for a way in, since it serves every lot. A map painted for the development shows on each of its jobs, with <i>from Juniper Ridge</i> beside it.</p>
+  </div>
+</div>
+<div class="three">
+  <div class="col">
+    <div class="cap">4 · The header's search</div>
+    <div class="frame">
+      <div class="pad" style="background:var(--surface)">
+        <div class="find">🔍 <span>paint</span></div>
+        <div style="margin-top:8px;border:1px solid var(--border);border-radius:9px;overflow:hidden">
+          <div class="hit newc"><b>Paint a map</b><em>window</em><small>Walk it, drive it or draw it by hand</small></div>
+          <div class="hit newc"><b>The way in for deliveries</b><em>painted map</em><small>Juniper Ridge · Lot 14</small></div>
+          <div class="hit"><b>Juniper Ridge · Lot 14</b><em>job</em><small>County Road 218</small></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">From anywhere, with no job open. The header has four single-purpose buttons and no general ＋, so a fifth button is the wrong price for a tool used now and then. The search already opens windows such as a new job.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Where a painted map then shows by itself</div>
+    <div class="scroll">
+    <table class="plan who" style="margin-top:0">
+      <tr><th>Screen</th><th>What appears</th></tr>
+      <tr><td>The job cards on the Dashboard</td><td>The line under the address</td></tr>
+      <tr><td>The field search's job card</td><td>The line beside Directions</td></tr>
+      <tr><td>A task with a place</td><td>The way to the dot <span class="muted">later</span></td></tr>
+      <tr><td>Materials on site's map</td><td>The lines, under the boxes <span class="muted">later</span></td></tr>
+      <tr><td>The Map page</td><td>A Painted maps chip <span class="muted">later</span></td></tr>
+      <tr><td>A sub's work order page</td><td>The way in, under the address <span class="muted">later, the owner's call</span></td></tr>
+    </table>
+    </div>
+    <p class="say">Nobody goes looking for a painted map. It is on the screen they opened for another reason.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Where it is not</div>
+    <div class="frame">
+      <div class="pad" style="background:var(--surface)">
+        <div class="srow plain"><b>Not a page in the menu</b><span>A map belongs to a job or a development, not to a list of maps</span></div>
+        <div class="srow plain"><b>Not a tab on the job window</b><span>It has seven</span></div>
+        <div class="srow plain"><b>Not a button in the header</b><span>The search reaches it</span></div>
+        <div class="srow plain"><b>Not in the press bar of a tech's day</b><span>That bar is clock, drive, arrive, report</span></div>
+        <div class="srow plain"><b>Not on a bid's price</b><span>A walked length must never feed a number that gets priced</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ 1 ============ -->
-<h2 id="start">1 · Starting one <small>from a job, a development or the ＋ in the header</small></h2>
+<h2 id="start">1 · Starting one <small>from under an address, or from the header's search</small></h2>
 <p class="lede">The first press costs nothing. Location is not asked for until <b>Start painting</b>, and only when the person picked walking.</p>
 <div class="three">
   <div class="col">
     <div class="cap">On the job, nothing painted yet</div>
     <div class="frame">
-      <div class="hdr"><b>Juniper Ridge · Lot 14</b><span class="x">✕</span></div>
-      <div class="pad">
-        <div class="card">
-          <div class="h3">Painted maps</div>
-          <p class="say">Nothing painted for this job yet. Paint the way in, or mark what is where, and send it by a link.</p>
-          <div class="btnrow"><span class="btn blue big">Paint a map</span></div>
-        </div>
+      <div class="band">
+        <div class="t">Juniper Ridge · Lot 14</div>
+        <span class="addr">📍 County Road 218, Lot 14</span>
+        <div class="wayline add">＋ Paint a map</div>
       </div>
+      <div class="jtabs"><span class="on">Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span>Documents</span><span>Materials</span></div>
+      <div class="pad"><p class="say muted">The job's own screen, unchanged.</p></div>
     </div>
-    <p class="say">The empty block says what fills it and offers the press, as the app's empty states do.</p>
+    <p class="say">One quiet line under the address. It never reads as something missing: a job with no painted map looks as it does today, plus this press for those who may paint.</p>
   </div>
   <div class="col">
     <div class="cap">The start sheet</div>
@@ -605,6 +742,83 @@
   </div>
 </div>
 
+<h3 id="glass" style="margin:30px 0 4px;font-size:16px;color:var(--text-strong)">The magnifying glass <small style="font-size:13px;font-weight:500;color:var(--text-muted);margin-left:6px">the owner's ask of 2026-11-13: be exact where a finger places things</small></h3>
+<p class="lede">A fingertip covers fifty feet of ground or more at the zoom a route is drawn at. While a finger drags, a round glass rides above it and shows what is under the finger, enlarged.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Dragging a corner: the glass rides above the finger</div>
+    <div class="frame">
+      <div class="hdr"><b>Draw it by hand</b><span class="x">✕</span></div>
+      <div class="map">
+        <svg viewBox="70 60 440 370" aria-label="A finger drags a corner and a magnifying glass above it shows the spot enlarged">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="8"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5" stroke-dasharray="12 5"/>
+          <g fill="#fff" stroke="#111827" stroke-width="2"><circle cx="120" cy="392" r="5.5"/><circle cx="123" cy="352" r="5.5"/><circle cx="126" cy="300" r="5.5"/><circle cx="200" cy="266" r="5.5"/><circle cx="400" cy="240" r="5.5"/><circle cx="452" cy="232" r="5.5"/><circle cx="466" cy="198" r="5.5"/></g>
+          <circle cx="300" cy="250" r="7" fill="#7c3aed" stroke="#fff" stroke-width="2.5"/>
+        </svg>
+        <div class="finger" style="left:52.3%;top:51.4%"></div>
+        <div class="glass" style="left:52.3%;top:51.4%">
+          <svg viewBox="277.0 227.0 46 46" aria-hidden="true">
+            <use href="#land" width="720" height="440"/>
+            <use href="#way" stroke="#111827" stroke-width="3.2"/><use href="#way" stroke="#ff5a1f" stroke-width="2" stroke-dasharray="5 2"/><circle cx="300" cy="250" r="2.6" fill="#7c3aed" stroke="#fff" stroke-width="1"/>
+            <g stroke="#fff" stroke-width=".9" opacity=".95"><path d="M277.0 250 H296 M304 250 H323.0 M300 227.0 V246 M300 254 V273.0"/></g>
+            <g stroke="#111827" stroke-width=".35"><path d="M277.0 250 H296 M304 250 H323.0 M300 227.0 V246 M300 254 V273.0"/></g>
+          </svg>
+        </div>
+        <div class="pill b"><span>Drag to place. Lift your finger to set it.</span></div>
+      </div>
+      <div class="read"><span><b>about 830 ft</b> · 8 corners</span><span class="muted">this corner: 185 ft back, 180 ft on</span></div>
+      <div class="bar3"><span class="btn big">Undo</span><span class="btn big">＋ Place</span><span class="btn blue big">Done</span></div>
+    </div>
+    <p class="say">The finger hides the very spot it is placing. The glass shows that spot about four times larger, with a cross at its centre, so the corner lands on the middle of the drive and not somewhere under a thumb.</p>
+  </div>
+  <div class="col">
+    <div class="cap">It catches a place or a line's end</div>
+    <div class="frame">
+      <div class="hdr"><b>Draw it by hand</b><span class="x">✕</span></div>
+      <div class="map">
+        <svg viewBox="250 40 300 300" aria-label="The line's end is dragged onto a place and the glass turns green">
+          <use href="#land" width="720" height="440"/>
+          <path d="M250 258 L300 250 L400 240 L452 232 L482 186" fill="none" stroke="#111827" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M250 258 L300 250 L400 240 L452 232 L482 186" fill="none" stroke="#ff5a1f" stroke-width="4.5" stroke-dasharray="11 5" stroke-linejoin="round" stroke-linecap="round"/>
+          <g fill="#fff" stroke="#111827" stroke-width="2"><circle cx="300" cy="250" r="5"/><circle cx="400" cy="240" r="5"/><circle cx="452" cy="232" r="5"/></g>
+          <circle cx="482" cy="186" r="9" fill="#fff" stroke="#15803d" stroke-width="3"/><text x="482" y="190" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#111827">3</text>
+        </svg>
+        <div class="finger" style="left:77.3%;top:48.7%"></div>
+        <div class="glass snap" style="left:77.3%;top:48.7%">
+          <svg viewBox="459.0 163.0 46 46" aria-hidden="true">
+            <use href="#land" width="720" height="440"/>
+            <path d="M452 232 L482 186" fill="none" stroke="#111827" stroke-width="3.2" stroke-linecap="round"/><path d="M452 232 L482 186" fill="none" stroke="#ff5a1f" stroke-width="2" stroke-linecap="round"/><circle cx="482" cy="186" r="4.2" fill="#fff" stroke="#15803d" stroke-width="1.4"/><text x="482" y="187.8" text-anchor="middle" font-family="sans-serif" font-size="4.6" font-weight="800" fill="#111827">3</text>
+            <g stroke="#fff" stroke-width=".9" opacity=".95"><path d="M459.0 186 H478 M486 186 H505.0 M482 163.0 V182 M482 190 V209.0"/></g>
+            <g stroke="#111827" stroke-width=".35"><path d="M459.0 186 H478 M486 186 H505.0 M482 163.0 V182 M482 190 V209.0"/></g>
+          </svg>
+        </div>
+        <div class="gtag snap" style="left:77.3%;top:calc(48.7% - 170px)">On Water stub, Lot 14</div>
+      </div>
+      <div class="pad" style="background:var(--surface)">
+        <p class="say">Within a few feet of a place or of another line's end, the corner jumps onto it and the ring turns green. Pull away and it lets go.</p>
+      </div>
+    </div>
+    <p class="say">So a line really ends at the gate, and two strokes really meet. Near the top or the side of the screen the glass moves to whichever side has room.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Where the glass shows, and its limit</div>
+    <div class="frame">
+      <div class="pad" style="background:var(--surface)">
+        <div class="cap2">The glass shows on every drag by finger</div>
+        <div class="srow plain"><b>A corner of a line</b><span>Drawing by hand, and redrawing a part that wandered</span></div>
+        <div class="srow plain"><b>A new corner</b><span>Press and hold on the map, then slide before lifting</span></div>
+        <div class="srow plain"><b>A place's dot</b><span>Moving the gate or the meter onto its exact spot</span></div>
+        <div class="srow plain"><b>An end being trimmed</b><span>On Look it over, after a walk</span></div>
+        <div class="box grey"><b>A quick press still works.</b> One press drops a corner where it lands, as before. The glass is for the ones that matter.</div>
+        <div class="box"><b>The glass is as sharp as the picture.</b> One dot of the view from above is about a foot or two of ground. So a corner can be placed to within a couple of feet, and no finer. Beyond that the glass only makes the dots bigger.</div>
+        <p class="muted" style="margin:10px 0 0">At a desk a mouse is already that exact, so there is no glass. The wheel zooms.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ 6 ============ -->
 <h2 id="measure">6 · Measuring, honestly <small>what each way is good for</small></h2>
 <p class="lede">The bars are my reckoning from the published 16 ft figure for a phone under open sky. Each bar is drawn as a share of its own run. The one-day try on your own phones, step 0 of the plan, replaces them with measured numbers.</p>
@@ -660,7 +874,7 @@
 <h2 id="saved">7 · Saved, on its job <small>and restarted later</small></h2>
 <div class="three">
   <div class="col">
-    <div class="cap">The job's Painted maps</div>
+    <div class="cap">The line under the address, opened</div>
     <div class="frame">
       <div class="hdr"><b>Juniper Ridge · Lot 14</b><span class="x">✕</span></div>
       <div class="pad">
@@ -971,8 +1185,8 @@
   <tr><td>0</td><td><b>A one-day try on your own phones.</b> A page for devs only that paints a walk on the screen and saves nothing. Walk a taped 50 ft and 500 ft on an iPhone and an Android, in the open and beside a building. Lock the phone mid-walk.</td><td>no migration, no public door</td><td>S</td></tr>
   <tr class="stop"><td colspan="4">Read the numbers. If a walked line is worse than this card says, the train starts at drawing by hand and walking waits.</td></tr>
   <tr><td>1</td><td>The painted map itself, no screen: the table, the kernels for length, cleaning and the words.</td><td>one migration: <code>painted_maps</code>, <code>painted_map_lines</code>, <code>painted_map_places</code></td><td>S</td></tr>
-  <tr><td>2</td><td>Draw it by hand, the Painted maps block on a job and a development, places with a photo.</td><td>none</td><td>M</td></tr>
-  <tr><td>3</td><td>Walk or drive it: the red bar, the screen held on, pause and restart, the faint part, look and fix, kept on the phone with no signal.</td><td>none</td><td>M</td></tr>
+  <tr><td>2</td><td>Draw it by hand with the magnifying glass. The line under the address on the job window and the Development page, its Painted maps card, the header search. Places with a photo.</td><td>none</td><td>M</td></tr>
+  <tr><td>3</td><td>Walk or drive it: the red bar, the screen held on, pause and restart, the faint part, look and fix, kept on the phone with no signal. The line and the press on a tech's own job card and on On my way.</td><td>none</td><td>M</td></tr>
   <tr><td>4</td><td>The link: Share, the page at <code>/way/&lt;code&gt;</code>, Show where I am, Directions to the start, End this link, Text it, Send it another way, Show a code to scan.</td><td>one migration, <code>painted_map_links</code>, and the one door for a signed-out reader, the <code>painted-map-link</code> function</td><td>M</td></tr>
   <tr><td>4b</td><td>The copies: a picture, and a page to print with its code, Save as a PDF and File it on the job.</td><td>none</td><td>M</td></tr>
   <tr class="stop"><td colspan="4">Stop. Count the maps painted and the links opened for two weeks.</td></tr>
@@ -996,6 +1210,8 @@
   <li><b>Which copies first.</b> The picture and the page with the link (my pick), the files after the count. Or the files sooner, if a general contractor or an engineer is asking today.</li>
   <li><b>Who may send a copy.</b> A copy cannot be taken back. My pick: the same people who may share the link, with those words on the sheet.</li>
   <li><b>Filing the page.</b> On a press (my pick), or by itself the first time a map is shared.</li>
+  <li><b>The doors.</b> Under the address on the job, the tech's job card and the development, plus the header's search (my pick). Or a header button as well.</li>
+  <li><b>A sub's work order.</b> May a painted way in show on a sub's page, which needs no sign-in? My pick: yes, later, and only a map the office has shared.</li>
 </ol>
 
 <footer>

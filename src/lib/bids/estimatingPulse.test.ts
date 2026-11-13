@@ -34,7 +34,8 @@ function bid(over: {
 }): BidWithBuilder {
   return {
     id: over.id,
-    bid_date_sent: over.sent === null ? null : `${over.sent ?? '2026-08-17'}T18:00:00Z`,
+    // A date with no time, as the column holds it.
+    bid_date_sent: over.sent === null ? null : (over.sent ?? '2026-08-17'),
     bid_value: over.value ?? 100000,
     outcome: over.outcome ?? null,
     estimator_id: over.estId ?? null,
@@ -70,6 +71,16 @@ describe('pulseWeekStarts / buildPulseWeeks', () => {
     expect(weeks[0]!.count).toBe(0)
     expect(weeks[2]!).toMatchObject({ wonDollars: 250000, waitDollars: 0, lostDollars: 0, count: 1, bidIds: ['a'] })
     expect(weeks[2]!.dateRange).toBe('08/16–08/22')
+  })
+
+  it('counts a bid sent on a Sunday in the week that Sunday starts, and a Saturday in the week before', () => {
+    // The send day is a date with no time. Read as a moment it fell on the evening before in Chicago.
+    const weeks = buildPulseWeeks(
+      [bid({ id: 'sun', sent: '2026-08-16', value: 1000 }), bid({ id: 'sat', sent: '2026-08-15', value: 2000 })],
+      WEEK,
+      2,
+    )
+    expect(weeks.map((w) => w.bidIds)).toEqual([['sat'], ['sun']])
   })
 
   it('labels the first week and month changes only; unsent bids never count', () => {
