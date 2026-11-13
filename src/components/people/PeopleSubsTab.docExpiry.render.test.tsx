@@ -16,7 +16,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 const writes: Array<{ table: string; patch: unknown }> = []
 const TABLE_ROWS: Record<string, unknown[]> = {
-  people: [{ id: 'p-jesse', name: 'Jesse Ramos', archived_at: null, account_user_id: null }],
+  people: [{ id: 'p-jesse', name: 'Jesse Ramos', kind: 'sub', archived_at: null, account_user_id: null }],
   person_contract_documents: [{ id: 'd1', document_name: 'COI 2026', doc_type: 'coi', status: 'signed', expires_at: '2026-09-10', person_id: 'p-jesse', person_name: 'Jesse Ramos', applied_contract_template_document_id: null, applied_version_date: null }],
 }
 
