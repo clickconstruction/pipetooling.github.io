@@ -4,11 +4,11 @@ import { addressLooksWhole, addressPinFailureReason, addressPinWords, pinSourceW
 describe('addressPinWords (v2.4783)', () => {
   it('spends a lookup only on a whole-looking address', () => {
     expect(addressLooksWhole('380 TX')).toBe(false)
-    expect(addressLooksWhole('380 TX-123, Se')).toBe(true)
-    expect(addressLooksWhole('380 TX-123, Seguin, TX 78155')).toBe(true)
+    expect(addressLooksWhole('410 TX-123, Se')).toBe(true)
+    expect(addressLooksWhole('410 TX-123, Seguin, TX 78155')).toBe(true)
     expect(addressLooksWhole('595 Cardinal Rd Rosanky TX 78953')).toBe(true)
     expect(addressLooksWhole("Zack's House")).toBe(false)
-    expect(addressLooksWhole('6288 River Rd New Braunfels')).toBe(false)
+    expect(addressLooksWhole('6288 Rill Rd New Braunfels')).toBe(false)
   })
 
   it('words each state', () => {

@@ -40,7 +40,7 @@ function draftRow(p: Partial<JobContractRow> = {}): JobContractRow {
   return { id: 'd1', job_id: 'j1', status: 'draft', voided_at: null, revision: 1, fields: {}, body_html: '<p>Old wording</p>', body_format: 'html', template_document_id: 't1', template_name: 'Service agreement', template_version_date: '2026-09-20', ...p } as JobContractRow
 }
 function payloadWith(template: typeof BOOK | null) {
-  return buildJobContractDraftPayload({ jobId: 'j1', fields: { ...EMPTY_JOB_CONTRACT_FIELDS, scope_lines: ['Water heater swap'] }, template, recipientName: 'May Lee', recipientEmail: 'may@corewellpartners.com', recipientPhone: null })
+  return buildJobContractDraftPayload({ jobId: 'j1', fields: { ...EMPTY_JOB_CONTRACT_FIELDS, scope_lines: ['Water heater swap'] }, template, recipientName: 'May Lee', recipientEmail: 'may@corewell.example', recipientPhone: null })
 }
 const TERMS_KEYS = ['body_html', 'body_format', 'template_document_id', 'template_name', 'template_version_date']
 
@@ -57,7 +57,7 @@ describe('buildJobContractDraftPayload', () => {
       fields: { ...EMPTY_JOB_CONTRACT_FIELDS, scope_lines: ['Water heater swap'], amount_cents: 240000 },
       template: { id: 't1', document_name: 'Residential service agreement', book_body_html: '<p>Terms</p>', book_body_format: 'html', book_version_date: '2026-09-01' },
       recipientName: ' May Lee ',
-      recipientEmail: 'may@corewellpartners.com',
+      recipientEmail: 'may@corewell.example',
       recipientPhone: '',
     })
     expect(p).toMatchObject({
@@ -68,7 +68,7 @@ describe('buildJobContractDraftPayload', () => {
       template_name: 'Residential service agreement',
       template_version_date: '2026-09-01',
       recipient_name: 'May Lee',
-      recipient_email: 'may@corewellpartners.com',
+      recipient_email: 'may@corewell.example',
       recipient_phone: null,
     })
     expect((p.fields as { scope_lines: string[]; amount_cents: number }).scope_lines).toEqual(['Water heater swap'])
@@ -105,7 +105,7 @@ describe('saveJobContractDraft', () => {
       const row = await saveJobContractDraft({ existing, payload: payloadWith(BOOK), authUserId: 'u1' })
       expect(db.steps[0]!.op).toBe('update')
       for (const k of TERMS_KEYS) expect(k in db.steps[0]!.payload).toBe(false)
-      expect(db.steps[0]!.payload.recipient_email).toBe('may@corewellpartners.com')
+      expect(db.steps[0]!.payload.recipient_email).toBe('may@corewell.example')
       expect(row?.body_html).toBe('<p>Old wording</p>')
     }
   })

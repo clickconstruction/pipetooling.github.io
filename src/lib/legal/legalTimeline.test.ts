@@ -18,8 +18,8 @@ describe('planned steps on the line (v2.5800)', () => {
   const entries = [
     entry({ id: 'fee', kind: 'fee', amount: 450, body: 'Demand letter', occurred_on: '2026-10-01', via_portal: true, meta: { recordedBy: { id: 'r', name: 'Dana Reyes' } } }),
     plan('p1', '2026-10-27', 'Send the response letter, final invoice and settlement offer', { notes: 'Certified mail and email.' }),
-    plan('p2', '2026-11-03', 'Burd’s response date'),
-    plan('p3', '2026-10-20', 'Pull the Take 5 photos', { done_at: '2026-10-18', done_by: 'u1', done_note: 'In the Drive folder.' }),
+    plan('p2', '2026-11-03', 'Brund’s response date'),
+    plan('p3', '2026-10-20', 'Pull the Tune 5 photos', { done_at: '2026-10-18', done_by: 'u1', done_note: 'In the Drive folder.' }),
     plan('p4', '2026-10-21', 'Call the GC’s AP desk'),
     plan('p5', TODAY, 'Confirm the lien affidavit day with the county'),
     plan('p6', '2026-11-13', 'Mail the materials lien notice', { source: 'mcp' }),
@@ -178,9 +178,9 @@ describe('events: what happened, recorded by the office (punch list #167, v2.583
     const md = eventsNarrativeMarkdown(office, TODAY)
     expect(md).toBe('- **Oct 22** — The GC’s notice of termination arrived By email, 4:12 pm.\n- **Oct 22** — The supplier’s job account was paid in full (Supplier receipt, paid in full, Internal memo, a document no longer on Evidence)')
     expect(eventsNarrativeMarkdown(buildLegalTimeline({ entries: [entries[3]!], todayYmd: TODAY, reader: 'office' }), TODAY)).toBe('')
-    const outline = '## The parties\n\nClick and Burd.\n\n## What happened\n\nThe job ran May to October.\n\n## Still missing\n'
+    const outline = '## The parties\n\nClick and Brund.\n\n## What happened\n\nThe job ran May to October.\n\n## Still missing\n'
     const once = insertEventsIntoNarrative(outline, md)
-    expect(once).toBe('## The parties\n\nClick and Burd.\n\n## What happened\n\nThe job ran May to October.\n\n' + md + '\n\n## Still missing\n')
+    expect(once).toBe('## The parties\n\nClick and Brund.\n\n## What happened\n\nThe job ran May to October.\n\n' + md + '\n\n## Still missing\n')
     expect(insertEventsIntoNarrative(once, md)).toBe(once)
     expect(insertEventsIntoNarrative('', md)).toBe('## What happened\n\n' + md + '\n')
     expect(insertEventsIntoNarrative('Just prose.', md)).toBe('Just prose.\n\n## What happened\n\n' + md + '\n')
@@ -274,8 +274,8 @@ describe('a document on the paper’s own day (punch list #168, v2.5846)', () =>
     expect(documentStateWords({ addedOn: '2026-10-24', datedOn: '2026-10-24', stateWords: '' })).toBe('Added to Evidence.')
   })
   it('reads the portal’s shape the same way', () => {
-    const [d] = timelineDocumentsFromPortal([{ id: 'p', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: 'Grace', datedOn: '2026-05-12', state: 'sent', sentOn: '2026-05-13', sentHow: 'hand', sentTo: 'Burd' }])
-    expect(d).toEqual(expect.objectContaining({ datedOn: '2026-05-12', stateWords: 'Sent May 13 by hand to Burd' }))
+    const [d] = timelineDocumentsFromPortal([{ id: 'p', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: 'Grace', datedOn: '2026-05-12', state: 'sent', sentOn: '2026-05-13', sentHow: 'hand', sentTo: 'Brund' }])
+    expect(d).toEqual(expect.objectContaining({ datedOn: '2026-05-12', stateWords: 'Sent May 13 by hand to Brund' }))
     const [o] = timelineDocumentsFromPortal([{ id: 'o', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: '' }])
     expect(o).toEqual(expect.objectContaining({ datedOn: '', stateWords: '' }))
   })
@@ -397,7 +397,7 @@ describe('statements: sworn on the Said lane (punch list #220, v2.6209)', () => 
   const affiant = { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }
   const entries = [
     row({ id: 'st-draft', body: 'Northline never called us back.\nI drove past the site.', meta: { title: 'Affidavit of Daniel Alvarez', affiant, form: 'notary', incident_to: '2026-09-17', venue_county: 'Guadalupe', state: 'draft', prints: [], source: 'office' } }),
-    row({ id: 'st-signed', occurred_on: '2026-09-09', body: 'I saw two of their men carrying PVC.', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', venue_county: 'Williamson', state: 'signed', prints: [{ at: '2026-10-16T15:00:00Z', by: 'u1', face: 'signing', text: '' }], signed_on: '2026-10-29', document_id: 'd-scan', source: 'mcp' } }),
+    row({ id: 'st-signed', occurred_on: '2026-09-09', body: 'I saw two of their men carrying PVC.', meta: { title: 'Declaration of Tobin Newell', affiant: { kind: 'witness', name: 'Tobin Newell', role: 'the foreman' }, form: 'declaration', venue_county: 'Williamson', state: 'signed', prints: [{ at: '2026-10-16T15:00:00Z', by: 'u1', face: 'signing', text: '' }], signed_on: '2026-10-29', document_id: 'd-scan', source: 'mcp' } }),
     row({ id: 'st-stale', occurred_on: '2026-09-10', body: 'x', meta: { title: 'Statement of R. Ortiz', affiant: { kind: 'team', name: 'R. Ortiz' }, form: 'notary', state: 'printed', prints: [{ at: '2026-10-10T15:00:00Z', by: 'u1', face: 'whole', text: '1. x' }] } }),
     row({ id: 'st-undone', occurred_on: '2026-09-11', body: 'x', meta: { title: 'Dropped', affiant, form: 'notary' }, voided_at: '2026-10-29T10:00:00Z', void_reason: 'would not sign the September paragraph' }),
   ]
@@ -430,8 +430,8 @@ describe('statements: sworn on the Said lane (punch list #220, v2.6209)', () => 
     expect(s.stateWords).toBe('Signed Oct 29 under penalty of perjury in Williamson County. The signed copy is on Evidence. Printed once before the signing.')
     expect(s.documentId).toBe('d-scan')
     expect(s.kindWords).toBe('declaration')
-    expect(s.byName).toBe('Thanh Nguyen · witness · dev MCP')
-    expect(by(firm, 'entry:st-signed').byName).toBe('Thanh Nguyen · witness')
+    expect(s.byName).toBe('Tobin Newell · witness · dev MCP')
+    expect(by(firm, 'entry:st-signed').byName).toBe('Tobin Newell · witness')
     expect(by(firm, 'entry:st-signed').kindWords).toBe('unsworn declaration by a witness')
     expect(by(firm, 'entry:st-draft').kindWords).toBe("sworn statement by the office's team · draft, not signed")
   })

@@ -62,15 +62,15 @@ function contract(over: Partial<JobContractRow>): JobContractRow {
   }
 }
 
-const palmer = { kind: 'customer' as const, id: 'cust-palmer', name: 'Michael Palmer' }
+const palvern = { kind: 'customer' as const, id: 'cust-palvern', name: 'Michael Palvern' }
 
 describe('personJourney — a real person on the strips', () => {
   it('a brand-new customer: every homeowner step reads not-yet with a door, and no GC strip', () => {
-    const j = customerJourney(palmer, emptyCustomer(), NOW)
+    const j = customerJourney(palvern, emptyCustomer(), NOW)
     expect(j.journeys).toEqual(['homeowner'])
     expect(j.steps['estimate-email']).toMatchObject({ state: 'never', headline: 'No estimate yet', action: { to: '/estimates' } })
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'never', action: { label: 'Start the sweep', to: '/jobs?tab=pipeline' } })
-    expect(j.steps['customer-portal']).toMatchObject({ state: 'never', headline: 'No portal link yet', action: { to: '/customers/cust-palmer' } })
+    expect(j.steps['customer-portal']).toMatchObject({ state: 'never', headline: 'No portal link yet', action: { to: '/customers/cust-palvern' } })
     expect(j.steps['bill-email']?.state).toBe('never')
     expect(j.steps['demand-letter']?.state).toBe('na')
     expect(j.summary).toBe('customer · 0 jobs · no portal link')
@@ -81,14 +81,14 @@ describe('personJourney — a real person on the strips', () => {
 
   it("J363's agreement story: rev 3 sent and never opened, rev 4 signed on paper — the signed one wins, the voids are history", () => {
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j363', hcp_number: '363', click_number: null, job_name: 'Palmer', status: 'working', customer_id: palmer.id, gc_customer_id: null }]
+    rows.jobs = [{ id: 'j363', hcp_number: '363', click_number: null, job_name: 'Palvern', status: 'working', customer_id: palvern.id, gc_customer_id: null }]
     rows.contracts = [
       contract({ id: 'r1', revision: 1, sent_at: '2026-09-03T14:00:00Z', first_viewed_at: '2026-09-03T15:00:00Z', view_count: 1, voided_at: '2026-09-03T16:00:00Z' }),
       contract({ id: 'r2', revision: 2, sent_at: '2026-09-03T16:10:00Z', voided_at: '2026-09-03T17:00:00Z' }),
       contract({ id: 'r3', revision: 3, sent_at: '2026-09-03T17:10:00Z', voided_at: '2026-09-04T09:00:00Z' }),
       contract({ id: 'r4', revision: 4, status: 'signed', sent_at: null, signer_mode: 'paper', paper_signed_on: '2026-09-04', signed_at: '2026-09-04T18:00:00Z', public_token: 'tok-4' }),
     ]
-    const j = customerJourney(palmer, rows, NOW)
+    const j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-page']).toMatchObject({ state: 'signed', headline: 'Signed on paper Sep 4', link: '/contract/sign?t=tok-4' })
     expect(j.steps['job-contract-page']?.detail).toContain('3 earlier revisions voided')
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'signed', headline: 'Signed on paper, never emailed' })
@@ -96,50 +96,50 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['job-contract-reminder']?.state).toBe('na')
     // v2.3617: paper-signed, never shared — the signed copy was not emailed
     expect(j.steps['job-contract-signed-email']).toMatchObject({ state: 'never', headline: 'Not emailed — Share on the signed agreement sends the PDF', action: { label: 'Open the signed copy', to: '/jobs?jobDetail=j363' } })
-    const shared = customerJourney(palmer, { ...rows, contractEvents: [{ contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-05T15:00:00Z' }, { contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-08T15:00:00Z' }] }, NOW)
+    const shared = customerJourney(palvern, { ...rows, contractEvents: [{ contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-05T15:00:00Z' }, { contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-08T15:00:00Z' }] }, NOW)
     expect(shared.steps['job-contract-signed-email']).toMatchObject({ state: 'sent', headline: 'Emailed Sep 8 · 2 times', detail: 'the signed PDF, shared by the office', at: '2026-09-08T15:00:00Z' })
   })
 
   it("the app's coverage rule wins: a voided row is no contract even if it carried a signature — but the card says so (the real J363)", () => {
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j363', hcp_number: '363', click_number: null, job_name: 'Palmer', status: 'working', customer_id: palmer.id, gc_customer_id: null }]
+    rows.jobs = [{ id: 'j363', hcp_number: '363', click_number: null, job_name: 'Palvern', status: 'working', customer_id: palvern.id, gc_customer_id: null }]
     rows.contracts = [
       contract({ id: 'r1', revision: 1, sent_at: '2026-09-03T14:00:00Z', voided_at: '2026-09-03T16:00:00Z' }),
       contract({ id: 'r4', revision: 4, status: 'voided', sent_at: null, signer_mode: 'paper', paper_signed_on: '2026-09-04', signed_at: '2026-09-04T18:00:00Z', voided_at: '2026-09-04T18:30:00Z' }),
     ]
-    const j = customerJourney(palmer, rows, NOW)
+    const j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'never', headline: 'Never sent — 2 revisions voided, one of them signed on paper Sep 4', action: { label: 'Start the sweep' } })
     expect(j.steps['job-contract-page']?.state).toBe('never')
   })
 
   it('an agreement that went out on paper says so (v2.3635): the PDF email is its own step, a hand-off is not a link nobody opened', () => {
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palmer.id, gc_customer_id: null }]
+    rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palvern.id, gc_customer_id: null }]
     rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z', sent_channel: 'pdf_email', public_token: 'tok' })]
-    let j = customerJourney(palmer, rows, NOW)
+    let j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'sent', headline: 'PDF emailed Sep 14 · waiting for the signed copy', action: { label: 'File the signed copy' } })
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'na', headline: 'Went as a PDF to sign by hand' })
     expect(j.steps['job-contract-page']?.state).toBe('sent') // the link under the PDF is real
     rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z', sent_channel: 'handed' })]
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'sent', headline: 'Handed over on paper Sep 14 · waiting for the signed copy', link: null, action: { label: 'File the signed copy' } })
     expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'na', headline: 'Handed over, not emailed' })
     expect(j.steps['job-contract-page']).toMatchObject({ state: 'na', headline: 'No page — it went out on paper' })
     rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z' })]
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'na', headline: 'Went as a signing link' })
   })
 
   it('an agreement sent and never opened waits with an Edit & re-send door; opened-not-signed reads opened', () => {
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palmer.id, gc_customer_id: null }]
+    rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palvern.id, gc_customer_id: null }]
     rows.contracts = [contract({ job_id: 'j1', sent_at: '2026-09-06T12:00:00Z', send_count: 2, reminder_count: 1 })]
-    let j = customerJourney(palmer, rows, NOW)
+    let j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-page']).toMatchObject({ state: 'sent', headline: 'Waiting 10 days · never opened', action: { label: 'Edit & re-send', to: '/jobs?jobDetail=j1' } })
     expect(j.steps['job-contract-page']?.detail).toBe('J900 · rev 1 · sent 2 times')
     expect(j.steps['job-contract-reminder']).toMatchObject({ state: 'sent', headline: '1 reminder sent' })
     rows.contracts = [contract({ job_id: 'j1', sent_at: '2026-09-06T12:00:00Z', first_viewed_at: '2026-09-07T12:00:00Z', view_count: 3 })]
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['job-contract-page']).toMatchObject({ state: 'opened', headline: 'Opened Sep 7 · 3 views · not signed' })
     expect(j.steps['job-contract-email']?.action).toBeNull()
   })
@@ -147,18 +147,18 @@ describe('personJourney — a real person on the strips', () => {
   it('the estimate lane reads opens from the events table and signature from the acceptor stamp; hash-only links become a Resend door', () => {
     const rows = emptyCustomer()
     rows.estimates = [{ id: 'e1', estimate_number: '1042', status: 'sent', sent_at: '2026-07-29T14:00:00Z', acceptor_consented_at: null, updated_at: '2026-07-29T14:00:00Z' }]
-    let j = customerJourney(palmer, rows, NOW)
+    let j = customerJourney(palvern, rows, NOW)
     expect(j.steps['estimate-email']).toMatchObject({ state: 'sent', headline: 'Sent Jul 29 · not opened', link: null, action: { label: 'Resend the link', to: '/estimates/e1' } })
     expect(j.steps['estimate-page']).toMatchObject({ state: 'sent', headline: 'Waiting — not opened' })
     rows.estimateEvents = [
       { estimate_id: 'e1', event_type: 'public_link_view', occurred_at: '2026-07-29T15:00:00Z' },
       { estimate_id: 'e1', event_type: 'option_viewed', occurred_at: '2026-07-30T09:00:00Z' },
     ]
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['estimate-email']).toMatchObject({ state: 'opened', headline: 'Sent Jul 29 · opened Jul 30', detail: '#1042 · 2 opens' })
     rows.estimates[0]!.status = 'customer_accepted'
     rows.estimates[0]!.acceptor_consented_at = '2026-07-30T10:00:00Z'
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['estimate-page']).toMatchObject({ state: 'signed', headline: 'Signed Jul 30' })
     expect(j.steps['estimate-thankyou']?.state).toBe('signed')
     expect(j.steps['estimate-terms']?.state).toBe('na')
@@ -166,46 +166,46 @@ describe('personJourney — a real person on the strips', () => {
 
   it('bills: an open Stripe bill reads unpaid with the hosted link and an AR door; all paid reads paid; 45+ days makes the demand letter eligible', () => {
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j1', hcp_number: '1', click_number: null, job_name: null, status: 'billed', customer_id: palmer.id, gc_customer_id: null }]
+    rows.jobs = [{ id: 'j1', hcp_number: '1', click_number: null, job_name: null, status: 'billed', customer_id: palvern.id, gc_customer_id: null }]
     rows.invoices = [
       { id: 'i1', job_id: 'j1', status: 'billed', stripe_invoice_id: 'in_1', stripe_invoice_status: 'open', sent_to_customer_at: '2026-08-07T12:00:00Z', external_send_channel: null, hosted_invoice_url: 'https://invoice.stripe.com/x', amount: 15700 },
       { id: 'i2', job_id: 'j1', status: 'paid', stripe_invoice_id: 'in_2', stripe_invoice_status: 'paid', sent_to_customer_at: '2026-06-01T12:00:00Z', external_send_channel: null, hosted_invoice_url: 'https://invoice.stripe.com/y', amount: 500 },
     ]
-    let j = customerJourney(palmer, rows, NOW)
+    let j = customerJourney(palvern, rows, NOW)
     expect(j.steps['bill-email']).toMatchObject({ state: 'sent', headline: 'Sent Aug 7 · unpaid 40 days', detail: '1 open bill · 1 paid', link: 'https://invoice.stripe.com/x', action: { to: '/accounts-receivable' } })
     expect(j.steps['demand-letter']?.state).toBe('na')
     rows.invoices[0]!.sent_to_customer_at = '2026-07-20T12:00:00Z'
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['demand-letter']).toMatchObject({ state: 'never', headline: 'Eligible — a bill is 45+ days past', action: { label: 'Open the job\u2019s liens', to: '/jobs?tab=stages&lienwindow=j1&lientab=demand' } })
     rows.invoices[0]!.stripe_invoice_status = 'paid'
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['bill-email']).toMatchObject({ state: 'paid', detail: '2 bills paid' })
     rows.invoices.push({ id: 'i3', job_id: 'j1', status: 'billed', stripe_invoice_id: null, stripe_invoice_status: null, sent_to_customer_at: '2026-09-01T12:00:00Z', external_send_channel: 'physical', hosted_invoice_url: null, amount: 200 })
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['bill-by-email']).toMatchObject({ state: 'sent', headline: 'Sent Sep 1', detail: '1 bill' })
   })
 
   it('the portal: a slug makes the short link; opens come from the office view stats; no link offers the share door', () => {
     const rows = emptyCustomer()
     rows.portalLinks = [{ audience: 'all', token: 'ptok', revoked_at: null, created_at: '2026-08-01T00:00:00Z' }]
-    let j = customerJourney(palmer, rows, NOW)
+    let j = customerJourney(palvern, rows, NOW)
     expect(j.steps['customer-portal']).toMatchObject({ state: 'sent', headline: 'Link exists · never visited', link: '/portal?t=ptok', action: { label: 'Copy the link' } })
-    rows.portalSlug = 'michael-palmer'
+    rows.portalSlug = 'michael-palvern'
     rows.portalOpens = { opens: 3, lastOpenedAt: '2026-09-03T12:00:00Z' }
-    j = customerJourney(palmer, rows, NOW)
-    expect(j.steps['customer-portal']).toMatchObject({ state: 'opened', headline: 'Visited 3 times · last Sep 3', link: 'https://my.clickplumbing.com/michael-palmer', action: null })
+    j = customerJourney(palvern, rows, NOW)
+    expect(j.steps['customer-portal']).toMatchObject({ state: 'opened', headline: 'Visited 3 times · last Sep 3', link: 'https://my.clickplumbing.com/michael-palvern', action: null })
     expect(j.summary).toContain('portal visited')
     rows.portalLinks[0]!.revoked_at = '2026-09-10T00:00:00Z'
     rows.portalSlug = null
-    j = customerJourney(palmer, rows, NOW)
+    j = customerJourney(palvern, rows, NOW)
     expect(j.steps['customer-portal']?.state).toBe('never')
   })
 
   it('a builder gets the GC strip: bid room from its events, submittals, test reports, statements, the owner notice', () => {
-    const gc = { kind: 'customer' as const, id: 'gc-summit', name: 'Summit GC' }
+    const gc = { kind: 'customer' as const, id: 'gc-selwick', name: 'Selwick GC' }
     const rows = emptyCustomer()
-    rows.jobs = [{ id: 'j804', hcp_number: '804', click_number: null, job_name: 'Auto Zone', status: 'working', customer_id: 'owner-1', gc_customer_id: 'gc-summit' }]
-    rows.bidRooms = [{ id: 'room1', bid_id: 'b1', public_token: 'rtok', recipient_email: 'pm@summit.example', created_at: '2026-08-01T00:00:00Z' }]
+    rows.jobs = [{ id: 'j804', hcp_number: '804', click_number: null, job_name: 'Tire Barn', status: 'working', customer_id: 'owner-1', gc_customer_id: 'gc-selwick' }]
+    rows.bidRooms = [{ id: 'room1', bid_id: 'b1', public_token: 'rtok', recipient_email: 'pm@selwick.example', created_at: '2026-08-01T00:00:00Z' }]
     rows.bidRoomEvents = [
       { room_id: 'room1', event_type: 'link_sent', occurred_at: '2026-08-01T10:00:00Z' },
       { room_id: 'room1', event_type: 'room_view', occurred_at: '2026-08-02T10:00:00Z' },
@@ -218,7 +218,7 @@ describe('personJourney — a real person on the strips', () => {
       { room_id: 's1', event_type: 'link_sent', occurred_at: '2026-08-10T09:00:00Z' },
     ]
     rows.testReports = [{ id: 't1', job_id: 'j804', sent_at: '2026-09-01T10:00:00Z', status: 'sent', test_type: 'hydrostatic' }]
-    rows.gcStatements = [{ sent_at: '2026-09-02T10:00:00Z', total: 151979, sent_to: 'ap@summit.example' }]
+    rows.gcStatements = [{ sent_at: '2026-09-02T10:00:00Z', total: 151979, sent_to: 'ap@selwick.example' }]
     rows.lienFilings = [{ job_id: 'j804', kind: 'notice_53_056', filed_at: '2026-09-15T10:00:00Z', served_at: null, sends: [], voided_at: null }]
     const j = customerJourney(gc, rows, NOW)
     expect(j.journeys).toEqual(['homeowner', 'gc'])
@@ -324,7 +324,7 @@ describe('personJourney — a real person on the strips', () => {
     expect(daysBetween('2026-08-07T12:00:00Z', NOW)).toBe(40)
     expect(jobLabel({ id: 'x', hcp_number: '363', click_number: null, job_name: 'P', status: null, customer_id: null, gc_customer_id: null })).toBe('J363')
     expect(jobLabel({ id: 'x', hcp_number: null, click_number: '12', job_name: 'P', status: null, customer_id: null, gc_customer_id: null })).toBe('J12')
-    expect(jobLabel({ id: 'x', hcp_number: null, click_number: null, job_name: 'Palmer', status: null, customer_id: null, gc_customer_id: null })).toBe('Palmer')
+    expect(jobLabel({ id: 'x', hcp_number: null, click_number: null, job_name: 'Palvern', status: null, customer_id: null, gc_customer_id: null })).toBe('Palvern')
   })
 })
 

@@ -12,7 +12,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 
 const LEGACY =
-  'Three decisions for Wendi: (1) SMALL-TI RESIDUAL — approve either a footage residual (~$6-8k) or ~30% higher per-fixture all-ins? (2) TAKE 5 PROTO PACKAGE — approve minting a package entry? Also confirm: CA piping is plumber scope on Take 5s? (3) HUNTER RD BAND — bank this as a market-band flag rather than recalibrating the book down.'
+  'Three decisions for Wendi: (1) SMALL-TI RESIDUAL — approve either a footage residual (~$6-8k) or ~30% higher per-fixture all-ins? (2) TUNE 5 PROTO PACKAGE — approve minting a package entry? Also confirm: CA piping is plumber scope on Tune 5s? (3) HUNTER RD BAND — bank this as a market-band flag rather than recalibrating the book down.'
 
 const questions = [
   { id: '836b6c22-b8e0-4fb5-856d-b4e9d071099c', twin_user_id: 'twin-1', about_bid_id: 'shell-425', mission: 'backtest-slate-2026-08-31', question: LEGACY, status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-01T04:23:26Z', audience: 'estimator', kind: 'decision', topic: null, choices: null, recommended: null },
@@ -56,8 +56,8 @@ describe('TwinOwnerMemoCard', () => {
     expect(screen.queryByText('Carry travel past 200 miles?')).toBeNull()
     // Four decisions: the three numbered parts plus the "Also confirm".
     expect(screen.getByText('Small-ti residual')).toBeTruthy()
-    expect(screen.getByText('Take 5 proto package')).toBeTruthy()
-    expect(screen.getByText('Take 5 proto package · also')).toBeTruthy()
+    expect(screen.getByText('Tune 5 proto package')).toBeTruthy()
+    expect(screen.getByText('Tune 5 proto package · also')).toBeTruthy()
     expect(screen.getByText('Hunter rd band')).toBeTruthy()
     // "either A or B" became two taps.
     expect((screen.getByLabelText('Decision 1 taps') as HTMLInputElement).value).toBe('footage residual, ~30% higher per-fixture all-ins')
@@ -67,7 +67,7 @@ describe('TwinOwnerMemoCard', () => {
     await waitFor(() => expect(updates.length).toBe(1))
     expect(inserted).toHaveLength(4)
     expect(inserted[0]).toMatchObject({ twin_user_id: 'twin-1', about_bid_id: 'shell-425', status: 'open', audience: 'estimator', kind: 'decision', topic: 'small-ti-residual', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' })
-    expect(inserted[2]).toMatchObject({ question: 'CA piping is plumber scope on Take 5s?', choices: ['Yes', 'No'] })
+    expect(inserted[2]).toMatchObject({ question: 'CA piping is plumber scope on Tune 5s?', choices: ['Yes', 'No'] })
     expect(updates[0]).toMatchObject({ id: '836b6c22-b8e0-4fb5-856d-b4e9d071099c', patch: { status: 'dismissed', answer: 'Re-asked as 4 one-decision questions from the Console.' } })
   })
 

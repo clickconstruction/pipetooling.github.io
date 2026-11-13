@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The Lien window's property kind: it is read from the job's own row, first and on its own, and the window says
- * nothing about the kind until that read lands. Job 891 (Take 5- Liberty Hill, a GC job on a commercial record)
+ * nothing about the kind until that read lands. Job 891 (Tune 5- Liberty Hill, a GC job on a commercial record)
  * opened on "Property kind not set" with the residential dates, the affidavit Nov 16 for Dec 15: the kind was the
  * last of five reads, behind the full job, the payers and the contracts, and the link came from the opener's copy
  * of the row, which can lag a link made since the board loaded.
@@ -57,7 +57,7 @@ vi.mock('../../lib/supabaseAccessTokenForEdge', () => ({ getAccessTokenForEdgeFu
 
 const SITE = {
   id: 'site-891',
-  customer_id: 'gc-burd',
+  customer_id: 'gc-brund',
   address: '11730 TX-29, Liberty Hill, TX 78642',
   property_kind: 'non_residential',
   homestead: false,
@@ -74,13 +74,13 @@ function job891(over: Record<string, unknown> = {}) {
   return makeJob({
     id: 'job-891',
     hcp_number: '891',
-    job_name: 'Take 5- Liberty Hill',
+    job_name: 'Tune 5- Liberty Hill',
     job_address: '11730 TX-29, Liberty Hill, TX 78642',
     status: 'billed',
     customer_id: null,
     customer_name: null,
-    gc_customer_id: 'gc-burd',
-    gcCustomer: { id: 'gc-burd', name: 'Burd & Assoc.' },
+    gc_customer_id: 'gc-brund',
+    gcCustomer: { id: 'gc-brund', name: 'Brund & Assoc.' },
     bill_to_party: 'gc',
     customer_address_id: 'site-891',
     last_work_date: '2026-08-11',
@@ -102,7 +102,7 @@ beforeEach(() => {
   db.rows = {
     jobs_ledger: [{ id: 'job-891', customer_address_id: 'site-891' }],
     customer_addresses: [SITE],
-    customers: [{ id: 'gc-burd', name: 'Burd & Assoc.', address: '11805 Interstate 27, Ste B Amarillo, TX 79119', billing_email: null, contact_info: { email: 'crystal@burdassoc.test' } }],
+    customers: [{ id: 'gc-brund', name: 'Brund & Assoc.', address: '11805 Interstate 27, Ste B Amarillo, TX 79119', billing_email: null, contact_info: { email: 'crystal@burdassoc.test' } }],
     // An approved August day: the forecast's months carry their own notice dates.
     clock_sessions: [{ job_ledger_id: 'job-891', user_id: 'u-1', work_date: '2026-08-11', clocked_in_at: '2026-08-11T13:00:00Z', clocked_out_at: '2026-08-11T21:00:00Z', approved_at: '2026-08-12T00:00:00Z' }],
   }
@@ -176,7 +176,7 @@ describe('LienInstrumentsModal · the Mechanic’s lien tab prints the desk’s 
     // The period is the earlier form's paragraph 5: a paper approved before the short form (punch list #305), its desk item unmarked.
     db.rows.job_lien_desk_items = [{ id: 'd-1', job_id: 'job-891', kind: 'affidavit', status: 'approved', fields: { notice: {} }, voided_at: null, created_at: '2026-10-20T15:00:00Z' }]
     renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891({ last_work_date: null, created_at: '2026-08-18T05:40:28Z' })} />)
-    await waitFor(() => expect(document.body.textContent).toContain('The name and address of the original contractor is: Burd & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119.'))
+    await waitFor(() => expect(document.body.textContent).toContain('The name and address of the original contractor is: Brund & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119.'))
     expect(document.body.textContent).toContain('during the period from August 1, 2026 through August 31, 2026.')
     expect(document.body.textContent).not.toContain('from — through —')
     // The strip above the paper names the same month.
@@ -243,7 +243,7 @@ describe('LienInstrumentsModal · a paper keeps the form it was drafted on (punc
     renderWithProviders(<LienInstrumentsModal {...props} initialTab="affidavit" job={job891()} />)
     await waitFor(() => expect(document.body.textContent).toContain('Payment is requested for work done and materials furnished in August 2026.'))
     expect(document.body.textContent).toContain('Notice of the claim was sent to the owner by certified mail on October 14, 2026.')
-    expect(document.body.textContent).toContain('Claimant did so under a contract with Burd & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119, the original contractor.')
+    expect(document.body.textContent).toContain('Claimant did so under a contract with Brund & Assoc., 11805 Interstate 27, Ste B Amarillo, TX 79119, the original contractor.')
     expect(document.querySelector('[data-lien-window-form-note]')).toBeNull()
   })
 

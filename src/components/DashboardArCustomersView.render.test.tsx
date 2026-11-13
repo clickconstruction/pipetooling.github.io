@@ -21,9 +21,9 @@ function item(p: Partial<FinancialItem> & { key: string; jobId: string; customer
 }
 
 const ITEMS: FinancialItem[] = [
-  item({ key: '273 · Dudley (Lennox)', jobId: 'j273', customerId: 'c1', customerName: 'RMC- Dudley Mason', amount: 12520, dateYmd: '2026-03-16' }),
-  item({ key: '858 · Service Visit', jobId: 'j858', customerId: 'c1', customerName: 'RMC- Dudley Mason', amount: 7902 }),
-  item({ key: '800 · Service Visit', jobId: 'j800', customerId: 'c1', customerName: 'RMC- Dudley Mason', amount: 1600 }),
+  item({ key: '273 · Dunmere (Linmoor)', jobId: 'j273', customerId: 'c1', customerName: 'RLC- Dunmere Mallin', amount: 12520, dateYmd: '2026-03-16' }),
+  item({ key: '858 · Service Visit', jobId: 'j858', customerId: 'c1', customerName: 'RLC- Dunmere Mallin', amount: 7902 }),
+  item({ key: '800 · Service Visit', jobId: 'j800', customerId: 'c1', customerName: 'RLC- Dunmere Mallin', amount: 1600 }),
   item({ key: '412 · Quiet job', jobId: 'j412', customerId: 'c2', customerName: 'Quiet Builders', amount: 5000 }),
 ]
 
@@ -61,7 +61,7 @@ describe('AR Customers view — lien chips (v2.5488)', () => {
 
   it('unfolding the customer shows each job’s chip and sentence; the chip opens its door', () => {
     const { onOpenLien } = renderView()
-    fireEvent.click(screen.getByText('RMC- Dudley Mason'))
+    fireEvent.click(screen.getByText('RLC- Dunmere Mallin'))
     const lines = screen.getAllByTestId('ar-lien-line')
     expect(lines).toHaveLength(2)
     expect(lines[0]?.textContent).toContain('August’s § 53.056 notice · Waiting on Robert · since Oct 7')
@@ -78,7 +78,7 @@ describe('AR Customers view — lien chips (v2.5488)', () => {
     expect(screen.getByText('Quiet Builders')).toBeTruthy()
     fireEvent.click(screen.getByTestId('ar-lien-lens-out'))
     expect(screen.queryByText('Quiet Builders')).toBeNull()
-    expect(screen.getByText('RMC- Dudley Mason')).toBeTruthy()
+    expect(screen.getByText('RLC- Dunmere Mallin')).toBeTruthy()
     fireEvent.click(screen.getByTestId('ar-lien-lens-out'))
     expect(screen.getByText('Quiet Builders')).toBeTruthy()
   })

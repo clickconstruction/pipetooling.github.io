@@ -76,12 +76,12 @@ describe('buildAiaPrefillFromJob', () => {
   })
 
   it('addresses the owner block to the payer read beside the job, with the signed contract day', () => {
-    const pre = buildAiaPrefillFromJob({ ...minimalLimitedJob(), gc_customer_name: 'Heron Construction Group' }, null, {
-      ownerName: 'Heron Construction Group, LLC',
+    const pre = buildAiaPrefillFromJob({ ...minimalLimitedJob(), gc_customer_name: 'Hadlow Construction Group' }, null, {
+      ownerName: 'Hadlow Construction Group, LLC',
       ownerAddress: '900 Broadway St, San Antonio, TX 78215',
       contractSignedOn: '2026-07-14',
     })
-    expect(pre.g702_d6_owner_name).toBe('Heron Construction Group, LLC')
+    expect(pre.g702_d6_owner_name).toBe('Hadlow Construction Group, LLC')
     expect(pre.g702_d7_owner_address).toBe('900 Broadway St')
     expect(pre.g702_d8_owner_city_state_zip).toBe('San Antonio, TX 78215')
     expect(pre.g702_n9_contract_date).toBe('07/14/2026')
@@ -90,8 +90,8 @@ describe('buildAiaPrefillFromJob', () => {
   })
 
   it('names the GC as owner from the job row alone when nothing else was read', () => {
-    const pre = buildAiaPrefillFromJob({ ...minimalLimitedJob(), gc_customer_name: 'Heron Construction Group' }, null)
-    expect(pre.g702_d6_owner_name).toBe('Heron Construction Group')
+    const pre = buildAiaPrefillFromJob({ ...minimalLimitedJob(), gc_customer_name: 'Hadlow Construction Group' }, null)
+    expect(pre.g702_d6_owner_name).toBe('Hadlow Construction Group')
   })
 
   it('uses the Click number as the project number when the job has no HCP number', () => {

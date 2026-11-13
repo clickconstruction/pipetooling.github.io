@@ -19,7 +19,7 @@ Every RPC that calls the two functions follows without a change of its own. The 
 
 ## On prod when written
 
-2 open GC jobs had a blank kind, $500 between them: **1073** *Antonio Pretest* and **1074** *Decker Pretest*, both Done Right Foundation, both created 2026-10-08 with no property record. Beside them were 32 residential and 16 commercial open GC jobs.
+2 open GC jobs had a blank kind, $500 between them: **1073** *Antonio Pretest* and **1074** *Decker Pretest*, both Dead Level Foundation, both created 2026-10-08 with no property record. Beside them were 32 residential and 16 commercial open GC jobs.
 
 The October notice for each read **2027-01-15** before this migration and reads **2026-12-15** after it.
 

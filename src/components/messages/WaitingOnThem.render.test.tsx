@@ -23,7 +23,7 @@ afterEach(cleanup)
 const NOW = Date.parse('2026-10-21T05:10:00Z')
 const LINES: WaitLine[] = [
   { id: 'd1', contactId: 'c-dana', name: 'Dana Whitfield', kind: 'customer', direction: 'out', body: 'Dana, your estimate is ready, $4,860.00.', atMs: Date.parse('2026-10-18T18:31:00Z'), number: '(830) 555-0121' },
-  { id: 'k1', contactId: 'c-kim', name: 'Kim Coe', kind: 'customer', direction: 'out', body: 'Kim, the water heater is on the truck for Tuesday.', atMs: Date.parse('2026-10-14T20:00:00Z'), number: null },
+  { id: 'k1', contactId: 'c-kim', name: 'Kim Corl', kind: 'customer', direction: 'out', body: 'Kim, the water heater is on the truck for Tuesday.', atMs: Date.parse('2026-10-14T20:00:00Z'), number: null },
 ]
 
 describe('WaitingOnThem', { timeout: 15_000 }, () => {
@@ -31,7 +31,7 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     const onOpenThread = vi.fn()
     renderWithProviders(<WaitingOnThem pill="all" onOpenThread={onOpenThread} io={vi.fn(async () => LINES)} now={() => NOW} />)
     const rows = await screen.findAllByTestId('waiting-row')
-    expect(rows.map((r) => r.textContent)).toEqual(['Kim CoeUs · Kim, the water heater is on the truck for Tuesday. · Wed, Oct 14Their move · 6 dNudgeHeard back ▾', 'Dana WhitfieldUs · Dana, your estimate is ready, $4,860.00. · Sun, Oct 18Their move · 2 dNudgeHeard back ▾☎ Call'])
+    expect(rows.map((r) => r.textContent)).toEqual(['Kim CorlUs · Kim, the water heater is on the truck for Tuesday. · Wed, Oct 14Their move · 6 dNudgeHeard back ▾', 'Dana WhitfieldUs · Dana, your estimate is ready, $4,860.00. · Sun, Oct 18Their move · 2 dNudgeHeard back ▾☎ Call'])
     expect(screen.getByRole('heading', { name: 'Waiting on them (2)' })).toBeTruthy()
     fireEvent.click(screen.getAllByTestId('waiting-nudge')[0]!)
     expect(onOpenThread).toHaveBeenCalledWith('c-kim', { nudge: 'text' })
@@ -86,7 +86,7 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     const menu = screen.getByRole('menu', { name: 'How you heard back from Dana Whitfield' })
     expect(Array.from(menu.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['By phone', 'By text from my phone', 'In person', 'No answer needed'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'By phone' }))
-    expect(screen.getAllByTestId('waiting-row').map((r) => r.textContent?.slice(0, 7))).toEqual(['Kim Coe'])
+    expect(screen.getAllByTestId('waiting-row').map((r) => r.textContent?.slice(0, 7))).toEqual(['Kim Cor'])
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(1))
     expect(screen.getByText('Heard back from Dana Whitfield by phone. The line lands on the thread in ten seconds.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
@@ -103,7 +103,7 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     expect(screen.getAllByTestId('waiting-row')).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(screen.getAllByTestId('waiting-row')).toHaveLength(2)
-    expect(screen.getByText('Undone. Kim Coe is back in Waiting on them.')).toBeTruthy()
+    expect(screen.getByText('Undone. Kim Corl is back in Waiting on them.')).toBeTruthy()
     await act(() => new Promise((r) => setTimeout(r, 120)))
     expect(write).not.toHaveBeenCalled()
     cleanup()

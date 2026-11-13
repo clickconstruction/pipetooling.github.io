@@ -78,12 +78,12 @@ vi.mock('signature_pad', () => ({
 const TODAY = '2026-09-14'
 
 function row(job_id: string, work_month: string, deadline: string): LienNoticeMonthRow {
-  return { job_id, work_month, deadline, approved_hours: 82.6, noticed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, desk_item_id: null, desk_status: null, desk_months: null }
+  return { job_id, work_month, deadline, approved_hours: 82.6, noticed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, desk_item_id: null, desk_status: null, desk_months: null }
 }
 
 function deskData(): LienDeskData {
   const rows = [row('j650', '2026-06', '2026-09-15'), row('j650', '2026-07', '2026-10-15')]
-  const queue = buildLienDeskQueue(rows, [], { loberg: 'ask' }, TODAY)
+  const queue = buildLienDeskQueue(rows, [], { lowbeck: 'ask' }, TODAY)
   return {
     queue,
     summary: summarizeLienDeskForNeedsYou(queue),
@@ -96,9 +96,9 @@ function deskData(): LienDeskData {
     letterTwoByJob: {},
     ownerCallByJob: {},
     jobsById: {
-      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
+      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'AXO Schertz', job_address: '1204 Elwick Rd, Schertz, TX', customer_id: 'axo', customer_name: 'AXO Schertz', gc_customer_id: 'lowbeck', customer_address_id: null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
     },
-    gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
+    gcsById: { lowbeck: { id: 'lowbeck', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@lowbeck.test', policy: 'ask', policyNote: '' } },
     addressesById: {},
     ownerByJob: {},
     promisesByJob: {},
@@ -200,7 +200,7 @@ describe('LienDeskPage (/lien-desk)', () => {
     await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
     // The list writes nothing: no notice is picked for it.
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices')
-    fireEvent.click(screen.getByRole('button', { name: /ATI Schertz/ }))
+    fireEvent.click(screen.getByRole('button', { name: /AXO Schertz/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy())
     expect(container.querySelector('[data-lien-desk-list]')).toBeNull()

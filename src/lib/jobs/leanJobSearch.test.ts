@@ -10,16 +10,16 @@ import {
 
 describe('sanitizeLeanSearchTerm', () => {
   it('strips PostgREST breakers and squeezes whitespace', () => {
-    expect(sanitizeLeanSearchTerm('  Frantzen, (Water) "Heater" *  ')).toBe('Frantzen Water Heater')
+    expect(sanitizeLeanSearchTerm('  Franlow, (Water) "Heater" *  ')).toBe('Franlow Water Heater')
     expect(sanitizeLeanSearchTerm('plain')).toBe('plain')
   })
 })
 
 describe('buildLeanJobSearchOr', () => {
   it('covers the five flat columns with contains patterns', () => {
-    const or = buildLeanJobSearchOr('tovi')
+    const or = buildLeanJobSearchOr('tavin')
     expect(or).toBe(
-      'hcp_number.ilike.*tovi*,click_number.ilike.*tovi*,job_name.ilike.*tovi*,job_address.ilike.*tovi*,customer_name.ilike.*tovi*',
+      'hcp_number.ilike.*tavin*,click_number.ilike.*tavin*,job_name.ilike.*tavin*,job_address.ilike.*tavin*,customer_name.ilike.*tavin*',
     )
   })
 
@@ -84,7 +84,7 @@ describe('fetchLeanJobSearchIds by development name', () => {
       if (table === 'developments') {
         // The server's ilike is case-blind; the mock lowercases to say the same.
         const pattern = String(stepArg(steps, 'ilike', 1) ?? '').toLowerCase()
-        return { data: pattern === '%sagebrush%' ? [{ id: 'dev-1' }] : [], error: null }
+        return { data: pattern === '%sagemoor%' ? [{ id: 'dev-1' }] : [], error: null }
       }
       if (table === 'jobs_ledger') {
         const or = String(stepArg(steps, 'or', 0) ?? '')
@@ -98,7 +98,7 @@ describe('fetchLeanJobSearchIds by development name', () => {
   })
 
   it("a development's name finds its jobs the board has not loaded", async () => {
-    const res = await fetchLeanJobSearchIds('Sagebrush', 'cust-9')
+    const res = await fetchLeanJobSearchIds('Sagemoor', 'cust-9')
     expect(res).toEqual({ ok: true, ids: ['job-paid-house'] })
     const devQ = queries.find((q) => q.table === 'developments')!
     expect(stepArg(devQ.steps, 'select', 0)).toBe('id')
@@ -107,7 +107,7 @@ describe('fetchLeanJobSearchIds by development name', () => {
     const jobsQ = queries.find((q) => q.table === 'jobs_ledger')!
     // The flat columns still lead the same `or`; the development clause rides after them.
     expect(stepArg(jobsQ.steps, 'or', 0)).toBe(
-      'hcp_number.ilike.*Sagebrush*,click_number.ilike.*Sagebrush*,job_name.ilike.*Sagebrush*,job_address.ilike.*Sagebrush*,customer_name.ilike.*Sagebrush*,development_id.in.(dev-1)',
+      'hcp_number.ilike.*Sagemoor*,click_number.ilike.*Sagemoor*,job_name.ilike.*Sagemoor*,job_address.ilike.*Sagemoor*,customer_name.ilike.*Sagemoor*,development_id.in.(dev-1)',
     )
     // The customer filter and the row cap are as before.
     expect(stepArg(jobsQ.steps, 'eq', 0)).toBe('customer_id')
@@ -128,7 +128,7 @@ describe('fetchLeanJobSearchIds by development name', () => {
       table === 'jobs_ledger'
         ? { data: null, error: { message: 'permission denied for table jobs_ledger', code: '42501' } }
         : { data: [], error: null }
-    const res = await fetchLeanJobSearchIds('Sagebrush', null)
+    const res = await fetchLeanJobSearchIds('Sagemoor', null)
     expect(res.ok).toBe(false)
     if (res.ok) return
     expect(res.errorKind).toBe('server')
@@ -143,9 +143,9 @@ describe('fetchLeanJobSearchIds by development name', () => {
 
 describe('buildLeanJobSearchOr with development ids', () => {
   it('adds one in-clause for the matched developments and drops an id that would break the or', () => {
-    const or = buildLeanJobSearchOr('tovi', ['2a9f7b10-5b6e-4e1c-9d8a-1f2e3c4d5e6f', 'bad,id', 'dev-2'])
+    const or = buildLeanJobSearchOr('tavin', ['2a9f7b10-5b6e-4e1c-9d8a-1f2e3c4d5e6f', 'bad,id', 'dev-2'])
     expect(or.endsWith(',development_id.in.(2a9f7b10-5b6e-4e1c-9d8a-1f2e3c4d5e6f,dev-2)')).toBe(true)
-    expect(buildLeanJobSearchOr('tovi', [])).toBe(buildLeanJobSearchOr('tovi'))
-    expect(buildLeanJobSearchOr('tovi')).not.toContain('development_id')
+    expect(buildLeanJobSearchOr('tavin', [])).toBe(buildLeanJobSearchOr('tavin'))
+    expect(buildLeanJobSearchOr('tavin')).not.toContain('development_id')
   })
 })

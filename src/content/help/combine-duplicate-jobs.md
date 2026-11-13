@@ -69,6 +69,6 @@ Three things go on purpose, because the target rebuilds them. The note count, th
 
 ## The activity note
 
-After a combine, the target's **Job activity** gets a note posted under your name. It reads like *Combined "Johnny Ingram" (Job #877) into this job — source was Ready to bill at 100%*. The office and the crew both see the same explanation of where the extra history came from. The note preserves the source's last status and % done. Those otherwise disappear with the card.
+After a combine, the target's **Job activity** gets a note posted under your name. It reads like *Combined "Johnny Inglow" (Job #877) into this job — source was Ready to bill at 100%*. The office and the crew both see the same explanation of where the extra history came from. The note preserves the source's last status and % done. Those otherwise disappear with the card.
 
 The same note is posted when you delete a job via {{button:outline|Reassign to another job…}} in the Delete flow.

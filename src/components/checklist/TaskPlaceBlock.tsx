@@ -60,7 +60,7 @@ type Asked = { kind: 'idle' } | { kind: 'finding' } | { kind: 'found'; me: MyFix
  * - With no signal the picture does not come, and the block says so. The distance still answers,
  *   since a phone finds itself without a signal.
  */
-export function TaskPlaceBlock({ place, placedByName }: { place: TaskPlace; placedByName: string | null }) {
+export function TaskPlaceBlock({ place, placedByName, photoUrl = null }: { place: TaskPlace; placedByName: string | null; /** The giver's photo of the spot (PR 6): drawn beside the picture from above, so the two together need no other words. */ photoUrl?: string | null }) {
   const [asked, setAsked] = useState<Asked>({ kind: 'idle' })
   const [mapFailed, setMapFailed] = useState(false)
   const [bigOpen, setBigOpen] = useState(false)
@@ -85,6 +85,8 @@ export function TaskPlaceBlock({ place, placedByName }: { place: TaskPlace; plac
 
   return (
     <div data-task-place-block style={{ display: 'grid', gap: '0.5rem', marginTop: '0.6rem' }}>
+      <div style={photoUrl ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', alignItems: 'stretch' } : undefined}>
+      {photoUrl ? <TaskSpotPhotoView url={photoUrl} height={150} /> : null}
       {mapFailed ? (
         <p role="status" data-task-place-no-map style={noMap}>
           {TASK_PLACE_NO_MAP_WORDS}
@@ -110,6 +112,7 @@ export function TaskPlaceBlock({ place, placedByName }: { place: TaskPlace; plac
           <span aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 600 }} />
         </div>
       )}
+      </div>
       {asked.kind === 'found' && far ? (
         <p role="status" data-task-place-far style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
           <b>{far.lead}</b>
@@ -182,6 +185,64 @@ function TaskPlaceMapSheet({ title, place, pins, directions, onClose }: { title:
           </div>
         ) : null}
       </div>
+    </div>,
+    document.body,
+  )
+}
+
+/**
+ * The giver's photo of the spot, as the person doing the task sees it (punch list #328, PR 6). A
+ * press opens it full size. Drawn beside the place's map, or by itself on a task that has a photo
+ * and no place.
+ */
+export function TaskSpotPhotoView({ url, height = 180 }: { url: string; height?: number }) {
+  const [open, setOpen] = useState(false)
+  const [broken, setBroken] = useState(false)
+  if (broken) return null
+  return (
+    <>
+      <button
+        type="button"
+        data-task-spot-photo
+        onClick={() => setOpen(true)}
+        aria-label="Open the photo of the spot"
+        style={{ display: 'block', width: '100%', height, padding: 0, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer' }}
+      >
+        <img src={url} alt="The spot" onError={() => setBroken(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      </button>
+      {open ? <TaskSpotPhotoSheet url={url} onClose={() => setOpen(false)} /> : null}
+    </>
+  )
+}
+
+function TaskSpotPhotoSheet({ url, onClose }: { url: string; onClose: () => void }) {
+  const isTopmost = useModalStackEntry()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTopmost()) {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [isTopmost, onClose])
+  return createPortal(
+    <div
+      data-task-spot-photo-sheet
+      role="dialog"
+      aria-modal="true"
+      aria-label="The photo of the spot"
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.85)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClose()
+      }}
+    >
+      <img src={url} alt="The spot" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
+      <button type="button" onClick={onClose} style={{ position: 'absolute', right: 12, top: 'calc(12px + env(safe-area-inset-top, 0px))', minHeight: 40, padding: '0 0.9rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.6)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        Close
+      </button>
     </div>,
     document.body,
   )

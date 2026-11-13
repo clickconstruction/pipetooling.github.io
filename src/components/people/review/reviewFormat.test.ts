@@ -11,9 +11,9 @@ describe('signedCurrency', () => {
 
 describe('stripAddressZipState', () => {
   it('drops a trailing state and ZIP, and nothing else', () => {
-    expect(stripAddressZipState('105 Dover Rd San Antonio, TX 78209')).toBe('105 Dover Rd San Antonio')
-    expect(stripAddressZipState('105 Dover Rd, tx 78209-1234')).toBe('105 Dover Rd')
-    expect(stripAddressZipState('105 Dover Rd San Antonio')).toBe('105 Dover Rd San Antonio')
+    expect(stripAddressZipState('105 Dorrow Rd San Antonio, TX 78209')).toBe('105 Dorrow Rd San Antonio')
+    expect(stripAddressZipState('105 Dorrow Rd, tx 78209-1234')).toBe('105 Dorrow Rd')
+    expect(stripAddressZipState('105 Dorrow Rd San Antonio')).toBe('105 Dorrow Rd San Antonio')
     expect(stripAddressZipState('')).toBe('')
   })
 })

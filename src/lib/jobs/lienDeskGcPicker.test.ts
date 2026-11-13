@@ -23,17 +23,17 @@ function entry(over: Partial<LienDeskEntry> & { jobId: string; gcCustomerId: str
   }
 }
 
-const gcs = { rmc: { name: 'RMC- Dudley Mason' }, sp: { name: 'Southern Post Construction' }, lob: { name: 'Loberg Contracting' }, hol: { name: 'Michael Holub' }, tf: { name: 'TF Harper' } }
+const gcs = { rlc: { name: 'RLC- Dunmere Mallin' }, sp: { name: 'Southern Pine Construction' }, lob: { name: 'Lowbeck Contracting' }, hol: { name: 'Michael Holmby' }, tf: { name: 'TF Halden' } }
 
-// The live desk on 2026-09-25, cut down: RMC's six jobs (one awaiting, one missed), Southern Post awaiting,
-// Loberg's one job whose only month (June) has closed, Michael Holub's two ownerless jobs, TF Harper small.
+// The live desk on 2026-09-25, cut down: RLC's six jobs (one awaiting, one missed), Southern Pine awaiting,
+// Lowbeck's one job whose only month (June) has closed, Michael Holmby's two ownerless jobs, TF Halden small.
 const desk: LienDeskEntry[] = [
-  entry({ jobId: '258', gcCustomerId: 'rmc', openBalance: 9800 }),
-  entry({ jobId: '858', gcCustomerId: 'rmc', openBalance: 7902 }),
-  entry({ jobId: '866', gcCustomerId: 'rmc', openBalance: 3500 }),
-  entry({ jobId: '890', gcCustomerId: 'rmc', openBalance: 285 }),
-  entry({ jobId: '273', gcCustomerId: 'rmc', openBalance: 17585, pile: 'awaiting' }),
-  entry({ jobId: '881', gcCustomerId: 'rmc', openBalance: 1050, pile: 'missed', dueMonths: [], missedMonths: ['2026-07'], earliestDeadline: null, daysLeft: null }),
+  entry({ jobId: '258', gcCustomerId: 'rlc', openBalance: 9800 }),
+  entry({ jobId: '858', gcCustomerId: 'rlc', openBalance: 7902 }),
+  entry({ jobId: '866', gcCustomerId: 'rlc', openBalance: 3500 }),
+  entry({ jobId: '890', gcCustomerId: 'rlc', openBalance: 285 }),
+  entry({ jobId: '273', gcCustomerId: 'rlc', openBalance: 17585, pile: 'awaiting' }),
+  entry({ jobId: '881', gcCustomerId: 'rlc', openBalance: 1050, pile: 'missed', dueMonths: [], missedMonths: ['2026-07'], earliestDeadline: null, daysLeft: null }),
   entry({ jobId: '878', gcCustomerId: 'sp', openBalance: 38625, pile: 'awaiting' }),
   entry({ jobId: '650', gcCustomerId: 'lob', openBalance: 21800, dueMonths: [], missedMonths: ['2026-06'], earliestDeadline: '2026-09-15', daysLeft: -10 }),
   entry({ jobId: '473', gcCustomerId: 'hol', openBalance: 9455, pile: 'needs_owner', hasOwner: false }),
@@ -47,10 +47,10 @@ describe('buildLienGcPickerOptions', () => {
   const by = Object.fromEntries(opts.map((o) => [o.id, o]))
 
   it('sorts by money, and a GC with nothing left to claim goes last', () => {
-    expect(opts.map((o) => o.name)).toEqual(['RMC- Dudley Mason', 'Southern Post Construction', 'Michael Holub', 'TF Harper', 'Loberg Contracting'])
+    expect(opts.map((o) => o.name)).toEqual(['RLC- Dunmere Mallin', 'Southern Pine Construction', 'Michael Holmby', 'TF Halden', 'Lowbeck Contracting'])
   })
   it('counts jobs, money and what is stuck; sent entries are left out', () => {
-    expect(by.rmc).toMatchObject({ jobs: 6, open: 40122, awaiting: 1, missed: 1, needOwner: 0, nothingToClaim: false, earliestDeadline: '2026-10-15', daysLeft: 20 })
+    expect(by.rlc).toMatchObject({ jobs: 6, open: 40122, awaiting: 1, missed: 1, needOwner: 0, nothingToClaim: false, earliestDeadline: '2026-10-15', daysLeft: 20 })
     expect(by.hol).toMatchObject({ jobs: 2, needOwner: 2 })
     expect(by.tf).toMatchObject({ jobs: 1, open: 2918 })
   })
@@ -60,7 +60,7 @@ describe('buildLienGcPickerOptions', () => {
   })
   it('a window closing within a week lifts its GC to the top, soonest first', () => {
     const lifted = buildLienGcPickerOptions([...desk, entry({ jobId: '883', gcCustomerId: 'tf', openBalance: 2918, earliestDeadline: '2026-09-29', daysLeft: 4 })], gcs)
-    expect(lifted[0]!.name).toBe('TF Harper')
+    expect(lifted[0]!.name).toBe('TF Halden')
     expect(lifted[0]!.daysLeft).toBe(4)
     expect(lienGcPickerCloseWords(lifted[0]!, (d) => (d === '2026-09-29' ? 'Sep 29' : d))).toBe('closes Sep 29 · 4 days')
   })

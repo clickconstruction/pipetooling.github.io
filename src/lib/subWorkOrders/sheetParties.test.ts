@@ -6,7 +6,7 @@ const roster = [
   { id: 'malachi', name: 'Malachi', kind: 'sub', accountRole: 'superintendent' },
   { id: 'abraham', name: 'Abraham', kind: 'sub', accountRole: 'superintendent' },
   { id: 'michael', name: 'Michael A', kind: 'employee', accountRole: null },
-  { id: 'texas', name: 'Texas R & A Electrical LLC', kind: 'sub', accountRole: null },
+  { id: 'texas', name: 'Texas Q & E Electrical LLC', kind: 'sub', accountRole: null },
 ]
 const lookup = buildSheetPartiesLookup(roster)
 
@@ -38,7 +38,7 @@ describe('sheetParties', () => {
 
   it('a lone sub is just the sub, under the id key and the CURRENT roster name', () => {
     const p = sheetParties({ assigned_to_name: 'Texas R&A' }, [{ personId: 'texas', personName: null }], lookup)
-    expect(p).toMatchObject({ label: 'Texas R & A Electrical LLC', withLabel: null, crew: false, key: 'id:texas' })
+    expect(p).toMatchObject({ label: 'Texas Q & E Electrical LLC', withLabel: null, crew: false, key: 'id:texas' })
   })
 
   it('a crew-only sheet keeps every name as the label and nobody is "with"', () => {

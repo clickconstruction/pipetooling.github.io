@@ -71,10 +71,10 @@ const bill1 = makeInvoice({ id: 'b1', status: 'billed', amount: 26800, sequence_
 const job = makeJob({
   id: 'j650',
   hcp_number: '650',
-  job_name: 'ATI Schertz — As per plans',
-  customer_name: 'SCHERTZ STATION LTD',
-  gc_customer_id: 'gc-loberg',
-  gcCustomer: { id: 'gc-loberg', name: 'Loberg Contracting' },
+  job_name: 'AXO Schertz — As per plans',
+  customer_name: 'SAMPLE STATION LTD',
+  gc_customer_id: 'gc-lowbeck',
+  gcCustomer: { id: 'gc-lowbeck', name: 'Lowbeck Contracting' },
   master_user_id: 'master-1',
   invoices: [bill1],
   revenue: 26800,
@@ -96,7 +96,7 @@ const AWAITING = {
   minted_at: '2026-10-01T18:00:00Z',
   signature_requested_at: '2026-10-01T18:00:00Z',
   signer_user_id: 'master-1',
-  fields: { amount: '17777.51', companyName: 'Click Plumbing and Electrical', projectDescription: 'ATI Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
+  fields: { amount: '17777.51', companyName: 'Click Plumbing and Electrical', projectDescription: 'AXO Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
 }
 
 afterEach(() => {

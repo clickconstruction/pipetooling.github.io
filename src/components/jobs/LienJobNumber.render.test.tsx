@@ -38,10 +38,10 @@ describe('LienJobHeading', () => {
     const onRow = vi.fn()
     render(
       <div onClick={onRow}>
-        <LienJobHeading label="663 · Knight Contracting- Taylor (GRAEF)" onOpenJob={onOpenJob} />
+        <LienJobHeading label="663 · Kestrin Contracting- Taylor (GRAEF)" onOpenJob={onOpenJob} />
       </div>,
     )
-    const door = screen.getByRole('button', { name: '663 · Knight Contracting- Taylor (GRAEF)' })
+    const door = screen.getByRole('button', { name: '663 · Kestrin Contracting- Taylor (GRAEF)' })
     expect(door.getAttribute('data-testid')).toBe('lien-job-heading')
     expect(door.className).toBe('lienJobDoor')
     expect(door.style.background).toBe('none')
@@ -51,8 +51,8 @@ describe('LienJobHeading', () => {
   })
 
   it('with no door it is the one bold line it always was', () => {
-    const { container } = render(<LienJobHeading label="663 · Knight Contracting" />)
-    expect(container.innerHTML).toBe('<strong style="font-size: 1rem;">663 · Knight Contracting</strong>')
+    const { container } = render(<LienJobHeading label="663 · Kestrin Contracting" />)
+    expect(container.innerHTML).toBe('<strong style="font-size: 1rem;">663 · Kestrin Contracting</strong>')
   })
 
   it('a job with no name is its number alone', () => {

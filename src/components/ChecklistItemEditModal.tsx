@@ -19,6 +19,8 @@ import { useAuth } from '../hooks/useAuth'
 import { taskPlaceColumns, taskPlaceDraft, taskPlaceDraftChanged, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
 import { loadTaskPlace } from '../lib/tasks/taskPlaceIo'
 import { TaskPlaceRow } from './checklist/TaskPlaceRow'
+import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
+import { loadTaskSpotPhotoPath, putTaskSpotPhoto, removeTaskSpotPhotoFile, saveTaskSpotPhotoPath, taskSpotPhotoUrls } from '../lib/tasks/taskSpotPhotoIo'
 
 type UserRole =
   | 'dev'
@@ -159,6 +161,25 @@ export function ChecklistItemEditModal({
       const draft = taskPlaceDraft(p)
       setLoadedPlace(draft)
       setPlace(draft)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [itemId])
+  // PR 6: the photo of the spot, as loaded (its path) and as the editor has it now.
+  const [loadedPhotoPath, setLoadedPhotoPath] = useState<string | null>(null)
+  const [spotPhoto, setSpotPhoto] = useState<TaskSpotPhotoDraft | null>(null)
+  useEffect(() => {
+    setLoadedPhotoPath(null)
+    setSpotPhoto(null)
+    if (!itemId) return
+    let cancelled = false
+    void loadTaskSpotPhotoPath({ kind: 'item', id: itemId }).then(async (path) => {
+      if (cancelled || !path) return
+      const url = (await taskSpotPhotoUrls([path])).get(path) ?? null
+      if (cancelled) return
+      setLoadedPhotoPath(path)
+      setSpotPhoto({ kind: 'saved', path, previewUrl: url })
     })
     return () => {
       cancelled = true
@@ -318,6 +339,16 @@ export function ChecklistItemEditModal({
         })
         .eq('id', itemId)
       if (error) throw error
+      // The photo of the spot (#328, PR 6): a new picture replaces the old one, and no picture takes it off.
+      if (spotPhoto?.kind === 'new') {
+        const put = await putTaskSpotPhoto({ kind: 'item', id: itemId }, spotPhoto.id, spotPhoto.blob)
+        if ('error' in put) throw new Error(`The task was saved, but its photo was not: ${put.error}`)
+        if (loadedPhotoPath) void removeTaskSpotPhotoFile(loadedPhotoPath)
+      } else if (!spotPhoto && loadedPhotoPath) {
+        const why = await saveTaskSpotPhotoPath({ kind: 'item', id: itemId }, null)
+        if (why) throw new Error(`The task was saved, but its photo was not taken off: ${why}`)
+        void removeTaskSpotPhotoFile(loadedPhotoPath)
+      }
       // Task cards (#273, PR 2): the Done when… lines follow the edit; a ticked line gone is retired, never deleted.
       const lineErr = await syncItemLines(itemId, existingLines, parseLines(form.lines))
       if (lineErr) throw new Error(lineErr)
@@ -502,6 +533,7 @@ export function ChecklistItemEditModal({
             </div>
           </label>
           <TaskPlaceRow value={place} onChange={setPlace} />
+          <TaskSpotPhotoField value={spotPhoto} onChange={setSpotPhoto} busy={saving} />
           <label style={{ display: 'block', marginTop: '0.85rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>
               Done when… <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>what done means, one line each, ticked off on the card</span>

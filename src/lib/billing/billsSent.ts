@@ -25,11 +25,15 @@
  *
  * PR 5 takes the list out of the app: the lines on the screen as a spreadsheet (`billsSentCsv`) and as a page to
  * print (`billsSentListHtml`), each in the order and with the words the screen shows.
+ *
+ * PR 6 lets a person say how a bill went when the app did not send it: handed over, mailed, emailed from their own
+ * mailbox, sent from Housecall Pro. The record is one sent copy of kind `bill_by_hand` with no copy body
+ * (`byHandFiling`), so the bill leaves the gaps and reads as a line on the day it went, marked as someone's word.
  */
-import { companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
+import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
-import { canReadSentCopies, sentKindWords, type SentCopy } from '../sent/sentCopies'
+import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 
 /** Who may open the screen: the people who read sent copies, as the table's own policy (dev, master, assistant, controller). */
@@ -145,7 +149,7 @@ export interface BillsSentInput {
 }
 
 /** How it left, as the chips sort it. */
-export type BillsSentRoute = 'email' | 'text' | 'printed' | 'statement' | 'housecall_pro' | 'other'
+export type BillsSentRoute = 'email' | 'text' | 'printed' | 'statement' | 'housecall_pro' | 'by_hand' | 'other'
 
 /** The name the tile, the chip and the strip give a bill that has no send of any kind on record. */
 export const BILLS_SENT_GAP_LABEL = 'No send on record'
@@ -161,6 +165,7 @@ export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentChip; label: 
   { key: 'printed', label: 'Printed' },
   { key: 'statement', label: 'Statement' },
   { key: 'housecall_pro', label: 'Housecall Pro' },
+  { key: 'by_hand', label: 'Recorded by hand' },
   { key: 'missed', label: 'Did not arrive' },
   { key: 'gap', label: BILLS_SENT_GAP_LABEL },
 ]
@@ -296,7 +301,9 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
   }
   const wanted = input.copies.filter((c) => isBillsSentKind(c.kind))
   const riders = wanted.filter((c) => c.kind === 'bill_copy')
-  const sends = wanted.filter((c) => c.kind !== 'bill_copy').sort((a, b) => ms(b.sentAt) - ms(a.sentAt))
+  // A record made by hand is a person's word that a bill went, on the day they named: a line of its own shape.
+  const byHand = wanted.filter((c) => c.kind === BILLS_SENT_BY_HAND_KIND)
+  const sends = wanted.filter((c) => c.kind !== 'bill_copy' && c.kind !== BILLS_SENT_BY_HAND_KIND).sort((a, b) => ms(b.sentAt) - ms(a.sentAt))
 
   // Every send on record of each bill, oldest first, the page's own included once.
   const timesByBill = new Map<string, number[]>()
@@ -327,8 +334,12 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
   }
   const bareRows = (input.stripeRows ?? []).filter((r) => !covered.has(r.id))
   // A stamp stands for a bill that has no other record of going out.
-  const stamps = (input.stamps ?? []).filter((st) => !sends.some((c) => billIdOf(c) === st.billId))
+  const stamps = (input.stamps ?? []).filter((st) => ![...sends, ...byHand].some((c) => billIdOf(c) === st.billId))
   const texts = input.texts ?? []
+  for (const c of byHand) {
+    const billId = billIdOf(c)
+    if (billId) note(billId, ms(byHandWentAtIso(c)))
+  }
   for (const r of bareRows) note(r.billId, ms(r.atIso))
   for (const st of stamps) note(st.billId, ms(st.atIso))
   for (const t of texts) if (t.billId) note(t.billId, ms(t.atIso))
@@ -523,7 +534,24 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     }),
   )
 
-  const lines = [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
+  const byHandLines = byHand.map((c) => {
+    const how = byHandHowOf(c)
+    const recordedYmd = Number.isFinite(Date.parse(c.sentAt)) ? calendarYmdInAppTzFromIso(c.sentAt) : ''
+    const said = typeof c.sourceSnapshot?.note === 'string' ? c.sourceSnapshot.note.trim() : ''
+    return bareLine({
+      id: c.id,
+      atIso: byHandWentAtIso(c),
+      billId: billIdOf(c),
+      jobId: (c.jobIds ?? [])[0] ?? null,
+      dayOnly: true,
+      route: 'by_hand',
+      routeWords: () => BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === how)?.label ?? 'Recorded by hand',
+      toName: c.recipientName,
+      by: c.sentByName,
+      note: [`Recorded by hand${recordedYmd ? ` on ${formatWorkDateYmdWeekdayShortFriendly(recordedYmd)}` : ''}. The app sent nothing and kept no copy.`, said].filter(Boolean).join(' '),
+    })
+  })
+  const lines = [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines, ...byHandLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
   // A send that did not arrive still wants someone when its bill is open and nothing sent after it arrived.
   for (const line of lines) {
     if (line.deliveryTone !== 'bad' || line.paid) continue
@@ -576,6 +604,7 @@ export function billsSentPaidWords(line: Pick<BillsSentLine, 'paid' | 'paidOn'>)
 /** A bill with no send on record, as the strip above the days draws it. */
 export interface BillsSentGap {
   billId: string
+  jobId: string | null
   jobWords: string
   jobTo: string | null
   payer: string
@@ -605,6 +634,7 @@ export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, li
       const billedWords = ymd ? `Billed ${formatWorkDateYmdWeekdayShortFriendly(ymd)} at ${billsSentTime(u.billedAtIso)}.` : 'Billed.'
       return {
         billId: u.billId,
+        jobId: u.jobId,
         jobWords,
         jobTo: u.jobId ? `/jobs?edit=${encodeURIComponent(u.jobId)}` : null,
         payer,
@@ -947,4 +977,67 @@ ${gapBlock}
 ${days.length ? `<table>${days.map(dayBlock).join('')}</table>` : ''}
 <p style="margin-top:14px">Delivered means their mail server took the email. It does not mean someone read it. Printed ${esc(dayAndTime(opts.printedAtIso, false))}.</p>
 </body></html>`
+}
+
+
+/** The kind a sent copy carries when a person recorded, by hand, how a bill went. */
+export const BILLS_SENT_BY_HAND_KIND = 'bill_by_hand'
+
+/** How a bill went when the app did not send it. */
+export type BillsSentByHandHow = 'handed' | 'mailed' | 'own_mailbox' | 'housecall_pro'
+
+export const BILLS_SENT_BY_HAND_HOWS: ReadonlyArray<{ key: BillsSentByHandHow; label: string }> = [
+  { key: 'handed', label: 'Handed over' },
+  { key: 'mailed', label: 'Mailed' },
+  { key: 'own_mailbox', label: 'Emailed from a person’s own mailbox' },
+  { key: 'housecall_pro', label: 'Sent from Housecall Pro' },
+]
+
+function byHandHowOf(copy: BillsSentCopy): BillsSentByHandHow | null {
+  const how = copy.sourceSnapshot?.how
+  return BILLS_SENT_BY_HAND_HOWS.some((h) => h.key === how) ? (how as BillsSentByHandHow) : null
+}
+
+/** The moment a by-hand record's line sits at: noon, Central, on the day the person named; the day it was recorded when it names none. */
+function byHandWentAtIso(copy: BillsSentCopy): string {
+  const ymd = typeof copy.sourceSnapshot?.went_on === 'string' ? copy.sourceSnapshot.went_on : ''
+  const at = ymd ? appTzWallTimeMs(ymd, 12, 0) : NaN
+  return Number.isFinite(at) ? new Date(at).toISOString() : copy.sentAt
+}
+
+/** What the person fills in. */
+export interface BillsSentByHandDraft {
+  how: BillsSentByHandHow | ''
+  /** Who it went to: a name, and an address or number when they have one. */
+  toWhom: string
+  /** The day it went, YYYY-MM-DD. */
+  wentOnYmd: string
+  note: string
+}
+
+/** What the form still needs, as one sentence; '' when the record can be saved. */
+export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string): string {
+  if (!draft.how) return 'Pick how the bill went.'
+  if (!draft.toWhom.trim()) return 'Say who the bill went to.'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.wentOnYmd)) return 'Pick the day the bill went.'
+  if (draft.wentOnYmd > todayYmd) return 'The day cannot be after today.'
+  return ''
+}
+
+/**
+ * The sent copy a by-hand record files: no copy body, the bill as its source, and what the person said in
+ * `source_snapshot` (`how`, `went_on`, `note`). The addresses stay empty on purpose: the words are a person's, typed
+ * as they knew them, and an address there would read into a customer's thread as an email the app sent.
+ */
+export function byHandFiling(gap: Pick<BillsSentGap, 'billId' | 'jobWords'> & { jobId: string | null }, draft: BillsSentByHandDraft): SentFiling {
+  const label = BILLS_SENT_BY_HAND_HOWS.find((h) => h.key === draft.how)?.label ?? 'Recorded by hand'
+  return {
+    kind: BILLS_SENT_BY_HAND_KIND,
+    title: ['Bill', gap.jobWords, `${label}, recorded by hand`].filter(Boolean).join(' · '),
+    how: draft.how === 'handed' ? 'hand' : draft.how === 'mailed' ? 'mail' : 'email',
+    recipientName: draft.toWhom.trim(),
+    jobIds: [gap.jobId],
+    source: { table: BILL_SOURCE, id: gap.billId },
+    sourceSnapshot: { by_hand: true, how: draft.how, went_on: draft.wentOnYmd, note: draft.note.trim() },
+  }
 }

@@ -47,11 +47,11 @@ beforeEach(() => {
   box.db = makeFakeDb()
   const week = gcCertWeekStartYmd(todayYmdInAppTz())
   box.db.tables.users = [{ id: 'u-office', name: 'Taunya', email: 'taunya@example.com', role: 'assistant' }]
-  box.db.tables.customers = [{ id: 'gc-knight' }, { id: 'gc-harper' }]
+  box.db.tables.customers = [{ id: 'gc-kestrin' }, { id: 'gc-halden' }]
   box.db.tables.gc_review_certifications = [
-    { gc_customer_id: 'gc-knight', week_start: week, certified_at: `${week}T18:00:00Z`, total: 26000, snapshot: { rows: [{ key: 'j-knight', jobId: 'j-knight', remaining: 26000 }], total: 26000, jobCount: 1 } },
+    { gc_customer_id: 'gc-kestrin', week_start: week, certified_at: `${week}T18:00:00Z`, total: 26000, snapshot: { rows: [{ key: 'j-kestrin', jobId: 'j-kestrin', remaining: 26000 }], total: 26000, jobCount: 1 } },
   ]
-  box.db.tables.jobs_ledger = [{ id: 'j-knight', revenue: 26000 }, { id: 'j-harper', revenue: 30000 }]
+  box.db.tables.jobs_ledger = [{ id: 'j-kestrin', revenue: 26000 }, { id: 'j-halden', revenue: 30000 }]
 })
 
 /** The payload the RPC answers — the fake answers one, so each case sets the GC it is about. */
@@ -78,23 +78,23 @@ async function send(gcId: string) {
 
 describe('send-gc-statement-email holds a GC’s statement until it is checked (v2.5022)', () => {
   it('a GC checked this week and unchanged: it goes', async () => {
-    payloadFor('gc-knight', 'j-knight', 26000)
-    const { status, body } = await send('gc-knight')
+    payloadFor('gc-kestrin', 'j-kestrin', 26000)
+    const { status, body } = await send('gc-kestrin')
     expect(status).toBe(200)
     expect(body.success).toBe(true)
-    expect(mail).toEqual([['ap@gc-knight.example']])
+    expect(mail).toEqual([['ap@gc-kestrin.example']])
   })
 
   it('a GC not checked this week: held with the worklist row’s words, nothing sent, nothing audited', async () => {
-    payloadFor('gc-harper', 'j-harper', 30000)
-    expect(await send('gc-harper')).toEqual({ status: 200, body: { success: false, refused: 'unchecked', error: GC_STATEMENT_UNCHECKED_WORDS } })
+    payloadFor('gc-halden', 'j-halden', 30000)
+    expect(await send('gc-halden')).toEqual({ status: 200, body: { success: false, refused: 'unchecked', error: GC_STATEMENT_UNCHECKED_WORDS } })
     expect(mail).toEqual([])
     expect(box.db.writes.filter((w) => w.table === 'gc_statement_emails')).toEqual([])
   })
 
   it('checked, then a payment moved it: held until it is checked again', async () => {
-    payloadFor('gc-knight', 'j-knight', 25000)
-    expect((await send('gc-knight')).body).toMatchObject({ success: false, refused: 'unchecked' })
+    payloadFor('gc-kestrin', 'j-kestrin', 25000)
+    expect((await send('gc-kestrin')).body).toMatchObject({ success: false, refused: 'unchecked' })
     expect(mail).toEqual([])
   })
 })

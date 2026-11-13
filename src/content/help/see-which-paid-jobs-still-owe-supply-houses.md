@@ -31,7 +31,7 @@ Every row has two bars on the same scale.
 The chip says where the job stands. It reads {{chip:yellow|Owe suppliers}}, {{chip:blue|Floating}}, {{chip:gray|Awaiting customer}} or {{chip:green|Settled}}.
 
 :::example Reading a row
-**J804 · Summit GC — Auto Zone** shows In $23,472 / $32,600 and Out $8,921.73 owed — the customer is 72% paid, and $8,921.73 of supplier invoices are waiting. It sorts near the top under {{chip:yellow|Owe suppliers}}.
+**J804 · Selwick GC — Tire Barn** shows In $23,472 / $32,600 and Out $8,921.73 owed — the customer is 72% paid, and $8,921.73 of supplier invoices are waiting. It sorts near the top under {{chip:yellow|Owe suppliers}}.
 :::
 
 ## Pick one group

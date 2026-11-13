@@ -23,15 +23,15 @@ ver: v2.6741
 
 ## The ask
 
-The owner, 2026-10-24, after filing Click v Burd & Assoc. (job 891) on the Legal desk: *"Are
-there features that if we had added to the legal desk would have made this recording of the burd
+The owner, 2026-10-24, after filing Click v Brund & Assoc. (job 891) on the Legal desk: *"Are
+there features that if we had added to the legal desk would have made this recording of the brund
 situation better?"* The review found ten, ranked by what each would have saved on job 891, and the
-owner asked for each as a to-do with the Burd case as its example. This is rank 9.
+owner asked for each as a to-do with the Brund case as its example. This is rank 9.
 
 ## What happened on job 891
 
-Job 891's customer record carries one email, and it is not at the domain Burd's people use.
-Burd's legal@ address bounces. The letters for Oct 27 go to the president and the billing
+Job 891's customer record carries one email, and it is not at the domain Brund's people use.
+Brund's legal@ address bounces. The letters for Oct 27 go to the president and the billing
 contact, with copies to the owner of record and the tenant, and their addresses lived in the case
 notes. Others who mattered to the record, such as the city inspector, had no place on the matter,
 and a recorded call and its transcript lived outside the app.

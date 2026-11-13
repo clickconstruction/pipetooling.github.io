@@ -36,7 +36,7 @@ Three ways to get the packet out:
 
 - {{button:blue|Email from my inbox}} is the main path. The button opens a ready-to-send draft in your own email app. The draft is addressed to the contacts you picked, with the subject and packet filled in. You press send there. So the email comes **from your address**, and replies land straight in your inbox.
 - {{button:outline|Copy for email}} copies the addressed packet: the To line, the subject and the body. You can paste it into any compose window. Handy when you write email in the browser.
-- **Other → Send from app** is the original path. ClickTooling delivers *"Job account setup — 964 · Pondhill demo"* with the packet as a clean table. Replies still go to your email.
+- **Other → Send from app** is the original path. ClickTooling delivers *"Job account setup — 964 · Penmoor demo"* with the packet as a clean table. Replies still go to your email.
 
 The app can't see your inbox. So the first two paths finish with one honest tap. After the draft opens, or the packet copies, the window waits for you. Send the email, then hit {{button:blue|Sent — log it}} so the share is remembered. {{button:outline|Didn't send it}} backs out without recording anything.
 

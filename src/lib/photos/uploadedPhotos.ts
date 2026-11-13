@@ -176,7 +176,7 @@ export function whoWords(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 'dir
   return row.direction === 'out' ? `sent by ${name}` : `from ${name}`
 }
 
-/** *J1042 · Oak Hollow Apartments Building C · Ridgeway Builders*; a bid's *Bid 556 · Gun Dog Trail · Ridgeway*; or *No job tied* for a line on no job. */
+/** *J1042 · Oak Hollow Apartments Building C · Ridgeway Builders*; a bid's *Bid 556 · Gray Fox Trail · Ridgeway*; or *No job tied* for a line on no job. */
 export function jobWords(row: Pick<UploadedPhotoRow, 'job_id' | 'bid_id' | 'job_hcp_number' | 'job_click_number' | 'job_name' | 'customer_name' | 'bid_number'>): string {
   const number = (row.job_hcp_number ?? '').trim() || (row.job_click_number ?? '').trim()
   const parts: string[] = []

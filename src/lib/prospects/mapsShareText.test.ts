@@ -3,7 +3,7 @@ import { isMapsUrl, mapsKey, parseMapsShare } from './mapsShareText'
 
 describe('parseMapsShare', () => {
   it('reads the name, the address and the link from what Share copies', () => {
-    expect(parseMapsShare('Bexar Fire Protection\n1800 Cibolo Trail, Boerne, TX 78006\nhttps://maps.app.goo.gl/x7QzAbc')).toEqual({ name: 'Bexar Fire Protection', address: '1800 Cibolo Trail, Boerne, TX 78006', url: 'https://maps.app.goo.gl/x7QzAbc' })
+    expect(parseMapsShare('Baxter Fire Protection\n1800 Cibolo Trail, Boerne, TX 78006\nhttps://maps.app.goo.gl/x7QzAbc')).toEqual({ name: 'Baxter Fire Protection', address: '1800 Cibolo Trail, Boerne, TX 78006', url: 'https://maps.app.goo.gl/x7QzAbc' })
   })
   it('joins a two-line address, and takes a bare link alone', () => {
     expect(parseMapsShare('Comal Concrete Works\n210 Lantana Dr\nNew Braunfels, TX\nmaps.app.goo.gl/q9')?.address).toBe('210 Lantana Dr, New Braunfels, TX')
@@ -11,9 +11,9 @@ describe('parseMapsShare', () => {
     expect(parseMapsShare('https://www.google.com/maps/place/Bexar+Fire/@29.8,-98.7,17z')).toEqual({ name: '', address: '', url: 'https://www.google.com/maps/place/Bexar+Fire/@29.8,-98.7,17z' })
   })
   it('is null without a Maps link', () => {
-    expect(parseMapsShare('Bexar Fire Protection\n1800 Cibolo Trail')).toBeNull()
-    expect(parseMapsShare('https://bexarfire.example')).toBeNull()
-    expect(isMapsUrl('https://bexarfire.example/maps')).toBe(false)
+    expect(parseMapsShare('Baxter Fire Protection\n1800 Cibolo Trail')).toBeNull()
+    expect(parseMapsShare('https://baxterfire.example')).toBeNull()
+    expect(isMapsUrl('https://baxterfire.example/maps')).toBe(false)
   })
 })
 

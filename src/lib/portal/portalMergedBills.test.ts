@@ -10,7 +10,7 @@ import {
   type PortalJobRow,
 } from '../../../supabase/functions/_shared/portalMergedBills'
 
-const VIEWER = 'cust-knight'
+const VIEWER = 'cust-kestrin'
 
 function job(over: Partial<PortalJobRow> & { id: string }): PortalJobRow {
   return {
@@ -210,7 +210,7 @@ describe('share this bill (v2.3375)', () => {
     hosted_invoice_url: `https://pay.example/${id}`,
     shown_to_party,
   })
-  const names = { [VIEWER]: 'Maria Delgado', [GC]: 'Done Right Foundation' }
+  const names = { [VIEWER]: 'Maria Delgado', [GC]: 'Dead Level Foundation' }
 
   it('the ledger carries only what the viewer owes — the other party’s bill is not in the list, stamped or not', () => {
     const invoices = [line('i1', 'j1', 6420, '2026-08-03', 'gc'), line('i2', 'j2', 250, '2026-09-02', null)]
@@ -239,7 +239,7 @@ describe('share this bill (v2.3375)', () => {
     const invoices = [line('i2', 'j2', 250, '2026-09-02', 'customer')]
     const shared = buildPortalSharedBills({ jobs: [gcPays], invoices, payments: [], viewerCustomerId: VIEWER, partyNames: names })
     expect(shared).toHaveLength(1)
-    expect(shared[0]).toMatchObject({ billedTo: 'Done Right Foundation', amount: 250, viewerRole: 'customer' })
+    expect(shared[0]).toMatchObject({ billedTo: 'Dead Level Foundation', amount: 250, viewerRole: 'customer' })
     expect(buildPortalSharedBills({ jobs: [gcPays], invoices: [line('i2', 'j2', 250, '2026-09-02', null)], payments: [], viewerCustomerId: VIEWER, partyNames: names })).toEqual([])
   })
 

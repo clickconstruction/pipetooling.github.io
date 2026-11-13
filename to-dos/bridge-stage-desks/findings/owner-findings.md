@@ -32,14 +32,14 @@ Reviewed by driving each prototype (expand, plan, sheet, record, phone) with Pla
 ## Market (5)
 
 1. **must** · header (R1) · "$27.7k a week short of the field" states the gap but not the move; add the verdict sentence: "Call the two quiet GCs and put a value on Summit's 3 bids — that is this week's lever."
-2. **should** · tile 3 "To feed the field · $378k a week asked" · Not a lever he can pull this week (R4). Make the what-if pullable: "If Knight and MK come back at their old pace → about +$XXk a week asked," and keep the $378k arithmetic as its small print.
+2. **should** · tile 3 "To feed the field · $378k a week asked" · Not a lever he can pull this week (R4). Make the what-if pullable: "If Kestrin and MK come back at their old pace → about +$XXk a week asked," and keep the $378k arithmetic as its small print.
 3. **should** · "The asks, week by week" strip · A reading with no move. Fold it ("The weeks ▾ — lumpy is normal; empty weeks are the tell").
 4. **should** · rows · The five moves open planned (R2); "Add to the plan" becomes "Take it off the sheet".
 5. **could** · live rows' green "Oct 22 / Oct 19 / Oct 24" · green with no label reads as good news; say "last ask Oct 22" muted, green only when inside 7 days.
 
 ## Sales (5)
 
-1. **must** · footer "Record this as the week's plan" · With every call pruned off it still records (observed: removed Burd, recorded 3; removed all, recorded empty). Disable at zero (R3).
+1. **must** · footer "Record this as the week's plan" · With every call pruned off it still records (observed: removed Brund, recorded 3; removed all, recorded empty). Disable at zero (R3).
 2. **should** · mid-page "How this reads" paragraph (R5) · Move to the foot; it splits the bar from the rows it explains.
 3. **should** · header · Two bold claims compete ("About $460k … lands" and "$1.56M has gone quiet"). One verdict: "Four calls decide $1.56M this week." The $460k expectation lives in tile 1 alone.
 4. **could** · footer buttons · "Close" duplicates the ×; cut it, three buttons read cleaner.

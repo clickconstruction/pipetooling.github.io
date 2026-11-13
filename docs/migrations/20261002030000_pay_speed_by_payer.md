@@ -10,6 +10,6 @@ Pay speed counts each payment for whoever the bill went to. Every reader sampled
 
 Grants restated as before. No table, no trigger, no policy change.
 
-**Dry run** on prod in a rolled-back transaction (2026-10-01): 227 samples (was 176), company median 6 d (was 5); RMC- Dudley Mason 4 payments, 35 d (was 0); Knight Contracting 17, 24 d (was 1); Done Right Foundation 44, 10 d (was 4). The Data health list's measurable count (227) now equals the sampler's. As a dev, the app RPC returns the same numbers; as `authenticated`, calling `pay_speed_samples()` directly is refused.
+**Dry run** on prod in a rolled-back transaction (2026-10-01): 227 samples (was 176), company median 6 d (was 5); RLC- Dunmere Mallin 4 payments, 35 d (was 0); Kestrin Contracting 17, 24 d (was 1); Dead Level Foundation 44, 10 d (was 4). The Data health list's measurable count (227) now equals the sampler's. As a dev, the app RPC returns the same numbers; as `authenticated`, calling `pay_speed_samples()` directly is refused.
 
 **Apply order:** either. The old client looks up `customers[job.customer_id]`, which finds a GC-billed homeowner empty and falls back to the company median, as it already does for every GC job. The two client PRs that follow (Expected dates, then the lists that group by customer) read the payer.

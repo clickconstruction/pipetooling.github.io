@@ -3,18 +3,18 @@ import { buildOwnerPacket } from './ownerRecords'
 import { OWNER_RECORDS_NO_ADDRESS, ownerAcknowledgmentHtml, ownerAcknowledgmentLines, ownerCoverNoteLines, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from './ownerRecordsDocs'
 
 const fmt: OwnerRecordsDocFormat = { day: (ymd) => `D(${ymd})`, dateTime: (iso) => `T(${iso.slice(0, 16)})`, money: (n) => `$${n.toFixed(2)}` }
-const facts: OwnerRecordsDocFacts = { company: 'Click Plumbing and Electrical', owner: 'Khan Umar & Bangash Shazmeena', address: '9703 Lenox Hl, San Antonio', asOfYmd: '2026-10-05', requestedOnYmd: '2026-10-03' }
+const facts: OwnerRecordsDocFacts = { company: 'Click Plumbing and Electrical', owner: 'Karrow Ulric & Barrowby Shelmina', address: '9703 Linmor Hl, San Antonio', asOfYmd: '2026-10-05', requestedOnYmd: '2026-10-03' }
 
 describe('the words', () => {
   it('the cover note says they asked, as of when, what is inside, and that we keep our rights', () => {
     expect(ownerCoverNoteLines(facts, fmt)).toEqual([
-      'You asked us in writing on D(2026-10-03) for our records on 9703 Lenox Hl, San Antonio. They are enclosed.',
+      'You asked us in writing on D(2026-10-03) for our records on 9703 Linmor Hl, San Antonio. They are enclosed.',
       'This statement comes from our business records as of D(2026-10-05).',
       'It lists each job at this property, each bill, and each payment we received on those bills.',
       'It is not legal advice, and it says nothing about anyone else.',
       'Click Plumbing and Electrical keeps every right it has, including its lien rights.',
     ])
-    expect(ownerCoverNoteLines({ ...facts, requestedOnYmd: null }, fmt)[0]).toBe('You asked us in writing for our records on 9703 Lenox Hl, San Antonio. They are enclosed.')
+    expect(ownerCoverNoteLines({ ...facts, requestedOnYmd: null }, fmt)[0]).toBe('You asked us in writing for our records on 9703 Linmor Hl, San Antonio. They are enclosed.')
   })
 
   it('the acknowledgment is six plain statements', () => {
@@ -31,7 +31,7 @@ describe('the words', () => {
       expect(ownerAcknowledgmentLines({ ...facts, address }, fmt)[0]).toBe('I am an owner of this property.')
       expect(ownerCoverNoteLines({ ...facts, address }, fmt)[0]).toBe('You asked us in writing on D(2026-10-03) for our records on this property. They are enclosed.')
     }
-    expect(ownerAcknowledgmentLines(facts, fmt)[0]).toBe('I am an owner of the property at 9703 Lenox Hl, San Antonio.')
+    expect(ownerAcknowledgmentLines(facts, fmt)[0]).toBe('I am an owner of the property at 9703 Linmor Hl, San Antonio.')
   })
 
   it('a payment says the day it was paid, when it was recorded and how', () => {
@@ -45,9 +45,9 @@ describe('the papers', () => {
     {
       id: 'j273',
       number: '273',
-      name: 'Dudley <Lennox>',
-      address: '9703 Lenox Hl',
-      gcName: 'RMC- Dudley Mason',
+      name: 'Dunmere <Linmoor>',
+      address: '9703 Linmor Hl',
+      gcName: 'RLC- Dunmere Mallin',
       total: 20000,
       bills: [{ id: 'b1', amount: 12000, status: 'billed', billedAt: '2026-08-03T15:00:00Z', order: 0 }],
       payments: [
@@ -58,11 +58,11 @@ describe('the papers', () => {
   ])
 
   it('the packet is the cover note, the summary and each job with its bills and payments; what a person typed is escaped', () => {
-    const html = ownerPacketHtml(packet, { ...facts, owner: 'Khan & <Co>' }, fmt)
-    expect(html).toContain('Khan &amp; &lt;Co&gt;')
-    expect(html).toContain('Dudley &lt;Lennox&gt;')
-    expect(html).not.toContain('<Lennox>')
-    expect(html).toContain('Statement for 9703 Lenox Hl, San Antonio')
+    const html = ownerPacketHtml(packet, { ...facts, owner: 'Karrow & <Co>' }, fmt)
+    expect(html).toContain('Karrow &amp; &lt;Co&gt;')
+    expect(html).toContain('Dunmere &lt;Linmoor&gt;')
+    expect(html).not.toContain('<Linmoor>')
+    expect(html).toContain('Statement for 9703 Linmor Hl, San Antonio')
     expect(html).toContain('You asked us in writing on D(2026-10-03)')
     expect(html).toContain('Bill 1 · billed D(2026-08-03)')
     expect(html).toContain('Payment · D(2026-08-14) · recorded T(2026-08-15T14:00) · Check 1042')

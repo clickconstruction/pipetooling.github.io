@@ -31,7 +31,7 @@ export function useSiteCosts(jobIds: ReadonlyArray<string>, enabled: boolean): S
           supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: ids }),
           // One allocation per invoice on a job: job and invoice order the pages (the table has no id of its own).
           fetchAllRowsChunkedIn(ids, (chunk, from, to) => supabase.from('supply_house_invoice_job_allocations').select('job_id, invoice_id, pct, supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))').in('job_id', chunk).order('job_id').order('invoice_id').range(from, to), 'site supply allocations', paged),
-          // No `raw` on the embed: the totals never read it (the card id it carries is the Job window's display), and on a large site the raw payloads were 1.5 MB of the page's read (the Gun Dog spike, 2026-11-02).
+          // No `raw` on the embed: the totals never read it (the card id it carries is the Job window's display), and on a large site the raw payloads were 1.5 MB of the page's read (the Gray Fox spike, 2026-11-02).
           // `mercury_category` (v2.6493): the bank's own category, the fuel split's fallback when nobody has labelled the charge, for the Timeline's ⛽ stream.
           fetchAllRowsChunkedIn(ids, (chunk, from, to) => supabase.from('mercury_transaction_job_allocations').select('job_id, id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, mercury_category)').in('job_id', chunk).order('id').range(from, to), 'site card lines', paged),
           supabase.rpc('list_tally_parts_with_po'),

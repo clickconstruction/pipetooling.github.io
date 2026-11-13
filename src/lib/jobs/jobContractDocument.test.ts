@@ -15,10 +15,10 @@ import {
 import { jobContractChips, jobContractSignatureAuditLine, jobContractSigningUrl, jobContractStatus } from './jobContractLifecycle'
 
 const job = {
-  job_name: 'Palmer — WH & repairs',
+  job_name: 'Palvern — WH & repairs',
   job_address: '138 W Pat Blanco, Blanco TX 78606',
-  customer_name: 'Michael Palmer',
-  customer_email: 'mpalmer@example.com',
+  customer_name: 'Michael Palvern',
+  customer_email: 'mpalvern@example.com',
   customer_phone: null,
   revenue: 5000,
   fixtures: [
@@ -47,13 +47,13 @@ describe('prefill', () => {
 
   it('falls back to the job name and a null amount', () => {
     const f = buildJobContractPrefill({ job: { ...job, fixtures: [], revenue: 0 } })
-    expect(f.scope_lines).toEqual(['Palmer — WH & repairs'])
+    expect(f.scope_lines).toEqual(['Palvern — WH & repairs'])
     expect(f.amount_cents).toBeNull()
   })
 
   it('headings read from the street line', () => {
     expect(jobContractHeading(job)).toBe('Service agreement for 138 W Pat Blanco')
-    expect(jobContractHeading({ job_address: null, job_name: 'Coe WH' })).toBe('Service agreement — Coe WH')
+    expect(jobContractHeading({ job_address: null, job_name: 'Corl WH' })).toBe('Service agreement — Corl WH')
   })
 })
 
@@ -99,8 +99,8 @@ describe('fields and terms', () => {
       heading: 'Service agreement for 138 W Pat Blanco',
       jobNumber: '922',
       jobAddress: job.job_address,
-      customerName: 'Michael Palmer',
-      recipientName: 'Michael Palmer',
+      customerName: 'Michael Palvern',
+      recipientName: 'Michael Palvern',
       dateLabel: 'Sep 3, 2026',
       revision: 1,
       fields: { ...parseJobContractFields(null), scope_lines: ['Replace <heater>'], amount_cents: 500000 },
@@ -186,8 +186,8 @@ describe('lifecycle', () => {
     expect(jobContractChips({ status: 'sent', voided_at: null, signer_mode: null, send_count: 1, view_count: 0, sent_channel: 'handed' })[0]).toEqual({ label: 'handed over · awaiting signature', tone: 'sent' })
     expect(jobContractSigningUrl('https://clicktooling.com/', 'ab c')).toBe('https://clicktooling.com/contract/sign?t=ab%20c')
     expect(
-      jobContractSignatureAuditLine({ signed_at: '2026-09-03T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw', signer_consented_at: '2026-09-03T00:14:00Z' }),
-    ).toMatch(/^Signed electronically by Michael Palmer \(drawn\) · Sep 2, 2026, 7:14 PM CT · consent recorded · 15 U\.S\.C\. § 7001 · Tex\. Bus\. & Com\. Code ch\. 322$/)
+      jobContractSignatureAuditLine({ signed_at: '2026-09-03T00:14:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'draw', signer_consented_at: '2026-09-03T00:14:00Z' }),
+    ).toMatch(/^Signed electronically by Michael Palvern \(drawn\) · Sep 2, 2026, 7:14 PM CT · consent recorded · 15 U\.S\.C\. § 7001 · Tex\. Bus\. & Com\. Code ch\. 322$/)
   })
 })
 
@@ -209,7 +209,7 @@ describe('signed document links (v2.2744)', () => {
 
 describe('the warranty in place of a contract (2026-11-02)', () => {
   const fields = { ...parseJobContractFields({ scope_lines: ['Replace the water heater'], amount_cents: 185000, payment_terms_key: 'on_completion' }), initial_lines: ['The work listed above is the work I asked for.', 'The price is the price we agreed on.'] }
-  const base = { heading: 'Warranty for 138 W Pat Blanco', jobNumber: '1312', jobAddress: '138 W Pat Blanco', customerName: 'Michael Palmer', recipientName: 'Michael Palmer', dateLabel: 'Nov 2, 2026', revision: 1, fields, termsHtml: '<p>1. The work.</p>', templateName: 'Built-in warranty terms', issuer: null }
+  const base = { heading: 'Warranty for 138 W Pat Blanco', jobNumber: '1312', jobAddress: '138 W Pat Blanco', customerName: 'Michael Palvern', recipientName: 'Michael Palvern', dateLabel: 'Nov 2, 2026', revision: 1, fields, termsHtml: '<p>1. The work.</p>', templateName: 'Built-in warranty terms', issuer: null }
 
   it('parses the lines to initial, trimmed, blanks dropped, and none on an older row', () => {
     expect(parseJobContractFields({ initial_lines: [' The work. ', '', 4, 'The price.'] }).initial_lines).toEqual(['The work.', 'The price.'])

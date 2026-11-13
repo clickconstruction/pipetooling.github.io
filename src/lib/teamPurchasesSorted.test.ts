@@ -43,12 +43,12 @@ describe('parsing', () => {
   it('reads job splits and skips rows with no job', () => {
     expect(
       parseSortedJobSplits([
-        { job_id: 'j1', amount: '-40', hcp_number: '1048', job_name: 'Loberg remodel', service_type_id: 'plumbing' },
+        { job_id: 'j1', amount: '-40', hcp_number: '1048', job_name: 'Lowbeck remodel', service_type_id: 'plumbing' },
         { amount: 5 },
         null,
       ]),
     ).toEqual([
-      { jobId: 'j1', amount: -40, hcpNumber: '1048', clickNumber: null, jobName: 'Loberg remodel', serviceTypeId: 'plumbing' },
+      { jobId: 'j1', amount: -40, hcpNumber: '1048', clickNumber: null, jobName: 'Lowbeck remodel', serviceTypeId: 'plumbing' },
     ])
     expect(parseSortedJobSplits(null)).toEqual([])
   })
@@ -64,10 +64,10 @@ describe('sortedWentToLines', () => {
   it('names one job', () => {
     expect(
       sortedWentToLines(
-        { job_splits: [{ job_id: 'j1', amount: -100.02, hcp_number: '1048', job_name: 'Loberg remodel', service_type_id: 'plumbing' }], invoice_links: [] },
+        { job_splits: [{ job_id: 'j1', amount: -100.02, hcp_number: '1048', job_name: 'Lowbeck remodel', service_type_id: 'plumbing' }], invoice_links: [] },
         PREFIXES,
       ),
-    ).toEqual(['JP1048 · Loberg remodel'])
+    ).toEqual(['JP1048 · Lowbeck remodel'])
   })
 
   it('names each job of a split with its share', () => {

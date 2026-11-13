@@ -60,16 +60,16 @@ const offsets: PartnerLedgerOffset[] = [
   { id: 'o-p2', type: 'utility_overage', amount: 475.73, occurred_date: '2026-08-20', description: null },
 ]
 const attachments = new Map<string, OffsetAttachment>([
-  ['o-att', { pay_stub_id: 'sA', person_name: 'Bryan Herber' }],
-  ['o-p1', { pay_stub_id: null, person_name: 'Bryan Herber' }],
-  ['o-p2', { pay_stub_id: null, person_name: 'Bryan Herber' }],
+  ['o-att', { pay_stub_id: 'sA', person_name: 'Bryan Helbrow' }],
+  ['o-p1', { pay_stub_id: null, person_name: 'Bryan Helbrow' }],
+  ['o-p2', { pay_stub_id: null, person_name: 'Bryan Helbrow' }],
 ])
 
 const summary: PartnerSummary = {
   exists: true,
   partnership_id: 'pp1',
-  display_name: 'Bryan Herber',
-  company_name: 'Herber Electric',
+  display_name: 'Bryan Helbrow',
+  company_name: 'Helbrow Electric',
   started_on: '2026-03-22',
   status: 'active',
   balance: 967.6,
@@ -94,7 +94,7 @@ describe('splitPartnerBalance — the three office figures from one payload', ()
   it('a pending credit lifts the ledger balance and the attaching figure together; the posted chain never moves', () => {
     const credit: PartnerLedgerOffset = { id: 'o-c', type: 'employee_credit', amount: 100, occurred_date: '2026-08-21', description: 'Tool credit' }
     const att = new Map(attachments)
-    att.set('o-c', { pay_stub_id: null, person_name: 'Bryan Herber' })
+    att.set('o-c', { pay_stub_id: null, person_name: 'Bryan Helbrow' })
     const s = splitPartnerBalance(stubs, [...offsets, credit], att)
     expect(s.postedBalance).toBe(967.6)
     expect(s.attaching).toBe(-1875.73)
@@ -204,9 +204,9 @@ describe('pendingPartnerOffsets', () => {
     const credit: PartnerLedgerOffset = { id: 'o-c', type: 'profit_share', amount: 300, occurred_date: '2026-08-22', description: null }
     expect(pendingPartnerOffsets(stubs, [...offsets, credit], new Map()).map((o) => o.id)).toEqual(['o-p2', 'o-p1'])
     const att = new Map(attachments)
-    att.set('o-c', { pay_stub_id: null, person_name: 'Bryan Herber' })
+    att.set('o-c', { pay_stub_id: null, person_name: 'Bryan Helbrow' })
     expect(pendingPartnerOffsets(stubs, [...offsets, credit], att).map((o) => o.id)).toEqual(['o-c', 'o-p2', 'o-p1'])
-    att.set('o-c', { pay_stub_id: 'sB', person_name: 'Bryan Herber' })
+    att.set('o-c', { pay_stub_id: 'sB', person_name: 'Bryan Helbrow' })
     expect(pendingPartnerOffsets(stubs, [...offsets, credit], att).map((o) => o.id)).toEqual(['o-p2', 'o-p1'])
   })
 })

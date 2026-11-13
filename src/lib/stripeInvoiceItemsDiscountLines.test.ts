@@ -66,7 +66,7 @@ const asStripe = (rows: Row[]): JobFixtureForStripe[] =>
     discount_basis_positions: r.discount_basis_positions,
   }))
 const build = (fixtures: JobFixtureForStripe[], all: JobFixtureForStripe[], targetAmountCents: number) =>
-  buildStripeInvoiceItemsFromFixtures({ fixtures, allFixtures: all, targetAmountCents, customerName: 'Megan', jobName: 'Megan Connell', hcpNumber: '892' })
+  buildStripeInvoiceItemsFromFixtures({ fixtures, allFixtures: all, targetAmountCents, customerName: 'Megan', jobName: 'Megan Corbray', hcpNumber: '892' })
 
 describe('Stripe composer — a draw that bills one stage', () => {
   it('prints the stage at its real price and the discount share as a negative line, summing to the draw', () => {

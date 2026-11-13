@@ -3,10 +3,10 @@ import { CALL_OPENINGS, EMPTY_CALL_STATE, callBack, callCard, callHasFacts, call
 import { affidavitPileFor, parseOwnerCall } from './lienOwnerCall'
 
 const facts: CallLetterFacts = {
-  jobLabel: '273 · Dudley (Lennox)',
-  property: '9703 Lenox Hl, San Antonio, TX 78230',
+  jobLabel: '273 · Dunmere (Linmoor)',
+  property: '9703 Linmor Hl, San Antonio, TX 78230',
   ownerName: 'Priya Natarajan',
-  gcName: 'RMC',
+  gcName: 'RLC',
   us: 'Click',
   instrument: 'notice_53_056',
   letterKind: 'residential',
@@ -22,10 +22,10 @@ const fmt = { day: (d: string) => d, money: (n: number) => `$${n.toLocaleString(
 describe('the owner’s call as a conversation (v2.3854)', () => {
   it('opens with counsel’s frame and the six openings in the owner’s words', () => {
     const c = callCard(facts, EMPTY_CALL_STATE, fmt)
-    expect(c.say).toContain('Thanks for calling about the notice on 9703 Lenox Hl.')
-    expect(c.say).toContain('you did nothing wrong by paying RMC. You didn’t hire us, and this is not a lawsuit.')
+    expect(c.say).toContain('Thanks for calling about the notice on 9703 Linmor Hl.')
+    expect(c.say).toContain('you did nothing wrong by paying RLC. You didn’t hire us, and this is not a lawsuit.')
     expect(c.replies.map((r) => r.key)).toEqual(CALL_OPENINGS.map((o) => `opening:${o.key}`))
-    expect(c.replies[0]!.words).toBe('“I already paid RMC — everything.”')
+    expect(c.replies[0]!.words).toBe('“I already paid RLC — everything.”')
     expect(callHasFacts(EMPTY_CALL_STATE)).toBe(false)
     expect(callSentence(facts, EMPTY_CALL_STATE, fmt)).toBe('')
     expect(holdingWords(facts, fmt)).toBe('the residential § 53.056 notice mailed 2026-09-22')
@@ -38,9 +38,9 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
     expect(s.owesGc).toBe('no')
     let c = callCard(facts, s, fmt)
     expect(c.say).toContain('the law doesn’t ask you to pay twice for anything you paid before our notice reached you')
-    expect(c.say).toContain('Did that stay with you, or has it gone to RMC?')
+    expect(c.say).toContain('Did that stay with you, or has it gone to RLC?')
     expect(c.replies.find((r) => r.key === 'ten_released')?.needs).toBe('released')
-    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan paid RMC in full.')
+    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan paid RLC in full.')
 
     s = callReply(s, 'ten_released', { releasedOn: '2026-09-10', completedOn: '2026-08-30' })
     expect(s.step).toBe('next')
@@ -49,19 +49,19 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
     expect(c.say).toContain('for you that was until 2026-09-29. Since it went out on 2026-09-10, the property can still be reached for that amount.')
     expect(c.say).toContain('I’m not saying you owe it')
     expect(c.say).toContain('we file a lien affidavit on the property by 2026-11-16 and send you a copy within five days')
-    expect(c.say).toContain('you get a release the same day and a copy goes to RMC')
+    expect(c.say).toContain('you get a release the same day and a copy goes to RLC')
     expect(c.cites).toContain('§ 53.105')
     expect(c.replies.map((r) => r.key)).toEqual(['pay_us_now', 'wait', 'callback'])
     expect(c.replies[2]!.words).toBe('“Can I talk to Robert?”')
-    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan paid RMC in full. They let the 10% go to RMC on 2026-09-10, 19 days before the hold ended. RMC finished 2026-08-30.')
+    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan paid RLC in full. They let the 10% go to RLC on 2026-09-10, 19 days before the hold ended. RLC finished 2026-08-30.')
     expect(callPile(s)).toBe('C')
 
     s = callReply(s, 'pay_us_now')
     expect(s.step).toBe('wrap')
     c = callCard(facts, s, fmt)
     expect(c.final).toBe(true)
-    expect(c.say).toContain('That’s your decision on your contract with RMC — not something the law makes you do.')
-    expect(c.say).toContain('a check payable only to Click, a release the same day, and a copy to RMC')
+    expect(c.say).toContain('That’s your decision on your contract with RLC — not something the law makes you do.')
+    expect(c.say).toContain('a check payable only to Click, a release the same day, and a copy to RLC')
     expect(c.say).toContain('Thanks for calling — you’ll hear from us before anything else happens.')
     expect(c.cites).toBe('counsel’s sign-off on this job first')
     expect(callSentence(facts, s, fmt)).toContain('They’d like to pay us directly — counsel’s sign-off first.')
@@ -76,18 +76,18 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
   it('“still owe some” asks the amount and says the § 53.081 hold; the 10% held is Pile A; the record carries the figure', () => {
     let s = callJump(EMPTY_CALL_STATE, 'owes')
     let c = callCard(facts, s, fmt)
-    expect(c.say).toContain('Please don’t send RMC that money until this is cleared. The notice lets you hold back $7,902.00 from it.')
-    expect(c.say).toContain('RMC emails us that you may pay us directly')
+    expect(c.say).toContain('Please don’t send RLC that money until this is cleared. The notice lets you hold back $7,902.00 from it.')
+    expect(c.say).toContain('RLC emails us that you may pay us directly')
     s = callReply(s, 'ten_held', { contractOpen: true })
     c = callCard(facts, s, fmt)
     expect(c.title).toBe('what happens next')
     expect(c.say).toContain('Please keep holding it until we send you a release.')
     expect(callPile(s)).toBe('A')
-    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan still owes RMC something. The 10% is still with them. RMC is still on the job.')
+    expect(callSentence(facts, s, fmt)).toBe('Priya Natarajan still owes RLC something. The 10% is still with them. RLC is still on the job.')
     // the amount typed with the reply on a balance card
     const t = callReply(callJump(EMPTY_CALL_STATE, 'sued'), 'still_owe', { amount: 14_000 })
     expect(t.step).toBe('owes')
-    expect(callSentence(facts, t, fmt)).toBe('Priya Natarajan still owes RMC about $14,000.')
+    expect(callSentence(facts, t, fmt)).toBe('Priya Natarajan still owes RLC about $14,000.')
     expect(callToOwnerCall(t, 'T', 'x').owesAmount).toBe(14_000)
   })
 
@@ -97,10 +97,10 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
     expect(sued.replies.map((r) => r.key)).toEqual(['paid_all', 'still_owe', 'not_sure'])
     const silent = callJump(EMPTY_CALL_STATE, 'gc_silent')
     expect(silent.gcSilentToThem).toBe(true)
-    expect(callCard(facts, silent, fmt).say).toContain('please don’t send RMC another payment that includes our $7,902.00')
+    expect(callCard(facts, silent, fmt).say).toContain('please don’t send RLC another payment that includes our $7,902.00')
     const pay = callJump(EMPTY_CALL_STATE, 'pay_us')
     expect(pay.wantsToPayUs).toBe(true)
-    expect(callCard(facts, pay, fmt).say).toContain('Before that — where do things stand with RMC')
+    expect(callCard(facts, pay, fmt).say).toContain('Before that — where do things stand with RLC')
     const cb = callJump(EMPTY_CALL_STATE, 'callback')
     expect(cb.callbackWanted).toBe(true)
     expect(callCard(facts, cb, fmt).say).toContain('I’ll have Robert call you today.')
@@ -113,7 +113,7 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
     expect(next.replies.map((r) => r.key)).toEqual(['wait', 'callback']) // pay_us_now is gone — they already asked
     const w = callReply(wrapped, 'wait')
     expect(callCard(facts, w, fmt).say).toBe('Thanks for calling — you’ll hear from us before anything else happens.')
-    expect(callSentence(facts, wrapped, fmt)).toBe('Priya Natarajan paid RMC in full. They’d like to pay us directly — counsel’s sign-off first.')
+    expect(callSentence(facts, wrapped, fmt)).toBe('Priya Natarajan paid RLC in full. They’d like to pay us directly — counsel’s sign-off first.')
   })
 
   it('the 10% released after the hold is “that part is done”; never held is § 53.105; the retainage notice says the affidavit-copy rule', () => {
@@ -125,9 +125,9 @@ describe('the owner’s call as a conversation (v2.3854)', () => {
     expect(callPile(never)).toBe('B')
     const ret: CallLetterFacts = { ...facts, instrument: 'retainage_53_057', letterKind: 'retainage', amount: '$4,250.00', months: '', affidavitBy: '' }
     const owes = callCard(ret, callJump(EMPTY_CALL_STATE, 'owes'), fmt)
-    expect(owes.say).toContain('Please don’t release retainage or make a final payment to RMC until this is cleared.')
+    expect(owes.say).toContain('Please don’t release retainage or make a final payment to RLC until this is cleared.')
     expect(owes.say).toContain('begins the day our filed affidavit reaches you')
-    expect(callCard(ret, EMPTY_CALL_STATE, fmt).say).toContain('the retainage notice on 9703 Lenox Hl')
+    expect(callCard(ret, EMPTY_CALL_STATE, fmt).say).toContain('the retainage notice on 9703 Linmor Hl')
     expect(callCard(ret, callReply(callJump(EMPTY_CALL_STATE, 'paid'), 'ten_unknown'), fmt).say).toContain('we file a lien affidavit on the property and send you a copy')
   })
 

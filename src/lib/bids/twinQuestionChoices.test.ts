@@ -10,7 +10,7 @@ import { answerFromChoice, orderedChoices } from './twinQuestionChoices'
 describe('checkEstimatorQuestionShape (the door)', () => {
   it('accepts one decision with 2–4 short choices and a recommended pick', () => {
     const r = checkEstimatorQuestionShape({
-      question: 'Take 5 Conroe, P2.01: add a footage residual on small TIs?',
+      question: 'Tune 5 Conroe, P2.01: add a footage residual on small TIs?',
       choices: ['Residual', 'Higher per-fixture', 'Neither'],
       recommended: 'residual',
     })
@@ -19,7 +19,7 @@ describe('checkEstimatorQuestionShape (the door)', () => {
 
   it('refuses the wall: long, many question marks, numbered decisions, no choices', () => {
     const wall =
-      'Slate doctrine asks from the backtest slate — full detail in each STG-6 stamp. Three decisions: (1) SMALL-TI RESIDUAL — approve a footage residual or ~30% higher per-fixture all-ins? (2) TAKE 5 PROTO PACKAGE — approve minting a book entry so the next proto scores inside ±5%? Also confirm: CA piping IS plumber scope? (3) HUNTER RD BAND — confirm we bank this as a market-band flag rather than recalibrating the book down.'
+      'Slate doctrine asks from the backtest slate — full detail in each STG-6 stamp. Three decisions: (1) SMALL-TI RESIDUAL — approve a footage residual or ~30% higher per-fixture all-ins? (2) TUNE 5 PROTO PACKAGE — approve minting a book entry so the next proto scores inside ±5%? Also confirm: CA piping IS plumber scope? (3) HUNTER RD BAND — confirm we bank this as a market-band flag rather than recalibrating the book down.'
     const r = checkEstimatorQuestionShape({ question: wall })
     expect(r.ok).toBe(false)
     if (r.ok) return
@@ -47,7 +47,7 @@ describe('checkEstimatorQuestionShape (the door)', () => {
 
   it('a plans ask fits the shape once it names the choices', () => {
     const r = checkEstimatorQuestionShape({
-      question: 'SpaceX Level 1: the file on the bid is the electrical set. Attach the plumbing sheets?',
+      question: 'SkyLab Level 1: the file on the bid is the electrical set. Attach the plumbing sheets?',
       choices: ['Attached — rerun', 'Use what is there', 'Skip this bid'],
       recommended: 'Attached — rerun',
     })

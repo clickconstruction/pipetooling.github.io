@@ -74,6 +74,7 @@ import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
 import { useTaskPlaces } from '../hooks/useTaskPlaces'
+import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceFarShort } from '../lib/tasks/taskPlace'
 import type { MyFix } from '../lib/materials/myLocation'
@@ -483,6 +484,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
   const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
   // Punch list #328: the places of the tasks on this tab, read beside the day and never inside it.
   const taskPlaces = useTaskPlaces([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
+  // PR 6: the giver's photo of the spot, by task. Its own read, as the places are.
+  const spotPhotos = useTaskSpotPhotos([...todayInstances, ...outstandingInstances].map((i) => i.checklist_item_id))
   // Where my tasks are (PR 4): the open tasks in the order they are listed, today's first and then the outstanding
   // ones. A task done today leaves the map. The numbers the dots wear are the ones the cards wear.
   const mapTasks = useMemo<TaskPlacesMapTask[]>(() => {
@@ -905,6 +908,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
                   placeNumber={placeNumbers.get(inst.id) ?? null}
                   placeFar={placeFarFor(inst)}
                   openSignal={shownTask?.id === inst.id ? shownTask.n : 0}
+                  spotPhotoUrl={spotPhotos.urlFor(inst.checklist_item_id)}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -1000,6 +1004,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setErr
         placeNumberFor={(inst) => placeNumbers.get(inst.id) ?? null}
         placeFarFor={(inst) => placeFarFor(inst as ChecklistInstance)}
         openInstance={shownTask}
+        spotPhotoUrlFor={(inst) => spotPhotos.urlFor((inst as ChecklistInstance).checklist_item_id)}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)

@@ -33,15 +33,15 @@ describe('financeAgingTone', () => {
 
 describe('filterFinanceItems', () => {
   const items = [
-    { label: '878 · Take 5- Seguin', sublabel: 'Billed invoice' },
-    { label: '650 · ATI Schertz', sublabel: null },
+    { label: '878 · Tune 5- Seguin', sublabel: 'Billed invoice' },
+    { label: '650 · AXO Schertz', sublabel: null },
     { label: 'Ryan (Garner HVAC)', sublabel: 'Sub labor · #717' },
   ]
 
   it('matches label and sublabel case-insensitively; empty query returns same array', () => {
     expect(filterFinanceItems(items, '')).toBe(items)
     expect(filterFinanceItems(items, '  ')).toBe(items)
-    expect(filterFinanceItems(items, 'take 5').map((i) => i.label)).toEqual(['878 · Take 5- Seguin'])
+    expect(filterFinanceItems(items, 'tune 5').map((i) => i.label)).toEqual(['878 · Tune 5- Seguin'])
     expect(filterFinanceItems(items, 'SUB LABOR').map((i) => i.label)).toEqual(['Ryan (Garner HVAC)'])
     expect(filterFinanceItems(items, '#717')).toHaveLength(1)
     expect(filterFinanceItems(items, 'zzz')).toHaveLength(0)

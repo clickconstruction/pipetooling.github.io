@@ -69,7 +69,7 @@ describe('plain words: a help guide', () => {
   })
 
   it('a guide written by the rules passes; one in the old voice names each failure with its line', () => {
-    const plain = ['---', 'title: x', '---', 'A submittal is the list of products you will install. The GC approves it first.', '', '## Steps', '- Tap {{button:blue|Share}}. The link is copied.', ':::example SpaceX', '22 rows (8 alternates) — nothing retyped.', ':::'].join('\n')
+    const plain = ['---', 'title: x', '---', 'A submittal is the list of products you will install. The GC approves it first.', '', '## Steps', '- Tap {{button:blue|Share}}. The link is copied.', ':::example SkyLab', '22 rows (8 alternates) — nothing retyped.', ':::'].join('\n')
     expect(helpGuidePlainWordsFailures(plain)).toEqual([])
     const old = ['---', 'title: x', '---', 'Bids → **Submittals** (the tab after Cover Letter; office and estimator roles).'].join('\n')
     const failures = helpGuidePlainWordsFailures(old)

@@ -7,9 +7,9 @@ type EstimateRow = Database['public']['Tables']['estimates']['Row']
 /**
  * What the Create job window seeds from an estimate. The job name is the
  * estimate's title — unless that title is still the app's own default
- * ("Estimate for Kimberly Coe"), in which case the job is named for the
+ * ("Estimate for Kimberly Corl"), in which case the job is named for the
  * customer when a name is known (v2.3748), plus the work when the estimate's
- * one line names it: "Kimberly Coe — Pretest" (v2.3766). The same rule runs in
+ * one line names it: "Kimberly Corl — Pretest" (v2.3766). The same rule runs in
  * SQL for jobs the signature makes on its own (`auto_create_job_from_signed_estimate`).
  */
 export function defaultJobFieldsFromEstimate(

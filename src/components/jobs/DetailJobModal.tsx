@@ -378,7 +378,7 @@ export function DetailJobModalCustomerPanel({
   const email = customerEmail?.trim() ?? ''
   const gcNameRaw = gcCustomerName?.trim() ?? ''
   // v2.1529 (Option B): the GC line only earns its row when it names a DIFFERENT
-  // company — "Heron Construction Group" twice was pure noise.
+  // company — "Hadlow Construction Group" twice was pure noise.
   const gcName = gcNameRaw.toLowerCase() === name.toLowerCase() ? '' : gcNameRaw
   const devName = developmentName?.trim() ?? ''
   const navigateToDevelopment = useNavigate()

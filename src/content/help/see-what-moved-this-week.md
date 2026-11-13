@@ -21,7 +21,7 @@ The week runs Monday to Sunday, Central time. You use the **‹ ›** arrows to 
 **Moved to Ready to Bill** · 2 jobs · $535
 943 · Phinisse — Wed — Abraham — $250
 **Moved to Billed** · 3 jobs · $19,800
-880 · Reliant Health — Thu — Taunya — $4,800
+880 · Relwyn Health — Thu — Taunya — $4,800
 :::
 
 - Every row shows the **job**, its **address** in small underneath, the **weekday**, **who moved it**, and the job's value. Some moves are made by the app itself. A Stripe payment marking a job paid is one. Those show as **Automatic**.

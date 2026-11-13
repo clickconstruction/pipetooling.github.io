@@ -3,7 +3,7 @@
  * The Photos look (punch list #247, PR 1): the row of tiles newest first with a tick where the day changes and
  * Show more at the end, the job picker and the source chips narrowing the read, a tile opening the viewer on
  * that photo with Next walking the row, the viewer's *Only X's photos* narrowing the row, and the empty state
- * naming the door. Gun Dog Trail's made-up rows over a fake io; no byte is read.
+ * naming the door. Gray Fox Trail's made-up rows over a fake io; no byte is read.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -102,7 +102,7 @@ function fakeIo(rows: UploadedPhotoRow[], pageSize = 100): { io: SitePhotosIo; a
 
 function Harness({ io, phone = false, openJob = () => {}, goToPieces = () => {}, door = 'office', role = 'dev' }: { io: SitePhotosIo; phone?: boolean; openJob?: (id: string) => void; goToPieces?: () => void; door?: 'office' | 'overview'; role?: string }) {
   const state = useSitePhotos({ jobIds: [J1, J2], bidIds: [], enabled: true, io })
-  return <DevelopmentPhotosLook state={state} pieces={PIECES} role={role} phone={phone} siteName="Gun Dog Trail" openJob={openJob} goToPieces={goToPieces} door={door} />
+  return <DevelopmentPhotosLook state={state} pieces={PIECES} role={role} phone={phone} siteName="Gray Fox Trail" openJob={openJob} goToPieces={goToPieces} door={door} />
 }
 
 async function draw(io: SitePhotosIo, over: Partial<Parameters<typeof Harness>[0]> = {}) {
@@ -198,7 +198,7 @@ describe('DevelopmentPhotosLook', () => {
     const goToPieces = vi.fn()
     await draw(io, { goToPieces })
     const empty = await screen.findByTestId('site-photos-empty')
-    expect(empty.textContent).toBe('Nothing filed yet on Gun Dog Trail. Jobs & bids lists its jobs. A photo on a report, a box or a checklist on one of them shows here within a minute.')
+    expect(empty.textContent).toBe('Nothing filed yet on Gray Fox Trail. Jobs & bids lists its jobs. A photo on a report, a box or a checklist on one of them shows here within a minute.')
     fireEvent.click(within(empty).getByText('Jobs & bids'))
     expect(goToPieces).toHaveBeenCalled()
     expect(screen.queryByTestId('site-photos-jobs')).toBeNull()
@@ -226,7 +226,7 @@ describe('DevelopmentPhotosLook', () => {
     const goToPieces = vi.fn()
     await draw(io, { door: 'overview', role: 'estimator', goToPieces })
     const empty = await screen.findByTestId('site-photos-empty')
-    expect(empty.textContent).toBe('No picture sent by text or email on Gun Dog Trail yet. The crews’ photos on the jobs are for the office.')
+    expect(empty.textContent).toBe('No picture sent by text or email on Gray Fox Trail yet. The crews’ photos on the jobs are for the office.')
     expect(within(empty).queryByRole('button')).toBeNull()
   })
 })

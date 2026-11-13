@@ -29,31 +29,31 @@ vi.mock('../../lib/jobs/lienNoticePayPageAssets', () => ({ buildPayPageAssets: a
 vi.mock('../../lib/supabaseAccessTokenForEdge', () => ({ getAccessTokenForEdgeFunctions: async () => null }))
 
 const INV = makeInvoice({
-  id: 'inv-867',
-  job_id: 'job-867',
-  amount: 1710,
+  id: 'inv-4102',
+  job_id: 'job-4102',
+  amount: 1500,
   sequence_order: 1,
   status: 'billed',
   billed_at: '2026-08-18T14:28:00Z',
   sent_to_customer_at: '2026-08-18T14:28:10Z',
   estimated_bill_date: '2026-09-05',
-  stripe_invoice_memo: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',
+  stripe_invoice_memo: 'Service Visit (HCP #4102) Added gas line and a second line under the porch.',
   bill_to_party: null,
   bill_to_email: null,
 })
 
 function job(over: Record<string, unknown> = {}) {
   return makeJob({
-    id: 'job-867',
-    hcp_number: '867',
-    job_name: 'Service Visit — 628 Terrell Rd (HCP 867)',
-    job_address: '628 Terrell Rd, San Antonio, TX 78209',
+    id: 'job-4102',
+    hcp_number: '4102',
+    job_name: 'Service Visit — 628 Tarrow Rd (HCP 4102)',
+    job_address: '628 Tarrow Rd, San Antonio, TX 78209',
     status: 'billed',
-    customer_id: 'cust-rizvi',
-    customer_name: 'Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima',
-    customer_email: 'rizvi@example.test',
-    gc_customer_id: 'cust-rmc',
-    gcCustomer: { id: 'cust-rmc', name: 'RMC- Dudley Mason' },
+    customer_id: 'cust-rilvo',
+    customer_name: 'Rilvo Sorn Zelmar & Kestmere Quillan Fenna',
+    customer_email: 'rilvo@example.test',
+    gc_customer_id: 'cust-rlc',
+    gcCustomer: { id: 'cust-rlc', name: 'RLC- Dunmere Mallin' },
     bill_to_party: 'gc',
     invoices: [INV],
     payments: [],
@@ -163,7 +163,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
       expect(document.querySelector('[data-demand-record-panel]')).toBeNull()
       expect(foot()).toBeNull()
       expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toMatch(/^Demand letter · \$/)
-      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service Visit — 628 Terrell Rd (HCP 867)')
+      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service Visit — 628 Tarrow Rd (HCP 4102)')
       expect(sheet.querySelectorAll('[aria-pressed]').length).toBe(4)
       fireEvent.click(screen.getByRole('button', { name: 'Back' }))
       expect(document.querySelector('[data-lien-record-sheet="demand"]')).toBeNull()
@@ -256,23 +256,23 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/the GC on the job/)).toBeTruthy())
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement
-    expect(debtor.textContent).toContain('RMC- Dudley Mason')
+    expect(debtor.textContent).toContain('RLC- Dunmere Mallin')
     expect(debtor.textContent).toContain('needs a mailing address')
     expect(debtor.textContent).toContain('The bill was addressed to the GC, so the demand goes there too.')
     expect(screen.getAllByRole('button', { name: '§ 53.056 notice' }).length).toBe(2) // the tab and the door in the debtor block
     // The homeowner is not the debtor.
-    expect(debtor.textContent).not.toContain('Rizvi')
+    expect(debtor.textContent).not.toContain('Rilvo')
 
     const stmt = document.querySelector('[data-demand-statement]') as HTMLElement
     expect(stmt.textContent).toContain('#1 — sent August 18, 2026 · due September 5, 2026')
-    expect(stmt.textContent).toContain('Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.')
-    expect(stmt.textContent).toContain('Balance due$1,710.00')
+    expect(stmt.textContent).toContain('Service Visit (HCP #4102) Added gas line and a second line under the porch.')
+    expect(stmt.textContent).toContain('Balance due$1,500.00')
     expect(stmt.textContent).toContain('Fix it on the bill')
 
     // The preview: the subject names the bill's number, the box the balance; no id fragment.
     expect(screen.getByText('Final demand for payment')).toBeTruthy()
     expect(screen.getByText('Invoice #1')).toBeTruthy()
-    expect((document.querySelector('[data-demand-amount-box]') as HTMLElement).textContent).toContain('Balance due$1,710.00')
+    expect((document.querySelector('[data-demand-amount-box]') as HTMLElement).textContent).toContain('Balance due$1,500.00')
     expect(screen.getByText('Statement of account')).toBeTruthy()
     expect(screen.queryByText(/Details of Debt/)).toBeNull()
 
@@ -304,7 +304,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(document.querySelector('[data-demand-pay-codes]')).toBeNull()
     expect(code.textContent).toContain('Pay online')
     expect(code.textContent).toContain('Scan to pay')
-    expect(code.textContent).toContain('clicktooling.com/pay/inv-867')
+    expect(code.textContent).toContain('clicktooling.com/pay/inv-4102')
     // The letter ends before the account: the signature, then the break, then the statement.
     const brk = document.querySelector('[data-demand-page-break]') as HTMLElement
     expect(brk).toBeTruthy()
@@ -339,7 +339,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
 
   // v2.3515: the § 31.04 gate reads every payment on the job, not the letter's claim sum.
   it('a payment on the job — even on another bill — makes the theft-of-services report not applicable', async () => {
-    const paidElsewhere = job({ payments: [{ id: 'p1', job_id: 'job-867', invoice_id: 'inv-other', amount: 8000, paid_on: '2026-06-04', sequence_order: 0 }] })
+    const paidElsewhere = job({ payments: [{ id: 'p1', job_id: 'job-4102', invoice_id: 'inv-other', amount: 8000, paid_on: '2026-06-04', sequence_order: 0 }] })
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={paidElsewhere} />)
     await waitFor(() => expect(screen.getByText(/not applicable — payments have been made on this job/)).toBeTruthy())
     // The letter's own claim still reads the covered bill in full: the $8,000 is another bill's.
@@ -347,9 +347,9 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
   })
 
   it('a single-bill job with an unlinked payment claims the difference, and the gate closes', async () => {
-    const paidUnlinked = job({ payments: [{ id: 'p1', job_id: 'job-867', invoice_id: null, amount: 1000, paid_on: '2026-08-20', sequence_order: 0 }] })
+    const paidUnlinked = job({ payments: [{ id: 'p1', job_id: 'job-4102', invoice_id: null, amount: 1000, paid_on: '2026-08-20', sequence_order: 0 }] })
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={paidUnlinked} />)
-    await waitFor(() => expect(screen.getByText(/\$1,000\.00 has been paid and \$710\.00 remains\./)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/\$1,000\.00 has been paid and \$500\.00 remains\./)).toBeTruthy())
     expect(screen.getByText(/not applicable — payments have been made on this job/)).toBeTruthy()
   })
 
@@ -364,7 +364,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Email with the PDF…' }))
     const sheet = document.querySelector('[data-demand-email]') as HTMLElement
     expect(sheet.textContent).toContain('A second channel, not the only one')
-    expect((sheet.querySelector('input[type="email"]') as HTMLInputElement).value).toBe('rizvi@example.test')
+    expect((sheet.querySelector('input[type="email"]') as HTMLInputElement).value).toBe('rilvo@example.test')
     expect(screen.getByRole('button', { name: 'Send · 3 documents' })).toBeTruthy()
   })
 
@@ -430,7 +430,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
     await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement
-    expect(debtor.textContent).toContain('Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima')
+    expect(debtor.textContent).toContain('Rilvo Sorn Zelmar & Kestmere Quillan Fenna')
     expect(debtor.textContent).not.toContain('§ 53.056')
   })
 
