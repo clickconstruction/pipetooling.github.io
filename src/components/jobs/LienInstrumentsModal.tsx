@@ -42,7 +42,7 @@ import { noticeInvoiceDocs, unpaidBilledInvoices } from '../../lib/jobs/noticeIn
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
-import { buildLienTimelineFromWindow, lienCourtesyFromItems } from '../../lib/jobs/lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienCourtesyFromItems, type LienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import { readLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { readLienAffidavitForm } from '../../lib/jobs/lienDeskIo'
 import type { LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
@@ -140,6 +140,7 @@ export default function LienInstrumentsModal({
   onOpenRelease,
   openLastWork = false,
   onLastWorkSaved,
+  deskNotice,
 }: {
   open: boolean
   onClose: () => void
@@ -163,6 +164,8 @@ export default function LienInstrumentsModal({
   openLastWork?: boolean
   /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
   onLastWorkSaved?: () => void
+  /** Where the job's § 53.056 notice stands on the Lien desk (v2.7077), from an opener that holds the desk's queue: the header then names the desk's step, not *Draft*. */
+  deskNotice?: LienWindowDeskNotice | null
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -773,6 +776,9 @@ export default function LienInstrumentsModal({
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
   const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
   const papersBar = useScrollEdgeFade<HTMLDivElement>()
+  // The opener's word on the notice (v2.7077), read by value so a fresh object each render does not rebuild the path.
+  const deskNoticeState = deskNotice?.state ?? ''
+  const deskHoldUntil = deskNotice?.holdUntil ?? null
   const timeline = useMemo(
     () =>
       job && property
@@ -787,9 +793,10 @@ export default function LienInstrumentsModal({
             todayYmd: todayYmdLocal(),
             demandLetters: historyRows,
             courtesy: courtesyRows,
+            deskNotice: deskNoticeState ? { state: deskNoticeState, holdUntil: deskHoldUntil } : null,
           })
         : null,
-    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows],
+    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil],
   )
   // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
   // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.

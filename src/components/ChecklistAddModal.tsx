@@ -22,6 +22,7 @@ import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
 import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
+import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
 import { TaskPlaceRow } from './checklist/TaskPlaceRow'
 import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
@@ -585,9 +586,9 @@ export default function ChecklistAddModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="checklist-add-modal-title"
-      // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
-      // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1012 }}
+      // Above Job Detail (1004) and Edit Job (1010) so the header send-as-task buttons stack this over either
+      // (v2.1529), and above a thread's window (1200) so Ask a tech… and Send as a task do too (v2.7069).
+      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: ADD_TASK_WINDOW_Z }}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header or a successful Send.
     >
@@ -1199,6 +1200,7 @@ export default function ChecklistAddModal({
                   <span style={{ display: 'block', marginBottom: '0.35rem' }}>Who else hears when it is done?</span>
                   <SearchableSelect
                     id="checklist-add-notify-on-complete"
+                    portalZIndex={ADD_TASK_PICKER_Z}
                     value={form.notify_on_complete_user_id}
                     onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
                     options={assignToSelectOptions}
