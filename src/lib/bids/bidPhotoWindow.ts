@@ -5,9 +5,14 @@
  * photo goes to the `bid-photos` bucket with a `bid_photos` row the moment it is picked; the press writes `added_at`,
  * and the photo sweep files it into the bid's project folder under Team only › Photos. The first press on a bid names
  * the folder it makes. The Drive side's rules are `bidPhotos.ts`; the reads and writes are `bidPhotosIo.ts`.
+ *
+ * With no signal (PR 8) a shot is kept on the phone and counts as ready: the press then goes through the outbox as a
+ * `bid-photos` press (`queuedBidPhotos`), and the window says how many of the bid's photos still wait on the phone
+ * (`photosOnThisPhone`).
  */
 import { countedLabel, pluralNoun } from '../batchWords'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import type { BidPhotosPayload, KeptBidPhoto, OutboxPress } from '../offline/outbox'
 import type { ShotTileBase } from '../photos/shotTiles'
 import { bidPhotoPathWords, type BidPhotoFolderState } from './bidPhotos'
 
@@ -110,8 +115,13 @@ export function heldFilesWords(held: readonly HeldFile[]): string | null {
   return `${held.length} files were left out. The first is ${first.name}. ${first.why}`
 }
 
+/** What the device is called in the words about a kept photo: a narrow screen is a phone, any other is a device. */
+export function keptPlace(phone: boolean): string {
+  return phone ? 'this phone' : 'this device'
+}
+
 /** A tile's words under its picture, by where the shot is. */
-export function tileStatusWords(tile: Pick<BidPhotoTile, 'status' | 'failWhy'>): { text: string; tone: 'quiet' | 'busy' | 'good' | 'warn' } {
+export function tileStatusWords(tile: Pick<BidPhotoTile, 'status' | 'failWhy'>, phone = true): { text: string; tone: 'quiet' | 'busy' | 'good' | 'warn' } {
   switch (tile.status) {
     case 'shrinking':
       return { text: BID_PHOTO_WORDS.shrinking, tone: 'quiet' }
@@ -120,7 +130,7 @@ export function tileStatusWords(tile: Pick<BidPhotoTile, 'status' | 'failWhy'>):
     case 'sent':
       return { text: BID_PHOTO_WORDS.sent, tone: 'good' }
     case 'kept':
-      return { text: 'Kept on this phone.', tone: 'warn' }
+      return { text: `Kept on ${keptPlace(phone)}.`, tone: 'warn' }
     case 'failed':
       return { text: tile.failWhy || 'The photo did not send.', tone: 'warn' }
   }
@@ -137,6 +147,75 @@ export function addWrites(tiles: readonly BidPhotoTile[]): BidPhotoAddWrite[] {
   return tiles.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, name: bidPhotoNameTrimmed(t.name) }))
 }
 
+/** A shot the press takes: in the bucket with its row, or kept on the phone with no signal (PR 8). */
+export function shotIsReady(tile: Pick<BidPhotoTile, 'status'>): boolean {
+  return tile.status === 'sent' || tile.status === 'kept'
+}
+
+/** How many shots wait on the phone: with any, the press goes through the outbox. */
+export function keptCount(tiles: readonly Pick<BidPhotoTile, 'status'>[]): number {
+  return tiles.filter((t) => t.status === 'kept').length
+}
+
+/**
+ * The ready shots as a kept press carries them (PR 8): a kept one unsent, a sent one with only the landing left, each
+ * with its name as the row will keep it.
+ */
+export function queuedBidPhotos(tiles: readonly BidPhotoTile[], byName: string): KeptBidPhoto[] {
+  return tiles.filter(shotIsReady).map((t) => ({
+    id: t.id,
+    sent: t.status === 'sent',
+    name: bidPhotoNameTrimmed(t.name),
+    takenAt: t.takenAt,
+    bytes: t.bytes,
+    originalBytes: t.originalBytes,
+    width: t.width,
+    height: t.height,
+    byName,
+  }))
+}
+
+/**
+ * The line under the tiles while a shot is kept: what the press does with no signal, by the press's own name. Null
+ * when none is kept.
+ */
+export function keptNextWords(input: { tiles: readonly Pick<BidPhotoTile, 'status'>[]; pressLabel: string; phone: boolean }): string | null {
+  if (keptCount(input.tiles) === 0) return null
+  const one = input.tiles.filter(shotIsReady).length === 1
+  return `There is no signal. ${input.pressLabel} keeps ${one ? 'it' : 'them'} on ${keptPlace(input.phone)}. ${one ? 'It goes' : 'They go'} to the bid when the signal is back.`
+}
+
+/** The toast after a press that was kept. */
+export function queuedWords(count: number, phone: boolean): string {
+  return `Kept on ${keptPlace(phone)}. ${count === 1 ? 'The photo goes' : 'The photos go'} to the bid when the signal is back.`
+}
+
+/** The bid's photos still on this phone: the shots of its `bid-photos` presses that wait or are in flight. */
+export function photosOnThisPhone(presses: readonly OutboxPress[], bidId: string): number {
+  let n = 0
+  for (const p of presses) {
+    if (p.kind !== 'bid-photos' || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    const payload = p.payload as BidPhotosPayload
+    if (payload.bidId === bidId) n += (payload.photos ?? []).length
+  }
+  return n
+}
+
+/** The window's line for them. Null when none wait. */
+export function onThisPhoneWords(count: number, phone: boolean): string | null {
+  if (count <= 0) return null
+  return count === 1
+    ? `1 photo waits on ${keptPlace(phone)}. It goes to the bid when the signal is back.`
+    : `${count} photos wait on ${keptPlace(phone)}. They go to the bid when the signal is back.`
+}
+
+/** Whether a landed press is this bid's photos: the window reads again, and the board counts again. */
+export function landedBidPhotos(detail: { kind?: unknown; result?: unknown } | null | undefined): string | null {
+  if (!detail || detail.kind !== 'bid-photos') return null
+  const id = detail.result && typeof detail.result === 'object' ? (detail.result as { bid_id?: unknown }).bid_id : null
+  return typeof id === 'string' && id ? id : null
+}
+
 /** Whether the bid's photo folder exists yet. Null (the folder did not read) counts as made: the press never claims to make what it cannot see. */
 export function folderIsMade(folder: Pick<BidPhotoFolderState, 'kind'> | null): boolean {
   return folder == null || folder.kind === 'ready'
@@ -144,10 +223,11 @@ export function folderIsMade(folder: Pick<BidPhotoFolderState, 'kind'> | null): 
 
 /**
  * The window's press. *Make the folder and add 3 photos* the first time on a bid, *Add 3 photos* after, counted from
- * the shots that are ready. Dead while nothing is ready, while a shot is still on its way, or while the press runs.
+ * the shots that are ready, a shot kept on the phone among them. Dead while nothing is ready, while a shot is still on
+ * its way, or while the press runs.
  */
 export function addPress(input: { tiles: readonly BidPhotoTile[]; adding: boolean; folder: Pick<BidPhotoFolderState, 'kind'> | null }): { label: string; dead: boolean } {
-  const ready = input.tiles.filter((t) => t.status === 'sent').length
+  const ready = input.tiles.filter(shotIsReady).length
   const inFlight = input.tiles.some((t) => t.status === 'shrinking' || t.status === 'sending')
   const verb = folderIsMade(input.folder) ? 'Add' : 'Make the folder and add'
   if (input.adding) return { label: 'Adding…', dead: true }

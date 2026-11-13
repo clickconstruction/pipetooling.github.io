@@ -8,6 +8,7 @@ import {
   interestBasisFor,
   lienLineBlockedReason,
   buildDemandLetterEmailHtml,
+  buildDemandLetterPrintHtml,
   demandPayCodeRows,
   buildDemandLetterModel,
   buildDemandLetterPrefill,
@@ -698,5 +699,94 @@ describe('pay codes under the amount box (v2.4849)', () => {
     const text = buildDemandLetterText(f, '2026-10-07')
     expect(text).toContain('Pay online')
     expect(text).toContain('Invoice #878-2609161138 · $15,200.00 · clicktooling.com/pay/inv-a')
+  })
+})
+
+describe('letter-first: the letter on page 1, the account behind it (v2.7086, punch list #333)', () => {
+  const stripeBill: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#878-2609161138', invoiceId: 'inv-a', payable: true, balance: '15200.00' }
+  const secondBill: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#878-2609171138', invoiceId: 'inv-b', payable: true, balance: '625.00' }
+  const LETTER: DemandLetterFields = { ...FIELDS, layout: 'letter-first', statement: [stripeBill], serviceAddress: '12 Sample Ln, Kyle, TX 78640', priorNotices: [{ date: '2026-08-18', label: 'Invoice sent' }], enclosures: [{ label: 'A', kind: 'invoice', title: 'Invoice #878-2609161138', pages: 1 }] }
+  const kinds = (f: DemandLetterFields) => buildDemandLetterModel(f, '2026-10-07').map((b) => (b.kind === 'heading' ? `heading:${b.text}` : b.kind))
+
+  it('the letter runs to its signature, then the account, the notices and the enclosures', () => {
+    const k = kinds(LETTER)
+    expect(k.slice(0, 5)).toEqual(['senderBlock', 'addressBlock', 'subject', 'amountBox', 'paragraph'])
+    expect(k[5]).toBe('heading:Demand')
+    const signed = k.indexOf('signature')
+    expect(k.slice(signed)).toEqual(['signature', 'pageBreak', 'heading:Statement of account', 'statement', 'paragraph', 'heading:Notice history', 'listItem', 'enclosures'])
+    // Nothing of the account is above the signature, and the Demand section no longer asks to be kept off a page's foot.
+    expect(k.slice(0, signed)).not.toContain('statement')
+    expect(buildDemandLetterModel(LETTER, '2026-10-07').find((b) => b.kind === 'heading' && b.text === 'Demand')).toEqual({ kind: 'heading', text: 'Demand' })
+  })
+
+  it('a letter with no mark, and the short form with one, are laid out as they were', () => {
+    const { layout: _layout, ...unmarked } = LETTER
+    const k = kinds(unmarked)
+    expect(k).not.toContain('pageBreak')
+    expect(k.indexOf('statement')).toBeLessThan(k.indexOf('heading:Demand'))
+    expect(k.indexOf('heading:Notice history')).toBeLessThan(k.indexOf('signature'))
+    expect(buildDemandLetterModel(unmarked, '2026-10-07').find((b) => b.kind === 'heading' && b.text === 'Demand')).toEqual({ kind: 'heading', text: 'Demand', keepMm: 72 })
+    // The short form has no account to move, so the mark changes nothing.
+    expect(kinds({ ...FIELDS, layout: 'letter-first' })).toEqual(kinds(FIELDS))
+  })
+
+  it('one pay code rides in the amount box; several sit above the statement, behind the letter', () => {
+    const one = buildDemandLetterModel(LETTER, '2026-10-07', { payAssets: { 'inv-a': { svg: '<svg data-code/>', png: 'data:png' } } })
+    expect(one.find((b) => b.kind === 'amountBox')).toEqual({ kind: 'amountBox', balance: demandMoney(LETTER.outstanding), deadline: demandDate(LETTER.deadlineDate), code: { invoiceId: 'inv-a', label: 'Invoice #878-2609161138', amount: '$15,200.00', address: 'clicktooling.com/pay/inv-a', svg: '<svg data-code/>', png: 'data:png' } })
+    expect(one.some((b) => b.kind === 'payCodes')).toBe(false)
+    const two = kinds({ ...LETTER, statement: [stripeBill, secondBill] })
+    expect(two.slice(two.indexOf('pageBreak'), two.indexOf('pageBreak') + 4)).toEqual(['pageBreak', 'payCodes', 'heading:Statement of account', 'statement'])
+    const twoBox = buildDemandLetterModel({ ...LETTER, statement: [stripeBill, secondBill] }, '2026-10-07').find((b) => b.kind === 'amountBox')
+    expect(twoBox && 'code' in twoBox).toBe(false)
+    // The tick still takes every code off.
+    const off = buildDemandLetterModel({ ...LETTER, includePayCodes: false }, '2026-10-07')
+    expect(off.some((b) => b.kind === 'payCodes')).toBe(false)
+    const offBox = off.find((b) => b.kind === 'amountBox')
+    expect(offBox && 'code' in offBox).toBe(false)
+  })
+
+  it('the opening says where the statement is, and no other word of it changes', () => {
+    const opening = (f: DemandLetterFields) => (buildDemandLetterModel(f, '2026-10-07').find((b) => b.kind === 'paragraph') as { text: string }).text
+    const { layout: _layout, ...unmarked } = LETTER
+    expect(opening(unmarked)).toContain('for the work below at 12 Sample Ln, Kyle, TX 78640.')
+    expect(opening(LETTER)).toContain('for the work on the statement of account behind this letter, at 12 Sample Ln, Kyle, TX 78640.')
+    expect(opening(LETTER)).toBe(opening(unmarked).replace('for the work below at', 'for the work on the statement of account behind this letter, at'))
+    // No job address: the phrase ends the clause.
+    expect(opening({ ...LETTER, serviceAddress: '' })).toContain('for the work on the statement of account behind this letter.')
+    // Several bills take the same phrase.
+    expect(opening({ ...LETTER, statement: [stripeBill, secondBill] })).toContain('for the work on the statement of account behind this letter, at 12 Sample Ln')
+  })
+
+  it('the signature drops a phone and an email the letterhead already shows, and keeps one it does not', () => {
+    const sig = (f: DemandLetterFields) => (buildDemandLetterModel(f, '2026-10-07').find((b) => b.kind === 'signature') as { lines: string[] }).lines
+    const { layout: _layout, ...unmarked } = LETTER
+    expect(sig(unmarked)).toEqual(['Sincerely,', FIELDS.senderName, FIELDS.businessName, FIELDS.businessPhone, FIELDS.businessEmail])
+    expect(sig(LETTER)).toEqual(['Sincerely,', FIELDS.senderName, FIELDS.businessName])
+    // The letterhead prints the address block as typed and adds the phone and email under it, so both are always up there; a blank one is not repeated either.
+    expect(sig({ ...LETTER, businessPhone: '' })).toEqual(['Sincerely,', FIELDS.senderName, FIELDS.businessName])
+  })
+
+  it('the page and the plain text follow: the code in the box, a break after the signature, the account under it', () => {
+    const html = buildDemandLetterEmailHtml(LETTER, '2026-10-07', { payAssets: { 'inv-a': { svg: '<svg data-code viewBox="0 0 1 1"></svg>', png: null } } })
+    const box = html.slice(html.indexOf('data-demand-amount-box'), html.indexOf('</table>', html.indexOf('data-demand-amount-box')))
+    expect(box).toContain('data-demand-pay-code="inv-a"')
+    expect(box).toContain('<svg style="width:72px;height:72px;display:block" data-code viewBox="0 0 1 1"></svg>')
+    expect(box).toContain('Scan to pay')
+    expect(box).toContain('or go to clicktooling.com/pay/inv-a')
+    expect(html).not.toContain('data-demand-pay-codes')
+    expect(html.indexOf('Sincerely,')).toBeLessThan(html.indexOf('data-demand-page-break'))
+    expect(html.indexOf('data-demand-page-break')).toBeLessThan(html.indexOf('Statement of account'))
+    expect(html.indexOf('Statement of account')).toBeLessThan(html.indexOf('Notice history'))
+    // In print the break is a new sheet with no rule on it.
+    expect(buildDemandLetterPrintHtml(LETTER, '2026-10-07', '878')).toContain('@media print { body { margin: 0 auto; line-height: 1.4; } [data-demand-page-break] { border-top: 0 !important;')
+    // A letter recorded before prints by the rule it always had.
+    const { layout: _layout, ...unmarked } = LETTER
+    expect(buildDemandLetterPrintHtml(unmarked, '2026-10-07', '878')).toContain('@media print { body { margin: 0.5in auto; } }')
+    // A code not drawn yet leaves its square, as the band always did.
+    expect(buildDemandLetterEmailHtml(LETTER, '2026-10-07')).toContain('border:1px dashed')
+    const text = buildDemandLetterText(LETTER, '2026-10-07')
+    expect(text).toContain(`Balance due: ${demandMoney(LETTER.outstanding)} · Pay in full by: ${demandDate(LETTER.deadlineDate)}\nPay online: clicktooling.com/pay/inv-a`)
+    expect(text).not.toContain('undefined')
+    expect(text.indexOf('Sincerely,')).toBeLessThan(text.indexOf('#878-2609161138 — sent'))
   })
 })

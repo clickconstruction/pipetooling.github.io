@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createKeptPhotos, keptPhotosOf, sendKeptPhotos, ticketDraftOf, unsentKeptPhotos, withPhoto } from './keptPhotos'
-import { newPress, type KeptJobPhoto, type KeptReportPhoto, type KeptTaskPhoto, type KeptTicketPage, type OutboxPress } from './outbox'
+import { newPress, type KeptBidPhoto, type KeptJobPhoto, type KeptReportPhoto, type KeptTaskPhoto, type KeptTicketPage, type OutboxPress } from './outbox'
 import { createOutboxState } from './outboxState'
 
 const T = 1_780_000_000_000
@@ -138,6 +138,69 @@ describe('keptPhotos', () => {
     const out = await sendKeptPhotos(press, s, { bytes, sendTask: async () => Promise.reject(new TypeError('Failed to fetch')) })
     expect(out.ok).toBe(false)
     expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['tp-2'])
+  })
+})
+
+// Punch list #306, PR 8: a bid photos press sends each kept shot to the bid's own bucket and row under its kept id.
+describe('a bid’s photos kept on the phone', () => {
+  const shot = (id: string, sent = false): KeptBidPhoto => ({ id, sent, name: 'Meter bank', takenAt: '2026-11-12T13:00:00Z', bytes: 310_000, originalBytes: 4_200_000, width: 1600, height: 1200, byName: 'Dana Whitfield' })
+  const bidPress = (photos: KeptBidPhoto[]) => newPress({ id: 'p-bp', seq: 1, kind: 'bid-photos', userId: 'u1', pressedAt: T, payload: { bidId: 'b1', photos } })
+
+  it('sends only the shots still on the phone, to the bid, and marks each sent so a later try never sends it twice', async () => {
+    const press = bidPress([shot('bp-1'), shot('bp-2', true), shot('bp-3')])
+    expect(keptPhotosOf(press).map((p) => p.id)).toEqual(['bp-1', 'bp-2', 'bp-3'])
+    expect(unsentKeptPhotos(press).map((p) => p.id)).toEqual(['bp-1', 'bp-3'])
+    const bytes = memory()
+    const one = new Blob([new Uint8Array(3)], { type: 'image/jpeg' })
+    const three = new Blob([new Uint8Array(5)], { type: 'image/jpeg' })
+    await bytes.keep('bp-1', one, T)
+    await bytes.keep('bp-3', three, T)
+    const s = store([press])
+    const sent: unknown[] = []
+    const out = await sendKeptPhotos(press, s, { bytes, send: async (input) => void sent.push(input) })
+    expect(out).toEqual({ ok: true })
+    // `jobId` carries the bid's id, as `sendBidPhoto` reads it.
+    expect(sent).toEqual([
+      { id: 'bp-1', jobId: 'b1', blob: one, byUserId: 'u1', byName: 'Dana Whitfield', takenAt: '2026-11-12T13:00:00Z', originalBytes: 4_200_000, width: 1600, height: 1200 },
+      { id: 'bp-3', jobId: 'b1', blob: three, byUserId: 'u1', byName: 'Dana Whitfield', takenAt: '2026-11-12T13:00:00Z', originalBytes: 4_200_000, width: 1600, height: 1200 },
+    ])
+    expect(unsentKeptPhotos(s.presses()[0]!)).toEqual([])
+    expect(await bytes.read('bp-1')).toBeNull()
+    // A second run of the same press sends nothing: every shot is marked sent.
+    const again: unknown[] = []
+    expect(await sendKeptPhotos(s.presses()[0]!, s, { bytes, send: async (input) => void again.push(input) })).toEqual({ ok: true })
+    expect(again).toEqual([])
+  })
+
+  it('a send that fails stops there: the shot before it stays sent, the rest wait with their bytes', async () => {
+    const press = bidPress([shot('bp-1'), shot('bp-2'), shot('bp-3')])
+    const bytes = memory()
+    for (const id of ['bp-1', 'bp-2', 'bp-3']) await bytes.keep(id, new Blob([new Uint8Array(1)]), T)
+    const s = store([press])
+    const tried: string[] = []
+    const out = await sendKeptPhotos(press, s, {
+      bytes,
+      send: async (input) => {
+        tried.push(input.id)
+        if (input.id === 'bp-2') throw new TypeError('Failed to fetch')
+      },
+    })
+    expect(out.ok).toBe(false)
+    expect(tried).toEqual(['bp-1', 'bp-2'])
+    expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['bp-2', 'bp-3'])
+    expect(await bytes.read('bp-2')).not.toBeNull()
+    expect(await bytes.read('bp-3')).not.toBeNull()
+  })
+
+  it('a shot whose bytes are gone is taken off the press, and the rest still go', async () => {
+    const press = bidPress([shot('bp-1'), shot('bp-2')])
+    const bytes = memory()
+    await bytes.keep('bp-2', new Blob([new Uint8Array(1)]), T)
+    const s = store([press])
+    const sent: string[] = []
+    expect(await sendKeptPhotos(press, s, { bytes, send: async (input) => void sent.push(input.id) })).toEqual({ ok: true })
+    expect(sent).toEqual(['bp-2'])
+    expect(keptPhotosOf(s.presses()[0]!).map((p) => `${p.id}:${p.sent}`)).toEqual(['bp-2:true'])
   })
 })
 

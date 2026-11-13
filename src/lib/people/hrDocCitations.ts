@@ -70,3 +70,8 @@ export function citationsBySection(lines: readonly CitingLine[]): Map<number, Ci
 export function citedByWords(count: number): string {
   return `cited by ${count} ${count === 1 ? 'entry' : 'entries'}`
 }
+
+/** "1 of them corrected since" / "3 of them corrected since": the citing entries a later entry corrected (punch list #315). */
+export function citedCorrectedWords(count: number): string {
+  return `${count} of them corrected since`
+}
