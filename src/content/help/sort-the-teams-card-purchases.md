@@ -127,6 +127,19 @@ Press {{button:blue|Got it}} when you have done what you can. The row leaves the
 
 A row also leaves the list when the receipt comes, or when its link closes after 14 days.
 
+## The receipt on Banking and Job Summary
+
+A card charge shows its receipt in two more places. The chip sits beside the charge.
+
+- On **Banking**, the ledger and User Sort show the chip after the store's name.
+- On **Job Summary**, a cost cell's list of card charges has a **Receipt** column.
+
+The chip reads {{chip:green|Ticket}} or {{chip:green|Receipt from the link}} for a charge with its paper. A texted charge reads like {{chip:blue|Texted 6:14 PM}}. A charge the app could not text reads {{chip:yellow|No text}}.
+
+Rest the pointer on a chip to read the reason. Only charges from the last 60 days show a chip.
+
+The card's holder gets the text. [Answer the text about a charge on your card](/help/answer-the-text-about-a-charge-on-your-card) shows what they see.
+
 A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
 
 ## Undo a sort in Job Parts Tally

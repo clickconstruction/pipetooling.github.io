@@ -31,7 +31,7 @@ import { serverLines } from '../../lib/materials/onSiteServerSummary'
 import { addSitePrice, listContainers, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
 import { priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { searchBookParts, type BookPartHit } from '../../lib/materials/bookSearchIo'
-import { rowWorth, siteWorth, worthWords, type RowWorth } from '../../lib/materials/siteWorth'
+import { lensChipWords, rowWorth, siteWorth, worthWords, type PriceLens, type RowWorth } from '../../lib/materials/siteWorth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { jobMaterialsSummaryFor } from '../../lib/materials/onSiteSummary'
 import { readSiteView, writeSiteView, type SiteView } from '../../lib/materials/siteMaterialsViewPrefs'
@@ -80,6 +80,12 @@ function count(n: number, one: string, many: string): string {
   return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 }
 
+const LENS_WORDS: Record<PriceLens, string> = {
+  none: 'the rows with a line that has no price, most pieces first',
+  old: 'the rows on a price older than 90 days, most pieces first',
+  out: 'the rows left out as not a part',
+}
+
 function Tile({ label, big, small, tone, on, onPress }: { label: string; big: ReactNode; small?: ReactNode; tone?: 'amber' | 'green'; on?: boolean; onPress?: () => void }) {
   const toned: CSSProperties = tone === 'amber' ? { background: 'var(--bg-amber-100)', borderColor: 'var(--text-amber-800)' } : tone === 'green' ? { background: 'var(--bg-green-100)', borderColor: 'var(--text-green-700)' } : {}
   const ink = tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-700)' : undefined
@@ -106,11 +112,11 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
   /** The list narrowed to the rows with a Same part? to answer. */
   const [asksOnly, setAsksOnly] = useState(false)
-  /** The list narrowed to the rows with a line that has no price, most pieces first. */
-  const [unpricedOnly, setUnpricedOnly] = useState(false)
+  /** The list narrowed by the Worth tile: the rows with no price, on an old price, or left out. */
+  const [lens, setLens] = useState<PriceLens | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   /** The window that prices the rows with no price, one at a time (punch list #342). */
-  const [pricing, setPricing] = useState(false)
+  const [pricing, setPricing] = useState<'none' | 'old' | null>(null)
   const { showToast } = useToastContext()
   const ties = usePartTies({ developmentId: site.id })
 
@@ -161,15 +167,21 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   const canPrice = Boolean(worth) && canTie && ties.available
   // The site's own prices can be written once their table was read.
   const canOwnPrice = canPrice && sitePricingAvailable()
-  const offers = usePriceOffers(canPrice && (unpricedOnly || pricing))
+  const offers = usePriceOffers(canPrice && (lens != null || pricing != null))
   const unpricedRows = worth?.unpriced ?? []
   const unpricedSig = unpricedRows.map((r) => r.key).join('|')
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the rows are rebuilt each render; their keys say when they changed.
   const offerRows = useMemo(() => (offers.index ? siteOffers(unpricedRows, offers.index).size : 0), [offers.index, unpricedSig])
-  const base = unpricedOnly && worth ? worth.unpriced.filter((r) => filterPartRows([r], filter).length > 0) : filterPartRows(rows, filter)
+  // The rows on an old price, and the ones left out: the other two lists the Worth tile holds (punch list #342, PR 3).
+  const staleRows = worth?.stale ?? []
+  const leftOutRows = worth?.leftOut ?? []
+  const lensRows = lens === 'none' ? unpricedRows : lens === 'old' ? staleRows : lens === 'out' ? leftOutRows : null
+  const base = lensRows ? lensRows.filter((r) => filterPartRows([r], filter).length > 0) : filterPartRows(rows, filter)
   const shownRows = searchPartRows(asksOnly ? base.filter((r) => askOf.has(r.key)) : base, query)
   const sections = view === 'place' ? sitePlaceSections(rollup, now) : []
-  const narrowed = filter !== 'all' || query.trim() !== '' || asksOnly || unpricedOnly
+  const narrowed = filter !== 'all' || query.trim() !== '' || asksOnly || lens != null
+  /** Only the lens hides rows: an empty list then says what the lens found, not that a search missed. */
+  const lensAlone = lens != null && filter === 'all' && query.trim() === '' && !asksOnly
   const last = lastRecordedWords(glance)
   const quiet = glance.quietDays != null && glance.quietDays >= QUIET_DAYS
 
@@ -192,7 +204,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
     setFilter('all')
     setQuery('')
     setAsksOnly(false)
-    setUnpricedOnly(false)
+    setLens(null)
   }
   /** Tie a row's name to a parts-book part. The pair written, or null when the table refused. */
   const tieBook = async (row: SitePartRow, part: { id: string; name: string }): Promise<TiePair | null> => {
@@ -302,9 +314,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
             label="Worth"
             big={worthWords(worth).big}
             small={[worthWords(worth).small, offerRowsWords(offerRows)].filter(Boolean).join(' · ')}
-            on={unpricedOnly}
+            on={lens != null}
             onPress={() => {
-              setUnpricedOnly((v) => !v)
+              setLens((cur) => (cur ? null : 'none'))
               if (view !== 'part') pickView('part')
             }}
           />
@@ -335,12 +347,24 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
 
       {view === 'part' ? (
         <div style={sec}>
+          {lens != null && worth ? (
+            <div style={{ padding: '0.4rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label="Rows by price" data-testid="site-price-lens">
+              <button type="button" aria-pressed={lens === 'none'} style={pill(lens === 'none')} onClick={() => setLens('none')}>{lensChipWords('none', unpricedRows.length)}</button>
+              <button type="button" aria-pressed={lens === 'old'} style={pill(lens === 'old')} onClick={() => setLens('old')} title="Rows on a price older than 90 days.">{lensChipWords('old', staleRows.length)}</button>
+              <button type="button" aria-pressed={lens === 'out'} style={pill(lens === 'out')} onClick={() => setLens('out')} title="Rows set aside as not a part to price.">{lensChipWords('out', leftOutRows.length)}</button>
+            </div>
+          ) : null}
           {narrowed && shownRows.length > 0 ? (
             <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="site-shown-total">
-              <span><strong>{shownTotalWords(shownRows)}</strong>{unpricedOnly ? <span style={muted}> · the rows with a line that has no price, most pieces first</span> : null}</span>
-              {unpricedOnly && canPrice && unpricedRows.length > 0 ? (
-                <button type="button" style={{ ...btn, minHeight: 30, fontSize: '0.78rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} onClick={() => setPricing(true)} title="A window asks about one row at a time: the parts-book part that fits, and what a bill paid.">
+              <span><strong>{shownTotalWords(shownRows)}</strong>{lens ? <span style={muted}> · {LENS_WORDS[lens]}</span> : null}</span>
+              {lens === 'none' && canPrice && unpricedRows.length > 0 ? (
+                <button type="button" style={{ ...btn, minHeight: 30, fontSize: '0.78rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} onClick={() => setPricing('none')} title="A window asks about one row at a time: the parts-book part that fits, and what a bill paid.">
                   {countedLabel('Price', unpricedRows.length, 'row')} one at a time
+                </button>
+              ) : null}
+              {lens === 'old' && canOwnPrice && staleRows.length > 0 ? (
+                <button type="button" style={{ ...btn, minHeight: 30, fontSize: '0.78rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} onClick={() => setPricing('old')} title="A window asks about one row at a time: the price it reads now, and a newer bill where one fits.">
+                  {countedLabel('Check', staleRows.length, 'old price')} one at a time
                 </button>
               ) : null}
               <button type="button" style={{ ...btn, minHeight: 26, fontSize: '0.72rem', padding: '0 0.5rem', fontWeight: 500 }} onClick={clear}>Show every row</button>
@@ -349,7 +373,13 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           {shownRows.length === 0 ? (
             rows.length === 0
               ? <EmptyState compact main={loading ? 'Reading the boxes…' : 'No part is on hand on this site yet.'} tail={loading ? undefined : 'A crew counts parts into a box on the phone’s On site tab.'} />
-              : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
+              : lensAlone && lens === 'none'
+                ? <EmptyState compact main="Nothing waiting on a price on this site." next={staleRows.length > 0 ? { label: `Show the ${staleRows.length.toLocaleString('en-US')} on an old price`, onPress: () => setLens('old') } : { label: 'Show every row', onPress: clear }} />
+                : lensAlone && lens === 'old'
+                  ? <EmptyState compact main="Nothing waiting on a newer price on this site." next={{ label: 'Show every row', onPress: clear }} />
+                  : lensAlone && lens === 'out'
+                    ? <EmptyState compact main="Nothing was left out on this site." next={{ label: 'Show every row', onPress: clear }} tail="lists the rest." />
+                    : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
           ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} ask={askOf.get(r.key)} joined={joinedTies(r, ties.ties)} canTie={canTie && ties.available} busy={busy} onAnswer={answer} onUndo={undo} worth={worth ? rowWorth(r, priceFor) : null} unpriced={unpricedKeys.has(r.key)} today={today} priced={showMoney ? rowSitePrices(r, sitePrices) : []} onUndoPrice={(id) => void undoPrice(id)} onTieBook={(row, part) => void tieBook(row, part)} searchBook={searchBook} />)}
         </div>
       ) : (
@@ -382,7 +412,25 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           ))}
         </div>
       )}
-      {pricing && canPrice ? <SitePricingWindow siteName={site.name} rows={unpricedRows} offers={offers} today={today} searchBook={searchBook} onUsePart={tieBook} canOwnPrice={canOwnPrice} onUseBill={billPrice} onTypePrice={(row, price) => priceRow(row, { kind: 'price', unitPrice: price, source: 'typed', pricedOn: today })} onLeaveOut={(row) => priceRow(row, { kind: 'left_out', pricedOn: today })} onUndo={undoAnswer} onClose={() => setPricing(false)} /> : null}
+      {pricing && canPrice ? (
+        <SitePricingWindow
+          key={pricing}
+          mode={pricing}
+          siteName={site.name}
+          rows={pricing === 'old' ? staleRows : unpricedRows}
+          nowPick={(row) => rowWorth(row, priceFor).pick}
+          offers={offers}
+          today={today}
+          searchBook={searchBook}
+          onUsePart={tieBook}
+          canOwnPrice={canOwnPrice}
+          onUseBill={billPrice}
+          onTypePrice={(row, price) => priceRow(row, { kind: 'price', unitPrice: price, source: 'typed', pricedOn: today })}
+          onLeaveOut={(row) => priceRow(row, { kind: 'left_out', pricedOn: today })}
+          onUndo={undoAnswer}
+          onClose={() => setPricing(null)}
+        />
+      ) : null}
     </div>
   )
 }

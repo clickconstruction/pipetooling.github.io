@@ -67,8 +67,9 @@ export function walkWords(walk: Walk, key: string, left: number, pieces: number)
   return { where: `Row ${(i < 0 ? walk.at : i) + 1} of ${walk.order.length.toLocaleString('en-US')}`, rest: `${left.toLocaleString('en-US')} left · ${n(pieces, 'piece', 'pieces')} to go` }
 }
 
-/** The end of a pass: "3 rows priced. 5 rows still have no price." */
-export function walkEndWords(walk: Walk, left: number): string {
+/** The end of a pass: "3 rows priced. 5 rows still have no price.", or "5 rows are still on an old price." for the old prices' walk. */
+export function walkEndWords(walk: Walk, left: number, mode: 'none' | 'old' = 'none'): string {
   const priced = `${n(walk.answered.length, 'row', 'rows')} priced`
-  return left > 0 ? `${priced}. ${n(left, 'row still has', 'rows still have')} no price.` : `${priced}.`
+  if (left <= 0) return `${priced}.`
+  return mode === 'old' ? `${priced}. ${n(left, 'row is', 'rows are')} still on an old price.` : `${priced}. ${n(left, 'row still has', 'rows still have')} no price.`
 }

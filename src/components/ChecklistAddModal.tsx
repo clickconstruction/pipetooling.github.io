@@ -87,6 +87,8 @@ export default function ChecklistAddModal({
   const lineCount = parseLines(linesText).length
   /** The writer's switch (PR 4): on by itself once a line is written, off on a plain one-off, until the writer touches it. */
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
+  /** The key of the one thing a preset's card is made for; written to the card after it is made (punch list #334, PR 12). */
+  const [sourceTag, setSourceTag] = useState<string | null>(null)
   // Punch list #328: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
   // PR 6: the giver's photo of the spot, held here until the task has an id to file it under.
@@ -251,6 +253,7 @@ export default function ChecklistAddModal({
       // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
       if (presetLines.length > 0) setRowsOpen('lines')
       setAsksForPhotoPick(preset?.asksForPhoto ?? null)
+      setSourceTag(preset?.sourceTag?.trim() || null)
     }
   }, [
     modalContext?.isOpen,
@@ -395,6 +398,9 @@ export default function ChecklistAddModal({
       }
       const newId = (data as { id: string })?.id
       if (newId) {
+        // Where the card came from, on the card itself. Written apart from the insert, so a card is still made if this
+        // does not land: the page that made it then finds it by its link. The column is younger than the generated types.
+        if (sourceTag) await supabase.from('checklist_items').update({ source_tag: sourceTag } as never).eq('id', newId)
         const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
         await supabase.from('checklist_item_assignees').insert(
           form.assigned_to_user_ids.map((uid) => ({
@@ -431,6 +437,7 @@ export default function ChecklistAddModal({
       }
       setLinesText('')
       setAsksForPhotoPick(null)
+      setSourceTag(null)
       setPlace(null)
       setSpotPhoto(null)
       modalContext.onSaved?.(newId || undefined)

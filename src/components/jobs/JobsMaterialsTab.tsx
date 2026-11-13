@@ -143,7 +143,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
-  useEffect(() => { setOnSiteErrorHandler((m) => showToast(m, 'error')) }, [showToast])
+  useEffect(() => { setOnSiteErrorHandler((m, tone) => showToast(m, tone)) }, [showToast])
   const desk = useOnSiteDesk()
   const jobId = searchParams.get('job')
   /** A site's materials on one screen (punch list #330): `?site=<development id>`, a state of the desk. */

@@ -36,6 +36,7 @@ import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab, { SubLaborToolbar } from '../components/jobs/JobsSubLaborTab'
 import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
 import { JobsSubsTab, subsViewFromParam, type SubsView } from '../components/jobs/JobsSubsTab'
+import { SubPaymentsLedger } from '../components/jobs/SubPaymentsLedger'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
 import SubLaborPaymentMoveRemoveModals, { type SubLaborPaymentMoveRemoveHandle } from '../components/jobs/SubLaborPaymentMoveRemoveModals'
@@ -2020,10 +2021,29 @@ export default function Jobs() {
           onViewChange={(view) =>
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
-              if (view === 'pay') next.set('view', 'pay')
+              if (view === 'pay' || view === 'ledger') next.set('view', view)
               else next.delete('view')
               return next
             })
+          }
+          ledger={
+            showSuperintendentExtraTabs ? (
+              <SubPaymentsLedger
+                error={error}
+                laborJobs={laborJobs}
+                laborJobsLoading={laborJobsLoading}
+                laborJobNamesByJobId={laborJobNamesByJobId}
+                laborJobAssigneesByJobId={laborJobAssigneesByJobId}
+                onOpenSheet={(job) => subLaborFormRef.current?.openEdit(job)}
+                onOpenPay={() =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    next.set('view', 'pay')
+                    return next
+                  })
+                }
+              />
+            ) : undefined
           }
           work={
             showSuperintendentExtraTabs ? (

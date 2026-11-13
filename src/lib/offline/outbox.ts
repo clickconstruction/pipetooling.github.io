@@ -37,11 +37,13 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
  * `counter-ticket` (punch list #295, PR 2): a photo of a supply house ticket saved with no signal, its pages kept on the
  * phone and sent with its job when the signal is back. It is a photo and a job, never money: the charge is sorted by a
  * person, online. `bid-photos` (punch list #306, PR 8): photos added to a bid from its Files window with no signal,
- * kept on the phone as a job's are and sent to the bid, each with its name, when the signal is back.
+ * kept on the phone as a job's are and sent to the bid, each with its name, when the signal is back. `on-site-press`
+ * (punch list #344, PR 1): a press on Materials on site, a use, a count, a move, a new box or a box photo's row, as the
+ * rows it writes, each under an id minted on the phone, so a press made with no signal lands once when it is back.
  */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket' | 'bid-photos'
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo' | 'counter-ticket' | 'bid-photos' | 'on-site-press'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo', 'counter-ticket', 'bid-photos', 'on-site-press']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -58,6 +60,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'task-photo': 'Task photo',
   'counter-ticket': 'Ticket photo',
   'bid-photos': 'Bid photos',
+  'on-site-press': 'On site press',
 }
 
 /**
@@ -264,6 +267,18 @@ export interface ChecklistSignPayload {
   byName: string
 }
 
+/**
+ * A press on Materials on site (punch list #344, PR 1): the job it was made on, what was pressed in the screen's own
+ * words, and the rows it writes (`OnSiteWrite` in `lib/materials/onSiteWrites.ts`, shape-checked there before a send).
+ * It lands through the tables' own policies, an insert under its phone-minted id, so a resend meets its own row and
+ * counts once.
+ */
+export interface OnSitePressPayload {
+  jobId: string
+  what: string
+  writes: ReadonlyArray<{ table: string; op: 'insert' | 'update'; id: string; row: Record<string, unknown> }>
+}
+
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
   ? ClockInPayload
   : K extends 'clock-out'
@@ -280,7 +295,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
               ? CounterTicketPayload
               : K extends 'bid-photos'
                 ? BidPhotosPayload
-                : FieldReportPayload
+                : K extends 'on-site-press'
+                  ? OnSitePressPayload
+                  : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
