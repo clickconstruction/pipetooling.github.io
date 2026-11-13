@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A job's own pay terms: the door and the mark</title>
+<style>
+  /* Punch list #341. A job's own pay terms: the override is built (#323, PR 4); this page draws the way in and the
+     way to see it. Drawn 2026-11-13, with that day as today. Nothing here is built. Every name, job, number, amount,
+     clause and count is made up: Larkfield Construction, jobs J1406 to J1431, section 9.4. The styles are the Pay
+     calendar mock-up's own (to-dos/pay-calendar/mockup.html), so the two pages read as one. No live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-blue: #bfdbfe;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-blue: #1e3a8a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  /* Now against My suggestion: one spot, two columns */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 6px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  /* the short of it */
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; font-weight: 600; color: var(--text-strong); }
+
+  /* drawn app pieces */
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 14px; }
+  .bar .x { margin-left: auto; color: var(--text-muted); font-size: 16px; line-height: 1; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .card + .card { margin-top: 8px; }
+  .jobline { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .jobline b { color: var(--text-strong); }
+  .jobline .amt { margin-left: auto; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .who { font-size: 12px; color: var(--text-muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); white-space: nowrap; }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .chip.plain { background: var(--bg-muted); color: var(--text-700); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 32px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+  /* the dates block on a billed row */
+  .ledger { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; display: grid; gap: 3px; }
+  .lr { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .lr i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); transform: translateY(-1px); }
+  .lr i.ring { background: transparent; border: 1.5px solid var(--text-muted); }
+  .lr .lead { flex: 1 1 12px; border-bottom: 1px dotted var(--border-strong); transform: translateY(-3px); min-width: 12px; }
+  .lr .far { flex: none; font-variant-numeric: tabular-nums; }
+  .lr.green { color: var(--text-green-700); } .lr.green i { background: var(--text-green-700); }
+  .lr.amber { color: var(--text-amber-800); font-weight: 700; } .lr.amber i { background: var(--text-amber-800); }
+  .sub { margin: 0 0 0 14px; font-size: 12px; color: var(--text-muted); }
+  .sub u { text-decoration: underline dotted; text-underline-offset: 2px; }
+
+  /* the forecast window */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+  .tile { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+  .tile small { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile b { font-size: 15px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile.red { background: var(--bg-red-tint); border-color: transparent; } .tile.red b, .tile.red small { color: var(--text-red-700); }
+  .tile.blue { background: var(--bg-blue-tint); border-color: transparent; } .tile.blue b, .tile.blue small { color: var(--text-blue-800); }
+  .bk { margin: 12px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 8px; }
+  .bk span { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .fr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 0; }
+  .fr + .fr { margin-top: 4px; }
+  .fr.new + .fr.new { margin-top: 9px; }
+  .fr b { color: var(--text-strong); }
+  .fr .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; }
+  .fr .when { grid-column: 1 / -1; font-size: 12px; color: var(--text-blue-800); }
+  .fr .when.late { color: var(--text-amber-800); font-weight: 700; }
+  .fr .when.quiet { color: var(--text-muted); }
+  .strip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .strip h4 { margin: 0 0 6px; font-size: 12px; color: var(--text-strong); }
+  .cut { display: grid; grid-template-columns: 1fr; gap: 1px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .cut b { color: var(--text-strong); }
+  .cut span { font-size: 12px; color: var(--text-muted); }
+
+  /* the setting */
+  .field { display: grid; gap: 3px; margin-top: 10px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--text-700); }
+  .inrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+  .sel { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 6px 26px 6px 10px; font-size: 13px; color: var(--text-base); position: relative; min-height: 34px; display: inline-flex; align-items: center; }
+  .sel::after { content: "▾"; position: absolute; right: 9px; color: var(--text-muted); font-size: 11px; }
+  .inp { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 6px 10px; font-size: 13px; color: var(--text-base); min-height: 34px; }
+  .inp.grow { flex: 1 1 200px; min-width: 0; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin-top: 10px; }
+  .check i { flex: none; width: 16px; height: 16px; border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface); margin-top: 2px; }
+  .box { margin-top: 12px; border-radius: 9px; padding: 8px 10px; font-size: 13px; background: var(--bg-blue-tint); color: var(--text-blue-800); border: 1px solid var(--border-blue); }
+  .box.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .box p { margin: 0; } .box p + p { margin-top: 2px; }
+  .stat { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+  .stat div { min-width: 0; } .stat small { display: block; font-size: 11px; color: var(--text-muted); }
+  .stat b { color: var(--text-strong); }
+
+  /* tables */
+  .tw { overflow-x: auto; max-width: 100%; }
+  table.t { border-collapse: collapse; margin-top: 12px; font-size: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); }
+  table.t th, table.t td { text-align: left; vertical-align: top; padding: 7px 10px; border-top: 1px solid var(--border); }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  ol.calls { margin: 12px 0 0; padding-left: 22px; max-width: 96ch; }
+  ol.calls li { margin: 0 0 8px; }
+  ol.calls b { color: var(--text-strong); }
+
+  /* the job window's fact rows */
+  .facts { display: grid; gap: 0; }
+  .fact { display: grid; grid-template-columns: minmax(96px, 150px) minmax(0, 1fr); gap: 4px 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; align-items: baseline; }
+  .fact:first-child { border-top: 0; }
+  .fact > span:first-child { color: var(--text-muted); font-size: 12px; }
+  .fact b { color: var(--text-strong); }
+  .press { color: var(--text-link); text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; }
+  .own { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: var(--bg-blue-tint); color: var(--text-blue-800); white-space: nowrap; }
+  .steps { margin: 6px 0 0; padding-left: 20px; font-size: 13px; }
+  .steps li { margin: 0 0 3px; }
+  .ladder { display: grid; gap: 6px; margin-top: 12px; max-width: 760px; }
+  .rung { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+  .rung > b:first-child { font-size: 15px; color: var(--text-muted); }
+  .rung.sug { border: 2px solid var(--new); }
+  .rung p { margin: 0; } .rung small { color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #341 · a report and a plan · the override is built · the rest is not</p>
+    <h1>A job's own pay terms</h1>
+    <p>A job can already carry its own Pay calendar, and it wins over its payer's. This page shows what is missing: the way in, and the way to see it. Today on this page is Friday, Nov 13. Every name and number is made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a>
+  <a href="#ladder">Which terms win</a>
+  <a href="#door">1 · The door</a>
+  <a href="#mark">2 · The mark</a>
+  <a href="#off">3 · A job switched off</a>
+  <a href="#payer">4 · The payer's window</a>
+  <a href="#cutoffs">5 · Cutoffs coming</a>
+  <a href="#bill">6 · One bill's own day</a>
+  <a href="#calls">Your calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<p class="lede"><b>My recommendation: build the door and the mark.</b> They are two small steps with no database change. Hold the rest until a real contract needs it.</p>
+<div class="pick">
+  <div>
+    <h3>Now</h3>
+    <ul>
+      <li>A job can carry its own calendar, or none. It wins on every screen that reads one.</li>
+      <li>The press sits on a row only when the payer already has a calendar. No payer has one yet.</li>
+      <li>No row says a job is on its own calendar.</li>
+    </ul>
+    <p>The one door today is inside the Their paper sheet.</p>
+  </div>
+  <div class="sug">
+    <h3>My suggestion</h3>
+    <ul>
+      <li>The job window gets a Pay calendar line. It is always there for the office.</li>
+      <li>A row on its own calendar says <i>This job's own</i>.</li>
+      <li>A job switched off says so, and the words lead back.</li>
+    </ul>
+    <p>One press from the job. One glance to see it.</p>
+  </div>
+</div>
+
+<h2 id="ladder">Which terms win <small>for one bill</small></h2>
+<p class="lede">A bill has one payer: the GC or the customer, by the job's <i>Bills go to</i>. Only that payer's terms are read. The first rung that holds something wins.</p>
+<div class="ladder">
+  <div class="rung sug"><b>1</b><div><p><b>This bill's own due day</b> <span class="tag">Not built</span></p><small>One bill due on a named date. A retainage release, a dated draw. Step 6 below, on your call.</small></div></div>
+  <div class="rung"><b>2</b><div><p><b>The job's own calendar</b>, or its off switch</p><small>Built. Hard to find. Steps 1 to 3 below.</small></div></div>
+  <div class="rung"><b>3</b><div><p><b>The payer's calendar</b></p><small>Built. On the GC's or the customer's profile.</small></div></div>
+  <div class="rung"><b>4</b><div><p><b>The usual guess</b></p><small>The bill date plus how long this payer takes.</small></div></div>
+</div>
+<p class="note"><b>Two things sit outside the ladder.</b> A date the customer named, <i>They said</i>, still wins the expected day. And a bill typed to another email has no payer on file, so it reads no calendar at all.</p>
+
+<!-- 1 -->
+<h2 id="door">1 · The door <small>the job window</small></h2>
+<p class="lede">J1431 is a big job for Larkfield Construction. Its contract pays on other days than Larkfield's small jobs.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>J1431 · Larkfield medical office, 3 floors</b><span class="x">×</span></div>
+      <div class="pad"><div class="card"><div class="facts">
+        <div class="fact"><span>GC</span><span><b>Larkfield Construction</b></span></div>
+        <div class="fact"><span>Bills go to</span><span>The GC</span></div>
+        <div class="fact"><span>Customer Contract</span><span>None yet · <span class="press">Their paper…</span></span></div>
+      </div></div></div>
+    </div>
+    <p class="say">Nothing here names a pay calendar. The way in is four presses deep:</p>
+    <ol class="steps">
+      <li>Press <b>Their paper…</b></li>
+      <li>In the sheet, press <b>Set Larkfield Construction's pay calendar…</b></li>
+      <li>Pick <b>Only Job 1431</b> and set the days.</li>
+      <li>Press <b>Save for this job</b>, then close the sheet.</li>
+    </ol>
+    <p class="say">A job with a contract signed on our own form has no <b>Their paper…</b> press. It has no door.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="bar"><b>J1431 · Larkfield medical office, 3 floors</b><span class="x">×</span></div>
+      <div class="pad"><div class="card"><div class="facts">
+        <div class="fact"><span>GC</span><span><b>Larkfield Construction</b></span></div>
+        <div class="fact"><span>Bills go to</span><span>The GC</span></div>
+        <div class="fact new"><span>Pay calendar <span class="tag">New</span></span><span>Follows Larkfield Construction · <span class="press">In by month end, paid the 10th</span></span></div>
+        <div class="fact"><span>Customer Contract</span><span>None yet · <span class="press">Their paper…</span></span></div>
+      </div></div></div>
+    </div>
+    <p class="say">The line opens the same window, already on this job. It reads one of four ways:</p>
+    <div class="frame"><div class="pad"><div class="card"><div class="facts">
+      <div class="fact"><span>Follows the payer</span><span>Follows Larkfield Construction · <span class="press">In by month end, paid the 10th</span></span></div>
+      <div class="fact"><span>Its own</span><span><span class="own">This job's own</span> <span class="press">In by the 25th, paid the 30th</span></span></div>
+      <div class="fact"><span>Switched off</span><span><span class="press">No pay calendar on this job</span> · Larkfield Construction has one</span></div>
+      <div class="fact"><span>Nothing set</span><span><span class="press">Set a pay calendar…</span></span></div>
+    </div></div></div></div>
+  </div>
+</div>
+<p class="note"><b>Also in this step.</b> Pay speeds, opened from a row, carries that row's job into the window. The Their paper door carries the development, so it can offer <i>Also set on the other jobs</i>.</p>
+
+<!-- 2 -->
+<h2 id="mark">2 · The mark <small>Jobs → Pipeline → Billed Awaiting Payment</small></h2>
+<p class="lede">Two bills for one GC, sent five days apart. One is past due. One is not due for 17 days. J1431 is on its own calendar.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1406 · Larkfield clinic, rough-in</b><span class="amt">$22,750</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 27</span><span class="lead"></span><span class="far">17d ago</span></div>
+          <div class="lr amber"><i></i><span>Due Nov 10</span><span class="lead"></span><span class="far">3d past</span></div>
+          <p class="sub"><u>In by month end, paid the 10th</u></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="jobline"><b>J1431 · Larkfield medical office, 3 floors</b><span class="amt">$86,400</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 22</span><span class="lead"></span><span class="far">22d ago</span></div>
+          <div class="lr"><i></i><span>Due Nov 30</span><span class="lead"></span><span class="far">in 17d</span></div>
+          <p class="sub"><u>In by the 25th, paid the 30th</u></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">Both read right. Nothing says why one GC has two sets of days. The hover says <i>Larkfield Construction pays on a calendar</i> on both.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1406 · Larkfield clinic, rough-in</b><span class="amt">$22,750</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 27</span><span class="lead"></span><span class="far">17d ago</span></div>
+          <div class="lr amber"><i></i><span>Due Nov 10</span><span class="lead"></span><span class="far">3d past</span></div>
+          <p class="sub"><u>In by month end, paid the 10th</u></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="jobline"><b>J1431 · Larkfield medical office, 3 floors</b><span class="amt">$86,400</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 22</span><span class="lead"></span><span class="far">22d ago</span></div>
+          <div class="lr"><i></i><span>Due Nov 30</span><span class="lead"></span><span class="far">in 17d</span></div>
+          <p class="sub new"><span class="own">This job's own</span> <u>In by the 25th, paid the 30th</u> <span class="tag">New</span></p>
+          <p class="sub">No payment on this job yet. The due day is the best guess.</p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The same mark goes on a Ready to Bill row's <i>Send by</i> line, the Working line, the job window's bills, Call mode and the hover.</p>
+  </div>
+</div>
+<p class="note"><b>The record under it.</b> Today a job's own calendar is scored against the payer's payments on every job. Step 3 of the plan scores it on that job's own payments once it has two. Until then the line says whose record it is.</p>
+
+<!-- 3 -->
+<h2 id="off">3 · A job switched off <small>the same list</small></h2>
+<p class="lede">J1418 was set to <b>This job has no pay calendar</b>. Larkfield's calendar does not apply to it.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1418 · Larkfield tenant repair</b><span class="amt">$3,150</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 30</span><span class="lead"></span><span class="far">14d ago</span></div>
+          <div class="lr green"><i></i><span>Expected Dec 10</span><span class="lead"></span><span class="far">in 27d</span></div>
+          <p class="sub"><u>Pays in 12–68d</u></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The row looks like any payer with no calendar. The words open Pay speeds, and Pay speeds opens the payer's window with no job. Nothing here leads back to <b>Follow Larkfield Construction again</b>.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1418 · Larkfield tenant repair</b><span class="amt">$3,150</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Oct 30</span><span class="lead"></span><span class="far">14d ago</span></div>
+          <div class="lr green"><i></i><span>Expected Dec 10</span><span class="lead"></span><span class="far">in 27d</span></div>
+          <p class="sub"><u>Pays in 12–68d</u></p>
+          <p class="sub new"><u>No pay calendar on this job</u> <span class="tag">New</span></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">One quiet line. It opens the window on this job, where <b>Follow Larkfield Construction again</b> sits.</p>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2 id="payer">4 · The payer's window <small>from the GC's profile</small></h2>
+<p class="lede">The payer's own window says nothing about the jobs that do not follow it.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>Pay calendar · Larkfield Construction</b><span class="x">×</span></div>
+      <div class="pad">
+        <div class="box"><p><b>A bill in by Nov 30 is due Dec 10.</b></p><p>A bill in on Dec 1 is due Jan 10.</p></div>
+        <p class="who" style="margin-top:10px">Every bill this payer pays reads it.</p>
+      </div>
+    </div>
+    <p class="say">That last line is not true for J1431 or J1418.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame">
+      <div class="bar"><b>Pay calendar · Larkfield Construction</b><span class="x">×</span></div>
+      <div class="pad">
+        <div class="box"><p><b>A bill in by Nov 30 is due Dec 10.</b></p><p>A bill in on Dec 1 is due Jan 10.</p></div>
+        <div class="strip new" style="margin-top:10px">
+          <h4>2 jobs do not follow this <span class="tag">New</span></h4>
+          <div class="cut"><b><span class="press">J1431 · Larkfield medical office, 3 floors</span></b><span>Its own: in by the 25th, paid the 30th</span></div>
+          <div class="cut"><b><span class="press">J1418 · Larkfield tenant repair</span></b><span>No pay calendar on this job</span></div>
+        </div>
+        <p class="who" style="margin-top:10px">Every other bill this payer pays reads it.</p>
+      </div>
+    </div>
+    <p class="say">Each line opens the window on that job. A job that holds a calendar for a payer who no longer pays it shows here too, with a press to clear it.</p>
+  </div>
+</div>
+
+<!-- 5 -->
+<h2 id="cutoffs">5 · Cutoffs coming <small>the top of the Payment forecast</small></h2>
+<p class="lede">A job on its own calendar already gets its own line. The line does not name the job.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad"><div class="strip">
+      <h4>Cutoffs coming</h4>
+      <div class="cut"><b>Larkfield Construction · in by Nov 25, due Dec 30</b><span>1 job working, $41,000 still to bill.</span></div>
+      <div class="cut"><b>Larkfield Construction · in by Nov 30, due Dec 10</b><span>1 bill ready, $6,200. 3 jobs working, $18,500 still to bill.</span></div>
+    </div></div></div>
+    <p class="say">One GC, two cutoffs, and no word on which job is which.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad"><div class="strip">
+      <h4>Cutoffs coming</h4>
+      <div class="cut new"><b>Larkfield Construction · J1431 only · in by Nov 25, due Dec 30</b><span>1 job working, $41,000 still to bill. <span class="tag">New</span></span></div>
+      <div class="cut"><b>Larkfield Construction · in by Nov 30, due Dec 10</b><span>1 bill ready, $6,200. 3 jobs working, $18,500 still to bill.</span></div>
+    </div></div></div>
+    <p class="say">The big job's cutoff is five days sooner. Now the strip says so.</p>
+  </div>
+</div>
+
+<!-- 6 -->
+<h2 id="bill">6 · One bill's own due day <small>on your call · a database change</small></h2>
+<p class="lede">A retainage release is a bill like any other, so it reads the job's calendar. Its contract names a date of its own.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1431 · Larkfield medical office · retainage release</b><span class="amt">$19,200</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Nov 2</span><span class="lead"></span><span class="far">11d ago</span></div>
+          <div class="lr"><i></i><span>Due Dec 30</span><span class="lead"></span><span class="far">in 47d</span></div>
+          <p class="sub"><u>In by the 25th, paid the 30th</u></p>
+          <p class="sub"><u>Counted from Nov 2</u></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The forecast counts $19,200 in December. The contract releases it in February. The nearest fix today is <i>They said</i>, and that moves every open bill on the job.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="pad">
+      <div class="card">
+        <div class="jobline"><b>J1431 · Larkfield medical office · retainage release</b><span class="amt">$19,200</span></div>
+        <div class="who">Larkfield Construction</div>
+        <div class="ledger">
+          <div class="lr"><i></i><span>Billed Nov 2</span><span class="lead"></span><span class="far">11d ago</span></div>
+          <div class="lr new"><i></i><span>Due Feb 15</span><span class="lead"></span><span class="far">in 94d</span></div>
+          <p class="sub new"><u>This bill's own day</u> · § 9.4, retainage is released 60 days after final acceptance <span class="tag">New</span></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">A press under the dates, beside <i>Counted from</i>: <b>This bill is due on…</b> It holds a day, a clause and a few words, for that one bill. A dated draw works the same way once it is billed.</p>
+  </div>
+</div>
+<p class="note"><b>Not drawn, and not planned.</b> A number of days after the bill is step 5 of the plan, on your call 4. Dated draws not yet billed, a real date for pay when paid, and a level for developments are named on the card and left alone.</p>
+
+<h2 id="calls">Your calls <small>my pick first on each</small></h2>
+<ol class="calls">
+  <li><b>Build the door and the mark?</b> Yes, steps 1 to 5 on this page, as two small PRs. Or leave it and use the Their paper door.</li>
+  <li><b>Whose record scores a job on its own calendar?</b> That job's payments once it has two, and the payer's until then. Or always the payer's, as today.</li>
+  <li><b>Does one bill need a due day of its own?</b> Not yet. Wait for the first retainage release or dated draw that reads wrong. Or build step 6 now.</li>
+  <li><b>Do any of the big jobs pay a number of days after the bill?</b> If none does, that step is never built. If one does, say which contract.</li>
+  <li><b>When a job's <i>Bills go to</i> changes, should its own calendar go with it?</b> No. The window says the job holds a calendar for someone who no longer pays it. Or yes, it follows whoever pays.</li>
+</ol>
+<p class="note"><b>One thing only you have.</b> Which jobs are on their own terms, and what each contract says. No calendar is set on any payer or job yet.</p>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+  })();
+</script>
+</body>
+</html>

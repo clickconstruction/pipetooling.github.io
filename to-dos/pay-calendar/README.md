@@ -228,6 +228,9 @@ there is no staging. A new table takes no lock on either and leaves their row ty
 A development gets no level of its own. The job window offers *Also set on the other 12 jobs in
 this development* instead. See Grace's call 6.
 
+The way into a job's own calendar, the mark that shows it, and the terms a calendar cannot hold
+are card [#341](../job-own-pay-terms/README.md).
+
 ### The clock: what "received" means
 
 The contract counts from the day an acceptable application is received. The app has no such day.
