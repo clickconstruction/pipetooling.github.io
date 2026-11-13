@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DashboardFinancials } from '../dashboardFinancialsLoad'
 import type { FinancialItem } from '../dashboardFinancials'
-import type { BridgeCall } from './calls'
 import type { BridgeData } from './loadBridgeData'
 import { buildWeekMailFromReads, type MondaySheetReads } from './sheetBuild'
 import type { BidSent } from './bidWins'
@@ -61,10 +60,8 @@ function fin(arItems: FinancialItem[] = []): DashboardFinancials {
   }
 }
 
-const reads = (over: Partial<MondaySheetReads> = {}): MondaySheetReads => ({ data: data(), fin: null, bank: null, vectorInputs: null, weeksInputs: null, buildInputs: null, billJobs: null, demandInputs: null, calls: null, collectReads: null, gaps: [], ...over })
+const reads = (over: Partial<MondaySheetReads> = {}): MondaySheetReads => ({ data: data(), fin: null, bank: null, vectorInputs: null, weeksInputs: null, buildInputs: null, billJobs: null, demandInputs: null, collectReads: null, gaps: [], ...over })
 
-/** Last week's call on Collect, unanswered: Friday asks. */
-const lastWeeksCall: BridgeCall = { id: 'c1', weekStart: '2026-10-18', calledOn: '2026-10-19', calledByName: 'Isiah', link: 'collect', moves: [], measures: { linkWeeks: 10, linkPileUsd: 50_000, stageWeeks: {}, keys: {} }, note: null, outcome: null, outcomeAt: null, outcomeNote: null }
 
 /** The window's flows, so Collect reads a pace and the stages nominate a link. */
 const flows = (): Partial<BridgeData> => ({
@@ -82,45 +79,23 @@ describe('buildWeekMailFromReads', () => {
     const mail = buildWeekMailFromReads(reads())
     expect(weekMailLine(mail)).toBe('the week of Oct 25–31, read Oct 26')
     expect(mail.model.tiles.map((t) => t.value)).toEqual(['not read', 'not read', 'not read'])
-    expect(mail.model.state).toBe('propose')
+    expect(mail.model.card.label).toBe('What to do now')
     expect(mail.model.link).toBeNull()
     expect(mail.model.card.lead).toBe('The five steps are not read yet.')
     expect(mail.strip?.litId).toBeNull()
     expect(mail.gaps).toEqual([])
   })
 
-  it('the slowest step is proposed as the week’s call and lit on the strip, with nobody on a move the page gives to whoever looks', () => {
+  it('the slowest step is named on the card and lit on the strip, with its moves and nobody on them', () => {
     const mail = buildWeekMailFromReads(reads({ data: data({ ...flows(), crew: { fieldHours7d: 0, fieldHoursWindow: 0, officeBidHours7d: 0, pendingClosedHours: 40, pendingClosedSessions: 5 } }), fin: fin([item('a', 10_000, '2026-09-01'), item('b', 30_000, '2026-09-20')]) }))
-    expect(mail.model.state).toBe('propose')
     expect(mail.model.link).toBe('collect')
     expect(mail.model.card.lead).toBe('Collect is the slowest step.')
     expect(tile(mail, 'step')?.value).toBe('Collect')
     expect(mail.strip?.litId).toBe('collect')
     expect(mail.model.card.moves.length).toBeGreaterThan(0)
-    expect(mail.model.card.moves.every((m) => m.who === '')).toBe(true)
-  })
-
-  it('last week’s call, unanswered, is asked for beside the proposal, in the text and the html', () => {
-    const mail = buildWeekMailFromReads(reads({ data: data(flows()), fin: fin([item('a', 10_000, '2026-09-01'), item('b', 30_000, '2026-09-20')]), calls: [lastWeeksCall] }))
-    expect(mail.model.last?.asks).toBe(true)
-    expect(mail.model.last?.text).toBe('The last call was Collect. Did it move?')
-    expect(weekMailText(mail, 'u')).toContain('The last call was Collect. Did it move?\nAnswer it on the Bridge.')
-    expect(weekMailHtml(mail, 'u')).toContain('Answer it on the Bridge.')
-  })
-
-  it('an answered call asks nothing', () => {
-    const mail = buildWeekMailFromReads(reads({ data: data(flows()), fin: fin([item('a', 10_000, '2026-09-01')]), calls: [{ ...lastWeeksCall, outcome: 'did_not_move', outcomeAt: '2026-10-23T18:00:00Z' }] }))
-    expect(mail.model.last?.asks).toBe(false)
-    expect(mail.model.last?.text).toBe('The last call was Collect. It did not move.')
-    expect(weekMailText(mail, 'u')).not.toContain('Answer it on the Bridge.')
-  })
-
-  it('a call that stands this week is shown, with its person’s Done press beside the move', () => {
-    const standing: BridgeCall = { ...lastWeeksCall, id: 'c2', weekStart: '2026-10-25', calledOn: '2026-10-25', calledByName: 'Sam', moves: [{ key: 'other', title: 'Call the three slow payers.', who: 'Dana', then: null }] }
-    const mail = buildWeekMailFromReads(reads({ data: data(flows()), fin: fin([item('a', 10_000, '2026-09-01')]), calls: [standing] }), { marks: [{ callId: 'c2', idx: 0, doneBy: 'Dana' }] })
-    expect(mail.model.state).toBe('standing')
-    expect(mail.model.card.lead).toBe('Collect is this week’s call.')
-    expect(mail.model.card.moves[0]).toMatchObject({ who: 'Dana', done: 'yes', why: 'Dana marked it done.' })
+    expect(mail.model.card.moves.every((m) => !('who' in m))).toBe(true)
+    // The mail reads no call, so it never asks about one.
+    expect(weekMailText(mail, 'u')).not.toMatch(/call|Friday/)
     expect(weekMailText(mail, 'u')).toContain('Open the Bridge: u')
   })
 

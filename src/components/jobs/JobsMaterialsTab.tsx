@@ -695,7 +695,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {section === 'deliveries' ? (
         <div style={{ display: 'grid', gap: '0.9rem' }}>
           <div style={sec}>
-            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. The app reads it from there and shows the lines for a once-over before they land.</span></h5>
+            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. Paste its text here and look the lines over before they land.</span></h5>
             <div style={{ padding: '0.75rem 0.9rem', display: 'grid', gap: '0.6rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {driveLink ? (
@@ -710,7 +710,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }} onClick={() => setAgentOpen(true)}>Or have your agent do it via MCP</button>
                 <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>Invoice #<input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-48812" aria-label="Invoice number" style={{ minHeight: 32, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', width: 130, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
               </div>
-              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo. The build reads new invoices from that folder with the model and lists them here; until then, paste the text.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
+              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo, so it is kept with the job. The app does not read the file yet. Paste the invoice’s text to land its lines.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
               {madeWords && madeFolders ? (
                 <p style={{ ...muted, margin: 0 }}>
                   {madeWords.line}{' '}

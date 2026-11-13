@@ -2,7 +2,7 @@
 name: "Bill Customer says what the customer will get: who, by which channel, the real email and text in place, and a press that names its act"
 number: 343
 group: ready
-status: the owner said build it all, 2026-11-13; PR 1 (the words) built as v2.7157; left: PR 2 the email and text faces, PR 3 one press
+status: the owner said build it all, 2026-11-13; PR 1 (the words) built as v2.7157, PR 2 (the faces) as v2.7158; left: PR 3 one press
 summary: >
   The owner asked whether it is clear, when the assistant sends a bill, what the customer is
   receiving. It is not. On the default tab the press reads Create Stripe invoice. It makes the
@@ -12,8 +12,8 @@ summary: >
   send on record that day. The card adds a caption per channel, a Send to line with the name and
   the phone, the real email and text drawn in place, a When you press box, and a press named for
   its act.
-next: PR 2, the real email and text drawn in place; then PR 3, one press that makes the bill and emails it
-size: M as a train of three (XS · S · M); left: PR 2 (S) and PR 3 (M)
+next: PR 3, one press that makes the bill and emails it
+size: M as a train of three (XS · S · M); left: PR 3 (M)
 blocker: none
 opinion: build in the card's order; PR 3 is the one that stops a bill being made and never sent
 ---
@@ -178,4 +178,13 @@ The owner's word on the mock-up, 2026-11-13: *build it all*. That is his yes to 
   screen* and shows only when the customer themself is billed, since a text goes to the job's
   customer and its number is read from the customer on the next screen. The counted press reads
   *Email the invoice to 2 people*.
-- **PR 2 and PR 3**: not built yet.
+- **PR 2, the faces, v2.7158**: *What Dana will get* with **The bill**, **The email** and **The text**. The
+  email is `buildStripeBillEmail` over this bill's facts, in a frame that takes no clicks. Before
+  the bill exists there is no pay page, no Stripe PDF and no read of the portal, so Pay now points
+  at a sample and the note under the frame says what rides along. The text is the Billed line by
+  the Tell the customer sheet's own rules: the office's line or the app's, the same fills, the
+  number the sheet would pick, and the sheet's own reason when no text can go. It is read the first
+  time its face is opened and writes nothing. A customer with no contact yet reads *Their number is
+  read on the next screen*, since only the next screen makes the contact. The bill's box is headed
+  *On the bill*.
+- **PR 3**: not built yet.

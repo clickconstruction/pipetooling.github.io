@@ -67,13 +67,9 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
     cashNote: 'Leaves out Accounts Payable, $12.0k.',
     cashMayLead: true,
     flow,
-    picked: null,
     moveNumbers: numbers,
     counts: { billJobs: 11, lateInvoices: 9 },
-    people: { caller: '', biller: 'Dana', collector: 'Jorge' },
     supplyDue: null,
-    calls: [],
-    now: { stageWeeks: { build: 6, bill: 7.5, collect: 3.7 }, stagePilesUsd: { bill: 142_000 }, keys: numbers },
     dayLabel: md,
   })
   // Market at what the asks are worth at the won rates (punch list #318), with what the amount is made of.

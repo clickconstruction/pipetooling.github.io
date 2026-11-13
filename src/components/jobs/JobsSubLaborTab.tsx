@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { MoreHorizontal } from 'lucide-react'
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -713,8 +714,9 @@ export default function JobsSubLaborTab({
                         </div>
                       </td>
                       <td style={{ padding: '0.5rem', verticalAlign: 'middle', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story · Lien waiver" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>
-                          ⋯
+                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story · Lien waiver" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}>
+                          {/* v2.7168 · the Pipeline row's icon, centred by the button's own box: a typed ⋯ under the default button padding (13.6 px a side in a 30 px button) overflowed right and low. */}
+                          <MoreHorizontal size={18} strokeWidth={2.25} aria-hidden="true" />
                         </button>
                         {menuJobId === job.id ? (
                           <div role="menu" style={{ position: 'absolute', right: 8, top: '100%', zIndex: 20, minWidth: 170, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px -10px rgba(0,0,0,0.35)', padding: '0.25rem' }}>

@@ -1,12 +1,15 @@
 /**
  * bridge-weekly-sheet (v2.5883): the Bridge's weekly email. On Monday at 6 AM Central the run builds the page's first
- * screen (since v2.6888: the three tiles, the strip of pipe and the week's call, `buildWeekMailFromReads` over
+ * screen (since v2.6888: the three tiles, the strip of pipe and the card What to do now, `buildWeekMailFromReads` over
  * `loadMondaySheetReads`, the copy of the kernels, the same reads the page makes, as the service role) and mails it
  * to the owner and every dev with a real account (the Bridge's own audience since v2.6763, `BRIDGE_ROLES`), each to
  * their own address, and never to anyone else (`weeklySendRecipients`). The bank is read from Mercury with the API
  * key (`_shared/mercuryAccounts.ts`), as `get-mercury-account-balances` reads it, and the accounts the owner left out
  * of cash on hand on the page (`bridge_cash_accounts_out_v1`) are left out here; ZZ test jobs stay out, as they do
  * for a dev who has not chosen to show them. The mail records nothing: its press opens the Bridge.
+ *
+ * Since punch list #334 (PR 11) the mail speaks of no call: it reads no row of `bridge_calls`, names its card as the
+ * page does, and puts no person on a move.
  *
  * Since v2.6983 (punch list #318, PR 5) Market on the pipe reads what the asks are worth: the reads take every bid and
  * every estimate ever sent (`loadBidWins.ts`, `loadEstimateWins.ts`), each through its own won rate, as the page
@@ -41,7 +44,6 @@ import { loadMondaySheetReads } from '../_shared/gcKernels/lib/bridge/sheetReads
 import { buildWeekMailFromReads } from '../_shared/gcKernels/lib/bridge/sheetBuild.ts'
 import { weekMailHtml, weekMailSubject, weekMailText } from '../_shared/gcKernels/lib/bridge/weekMail.ts'
 import { BRIDGE_ACCOUNTS_OUT_SETTING_KEY, parseAccountsOut, parseBankNicknames } from '../_shared/gcKernels/lib/bridge/cashAccounts.ts'
-import { parseMoveMarks, type MoveMark } from '../_shared/gcKernels/lib/bridge/callPeople.ts'
 import { parseMercuryCash, type MercuryCash } from '../_shared/gcKernels/lib/bridge/mercuryCash.ts'
 import { readZzTestJobRows } from '../_shared/gcKernels/lib/jobs/zzTestJobReads.ts'
 import { BRIDGE_ROLES, WEEKLY_SHEET_LAST_RUN_KEY, WEEKLY_SHEET_ON_KEY, alreadySentToday, isBridgeRole, parseWeeklySendRun, weeklySendRecipients, weeklySendTickNow, weeklySheetIsOn, type WeeklySendRun } from '../_shared/gcKernels/lib/bridge/weeklySend.ts'
@@ -86,13 +88,6 @@ async function readBank(now: Date): Promise<{ bank: MercuryCash | null; names: M
   } catch (e) {
     return { bank: null, names: none, problem: e instanceof Error ? e.message : String(e) }
   }
-}
-
-/** The Done presses people made on the newest calls' moves, as the page's card reads them. */
-async function readMoveMarks(admin: Admin): Promise<MoveMark[]> {
-  const { data, error } = await admin.from('bridge_calls').select('id, moves').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(6)
-  if (error) throw new Error(error.message)
-  return parseMoveMarks(data ?? [])
 }
 
 serve(async (req) => {
@@ -141,15 +136,8 @@ serve(async (req) => {
       onProblem: (what, error) => problems.push({ what, error: error instanceof Error ? error.message : String(error) }),
     })
     if (bankProblem) reads.gaps.unshift('the bank')
-    let marks: MoveMark[] = []
-    try {
-      marks = await readMoveMarks(admin)
-    } catch (e) {
-      reads.gaps.push('the Done presses')
-      problems.push({ what: 'the Done presses', error: e instanceof Error ? e.message : String(e) })
-    }
     // Cash on hand leaves out the accounts the owner switched off on the page.
-    const mail = buildWeekMailFromReads(reads, { accountsOut: parseAccountsOut(setting(BRIDGE_ACCOUNTS_OUT_SETTING_KEY)), bankNames, marks })
+    const mail = buildWeekMailFromReads(reads, { accountsOut: parseAccountsOut(setting(BRIDGE_ACCOUNTS_OUT_SETTING_KEY)), bankNames })
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
     const url = `${origin}/bridge`
     const subject = weekMailSubject(mail)

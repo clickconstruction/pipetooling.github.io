@@ -212,6 +212,28 @@ export function calendarSourceFor(index: PayCalendarIndex | null | undefined, bi
   return payerCalendar ? { calendar: payerCalendar, from: 'payer', payerCalendar } : NO_CALENDAR
 }
 
+/** A calendar handed over bare, or with whose it is: the pay model takes either (punch list #341). */
+export type PayCalendarArg = PayCalendar | PayCalendarRead | null | undefined
+
+/** Either form as a read. A bare calendar is taken as the payer's, which is what every caller before #341 meant. */
+export function asPayCalendarRead(arg: PayCalendarArg): PayCalendarRead {
+  if (!arg) return NO_CALENDAR
+  if ('from' in arg) return arg
+  return { calendar: arg, from: 'payer', payerCalendar: arg }
+}
+
+/** What a job switched off reads, on its row, in the job window and in its payer's window: one home, so the three never drift. It is a state and the press back to it, not an empty list. */
+export const JOB_NO_CALENDAR_WORDS = 'No pay calendar on this job'
+
+/** The words that mark a calendar as one job's own, wherever a row says its calendar (punch list #341). */
+export const OWN_CALENDAR_WORDS = 'This job’s own'
+
+/** A row's calendar in a few words, marked when it is the job's own: "This job’s own · In by the 25th, paid the 30th". Null with none. */
+export function payCalendarShortFor(read: PayCalendarRead): string | null {
+  if (!read.calendar) return null
+  return read.from === 'job' ? `${OWN_CALENDAR_WORDS} · ${payCalendarShort(read.calendar)}` : payCalendarShort(read.calendar)
+}
+
 /** The calendar one bill reads (`calendarSourceFor`, without whose it is). */
 export function calendarFor(index: PayCalendarIndex | null | undefined, bill: { payerId: string | null | undefined; jobId?: string | null }): PayCalendar | null {
   return calendarSourceFor(index, bill).calendar
@@ -226,12 +248,12 @@ export type JobPayCalendarWords = { lead: string | null; press: string; tail: st
  */
 export function jobPayCalendarWords(read: PayCalendarRead, payerName: string | null | undefined, canSet: boolean): JobPayCalendarWords | null {
   const who = (payerName ?? '').trim() || 'this customer'
-  if (read.from === 'job' && read.calendar) return { lead: 'This job’s own', press: payCalendarShort(read.calendar), tail: null, title: `${payCalendarWords(read.calendar)} Only this job reads it.` }
+  if (read.from === 'job' && read.calendar) return { lead: OWN_CALENDAR_WORDS, press: payCalendarShort(read.calendar), tail: null, title: `${payCalendarWords(read.calendar)} Only this job reads it.` }
   if (read.from === 'payer' && read.calendar) return { lead: `Follows ${who}`, press: payCalendarShort(read.calendar), tail: null, title: `${payCalendarWords(read.calendar)} Every job ${who} pays reads it.` }
   if (read.from === 'off') {
     return {
       lead: null,
-      press: 'No pay calendar on this job',
+      press: JOB_NO_CALENDAR_WORDS,
       tail: read.payerCalendar ? `${who} has one` : null,
       title: 'This job reads the usual guess: the bill date plus how long they take to pay.',
     }

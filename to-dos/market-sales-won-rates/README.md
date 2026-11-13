@@ -11,7 +11,7 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board read this way since PRs 1 to 3
   (v2.6973, v2.6975, v2.6977). The page's own Market and Sales cards, the slowest-step reading, the weekly email
   and the guide followed with PRs 4 to 6 (v2.6979, v2.6983, v2.6988). This card holds every rule and what is left, which is the owner's calls.
-next: the owner answers the eight calls at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word
+next: the owner answers the seven calls still open at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word
 size: L as a train of six (M · S · M · M · M · S), all shipped; left: the owner's calls (XS)
 blocker: None for the build. Monday's email matches the page only once #7948 and #7893 are merged and `bridge-weekly-sheet` is redeployed, and both belong to #334.
 opinion: your call — nothing is left to build; retire it after Monday's email is read, because no real send has shown the Market amount yet.
@@ -206,7 +206,8 @@ note and fragment, and its docs, per `CLAUDE.md`. Claim a version for each.
 ## Where it stands
 
 Checked on 2026-11-13 against `main` and against production, read only. Nothing on this card's plan is left to
-build. What is left is eight short questions for the owner and his read of Monday's email.
+build. What is left is seven short questions for the owner and his read of Monday's email. Call 7 is answered
+and built.
 
 ### The owner's calls
 
@@ -229,8 +230,8 @@ Each takes one word. The pick is the builder's, and it stands until he says othe
    for those marks, each with a door to the Bid Board. A yes is S.
 6. **Size the pipe's widths straight to the dollars?** Pick: **no**. #321 answers the same worry, that the five
    steps look alike, by lighting one of them. A yes is S.
-7. **Fix the Bid Board's Pulse so a bid sent on a Sunday counts in its own week?** Pick: **yes**. The look is
-   written under *Looked at* below. No count is wrong today. The fix is XS and is clear of every open Bridge PR.
+7. **Fix the Bid Board's Pulse so a bid sent on a Sunday counts in its own week?** **Done.** It was fixed as
+   v2.7170, on a yes of 2026-11-13. The look is written under *Looked at* below.
 8. **Retire this card now, or after Monday's email is read?** Pick: **after Monday**. The reason is under *When
    this card closes*.
 
@@ -287,9 +288,9 @@ For Monday's mail to match the page, both PRs are merged and `bridge-weekly-shee
 A bid's send day is a date with no time. `estimatingPulse.ts` and `bidBoardWeeklySentStats.ts` read it through the
 helper for a moment in time, which takes a plain date as midnight UTC. That is the evening before in Chicago, so
 each bid lands a day early. Only a Sunday send changes weeks: it counts in the week before. None of the bids sent
-since May 2026 carries a Sunday send day, so no week on the board is wrong today. The fix is to read the date as
-written (`ymdFromDateLike`) in both kernels, with a test that feeds a plain date. Their tests feed a time today,
-which the column never holds. It is call 7.
+since May 2026 carries a Sunday send day, so no week on the board was wrong. Since v2.7170 both kernels read the
+date as written (`ymdFromDateLike`), and their tests feed a plain date. Until then the tests fed a time, which the
+column never holds. It was call 7.
 
 ### When this card closes
 

@@ -29,18 +29,21 @@ vi.mock('../customers/PayCalendarLine', () => ({
   default: ({ payerId, job }: { payerId: string; job?: { id: string; label: string } | null }) => <span data-testid="pay-calendar-line-stub">{`${payerId} | ${job ? `${job.id} | ${job.label}` : 'no job'}`}</span>,
 }))
 // The board's pay speeds come from one RPC through useBilledMoneyData; hand it the answer a case sets.
-const money = vi.hoisted(() => ({ speeds: null as unknown }))
+const money = vi.hoisted(() => ({ speeds: null as unknown, calendars: null as unknown, opener: null as null | { openPayCalendar: (...args: unknown[]) => void; closePayCalendar: () => void } }))
+// No Pay calendar opener unless a case sets one: the rows then read as they do with no provider above them.
+vi.mock('../../contexts/PayCalendarModalContext', () => ({ usePayCalendarModal: () => money.opener }))
 vi.mock('../../hooks/useBilledMoneyData', async (original) => {
   const actual = await original<typeof import('../../hooks/useBilledMoneyData')>()
   return {
     ...actual,
-    useBilledMoneyData: (args: Parameters<typeof actual.useBilledMoneyData>[0]) => ({ ...actual.useBilledMoneyData(args), billedPaySpeeds: money.speeds }),
+    useBilledMoneyData: (args: Parameters<typeof actual.useBilledMoneyData>[0]) => ({ ...actual.useBilledMoneyData(args), billedPaySpeeds: money.speeds, ...(money.calendars ? { payCalendars: money.calendars } : {}) }),
   }
 })
 
 import JobsStagesTab, { type JobsStagesTabHandle, type JobsStagesTabProps } from './JobsStagesTab'
 import { makeJob, makeUseAuthValue, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import { indexPayCalendars, PAY_CALENDAR_DEFAULT, type PayCalendarRow } from '../../lib/jobs/payCalendar'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 const authValue = makeUseAuthValue()
@@ -129,6 +132,8 @@ describe('JobsStagesTab — a billed row’s Pays in line opens Pay speeds on it
   beforeEach(() => {
     localStorage.setItem('pipetooling_stages_sections_v2', JSON.stringify({ waiting: false, working: false, readyToBill: false, billed: true, collections: true, paid: false }))
     money.speeds = SPEEDS
+    money.calendars = null
+    money.opener = null
   })
   afterEach(() => cleanup())
 
@@ -173,6 +178,34 @@ describe('JobsStagesTab — a billed row’s Pays in line opens Pay speeds on it
     fireEvent.click(within(rowOf('job-diner')).getByRole('button', { name: /^Pays in 3–67d\. Open pay speeds/ }))
     const win = within(screen.getByRole('dialog', { name: 'Pay speeds for Made Up Diner' }))
     expect(win.getByTestId('pay-calendar-line-stub').textContent).toMatch(/^cust-diner \| job-diner \| .+ · Sink Drain$/)
+  })
+
+  describe('a job on its own Pay calendar, and one switched off (punch list #341, PR 2)', () => {
+    const cal = (over: Partial<PayCalendarRow>): PayCalendarRow => ({ payerCustomerId: 'cust-diner', jobId: null, off: false, calendar: PAY_CALENDAR_DEFAULT, setByName: null, setAt: null, ...over })
+    const twoDinerJobs = () => [billedJob('job-diner', 'Sink Drain', 'cust-diner', 'Made Up Diner', 1070), billedJob('job-diner-2', 'Grease Trap', 'cust-diner', 'Made Up Diner', 900)]
+
+    it('marks the row whose calendar is the job’s own, and leaves the payer’s other row as it was', async () => {
+      money.calendars = indexPayCalendars([cal({}), cal({ jobId: 'job-diner', calendar: { ...PAY_CALENDAR_DEFAULT, cutoffDay: 25, payDay: 30 } })])
+      money.opener = { openPayCalendar: vi.fn(), closePayCalendar: vi.fn() }
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: twoDinerJobs() })} />)
+      await settle()
+      const own = within(rowOf('job-diner')).getByRole('button', { name: 'This job’s own · In by the 25th, paid the 30th. Open the pay calendar for Made Up Diner' })
+      expect(within(rowOf('job-diner-2')).getByRole('button', { name: 'In by month end, paid the 10th. Open the pay calendar for Made Up Diner' })).toBeTruthy()
+      fireEvent.click(own)
+      expect(money.opener.openPayCalendar).toHaveBeenCalledWith({ id: 'cust-diner', name: 'Made Up Diner' }, expect.objectContaining({ job: expect.objectContaining({ id: 'job-diner' }) }))
+    })
+
+    it('says a job switched off has no pay calendar, and the words open the window on that job', async () => {
+      money.calendars = indexPayCalendars([cal({}), cal({ jobId: 'job-diner', off: true, calendar: null })])
+      money.opener = { openPayCalendar: vi.fn(), closePayCalendar: vi.fn() }
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: twoDinerJobs() })} />)
+      await settle()
+      // The row reads the usual guess, as any payer with no calendar does, and one more line says why.
+      expect(within(rowOf('job-diner')).getByRole('button', { name: /^Pays in 3–67d\. Open pay speeds/ })).toBeTruthy()
+      fireEvent.click(within(rowOf('job-diner')).getByRole('button', { name: 'No pay calendar on this job' }))
+      expect(money.opener.openPayCalendar).toHaveBeenCalledWith({ id: 'cust-diner', name: 'Made Up Diner' }, expect.objectContaining({ job: expect.objectContaining({ id: 'job-diner' }) }))
+      expect(within(rowOf('job-diner-2')).queryByRole('button', { name: 'No pay calendar on this job' })).toBeNull()
+    })
   })
 
   it('the other row opens on the other payer', async () => {

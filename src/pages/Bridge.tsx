@@ -45,8 +45,8 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, firstName, topPerson, type WeekCallInput } from '../lib/bridge/weekCall'
-import { NOW_CARD_LABEL, nowDeskFoot } from '../lib/bridge/pulseWords'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CARD_LABEL, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, type WeekCallInput } from '../lib/bridge/weekCall'
+import { nowDeskFoot } from '../lib/bridge/pulseWords'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { buildRecordedReading, buildWaitingDays } from '../lib/bridge/waitingDays'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
@@ -74,7 +74,7 @@ import { BridgeJobHoursWindow } from '../components/bridge/BridgeJobHours'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
 import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { deskStatus, isStageLink, type BridgeCall, type CallLink } from '../lib/bridge/calls'
+import { deskStatus, isStageLink, type CallLink } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { arRowInvoiceId } from '../lib/bridge/collect/collectBills'
@@ -143,8 +143,6 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-/** The page is a pulse (punch list #334, PR 7): it reads no call, so the model behind the first screen is told there are none. One list, so memos stay still. */
-const NO_CALLS: BridgeCall[] = []
 /** The names the page hands a read that looks people up itself: none, so the read fetches the few it needs. */
 const NO_NAMES: ReadonlyMap<string, string> = new Map()
 /** Where a door on the first screen lands: clear of the app's top bar. */
@@ -153,7 +151,7 @@ const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: 
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
 
 export default function Bridge() {
-  const { user, role, profileName, loading: authLoading } = useAuth()
+  const { user, role, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
   const [data, setData] = useState<BridgeData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -909,14 +907,6 @@ export default function Bridge() {
     }),
     [billPile, receipts, doubtful, data],
   )
-  const nowReading = useMemo(
-    () => ({
-      stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>,
-      stagePilesUsd: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.pile.usd])) as Partial<Record<StageId, number | null>>,
-      keys: moveNumbers,
-    }),
-    [stageFlow, moveNumbers],
-  )
   const deskReading = useMemo(() => {
     if (litLink && !isStageLink(litLink)) {
       const r = resources?.find((x) => x.id === litLink)
@@ -947,8 +937,7 @@ export default function Bridge() {
   }, [collectDesk, data, collectChips.chipsByJob, stageInput, stageFlow])
 
   // The first screen (punch list #303, PR 1): the tiles and the card *What to do now*, read from the readings above.
-  // The model is `buildWeekCall`'s, told there is no call on record and no pick (punch list #334, PR 7), so it always
-  // reads today: the slowest step, or cash in a week it leads.
+  // The model reads today and nothing else (punch list #334): the slowest step, or cash in a week it leads.
   const weekInput = useMemo((): WeekCallInput | null => {
     if (!data || !thisWeekStart) return null
     const late = receipts.filter((r) => r.basis === 'late')
@@ -961,21 +950,13 @@ export default function Bridge() {
       cashNote: cashAccounts?.note ?? null,
       cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
       flow: stageFlow,
-      picked: null,
       moveNumbers,
       counts: { billJobs: billPile?.knownJobs ?? null, lateInvoices: late.length + doubtful.length },
-      people: {
-        caller: firstName(profileName),
-        biller: topPerson(vectorInputs?.invoiceSends ?? [], vectorInputs?.people ?? [], data.windowStart),
-        collector: topPerson(vectorInputs?.payments ?? [], vectorInputs?.people ?? [], data.windowStart),
-      },
       // The hazards are the supply invoices due, by day: the one bill a call can ask more days on.
       supplyDue: forecast ? (data.hazards.find((h) => h.ymd > data.todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
-      calls: NO_CALLS,
-      now: nowReading,
       dayLabel: md,
     }
-  }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+  }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
   // The real things behind each move on the card (punch list #334, PR 8; `callDive.ts`), from what the page has
   // already read: nothing here is a new count.
@@ -1554,7 +1535,7 @@ export default function Bridge() {
             />
           ) : (
             <p style={det} data-testid="bridge-week-wait">
-              Reading {NOW_CARD_LABEL.toLowerCase()}…
+              Reading {WEEK_CARD_LABEL.toLowerCase()}…
             </p>
           )}
 
@@ -1611,7 +1592,7 @@ export default function Bridge() {
           {stageFlow && litLink && (
             <BridgeLinkDesk
               link={litLink}
-              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: false })}
+              status={deskStatus({ link: litLink, linkId: stageFlow.linkId })}
               todayReading={deskReading}
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
               onGoToCall={() => setDoorScroll((d) => ({ id: 'bridge-week', n: (d?.n ?? 0) + 1 }))}

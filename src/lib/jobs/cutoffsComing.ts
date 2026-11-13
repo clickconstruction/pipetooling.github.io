@@ -7,20 +7,24 @@
  * list that says what to get out, and by when. Pure: the caller hands in each ready bill and
  * each working job with its payer and its dollars.
  */
-import { calendarFor, nextCutoff, payCalendarMonthDay, payCalendarShort, PAY_CUTOFF_SOON_DAYS, type PayCalendarIndex } from './payCalendar'
+import { calendarSourceFor, nextCutoff, payCalendarMonthDay, payCalendarShort, PAY_CUTOFF_SOON_DAYS, type PayCalendarIndex } from './payCalendar'
 
 /** One thing not yet billed: a bill waiting in Ready to Bill, or a job still being worked. */
 export type CutoffWork = {
   payerId: string | null
   payerName: string | null
   jobId: string
+  /** The job in a few words, its number or its name (punch list #341): a line that is one job's own calendar names it. */
+  jobLabel?: string | null
   /** A ready bill's amount, or what is left to bill on a working job. */
   dollars: number
 }
 
 export type CutoffComing = {
-  /** Stable key: the payer, the cutoff and the due day. A job on its own calendar makes a line of its own. */
+  /** Stable key: the payer, the cutoff and the due day, and the job when the calendar is that job's own. */
   key: string
+  /** The one job this line is for, when its calendar is the job's own and not the payer's (punch list #341); null on a payer's line. */
+  ownJob: { id: string; label: string } | null
   payerId: string
   payerName: string
   cutoffYmd: string
@@ -52,16 +56,20 @@ export function buildCutoffsComing(args: { todayYmd: string; calendars: PayCalen
   const byKey = new Map<string, CutoffComing>()
   const add = (w: CutoffWork, kind: 'ready' | 'working') => {
     if (!w.payerId) return
-    const calendar = calendarFor(calendars, { payerId: w.payerId, jobId: w.jobId })
+    const read = calendarSourceFor(calendars, { payerId: w.payerId, jobId: w.jobId })
+    const calendar = read.calendar
     const cut = calendar ? nextCutoff(todayYmd, calendar) : null
     if (!calendar || !cut) return
-    const key = `${w.payerId}|${cut.cutoffYmd}|${cut.dueYmd}`
+    // A job on its own calendar gets a line to itself, even when its days match the payer's: the line names the job.
+    const ownJob = read.from === 'job' ? { id: w.jobId, label: (w.jobLabel ?? '').trim() || 'one job' } : null
+    const key = `${w.payerId}|${cut.cutoffYmd}|${cut.dueYmd}${ownJob ? `|${ownJob.id}` : ''}`
     let line = byKey.get(key)
     if (!line) {
       line = {
         key,
         payerId: w.payerId,
         payerName: (w.payerName ?? '').trim() || 'A customer',
+        ownJob,
         cutoffYmd: cut.cutoffYmd,
         dueYmd: cut.dueYmd,
         nextDueYmd: cut.nextDueYmd,
@@ -82,7 +90,7 @@ export function buildCutoffsComing(args: { todayYmd: string; calendars: PayCalen
   for (const w of args.working) add(w, 'working')
   const out = [...byKey.values()]
   for (const line of out) {
-    line.title = `${line.payerName} · in by ${payCalendarMonthDay(line.cutoffYmd)}, due ${payCalendarMonthDay(line.dueYmd)}`
+    line.title = `${line.payerName}${line.ownJob ? ` · ${line.ownJob.label} only` : ''} · in by ${payCalendarMonthDay(line.cutoffYmd)}, due ${payCalendarMonthDay(line.dueYmd)}`
     const parts: string[] = []
     // A ready bill with no price yet has no dollars to say: the count alone, as with a working job.
     if (line.ready.count > 0) parts.push(`${counted(line.ready.count, 'bill', 'bills')} ready${line.ready.dollars > 0 ? `, ${usd(line.ready.dollars)}` : ''}.`)
