@@ -43,6 +43,7 @@ import { findOnSite, otherJobsWithBoxes, otherJobsWords, type OnSiteFindHit } fr
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import ScanLabelWindow from '../materials/ScanLabelWindow'
+import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
@@ -208,7 +209,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 
   const jobButton = (
     <button type="button" onClick={() => setSheet({ kind: 'pick-job' })} aria-label="Choose job" style={{ ...btn, ...btnBlock, minHeight: 40, justifyContent: 'space-between', fontWeight: 600, fontSize: '0.9rem', textAlign: 'left', background: 'var(--bg-blue-tint)', borderColor: 'transparent', color: 'var(--text-blue-700)', borderRadius: 999, padding: '0 0.9rem' }}>
-      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.8, marginRight: '0.5rem' }}>Job</span>{job ? `${job.hcp_number || '—'} · ${job.job_name || '—'}` : 'Choose job…'}</span>
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.8, marginRight: '0.5rem' }}>Job</span>{job ? onSiteJobWords(job) : 'Choose job…'}</span>
       <span style={{ fontSize: '0.8rem' }}>▾</span>
     </button>
   )
@@ -593,8 +594,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           }}
         />
       ) : null}
-      {paper?.kind === 'label' ? <LabelsPrintModal jobLabel={`${job.hcp_number || '—'} · ${job.job_name || '—'}`} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
-      {paper?.kind === 'manifest' ? <ManifestPrintModal jobLabel={`${job.hcp_number || '—'} · ${job.job_name || '—'}`} site={job.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
+      {paper?.kind === 'label' ? <LabelsPrintModal jobLabel={onSiteJobWords(job)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
+      {paper?.kind === 'manifest' ? <ManifestPrintModal jobLabel={onSiteJobWords(job)} site={job.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={paper.id} onClose={() => setPaper(null)} /> : null}
       {sheet?.kind === 'qty' ? (
         <QtySheet title={sheet.reason === 'used' ? 'How many did you use?' : "How many can't you find?"} sub={`${sheet.line.partName} from ${sheet.container.label}. ${sheet.container.label} has ${sheet.line.onHand}.`} max={sheet.line.onHand} quick={sheet.reason === 'used'} note label={(n) => pressLabel(sheet.reason, n)} after={(n) => leftWords(sheet.container.label, sheet.line.onHand, n)} onClose={() => setSheet(null)} onSave={(n, note) => { write(sheet.reason, sheet.line, n, sheet.container.id, null, note); setSheet(null); showToast(sheet.reason === 'used' ? `${n} used from ${sheet.container.label}. ${sheet.container.label} ${sheet.line.onHand - n <= 0 ? 'has none left' : `has ${sheet.line.onHand - n} left`}.` : `${n} marked can't find in ${sheet.container.label}. The office sees it.`, 'success') }} />
       ) : null}

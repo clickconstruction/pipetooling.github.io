@@ -31,6 +31,7 @@ import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
+import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
 import { tieCanon } from '../../lib/materials/partTies'
@@ -47,7 +48,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
-export type MaterialsJob = { id: string; hcp_number: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
+export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
 
 type Props = {
   jobs: MaterialsJob[]
@@ -110,7 +111,7 @@ function when(iso: string): string {
 }
 function jobLabel(j: MaterialsJob | undefined, id: string): string {
   if (!j) return `job ${id.slice(0, 8)}`
-  return `${j.hcp_number || '—'} · ${j.job_name || j.customer_name || '—'}`
+  return onSiteJobWords(j)
 }
 function unitPrice(line: Pick<ContainerLine, 'partKey'>): number | null {
   return priceOf(line.partKey)
@@ -172,7 +173,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     if (missing.length === 0) return
     void supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link')
+      .select('id, hcp_number, click_number, job_name, job_address, google_drive_link')
       .in('id', missing)
       .then(({ data }) => {
         if (data && data.length) setExtraJobs((prev) => [...prev, ...(data as MaterialsJob[]).filter((d) => !prev.some((p) => p.id === d.id))])
