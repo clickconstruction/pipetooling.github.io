@@ -39,11 +39,13 @@ The text from {{button:gray|Copy for text}} shows no cents. It is a quick look f
 - The total is the bid's true total, rounded the same way. Add the lines up yourself and you can land a dollar or two away.
 - A count is never rounded. A run of 61.37 feet stays 61.37.
 - A price for one keeps its cents when the line would not add up without them. A rate of $12.50 a foot stays $12.50.
+- A fixed price shows as one price for the whole line, whatever the count.
 
-:::example Three lines from one text
+:::example Four lines from one text
 LAV-A — 3 × $2,900 = $8,700
 ft of copper — 180.4 × $12.50 = $2,255
 Tie-ins — 1 × $6,413 = $6,413
+Mobilize — 3, fixed price $5,000
 :::
 
 ## Send both prices

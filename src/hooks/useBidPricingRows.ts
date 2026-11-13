@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { splitLetterTotalsByAlternate, type LetterTotalsByAlternate } from '../lib/bids/coverLetterAddAlternates'
 import { coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
-import { scenarioPackageRows, scenarioPricingRows } from '../lib/bids/scenarioPricingRows'
+import { scenarioPricingRows } from '../lib/bids/scenarioPricingRows'
+import { sharePackageRows } from '../lib/bids/starAwareShare'
 import type { PackageAndSendPricingRowInput } from '../components/bids/PackageAndSendBidPricingModal'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type { BidCountRow } from '../types/bids'
@@ -88,8 +89,9 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
       (pricingMaterialTotalTrimSet ?? 0)
     const rate = pricingLaborRate ?? 0
     const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-    // The one scenario adapter (v2.3853): own overlay rows only, the grid's cost side.
-    return scenarioPackageRows(
+    // The one scenario adapter (v2.3853): own overlay rows only, the grid's cost side; each
+    // row's fixed-price flag rides along for the share text (v2.7136).
+    return sharePackageRows(
       scenarioPricingRows({
         scenarioId: selectedPricingVersionId,
         countRows: pricingCountRows,
