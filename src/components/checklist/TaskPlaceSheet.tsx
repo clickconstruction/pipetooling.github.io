@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { requestMyLocation, type MyFix } from '../../lib/materials/myLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { ADD_TASK_PICKER_Z } from '../../lib/windowLayers'
 import {
   TASK_PLACE_NAME_MAX,
   TASK_PLACE_START_WAIT_MS,
@@ -100,7 +101,7 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose }: Props) {
   return createPortal(
     <div
       data-task-place-sheet
-      style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
+      style={{ position: 'fixed', inset: 0, zIndex: ADD_TASK_PICKER_Z, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
       onClick={(e) => {
         // The Add window sits behind: this press closes the sheet alone.
         e.stopPropagation()
