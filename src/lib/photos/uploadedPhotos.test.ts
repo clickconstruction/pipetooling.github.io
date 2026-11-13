@@ -121,7 +121,7 @@ describe('a row’s words', () => {
   it('names the job, the bid, or no job', () => {
     expect(jobWords(row())).toBe('J1042 · Oak Hollow Apartments Building C · Ridgeway Builders')
     expect(jobWords(row({ job_hcp_number: null, job_click_number: '77' }))).toBe('J77 · Oak Hollow Apartments Building C · Ridgeway Builders')
-    expect(jobWords(row({ job_id: null, bid_id: 'b1', bid_number: '556', job_hcp_number: null, job_name: 'Gun Dog Trail', customer_name: 'Ridgeway Builders' }))).toBe('Bid 556 · Gun Dog Trail · Ridgeway Builders')
+    expect(jobWords(row({ job_id: null, bid_id: 'b1', bid_number: '556', job_hcp_number: null, job_name: 'Gray Fox Trail', customer_name: 'Ridgeway Builders' }))).toBe('Bid 556 · Gray Fox Trail · Ridgeway Builders')
     expect(jobWords(row({ job_id: null, job_hcp_number: null, job_name: null, customer_name: null }))).toBe('No job tied')
   })
 

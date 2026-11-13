@@ -52,13 +52,13 @@ beforeAll(() => {
 
 const standing = (customerId: string, arrangementIds: string[]): InKindStanding => ({ customerId, arrangementIds, left: 500, ahead: 0, paidInKind: 0, dueMonth: null, dueCount: 0 })
 
-/** A job for Randy Vargo whose bills go to its GC, Done Right Foundation. */
+/** A job for Randy Varlow whose bills go to its GC, Dead Level Foundation. */
 const gcBilledJob = (): JobWithDetails =>
   ({
-    ...makeJob({ id: 'job-1', hcp_number: '1117', job_name: 'Vargo Pretest', status: 'ready_to_bill', customer_id: HOME, customer_name: 'Randy Vargo' }),
+    ...makeJob({ id: 'job-1', hcp_number: '1117', job_name: 'Varlow Pretest', status: 'ready_to_bill', customer_id: HOME, customer_name: 'Randy Varlow' }),
     gc_customer_id: GC,
     bill_to_party: 'gc',
-    gcCustomer: { id: GC, name: 'Done Right Foundation' },
+    gcCustomer: { id: GC, name: 'Dead Level Foundation' },
   }) as JobWithDetails
 
 async function openWindow(job: JobWithDetails) {
@@ -93,8 +93,8 @@ describe('JobWindowModal — the in kind strip reads whoever the bill goes to (v
     state.standings = new Map([[GC, standing(GC, ['deal-gc'])]])
     await openWindow(gcBilledJob())
     const strip = screen.getByTestId('job-in-kind-strip')
-    expect(strip.textContent).toContain('Done Right Foundation pays in kind.')
-    expect(strip.textContent).not.toContain('Randy Vargo')
+    expect(strip.textContent).toContain('Dead Level Foundation pays in kind.')
+    expect(strip.textContent).not.toContain('Randy Varlow')
     expect(screen.getByRole('button', { name: JOB_PUT_ON_DEAL_PRESS })).toBeTruthy()
   })
 

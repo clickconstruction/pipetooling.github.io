@@ -7,7 +7,7 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Job activity summary — 2026-08-14')).toBe('digest')
     expect(emailLogStreamForSubject('Billed awaiting payment — Mon, Aug 17, 2026 — $101,969 due')).toBe('billed')
     expect(emailLogStreamForSubject('Paid in full — 633 · Adam Jarrett — $300.00')).toBe('paid')
-    expect(emailLogStreamForSubject('Payment progress — 804 · Summit GC — $1,000.00 of $5,000.00 paid')).toBe('payment')
+    expect(emailLogStreamForSubject('Payment progress — 804 · Selwick GC — $1,000.00 of $5,000.00 paid')).toBe('payment')
     expect(emailLogStreamForSubject('Not paid — 812 · Some Job')).toBe('payment')
     expect(emailLogStreamForSubject('Dispatch schedule — 2026-08-18 (America/Chicago)')).toBe('schedule_day')
     expect(emailLogStreamForSubject('Weekly money movement — Aug 10 – 16')).toBe('weekly_money')
@@ -18,7 +18,7 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Signed — Hunter Road Sound Studio — $56,343 (Bid room proposal #412)')).toBe('signed_agreements')
     expect(emailLogStreamForSubject('Dana Ruiz signed — $4,250')).toBe('signed_agreements')
     expect(emailLogStreamForSubject('Dana Ruiz signed $4,250 · Second-floor rough-in')).toBe('signed_agreements')
-    expect(emailLogStreamForSubject('Knight Contracting signed — $56,343 · Hunter Road Sound Studio')).toBe('signed_agreements')
+    expect(emailLogStreamForSubject('Kestrin Contracting signed — $56,343 · Hunter Road Sound Studio')).toBe('signed_agreements')
   })
 
   it('strips the [TEST] prefix from test sends', () => {
@@ -26,7 +26,7 @@ describe('emailLogStreamForSubject', () => {
   })
 
   it('returns null for non-stream subjects', () => {
-    expect(emailLogStreamForSubject('Quote #10 accepted — Michael Palmer')).toBeNull()
+    expect(emailLogStreamForSubject('Quote #10 accepted — Michael Palvern')).toBeNull()
     expect(emailLogStreamForSubject('Click Plumbing and Electrical Estimate: Estimate #12')).toBeNull()
     expect(emailLogStreamForSubject(null)).toBeNull()
     expect(emailLogStreamForSubject('')).toBeNull()

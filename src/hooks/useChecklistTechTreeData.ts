@@ -124,35 +124,19 @@ export function useChecklistTechTreeData(
       }
       setTasks(
         (tRes as unknown[]).map((row) => {
-          const r = row as {
-            id: string
-            group_id: string
-            title: string
-            sort_index: number
-            completed_at: string | null
-            completed_by_user_id: string | null
-            created_at: string
-            pinned_at: string | null
-            estimated_days: number | null
+          // Every column the select reads rides through, so a column a migration adds needs no change here. The old
+          // row was built field by field, and the six place columns of v2.7063 broke it the moment the types had them.
+          const { checklist_tech_tree_task_assignees: assignees, ...cols } = row as Omit<TaskRow, 'percent_complete' | 'asks_for_photo'> & {
             // 20261106230000 (punch list #273): a row read before the push carries neither, so each takes its column default.
             percent_complete?: number | null
             asks_for_photo?: boolean | null
             checklist_tech_tree_task_assignees: { user_id: string }[] | null
           }
-          const assigneeIds = (r.checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id)
           return {
-            id: r.id,
-            group_id: r.group_id,
-            title: r.title,
-            sort_index: r.sort_index,
-            completed_at: r.completed_at,
-            completed_by_user_id: r.completed_by_user_id,
-            created_at: r.created_at,
-            pinned_at: r.pinned_at,
-            estimated_days: r.estimated_days,
-            percent_complete: r.percent_complete ?? 0,
-            asks_for_photo: r.asks_for_photo ?? false,
-            assigneeIds,
+            ...cols,
+            percent_complete: cols.percent_complete ?? 0,
+            asks_for_photo: cols.asks_for_photo ?? false,
+            assigneeIds: (assignees ?? []).map((a) => a.user_id),
           }
         }),
       )

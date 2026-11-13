@@ -24,7 +24,7 @@ const base = {
   rows,
   assets,
   copyLabel: 'Owner of record',
-  gcName: 'RMC-Dudley Mason',
+  gcName: 'RLC-Dunmere Mallin',
   claimantName: 'Click Plumbing and Electrical',
   contactPerson: 'Malachi Whites, Master Plumber (#RMP41130)',
   phone: '(512) 360-0599',
@@ -55,7 +55,7 @@ describe("the pay page — the owner's copy", () => {
 
   it("repeats the cover letter's rule in a box, so the page never contradicts the letter it follows", () => {
     const callout = blocks.find((b) => b.kind === 'callout')
-    expect(callout).toEqual({ kind: 'callout', text: 'Please pay these only if RMC-Dudley Mason has told you in writing that you may pay Click Plumbing and Electrical directly. Otherwise hold the amount back from RMC-Dudley Mason, as the cover letter asks.' })
+    expect(callout).toEqual({ kind: 'callout', text: 'Please pay these only if RLC-Dunmere Mallin has told you in writing that you may pay Click Plumbing and Electrical directly. Otherwise hold the amount back from RLC-Dunmere Mallin, as the cover letter asks.' })
     expect(payPageOwnerRule('', 'Click')).toBe('')
   })
 
@@ -107,7 +107,7 @@ describe('the pay page — the pay offer (v2.4713)', () => {
     const title = blocks.findIndex((b) => b.kind === 'title')
     expect(blocks[title + 1]).toEqual({ kind: 'callout', text: 'Pay any of these bills in full by November 15, 2026 and it is 10% less. The lower amount is on the page the code opens. Pay all of them and no lien is filed.' })
     const rule = blocks.filter((b) => b.kind === 'callout')[1]
-    expect(rule && rule.kind === 'callout' ? rule.text : '').toMatch(/Whoever pays, you or RMC-Dudley Mason, gets the same amount off\.$/)
+    expect(rule && rule.kind === 'callout' ? rule.text : '').toMatch(/Whoever pays, you or RLC-Dunmere Mallin, gets the same amount off\.$/)
     const rows = blocks.filter((b): b is Extract<typeof b, { kind: 'payRow' }> => b.kind === 'payRow')
     expect(rows.map((r) => r.amountLine)).toEqual(['Still owed: $13,420.00 · $12,078.00 if paid in full by November 15', 'Still owed: $665.00 · $598.50 if paid in full by November 15', 'Still owed: $3,500.00'])
     const close = blocks.filter((b) => b.kind === 'paragraph').slice(-2)[0]
@@ -125,18 +125,18 @@ describe('the pay page lines the office types (v2.4724)', () => {
     { invoiceId: 'b', label: 'Invoice #2, August 21, 2026', description: 'CHANGE ORDER: Added gas to fire features at pool', openAmount: 3_500, payable: true },
   ]
   it('puts a typed line in place of the bill’s, ignores bills no longer enclosed, and counts only real changes', () => {
-    const lines = { a: '  Plumbing for the Lennox house  ', b: 'CHANGE ORDER: Added gas to fire features at pool', gone: 'x' }
-    expect(applyPayLines(rows, lines).map((r) => r.description)).toEqual(['Plumbing for the Lennox house', 'CHANGE ORDER: Added gas to fire features at pool'])
-    expect(changedPayLines(rows, lines)).toEqual({ a: 'Plumbing for the Lennox house' })
+    const lines = { a: '  Plumbing for the Linmoor house  ', b: 'CHANGE ORDER: Added gas to fire features at pool', gone: 'x' }
+    expect(applyPayLines(rows, lines).map((r) => r.description)).toEqual(['Plumbing for the Linmoor house', 'CHANGE ORDER: Added gas to fire features at pool'])
+    expect(changedPayLines(rows, lines)).toEqual({ a: 'Plumbing for the Linmoor house' })
     expect(changedPayLines(rows, { b: '' })).toEqual({ b: '' })
     expect(applyPayLines(rows, null)).toEqual(rows)
     expect(payLineInvoiceId(payLineField('a'))).toBe('a')
     expect(payLineInvoiceId('claimAmount')).toBeNull()
   })
   it('prints the typed line plain on paper, and as a box with its note on the desk', () => {
-    const blocks = payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: 'RMC- Dudley Mason', claimantName: 'Click Plumbing and Electrical', contactPerson: '', phone: '', extras: {}, lines: { a: 'Plumbing for the Lennox house' } })
+    const blocks = payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: '', phone: '', extras: {}, lines: { a: 'Plumbing for the Linmoor house' } })
     const printed = filingDocHtml(blocks)
-    expect(printed).toContain('Plumbing for the Lennox house')
+    expect(printed).toContain('Plumbing for the Linmoor house')
     expect(printed).not.toContain('data-field')
     const desk = filingDocHtml(blocks, { marks: { [payLineField('a')]: { kind: 'typed', changed: true }, [payLineField('b')]: { kind: 'typed' } } })
     expect(desk).toContain('data-field="payLine:a"')

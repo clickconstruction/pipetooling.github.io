@@ -67,7 +67,7 @@ vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: v
 // Mail through Docsmit (PR 5b): the switches as a dev saved them, and the run's doing side stood in for.
 const docsmitState = { settings: { env: 'tracksmit', paused: false, runDefault: 'docsmit', returnReceipt: 'electronic', plusDefault: false, cutoffLocal: '15:00', sendByBufferDays: 1, creditWarn: 25, pollMinutes: 60, callbacks: false, matchSite: false }, setUp: false, loaded: true }
 vi.mock('../../hooks/useDocsmitSettings', () => ({ useDocsmitSettings: () => docsmitState }))
-const prepareMock = vi.fn(async (envs: Array<{ key: string }>) => ({ prepared: [{ key: envs[0]!.key, n: 1, label: 'Owner of record', who: 'Elbel Holdings LLC', windowLines: ['Elbel Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', recipient: 'owner', jobNumber: '650', itemIds: ['it1'], pieceId: 'p1', price: 9.85, correction: null, sheets: 4, envelope: '#10', pdfUrl: 'blob:one', pdfPath: 'mail/KX7M2QRT.pdf' }], held: [{ key: envs[1]?.key ?? 'gc', n: 2, label: 'Original contractor', why: 'The address needs a ZIP or ZIP+4.' }], balance: 120 }))
+const prepareMock = vi.fn(async (envs: Array<{ key: string }>) => ({ prepared: [{ key: envs[0]!.key, n: 1, label: 'Owner of record', who: 'Elwick Holdings LLC', windowLines: ['Elwick Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', recipient: 'owner', jobNumber: '650', itemIds: ['it1'], pieceId: 'p1', price: 9.85, correction: null, sheets: 4, envelope: '#10', pdfUrl: 'blob:one', pdfPath: 'mail/KX7M2QRT.pdf' }], held: [{ key: envs[1]?.key ?? 'gc', n: 2, label: 'Original contractor', why: 'The address needs a ZIP or ZIP+4.' }], balance: 120 }))
 const sendMock = vi.fn(async () => ({ ok: true, sent: ['p1'] }))
 vi.mock('../../lib/mail/runDocsmitIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/mail/runDocsmitIo')>('../../lib/mail/runDocsmitIo')
@@ -80,18 +80,18 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
     itemId: 'it1',
     jobId: 'j650',
     kind: 'notice_53_056',
-    label: '650 · ATI Schertz',
+    label: '650 · AXO Schertz',
     jobNumber: '650',
     months: ['2026-06', '2026-07'],
     amount: 33_500,
-    fields: { noticeDate: '2026-09-14', projectDescription: 'ATI Schertz — 1204 Elbel Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
+    fields: { noticeDate: '2026-09-14', projectDescription: 'AXO Schertz — 1204 Elwick Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
     extras: { refItems: ['Job #650'] },
     coverLetter: null,
     coverNote: 'This is a routine notice…',
     ownerUnconfirmed: false,
     recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '4 Example Way, Schertz, TX', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '4 Example Way, Schertz, TX', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ],
     ...partial,
   }
@@ -108,19 +108,19 @@ describe('LienDeskRunModal', () => {
     await settle()
     expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
     expect(screen.getByText('Send the run · 1 notice')).toBeTruthy()
-    expect(screen.getByTestId('run-envelope-1').textContent).toContain('Envelope 1 · Owner of record Elbel Holdings LLC')
-    expect(screen.getByTestId('run-envelope-2').textContent).toContain('office@loberg.test')
-    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 · ATI Schertz')
+    expect(screen.getByTestId('run-envelope-1').textContent).toContain('Envelope 1 · Owner of record Elwick Holdings LLC')
+    expect(screen.getByTestId('run-envelope-2').textContent).toContain('office@lowbeck.test')
+    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 · AXO Schertz')
     expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('cover note')
     expect(screen.getByTestId('run-row-j650-original_contractor').textContent).toContain('Copy for: original contractor')
     expect(screen.getAllByText('June and July 2026')).toHaveLength(2) // once per copy
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
     ensureMore()
     expect((screen.getByRole('button', { name: /Record the run/ }) as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking'), { target: { value: '9407 1118 9922' } })
-    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
+    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking'), { target: { value: '9407 1118 9922' } })
+    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
     // Email is offered only where an address is on file.
-    const gcMethod = screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method') as HTMLSelectElement
+    const gcMethod = screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method') as HTMLSelectElement
     fireEvent.change(gcMethod, { target: { value: 'email' } })
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
@@ -132,11 +132,11 @@ describe('LienDeskRunModal', () => {
     expect(screen.queryByTestId('run-undo')).toBeNull()
     view.unmount()
     renderWithProviders(
-      <LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} undo={{ words: 'You just approved this notice for Loberg Contracting. Pressed it by mistake?', busy: false, onUndo }} />,
+      <LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} undo={{ words: 'You just approved this notice for Lowbeck Contracting. Pressed it by mistake?', busy: false, onUndo }} />,
     )
     await settle()
     const strip = screen.getByTestId('run-undo')
-    expect(strip.textContent).toContain('You just approved this notice for Loberg Contracting. Pressed it by mistake?')
+    expect(strip.textContent).toContain('You just approved this notice for Lowbeck Contracting. Pressed it by mistake?')
     // It sits under the title and above the steps.
     expect(strip.compareDocumentPosition(screen.getByTestId('run-journey')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Undo the approval…' }))
@@ -157,7 +157,7 @@ describe('LienDeskRunModal', () => {
 
   it('a held notice stays in the pile while the ready one records (v2.5533): the button says so, the record carries only the ready one, and the held one keeps its row', async () => {
     recordMock.mockClear()
-    const held = notice({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651' })
+    const held = notice({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651' })
     held.recipients[0] = { ...held.recipients[0]!, name: '', address: '' }
     const onClose = vi.fn()
     renderWithProviders(<LienDeskRunModal notices={[notice(), held]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
@@ -175,12 +175,12 @@ describe('LienDeskRunModal', () => {
     await settle()
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByText(/Owner of record: nobody to send to/)).toBeTruthy()
-    expect(screen.queryByText('650 · ATI Schertz')).toBeNull()
+    expect(screen.queryByText('650 · AXO Schertz')).toBeNull()
   })
 
   it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', async () => {
     const a = notice()
-    const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })
+    const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
@@ -195,8 +195,8 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByTestId('run-row-j651-owner')).toBeTruthy()
     expect(screen.queryByTestId('run-envelope-3')).toBeNull()
     // one tracking box for the envelope; typing in it is typing for both notices inside
-    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking'), { target: { value: '9407 2' } })
-    expect((screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
+    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — tracking'), { target: { value: '9407 2' } })
+    expect((screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
     expect(screen.getAllByLabelText(/— tracking$/)).toHaveLength(2)
   })
 })
@@ -206,14 +206,14 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     const n = notice(partial)
     return { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) }
   }
-  const tickLabel = 'Envelope 2 · Original contractor: Loberg Contracting — courtesy PDF by email'
+  const tickLabel = 'Envelope 2 · Original contractor: Lowbeck Contracting — courtesy PDF by email'
 
   it('the GC envelope carries the tick, on, naming the address; the owner envelope never does; unticking reaches the record', async () => {
     recordMock.mockClear()
     renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.queryByTestId('run-courtesy-1')).toBeNull()
-    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded')
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@lowbeck.test, emailed when the run is recorded')
     const tick = screen.getByLabelText(tickLabel) as HTMLInputElement
     expect(tick.checked).toBe(true)
     fireEvent.click(tick)
@@ -229,28 +229,28 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
   })
 
   it('one GC envelope with two notices says one email per notice; switched to email, the tick goes because the email is the send', async () => {
-    renderWithProviders(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderWithProviders(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
-    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded, one email per notice')
-    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method'), { target: { value: 'email' } })
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@lowbeck.test, emailed when the run is recorded, one email per notice')
+    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method'), { target: { value: 'email' } })
     expect(screen.queryByTestId('run-courtesy-2')).toBeNull()
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
 
   it('the record names the courtesy PDF that went, and warns when one did not', async () => {
-    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] }))
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test' }], courtesyFailed: [] }))
     const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
-    expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@loberg.test.')).toBeTruthy()
+    expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@lowbeck.test.')).toBeTruthy()
     view.unmount()
-    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }] }))
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · AXO Schertz', email: 'office@lowbeck.test', reason: 'Resend 502' }] }))
     renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     ensureMore()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
-    expect(await screen.findByText('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
+    expect(await screen.findByText('Courtesy PDF not emailed: 650 · AXO Schertz to office@lowbeck.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
   })
 
   // The preview tab (v2.5073): a stand-in window that keeps what is written to it, and object URLs jsdom does not have.
@@ -281,15 +281,15 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
       const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
       await waitFor(() => expect(door.disabled).toBe(false))
       expect(door.textContent).toBe('Preview the email ›')
-      expect(door.title).toBe('Opens in a new tab, as office@loberg.test would get it. Nothing is sent.')
+      expect(door.title).toBe('Opens in a new tab, as office@lowbeck.test would get it. Nothing is sent.')
       expect(screen.getByTestId('run-courtesy-2').contains(door)).toBe(false)
       fireEvent.click(door)
       expect(tab.open).toHaveBeenCalledWith('', '_blank')
       await waitFor(() => expect(tab.page()).not.toBe(''))
       const page = tab.page()
-      expect(page).toContain('This email goes to office@loberg.test when you record the run, while Courtesy PDF stays ticked.')
-      expect(page).toContain('<dt>To</dt><dd>office@loberg.test</dd>')
-      expect(page).toContain('<h1 class="subject">Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz</h1>')
+      expect(page).toContain('This email goes to office@lowbeck.test when you record the run, while Courtesy PDF stays ticked.')
+      expect(page).toContain('<dt>To</dt><dd>office@lowbeck.test</dd>')
+      expect(page).toContain('<h1 class="subject">Courtesy copy: notice of claim for unpaid labor or materials — 650 · AXO Schertz</h1>')
       expect(page).toContain('The notice itself is being delivered by certified mail. For questions call the office: (512) 360-0599</p>')
       expect(page).toContain('<iframe class="pdf" src="blob:preview-1" title="notice-53-056-650.pdf"></iframe>')
       expect(buildPdfMock).toHaveBeenCalledTimes(1)
@@ -365,7 +365,7 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
   it('offers the combine tick only when jobs share an owner and address, folds them into one notice, and records the combined notice with its parts', async () => {
     recordMock.mockClear()
     const a = notice()
-    const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
+    const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · AXO Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
@@ -378,7 +378,7 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     expect(screen.getAllByTestId('run-combined-parts').map((el) => el.textContent)).toEqual(['650 $33,500 · 651 $4,500', '650 $33,500 · 651 $4,500']) // once per copy
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
     // The tracking typed on the envelope reaches both parts.
-    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking'), { target: { value: '9407 0000' } })
+    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking'), { target: { value: '9407 0000' } })
     ensureMore()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
     await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
@@ -545,8 +545,8 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
     expect(printMock).toHaveBeenCalledTimes(1)
     const [html, filing] = printMock.mock.calls[0] as unknown as [string, { kind: string; title: string; jobIds: string[]; recipientName: string | null }]
     expect(html).toContain('copy for owner of record</title>')
-    expect(html).not.toContain('Loberg Contracting</title>')
-    expect(filing).toMatchObject({ kind: 'lien_notice', title: '650 · ATI Schertz · copy for owner of record', jobIds: ['j650'], recipientName: 'Elbel Holdings LLC' })
+    expect(html).not.toContain('Lowbeck Contracting</title>')
+    expect(filing).toMatchObject({ kind: 'lien_notice', title: '650 · AXO Schertz · copy for owner of record', jobIds: ['j650'], recipientName: 'Elwick Holdings LLC' })
     // Half a notice is not in the mail yet.
     expect(printed).toEqual([])
     expect(screen.getByTestId('run-print-j650-owner').textContent).toContain('Printed ✓')
@@ -560,7 +560,7 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
     fireEvent.click(screen.getByTestId('run-print-envelope-1'))
     const [envHtml, envFiling] = printMock.mock.calls[2] as unknown as [string, { title: string }]
     expect(envHtml).toContain('<title>Envelope 1 —')
-    expect(envFiling.title).toMatch(/^Envelope 1 · Owner of record Elbel Holdings LLC$/)
+    expect(envFiling.title).toMatch(/^Envelope 1 · Owner of record Elwick Holdings LLC$/)
   })
 
   it('the preview has a Print this copy button that prints the copy on show', async () => {
@@ -582,8 +582,8 @@ describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
     expect(screen.queryByTestId('lien-run-preview')).toBeNull()
     fireEvent.click(screen.getByTestId('run-preview-j650-owner'))
     const overlay = screen.getByTestId('lien-run-preview')
-    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · ATI Schertz · owner of record')
-    expect(screen.getByTestId('lien-run-preview-envelope').textContent).toBe('Envelope 1 · Owner of record Elbel Holdings LLC · 4 Example Way, Schertz, TX')
+    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · AXO Schertz · owner of record')
+    expect(screen.getByTestId('lien-run-preview-envelope').textContent).toBe('Envelope 1 · Owner of record Elwick Holdings LLC · 4 Example Way, Schertz, TX')
     expect(screen.getByTestId('lien-run-preview-count').textContent).toBe('1 of 2')
     // The owner's copy: the cover note, then the form naming the copy.
     expect(screen.getAllByTestId('lien-run-preview-page-label').map((el) => el.textContent)).toEqual(['Page 1 of 2 · Cover note', 'Page 2 of 2 · § 53.056 notice · copy for owner of record'])
@@ -592,7 +592,7 @@ describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
     // › walks to the original contractor's copy: the form alone.
     fireEvent.click(screen.getByRole('button', { name: 'Next copy' }))
     expect(screen.getByTestId('lien-run-preview-count').textContent).toBe('2 of 2')
-    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · ATI Schertz · original contractor')
+    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · AXO Schertz · original contractor')
     expect(screen.getAllByTestId('lien-run-preview-page-label').map((el) => el.textContent)).toEqual(['Page 1 of 1 · § 53.056 notice · copy for original contractor'])
     expect((screen.getByRole('button', { name: 'Next copy' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
@@ -610,7 +610,7 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
     const { fetchJobWithDetailsById } = await import('../../lib/fetchJobWithDetailsById')
     const { fetchStripeInvoiceFacts } = await import('../../lib/stripeInvoiceFacts')
     const bill = { id: 'inv-878', amount: 15200, sequence_order: 0, status: 'billed', billed_at: '2026-09-16T14:00:00Z', created_at: '2026-09-16T13:59:00Z', sent_to_customer_at: null, estimated_bill_date: null, stripe_invoice_id: 'in_878', stripe_invoice_memo: 'Paper checks can be sent to: Click Plumbing', external_send_note: '', stripe_invoice_footer: null }
-    vi.mocked(fetchJobWithDetailsById).mockResolvedValue({ id: 'j650', hcp_number: '878', job_name: 'Take 5- Seguin', job_address: '1 Example Rd', customer_name: 'Southern Post Construction', customer_email: '', customer_id: 'c1', gc_customer_id: null, bill_to_party: 'customer', fixtures: [], materials: [], payments: [], invoices: [bill] } as never)
+    vi.mocked(fetchJobWithDetailsById).mockResolvedValue({ id: 'j650', hcp_number: '878', job_name: 'Tune 5- Seguin', job_address: '1 Example Rd', customer_name: 'Southern Pine Construction', customer_email: '', customer_id: 'c1', gc_customer_id: null, bill_to_party: 'customer', fixtures: [], materials: [], payments: [], invoices: [bill] } as never)
     vi.mocked(fetchStripeInvoiceFacts).mockResolvedValue({ 'inv-878': { invoiceNumber: '878-2609161138', dueYmd: '2026-10-16', lines: [] } })
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-07" userId="u1" onClose={() => {}} onRecorded={() => {}} stripeMode="live" />)
     await settle()
@@ -648,8 +648,8 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
       fireEvent.click(screen.getByTestId('run-label-addresses'))
       await waitFor(() => expect(saved).toContain('Company,Name,Address Line 1'))
       expect(clicks).toEqual(['certified-labels_2026-10-08.csv'])
-      expect(saved).toContain('\r\n,Elbel Holdings LLC,4 Example Way,,"Schertz, TX",,,,Envelope 1 · 650\r\n')
-      expect(saved).toContain(',Loberg Contracting,2904 Corporate Cr,,,,,,Envelope 2 · 650\r\n')
+      expect(saved).toContain('\r\n,Elwick Holdings LLC,4 Example Way,,"Schertz, TX",,,,Envelope 1 · 650\r\n')
+      expect(saved).toContain(',Lowbeck Contracting,2904 Corporate Cr,,,,,,Envelope 2 · 650\r\n')
       expect(saved).not.toContain('Nobody Home')
     } finally {
       HTMLAnchorElement.prototype.click = origClick
@@ -811,8 +811,8 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
     { key: 'owner', label: 'Owner of record', name: owner[0], address: owner[1], email: '', method: 'certified_mail', tracking: '' },
     { key: 'original_contractor', label: 'Original contractor', name: gc[0], address: gc[1], email: '', method: 'certified_mail', tracking: '' },
   ]
-  const ELBEL: [string, string] = ['Elbel Holdings LLC', '17300 IH 35 N, Schertz, TX 78154']
-  const LOBERG: [string, string] = ['Loberg Contracting', '2904 Corporate Cr, San Antonio, TX 78230']
+  const ELWICK: [string, string] = ['Elwick Holdings LLC', '17300 IH 35 N, Schertz, TX 78154']
+  const LOWBECK: [string, string] = ['Lowbeck Contracting', '2904 Corporate Cr, San Antonio, TX 78230']
 
   it.each([
     ['an unsigned', { signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } }, /^Held · Unsigned: /],
@@ -820,7 +820,7 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
   ] as Array<[string, Partial<RunNotice>, RegExp]>)('%s notice offers no Docsmit envelope: its envelopes are held, the door is dim and says why, and prepare is never asked', async (_kind, partial, held) => {
     docsmitState.setUp = true
     prepareMock.mockClear()
-    renderWithProviders(<LienDeskRunModal notices={[notice({ ...partial, recipients: mailable(ELBEL, LOBERG) })]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    renderWithProviders(<LienDeskRunModal notices={[notice({ ...partial, recipients: mailable(ELWICK, LOWBECK) })]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
     expect(screen.getByTestId('run-held-1').textContent).toMatch(held)
     expect(screen.getByTestId('run-held-2').textContent).toMatch(held)
@@ -838,8 +838,8 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
   it('a mixed run offers only the clean envelopes, the same ones the packet prints, and prepare is asked for those alone', async () => {
     docsmitState.setUp = true
     prepareMock.mockClear()
-    const clean = notice({ recipients: mailable(ELBEL, LOBERG) })
-    const unsigned = notice({ itemId: 'it2', jobId: 'j712', label: '712 · ATI B', jobNumber: '712', signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, recipients: mailable(['Bandera Holdings', '2200 Bandera Rd, San Antonio, TX 78228'], ['Harlan Builders', '100 Main St, Seguin, TX 78155']) })
+    const clean = notice({ recipients: mailable(ELWICK, LOWBECK) })
+    const unsigned = notice({ itemId: 'it2', jobId: 'j712', label: '712 · AXO B', jobNumber: '712', signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, recipients: mailable(['Bandera Holdings', '2200 Bandera Rd, San Antonio, TX 78228'], ['Harlan Builders', '100 Main St, Seguin, TX 78155']) })
     const nothing = notice({ itemId: 'it3', jobId: 'j688', label: '688 · Cibolo', jobNumber: '688', amount: 0, recipients: mailable(['Cibolo Partners LLC', '5 Oak St, Cibolo, TX 78108'], ['Medina Contracting', '9 Elm St, Castroville, TX 78009']) })
     renderWithProviders(<LienDeskRunModal notices={[clean, unsigned, nothing]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
@@ -858,8 +858,8 @@ describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)',
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
     const asked = prepareMock.mock.calls[0]![0] as unknown as Array<{ n: number; name: string; contents: Array<{ notice: { itemId: string } }> }>
     expect(asked.map((e) => [e.n, e.name, e.contents.map((c) => c.notice.itemId)])).toEqual([
-      [1, 'Elbel Holdings LLC', ['it1']],
-      [2, 'Loberg Contracting', ['it1']],
+      [1, 'Elwick Holdings LLC', ['it1']],
+      [2, 'Lowbeck Contracting', ['it1']],
     ])
     docsmitState.setUp = false
   })
@@ -903,8 +903,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     prepareMock.mockClear()
     sendMock.mockClear()
     const full = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
@@ -915,7 +915,7 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     fireEvent.click(door)
     await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
     expect(prepareMock).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('dsm-env-1').textContent).toContain('Elbel Holdings LLC')
+    expect(screen.getByTestId('dsm-env-1').textContent).toContain('Elwick Holdings LLC')
     expect(screen.getByTestId('dsm-held-2').textContent).toContain('The address needs a ZIP or ZIP+4.')
     expect(screen.getByTestId('dsm-price').textContent).toBe('1 envelope · $9.85 · balance $120.00')
     fireEvent.click(screen.getByTestId('dsm-mail'))
@@ -924,7 +924,7 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     fireEvent.click(screen.getByTestId('dsm-close'))
     await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
     expect(screen.getByTestId('run-chip-1').textContent).toBe('mailed through Docsmit · number coming')
-    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking') as HTMLInputElement).disabled).toBe(true)
     // The GC's envelope stays on paper, so the foot still prints, and only that one: the Docsmit envelope left the packet.
     expect(screen.getByRole('button', { name: /Print the packet · 1 envelope$/ })).toBeTruthy()
     docsmitState.setUp = false
@@ -935,10 +935,10 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     prepareMock.mockClear()
     sendMock.mockClear()
     const both = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    const piece = (key: string, n: number, recipient: 'owner' | 'original_contractor', pieceId: string) => ({ key, n, label: recipient === 'owner' ? 'Owner of record' : 'Original contractor', who: recipient === 'owner' ? 'Elbel Holdings LLC' : 'Loberg Contracting', windowLines: [], sendType: 'Certified, Electronic Return Receipt', shortCode: `KX7M2QR${n}`, recipient, jobNumber: '650', itemIds: ['it1'], pieceId, price: 9.85, correction: null, sheets: 4, envelope: '#10' as const, pdfUrl: `blob:${n}`, pdfPath: `mail/KX7M2QR${n}.pdf` })
+    const piece = (key: string, n: number, recipient: 'owner' | 'original_contractor', pieceId: string) => ({ key, n, label: recipient === 'owner' ? 'Owner of record' : 'Original contractor', who: recipient === 'owner' ? 'Elwick Holdings LLC' : 'Lowbeck Contracting', windowLines: [], sendType: 'Certified, Electronic Return Receipt', shortCode: `KX7M2QR${n}`, recipient, jobNumber: '650', itemIds: ['it1'], pieceId, price: 9.85, correction: null, sheets: 4, envelope: '#10' as const, pdfUrl: `blob:${n}`, pdfPath: `mail/KX7M2QR${n}.pdf` })
     prepareMock.mockImplementationOnce(async (envs) => ({ prepared: [piece(envs[0]!.key, 1, 'owner', 'p1'), piece(envs[1]!.key, 2, 'original_contractor', 'p2')], held: [], balance: 120 }))
     sendMock.mockImplementationOnce(async () => ({ ok: true, sent: ['p1', 'p2'] }))
     const onPrinted = vi.fn()
@@ -965,8 +965,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     prepareMock.mockClear()
     sendMock.mockClear()
     const full = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     const onPrinted = vi.fn()
     const onRecorded = vi.fn()
@@ -994,8 +994,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     const onPrinted = vi.fn()
     const onRecorded = vi.fn()
     const full = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
@@ -1014,8 +1014,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     const onPrinted = vi.fn()
     const onRecorded = vi.fn()
     const full = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={onRecorded} onPrinted={onPrinted} />)
     await settle()
@@ -1033,8 +1033,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     prepareMock.mockClear()
     const onPrinted = vi.fn()
     const full = notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={onPrinted} />)
     await settle()
@@ -1055,12 +1055,12 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     prepareMock.mockClear()
     // As the desk builds it from the piece behind the item (runRecipientWithPiece): the owner's copy went, the GC's did not.
     const after = notice({ printedAt: '2026-10-14T15:00:00Z', recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '9407 1118 9922 0000 0000 01', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '9407 1118 9922 0000 0000 01', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
-    const unprinted = notice({ itemId: 'it2', jobId: 'j712', label: '712 · ATI B', jobNumber: '712', recipients: [
+    const unprinted = notice({ itemId: 'it2', jobId: 'j712', label: '712 · AXO B', jobNumber: '712', recipients: [
       { key: 'owner', label: 'Owner of record', name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[after, unprinted]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
     await settle()
@@ -1073,7 +1073,7 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     expect(screen.queryByTestId('run-take-back')).toBeNull()
     fireEvent.click(screen.getByTestId('run-docsmit'))
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
-    expect((prepareMock.mock.calls[0]![0] as unknown as Array<{ name: string }>).map((e) => e.name).sort()).toEqual(['Bandera Holdings', 'Loberg Contracting'])
+    expect((prepareMock.mock.calls[0]![0] as unknown as Array<{ name: string }>).map((e) => e.name).sort()).toEqual(['Bandera Holdings', 'Lowbeck Contracting'])
     docsmitState.setUp = false
   })
 
@@ -1081,13 +1081,13 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     docsmitState.setUp = true
     prepareMock.mockClear()
     // As the desk hands them in: Ready first (B, fresh), then In the mail (A, both copies built from their pieces).
-    const fresh = notice({ itemId: 'it2', jobId: 'j712', label: '712 · ATI B', jobNumber: '712', recipients: [
+    const fresh = notice({ itemId: 'it2', jobId: 'j712', label: '712 · AXO B', jobNumber: '712', recipients: [
       { key: 'owner', label: 'Owner of record', name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: '', method: 'certified_mail', tracking: '' },
     ] })
     const went = notice({ printedAt: '2026-10-13T15:00:00Z', recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '9407 1', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: '', method: 'certified_mail', tracking: '9407 2', via: 'docsmit', pieceId: 'p2', pieceStatus: 'mailed', pieceProblem: null },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '9407 1', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr, San Antonio, TX 78230', email: '', method: 'certified_mail', tracking: '9407 2', via: 'docsmit', pieceId: 'p2', pieceStatus: 'mailed', pieceProblem: null },
     ] })
     renderWithProviders(<LienDeskRunModal notices={[fresh, went]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     await settle()
@@ -1099,7 +1099,7 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     fireEvent.click(screen.getByTestId('run-docsmit'))
     await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
     const asked = prepareMock.mock.calls[0]![0] as unknown as Array<{ name: string; contents: Array<{ notice: { itemId: string } }> }>
-    expect(asked.map((e) => [e.name, e.contents.map((c) => c.notice.itemId)])).toEqual([['Bandera Holdings', ['it2']], ['Loberg Contracting', ['it2']]])
+    expect(asked.map((e) => [e.name, e.contents.map((c) => c.notice.itemId)])).toEqual([['Bandera Holdings', ['it2']], ['Lowbeck Contracting', ['it2']]])
     docsmitState.setUp = false
   })
 
@@ -1144,7 +1144,7 @@ describe('Esc in the run window (v2.5530)', () => {
     expect(screen.queryByTestId('lien-run-preview')).toBeNull()
     expect(onClose).not.toHaveBeenCalled()
     // A number typed: Esc holds the run open and says how to close it.
-    const box = screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking')
+    const box = screen.getByLabelText('Envelope 1 · Owner of record: Elwick Holdings LLC — tracking')
     fireEvent.change(box, { target: { value: '9407 1118 9922' } })
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()
@@ -1163,7 +1163,7 @@ describe('Esc in the run window (v2.5530)', () => {
     const onClose = vi.fn()
     const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
     await settle()
-    const method = screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method') as HTMLSelectElement
+    const method = screen.getByLabelText('Envelope 2 · Original contractor: Lowbeck Contracting — method') as HTMLSelectElement
     fireEvent.change(method, { target: { value: 'hand' } })
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()
@@ -1234,8 +1234,8 @@ describe('Esc in the run window (v2.5530)', () => {
 describe('Esc and a click outside after review round 2 (v2.5530)', () => {
   const docsmitNotice = () =>
     notice({ recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '' },
     ] })
 
   it('a Docsmit send holds the run on Esc and on a click outside, with words that say to record it', async () => {
@@ -1348,7 +1348,7 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     const onClose = vi.fn()
     const at = '2026-10-07T16:00:00Z'
     const n650 = notice({ printedAt: at })
-    const n652 = notice({ itemId: 'it652', jobId: 'j652', label: '652 · ATI Schertz annex', jobNumber: '652', amount: 4_500, months: ['2026-08'], printedAt: at })
+    const n652 = notice({ itemId: 'it652', jobId: 'j652', label: '652 · AXO Schertz annex', jobNumber: '652', amount: 4_500, months: ['2026-08'], printedAt: at })
     const n653 = notice({
       itemId: 'it653', jobId: 'j653', label: '653 · Zed Shop', jobNumber: '653', printedAt: at,
       fields: { ...notice().fields, originalContractorName: 'Yarrow Builders' },

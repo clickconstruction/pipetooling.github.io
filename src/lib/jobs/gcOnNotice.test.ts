@@ -240,7 +240,7 @@ describe('lienDeskBatches (v2.3479)', () => {
         // j2's draft carries no figure: the job's balance.
         entry('j2', 'harborline', 12400, { notice: { ...notice, claimAmount: '' }, gcEmail: '', batchReason: 'GC is not paying its subs — the draw was spent' }, '2026-09-15'),
         entry('j3', 'stillhouse', 30000, { notice: { ...notice, claimAmount: '30000.00' }, gcEmail: '', batchReason: 'GC insolvency suspected' }, null),
-        entry('j4', 'loberg', 33500, { notice, gcEmail: '' }, '2026-09-15'),
+        entry('j4', 'lowbeck', 33500, { notice, gcEmail: '' }, '2026-09-15'),
         entry('j5', null, 5, { notice, gcEmail: '', batchReason: 'x' }, null),
       ],
     } as never
@@ -255,10 +255,10 @@ describe('the header counts the envelopes the run will mail (v2.3720)', () => {
   it('jobs at one property share the owner envelope; the GC gets one; a job with no owner key counts alone; nothing ready is zero', () => {
     const rows = [row('j1016', '2026-07', '2026-10-15', { open_balance: 9_400 }), row('j1031', '2026-07', '2026-10-15', { open_balance: 5_000 }), row('j706', '2026-07', '2026-10-15', { open_balance: 7_000 })]
     const onFile = () => 'on_file' as const
-    const key = (id: string) => (id === 'j706' ? '' : 'lenox hill owner lp|9703 lenox hl san antonio tx 78240')
+    const key = (id: string) => (id === 'j706' ? '' : 'linmor hill owner lp|9703 linmor hl san antonio tx 78240')
     const { jobs, summary } = buildGcOnNotice(rows, [], onFile, TODAY, () => null, key)
     // biggest claim first: 1016, 706, 1031
-    expect(jobs.map((j) => [j.jobId, j.ownerKey])).toEqual([['j1016', 'lenox hill owner lp|9703 lenox hl san antonio tx 78240'], ['j706', ''], ['j1031', 'lenox hill owner lp|9703 lenox hl san antonio tx 78240']])
+    expect(jobs.map((j) => [j.jobId, j.ownerKey])).toEqual([['j1016', 'linmor hill owner lp|9703 linmor hl san antonio tx 78240'], ['j706', ''], ['j1031', 'linmor hill owner lp|9703 linmor hl san antonio tx 78240']])
     expect(summary.ready).toBe(3)
     expect(summary.envelopes).toBe(3) // one shared owner envelope + one owner alone + the GC
     expect(buildGcOnNotice(rows, [], () => 'missing' as const, TODAY).summary.envelopes).toBe(0)
@@ -267,7 +267,7 @@ describe('the header counts the envelopes the run will mail (v2.3720)', () => {
 
 describe('buildGcOnNotice · a job with no clock hours is dated from its creation month (v2.3747)', () => {
   it('a recent job: one open month, zero hours, in the run with the whole claim', () => {
-    // J858 under RMC- Dudley Mason: created 2026-08-18, $7,902 billed, nobody clocked in.
+    // J858 under RLC- Dunmere Mallin: created 2026-08-18, $7,902 billed, nobody clocked in.
     const rows = [row('j858', '2026-08', '2026-10-15', { approved_hours: 0, open_balance: 7_902, last_work_month: '2026-08', month_source: 'job_created' })]
     const { jobs, summary } = buildGcOnNotice(rows, [], () => 'on_file', TODAY)
     const j = jobs[0]!

@@ -89,13 +89,13 @@ describe('subsLane: source success', () => {
 
 describe('subsLane: the double on the bench', () => {
   const companies = [
-    { id: 'co-1', name: 'Bexar Fire Protection', phone: '(210) 555-0188' },
+    { id: 'co-1', name: 'Baxter Fire Protection', phone: '(210) 555-0188' },
     { id: 'co-2', name: 'Comal Concrete Works', phone: '' },
   ]
 
   it('finds the same name case-blind or the same phone digits', () => {
-    expect(benchDouble('bexar fire protection ', null, companies)?.id).toBe('co-1')
-    expect(benchDouble('Bexar Fire', '210.555.0188', companies)?.id).toBe('co-1')
+    expect(benchDouble('baxter fire protection ', null, companies)?.id).toBe('co-1')
+    expect(benchDouble('Baxter Fire', '210.555.0188', companies)?.id).toBe('co-1')
     expect(benchDouble('Comal Concrete Works', null, companies)?.id).toBe('co-2')
   })
 

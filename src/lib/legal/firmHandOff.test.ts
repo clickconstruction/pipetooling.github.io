@@ -10,10 +10,10 @@ const COVERAGE = new Map([
   ['Bexar', { first: 'alamo', also: [] }],
 ])
 const CASES = [
-  { name: 'Burd & Assoc.', county: 'Williamson', stand: 'eyes' as const },
-  { name: 'RMC-Dudley Mason', county: 'Williamson', stand: 'eyes' as const },
-  { name: 'Heron Construction', county: 'Bell', stand: 'gave' as const },
-  { name: 'The Learning Experience', county: 'Travis', stand: 'firm' as const },
+  { name: 'Brund & Assoc.', county: 'Williamson', stand: 'eyes' as const },
+  { name: 'RLC-Dunmere Mallin', county: 'Williamson', stand: 'eyes' as const },
+  { name: 'Hadlow Construction', county: 'Bell', stand: 'gave' as const },
+  { name: 'The Reading Corner', county: 'Travis', stand: 'firm' as const },
 ]
 const base: HandOffInput = {
   firmId: 'snell',
@@ -21,7 +21,7 @@ const base: HandOffInput = {
   coverage: COVERAGE,
   picked: ['Williamson', 'Bell'],
   receiver: { kind: 'firm', id: 'alamo', name: 'Alamo' },
-  liveMatters: [{ payerName: 'The Learning Experience' }],
+  liveMatters: [{ payerName: 'The Reading Corner' }],
   cases: CASES,
   retire: false,
 }
@@ -32,8 +32,8 @@ describe('firmHandOff (v2.6233)', () => {
     expect(handOffWords(base)).toEqual([
       'New releases in Bell County and Williamson County go to Alamo. Alamo is first call there.',
       'Snell keeps Comal County, Hays County and Travis County.',
-      'The Learning Experience stays with Snell until it closes.',
-      'Burd & Assoc. and RMC-Dudley Mason, in review there, read Alamo as their firm from now on. This sends no email.',
+      'The Reading Corner stays with Snell until it closes.',
+      'Brund & Assoc. and RLC-Dunmere Mallin, in review there, read Alamo as their firm from now on. This sends no email.',
     ])
   })
 
@@ -58,13 +58,13 @@ describe('firmHandOff (v2.6233)', () => {
 
   it('retire with the hand-off waits for every county and for the live accounts', () => {
     expect(retireWithHandOffHold('Snell', false, [])).toBe('Tick every county to retire Snell with them.')
-    expect(retireWithHandOffHold('Snell', true, [{ payerName: 'The Learning Experience' }])).toBe('The Learning Experience is still with Snell.')
+    expect(retireWithHandOffHold('Snell', true, [{ payerName: 'The Reading Corner' }])).toBe('The Reading Corner is still with Snell.')
     expect(retireWithHandOffHold('Snell', true, [{ payerName: 'A' }, { payerName: 'B' }])).toBe('2 accounts are still with Snell.')
     expect(retireWithHandOffHold('Snell', true, [])).toBeNull()
   })
 
   it('retire on its own: counties first, accounts next, never the only firm', () => {
-    expect(retireHold('Snell', 5, [{ payerName: 'The Learning Experience' }], 1)).toBe('Hand off its 5 counties first. The Learning Experience is still with Snell.')
+    expect(retireHold('Snell', 5, [{ payerName: 'The Reading Corner' }], 1)).toBe('Hand off its 5 counties first. The Reading Corner is still with Snell.')
     expect(retireHold('Snell', 1, [], 1)).toBe('Hand off its 1 county first.')
     expect(retireHold('Snell', 0, [], 0)).toBe('Snell is the only firm. Replace it with a new firm instead.')
     expect(retireHold('Snell', 0, [], 1)).toBeNull()

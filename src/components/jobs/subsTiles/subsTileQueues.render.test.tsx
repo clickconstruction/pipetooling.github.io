@@ -37,11 +37,11 @@ function row(over: Partial<WorkOrderBoardRow> & { key: string }): WorkOrderBoard
     recordId: null,
     jobId: 'job-880',
     jobNumber: '880',
-    primary: '#880 · Knight Contracting',
-    secondary: '150 E Sonterra Blvd',
+    primary: '#880 · Kestrin Contracting',
+    secondary: '150 E Sonmere Blvd',
     notInPipeline: false,
-    subNames: ['Airfordable HVAC'],
-    subName: 'Airfordable HVAC',
+    subNames: ['Airlowe HVAC'],
+    subName: 'Airlowe HVAC',
     personId: 'p-air',
     agreed: 4200,
     paid: 0,
@@ -60,7 +60,7 @@ function order(over: Partial<StepCommitmentRow> & { id: string }): StepCommitmen
   return { person_id: 'p-behar', display_name: 'Behar Kraja', job_id: 'job-880', labor_job_id: null, status: 'offered', amount: 3800, record_id: `WO-880-${over.id}`, proposed_start: '2026-09-22', proposed_end: '2026-10-02', offer_expires_at: '2026-09-11', offered_at: '2026-09-04T12:00:00Z', stage_window_id: null, work_days: 5, picked_start: null, picked_end: null, signer_signature_mode: null, ...over } as StepCommitmentRow
 }
 
-const jobs = [{ id: 'job-880', hcp_number: '880', customer_name: 'Knight Contracting', job_address: '150 E Sonterra Blvd', customer_id: 'c-1', fixtures: [] } as unknown as JobWithDetails]
+const jobs = [{ id: 'job-880', hcp_number: '880', customer_name: 'Kestrin Contracting', job_address: '150 E Sonmere Blvd', customer_id: 'c-1', fixtures: [] } as unknown as JobWithDetails]
 
 const actions = (): SubsTileActions => ({
   changed: vi.fn(),
@@ -86,7 +86,7 @@ const actions = (): SubsTileActions => ({
 
 describe('HandshakeQueue', () => {
   it('lists handshake rows most money first, opens the first as a pre-read order, and gates a Not in Pipeline row on the job', async () => {
-    const board = [row({ key: 'air' }), row({ key: 'tx', jobId: null, jobNumber: '977', primary: '#977', secondary: 'Hospital', subNames: ['Texas R & A'], subName: 'Texas R & A', personId: 'p-tx', agreed: 40000, open: 40000, sheetDate: '2026-08-30', notInPipeline: true })]
+    const board = [row({ key: 'air' }), row({ key: 'tx', jobId: null, jobNumber: '977', primary: '#977', secondary: 'Hospital', subNames: ['Texas Q & E'], subName: 'Texas Q & E', personId: 'p-tx', agreed: 40000, open: 40000, sheetDate: '2026-08-30', notInPipeline: true })]
     renderWithProviders(<HandshakeQueue board={board} jobs={jobs} contacts={new Map([['p-tx', { email: null, phone: '(512) 555-0142' }]])} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />)
     await settle()
     expect(screen.getByText('Get it in writing')).toBeTruthy()
@@ -112,7 +112,7 @@ describe('StagesQueue', () => {
     span: { start, end },
     board: null,
   })
-  const groups: SubsJobGroup[] = [{ key: 'job-880', jobId: 'job-880', jobNumber: '880', primary: '#880 · Knight Contracting', secondary: null, rows: [stageRow('a', '2026-09-01', '2026-09-05', false), stageRow('b', '2026-09-22', '2026-10-02', true)], attention: 2, freeFixtures: [] }]
+  const groups: SubsJobGroup[] = [{ key: 'job-880', jobId: 'job-880', jobNumber: '880', primary: '#880 · Kestrin Contracting', secondary: null, rows: [stageRow('a', '2026-09-01', '2026-09-05', false), stageRow('b', '2026-09-22', '2026-10-02', true)], attention: 2, freeFixtures: [] }]
   const orders: SubDispatchOrder[] = [{ id: 'o-1', personId: 'p-mike', personName: 'Michael A', jobId: 'job-273', jobLabel: '#273', status: 'accepted', pickedStart: '2026-09-08', pickedEnd: '2026-09-09', proposedStart: null, proposedEnd: null, windowStart: null, windowEnd: null, stageName: 'Trim & final', recordId: null }]
   it('groups passed before ahead, answers the GC on the row, and shows who is free in the picker', async () => {
     renderWithProviders(
@@ -179,7 +179,7 @@ describe('SignedQueue', () => {
     expect(screen.getByText(/3 needs? the office|3 need the office/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Passed → bill' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Schedule inspection…' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Bill Knight Contracting' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bill Kestrin Contracting' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Pay Behar Kraja · $1,000.00' })).toBeTruthy()
     expect(screen.getByText('Waiting on the sub')).toBeTruthy()
     expect(screen.getByText('on paper')).toBeTruthy()

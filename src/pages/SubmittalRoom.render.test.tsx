@@ -283,11 +283,11 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Approve' }))
     const sheet = await screen.findByRole('dialog', { name: 'Before you decide' })
     fireEvent.change(within(sheet).getByLabelText('Your name'), { target: { value: 'Tom Reyes' } })
-    fireEvent.change(within(sheet).getByLabelText('Your email'), { target: { value: 'tom@spacex.com' } })
+    fireEvent.change(within(sheet).getByLabelText('Your email'), { target: { value: 'tom@skylab.com' } })
     fireEvent.click(within(sheet).getByRole('button', { name: "owner's rep" }))
     fireEvent.click(within(sheet).getByRole('button', { name: "That's me" }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(calls[0]?.body).toMatchObject({ action: 'identify', token: 'roomtoken', name: 'Tom Reyes', email: 'tom@spacex.com', role: 'owners_rep', viaToken: null, website: '' })
+    expect(calls[0]?.body).toMatchObject({ action: 'identify', token: 'roomtoken', name: 'Tom Reyes', email: 'tom@skylab.com', role: 'owners_rep', viaToken: null, website: '' })
     expect(replace).toHaveBeenCalledWith(null, '', '/submittal?t=ptok')
     expect(screen.getByTestId('room-send').textContent).toMatch(/Reviewing as Tom Reyes · owner's rep/)
     // A second decision needs no sheet; a note goes with it; Send posts both with the personal token.
@@ -317,7 +317,7 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
 
   it('a watching person cannot send; a stale revision answer shows the office\'s words', async () => {
     const f = vi.fn((url: string, _init?: RequestInit) => {
-      if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Logan Parsons', role: 'builder', mayDecide: false } })) } as Response)
+      if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Logan Parlen', role: 'builder', mayDecide: false } })) } as Response)
       return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been added since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
     })
     vi.stubGlobal('fetch', f)

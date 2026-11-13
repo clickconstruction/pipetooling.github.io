@@ -19,7 +19,7 @@ const fixture = vi.hoisted(() => ({ noRuns: false }))
 const scoreRows = [
   {
     id: 's1', run_label: 'BT-12', kind: 'backtest', axis: 'small TI',
-    project_name: 'AutoZone 1604', twin_bid_number: '415', reference_bid_number: '67',
+    project_name: 'TireBarn 1604', twin_bid_number: '415', reference_bid_number: '67',
     locked_total: 31758, reference_value: 32600, delta_pct: -2.6, counts_note: 'FS 9/9',
     scope_verdict: 'pass', gate_eligible: true, note: null, scored_at: '2026-08-31T14:00:00Z',
     teacher_user_id: 'wendi', teacher_name: 'Wendi',

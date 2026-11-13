@@ -80,10 +80,10 @@ describe('buildJobMoneyBar', () => {
     expect(bar.date).toEqual({ text: 'Aug 7', stale: true, title: '40% set Aug 7. The crew has worked since, so the % may be behind.' })
   })
 
-  it('Palmer (922, stages): $4,000 billed fills Rough and Top Out blue; the tick sits inside Rough at 30', () => {
+  it('Palvern (922, stages): $4,000 billed fills Rough and Top Out blue; the tick sits inside Rough at 30', () => {
     const { view } = progressPaymentForJob(
       {
-        id: 'palmer', revenue: 5_000, payments_made: 0, pct_complete: 30, status: 'working',
+        id: 'palvern', revenue: 5_000, payments_made: 0, pct_complete: 30, status: 'working',
         fixtures: [{ ...stage('r', 'Rough In', 2_000, 0), invoice_id: 'b1' }, { ...stage('t', 'Top Out', 2_000, 1), invoice_id: 'b2' }, stage('s', 'Trim Set', 1_000, 2)],
         invoices: [{ id: 'b1', status: 'billed', amount: 2_000 }, { id: 'b2', status: 'billed', amount: 2_000 }],
         payments: [],
@@ -97,10 +97,10 @@ describe('buildJobMoneyBar', () => {
     expect(bar.tick!.hollow).toBe(false)
   })
 
-  it('Stimson (742, lines): three paid lines and the windows line with $520 amber that ends at the tick', () => {
+  it('Stimlow (742, lines): three paid lines and the windows line with $520 amber that ends at the tick', () => {
     const { view, model } = progressPaymentForJob(
       {
-        id: 'stimson', revenue: 6_720, payments_made: 4_520, pct_complete: 75, status: 'waiting',
+        id: 'stimlow', revenue: 6_720, payments_made: 4_520, pct_complete: 75, status: 'waiting',
         fixtures: [line('a', 'Handrails in main house', 1_450, 0), line('b', 'Handrails in guesthouse', 2_920, 1), line('c', 'Pick up salt and fill water softener', 150, 2), line('d', 'Two custom window replacements', 2_200, 3)],
         invoices: [], payments: [],
       },
@@ -120,7 +120,7 @@ describe('buildJobMoneyBar', () => {
     expect(bar.tick!.leftPct).toBeCloseTo(before + (windows.slices[0]!.pct / 100) * windows.widthPct, 4)
   })
 
-  it('Springtown (one line): paid, then billed, then done but not billed, poured left to right', () => {
+  it('Stonewick (one line): paid, then billed, then done but not billed, poured left to right', () => {
     const { view } = progressPaymentForJob(
       { id: 'sp', revenue: 40_000, payments_made: 24_593.78, pct_complete: 100, status: 'billed', fixtures: [line('e', 'Electrical according to spec', 40_000, 0)], invoices: [{ id: 'i2', status: 'billed', amount: 11_770.3 }, { id: 'i3', status: 'billed', amount: 3_635.92 }], payments: [{ invoice_id: 'i2', amount: 11_181.78 }] as never },
       null,
@@ -146,7 +146,7 @@ describe('buildJobMoneyBar', () => {
     expect(buildJobMoneyBar(again.view, { pctComplete: 100 }).date).toEqual({ text: 'Sep 23', stale: true, title: '100% typed Sep 23. The crew has worked since, so the % may be behind.' })
   })
 
-  it('Knight Springtown Vet (963): a part-paid bill that names a line fills it green for what is paid on it, blue for the rest', () => {
+  it('Kestrin Stonewick Vet (963): a part-paid bill that names a line fills it green for what is paid on it, blue for the rest', () => {
     const invoices = [
       { id: 'b0', status: 'billed', amount: 2_200, sequence_order: 0 },
       { id: 'b2', status: 'billed', amount: 1_560, sequence_order: 2 },
@@ -193,34 +193,34 @@ describe('blockMoneyWords', () => {
 })
 
 describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () => {
-  const springtownInvoices = [
+  const stonewickInvoices = [
     { id: 'i1', status: 'paid', amount: 13_412, sequence_order: 0 },
     { id: 'i2', status: 'billed', amount: 11_770.3, sequence_order: 1 },
     { id: 'i3', status: 'billed', amount: 3_635.92, sequence_order: 2 },
   ]
   // Bill 2 has $11,181.78 paid on it; bill 1 is marked paid.
-  const springtownPayments = [{ invoice_id: 'i1', paid_on: '2026-08-01', amount: 13_412 }, { invoice_id: 'i2', paid_on: '2026-09-20', amount: 11_181.78 }]
-  const springtown = progressPaymentForJob(
-    { id: 'sp', revenue: 40_000, payments_made: 24_593.78, pct_complete: 100, status: 'billed', fixtures: [line('e', 'Electrical according to spec', 40_000, 0)], invoices: springtownInvoices, payments: springtownPayments },
+  const stonewickPayments = [{ invoice_id: 'i1', paid_on: '2026-08-01', amount: 13_412 }, { invoice_id: 'i2', paid_on: '2026-09-20', amount: 11_181.78 }]
+  const stonewick = progressPaymentForJob(
+    { id: 'sp', revenue: 40_000, payments_made: 24_593.78, pct_complete: 100, status: 'billed', fixtures: [line('e', 'Electrical according to spec', 40_000, 0)], invoices: stonewickInvoices, payments: stonewickPayments },
     null,
     today,
   )
 
-  it('Springtown (one line, bills by amount): a part-paid bill straddles the green and the blue, the next bill follows it', () => {
+  it('Stonewick (one line, bills by amount): a part-paid bill straddles the green and the blue, the next bill follows it', () => {
     const fixtures = [{ id: 'e', invoice_id: null }]
-    const b2 = billMarkFor(springtown.view, { billId: 'i2', fixtures, invoices: springtownInvoices, payments: springtownPayments })
+    const b2 = billMarkFor(stonewick.view, { billId: 'i2', fixtures, invoices: stonewickInvoices, payments: stonewickPayments })
     expect(b2?.kind).toBe('bracket')
     if (b2?.kind !== 'bracket') throw new Error('bracket')
     expect(b2.leftPct).toBeCloseTo(33.53, 1)
     expect(b2.leftPct + b2.widthPct).toBeCloseTo(62.96, 1)
     expect(b2.title).toBe("This row's bill: $11,770")
-    const b3 = billMarkFor(springtown.view, { billId: 'i3', fixtures, invoices: springtownInvoices, payments: springtownPayments })
+    const b3 = billMarkFor(stonewick.view, { billId: 'i3', fixtures, invoices: stonewickInvoices, payments: stonewickPayments })
     if (b3?.kind !== 'bracket') throw new Error('bracket')
     expect(b3.leftPct).toBeCloseTo(62.96, 1)
     expect(b3.leftPct + b3.widthPct).toBeCloseTo(72.05, 1)
   })
 
-  it('273 Dudley: an unpaid first bill sits on the blue, after the payments that went to no bill (v2.4387)', () => {
+  it('273 Dunmere: an unpaid first bill sits on the blue, after the payments that went to no bill (v2.4387)', () => {
     const invoices = [
       { id: 'b0', status: 'billed', amount: 13_420, sequence_order: 0, billed_at: '2026-03-16' },
       { id: 'b1', status: 'billed', amount: 665, sequence_order: 1, billed_at: '2026-08-21' },
@@ -228,7 +228,7 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     ]
     const fixtures = [line('jt', 'Job total', 52_200, 0), { ...line('co1', 'CHANGE ORDER: hose bibs', 555, 1), invoice_id: 'b1' }, { ...line('m', 'Material', 110, 2), invoice_id: 'b1' }, { ...line('co2', 'CHANGE ORDER: gas line', 3_500, 3), invoice_id: 'b2' }]
     const payments = [{ invoice_id: null, paid_on: '2026-04-01', amount: 38_780 }]
-    const { view } = progressPaymentForJob({ id: 'dudley', revenue: 56_365, payments_made: 38_780, pct_complete: 80, status: 'billed', fixtures, invoices, payments }, null, today)
+    const { view } = progressPaymentForJob({ id: 'dunmere', revenue: 56_365, payments_made: 38_780, pct_complete: 80, status: 'billed', fixtures, invoices, payments }, null, today)
     const w0 = view.segments[0]!.widthPct
     const mark = billMarkFor(view, { billId: 'b0', fixtures, invoices, payments })
     if (mark?.kind !== 'bracket') throw new Error('bracket')
@@ -240,14 +240,14 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     expect(covered.leftPct + covered.widthPct).toBeCloseTo(100, 5)
   })
 
-  it('650 ATI Schertz: a $6,700 bill that names the job’s only $33,500 line sits by its amount, not across the whole bar (v2.4387)', () => {
+  it('650 AXO Schertz: a $6,700 bill that names the job’s only $33,500 line sits by its amount, not across the whole bar (v2.4387)', () => {
     const invoices = [
       { id: 'b0', status: 'billed', amount: 26_800, sequence_order: 0, billed_at: '2026-07-15' },
       { id: 'b1', status: 'billed', amount: 6_700, sequence_order: 1, billed_at: '2026-09-10' },
     ]
     const fixtures = [{ ...line('p', 'As per plans', 33_500, 0), invoice_id: 'b1' }]
     const payments = [{ invoice_id: 'b0', paid_on: '2026-08-01', amount: 17_777.51 }]
-    const { view } = progressPaymentForJob({ id: 'ati', revenue: 33_500, payments_made: 17_777.51, pct_complete: 100, status: 'billed', fixtures, invoices, payments }, null, today)
+    const { view } = progressPaymentForJob({ id: 'axo', revenue: 33_500, payments_made: 17_777.51, pct_complete: 100, status: 'billed', fixtures, invoices, payments }, null, today)
     const first = billMarkFor(view, { billId: 'b0', fixtures, invoices, payments })
     const second = billMarkFor(view, { billId: 'b1', fixtures, invoices, payments })
     if (first?.kind !== 'bracket' || second?.kind !== 'bracket') throw new Error('bracket')
@@ -257,7 +257,7 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     expect(second.leftPct + second.widthPct).toBeCloseTo(100, 1)
   })
 
-  it('880 Reliant HVAC: an open bill sent before a paid one sits after the paid one, where its blue is (v2.4387)', () => {
+  it('880 Relwyn HVAC: an open bill sent before a paid one sits after the paid one, where its blue is (v2.4387)', () => {
     const invoices = [
       { id: 'b0', status: 'billed', amount: 3_840, sequence_order: 0, billed_at: '2026-07-06' },
       { id: 'b1', status: 'paid', amount: 960, sequence_order: 1, billed_at: '2026-06-25' },
@@ -271,7 +271,7 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     expect(mark.leftPct + mark.widthPct).toBeCloseTo(100, 1)
   })
 
-  it('Knight Springtown Vet (963): the change order’s bill spans its line; the two bills by amount share the other line, part-paid first', () => {
+  it('Kestrin Stonewick Vet (963): the change order’s bill spans its line; the two bills by amount share the other line, part-paid first', () => {
     const invoices = [
       { id: 'b0', status: 'billed', amount: 2_200, sequence_order: 0 },
       { id: 'b2', status: 'billed', amount: 1_560, sequence_order: 2 },
@@ -301,10 +301,10 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
     expect(billMarkFor(view, { billId: 'a', fixtures: [{ id: 't' }], invoices })).toBeNull()
   })
 
-  it('Palmer (922, stages): a bill that names one stage bolds that stage instead of a bracket', () => {
+  it('Palvern (922, stages): a bill that names one stage bolds that stage instead of a bracket', () => {
     const invoices = [{ id: 'b1', status: 'billed', amount: 2_000, sequence_order: 0 }, { id: 'b2', status: 'billed', amount: 2_000, sequence_order: 1 }]
     const fixtures = [{ ...stage('r', 'Rough In', 2_000, 0), invoice_id: 'b1' }, { ...stage('t', 'Top Out', 2_000, 1), invoice_id: 'b2' }, stage('s', 'Trim Set', 1_000, 2)]
-    const { view } = progressPaymentForJob({ id: 'palmer', revenue: 5_000, payments_made: 0, pct_complete: 30, status: 'working', fixtures, invoices, payments: [] }, null, today)
+    const { view } = progressPaymentForJob({ id: 'palvern', revenue: 5_000, payments_made: 0, pct_complete: 30, status: 'working', fixtures, invoices, payments: [] }, null, today)
     expect(billMarkFor(view, { billId: 'b2', fixtures, invoices })).toEqual({ kind: 'stage', key: 't', title: "This row's bill: $2,000" })
   })
 
@@ -319,9 +319,9 @@ describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () 
   })
 
   it('no mark for an unknown bill or a job with no price', () => {
-    expect(billMarkFor(springtown.view, { billId: 'nope', fixtures: [], invoices: springtownInvoices })).toBeNull()
+    expect(billMarkFor(stonewick.view, { billId: 'nope', fixtures: [], invoices: stonewickInvoices })).toBeNull()
     const none = progressPaymentForJob({ id: 'x', revenue: 0, payments_made: 0, pct_complete: null, status: 'billed', fixtures: [], invoices: [], payments: [] }, null, today)
-    expect(billMarkFor(none.view, { billId: 'i2', fixtures: [], invoices: springtownInvoices })).toBeNull()
+    expect(billMarkFor(none.view, { billId: 'i2', fixtures: [], invoices: stonewickInvoices })).toBeNull()
   })
 })
 

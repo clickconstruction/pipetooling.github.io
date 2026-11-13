@@ -538,18 +538,18 @@ describe('buildArBuckets edge cases', () => {
 
 describe('AR items name the payer (v2.4367)', () => {
   it('a GC-billed bill is the GC’s, a GC job’s bill is the GC’s, a homeowner’s own bill stays theirs', () => {
-    const gcBilled = job({ id: 'j273', customer_id: 'cust-umar', customer_name: 'Umar Khan', gc_customer_id: 'gc-dudley', bill_to_party: 'gc', gcCustomer: { name: 'RMC- Dudley Mason' } })
-    const gcOnly = job({ id: 'j789', customer_id: null, customer_name: null, gc_customer_id: 'gc-knight', gcCustomer: { name: 'Knight Contracting' } })
-    const own = job({ id: 'j1060', customer_id: 'cust-cano', customer_name: 'John Cano' })
+    const gcBilled = job({ id: 'j273', customer_id: 'cust-ulric', customer_name: 'Ulric Karrow', gc_customer_id: 'gc-dunmere', bill_to_party: 'gc', gcCustomer: { name: 'RLC- Dunmere Mallin' } })
+    const gcOnly = job({ id: 'j789', customer_id: null, customer_name: null, gc_customer_id: 'gc-kestrin', gcCustomer: { name: 'Kestrin Contracting' } })
+    const own = job({ id: 'j1060', customer_id: 'cust-carrow', customer_name: 'John Carrow' })
     const { ar } = buildArBuckets(
       [gcBilled, gcOnly, own],
       [invoice({ id: 'i273', job_id: 'j273' }), invoice({ id: 'i789', job_id: 'j789' }), invoice({ id: 'i1060', job_id: 'j1060' })],
       [],
     )
     const byJob = new Map(ar.items.map((i) => [i.jobId, i]))
-    expect(byJob.get('j273')).toMatchObject({ customerId: 'gc-dudley', customerName: 'RMC- Dudley Mason' })
-    expect(byJob.get('j789')).toMatchObject({ customerId: 'gc-knight', customerName: 'Knight Contracting' })
-    expect(byJob.get('j1060')).toMatchObject({ customerId: 'cust-cano', customerName: 'John Cano' })
+    expect(byJob.get('j273')).toMatchObject({ customerId: 'gc-dunmere', customerName: 'RLC- Dunmere Mallin' })
+    expect(byJob.get('j789')).toMatchObject({ customerId: 'gc-kestrin', customerName: 'Kestrin Contracting' })
+    expect(byJob.get('j1060')).toMatchObject({ customerId: 'cust-carrow', customerName: 'John Carrow' })
   })
 })
 

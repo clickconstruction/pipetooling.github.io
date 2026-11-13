@@ -16,13 +16,13 @@ const FRESH_YMD = ymdAddDays(todayYmdInAppTz(), -1)
 const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget => ({
   sheetId: 'sheet-1',
   personId: 'person-1',
-  subName: 'Texas R & A',
+  subName: 'Texas Q & E',
   sheetLabel: 'HCP 977',
   jobNumber: '977',
   clickNumber: 'J1042',
   project: 'Mission Pet Health',
   owner: 'Mission Pet Health',
-  location: '415 Springtown Way, San Marcos, TX 78666',
+  location: '415 Stonewick Way, San Marcos, TX 78666',
   // Yesterday in the app's zone (v2.3362): a fixed 2026-09-07 aged past SETTLE_DAYS and flipped the guess to "settled".
   payments: [{ amount: 17752.65, payment_date: FRESH_YMD, created_at: `${FRESH_YMD}T15:00:00Z` }],
   balance: 22247.35,
@@ -33,7 +33,7 @@ describe('LienWaiverSendModal', () => {
   it('a fresh progress payment picks the conditional progress waiver and explains it', async () => {
     renderWithProviders(<LienWaiverSendModal target={target()} onClose={() => {}} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: /Send a lien waiver · Texas R & A/ })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /Send a lien waiver · Texas Q & E/ })).toBeTruthy()
     expect(screen.getByText('Conditional Waiver and Release on Progress Payment')).toBeTruthy()
     expect(screen.getByText(/§ 53\.284\(b\)/)).toBeTruthy()
     expect(screen.getByText('Not settled yet')).toBeTruthy()

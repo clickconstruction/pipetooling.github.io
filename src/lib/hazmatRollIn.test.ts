@@ -13,7 +13,7 @@ const inv = (over: Partial<HazmatRollInInvoice> & { id: string }): HazmatRollInI
 describe('eligibleHazmatRollIns', () => {
   const incident = { id: 'inc1', invoice_id: 'rider1', incident_at: '2026-07-20T12:00:00Z' }
 
-  it('the reported TJ Brace case: unsent draft rider rolls into the primary bill', () => {
+  it('the reported TJ Brill case: unsent draft rider rolls into the primary bill', () => {
     const lines = eligibleHazmatRollIns({
       billingInvoiceId: 'primary1',
       incidents: [incident],
@@ -188,7 +188,7 @@ describe('foldedHazmatFeeLines — voided', () => {
 
 describe('an incident in the evening keeps its day on the bill (v2.4473)', () => {
   it('writes the Central day into the Stripe line', () => {
-    // TJ Brace's incident, as stored: 00:31 UTC on Jul 21 is 7:31 pm CDT on Jul 20. 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    // TJ Brill's incident, as stored: 00:31 UTC on Jul 21 is 7:31 pm CDT on Jul 20. 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
     const rollIn = eligibleHazmatRollIns({
       billingInvoiceId: 'primary1',
       incidents: [{ id: 'inc1', invoice_id: 'rider1', incident_at: '2026-07-21T00:31:00+00:00' }],

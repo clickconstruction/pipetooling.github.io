@@ -2,7 +2,7 @@
 /**
  * Render smoke for v2.4313 (punch list #76 PR 1): a check that came back can pay no bill.
  * Before, a returned deposit left To match but, found under All or by the search, its pane
- * still offered the payer's open bills, the allocation lines and Apply — Loberg's stopped
+ * still offered the payer's open bills, the allocation lines and Apply — Lowbeck's stopped
  * $5,622.49 offered #650's bills on 2026-10-01. Now the pane says so and Apply stays off.
  * The database refuses the link too (20261001220000_returned_check_cannot_pay.sql).
  */
@@ -22,18 +22,18 @@ const base = {
 }
 
 const DEPOSITS = [
-  { ...base, mercury_transaction_id: 'mtx-drf', amount: 250, counterparty_name: 'DRF', posted_at: '2026-09-28T15:00:00Z', raw: {}, mercury_id: 'm-1', remaining_available: 250, returned: false },
+  { ...base, mercury_transaction_id: 'mtx-dlf', amount: 250, counterparty_name: 'DLF', posted_at: '2026-09-28T15:00:00Z', raw: {}, mercury_id: 'm-1', remaining_available: 250, returned: false },
   // Marked returned by hand (the RPC hides it from To match in the app; the stub lists it so the pane can be read).
   { ...base, mercury_transaction_id: 'mtx-hand', amount: 119.56, counterparty_name: 'Texas Mutual', posted_at: '2026-08-13T15:00:00Z', raw: {}, mercury_id: 'm-2', remaining_available: 119.56, returned: true },
   // The bank sent it back: Mercury synced it failed after it posted.
-  { ...base, mercury_transaction_id: 'mtx-loberg', amount: 5622.49, counterparty_name: 'Loberg', posted_at: '2026-09-28T15:00:00Z', raw: { status: 'failed', reasonForFailure: 'Stop payment' }, mercury_id: 'm-3', remaining_available: 5622.49, returned: false },
+  { ...base, mercury_transaction_id: 'mtx-lowbeck', amount: 5622.49, counterparty_name: 'Lowbeck', posted_at: '2026-09-28T15:00:00Z', raw: { status: 'failed', reasonForFailure: 'Stop payment' }, mercury_id: 'm-3', remaining_available: 5622.49, returned: false },
 ]
 
 function job650(): JobWithDetails {
   const inv = { id: 'inv-650', job_id: 'job-650', amount: 9022.49, status: 'billed', sequence_order: 0, stripe_invoice_id: null, sent_to_customer_at: null, billed_at: null, estimated_bill_date: null }
   return {
-    id: 'job-650', status: 'billed', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '5498 Cibolo Valley Dr, Schertz, TX',
-    customer_name: 'Loberg Contracting', revenue: 9022.49, payments_made: 0, materials: [], fixtures: [], payments: [], invoices: [inv], team_members: [],
+    id: 'job-650', status: 'billed', hcp_number: '650', click_number: null, job_name: 'AXO Schertz', job_address: '5498 Cinder Valley Dr, Schertz, TX',
+    customer_name: 'Lowbeck Contracting', revenue: 9022.49, payments_made: 0, materials: [], fixtures: [], payments: [], invoices: [inv], team_members: [],
   } as unknown as JobWithDetails
 }
 const BILLED = buildBilledStageRows([job650()], [])
@@ -79,7 +79,7 @@ function applyButton(): HTMLButtonElement {
 async function open() {
   await renderSettled(
     <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={BILLED} onApplied={() => {}} />,
-    { loaded: () => screen.findByRole('button', { name: /250\.00 from DRF/ }) },
+    { loaded: () => screen.findByRole('button', { name: /250\.00 from DLF/ }) },
   )
 }
 
@@ -99,7 +99,7 @@ describe('BankPaymentsModal · a check that came back pays no bill (render smoke
   it('a check the bank sent back, found under All: the same, and no untick hint — the bank said it', async () => {
     await open()
     fireEvent.click(screen.getByRole('button', { name: /^All/ }))
-    const row = await screen.findByRole('button', { name: /5,622\.49 from Loberg/ })
+    const row = await screen.findByRole('button', { name: /5,622\.49 from Lowbeck/ })
     fireEvent.click(row)
     await waitFor(() => expect(screen.getByTestId('ar-came-back-note')).toBeTruthy())
     expect(screen.getByTestId('ar-came-back-note').textContent).not.toContain('untick')

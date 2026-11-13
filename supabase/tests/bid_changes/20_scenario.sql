@@ -105,13 +105,13 @@ UPDATE mark SET id = bct.last();
 
 -- 2 · An edit records the column that changed; a column the ledger does not keep (the robots' opt-out),
 -- or a save that changes nothing, records nothing.
-UPDATE public.bids SET notes = 'Ask Wendi about the SpaceX counts', robot_opt_out = true WHERE id = '00000000-0000-0000-0000-00000000c7d1';
+UPDATE public.bids SET notes = 'Ask Wendi about the SkyLab counts', robot_opt_out = true WHERE id = '00000000-0000-0000-0000-00000000c7d1';
 UPDATE public.bids SET robot_opt_out = false WHERE id = '00000000-0000-0000-0000-00000000c7d1';
-UPDATE public.bids SET notes = 'Ask Wendi about the SpaceX counts' WHERE id = '00000000-0000-0000-0000-00000000c7d1';
+UPDATE public.bids SET notes = 'Ask Wendi about the SkyLab counts' WHERE id = '00000000-0000-0000-0000-00000000c7d1';
 SELECT bct.same('an edit: the notes only', bct.log('00000000-0000-0000-0000-00000000c7d1', (SELECT id FROM mark)), 'bids update - notes');
 SELECT bct.same('an edit: before and after',
   (SELECT COALESCE(old_values ->> 'notes', 'null') || ' -> ' || (new_values ->> 'notes') FROM bct.rows_after((SELECT id FROM mark))),
-  'null -> Ask Wendi about the SpaceX counts');
+  'null -> Ask Wendi about the SkyLab counts');
 UPDATE mark SET id = bct.last();
 
 -- 3 · Versions, count rows and a price typed three times (one of them the same value); a reorder records nothing.

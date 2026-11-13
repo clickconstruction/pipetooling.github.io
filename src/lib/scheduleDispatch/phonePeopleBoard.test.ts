@@ -106,16 +106,16 @@ describe('day strip', () => {
 })
 
 describe('card target state', () => {
-  const copy: PhonePlacementMode = { kind: 'copy', label: 'J927 · Mike Holub', startMinutes: 720, endMinutes: 960, sourceUserIds: new Set(['abraham']), linked: true }
+  const copy: PhonePlacementMode = { kind: 'copy', label: 'J927 · Mike Holmby', startMinutes: 720, endMinutes: 960, sourceUserIds: new Set(['abraham']), linked: true }
   it('the source tech is not a target', () => {
     const s = cardTargetState({ mode: copy, userId: 'abraham', dayBlocks: [] })
     expect(s.tone).toBe('source')
     expect(s.tappable).toBe(false)
-    expect(s.what).toBe('Already on J927 · Mike Holub 12–4')
+    expect(s.what).toBe('Already on J927 · Mike Holmby 12–4')
   })
   it('a free tech says what will land and what else they have', () => {
     const s = cardTargetState({ mode: copy, userId: 'paige', dayBlocks: [{ label: 'J650', startMinutes: 480, endMinutes: 720 }] })
-    expect(s).toEqual({ tone: 'free', what: 'Tap to add J927 · Mike Holub · 12–4 here', why: 'Also on J650 8–12', tappable: true })
+    expect(s).toEqual({ tone: 'free', what: 'Tap to add J927 · Mike Holmby · 12–4 here', why: 'Also on J650 8–12', tappable: true })
     expect(cardTargetState({ mode: copy, userId: 'marcus', dayBlocks: [] }).why).toBe('Nothing scheduled this day')
   })
   it('a clash reads busy but stays tappable, with Undo promised', () => {
@@ -126,7 +126,7 @@ describe('card target state', () => {
   })
   it('move says move; not coming in reads busy; multi-cell has its own two states', () => {
     const move: PhonePlacementMode = { ...copy, kind: 'move', sourceUserIds: new Set() }
-    expect(cardTargetState({ mode: move, userId: 'paige', dayBlocks: [] }).what).toBe('Tap to move J927 · Mike Holub · 12–4 here')
+    expect(cardTargetState({ mode: move, userId: 'paige', dayBlocks: [] }).what).toBe('Tap to move J927 · Mike Holmby · 12–4 here')
     expect(cardTargetState({ mode: copy, userId: 'x', dayBlocks: [], notComingIn: true }).what).toBe('Not coming in today')
     const multi: PhonePlacementMode = { kind: 'multi-cell', label: '', startMinutes: null, endMinutes: null, sourceUserIds: new Set() }
     expect(cardTargetState({ mode: multi, userId: 'x', dayBlocks: [] }).what).toBe('Tap to add this tech and day')
@@ -140,7 +140,7 @@ describe('card target state', () => {
   })
   it('a move reads its own cell as "where it is now", not as a clash with itself', () => {
     const move: PhonePlacementMode = { ...copy, kind: 'move', sourceUserIds: new Set() }
-    const own = { label: 'J927 · Mike Holub', startMinutes: 720, endMinutes: 960 }
+    const own = { label: 'J927 · Mike Holmby', startMinutes: 720, endMinutes: 960 }
     const source = cardTargetState({ mode: move, userId: 'abraham', dayBlocks: [own], isSourceCell: true })
     expect(source).toMatchObject({ tone: 'source', what: 'Where it is now', tappable: false })
     // Same tech, another day: a plain target.

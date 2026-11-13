@@ -19,7 +19,7 @@ describe('checklistJobPreset (v2.3751)', () => {
         job_name: ' Mission faucet ',
         job_address: '15638 Mission Crest, San Antonio, TX',
         serviceTypeName: 'Plumbing',
-        customerName: 'Johnny Ingram',
+        customerName: 'Johnny Inglow',
       },
       ORIGIN
     )
@@ -27,19 +27,19 @@ describe('checklistJobPreset (v2.3751)', () => {
     expect(p.name).toBe('Mission faucet')
     expect(p.trade?.tag).toBe('PLUM')
     expect(p.address).toBe('15638 Mission Crest, San Antonio, TX')
-    expect(p.customer).toBe('Johnny Ingram')
+    expect(p.customer).toBe('Johnny Inglow')
     expect(p.path).toBe('/jobs?jobDetail=job-1')
     expect(p.url).toBe('https://clicktooling.com/jobs?jobDetail=job-1')
   })
 
   it('falls back to the Click number, then to no number; the GC stands in for a missing customer; an unknown trade has no pill; blanks are null', () => {
-    const c = buildChecklistJobPreset({ id: 'j', click_number: 'C42', job_name: 'Coe pool', serviceTypeName: 'Landscaping' }, ORIGIN)
+    const c = buildChecklistJobPreset({ id: 'j', click_number: 'C42', job_name: 'Corl pool', serviceTypeName: 'Landscaping' }, ORIGIN)
     expect(c.number).toBe('C42')
     expect(c.trade).toBeNull()
     expect(c.address).toBeNull()
     expect(c.customer).toBeNull()
-    const gc = buildChecklistJobPreset({ id: 'j', job_name: 'Mission faucet', customerName: ' ', gcName: 'Johnny Ingram' }, ORIGIN)
-    expect(gc.customer).toBe('Johnny Ingram')
+    const gc = buildChecklistJobPreset({ id: 'j', job_name: 'Mission faucet', customerName: ' ', gcName: 'Johnny Inglow' }, ORIGIN)
+    expect(gc.customer).toBe('Johnny Inglow')
     const none = buildChecklistJobPreset({ id: 'j', job_name: '' }, ORIGIN)
     expect(none.number).toBeNull()
     expect(none.name).toBe('Job')

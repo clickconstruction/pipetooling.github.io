@@ -254,7 +254,7 @@ describe('the sort tables', () => {
   })
 })
 
-describe('unbilledTileWords (the Gun Dog spike, 2026-11-02)', () => {
+describe('unbilledTileWords (the Gray Fox spike, 2026-11-02)', () => {
   const money = (n: number) => `$${n.toLocaleString('en-US')}`
   const model = (band: Partial<SiteMoneyModel['band']>, rows: Array<{ key: string; left: number }>): SiteMoneyModel =>
     ({

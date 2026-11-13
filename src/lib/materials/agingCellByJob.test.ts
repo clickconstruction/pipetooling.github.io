@@ -33,11 +33,11 @@ describe('groupAgingCellByJob', () => {
   it('puts each job’s invoices under it, largest unpaid-off-account first, rows in their own order', () => {
     const g = groupAgingCellByJob(MOORE, oneJob(MOORE_JOB), () => null)
     expect(g.jobs.map((j) => j.jobId)).toEqual(['j706', 'j693', 'j667', 'j804', 'j523', 'j759', 'j742'])
-    const dudley = g.jobs[0]!
-    expect(dudley.rows.map((r) => r.id)).toEqual(['i7', 'i8', 'i9'])
-    expect(dudley.total).toBeCloseTo(3664.53, 2)
-    expect(dudley.offTotal).toBeCloseTo(3664.53, 2)
-    expect([dudley.onCount, dudley.offCount]).toEqual([0, 3])
+    const dunmere = g.jobs[0]!
+    expect(dunmere.rows.map((r) => r.id)).toEqual(['i7', 'i8', 'i9'])
+    expect(dunmere.total).toBeCloseTo(3664.53, 2)
+    expect(dunmere.offTotal).toBeCloseTo(3664.53, 2)
+    expect([dunmere.onCount, dunmere.offCount]).toEqual([0, 3])
     expect(g.jobs.every((j) => j.state.kind === 'none')).toBe(true)
     expect([g.split, g.noJob, g.credits]).toEqual([[], [], []])
   })

@@ -113,7 +113,7 @@ const FULL: Record<string, Contact> = {
   dana: contact('dana', 'customer', 'Dana Whitfield', '', []),
 }
 const VIEW: MessagesView = { contacts: Object.values(FULL), messages: [], rails: {}, tiles: {}, userNames: { 'u-rosa': 'Rosa', 'u-robert': 'Robert' } }
-const QUIET: WaitLine[] = [{ id: 'k1', contactId: 'c-kim', name: 'Kim Coe', kind: 'customer', direction: 'out', body: 'Kim, the heater is on the truck.', atMs: Date.parse('2026-09-28T20:00:00Z'), number: null }]
+const QUIET: WaitLine[] = [{ id: 'k1', contactId: 'c-kim', name: 'Kim Corl', kind: 'customer', direction: 'out', body: 'Kim, the heater is on the truck.', atMs: Date.parse('2026-09-28T20:00:00Z'), number: null }]
 
 function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
   const loadQueue = vi.fn(async () => reads[reads.length - 1]!)

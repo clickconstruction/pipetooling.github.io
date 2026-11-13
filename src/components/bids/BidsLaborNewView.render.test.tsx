@@ -195,8 +195,8 @@ describe('BidsLaborNewView · calibration (v2.3307)', () => {
       appliedBookVersionId: 'book-1',
       calibrationLoaded: true,
       calibrationJobs: [
-        { jobId: 'j1', label: 'J650 ATI', bidId: 'b1', pctDone: 100, fieldDays: 22, actualHours: 118, rows: [rowOf('Toilets', 100, 1)] },
-        { jobId: 'j2', label: 'J1007 SPACEX', bidId: 'b2', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [rowOf('Toilets', 10, 1)] },
+        { jobId: 'j1', label: 'J650 AXO', bidId: 'b1', pctDone: 100, fieldDays: 22, actualHours: 118, rows: [rowOf('Toilets', 100, 1)] },
+        { jobId: 'j2', label: 'J1007 SKYLAB', bidId: 'b2', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [rowOf('Toilets', 10, 1)] },
       ],
     })
     await settle()

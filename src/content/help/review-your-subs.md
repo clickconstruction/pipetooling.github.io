@@ -48,6 +48,6 @@ The panel shows the three biggest balances first. **Show all N sheets** expands 
 
 ## Sheet work orders and General Conditions
 
-- **Open work orders** now include work orders sent from a Sub Labor sheet. They read as the sheet's job, like *J977 · 415 Springtown Way · sheet*, instead of a step at a project.
+- **Open work orders** now include work orders sent from a Sub Labor sheet. They read as the sheet's job, like *J977 · 415 Stonewick Way · sheet*, instead of a step at a project.
 - A fourth compliance pill, {{chip:green|Gen. Cond. ✓}}, appears once the Contract library holds a document for subs. That document is the General Conditions, the standard terms every sub signs. {{chip:yellow|Gen. Cond. behind}} means they signed an older version than the library's current one. {{chip:gray|Gen. Cond. unsigned}} means they never have. You send the update from **Contract library → Scope → Documents for subs**.
 - You open a sub's **Person desk** to see a **Work orders** section. It lists every offer and signed agreement for that person, sheet or step, with a door to where it lives.

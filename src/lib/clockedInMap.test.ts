@@ -55,11 +55,11 @@ function onJob(p: { id: string; user_id: string; job: string; hcp?: string; name
     job_ledger_id: p.job,
     clocked_in_at: p.clocked_in_at ?? '2026-09-22T13:00:00Z',
     notes: p.notes ?? '',
-    jobs_ledger: { hcp_number: p.hcp ?? '1021', click_number: null, job_name: p.name ?? 'Vecchio Pinpoint', job_address: p.address === undefined ? '1160 Lago Vista Dr, San Marcos, TX 78666' : p.address },
+    jobs_ledger: { hcp_number: p.hcp ?? '1021', click_number: null, job_name: p.name ?? 'Vellano Pinpoint', job_address: p.address === undefined ? '1160 Lago Vista Dr, San Marcos, TX 78666' : p.address },
   })
 }
 
-const VECCHIO = '1160 Lago Vista Dr, San Marcos, TX 78666'
+const VELLANO = '1160 Lago Vista Dr, San Marcos, TX 78666'
 const OFFICE_ADDR = '12921 FM 20, Kingsbury, TX 78638'
 
 describe('buildClockedInMap', () => {
@@ -69,15 +69,15 @@ describe('buildClockedInMap', () => {
         onJob({ id: 's1', user_id: 'Abraham', job: 'j1', clocked_in_at: '2026-09-22T13:00:00Z' }),
         onJob({ id: 's2', user_id: 'Malachi', job: 'j2', hcp: '1039', name: 'Echols', address: '1 Echols Rd, Kingsbury, TX' }),
         onJob({ id: 's3', user_id: 'Paige', job: 'j1', clocked_in_at: '2026-09-22T12:18:00Z', notes: 'Work' }),
-        onJob({ id: 's4', user_id: 'Tristen', job: 'j3', hcp: '251', name: 'Michael Palmer', address: '9 Blanco St, Blanco, TX' }),
+        onJob({ id: 's4', user_id: 'Tristen', job: 'j3', hcp: '251', name: 'Michael Palvern', address: '9 Blanco St, Blanco, TX' }),
       ],
       NOW,
       PREFIX,
     )
     expect(m.stops.map((s) => [s.id, s.label, s.people.map((p) => p.name)])).toEqual([
-      ['job:j1', 'J1021 · Vecchio Pinpoint', ['Paige', 'Abraham']],
+      ['job:j1', 'J1021 · Vellano Pinpoint', ['Paige', 'Abraham']],
       ['job:j2', 'J1039 · Echols', ['Malachi']],
-      ['job:j3', 'J251 · Michael Palmer', ['Tristen']],
+      ['job:j3', 'J251 · Michael Palvern', ['Tristen']],
     ])
     expect(m.stops[0]?.people[0]).toMatchObject({ elapsedLabel: '4h 27m', memo: 'Work', synthetic: false })
     expect(m.stops[0]?.people[1]?.elapsedLabel).toBe('3h 45m')
@@ -92,12 +92,12 @@ describe('buildClockedInMap', () => {
       id: 'b1',
       user_id: 'Michael A',
       bid_id: 'bid-9',
-      bids: { bid_number: '482', project_name: 'Kimberly Coe', address: '4 Converse Ln, Converse, TX', customers: { name: 'Coe' } },
+      bids: { bid_number: '482', project_name: 'Kimberly Corl', address: '4 Converse Ln, Converse, TX', customers: { name: 'Corl' } },
     })
     const loose = session({ id: 'l1', user_id: 'Isiah', notes: 'Working with micheal', clocked_in_at: '2026-09-22T15:26:00Z' })
     const m = buildClockedInMap([bid, loose], NOW, PREFIX)
     expect(m.stops).toHaveLength(1)
-    expect(m.stops[0]).toMatchObject({ id: 'bid:bid-9', kind: 'bid', label: 'B482 · Kimberly Coe', bidId: 'bid-9', jobLedgerId: null })
+    expect(m.stops[0]).toMatchObject({ id: 'bid:bid-9', kind: 'bid', label: 'B482 · Kimberly Corl', bidId: 'bid-9', jobLedgerId: null })
     expect(m.unassigned.map((p) => [p.name, p.elapsedLabel, p.memo])).toEqual([['Isiah', '1h 19m', 'Working with micheal']])
     expect(m.legend).toEqual({ jobs: 0, bids: 1, office: 0 })
   })
@@ -164,15 +164,15 @@ describe('clockedInMapAddresses / placeClockedInStops', () => {
 
   it('asks the geocoder for each address once and never for a blank one', () => {
     expect(clockedInMapAddresses(m)).toEqual([
-      { key: normalizeAddressForGeocodeKey(VECCHIO), display: VECCHIO },
+      { key: normalizeAddressForGeocodeKey(VELLANO), display: VELLANO },
       { key: normalizeAddressForGeocodeKey('1 Echols Rd, Kingsbury, TX'), display: '1 Echols Rd, Kingsbury, TX' },
     ])
   })
 
   it('a placed stop becomes a pin with the head count as its badge; the rest split into unmapped and no-address', () => {
-    const coords = new Map([[normalizeAddressForGeocodeKey(VECCHIO), { lat: 29.88, lng: -97.94 }]])
+    const coords = new Map([[normalizeAddressForGeocodeKey(VELLANO), { lat: 29.88, lng: -97.94 }]])
     const placed = placeClockedInStops(m.stops, coords)
-    expect(placed.pins).toEqual([{ id: 'job:j1', lat: 29.88, lng: -97.94, color: CLOCKED_IN_MAP_COLOR.job, title: 'J1021 · Vecchio Pinpoint · 2', label: '2' }])
+    expect(placed.pins).toEqual([{ id: 'job:j1', lat: 29.88, lng: -97.94, color: CLOCKED_IN_MAP_COLOR.job, title: 'J1021 · Vellano Pinpoint · 2', label: '2' }])
     expect(placed.coordsByStop.get('job:j1')).toEqual({ lat: 29.88, lng: -97.94 })
     expect(placed.unmapped.map((s) => s.id)).toEqual(['job:j2'])
     expect(placed.noAddress.map((s) => s.id)).toEqual(['job:j3'])

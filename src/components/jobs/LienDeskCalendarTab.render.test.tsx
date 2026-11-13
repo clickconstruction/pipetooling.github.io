@@ -42,10 +42,10 @@ import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 const TODAY = '2026-09-28'
 const base = { todayYmd: TODAY, openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null }
 const rows: LienCalendarJob[] = [
-  { jobId: 'a', number: '890 PLUM', name: 'Rizvi', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-08-12', isSub: true }), lastWorkYmd: '2026-08-12' },
-  { jobId: 'b', number: '881 PLUM', name: 'Umar Khan', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '9703 Lenox Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }), lastWorkYmd: '2026-08-20', addressId: 'addr-b' },
-  { jobId: 'd', number: '473 PLUM', name: 'Mike Holub', customer: 'Michael Holub', gcId: null, gcName: null, address: '109 Tuscarora', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-08-12' },
-  { jobId: 'e', number: '663 PLUM', name: 'Knight', customer: 'Knight Contracting', gcId: 'gc2', gcName: 'Knight Contracting', address: '', openBalance: 658, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 658, lastWorkYmd: '2026-03-01', isSub: true }), lastWorkYmd: '2026-03-01' },
+  { jobId: 'a', number: '890 PLUM', name: 'Rilvo', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-08-12', isSub: true }), lastWorkYmd: '2026-08-12' },
+  { jobId: 'b', number: '881 PLUM', name: 'Ulric Karrow', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '9703 Linmor Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }), lastWorkYmd: '2026-08-20', addressId: 'addr-b' },
+  { jobId: 'd', number: '473 PLUM', name: 'Mike Holmby', customer: 'Michael Holmby', gcId: null, gcName: null, address: '109 Tamberline', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-08-12' },
+  { jobId: 'e', number: '663 PLUM', name: 'Kestrin', customer: 'Kestrin Contracting', gcId: 'gc2', gcName: 'Kestrin Contracting', address: '', openBalance: 658, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 658, lastWorkYmd: '2026-03-01', isSub: true }), lastWorkYmd: '2026-03-01' },
   // a direct job with no pay date — the one row that draws its own dashed dot (under a GC the GC row's dot speaks)
   { jobId: 'f', number: '512 PLUM', name: 'Garza', customer: 'Ana Garza', gcId: null, gcName: null, address: '77 Alamo Pl', openBalance: 1200, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 1200, lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z' }), lastWorkYmd: null },
 ]
@@ -67,7 +67,7 @@ function mount(over: Partial<Parameters<typeof LienDeskCalendarTab>[0]> = {}) {
 }
 
 describe('LienDeskCalendarTab', () => {
-  // On Sep 28 the two RMC notices fall due Oct 15 (next month), the two direct liens Nov 16 (later), and Knight's lien is gone.
+  // On Sep 28 the two RLC notices fall due Oct 15 (next month), the two direct liens Nov 16 (later), and Kestrin's lien is gone.
   it('the pills count each job once at its next date; All shows every bucket that has a job, Overdue folded at the top', () => {
     mount()
     expect(within(screen.getByTestId('lien-cal-pills')).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
@@ -84,7 +84,7 @@ describe('LienDeskCalendarTab', () => {
     expect(overdue.getAttribute('aria-expanded')).toBe('false')
     expect(sections[0]!.textContent).toContain('1 job · nothing left to file · money still owed')
     expect(overdue.getAttribute('title')).toContain('Collections or the Legal desk can chase it.')
-    expect(sections[1]!.textContent).toContain('by Oct 15 · in 17 days · 2 notices to RMC · Dudley Mason')
+    expect(sections[1]!.textContent).toContain('by Oct 15 · in 17 days · 2 notices to RLC · Dunmere Mallin')
     expect(sections[2]!.textContent).toContain('by Nov 16 · in 49 days · 2 liens to file')
     // the date row: the search, each 15th with how many jobs it is the next date for, today
     expect(screen.getAllByTestId('lien-cal-date-count').map((c) => c.textContent)).toEqual(['2', '2'])
@@ -103,8 +103,8 @@ describe('LienDeskCalendarTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Later · 2 jobs/ }))
     expect(screen.getAllByTestId(/^lien-cal-bucket-/).map((s) => s.getAttribute('data-testid'))).toEqual(['lien-cal-bucket-later'])
     expect(screen.getByTestId('lien-cal-band')).toBeTruthy()
-    expect(screen.queryByText('Rizvi')).toBeNull()
-    expect(screen.getByText('Mike Holub')).toBeTruthy()
+    expect(screen.queryByText('Rilvo')).toBeNull()
+    expect(screen.getByText('Mike Holmby')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /^Later · 2 jobs/ }))
     expect(screen.getAllByTestId(/^lien-cal-bucket-/)).toHaveLength(3)
     expect(screen.queryByTestId('lien-cal-band')).toBeNull()
@@ -113,21 +113,21 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByText('Nothing else falls due in September.')).toBeTruthy()
     // the Overdue pill opens Overdue; All folds it again
     fireEvent.click(screen.getByRole('button', { name: /^Overdue · 1 job/ }))
-    expect(screen.getByText('Knight')).toBeTruthy()
+    expect(screen.getByText('Kestrin')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /^All · 5 jobs/ }))
-    expect(screen.queryByText('Knight')).toBeNull()
+    expect(screen.queryByText('Kestrin')).toBeNull()
   })
 
   it('an overdue job is listed with its property under that property’s next date; Overdue picked alone lists it again (v2.4526)', () => {
-    // 226's window closed long ago; it sits at 628 Terrell Rd, where 890 owes a notice Oct 15.
-    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    // 226's window closed long ago; it sits at 628 Tarrow Rd, where 890 owes a notice Oct 15.
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Tarrow job', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
     expect(closed.runway.state).toBe('closed')
     mount({ rows: [...rows, closed] })
     // The pill still counts it in Overdue; the bar says where it is listed.
     expect(screen.getByRole('button', { name: /^Overdue · 2 jobs · \$1,308/ })).toBeTruthy()
     expect(overdueBar().textContent).toContain('2 jobs · 1 listed here · 1 is listed under Next month')
     const next = screen.getByTestId('lien-cal-bucket-next_month')
-    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Tarrow Rd', 'Other properties'])
     const guest = rowOf('226 PLUM')
     expect(next.contains(guest)).toBe(true)
     expect(guest.getAttribute('data-closed-here')).toBe('true')
@@ -138,49 +138,49 @@ describe('LienDeskCalendarTab', () => {
     expect(within(next).getByText(/2 notices owed · 1 window closed/)).toBeTruthy()
     // Overdue opened under All lists only the job with nothing ahead at its property.
     fireEvent.click(overdueBar())
-    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).queryByText('Older Terrell job')).toBeNull()
-    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).getByText('Knight')).toBeTruthy()
+    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).queryByText('Older Tarrow job')).toBeNull()
+    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).getByText('Kestrin')).toBeTruthy()
     // Picked on its own, Overdue is whole.
     fireEvent.click(screen.getByRole('button', { name: /^Overdue · 2 jobs/ }))
     const alone = screen.getByTestId('lien-cal-bucket-overdue')
-    expect(within(alone).getByText('Older Terrell job')).toBeTruthy()
-    expect(within(alone).getByText('Knight')).toBeTruthy()
+    expect(within(alone).getByText('Older Tarrow job')).toBeTruthy()
+    expect(within(alone).getByText('Kestrin')).toBeTruthy()
     expect(overdueBar().textContent).toContain('2 jobs · nothing left to file · money still owed')
   })
 
   it('on a phone the overdue job sits under its property’s heading too, greyed (v2.4526)', () => {
-    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Tarrow job', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
     mount({ rows: [...rows, closed], isMobile: true })
     const next = within(screen.getByTestId('lien-cal-phone')).getByTestId('lien-cal-bucket-next_month')
-    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
-    const guest = within(next).getByText('Older Terrell job').closest('[role="row"]') as HTMLElement
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Tarrow Rd', 'Other properties'])
+    const guest = within(next).getByText('Older Tarrow job').closest('[role="row"]') as HTMLElement
     expect(guest.getAttribute('data-closed-here')).toBe('true')
     expect(within(next).getAllByRole('row').map((r) => r.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
   })
 
   it('groups: the GC row folds its flags with a count, its jobs draw their marks; Overdue opens to its rows', () => {
     mount()
-    const rmc = screen.getByTestId('lien-cal-group-gc:gc1')
-    expect(rmc.textContent).toContain('RMC · Dudley Mason')
+    const rlc = screen.getByTestId('lien-cal-group-gc:gc1')
+    expect(rlc.textContent).toContain('RLC · Dunmere Mallin')
     // the bar names Oct 15, so the GC row says only what to send
-    expect(rmc.textContent).toContain('send 2 notices')
-    expect(rmc.textContent).not.toContain('by Oct 15')
-    expect(rmc.querySelector('[aria-label="2 notices owed by Oct 15"]')).toBeTruthy()
-    // Umar Khan: the sent month's check, the owed month's hollow flag (a door), the kind bracket
+    expect(rlc.textContent).toContain('send 2 notices')
+    expect(rlc.textContent).not.toContain('by Oct 15')
+    expect(rlc.querySelector('[aria-label="2 notices owed by Oct 15"]')).toBeTruthy()
+    // Ulric Karrow: the sent month's check, the owed month's hollow flag (a door), the kind bracket
     const tracks = screen.getAllByTestId('lien-cal-track')
     expect(tracks.length).toBe(4)
-    const umar = rowOf('881 PLUM')
-    expect(within(umar).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(within(umar).getByLabelText('The July 2026 notice is on file')).toBeTruthy()
-    // every flag names its month — Rizvi's August too, which used to say "the last work month"
+    const ulric = rowOf('881 PLUM')
+    expect(within(ulric).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
+    expect(within(ulric).getByLabelText('The July 2026 notice is on file')).toBeTruthy()
+    // every flag names its month — Rilvo's August too, which used to say "the last work month"
     expect(within(rowOf('890 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
     expect(screen.getByLabelText(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
-    // Mike Holub: a pay dot and room
+    // Mike Holmby: a pay dot and room
     expect(screen.getByLabelText(/said they would pay: Sep 30/)).toBeTruthy()
     expect(screen.getByLabelText('Room — the money is expected before the lien date')).toBeTruthy()
-    expect(screen.queryByText('Knight')).toBeNull()
+    expect(screen.queryByText('Kestrin')).toBeNull()
     fireEvent.click(overdueBar())
-    expect(screen.getByText('Knight')).toBeTruthy()
+    expect(screen.getByText('Kestrin')).toBeTruthy()
     // Overdue's rows sit straight under its bar: no Lien gone row repeating it
     expect(screen.queryByTestId('lien-cal-group-gone')).toBeNull()
     expect(screen.getByLabelText(/The notice window closed May 15 unsent/)).toBeTruthy()
@@ -189,7 +189,7 @@ describe('LienDeskCalendarTab', () => {
   it('every row starts at its work tick; a job dated from its creation day says so in amber (v2.4265)', () => {
     mount()
     const ticks = screen.getAllByTestId('lien-cal-work')
-    expect(ticks.length).toBe(4) // Rizvi, Umar Khan, Holub, Garza; Knight's is folded under Overdue
+    expect(ticks.length).toBe(4) // Rilvo, Ulric Karrow, Holmby, Garza; Kestrin's is folded under Overdue
     expect(ticks.filter((t) => t.textContent === 'Aug 12').length).toBe(2)
     expect(screen.getByText('Aug 20')).toBeTruthy()
     expect(screen.getByText('Aug · no hours')).toBeTruthy()
@@ -216,24 +216,24 @@ describe('LienDeskCalendarTab', () => {
   it('a job row says only what its GC row does not; under a GC the dashed dot is the GC’s (v2.4265)', () => {
     mount()
     const money = screen.getAllByTestId('lien-cal-row-money')
-    // Rizvi and Umar Khan owe the Oct 15 notice the RMC row already names — nothing under their money
+    // Rilvo and Ulric Karrow owe the Oct 15 notice the RLC row already names — nothing under their money
     expect(money[0]!.textContent).toBe('$9,800')
     expect(money[1]!.textContent).toBe('$7,902')
-    // Holub, direct, keeps his verdict
+    // Holmby, direct, keeps his verdict
     expect(screen.getByText('47 d of room')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Record when Dudley Mason expects to pay · 890 PLUM' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Record when Dunmere Mallin expects to pay · 890 PLUM' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Record when Ana Garza expects to pay · 512 PLUM' })).toBeTruthy()
   })
 
   it('a property’s heading says both piles and their sum, and a lien-gone row offers Worked later? (v2.6849)', () => {
-    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Tarrow job', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
     const onOpenLastWork = vi.fn()
     const { onOpen } = mount({ rows: [...rows, closed], onOpenLastWork })
     const next = screen.getByTestId('lien-cal-bucket-next_month')
     // 890's $9,800 can still be liened; 226's $650 cannot; the GC's total counts the first only.
     expect(within(next).getAllByTestId('lien-cal-property-tally').map((p) => p.textContent)).toEqual(['Lien open on 1 job · $9,800 · lien gone on 1 · $650 · $10,450 owed here'])
     // The heading's own words are unchanged.
-    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Tarrow Rd', 'Other properties'])
     const door = within(rowOf('226 PLUM')).getByRole('button', { name: 'Worked later? Change the last day of work · 226 PLUM' })
     expect(door.textContent).toBe('Worked later? ›')
     fireEvent.click(door)
@@ -244,7 +244,7 @@ describe('LienDeskCalendarTab', () => {
   })
 
   it('without the last-day door a lien-gone row has no Worked later? press; a phone row has it and does not open the Lien window (v2.6849)', () => {
-    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Tarrow job', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
     mount({ rows: [...rows, closed] })
     expect(screen.queryByTestId('lien-cal-worked-later')).toBeNull()
     cleanup()
@@ -263,8 +263,8 @@ describe('LienDeskCalendarTab', () => {
     fireEvent.click(overdueBar())
     const wash = screen.getByTestId('lien-cal-gone')
     expect(wash.textContent).toBe('notice not sent by May 15')
-    const knight = screen.getAllByTestId('lien-cal-row-money').find((m) => m.textContent?.startsWith('$658'))!
-    expect(knight.textContent).toBe('$658still owed')
+    const kestrin = screen.getAllByTestId('lien-cal-row-money').find((m) => m.textContent?.startsWith('$658'))!
+    expect(kestrin.textContent).toBe('$658still owed')
   })
 
   it('the key is one line: a tap opens the long words, a second tap or Esc closes them, and its door acts (v2.4265)', () => {
@@ -289,18 +289,18 @@ describe('LienDeskCalendarTab', () => {
 
   it('a row and a hollow flag open the job; the search narrows the buckets and their counts', () => {
     const { onOpen } = mount()
-    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rilvo/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
     fireEvent.click(within(rowOf('881 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
     expect(onOpen).toHaveBeenLastCalledWith('b')
-    fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'holub' } })
-    expect(screen.queryByText('RMC · Dudley Mason')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'holmby' } })
+    expect(screen.queryByText('RLC · Dunmere Mallin')).toBeNull()
     expect(screen.getByText('Direct — we contracted with the owner')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'All · 1 job · $5,724' })).toBeTruthy()
     // a picked bucket the search empties quotes it, and its press clears the search (punch list #184, sweep C)
     fireEvent.click(screen.getByRole('button', { name: /^Next month · 0 jobs/ }))
     const next = screen.getByTestId('lien-cal-bucket-next_month')
-    expect(next.querySelector('[data-empty-state]')!.textContent).toBe('No billed jobs match ‘holub’. Clear the search')
+    expect(next.querySelector('[data-empty-state]')!.textContent).toBe('No billed jobs match ‘holmby’. Clear the search')
     fireEvent.click(within(next).getByRole('button', { name: 'Clear the search' }))
     expect((screen.getByLabelText('Search the lien calendar') as HTMLInputElement).value).toBe('')
     expect(screen.getByTestId('lien-cal-bucket-next_month').querySelector('[data-empty-state]')).toBeNull()
@@ -330,11 +330,11 @@ describe('LienDeskCalendarTab', () => {
     // Job 878, read live on 2026-10-01: commercial, worked June through September, no notice recorded.
     // The row said "send the notice by Dec 15 · 75 d" and sorted near the bottom while July's notice was due Oct 15.
     const OCT_1 = '2026-10-01'
-    const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Take 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Post Construction', address: '380 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
-    const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'H & I Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
+    const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Tune 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Pine Construction', address: '410 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
+    const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'B & D Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
     render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
     expect(within(screen.getByTestId('lien-cal-bucket-this_month')).getByTestId('lien-cal-group-gc:gc-sp').textContent).toContain('send the notice')
-    expect(screen.getByTestId('lien-cal-bucket-this_month').textContent).toContain('by Oct 15 · in 14 days · 1 notice to Southern Post Construction')
+    expect(screen.getByTestId('lien-cal-bucket-this_month').textContent).toContain('by Oct 15 · in 14 days · 1 notice to Southern Pine Construction')
     expect(within(screen.getByTestId('lien-cal-bucket-next_month')).getByTestId('lien-cal-group-gc:gc-hi')).toBeTruthy()
     expect(screen.getByTestId('lien-cal-bucket-next_month').textContent).toContain('by Nov 16 · in 46 days')
     // July, August and September each carry a hollow flag; June's window closed, so it draws none
@@ -428,9 +428,9 @@ describe('the pen (v2.4153)', () => {
     expect(onOpenJobWindow).toHaveBeenCalledWith('a')
     expect(onOpen).not.toHaveBeenCalled()
     // The name, and the address line under it, open the Lien window as before.
-    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rilvo/ }))
     expect(onOpen).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(rowOf('890 PLUM')).getByText(/628 Terrell Rd/))
+    fireEvent.click(within(rowOf('890 PLUM')).getByText(/628 Tarrow Rd/))
     expect(onOpen).toHaveBeenCalledTimes(2)
     expect(onOpenJobWindow).toHaveBeenCalledTimes(1)
     cleanup()
@@ -440,7 +440,7 @@ describe('the pen (v2.4153)', () => {
     fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByRole('button', { name: '890 PLUM' }))
     expect(phoneJob).toHaveBeenCalledWith('a')
     expect(phone.onOpen).not.toHaveBeenCalled()
-    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByText('Rizvi'))
+    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByText('Rilvo'))
     expect(phone.onOpen).toHaveBeenCalledWith('a')
   })
 
@@ -458,13 +458,13 @@ describe('the pen (v2.4153)', () => {
   })
   it('the GC row’s dot writes the GC’s word for every job in the group', async () => {
     mount({ canWrite: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Record RMC · Dudley Mason\'s word for all 2 jobs' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Record RLC · Dunmere Mallin\'s word for all 2 jobs' }))
     const pen = screen.getByTestId('lien-cal-pen')
-    expect(pen.textContent).toContain('RMC · Dudley Mason · 2 jobs')
+    expect(pen.textContent).toContain('RLC · Dunmere Mallin · 2 jobs')
     fireEvent.change(within(pen).getByLabelText('Pay by'), { target: { value: '2026-10-09' } })
     fireEvent.click(within(pen).getByRole('button', { name: 'Save for all 2' }))
     await waitFor(() => expect(promiseWrites).toHaveLength(1))
-    expect(promiseWrites[0]).toMatchObject({ jobIds: ['a', 'b'], ymd: '2026-10-09', saidBy: 'RMC · Dudley Mason' })
+    expect(promiseWrites[0]).toMatchObject({ jobIds: ['a', 'b'], ymd: '2026-10-09', saidBy: 'RLC · Dunmere Mallin' })
   })
   it('the toolbar’s kinds door opens the sheet biggest first and writes the kind', async () => {
     const onChanged = vi.fn()
@@ -473,7 +473,7 @@ describe('the pen (v2.4153)', () => {
     fireEvent.click(door)
     expect(door.getAttribute('aria-expanded')).toBe('true')
     const sheet = screen.getByTestId('lien-cal-kinds')
-    expect(within(sheet).getByTestId('lien-cal-kind-b').textContent).toContain('881 PLUM · Umar Khan')
+    expect(within(sheet).getByTestId('lien-cal-kind-b').textContent).toContain('881 PLUM · Ulric Karrow')
     fireEvent.click(within(within(sheet).getByTestId('lien-cal-kind-b')).getByRole('button', { name: /residential/i }))
     await waitFor(() => expect(kindWrites).toEqual([['addr-b', 'residential']]))
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith('kind'))
@@ -528,9 +528,9 @@ describe('the In the mail mark (v2.5522)', () => {
     const onDraft = vi.fn()
     const mailedRows: LienCalendarJob[] = [
       // August's notice printed and in the mail (Oct 15), July's on file (Sep 15): one circle of each colour on the row.
-      { jobId: 'm', number: '878 PLUM', name: 'Take 5- Seguin', customer: 'Southern Post', gcId: 'gc9', gcName: 'Southern Post Construction', address: '380 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
+      { jobId: 'm', number: '878 PLUM', name: 'Tune 5- Seguin', customer: 'Southern Pine', gcId: 'gc9', gcName: 'Southern Pine Construction', address: '410 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
       // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Record the mailing.
-      { jobId: 'o', number: '891 PLUM', name: 'Take 5- Liberty Hill', customer: 'Burd', gcId: 'gc8', gcName: 'Burd & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
+      { jobId: 'o', number: '891 PLUM', name: 'Tune 5- Liberty Hill', customer: 'Brund', gcId: 'gc8', gcName: 'Brund & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
     ]
     render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')
@@ -561,7 +561,7 @@ describe('a notice in the mail whose date has passed (v2.5529)', () => {
     const onRecord = vi.fn()
     // Today Sep 28: June's date (Aug 17) has passed; July is on file.
     const rows: LienCalendarJob[] = [
-      { jobId: 'p', number: '258 PLUM', name: 'Dudley Mason', customer: 'RMC', gcId: 'gc7', gcName: 'RMC- Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-07-12', isSub: true, workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] }) },
+      { jobId: 'p', number: '258 PLUM', name: 'Dunmere Mallin', customer: 'RLC', gcId: 'gc7', gcName: 'RLC- Dunmere Mallin', address: '628 Tarrow Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-07-12', isSub: true, workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] }) },
     ]
     render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={() => {}} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')

@@ -38,7 +38,7 @@ function block(over: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
 
 describe('filterHubJobsPanelRows', () => {
   const rows = [
-    { id: '1', hcp_number: '927', job_name: 'Berg AirBnb', displayTitle: 'J927 · Berg AirBnb', totalBlocks: 3 },
+    { id: '1', hcp_number: '927', job_name: 'Birkby AirBnb', displayTitle: 'J927 · Birkby AirBnb', totalBlocks: 3 },
     { id: '2', hcp_number: '412', job_name: 'Rough-in', displayTitle: 'J412 · Rough-in', totalBlocks: 0 },
     { id: '3', hcp_number: null, job_name: null, displayTitle: 'J4102 · Job', totalBlocks: 1 },
   ]
@@ -102,7 +102,7 @@ describe('filterHubPeopleBySearch', () => {
     { userId: 'cruz', displayName: 'Cruz' },
   ]
   const titles: Record<string, string> = {
-    'job-1': 'J927 · Berg AirBnb',
+    'job-1': 'J927 · Birkby AirBnb',
     'job-2': 'J412 · Rough-in',
     'bid:bid-9': 'Bid visit · B375 · Tower West',
   }
@@ -131,7 +131,7 @@ describe('filterHubPeopleBySearch', () => {
   })
 
   it('finds a person by the job they are on in a visible day', () => {
-    expect(ids(filterHubPeopleBySearch(people, 'berg', ctx))).toEqual(['paige'])
+    expect(ids(filterHubPeopleBySearch(people, 'birkby', ctx))).toEqual(['paige'])
   })
 
   it('finds a person by a bid visit, through the bid: anchor', () => {

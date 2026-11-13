@@ -102,7 +102,7 @@ function makeProps(over: Partial<CellProps> = {}): CellProps {
     onCardPlacementCellPick: vi.fn(),
     onRequestMoveBlock: vi.fn(),
     groupMemberCountByGroupId: new Map(),
-    getJobDisplayTitle: () => 'J927 · Berg AirBnb',
+    getJobDisplayTitle: () => 'J927 · Birkby AirBnb',
     getJobAddress: () => '',
     onOpenJob: vi.fn(),
     onOpenHubJobDetail: vi.fn(),
@@ -258,7 +258,7 @@ describe('a block card — dragging', () => {
     const onOpenHubJobDetail = vi.fn()
     renderWithProviders(<Grid onDragEnd={onDragEnd} over={{ onOpenHubJobDetail }} />)
     await settle()
-    const title = () => screen.getByRole('button', { name: /J927 · Berg AirBnb/ })
+    const title = () => screen.getByRole('button', { name: /J927 · Birkby AirBnb/ })
     await act(async () => {
       fireEvent.pointerDown(grip(), pointer(20, 20))
     })
@@ -479,7 +479,7 @@ describe('a block card — press and hold', () => {
     await settle()
     return props
   }
-  const title = () => screen.getByRole('button', { name: /J927 · Berg AirBnb/ })
+  const title = () => screen.getByRole('button', { name: /J927 · Birkby AirBnb/ })
   function press(ms: number, travel = 0) {
     fireEvent.pointerDown(title(), pointer(50, 50))
     if (travel > 0) fireEvent.pointerMove(title(), pointer(50 + travel, 50))

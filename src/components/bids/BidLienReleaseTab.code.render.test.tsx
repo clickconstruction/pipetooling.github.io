@@ -111,11 +111,11 @@ function bid(): BidWithBuilder {
   return {
     id: 'bid-1',
     bid_number: '482',
-    project_name: 'Take 5 Seguin',
-    address: '380 TX-123, Seguin, TX 78155',
+    project_name: 'Tune 5 Seguin',
+    address: '410 TX-123, Seguin, TX 78155',
     agreed_value: 34825,
     customers: null,
-    bids_gc_builders: { name: 'Southern Post Construction' },
+    bids_gc_builders: { name: 'Southern Pine Construction' },
   } as unknown as BidWithBuilder
 }
 
@@ -206,7 +206,7 @@ describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => 
     const history = screen.getByTestId('bid-lien-waiver-history')
     expect(within(history).getByRole('button', { name: 'Unconditional · progress — $34,825 · signed Oct 26' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Print' }))
-    await waitFor(() => expect(io.printed).toEqual(['Unconditional Waiver and Release on Progress Payment, signed · Take 5 Seguin']))
+    await waitFor(() => expect(io.printed).toEqual(['Unconditional Waiver and Release on Progress Payment, signed · Tune 5 Seguin']))
     await waitFor(() => expect(io.stamps).toEqual(['minted-1']))
     expect(io.mints).toHaveLength(1)
   })
@@ -228,7 +228,7 @@ describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => 
         form_type: 'conditional_progress',
         amount: 30400,
         status: 'issued',
-        fields: { companyName: 'Click Plumbing and Electrical', checkFrom: 'Southern Post Construction', amount: '30400.00', projectDescription: 'Take 5 Seguin — 380 TX-123, Seguin, TX 78155', throughDate: '2026-09-01', signedDate: '2026-10-01', signerName: '', signerTitle: '' },
+        fields: { companyName: 'Click Plumbing and Electrical', checkFrom: 'Southern Pine Construction', amount: '30400.00', projectDescription: 'Tune 5 Seguin — 410 TX-123, Seguin, TX 78155', throughDate: '2026-09-01', signedDate: '2026-10-01', signerName: '', signerTitle: '' },
         created_at: '2026-10-01T15:00:00Z',
         sent_to_customer_at: '2026-10-01T16:00:00Z',
         voided_at: null,

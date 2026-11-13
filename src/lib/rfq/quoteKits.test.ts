@@ -4,7 +4,7 @@ import { aggregateKit, describeKitBasis, expectedRoles, isStructured, splitTagHe
 
 const money = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-// The NWS S6277623 shape (SpaceX BA-2): three unpriced components under one
+// The NWS S6277623 shape (SkyLab BA-2): three unpriced components under one
 // EACH subtotal, and a carrier priced on a second sheet.
 const NWS_WC: KitLineInput[] = [
   { id: 'n1', fixture: 'WC1&2', unitPriceEachCents: null, componentRole: 'bowl', label: 'TOTO CT728CUVG#01', pageRef: 'p. 2' },

@@ -337,10 +337,10 @@ describe('SubmittalProcurementPanel', () => {
     expect(form.textContent).toContain('Mark 1 part ordered')
     expect((within(form).getByLabelText('Ordered on') as HTMLInputElement).value).toMatch(/^\d\d\/\d\d$/)
     fireEvent.change(within(form).getByLabelText('Ordered on'), { target: { value: '10/2' } })
-    fireEvent.change(within(form).getByLabelText('PO'), { target: { value: 'SPACEX CHINA' } })
+    fireEvent.change(within(form).getByLabelText('PO'), { target: { value: 'SKYLAB CHINA' } })
     fireEvent.click(within(form).getByTestId('procurement-mark-save'))
     await waitFor(() => expect(writes.filter((w) => w.table === 'bid_procurement_items' && w.op === 'insert')).toHaveLength(1))
-    expect(writes.find((w) => w.op === 'insert')!.payload).toMatchObject({ tag: 'WC-1', part_key: 'k-bowl', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SPACEX CHINA' })
+    expect(writes.find((w) => w.op === 'insert')!.payload).toMatchObject({ tag: 'WC-1', part_key: 'k-bowl', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SKYLAB CHINA' })
     await waitFor(() => expect(screen.queryByTestId('procurement-mark-form')).toBeNull())
     writes.length = 0
     state.records = []
@@ -349,12 +349,12 @@ describe('SubmittalProcurementPanel', () => {
     // One order to the house: tick its group, one date, one PO.
     fireEvent.click(screen.getByLabelText('Pick every line under National Wholesale'))
     fireEvent.change(screen.getByLabelText('Ordered on, for every ticked line'), { target: { value: '10/2' } })
-    fireEvent.change(screen.getByLabelText('PO, for every ticked line'), { target: { value: 'SPACEX TRIM 1' } })
+    fireEvent.change(screen.getByLabelText('PO, for every ticked line'), { target: { value: 'SKYLAB TRIM 1' } })
     fireEvent.click(screen.getByTestId('procurement-bulk-ordered'))
     await waitFor(() => expect(writes.filter((w) => w.table === 'bid_procurement_items' && w.op === 'insert')).toHaveLength(2))
     expect(writes.filter((w) => w.op === 'insert').map((w) => w.payload)).toEqual([
-      expect.objectContaining({ tag: 'WC-1', part_key: 'k-bowl', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SPACEX TRIM 1' }),
-      expect.objectContaining({ tag: 'WC-1', part_key: 'k-valve', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SPACEX TRIM 1' }),
+      expect.objectContaining({ tag: 'WC-1', part_key: 'k-bowl', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SKYLAB TRIM 1' }),
+      expect.objectContaining({ tag: 'WC-1', part_key: 'k-valve', ordered_on: expect.stringMatching(/-10-02$/), po_ref: 'SKYLAB TRIM 1' }),
     ])
     localStorage.removeItem('submittals_procure_lens')
   })
@@ -473,14 +473,14 @@ describe('SubmittalProcurementPanel', () => {
       // FCO: one part.
       { ...base, tag: 'FCO', product: 'ZURN ZN1400-2NL FLOOR CLEAN OUT', supplyHouse: 'Moore Supply', partKey: 'k-fco', partOrder: 1, quantity: 2, fixture: 'FCO', fixtureCount: 2, itemId: 'row-fco' },
       // LAV-1: one assembly and nothing else.
-      { ...base, tag: 'LAV-1', product: 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', supplyHouse: null, partKey: 'k-tsl', partOrder: 1, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
-      { ...base, tag: 'LAV-1', product: 'TOTO T25S51E#CP', supplyHouse: null, partKey: 'k-toto', partOrder: 2, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
-      { ...base, tag: 'LAV-1', product: 'HYDRAPRO H20008 GRID DRAIN', supplyHouse: null, partKey: 'k-drain', partOrder: 3, quantity: 2, orderOnly: true, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
+      { ...base, tag: 'LAV-1', product: 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', supplyHouse: null, partKey: 'k-tsl', partOrder: 1, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SKYLAB' },
+      { ...base, tag: 'LAV-1', product: 'TOTO T25S51E#CP', supplyHouse: null, partKey: 'k-toto', partOrder: 2, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SKYLAB' },
+      { ...base, tag: 'LAV-1', product: 'HYDRAPRO H20008 GRID DRAIN', supplyHouse: null, partKey: 'k-drain', partOrder: 3, quantity: 2, orderOnly: true, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SKYLAB' },
     ]
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} />)
     await waitFor(() => expect(screen.getAllByTestId('procurement-section')).toHaveLength(2))
     // EWC-1 mixes: no "from" on its heading, its assembly a row of its own; LAV-1 is one assembly: named on its heading.
-    expect(screen.getAllByTestId('procurement-section-from').map((f) => f.textContent)).toEqual(['from LAV 1 assembly SPACEX'])
+    expect(screen.getAllByTestId('procurement-section-from').map((f) => f.textContent)).toEqual(['from LAV 1 assembly SKYLAB'])
     expect(screen.getAllByTestId('procurement-assembly').map((a) => a.textContent)).toEqual(['EWC1 assembly · 3 parts'])
     const level = (product: string) => screen.getAllByTestId('procurement-row').find((r) => r.textContent!.includes(product))!.querySelector('[data-testid="procurement-item"]')!.getAttribute('data-level')
     expect(level('ELKAY APRON')).toBe('2')

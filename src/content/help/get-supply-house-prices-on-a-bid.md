@@ -112,7 +112,7 @@ Who runs the robot? Anyone on the estimating team, from their own Mac, with Clau
 
 The robot reads a fixture quote the way a vendor writes one. A group of parts under one "EACH" subtotal is a kit priced once. A carrier on the second sheet belongs to the fixture whose tag it sits under. A list of sizes is options, never added up. It never emails a vendor and never changes your costs. **Apply picks to costs** stays yours.
 
-:::example The SpaceX quote
+:::example The SkyLab quote
 National Wholesale Supply sends a six-page fixture quote plus a carrier and drain sheet. Wendi pastes the link on the NWS row, queues the robot, and forty minutes later the chip says *Matrix ready · 23 picks, 4 to settle*. WC1&2 is priced as the $1,010 kit plus a Josam carrier; the robot asks which of the eight carrier variants the plan calls for rather than picking one.
 :::
 

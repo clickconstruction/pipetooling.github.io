@@ -5,6 +5,7 @@ import { parseLines } from '../../lib/taskCriteria'
 import { asksForPhotoDefault } from '../../lib/taskProgress'
 import type { TaskPlaceDraft } from '../../lib/tasks/taskPlace'
 import { TaskPlaceRow } from './TaskPlaceRow'
+import { ROADMAP_TASK_PICKER_Z, ROADMAP_TASK_WINDOW_Z } from '../../lib/windowLayers'
 import {
   matchesPersonQuery,
   singleEnterTarget,
@@ -140,7 +141,7 @@ export function ChecklistTechTreeAddTaskModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 10050,
+        zIndex: ROADMAP_TASK_WINDOW_Z,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
         alignItems: 'center',
@@ -203,7 +204,7 @@ export function ChecklistTechTreeAddTaskModal({
         ) : null}
         {!isEditMode ? (
           <div style={{ marginBottom: 12 }}>
-            <TaskPlaceRow value={place} onChange={setPlace} />
+            <TaskPlaceRow value={place} onChange={setPlace} sheetZIndex={ROADMAP_TASK_PICKER_Z} />
           </div>
         ) : null}
         <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>

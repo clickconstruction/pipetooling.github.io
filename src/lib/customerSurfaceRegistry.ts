@@ -47,6 +47,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/reset-password-confirm', audience: 'staff', exempt: 'Staff password reset, second step.' },
   { kind: 'route', ref: '/accept-invite', audience: 'staff', exempt: 'A new staff account accepting its invite.' },
   { kind: 'route', ref: '/task', audience: 'staff', exempt: 'The iOS home-screen install helper for task-capable staff.' },
+  { kind: 'route', ref: '/r/:code', audience: 'staff', exempt: 'A card holder on the team sends the receipt for one of their own card charges (punch list #299); no customer sees it.' },
   { kind: 'route', ref: '/files/:source/:id', audience: 'staff', exempt: 'A kept file\'s lasting link for the office team: it signs in on its own and opens nothing for anyone else.' },
   { kind: 'route', ref: '/estimate/accept', audience: 'homeowner', steps: [H('estimate-page'), H('estimate-thankyou')] },
   // #281 (v2.6678): the estimate text's short link, my.clickplumbing.com/e/<code>, lands on the same page with the code in the path.

@@ -21,7 +21,7 @@ import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 function row(overrides: Partial<DispatchInboxRow>): DispatchInboxRow {
   return {
     id: 'r1',
-    title: 'Open the job for B398 · ZZ Test — won with Southern Post Construction',
+    title: 'Open the job for B398 · ZZ Test — won with Southern Pine Construction',
     links: [],
     created_at: '2026-09-07T20:00:00Z',
     from_user_id: 'u2',
@@ -74,10 +74,10 @@ describe('DispatchInboxSection — open_job_from_bid (v2.3143)', () => {
   })
   it("v2.5659: an estimator's draft reads on the row and rides Open the job into New Job", async () => {
     openNewJob.mockClear()
-    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Post Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' }
+    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Pine Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' }
     renderSection([row({ id: 'r3', pending_payload: { job_draft } })])
     await settle()
-    expect(screen.getByText("Wendi's draft: GC Southern Post Construction · starts at $38,625.00 · wanted by Oct 30 · note: Slab pour is the 3rd")).toBeTruthy()
+    expect(screen.getByText("Wendi's draft: GC Southern Pine Construction · starts at $38,625.00 · wanted by Oct 30 · note: Slab pour is the 3rd")).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Open the job from this bid' }))
     expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-1', prefillDraft: { ...job_draft, serviceTypeId: null }, prefillDraftFrom: 'Wendi' })
   })
@@ -90,7 +90,7 @@ describe('DispatchInboxSection — open_job_from_bid (v2.3143)', () => {
     afterEach(() => {
       auth.role = 'dev'
     })
-    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Post Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: '' }
+    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Pine Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: '' }
     it('an estimator in Dispatch reads the draft but gets no Open the job', async () => {
       auth.role = 'estimator'
       const { container } = renderSection([row({ id: 'r4', pending_payload: { job_draft } })])

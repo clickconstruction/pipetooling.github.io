@@ -52,9 +52,9 @@ describe('resolveJobBudget', () => {
 })
 
 describe('budgetStandsForJob / budgetForBurn / jobBudgetFootingFromRow (v2.3847)', () => {
-  // J892 Megan Connell on 2026-09-26: 47 hours with no rate, no materials, $608.65 of driving — the row the Pipeline read as the budget ("1355% spent at 30% done").
+  // J892 Megan Corbray on 2026-09-26: 47 hours with no rate, no materials, $608.65 of driving — the row the Pipeline read as the budget ("1355% spent at 30% done").
   const drivingOnly = { ...bidRow, labor_hours: '47', labor_rate: null, labor_usd: '0', materials_usd: '0', subs_usd: '0', other_usd: '608.65', total_direct_usd: '608.65', completeness: { rows_total: 12, rows_with_hours: 3, rate_set: false, materials_source: 'none', usable: false } }
-  // J1007 SPACEX: a takeoff's materials and nothing for labor.
+  // J1007 SKYLAB: a takeoff's materials and nothing for labor.
   const materialsOnly = { ...bidRow, labor_hours: '0', labor_rate: null, labor_usd: '0', materials_usd: '64167.61', subs_usd: '0', other_usd: '0', total_direct_usd: '64167.61', completeness: { rows_total: 26, rows_with_hours: 0, rate_set: false, materials_source: 'takeoff', usable: false } }
   it('a driving-only snapshot is a component, not a budget: the whole-job burn keeps the assumption', () => {
     const r = resolveJobBudget({ row: drivingOnly, priceUsd: 37_745, targetMarginPct: 35 })

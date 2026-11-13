@@ -180,13 +180,13 @@ describe('JobFormDiscountRow', () => {
         onOpenStripeFixturePreview={() => {}}
         jobTotalDollars={37745}
         standingOffer={{ pct: 5, reason: 'Repeat customer', name: 'Repeat customer discount', dollars: 1887.25 }}
-        standingOfferCustomerName="Done Right Foundation"
+        standingOfferCustomerName="Dead Level Foundation"
         onApplyStandingOffer={onApply}
         onWaiveStandingOffer={onWaive}
       />,
     )
     const chip = screen.getByTestId('standing-discount-offer')
-    expect(chip.textContent).toContain('Done Right Foundation gets 5%')
+    expect(chip.textContent).toContain('Dead Level Foundation gets 5%')
     expect(chip.textContent).toContain('repeat customer, set on their card')
     expect(chip.textContent).toContain('−$1,887.25 here')
     fireEvent.click(screen.getByText('Apply'))

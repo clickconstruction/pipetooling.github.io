@@ -43,7 +43,7 @@ const WEEK = [
   block({ id: '3', assignee_user_id: 'abraham', job_id: 'job-2', time_start: '13:00:00', time_end: '15:00:00' }),
   block({ id: '4', assignee_user_id: 'paige', job_id: 'job-2', work_date: '2026-09-29' }),
 ]
-const TITLES: Record<string, string> = { 'job-1': 'J927 · Berg AirBnb', 'job-2': 'J412 · Rough-in' }
+const TITLES: Record<string, string> = { 'job-1': 'J927 · Birkby AirBnb', 'job-2': 'J412 · Rough-in' }
 
 function makeProps(over: Partial<HubExpectedManpowerSectionProps> = {}): HubExpectedManpowerSectionProps {
   return {
@@ -105,10 +105,10 @@ describe('HubExpectedManpowerSection', () => {
     const onOpenJob = vi.fn()
     renderWithProviders(<HubExpectedManpowerSection {...makeProps({ onOpenJob })} />)
     await settle()
-    const job = screen.getByRole('button', { name: /^Open job J927 · Berg AirBnb, 12 person-hours, 2 people$/ })
+    const job = screen.getByRole('button', { name: /^Open job J927 · Birkby AirBnb, 12 person-hours, 2 people$/ })
     fireEvent.click(job)
     expect(onOpenJob).toHaveBeenCalledWith('job-1')
-    const detail = screen.getByRole('region', { name: 'Scheduled assignees on J927 · Berg AirBnb' })
+    const detail = screen.getByRole('region', { name: 'Scheduled assignees on J927 · Birkby AirBnb' })
     const rows = within(detail).getAllByRole('row').map((r) => text(r))
     expect(rows[0]).toBe('PersonHoursWindow')
     expect(rows.slice(1).some((r) => r.startsWith('Abraham4'))).toBe(true)
@@ -118,10 +118,10 @@ describe('HubExpectedManpowerSection', () => {
   it('folds one job, and folds the whole table', async () => {
     renderWithProviders(<HubExpectedManpowerSection {...makeProps()} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Berg AirBnb' }))
-    expect(screen.queryByRole('region', { name: 'Scheduled assignees on J927 · Berg AirBnb' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Birkby AirBnb' }))
+    expect(screen.queryByRole('region', { name: 'Scheduled assignees on J927 · Birkby AirBnb' })).toBeNull()
     expect(screen.getByRole('region', { name: 'Scheduled assignees on J412 · Rough-in' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Show assignees for J927 · Berg AirBnb' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show assignees for J927 · Birkby AirBnb' })).toBeTruthy()
 
     const all = screen.getByRole('button', { name: 'Hide scheduled jobs for this day, 2 jobs' })
     fireEvent.click(all)
@@ -132,7 +132,7 @@ describe('HubExpectedManpowerSection', () => {
   it('opens every job again when the day changes, and folds every job on All week', async () => {
     const view = renderWithProviders(<HubExpectedManpowerSection {...makeProps()} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Berg AirBnb' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Birkby AirBnb' }))
 
     view.rerender(<HubExpectedManpowerSection {...makeProps({ hubExpectedManpowerDayKey: '2026-09-29' })} />)
     await settle()
@@ -153,13 +153,13 @@ describe('HubExpectedManpowerSection', () => {
   it('keeps what is folded while it is hidden', async () => {
     const view = renderWithProviders(<HubExpectedManpowerSection {...makeProps()} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Berg AirBnb' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide assignees for J927 · Birkby AirBnb' }))
     view.rerender(<HubExpectedManpowerSection {...makeProps({ show: false })} />)
     await settle()
     expect(view.container.querySelector('section')).toBeNull()
     view.rerender(<HubExpectedManpowerSection {...makeProps()} />)
     await settle()
-    expect(screen.getByRole('button', { name: 'Show assignees for J927 · Berg AirBnb' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show assignees for J927 · Birkby AirBnb' })).toBeTruthy()
   })
 
   it('shows the payroll estimate only to someone who may see it', async () => {

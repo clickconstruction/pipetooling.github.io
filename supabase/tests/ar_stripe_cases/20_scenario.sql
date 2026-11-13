@@ -30,9 +30,9 @@ INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000000a2', 'sub@bed.test', 'Bed Sub', 'subcontractor');
 INSERT INTO public.customers (id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', 'Owner Person'),
-  ('00000000-0000-0000-0000-0000000000c3', 'Heron Construction');
+  ('00000000-0000-0000-0000-0000000000c3', 'Hadlow Construction');
 INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, gc_customer_id, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000a0001', '878', 'Take 5 Seguin', 'Owner Person', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c3', 'gc', 1000, 1000, 'paid'),
+  ('00000000-0000-0000-0000-0000000a0001', '878', 'Tune 5 Seguin', 'Owner Person', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c3', 'gc', 1000, 1000, 'paid'),
   ('00000000-0000-0000-0000-0000000a0002', '901', 'Elm repipe', 'Owner Person', '00000000-0000-0000-0000-0000000000c1', NULL, 'customer', 3000, 1000, 'billed');
 
 -- B1 and B2 are Stripe bills on #878, each paid by card ($500 + $480 and a $20 out-of-band mark on B1).
@@ -76,7 +76,7 @@ SELECT bedt.ok('the list carries the dispute as stripe_dispute with its payment 
   EXISTS (
     SELECT 1 FROM public.list_ar_return_cases(false) l
     WHERE l.mercury_transaction_id = (bedt.case_of('dp_1')).id
-      AND l.source = 'stripe_dispute' AND l.kind = 'card' AND l.counterparty_name = 'Heron Construction'
+      AND l.source = 'stripe_dispute' AND l.kind = 'card' AND l.counterparty_name = 'Hadlow Construction'
       AND l.bank_reason = 'fraudulent' AND l.amount = 500
       AND l.recorded_payment->>'payment_id' = '00000000-0000-0000-0000-0000000000f1'
       AND l.stripe_case->>'object_id' = 'dp_1' AND l.stripe_case->>'mode' = 'test' AND l.stripe_case->>'status' = 'under_review'

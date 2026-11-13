@@ -9,8 +9,8 @@ import {
 
 describe('normalizers', () => {
   it('name: case, punctuation, whitespace', () => {
-    expect(normalizeCustomerName('  John   Ingram ')).toBe('john ingram')
-    expect(normalizeCustomerName('Mike. Holub')).toBe('mike holub')
+    expect(normalizeCustomerName('  John   Inglow ')).toBe('john inglow')
+    expect(normalizeCustomerName('Mike. Holmby')).toBe('mike holmby')
     expect(normalizeCustomerName(null)).toBe('')
   })
   it('address: punctuation-insensitive, short strings rejected', () => {
@@ -25,7 +25,7 @@ describe('normalizers', () => {
     expect(normalizeCustomerPhone('911')).toBe('')
   })
   it('email: lowercased, must contain @', () => {
-    expect(normalizeCustomerEmail(' Jingram2@SATX.rr.com ')).toBe('jingram2@satx.rr.com')
+    expect(normalizeCustomerEmail(' jinglow2@example.com ')).toBe('jinglow2@example.com')
     expect(normalizeCustomerEmail('not-an-email')).toBe('')
   })
 })
@@ -33,8 +33,8 @@ describe('normalizers', () => {
 describe('findSimilarCustomerGroups', () => {
   it('groups exact duplicate name+address and reports both signals', () => {
     const groups = findSimilarCustomerGroups([
-      { id: 'a', name: 'John Ingram', address: '1603 Sycamore Street Bandera, TX 78003' },
-      { id: 'b', name: 'John Ingram', address: '1603 Sycamore Street Bandera TX 78003' },
+      { id: 'a', name: 'John Inglow', address: '1603 Sycamore Street Bandera, TX 78003' },
+      { id: 'b', name: 'John Inglow', address: '1603 Sycamore Street Bandera TX 78003' },
       { id: 'c', name: 'Someone Else', address: '99 Elsewhere Rd San Antonio TX' },
     ])
     expect(groups).toHaveLength(1)
@@ -44,8 +44,8 @@ describe('findSimilarCustomerGroups', () => {
 
   it('different names still group on shared phone', () => {
     const groups = findSimilarCustomerGroups([
-      { id: 'a', name: 'John Ingram', phone: '(210) 889-1297' },
-      { id: 'b', name: 'Johnny Ingram', phone: '210-889-1297' },
+      { id: 'a', name: 'John Inglow', phone: '(210) 889-1297' },
+      { id: 'b', name: 'Johnny Inglow', phone: '210-889-1297' },
     ])
     expect(groups).toHaveLength(1)
     expect(groups[0]!.matchedBy).toEqual(['phone'])

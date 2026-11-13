@@ -27,14 +27,14 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000eab01', 'Opened Plumbing');
-INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000eac01', '00000000-0000-0000-0000-0000000eaa07', 'Southern Post');
+INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000eac01', '00000000-0000-0000-0000-0000000eaa07', 'Southern Pine');
 -- B1 (Wendi's) opened two jobs; B2 (Kim's) none.
 INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_name, customer_id) VALUES
-  ('00000000-0000-0000-0000-0000000ead01', '00000000-0000-0000-0000-0000000eaa03', '00000000-0000-0000-0000-0000000eaa01', '00000000-0000-0000-0000-0000000eab01', 'Take 5 Seguin', '00000000-0000-0000-0000-0000000eac01'),
+  ('00000000-0000-0000-0000-0000000ead01', '00000000-0000-0000-0000-0000000eaa03', '00000000-0000-0000-0000-0000000eaa01', '00000000-0000-0000-0000-0000000eab01', 'Tune 5 Seguin', '00000000-0000-0000-0000-0000000eac01'),
   ('00000000-0000-0000-0000-0000000ead02', '00000000-0000-0000-0000-0000000eaa03', '00000000-0000-0000-0000-0000000eaa02', '00000000-0000-0000-0000-0000000eab01', 'Park water heater', '00000000-0000-0000-0000-0000000eac01');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, click_number, job_name, customer_name, bill_to_party, revenue, payments_made, status, bid_id, created_at) VALUES
-  ('00000000-0000-0000-0000-0000000eaf01', '00000000-0000-0000-0000-0000000eaa07', '00000000-0000-0000-0000-0000000eab01', '878', '', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 0, 'billed', '00000000-0000-0000-0000-0000000ead01', '2026-06-25T18:35:00Z'),
-  ('00000000-0000-0000-0000-0000000eaf02', '00000000-0000-0000-0000-0000000eaa07', '00000000-0000-0000-0000-0000000eab01', '', '1085', 'Take 5- Seguin phase 2', 'Southern Post', 'gc', 0, 0, 'waiting', '00000000-0000-0000-0000-0000000ead01', '2026-10-20T15:00:00Z');
+  ('00000000-0000-0000-0000-0000000eaf01', '00000000-0000-0000-0000-0000000eaa07', '00000000-0000-0000-0000-0000000eab01', '878', '', 'Tune 5- Seguin', 'Southern Pine', 'gc', 38625, 0, 'billed', '00000000-0000-0000-0000-0000000ead01', '2026-06-25T18:35:00Z'),
+  ('00000000-0000-0000-0000-0000000eaf02', '00000000-0000-0000-0000-0000000eaa07', '00000000-0000-0000-0000-0000000eab01', '', '1085', 'Tune 5- Seguin phase 2', 'Southern Pine', 'gc', 0, 0, 'waiting', '00000000-0000-0000-0000-0000000ead01', '2026-10-20T15:00:00Z');
 
 CREATE SCHEMA bjo;
 CREATE FUNCTION bjo.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -54,7 +54,7 @@ CREATE FUNCTION bjo.opened() RETURNS text LANGUAGE sql AS $$
     SELECT string_agg('B' || right(o.bid_id::text, 1) || ' ' || coalesce(o.hcp_number, '') || '/' || coalesce(o.click_number, ''), '; ' ORDER BY o.created_at DESC)
     FROM public.list_bid_jobs_opened(ARRAY['00000000-0000-0000-0000-0000000ead01', '00000000-0000-0000-0000-0000000ead02']::uuid[]) o), 'none')
 $$;
--- The drafts the signed-in person reads on open_job_from_bid requests: "Take 5 Seguin 38625" or "none".
+-- The drafts the signed-in person reads on open_job_from_bid requests: "Tune 5 Seguin 38625" or "none".
 CREATE FUNCTION bjo.drafts() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce((
     SELECT string_agg((r.pending_payload->'job_draft'->>'jobName') || ' ' || (r.pending_payload->'job_draft'->>'carry'), '; ' ORDER BY r.pending_payload->'job_draft'->>'jobName')
@@ -82,24 +82,24 @@ SELECT bjo.same('nobody signed in gets none', bjo.opened(), 'none');
 -- The draft rides the request.
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa01');
 INSERT INTO public.dispatch_requests (from_user_id, title, bid_id, pending_action, pending_payload) VALUES
-  ('00000000-0000-0000-0000-0000000eaa01', 'Open the job for B2 · Park water heater — won with Southern Post', '00000000-0000-0000-0000-0000000ead02', 'open_job_from_bid',
-   '{"job_draft": {"v": 1, "jobName": "Take 5 Seguin", "address": "380 TX-123", "gcKey": "", "gcName": "Southern Post", "carry": 38625, "serviceTypeId": null, "wantedBy": "2026-10-30", "note": "Slab pour is the 3rd"}}'::jsonb);
-SELECT bjo.same('Wendi files a request with her draft and reads it back', bjo.drafts(), 'Take 5 Seguin 38625');
+  ('00000000-0000-0000-0000-0000000eaa01', 'Open the job for B2 · Park water heater — won with Southern Pine', '00000000-0000-0000-0000-0000000ead02', 'open_job_from_bid',
+   '{"job_draft": {"v": 1, "jobName": "Tune 5 Seguin", "address": "410 TX-123", "gcKey": "", "gcName": "Southern Pine", "carry": 38625, "serviceTypeId": null, "wantedBy": "2026-10-30", "note": "Slab pour is the 3rd"}}'::jsonb);
+SELECT bjo.same('Wendi files a request with her draft and reads it back', bjo.drafts(), 'Tune 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa02');
-SELECT bjo.same('Kim, another estimator, reads Wendi''s request: it carries a bid (v2.6047, the office team reads a request with a reference)', bjo.drafts(), 'Take 5 Seguin 38625');
+SELECT bjo.same('Kim, another estimator, reads Wendi''s request: it carries a bid (v2.6047, the office team reads a request with a reference)', bjo.drafts(), 'Tune 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa08');
-SELECT bjo.same('Dee, a dev, reads it for Dispatch', bjo.drafts(), 'Take 5 Seguin 38625');
+SELECT bjo.same('Dee, a dev, reads it for Dispatch', bjo.drafts(), 'Tune 5 Seguin 38625');
 
 -- A request that names no bid, job or development stays the asker's, the lane's and the dev's (v2.6047).
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa01');
 INSERT INTO public.dispatch_requests (from_user_id, title, pending_action, pending_payload) VALUES
   ('00000000-0000-0000-0000-0000000eaa01', 'Open a job for the Park loose end', 'open_job_from_bid',
    '{"job_draft": {"v": 1, "jobName": "Park loose end", "address": "", "gcKey": "", "gcName": "", "carry": 1, "serviceTypeId": null, "wantedBy": null, "note": ""}}'::jsonb);
-SELECT bjo.same('Wendi reads both of hers', bjo.drafts(), 'Park loose end 1; Take 5 Seguin 38625');
+SELECT bjo.same('Wendi reads both of hers', bjo.drafts(), 'Park loose end 1; Tune 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa02');
-SELECT bjo.same('Kim reads only the one that carries a bid', bjo.drafts(), 'Take 5 Seguin 38625');
+SELECT bjo.same('Kim reads only the one that carries a bid', bjo.drafts(), 'Tune 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa08');
-SELECT bjo.same('Dee, a dev, reads both for Dispatch', bjo.drafts(), 'Park loose end 1; Take 5 Seguin 38625');
+SELECT bjo.same('Dee, a dev, reads both for Dispatch', bjo.drafts(), 'Park loose end 1; Tune 5 Seguin 38625');
 
 RESET ROLE;
 DO $$ BEGIN RAISE NOTICE 'bid_jobs_opened PASSED'; END $$;

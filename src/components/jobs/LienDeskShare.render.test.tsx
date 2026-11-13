@@ -40,18 +40,18 @@ function row(job: number, month: string, deadline: string, gc: string, owed: num
 const items = [
   { id: 'it-878', job_id: id(878), kind: 'notice_53_056', status: 'awaiting_approval', months: ['2026-07'], created_at: '2026-09-20T15:00:00Z', voided_at: null, sent_at: null, submitted_at: '2026-09-24T15:00:00Z', printed_at: null },
 ] as unknown as LienDeskItemRow[]
-const queue = buildLienDeskQueue([row(878, '2026-07', '2026-10-15', 'gc-sp', 38625), row(898, '2026-07', '2026-10-15', 'gc-kn', 4800), row(258, '2026-08', '2026-10-15', 'gc-rmc', 9800)], items, {}, TODAY)
+const queue = buildLienDeskQueue([row(878, '2026-07', '2026-10-15', 'gc-sp', 38625), row(898, '2026-07', '2026-10-15', 'gc-kn', 4800), row(258, '2026-08', '2026-10-15', 'gc-rlc', 9800)], items, {}, TODAY)
 const data = {
   queue,
   summary: summarizeLienDeskForNeedsYou(queue),
   affidavits: buildLienAffidavitQueue([], [], TODAY),
   retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
   jobsById: {
-    [id(878)]: { id: id(878), hcp_number: '878', click_number: null, job_name: 'Take 5- Seguin' },
-    [id(898)]: { id: id(898), hcp_number: '898', click_number: null, job_name: 'Reliant Health' },
-    [id(258)]: { id: id(258), hcp_number: '258', click_number: null, job_name: 'Dudley Mason' },
+    [id(878)]: { id: id(878), hcp_number: '878', click_number: null, job_name: 'Tune 5- Seguin' },
+    [id(898)]: { id: id(898), hcp_number: '898', click_number: null, job_name: 'Relwyn Health' },
+    [id(258)]: { id: id(258), hcp_number: '258', click_number: null, job_name: 'Dunmere Mallin' },
   },
-  gcsById: { 'gc-sp': { id: 'gc-sp', name: 'Southern Post Construction' }, 'gc-kn': { id: 'gc-kn', name: 'Knight Contracting' }, 'gc-rmc': { id: 'gc-rmc', name: 'RMC- Dudley Mason' } },
+  gcsById: { 'gc-sp': { id: 'gc-sp', name: 'Southern Pine Construction' }, 'gc-kn': { id: 'gc-kn', name: 'Kestrin Contracting' }, 'gc-rlc': { id: 'gc-rlc', name: 'RLC- Dunmere Mallin' } },
 } as unknown as LienDeskData
 
 // jsdom has no share sheet; the tests that need one add it and remove it again.
@@ -80,7 +80,7 @@ describe('LienDeskShare — the panel', () => {
     expect(screen.getByRole('dialog', { name: 'Share where the liens stand' })).toBeTruthy()
     expect(preview()).toContain('We are about to send lien notices on 3 jobs.')
     expect(preview()).toContain('$53,225 is owed on them.')
-    expect(preview()).toContain('• Take 5- Seguin, Southern Post Construction, $38,625')
+    expect(preview()).toContain('• Tune 5- Seguin, Southern Pine Construction, $38,625')
     expect(preview()).toContain(`${window.location.origin}/lien-desk`)
     expect(screen.getByText(/^as of /)).toBeTruthy()
   })
@@ -103,10 +103,10 @@ describe('LienDeskShare — the panel', () => {
     await settle()
     fireEvent.click(document.querySelector('[data-lien-share-scope]')!)
     const menu = screen.getByRole('menu', { name: 'Which liens' })
-    expect(within(menu).getAllByRole('menuitemradio').map((b) => b.querySelector('strong')?.textContent)).toEqual(['Everything on the desk', 'Southern Post Construction', 'RMC- Dudley Mason', 'Knight Contracting'])
-    fireEvent.click(document.querySelector('[data-lien-share-scope-option="gc-rmc"]')!)
-    expect(preview()).toContain('RMC- Dudley Mason liens,')
-    expect(preview()).toContain('• 258 Dudley Mason, Aug, $9,800, to draft')
+    expect(within(menu).getAllByRole('menuitemradio').map((b) => b.querySelector('strong')?.textContent)).toEqual(['Everything on the desk', 'Southern Pine Construction', 'RLC- Dunmere Mallin', 'Kestrin Contracting'])
+    fireEvent.click(document.querySelector('[data-lien-share-scope-option="gc-rlc"]')!)
+    expect(preview()).toContain('RLC- Dunmere Mallin liens,')
+    expect(preview()).toContain('• 258 Dunmere Mallin, Aug, $9,800, to draft')
     expect(preview()).toContain('Open the Lien desk on job 258:')
     expect(preview()).toContain(`/lien-desk?tab=notices&job=${id(258)}`)
   })
