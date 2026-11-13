@@ -140,6 +140,9 @@ vi.mock('../../lib/tally/fetchTallyTeamQueue', () => ({
 /** Copy the receipt link (punch list #299): the function and the clipboard are stood in for. */
 const copyReceiptLinkFor = vi.fn()
 vi.mock('../../lib/tickets/receiptLinkIo', () => ({ copyReceiptLinkFor: (...a: unknown[]) => copyReceiptLinkFor(...a) }))
+/** The receipt text's line (punch list #299, PR 2): each charge's request is read apart from the queue, stood in for here. */
+const listReceiptRequestsByCharge = vi.fn(async (_ids: readonly string[]) => new Map<string, unknown>())
+vi.mock('../../lib/tickets/receiptTextsIo', () => ({ listReceiptRequestsByCharge: (ids: readonly string[]) => listReceiptRequestsByCharge(ids) }))
 
 const { TallyTeamQueue } = await import('./TallyTeamQueue')
 
@@ -225,6 +228,35 @@ describe('TallyTeamQueue', () => {
     copyReceiptLinkFor.mockRejectedValueOnce(new Error('Only the office can copy a receipt link.'))
     fireEvent.click(within(card).getAllByTestId('tally-team-receipt-link')[0]!)
     expect(await screen.findByText('Only the office can copy a receipt link.')).toBeTruthy()
+  })
+
+  it('a charge the text asked about says when, and one it could not text says why with the press that mends it', async () => {
+    const request = (id: string, more: Record<string, unknown>) => [id, { mercury_transaction_id: id, holder_name: 'Ann Reyes', no_text_why: null, texted_at: null, reminded_at: null, answered_at: null, closed_at: null, text_tries: 0, ...more }] as const
+    listReceiptRequestsByCharge.mockResolvedValueOnce(new Map<string, unknown>([request('t-fuel', { texted_at: new Date(Date.now() - 60 * 60 * 1000).toISOString() }), request('t-parts', { no_text_why: 'no_cell' })]))
+    renderWithProviders(<TallyTeamQueue />)
+    const card = await screen.findByTestId('tally-team-day-card')
+    await settle()
+    expect(listReceiptRequestsByCharge).toHaveBeenCalledWith(['t-fuel', 't-parts'])
+    const lines = within(card).getAllByTestId('tally-team-line')
+    const fuelChip = within(lines[0]!).getByTestId('tally-team-receipt-chip')
+    expect(fuelChip.textContent).toMatch(/^Texted \d{1,2}:\d{2} [AP]M$/)
+    expect(fuelChip.getAttribute('data-tone')).toBe('waiting')
+    expect(within(lines[0]!).getByTestId('tally-team-receipt-line').textContent).toBe('No receipt yet.')
+    const partsChip = within(lines[1]!).getByTestId('tally-team-receipt-chip')
+    expect(partsChip.textContent).toBe('No text')
+    expect(partsChip.getAttribute('data-tone')).toBe('held')
+    expect(within(lines[1]!).getByTestId('tally-team-receipt-line').textContent).toBe('Ann has no cell on file. Add the cell on People, and the next charge texts them.')
+    // The office's own doors stay on both lines.
+    expect(within(card).getAllByTestId('tally-team-receipt-link')).toHaveLength(2)
+  })
+
+  it('a queue with no request on any charge draws no receipt line, and a read that fails leaves the queue as it was', async () => {
+    renderWithProviders(<TallyTeamQueue />)
+    const card = await screen.findByTestId('tally-team-day-card')
+    await settle()
+    expect(within(card).queryByTestId('tally-team-receipt-chip')).toBeNull()
+    expect(within(card).queryByTestId('tally-team-receipt-line')).toBeNull()
+    expect(within(card).getAllByTestId('tally-team-line')).toHaveLength(2)
   })
 
   it('the message after Sort the day offers Undo, which puts the day back with no rows', async () => {

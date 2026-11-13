@@ -4,8 +4,10 @@
  * person a receipt link (`receiptLink.ts`, PR 1). This file holds the switch's shape, which charges are asked, why a
  * text cannot go, which charges share one text, when the one reminder is due, and every word of the two texts.
  *
- * No imports, so the app's tests import it as the function does (`src/lib/tickets/receiptText.ts` re-exports it).
+ * Its one import is the company's time zone, which is pure too, so the app's tests import this file as the function
+ * does (`src/lib/tickets/receiptText.ts` re-exports it).
  */
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from './appTimeZone.ts'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Where a link points.
@@ -53,11 +55,17 @@ export function parseReceiptTextsSetting(valueText: string | null | undefined): 
   const since = typeof o.since === 'string' && Number.isFinite(Date.parse(o.since)) ? o.since : null
   // On with no day to start from is off: there would be no floor under the backlog.
   if (o.on !== true || !since) return { on: false, since, only: [] }
-  const only = Array.isArray(o.only) ? [...new Set(o.only.filter((v): v is string => typeof v === 'string' && UUID_RE.test(v)).map((v) => v.toLowerCase()))] : []
-  return { on: true, since, only }
+  // Nobody named is everyone, so a list that does not read must never be taken for nobody named: it is off.
+  if (o.only === undefined || o.only === null) return { on: true, since, only: [] }
+  if (!Array.isArray(o.only) || !o.only.every((v): v is string => typeof v === 'string' && UUID_RE.test(v))) return { on: false, since, only: [] }
+  return { on: true, since, only: [...new Set(o.only.map((v) => v.toLowerCase()))] }
 }
 
-/** The words to store for a press of the switch. Switching on stamps now, so nothing older is asked about. */
+/**
+ * The words to store for a press of the switch. Switching on stamps now, so nothing older is asked about. The database
+ * stamps it again with its own clock (`receipt_texts_stamp`, the migration), so a phone whose clock is wrong cannot
+ * reach back; what the row then holds is what the app reads.
+ */
 export function receiptTextsValue(next: { on: boolean; only?: readonly string[] }, nowIso: string): string {
   if (!next.on) return JSON.stringify({ on: false })
   return JSON.stringify({ on: true, since: nowIso, only: [...new Set(next.only ?? [])] })
@@ -161,7 +169,7 @@ export function foldReceiptCharges<T extends ReceiptWaiting>(waiting: readonly T
 // ---------------------------------------------------------------------------------------------------------------------
 // The one reminder: the first six in the evening at least twelve hours after the text.
 
-export const RECEIPT_COMPANY_TZ = 'America/Chicago'
+export const RECEIPT_COMPANY_TZ = APP_CALENDAR_TZ
 const REMINDER_AFTER_MS = 12 * 60 * 60 * 1000
 const REMINDER_FROM_HOUR = 18
 const REMINDER_TO_HOUR = 21
@@ -207,7 +215,7 @@ function chargeWords(c: ReceiptTextCharge): string {
 }
 
 function companyDay(ms: number): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: RECEIPT_COMPANY_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
+  return todayYmdInAppTz(new Date(ms))
 }
 
 /** *today*, or *on Tuesday* for a charge that posted on an earlier company day. */
@@ -277,32 +285,42 @@ function clock(iso: string, nowMs: number): string {
   return `${new Intl.DateTimeFormat('en-US', { timeZone: RECEIPT_COMPANY_TZ, weekday: 'short' }).format(new Date(ms))} ${time}`
 }
 
-export type ReceiptLineTone = 'waiting' | 'held' | 'quiet'
+export type ReceiptLineTone = 'waiting' | 'held'
+
+export interface ReceiptLine {
+  /** The chip beside the store: *Texted 6:14 PM*, or *No text*. */
+  chip: string
+  /** The sentence under the charge. */
+  words: string
+  tone: ReceiptLineTone
+  /** The press that mends a text that could not go, or null. */
+  next: string | null
+}
 
 /**
- * What the Team queue says under a charge with no ticket yet: when it was texted and reminded, or why no text could go
+ * What the Team queue says on a charge with no ticket yet: when it was texted and reminded, or why no text could go
  * with the press that mends it. Null when there is nothing to say: no request, a request the office made by hand, or a
  * charge whose receipt came (the ticket's own chip says that).
  */
-export function receiptLineWords(r: ReceiptRequestState, nowMs: number): { words: string; tone: ReceiptLineTone; next: string | null } | null {
+export function receiptLineWords(r: ReceiptRequestState, nowMs: number): ReceiptLine | null {
   if (r.answered_at || r.closed_at) return null
   const who = (r.holder_name ?? '').trim().split(/\s+/)[0] ?? ''
+  const held = (words: string, next: string): ReceiptLine => ({ chip: 'No text', words, tone: 'held', next })
   switch (r.no_text_why) {
     case 'no_person':
-      return { words: 'No text. The card is tied to no one.', tone: 'held', next: 'Tie the card on Banking, and its next charge texts the holder.' }
+      return held('The card is tied to no one.', 'Tie the card on Banking, and its next charge texts the holder.')
     case 'no_cell':
-      return { words: `No text. ${who || 'The holder'} has no cell on file.`, tone: 'held', next: 'Add the cell on People, and the next charge texts them.' }
+      return held(`${who || 'The holder'} has no cell on file.`, 'Add the cell on People, and the next charge texts them.')
     case 'archived':
-      return { words: `No text. ${who || 'The holder'} has left.`, tone: 'held', next: 'Tie the card to who holds it now on Banking.' }
+      return held(`${who || 'The holder'} has left.`, 'Tie the card to who holds it now on Banking.')
     case 'opted_out':
-      return { words: `No text. ${who || 'The holder'} replied STOP.`, tone: 'held', next: 'Ask for the receipt another way. A START from their phone brings the texts back.' }
+      return held(`${who || 'The holder'} replied STOP.`, 'Ask for the receipt another way. A START from their phone brings the texts back.')
   }
   if (r.texted_at) {
-    const texted = `Texted ${clock(r.texted_at, nowMs)}`
-    const reminded = r.reminded_at ? `, reminded ${clock(r.reminded_at, nowMs)}` : ''
-    return { words: `${texted}${reminded}. No receipt yet.`, tone: 'waiting', next: null }
+    const reminded = r.reminded_at ? `Reminded ${clock(r.reminded_at, nowMs)}. ` : ''
+    return { chip: `Texted ${clock(r.texted_at, nowMs)}`, words: `${reminded}No receipt yet.`, tone: 'waiting', next: null }
   }
-  if (r.text_tries >= RECEIPT_TEXT_TRIES) return { words: 'The text did not go.', tone: 'held', next: 'Copy the receipt link and send it yourself.' }
+  if ((r.text_tries ?? 0) >= RECEIPT_TEXT_TRIES) return held('The text did not go.', 'Copy the receipt link and send it yourself.')
   return null
 }
 
@@ -331,4 +349,19 @@ export const RECEIPT_TEXTS_WORDS = {
   trialToast: 'Receipt texts are on for you alone.',
   offToast: 'Receipt texts are off.',
   notSaved: 'The switch did not change. Only the owner or a dev can turn receipt texts on or off.',
+  sendTextsOff: 'Send texts is off, so no receipt text goes. Turn Send texts on above first.',
+  changeWho: 'Turn it off to change who gets these texts.',
 } as const
+
+/**
+ * What the Settings card says while the switch is on: who it texts and since when, on the company's clock.
+ *
+ *   On for everyone with a card since Nov 13, 2:04 PM. A charge that posted before then gets no text.
+ */
+export function receiptTextsOnWords(setting: ReceiptTextsSetting, myUserId: string | null): string | null {
+  if (!setting.on || !setting.since) return null
+  const when = new Intl.DateTimeFormat('en-US', { timeZone: RECEIPT_COMPANY_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(Date.parse(setting.since)))
+  const n = setting.only.length
+  const who = n === 0 ? 'for everyone with a card' : n === 1 && myUserId !== null && setting.only[0] === myUserId.toLowerCase() ? 'for you alone' : `for ${n} ${n === 1 ? 'person' : 'people'}`
+  return `On ${who} since ${when}. A charge that posted before then gets no text.`
+}

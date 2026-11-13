@@ -3,13 +3,14 @@
  * and a dev. The switch that lets the app text a card's holder a receipt link when a charge posts
  * (`app_settings.receipt_texts_v1`, through `tickets/receiptTextsIo.ts`). It ships off. Turning it on asks first, since
  * every charge after it texts a real phone, and stamps the moment, so no charge from before is texted. A trial texts
- * the person who presses alone. Send texts, the card above, must be on too; the card says so.
+ * the person who presses alone. Send texts, the card above, must be on too; the card says so, and says it in amber
+ * while this switch is on and that one is off. The day it went on is read back from the row, which the database stamps.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { RECEIPT_TEXTS_WORDS as W, type ReceiptTextsSetting } from '../../lib/tickets/receiptText'
+import { RECEIPT_TEXTS_WORDS as W, receiptTextsOnWords, type ReceiptTextsSetting } from '../../lib/tickets/receiptText'
 import { supabaseReceiptTextsIo, type ReceiptTextsIo } from '../../lib/tickets/receiptTextsIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -26,11 +27,19 @@ export function ReceiptTextsSettingsCard({ io = DEFAULT_IO }: { io?: ReceiptText
   const [setting, setSetting] = useState<ReceiptTextsSetting | null>(null)
   /** Who a press of On texts: everyone with a card, or the person pressing alone. */
   const [trial, setTrial] = useState(false)
+  /** Send texts, the card above: null until read. A read that fails says nothing here; the sweep reads it itself. */
+  const [sendTextsOn, setSendTextsOn] = useState<boolean | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let live = true
+    io.sendTextsOn().then(
+      (r) => {
+        if (live) setSendTextsOn(r)
+      },
+      () => {},
+    )
     io.load().then(
       (r) => {
         if (!live) return
@@ -72,6 +81,7 @@ export function ReceiptTextsSettingsCard({ io = DEFAULT_IO }: { io?: ReceiptText
   }
 
   const on = setting?.on ?? false
+  const onWords = setting ? receiptTextsOnWords(setting, myId) : null
   return (
     <section aria-labelledby="phone-texts-receipt-texts" id="settings-phone-texts-receipt-texts" data-settings-receipt-texts style={cardStyle}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -105,6 +115,16 @@ export function ReceiptTextsSettingsCard({ io = DEFAULT_IO }: { io?: ReceiptText
       <p style={{ margin: 0, fontSize: '0.9rem' }}>{W.what}</p>
       <p style={muted}>{W.rules}</p>
       {setting === null && !problem ? <p style={muted}>Loading the switch…</p> : <p style={muted}>{W.needs}</p>}
+      {onWords ? (
+        <p data-receipt-texts-on style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+          {onWords}
+        </p>
+      ) : null}
+      {on && sendTextsOn === false ? (
+        <p data-receipt-texts-held style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
+          {W.sendTextsOff}
+        </p>
+      ) : null}
       {setting !== null && (
         <fieldset disabled={on || saving} style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.3rem', opacity: on ? 0.7 : 1 }}>
           <legend style={{ fontSize: '0.85rem', fontWeight: 600, padding: 0, marginBottom: '0.2rem' }}>{W.whoLabel}</legend>
@@ -116,7 +136,7 @@ export function ReceiptTextsSettingsCard({ io = DEFAULT_IO }: { io?: ReceiptText
             <input type="radio" name="receipt-texts-who" checked={trial} onChange={() => setTrial(true)} disabled={!myId} />
             {W.onlyMe}
           </label>
-          {on ? <p style={muted}>Turn it off to change who gets these texts.</p> : null}
+          {on ? <p style={muted}>{W.changeWho}</p> : null}
         </fieldset>
       )}
       {problem && (

@@ -6,7 +6,7 @@ import { receiptHexOf } from '../_shared/receiptLink.ts'
 import { runReceiptSweep, type ReceiptSweepDoors } from '../_shared/receiptSweep.ts'
 
 /**
- * receipt-request (punch list #299, PR 2, v2.7126): the sweep that texts a card's holder a receipt link when a charge
+ * receipt-request (punch list #299, PR 2, v2.7142): the sweep that texts a card's holder a receipt link when a charge
  * posts. The cron calls it every five minutes while the switch is on (`app_settings` `receipt_texts_v1`, Settings →
  * Phone and texts, off as it ships) and something waits. It is the only thing that sends these texts.
  *
@@ -65,7 +65,7 @@ serve(async (req) => {
     lastTextAt: (channelId) => lastOurTextAt(admin, channelId, 'team'),
     send: async (to, text, last) => {
       boxes = boxes ?? (await loadBoxes(admin))
-      const out = await sendText(admin, { purpose: 'nudge', contactId: to.contactId, channelId: to.channelId, to: to.number, optedOut: false, body: text, lastOurTextAt: last, now: Date.now(), company, sender: null, jobId: null }, null, 'team', boxes)
+      const out = await sendText(admin, { purpose: 'nudge', contactId: to.contactId, channelId: to.channelId, to: to.number, optedOut: to.optedOut, body: text, lastOurTextAt: last, now: Date.now(), company, sender: null, jobId: null }, null, 'team', boxes)
       return out.ok ? { ok: true, segments: out.segments } : { ok: false, refused: out.refused, words: out.words }
     },
     companyName: company.name,

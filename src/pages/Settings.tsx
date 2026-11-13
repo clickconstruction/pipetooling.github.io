@@ -1629,7 +1629,7 @@ export default function Settings() {
         {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
-            {/* #299 (v2.7126): the receipt text's own switch, off as it ships; it waits on Send texts above. */}
+            {/* #299 (v2.7142): the receipt text's own switch, off as it ships; it waits on Send texts above. */}
             {canSwitchTexts(myRole) && <ReceiptTextsSettingsCard />}
             <PhoneAndTextsSettingsSection />
             {/* The Quo connection (v2.5718): the key once, then the seats and the inboxes pick from Quo's lists. */}

@@ -185,7 +185,8 @@ describe('the switch', () => {
     expect(await runReceiptSweep(w.doors)).toEqual({ ok: true, state: 'off' })
     expect(w.sent).toEqual([])
     expect(w.db.writes).toEqual([])
-    for (const stored of [null, '', 'true', '{"on":true}', 'not json']) {
+    // No row, no words, the other switch's word, on with no day, not JSON, and a trial list that does not read.
+    for (const stored of [null, '', 'true', '{"on":true}', 'not json', `{"on":true,"since":"${SINCE}","only":["jordan"]}`, `{"on":true,"since":"${SINCE}","only":"everyone"}`]) {
       const again = world({ charges: [], setting: stored })
       again.doors.admin = w.doors.admin
       expect(await runReceiptSweep(again.doors), String(stored)).toEqual({ ok: true, state: 'off' })
@@ -258,6 +259,51 @@ describe('a charge that posts', () => {
   })
 })
 
+describe('a charge the office already made a link for', () => {
+  it('is texted once like any other: the hand-made request is the one the text stamps', async () => {
+    const byHand = { id: 'req-c1', mercury_transaction_id: 'c1', holder_user_id: JORDAN, holder_name: 'Jordan Vance', no_text_why: null, cell: null, texted_at: null, reminded_at: null, answered_at: null, closed_at: null, ticket_id: null, closes_at: '2026-11-18T00:00:00.000Z', text_tries: 0, text_fail_why: null, made_by: SAM, created_at: '2026-11-04T19:30:00.000Z' }
+    const w = world({ charges: [charge('c1', '2026-11-04T19:00:00.000Z')], requests: [byHand] })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 0, texted: 1 })
+    expect(w.requests()).toHaveLength(1)
+    expect(w.requests()[0]).toMatchObject({ id: 'req-c1', texted_at: new Date(NOW).toISOString(), made_by: SAM })
+  })
+
+  it('and never when its receipt came through that link first', async () => {
+    const answered = { id: 'req-c1', mercury_transaction_id: 'c1', holder_user_id: JORDAN, holder_name: 'Jordan Vance', no_text_why: null, texted_at: null, reminded_at: null, answered_at: '2026-11-04T19:45:00.000Z', closed_at: null, ticket_id: 't1', closes_at: '2026-11-18T00:00:00.000Z', text_tries: 0, created_at: '2026-11-04T19:30:00.000Z' }
+    const w = world({ charges: [charge('c1', '2026-11-04T19:00:00.000Z')], requests: [answered], tickets: [{ id: 't1', mercury_transaction_id: 'c1', removed_at: null }] })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 0, texted: 0, held: 0 })
+    expect(w.sent).toEqual([])
+  })
+
+  it('nor when a Tally ticket landed on the charge after its request was made', async () => {
+    const waiting = { id: 'req-c1', mercury_transaction_id: 'c1', holder_user_id: JORDAN, holder_name: 'Jordan Vance', no_text_why: null, texted_at: null, reminded_at: null, answered_at: null, closed_at: null, ticket_id: null, closes_at: '2026-11-18T00:00:00.000Z', text_tries: 1, created_at: '2026-11-04T19:30:00.000Z' }
+    const w = world({ charges: [charge('c1', '2026-11-04T19:00:00.000Z')], requests: [waiting], tickets: [{ id: 't1', mercury_transaction_id: 'c1', removed_at: null }] })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ texted: 0, held: 0 })
+    expect(w.sent).toEqual([])
+    expect(w.db.writes).toEqual([])
+  })
+})
+
+describe('a busy night', () => {
+  it('is taken sixty charges a sweep and ten a text, and no charge is asked or texted twice', async () => {
+    // 170 charges, one a second, on one card: more than one read of ids carries, and more than one sweep makes.
+    const charges = Array.from({ length: 170 }, (_, i) => charge(`c${String(i).padStart(3, '0')}`, new Date(Date.parse('2026-11-04T19:00:00.000Z') + i * 1000).toISOString()))
+    const w = world({ charges, holderOf: Object.fromEntries(charges.map((c) => [c.id as string, JORDAN])) })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 60, texted: 60 })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 60, texted: 60 })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 50, texted: 50 })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ made: 0, texted: 0 })
+    expect(w.requests()).toHaveLength(170)
+    expect(w.requests().every((r) => r.texted_at)).toBe(true)
+    expect(w.sent).toHaveLength(17)
+    // Each request is opened by exactly one link.
+    const opened = w.links().flatMap((l) => l.request_ids as string[])
+    expect(opened).toHaveLength(170)
+    expect(new Set(opened).size).toBe(170)
+    expect(w.sent.filter((t) => t.first)).toHaveLength(1)
+  })
+})
+
 describe('charges that wait together', () => {
   it('inside one hour share one text and one link; a later one gets its own, without the hello', async () => {
     const w = world({
@@ -304,8 +350,8 @@ describe('a text that cannot go', () => {
     expect(w.requests().filter((r) => r.mercury_transaction_id !== 'c1').map((r) => [r.texted_at, r.no_text_why])).toEqual([[null, null], [null, null]])
   })
 
-  it('texts off, paused or no number: the sweep stops, the claim and the link are given back, and the next sweep texts', async () => {
-    for (const refused of ['textsOff', 'paused', 'not-set-up']) {
+  it('texts off, paused, no number, not registered or the day’s cap: the sweep stops, the claim and the link are given back, and the next sweep texts', async () => {
+    for (const refused of ['textsOff', 'paused', 'not-set-up', 'not-registered', 'daily-cap']) {
       let fail = true
       const w = world({ charges: [charge('c1', '2026-11-04T19:00:00.000Z'), charge('c2', '2026-11-04T19:00:00.000Z')], holderOf: { c1: JORDAN, c2: SAM }, send: () => (fail ? { ok: false, refused, words: 'Not now.' } : { ok: true, segments: 1 }) })
       expect(await runReceiptSweep(w.doors), refused).toEqual({ ok: true, state: refused })
@@ -393,6 +439,28 @@ describe('the one reminder', () => {
     expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 0, held: 1 })
     expect(w.requests()[0]).toMatchObject({ no_text_why: 'opted_out', reminded_at: null })
     expect(w.sent).toEqual([])
+  })
+
+  it('a trial reminds its people and nobody else', async () => {
+    const w = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z'), charge('c2', '2026-11-03T23:00:00.000Z')], requests: [texted('c1'), texted('c2', { holder_user_id: SAM, holder_name: 'Sam Okoro' })], setting: JSON.stringify({ on: true, since: '2026-11-03T00:00:00.000Z', only: [SAM] }), now: EVENING })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 1 })
+    expect(w.sent.map((t) => t.to)).toEqual(['+15125550101'])
+    expect(w.requests().map((r) => r.reminded_at)).toEqual([null, '2026-11-05T00:30:00.000Z'])
+  })
+
+  it('nobody who has left since the first text is reminded', async () => {
+    const w = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z')], requests: [texted('c1')], users: [user(JORDAN, 'Jordan Vance', '(512) 555-0100', { archived_at: '2026-11-04T15:00:00.000Z' })], now: EVENING })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 0 })
+    expect(w.sent).toEqual([])
+  })
+
+  it('the switch off, or Send texts off, holds the reminder too', async () => {
+    const off = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z')], requests: [texted('c1')], setting: '{"on":false}', now: EVENING })
+    expect(await runReceiptSweep(off.doors)).toEqual({ ok: true, state: 'off' })
+    const textsOff = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z')], requests: [texted('c1')], textsOn: false, now: EVENING })
+    expect(await runReceiptSweep(textsOff.doors)).toEqual({ ok: true, state: 'texts_off' })
+    expect([...off.sent, ...textsOff.sent]).toEqual([])
+    expect(off.requests()[0]!.reminded_at).toBeNull()
   })
 
   it('a reminder that fails is not tried again all evening', async () => {

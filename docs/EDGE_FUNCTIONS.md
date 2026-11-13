@@ -250,6 +250,7 @@ when_to_read:
    - [box-read](#box-read)
    - [first-look](#first-look)
    - [receipt-link](#receipt-link)
+   - [receipt-request](#receipt-request)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [ar-returned-checks](#ar-returned-checks)
@@ -5914,6 +5915,29 @@ interface Body {
 **Rate limit**: 60 calls a minute per client address and 600 across the isolate, in memory → 429.
 
 **Implementation**: [`supabase/functions/receipt-link/index.ts`](../supabase/functions/receipt-link/index.ts); the pure part — the code, the caps, the first-bytes check, what the page is told, the job a ticket carries, the refusals' words — in [`_shared/receiptLink.ts`](../supabase/functions/_shared/receiptLink.ts), re-exported by [`src/lib/tickets/receiptLink.ts`](../src/lib/tickets/receiptLink.ts) and tested from `src/lib/tickets/receiptLink.test.ts`. It reads job labels through the kernel copy (`ledgerDisplayPrefixes.ts`), so it is in `IMPORTERS`. The tables are `docs/migrations/20261113061500_receipt_requests.md`. **Deploy**: `supabase functions deploy receipt-link` after the migration is pushed.
+
+### receipt-request
+
+**Purpose** (punch list #299, PR 2, **v2.7142**): the sweep that texts a card's holder a receipt link when a charge posts. It is the only thing that sends these texts. It does nothing until the switch is on: `app_settings` `receipt_texts_v1`, Settings → Phone and texts → **Text a receipt link when a card charge posts**, off as it ships. `verify_jwt = false`: the cron carries `X-Cron-Secret`, and a call without it is refused (**401**).
+
+**The cron** (`docs/migrations/20261113140000_receipt_texts.md`): `receipt-request`, every five minutes, and only when `receipt_texts_due()` says there is something to do, so a switched-off or idle app makes no call. The bank's webhook is not touched.
+
+**`POST {}`** → `{ ok, state }`, and with `state: "on"` also `{ made, texted, reminded, held, closed }`. One sweep, in order:
+1. The switch is read. Off, or a value that does not read (`parseReceiptTextsSetting`: on with no day, an `only` that is not a list of user ids), answers `state: "off"`. Send texts off answers `state: "texts_off"`. Either way nothing else is read, nothing is written and nothing is sent.
+2. An open request whose charge the bank failed, cancelled or reversed is closed, and never texts.
+3. Every card purchase that posted since the floor (the later of the switch's `since` and 48 hours ago) with no request and no live ticket gets its request (`receipt_request_ensure`), sixty a sweep. Never a pending charge, money back, a duplicate or a dead one (`receiptChargeAsks`).
+4. Each request that waits is texted, or gets its reason in `no_text_why` and is never texted: `no_person` (the card tied to no one), `archived`, `no_cell` (no cell, or one `toE164` does not read as ten digits), `opted_out` (a STOP to the team box). In a trial (`only`) the other people's requests wait untouched with no reason. A holder's charges that wait together and post inside one hour of the first share one text and one link, at most ten (`foldReceiptCharges`); thirty texts a sweep.
+5. One reminder, between six and nine in the evening on the company's clock and at least twelve hours after the text (`receiptReminderDue`), on a new link that closes with the request. A charge that got its ticket through another door meanwhile is marked answered instead; a STOP since the first text becomes the reason.
+
+**How a text goes**: `sendText` (`_shared/quoLines.ts`), purpose `nudge`, from the team box, to the holder's own team contact. `quo_place_number` puts a roster number on that contact, so there is no new contact row; the STOP, the carriers' opt-out line on a first text and the Messages thread are the ones every text has. A first text to a number opens *Hi Jordan, this is* and the company's name (`QUO_COMPANY_NAME`); the words are `receiptTextBody` and `receiptReminderBody`.
+
+**Never twice**: a request is claimed before its text goes (`texted_at` or `reminded_at` set by an update that matches only a null), so two sweeps that overlap text a charge once. A refused text gives the claim back and drops its link. Texts off, texts paused for money, no key or number, an unregistered number or the day's cap stop the whole sweep with nothing lost (`state` names which), and the next sweep tries again. Any other refusal counts a try on the request (`text_tries`, `text_fail_why`); after three the Team queue says the text did not go. A STOP or a bad number found at the send becomes the reason. A reminder that fails keeps its claim, so a failing number is tried once.
+
+**`POST { dry: true }`** → `{ ok, state: "dry", posted, asked, withTicket, wouldAsk }`: counts over the last 48 hours as if the switch were on. It writes nothing and sends nothing, whatever the switch says.
+
+**Secrets**: `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and the texts' own (`QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE`, `QUO_PHONE_NUMBER_ID`, the Quo key as `loadQuoApiKey` reads it).
+
+**Implementation**: [`supabase/functions/receipt-request/index.ts`](../supabase/functions/receipt-request/index.ts) builds the doors; the sweep itself is [`_shared/receiptSweep.ts`](../supabase/functions/_shared/receiptSweep.ts), with no network import, run by `src/lib/tickets/receiptSweep.test.ts` over a stood-in database and sender; the rules and every word are [`_shared/receiptText.ts`](../supabase/functions/_shared/receiptText.ts), re-exported by [`src/lib/tickets/receiptText.ts`](../src/lib/tickets/receiptText.ts) and tested from `receiptText.test.ts`. It reads the Quo kernels through the copy, so it is in `IMPORTERS`. **Deploy**: `supabase functions deploy receipt-request`, on either side of the migration's push; nothing is sent until the owner's press on the switch.
 
 ### sync-mercury-transactions
 

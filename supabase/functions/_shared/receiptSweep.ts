@@ -5,7 +5,7 @@
  *
  * The order of one sweep, and why a charge is never texted twice, is said on the function.
  */
-import { mintReceiptLinkCode, receiptChargeDead, receiptFirstName, receiptHexOf, receiptLinkExpiry } from './receiptLink.ts'
+import { mintReceiptLinkCode, receiptChargeDead, receiptFirstName, receiptLinkExpiry } from './receiptLink.ts'
 import {
   RECEIPT_SWEEP_HOURS,
   RECEIPT_TEXTS_KEY,
@@ -86,7 +86,13 @@ type Holder = { id: string; name: string | null; phone: string | null; archived_
 const REQUEST_COLUMNS = 'id, mercury_transaction_id, holder_user_id, holder_name, no_text_why, texted_at, reminded_at, answered_at, closed_at, closes_at, text_tries'
 const CHARGE_COLUMNS = 'id, kind, amount, status, posted_at, counterparty_name, duplicate_of_transaction_id'
 
-/** The whole sweep stops: texts are off or paused, or no number is set. Nothing is lost; the next sweep tries again. */
+/**
+ * A refusal that is about every text, not this one: texts off, texts paused for money, no key or number, a number the
+ * carriers have not registered, the day's cap. The whole sweep stops with nothing lost, and the next sweep tries again.
+ */
+const SWEEP_WIDE: ReadonlySet<string> = new Set(['textsOff', 'not-set-up', 'paused', 'not-registered', 'daily-cap'])
+
+/** The whole sweep stops (`SWEEP_WIDE`). */
 class SweepStop extends Error {
   state: string
   constructor(state: string) {
@@ -101,6 +107,13 @@ async function rows<T>(query: PromiseLike<{ data: unknown; error: { message: str
   return (data ?? []) as T[]
 }
 
+/** Reads by a list of ids, 150 at a time: the ids ride the request's address, which has a length it will not pass. */
+async function byIds<T>(ids: readonly string[], read: (some: string[]) => PromiseLike<{ data: unknown; error: { message: string } | null }>, what: string): Promise<T[]> {
+  const out: T[] = []
+  for (let i = 0; i < ids.length; i += 150) out.push(...(await rows<T>(read(ids.slice(i, i + 150)), what)))
+  return out
+}
+
 async function chargesPosted(admin: Admin, floorIso: string): Promise<Charge[]> {
   const list = await rows<Charge>(
     admin.from('mercury_transactions').select(CHARGE_COLUMNS).in('kind', CARD_KINDS).gte('posted_at', floorIso).lt('amount', 0).is('duplicate_of_transaction_id', null).order('posted_at', { ascending: true }).limit(400),
@@ -110,8 +123,7 @@ async function chargesPosted(admin: Admin, floorIso: string): Promise<Charge[]> 
 }
 
 async function ticketsByCharge(admin: Admin, chargeIds: readonly string[]): Promise<Map<string, string>> {
-  if (chargeIds.length === 0) return new Map()
-  const list = await rows<{ id: string; mercury_transaction_id: string }>(admin.from('counter_tickets').select('id, mercury_transaction_id').in('mercury_transaction_id', [...chargeIds]).is('removed_at', null), 'the tickets')
+  const list = await byIds<{ id: string; mercury_transaction_id: string }>(chargeIds, (some) => admin.from('counter_tickets').select('id, mercury_transaction_id').in('mercury_transaction_id', some).is('removed_at', null), 'the tickets')
   return new Map(list.map((t) => [t.mercury_transaction_id, t.id]))
 }
 
@@ -174,7 +186,7 @@ async function sendRun(doors: ReceiptSweepDoors, kind: 'text' | 'reminder', item
   }
 
   await dropLink()
-  if (out.refused === 'textsOff' || out.refused === 'not-set-up' || out.refused === 'paused') {
+  if (SWEEP_WIDE.has(out.refused)) {
     await unclaim()
     throw new SweepStop(out.refused)
   }
@@ -202,7 +214,7 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
   // 1. A request whose charge the bank failed or took back is closed.
   const open = await rows<RequestRow>(admin.from('receipt_requests').select(REQUEST_COLUMNS).is('answered_at', null).is('closed_at', null).gt('closes_at', nowIso).order('created_at', { ascending: false }).limit(400), 'the open requests')
   if (open.length > 0) {
-    const status = await rows<{ id: string; status: string | null }>(admin.from('mercury_transactions').select('id, status').in('id', open.map((r) => r.mercury_transaction_id)), 'the open charges')
+    const status = await byIds<{ id: string; status: string | null }>(open.map((r) => r.mercury_transaction_id), (some) => admin.from('mercury_transactions').select('id, status').in('id', some), 'the open charges')
     const dead = new Set(status.filter((s) => receiptChargeDead(s.status)).map((s) => s.id))
     const close = open.filter((r) => dead.has(r.mercury_transaction_id)).map((r) => r.id)
     if (close.length > 0) {
@@ -216,7 +228,7 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
   const chargeById = new Map(charges.map((c) => [c.id, c]))
   const ids = charges.map((c) => c.id)
   const tickets = await ticketsByCharge(admin, ids)
-  let requests = ids.length > 0 ? await rows<RequestRow>(admin.from('receipt_requests').select(REQUEST_COLUMNS).in('mercury_transaction_id', ids), 'the requests') : []
+  const requests = await byIds<RequestRow>(ids, (some) => admin.from('receipt_requests').select(REQUEST_COLUMNS).in('mercury_transaction_id', some), 'the requests')
   const asked = new Set(requests.map((r) => r.mercury_transaction_id))
   for (const c of charges) {
     if (out.made >= MAX_NEW) break
@@ -238,7 +250,7 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
   const waiting = requests.filter((r) => !r.texted_at && !r.no_text_why && !r.answered_at && !r.closed_at && (r.text_tries ?? 0) < RECEIPT_TEXT_TRIES && !tickets.has(r.mercury_transaction_id) && chargeById.has(r.mercury_transaction_id))
   const holderIds = [...new Set(waiting.map((r) => r.holder_user_id).filter((id): id is string => Boolean(id)))]
   const holders = new Map<string, Holder>()
-  if (holderIds.length > 0) for (const h of await rows<Holder>(admin.from('users').select('id, name, phone, archived_at').in('id', holderIds), 'the holders')) holders.set(h.id, h)
+  for (const h of await byIds<Holder>(holderIds, (some) => admin.from('users').select('id, name, phone, archived_at').in('id', some), 'the holders')) holders.set(h.id, h)
   const placedByHolder = new Map<string, Placed | null>()
   const placeFor = async (h: Holder): Promise<Placed | null> => {
     if (placedByHolder.has(h.id)) return placedByHolder.get(h.id) ?? null
@@ -279,11 +291,11 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
   )
   const due = texted.filter((r) => receiptReminderDue(r, nowMs) && r.holder_user_id && receiptHolderInTrial(setting, r.holder_user_id))
   if (due.length > 0) {
-    const dueCharges = await rows<Charge>(admin.from('mercury_transactions').select(CHARGE_COLUMNS).in('id', due.map((r) => r.mercury_transaction_id)), 'the reminded charges')
+    const dueCharges = await byIds<Charge>(due.map((r) => r.mercury_transaction_id), (some) => admin.from('mercury_transactions').select(CHARGE_COLUMNS).in('id', some), 'the reminded charges')
     const dueChargeById = new Map(dueCharges.map((c) => [c.id, c]))
     const dueTickets = await ticketsByCharge(admin, due.map((r) => r.mercury_transaction_id))
     const dueHolderIds = [...new Set(due.map((r) => r.holder_user_id as string))].filter((id) => !holders.has(id))
-    if (dueHolderIds.length > 0) for (const h of await rows<Holder>(admin.from('users').select('id, name, phone, archived_at').in('id', dueHolderIds), 'the reminded holders')) holders.set(h.id, h)
+    for (const h of await byIds<Holder>(dueHolderIds, (some) => admin.from('users').select('id, name, phone, archived_at').in('id', some), 'the reminded holders')) holders.set(h.id, h)
     const byHolder = new Map<string, SendItem[]>()
     for (const r of due) {
       const ticketId = dueTickets.get(r.mercury_transaction_id)
@@ -317,7 +329,7 @@ async function sweep(doors: ReceiptSweepDoors, setting: ReceiptTextsSetting) {
 }
 
 export type ReceiptSweepAnswer =
-  | { ok: true; state: 'off' | 'texts_off' | 'textsOff' | 'not-set-up' | 'paused' }
+  | { ok: true; state: 'off' | 'texts_off' | 'textsOff' | 'not-set-up' | 'paused' | 'not-registered' | 'daily-cap' }
   | { ok: true; state: 'on'; made: number; texted: number; reminded: number; held: number; closed: number }
   | { ok: true; state: 'dry'; posted: number; asked: number; withTicket: number; wouldAsk: number }
 
@@ -332,7 +344,7 @@ export async function runReceiptSweep(doors: ReceiptSweepDoors, ask: { dry?: boo
     const charges = await chargesPosted(admin, new Date(nowMs - RECEIPT_SWEEP_HOURS * 60 * 60 * 1000).toISOString())
     const ids = charges.map((c) => c.id)
     const tickets = await ticketsByCharge(admin, ids)
-    const asked = ids.length > 0 ? await rows<{ mercury_transaction_id: string }>(admin.from('receipt_requests').select('mercury_transaction_id').in('mercury_transaction_id', ids), 'the requests') : []
+    const asked = await byIds<{ mercury_transaction_id: string }>(ids, (some) => admin.from('receipt_requests').select('mercury_transaction_id').in('mercury_transaction_id', some), 'the requests')
     const askedIds = new Set(asked.map((r) => r.mercury_transaction_id))
     return { ok: true, state: 'dry', posted: charges.length, asked: askedIds.size, withTicket: tickets.size, wouldAsk: charges.filter((c) => !askedIds.has(c.id) && !tickets.has(c.id)).length }
   }
@@ -345,7 +357,7 @@ export async function runReceiptSweep(doors: ReceiptSweepDoors, ask: { dry?: boo
     doors.log?.({ event: 'receipt_sweep', ...out, trial: setting.only.length })
     return { ok: true, state: 'on', ...out }
   } catch (e) {
-    if (e instanceof SweepStop) return { ok: true, state: e.state as 'textsOff' | 'not-set-up' | 'paused' }
+    if (e instanceof SweepStop) return { ok: true, state: e.state as 'textsOff' | 'not-set-up' | 'paused' | 'not-registered' | 'daily-cap' }
     throw e
   }
 }

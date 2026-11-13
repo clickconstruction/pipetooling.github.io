@@ -7,6 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabase } from '../supabase'
+import { TEXTS_SWITCH_KEY, textsAreOn } from '../quo/textsSwitch'
 import { RECEIPT_TEXTS_KEY, RECEIPT_TEXTS_WORDS, parseReceiptTextsSetting, receiptTextsValue, type ReceiptRequestState, type ReceiptTextsSetting } from './receiptText'
 
 // `receipt_requests` is not in the generated types until the types PR, so the client is cast once here.
@@ -15,6 +16,8 @@ const db = supabase as unknown as SupabaseClient
 export interface ReceiptTextsIo {
   /** The switch as stored. A row not there yet reads off. */
   load(): Promise<ReceiptTextsSetting>
+  /** Whether Send texts, the switch every text waits on, is on. */
+  sendTextsOn(): Promise<boolean>
   /** Resolves with what the switch now reads. Rejects with words a person can act on when nothing changed. */
   set(next: { on: boolean; only?: readonly string[] }): Promise<ReceiptTextsSetting>
 }
@@ -26,12 +29,19 @@ export function supabaseReceiptTextsIo(client: SupabaseClient = db, now: () => D
       checkSupabaseError(result, 'read the receipt texts switch')
       return parseReceiptTextsSetting((result.data as { value_text: string | null } | null)?.value_text)
     },
+    async sendTextsOn() {
+      const result = await client.from('app_settings').select('value_text').eq('key', TEXTS_SWITCH_KEY).maybeSingle()
+      checkSupabaseError(result, 'read the Send texts switch')
+      return textsAreOn((result.data as { value_text: string | null } | null)?.value_text)
+    },
     async set(next) {
       const value = receiptTextsValue(next, now().toISOString())
-      const result = await client.from('app_settings').update({ value_text: value }).eq('key', RECEIPT_TEXTS_KEY).select('key')
+      const result = await client.from('app_settings').update({ value_text: value }).eq('key', RECEIPT_TEXTS_KEY).select('key, value_text')
       checkSupabaseError(result, 'turn receipt texts on or off')
-      if (((result.data ?? []) as unknown[]).length === 0) throw new Error(RECEIPT_TEXTS_WORDS.notSaved)
-      return parseReceiptTextsSetting(value)
+      const rows = (result.data ?? []) as { value_text: string | null }[]
+      if (rows.length === 0) throw new Error(RECEIPT_TEXTS_WORDS.notSaved)
+      // What the row holds now, not what was sent: the database stamps the day it went on with its own clock.
+      return parseReceiptTextsSetting(rows[0]!.value_text)
     },
   }
 }
