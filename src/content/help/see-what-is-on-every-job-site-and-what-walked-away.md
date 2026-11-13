@@ -81,6 +81,8 @@ Press **Print the material location report** at the top to print the site. The [
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
 
+The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.
+
 A very large job can pass 5,000 rows in its ledger. Then History and the boxes show the newest 5,000 rows. The totals come from the database, and a line under the job's name says so.
 
 ## On site
