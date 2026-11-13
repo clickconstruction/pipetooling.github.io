@@ -5,7 +5,7 @@ const DAYS: SubPortalDays = {
   bookings: [
     { start: '2026-09-09', end: '2026-09-10', label: 'Rough-in · #1004', address: '2210 Goforth Rd, Kyle', jobNumber: '1004', source: 'pick', commitmentId: 'c1', note: null },
     { start: '2026-09-10', end: '2026-09-10', label: '#1017', address: '415 Bunton Creek Rd, Kyle', jobNumber: '1017', source: 'office', commitmentId: null, note: 'morning · about 3 hours' },
-    { start: '2026-09-11', end: '2026-09-12', label: 'Trim · #1009', address: '88 Mission Hills Dr, Buda', jobNumber: '1009', source: 'office', commitmentId: null, note: null },
+    { start: '2026-09-11', end: '2026-09-12', label: 'Trim · #1009', address: '88 Mission Flats Dr, Buda', jobNumber: '1009', source: 'office', commitmentId: null, note: null },
     { start: 'bad', end: 'bad', label: 'junk', address: null, jobNumber: null, source: 'office', commitmentId: null, note: null },
   ],
   offDays: ['2026-09-15', 'nope'],

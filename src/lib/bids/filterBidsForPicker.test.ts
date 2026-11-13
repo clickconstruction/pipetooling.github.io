@@ -4,7 +4,7 @@ import type { LedgerPrefixMap } from '../ledgerDisplayPrefixes'
 
 const map = {} as LedgerPrefixMap
 const bids = [
-  { id: 'a', project_name: 'Metrology Lab', address: '12 Elm St', customers: { name: 'Acme' }, bids_gc_builders: { name: 'Knight Homes' }, bid_number: '482' },
+  { id: 'a', project_name: 'Metrology Lab', address: '12 Elm St', customers: { name: 'Acme' }, bids_gc_builders: { name: 'Kestrin Homes' }, bid_number: '482' },
   { id: 'b', project_name: 'Fire Station', address: null, customers: null, bids_gc_builders: null, bid_number: '77' },
 ]
 
@@ -17,7 +17,7 @@ describe('filterBidsForPicker', () => {
     expect(filterBidsForPicker(bids, 'METRO', map).map((b) => b.id)).toEqual(['a'])
     expect(filterBidsForPicker(bids, 'elm', map).map((b) => b.id)).toEqual(['a'])
     expect(filterBidsForPicker(bids, 'acme', map).map((b) => b.id)).toEqual(['a'])
-    expect(filterBidsForPicker(bids, 'knight', map).map((b) => b.id)).toEqual(['a'])
+    expect(filterBidsForPicker(bids, 'kestrin', map).map((b) => b.id)).toEqual(['a'])
     expect(filterBidsForPicker(bids, 'station', map).map((b) => b.id)).toEqual(['b'])
     expect(filterBidsForPicker(bids, 'zzz', map)).toEqual([])
   })

@@ -23,10 +23,10 @@ INSERT INTO public.users (id, email, name, notes, role, read_only, is_digital_tw
   ('00000000-0000-0000-0000-0000000f8a04', 'luis@notaryfile.test', 'Luis', NULL, 'primary', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, notes = EXCLUDED.notes, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
--- Take 5 Seguin with three waivers: one held out for the notary, one signed by its Drive link, one signed by his code.
+-- Tune 5 Seguin with three waivers: one held out for the notary, one signed by its Drive link, one signed by his code.
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000f8b09', 'Notary File Plumbing');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000f8b01', '00000000-0000-0000-0000-0000000f8a01', '00000000-0000-0000-0000-0000000f8b09', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
+  ('00000000-0000-0000-0000-0000000f8b01', '00000000-0000-0000-0000-0000000f8a01', '00000000-0000-0000-0000-0000000f8b09', '878', 'Tune 5- Seguin', 'Southern Pine', 'gc', 38625, 34825, 'billed');
 INSERT INTO public.job_lien_releases (id, job_id, form_type, amount, status, created_by, notary_printed_at, signed_at, signer_printed_name, signer_signature_mode, signer_user_id, notary_copy_url) VALUES
   ('00000000-0000-0000-0000-0000000f8c01', '00000000-0000-0000-0000-0000000f8b01', 'conditional_final', 3800, 'out_for_notary', '00000000-0000-0000-0000-0000000f8a02', now(), NULL, NULL, NULL, '00000000-0000-0000-0000-0000000f8a01', NULL),
   ('00000000-0000-0000-0000-0000000f8c02', '00000000-0000-0000-0000-0000000f8b01', 'unconditional_progress', 34825, 'signed', '00000000-0000-0000-0000-0000000f8a02', now(), now(), 'Malachi Whites', 'notary_paper', '00000000-0000-0000-0000-0000000f8a01', 'https://drive.google.com/file/d/notarized-878/view'),

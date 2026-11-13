@@ -171,7 +171,7 @@ internal lane exists.
   (Copy RFI Flags, counttooling main) + the PT paste-import (rode the R1 PR — same
   surface). **R6 first live walk on b403 (ZZ Twin LIVSTE)**: two real substrate-born
   RFIs drafted (gas-vs-COMcheck-all-electric; sprinkler trade boundary), RFI-1 walked
-  draft→approved→sent (planhub channel, Knight default pick), all four ledger stamps
+  draft→approved→sent (planhub channel, Kestrin default pick), all four ledger stamps
   landed method-less; twin probe: Approve refused LOUDLY ("Twins update drafts only on
   bids_rfis"), twin draft succeeded (RFI-3). Remaining: R3 (twin_questions), R4
   (ct-bridge auto-pull), R5 (letter assumptions chip).

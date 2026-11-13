@@ -21,7 +21,7 @@ import {
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
 const day = (ymd: string) => ymd
 
-const job = (over: Partial<OwnerPacketJobInput> = {}): OwnerPacketJobInput => ({ id: 'j273', number: '273', name: 'Dudley (Lennox)', address: '9703 Lenox Hl, San Antonio, TX', gcName: 'RMC- Dudley Mason', total: 20000, bills: [], payments: [], ...over })
+const job = (over: Partial<OwnerPacketJobInput> = {}): OwnerPacketJobInput => ({ id: 'j273', number: '273', name: 'Dunmere (Linmoor)', address: '9703 Linmor Hl, San Antonio, TX', gcName: 'RLC- Dunmere Mallin', total: 20000, bills: [], payments: [], ...over })
 const bill = (id: string, amount: number, status = 'billed', billedAt: string | null = '2026-08-03T15:00:00Z', order = 0) => ({ id, amount, status, billedAt, order })
 const pay = (id: string, billId: string | null, amount: number, paidOn: string | null, recordedAt: string | null = null, type: string | null = 'Check', reference: string | null = null) => ({ id, billId, amount, paidOn, recordedAt, type, reference })
 
@@ -84,7 +84,7 @@ describe('ownerPacketNumbers', () => {
 describe('the four checks', () => {
   const numbers = { agree: true, lines: ['$26,537 matches the 3 notices.'] }
   const full: OwnerRecordsFile = {
-    request: { on: '2026-10-05', how: 'email', from: 'Umar Khan', link: 'https://drive.example/req' },
+    request: { on: '2026-10-05', how: 'email', from: 'Ulric Karrow', link: 'https://drive.example/req' },
     contractChecked: { by: 'Malachi', at: '2026-10-05T16:00:00Z' },
     acknowledgment: { signedOn: '2026-10-06', link: '' },
     offer: null,
@@ -105,7 +105,7 @@ describe('the four checks', () => {
 
   it('a full file says each check in words, and the packet can go', () => {
     expect(ownerRecordsSteps(full, numbers, day).map((s) => s.words)).toEqual([
-      'Email from Umar Khan, 2026-10-05. Link on file.',
+      'Email from Ulric Karrow, 2026-10-05. Link on file.',
       'Checked 2026-10-05 by Malachi. No clause stops this.',
       '$26,537 matches the 3 notices.',
       'Signed 2026-10-06. No copy linked.',
@@ -141,24 +141,24 @@ describe('parseOwnerRecords', () => {
 })
 
 describe('the picker', () => {
-  const row = (jobId: string, owner: string, address: string, customerId: string, open: number, gcName = 'RMC- Dudley Mason') => ({ jobId, owner, address, addressId: null, gcName, open, customerId })
+  const row = (jobId: string, owner: string, address: string, customerId: string, open: number, gcName = 'RLC- Dunmere Mallin') => ({ jobId, owner, address, addressId: null, gcName, open, customerId })
   const same = (a: { address: string }, b: { address: string }) => a.address === b.address
 
   it('folds the jobs of one owner at one property into a row, and keeps another owner at that address apart', () => {
-    const rows = ownerRecordsProperties([row('a', 'Umar Khan', '9703 Lenox Hl', 'c1', 17585), row('b', 'Umar Khan', '9703 Lenox Hl', 'c1', 7902), row('c', 'A Tenant', '9703 Lenox Hl', 'c2', 100), row('d', 'Rizvi', '628 Terrell Rd', 'c3', 1710)], same)
+    const rows = ownerRecordsProperties([row('a', 'Ulric Karrow', '9703 Linmor Hl', 'c1', 17585), row('b', 'Ulric Karrow', '9703 Linmor Hl', 'c1', 7902), row('c', 'A Tenant', '9703 Linmor Hl', 'c2', 100), row('d', 'Rilvo', '628 Tarrow Rd', 'c3', 1710)], same)
     expect(rows.map((r) => [r.owner, r.address, r.jobs, r.open, r.seedJobId, r.sharesAddress])).toEqual([
-      ['A Tenant', '9703 Lenox Hl', 1, 100, 'c', true],
-      ['Rizvi', '628 Terrell Rd', 1, 1710, 'd', false],
-      ['Umar Khan', '9703 Lenox Hl', 2, 25487, 'a', true],
+      ['A Tenant', '9703 Linmor Hl', 1, 100, 'c', true],
+      ['Rilvo', '628 Tarrow Rd', 1, 1710, 'd', false],
+      ['Ulric Karrow', '9703 Linmor Hl', 2, 25487, 'a', true],
     ])
     expect(ownerRecordsProperties([row('x', '  ', '1 A St', 'c9', 5)], same)[0]!.owner).toBe('Owner not on file')
   })
 
   it('finds a row by owner, address or GC', () => {
-    const r = ownerRecordsProperties([row('a', 'Umar Khan', '9703 Lenox Hl', 'c1', 1)], same)[0]!
-    expect(ownerRecordsPropertyMatches(r, 'lenox khan')).toBe(true)
-    expect(ownerRecordsPropertyMatches(r, 'dudley')).toBe(true)
-    expect(ownerRecordsPropertyMatches(r, 'terrell')).toBe(false)
+    const r = ownerRecordsProperties([row('a', 'Ulric Karrow', '9703 Linmor Hl', 'c1', 1)], same)[0]!
+    expect(ownerRecordsPropertyMatches(r, 'linmor karrow')).toBe(true)
+    expect(ownerRecordsPropertyMatches(r, 'dunmere')).toBe(true)
+    expect(ownerRecordsPropertyMatches(r, 'tarrow')).toBe(false)
     expect(ownerRecordsPropertyMatches(r, '  ')).toBe(true)
   })
 })
@@ -169,18 +169,18 @@ describe('offered and signed on the portal (punch list #86)', () => {
 
   it('parses the offer and a portal signature, and keeps a paper signature as it was', () => {
     const f = parseOwnerRecords({
-      offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' },
-      acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' },
+      offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Barrowby Shelmina' },
+      acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Ulric Karrow', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' },
     })!
-    expect(f.offer).toEqual({ at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' })
-    expect(f.acknowledgment).toEqual({ signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' })
+    expect(f.offer).toEqual({ at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: 'Barrowby Shelmina' })
+    expect(f.acknowledgment).toEqual({ signedOn: '2026-10-06', link: '', printedName: 'Ulric Karrow', mode: 'draw', signaturePath: 'id/acknowledgment-signature-x.png', consentedAt: '2026-10-06T16:00:00Z' })
     expect(parseOwnerRecords({ acknowledgment: { signedOn: '2026-10-06', link: 'drive' } })!.acknowledgment).toEqual({ signedOn: '2026-10-06', link: 'drive' })
     expect(parseOwnerRecords({ offer: { at: '' } })).toBeNull()
   })
 
   it('the names the portal accepts: the roll\u2019s owner and the second name, trimmed, never an empty one', () => {
-    expect(ownerRecordsAllowedNames('Umar Khan', { offer: { at: 'x', by: 'T', alsoAllowed: '  Bangash Shazmeena ' } })).toEqual(['Umar Khan', 'Bangash Shazmeena'])
-    expect(ownerRecordsAllowedNames('Umar Khan', { offer: null })).toEqual(['Umar Khan'])
+    expect(ownerRecordsAllowedNames('Ulric Karrow', { offer: { at: 'x', by: 'T', alsoAllowed: '  Barrowby Shelmina ' } })).toEqual(['Ulric Karrow', 'Barrowby Shelmina'])
+    expect(ownerRecordsAllowedNames('Ulric Karrow', { offer: null })).toEqual(['Ulric Karrow'])
     expect(ownerRecordsAllowedNames('', { offer: { at: 'x', by: 'T', alsoAllowed: '' } })).toEqual([])
   })
 
@@ -190,11 +190,11 @@ describe('offered and signed on the portal (punch list #86)', () => {
     expect(steps[0]!.words).toBe('Offered on their portal day(2026-10-06). Waiting for them to sign.')
     expect(steps[0]!.state).toBe('todo')
     expect(steps[3]!.words).toBe('Not signed yet. They sign on their portal.')
-    const signed = { ...offered, request: { on: '2026-10-06', how: 'portal' as const, from: 'Umar Khan', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'type' as const } }
+    const signed = { ...offered, request: { on: '2026-10-06', how: 'portal' as const, from: 'Ulric Karrow', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Ulric Karrow', mode: 'type' as const } }
     const done = ownerRecordsSteps(signed, numbers, day)
-    expect(done[0]!.words).toBe('On their portal from Umar Khan, day(2026-10-06). Their signing is the request.')
+    expect(done[0]!.words).toBe('On their portal from Ulric Karrow, day(2026-10-06). Their signing is the request.')
     expect(done[0]!.state).toBe('done')
-    expect(done[3]!.words).toBe('Signed on their portal day(2026-10-06) by Umar Khan, typed.')
+    expect(done[3]!.words).toBe('Signed on their portal day(2026-10-06) by Ulric Karrow, typed.')
     expect(ownerRecordsMissing(signed)).toEqual(['the contract check'])
   })
 })
@@ -211,38 +211,38 @@ describe('On their portal as a way to send (punch list #86, PR 2)', () => {
 
 describe('the Dashboard’s line (punch list #86)', () => {
   const portalSigned = (signedOn: string, printedName: string) => ({ request: { on: signedOn, how: 'portal', from: printedName, link: '' }, acknowledgment: { signedOn, link: '', printedName, mode: 'type' } })
-  const req = (id: string, file: unknown, over: Partial<OwnerRecordsSignedRow> = {}): OwnerRecordsSignedRow => ({ id, seed_job_id: `job-${id}`, job_ids: [`job-${id}`], property_address: `${id} Lenox Hl`, file, ...over })
+  const req = (id: string, file: unknown, over: Partial<OwnerRecordsSignedRow> = {}): OwnerRecordsSignedRow => ({ id, seed_job_id: `job-${id}`, job_ids: [`job-${id}`], property_address: `${id} Linmor Hl`, file, ...over })
 
   it('counts the open requests an owner signed on their portal, the longest wait first', () => {
-    const r = ownerRecordsSignedWaiting([req('b', portalSigned('2026-10-06', 'Umar Khan')), req('a', portalSigned('2026-10-04', 'Shazmeena Bangash'))])
-    expect(r).toEqual({ count: 2, first: { requestId: 'a', jobId: 'job-a', name: 'Shazmeena Bangash', address: 'a Lenox Hl', signedOn: '2026-10-04' } })
+    const r = ownerRecordsSignedWaiting([req('b', portalSigned('2026-10-06', 'Ulric Karrow')), req('a', portalSigned('2026-10-04', 'Shelmina Barrowby'))])
+    expect(r).toEqual({ count: 2, first: { requestId: 'a', jobId: 'job-a', name: 'Shelmina Barrowby', address: 'a Linmor Hl', signedOn: '2026-10-04' } })
   })
 
   it('leaves out a paper signature, an unsigned offer, a request already sent, and a file that does not parse', () => {
     const paper = { acknowledgment: { signedOn: '2026-10-04', link: 'https://drive.example/ack' } }
     const offered = { offer: { at: '2026-10-04T15:00:00Z', by: 'Taunya', alsoAllowed: '' } }
-    const sent = { ...portalSigned('2026-10-04', 'Umar Khan'), sent: { at: '2026-10-05T15:00:00Z', by: 'Taunya', how: 'portal', total: 12, jobIds: ['job-c'] } }
+    const sent = { ...portalSigned('2026-10-04', 'Ulric Karrow'), sent: { at: '2026-10-05T15:00:00Z', by: 'Taunya', how: 'portal', total: 12, jobIds: ['job-c'] } }
     expect(ownerRecordsSignedWaiting([req('p', paper), req('o', offered), req('c', sent), req('x', 'nope')])).toBeNull()
     expect(ownerRecordsSignedWaiting([])).toBeNull()
   })
 
   it('opens on the seed job, else the first job the packet covered', () => {
-    expect(ownerRecordsSignedWaiting([req('a', portalSigned('2026-10-04', 'Umar Khan'), { seed_job_id: null, job_ids: ['j881', 'j273'] })])?.first.jobId).toBe('j881')
-    expect(ownerRecordsSignedWaiting([req('a', portalSigned('2026-10-04', 'Umar Khan'), { seed_job_id: null, job_ids: null })])?.first.jobId).toBeNull()
+    expect(ownerRecordsSignedWaiting([req('a', portalSigned('2026-10-04', 'Ulric Karrow'), { seed_job_id: null, job_ids: ['j881', 'j273'] })])?.first.jobId).toBe('j881')
+    expect(ownerRecordsSignedWaiting([req('a', portalSigned('2026-10-04', 'Ulric Karrow'), { seed_job_id: null, job_ids: null })])?.first.jobId).toBeNull()
   })
 
   it('the picker row holding a job: its head, else a job folded into it', () => {
     const rows = ownerRecordsProperties(
       [
-        { jobId: 'a', owner: 'Umar Khan', address: '9703 Lenox Hl', addressId: null, gcName: '', open: 1, customerId: 'c1' },
-        { jobId: 'b', owner: 'Umar Khan', address: '9703 Lenox Hl', addressId: null, gcName: '', open: 2, customerId: 'c1' },
-        { jobId: 'd', owner: 'Rizvi', address: '628 Terrell Rd', addressId: null, gcName: '', open: 3, customerId: 'c3' },
+        { jobId: 'a', owner: 'Ulric Karrow', address: '9703 Linmor Hl', addressId: null, gcName: '', open: 1, customerId: 'c1' },
+        { jobId: 'b', owner: 'Ulric Karrow', address: '9703 Linmor Hl', addressId: null, gcName: '', open: 2, customerId: 'c1' },
+        { jobId: 'd', owner: 'Rilvo', address: '628 Tarrow Rd', addressId: null, gcName: '', open: 3, customerId: 'c3' },
       ],
       (x, y) => x.address === y.address,
     )
     expect(rows.find((r) => r.seedJobId === 'a')?.jobIds).toEqual(['a', 'b'])
     expect(ownerRecordsRowForJob(rows, 'b')?.seedJobId).toBe('a')
-    expect(ownerRecordsRowForJob(rows, 'd')?.owner).toBe('Rizvi')
+    expect(ownerRecordsRowForJob(rows, 'd')?.owner).toBe('Rilvo')
     expect(ownerRecordsRowForJob(rows, 'z')).toBeNull()
   })
 })

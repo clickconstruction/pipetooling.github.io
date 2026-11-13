@@ -47,7 +47,7 @@ export function propertyKindBadge(input: { customerAddressId: string | null | un
   return { kind, letter: '?', fill: PROPERTY_KIND_BADGE_FILLS.unknown, title: `Residential or commercial? Not set yet — click to say`, label: `Property kind not set for ${where} — pick residential or commercial`, unlinked: false }
 }
 
-/** The picker's question: "What kind of property is 8507 Culebra Road?" — the street line only (before the first comma or line break); the job when the address is blank. */
+/** The picker's question: "What kind of property is 8507 Calvera Road?" — the street line only (before the first comma or line break); the job when the address is blank. */
 export function propertyKindQuestion(address: string | null | undefined, jobLabel: string): string {
   const a = (address ?? '').trim().split(/[\n,]/)[0]?.trim() ?? ''
   return `What kind of property is ${a || jobLabel}?`

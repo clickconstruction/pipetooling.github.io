@@ -47,9 +47,9 @@ const WORKLIST = {
       amount: 1711,
       status: 'billed',
       createdYmd: '2026-08-12',
-      customerName: 'Nick Frantzen',
+      customerName: 'Nick Franlow',
       jobId: 'j2',
-      jobName: 'Frantzen Water Heater',
+      jobName: 'Franlow Water Heater',
       address: '204 Wingate Court, Seguin, TX',
       hcpNumber: '918',
       payments: [],
@@ -61,9 +61,9 @@ const WORKLIST = {
       status: 'paid',
       createdYmd: '2026-08-19',
       billedYmd: '2026-08-19',
-      customerName: 'Tyler Moore',
+      customerName: 'Tyler Morby',
       jobId: 'j3',
-      jobName: 'Yogo Studio',
+      jobName: 'Yobo Studio',
       address: '3556 FM 78 # 103, McQuenny, TX',
       hcpNumber: '955',
       payments: [{ paidYmd: '2026-08-14', amount: 5983 }],
@@ -129,7 +129,7 @@ describe('QuickfillUndatedBillsSection', () => {
     await screen.findByText('City of Seguin')
     fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: '918' } })
     expect(screen.queryByText('City of Seguin')).toBeNull()
-    expect(screen.getByText('Nick Frantzen')).toBeTruthy()
+    expect(screen.getByText('Nick Franlow')).toBeTruthy()
     // A search that hides every bill quotes itself and offers Clear the search (punch list #184, sweep C).
     fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: 'zzqq' } })
     expect(document.querySelector('[data-empty-state]')!.textContent).toBe('No bills match ‘zzqq’. Clear the search')

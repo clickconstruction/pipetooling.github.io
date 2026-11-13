@@ -41,7 +41,7 @@ vi.mock('../../lib/supabase', async () => {
 
 const SITE = {
   id: 'site-891',
-  customer_id: 'gc-burd',
+  customer_id: 'gc-brund',
   address: '11730 TX-29, Liberty Hill, TX 78642',
   sequence_order: 0,
   property_kind: 'non_residential',
@@ -60,13 +60,13 @@ function job891(over: Record<string, unknown> = {}) {
   return makeJob({
     id: 'job-891',
     hcp_number: '891',
-    job_name: 'Take 5- Liberty Hill',
+    job_name: 'Tune 5- Liberty Hill',
     job_address: '11730 TX-29, Liberty Hill, TX 78642',
     status: 'billed',
     customer_id: null,
     customer_name: null,
-    gc_customer_id: 'gc-burd',
-    gcCustomer: { id: 'gc-burd', name: 'Burd & Assoc.' },
+    gc_customer_id: 'gc-brund',
+    gcCustomer: { id: 'gc-brund', name: 'Brund & Assoc.' },
     customer_address_id: 'site-891',
     master_user_id: 'master-1',
     invoices: [INV],
@@ -87,7 +87,7 @@ beforeEach(() => {
   db.rows = {
     jobs_ledger: [{ id: 'job-891', customer_address_id: 'site-891' }],
     customer_addresses: [SITE],
-    customers: [{ id: 'gc-burd', name: 'Burd & Assoc.', billing_email: 'ap@burd.example' }],
+    customers: [{ id: 'gc-brund', name: 'Brund & Assoc.', billing_email: 'ap@brund.example' }],
     users: [{ id: 'master-1', name: 'Malachi Reyes', notes: 'Malachi Reyes, Master Plumber', role: 'master_technician', archived_at: null }],
   }
 })

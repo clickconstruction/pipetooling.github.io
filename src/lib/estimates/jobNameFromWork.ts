@@ -1,7 +1,7 @@
 /**
  * Naming a job for the customer *and the work* (v2.3766).
  *
- * The office names jobs for the work — "Montolongo- Pretest", "Pool Work",
+ * The office names jobs for the work — "Montelby- Pretest", "Pool Work",
  * "Gas Line" — so a second job at the same house can be told from the first.
  * An estimate has no scope field; its line items are the only place the work
  * is written. The rule: when there is exactly one line and its name is

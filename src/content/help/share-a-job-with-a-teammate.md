@@ -20,7 +20,7 @@ The Share button is the icon of a square with an arrow.
 1. On your phone, the normal iPhone or Android share sheet opens. The share sheet is the phone's own menu for sending things. The job info is already filled in:
 
 :::example the message your teammate gets
-Job #951 — Shearer Pinpoint
+Job #951 — Shellan Pinpoint
 717 Trinity St, Lockhart, TX
 …plus a link that opens this exact job.
 :::

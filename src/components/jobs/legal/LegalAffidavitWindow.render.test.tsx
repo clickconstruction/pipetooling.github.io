@@ -51,11 +51,11 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
   it('a witness is typed; No notary flips the opener, the title and the county to the property’s; the blank is one press', () => {
     open()
     fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: '__witness' } })
-    fireEvent.change(screen.getByLabelText('Their full name'), { target: { value: 'Thanh Nguyen' } })
+    fireEvent.change(screen.getByLabelText('Their full name'), { target: { value: 'Tobin Newell' } })
     fireEvent.change(screen.getByLabelText('Their role, one line'), { target: { value: 'the foreman for Brightline Electric' } })
-    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Thanh Nguyen')
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Tobin Newell')
     fireEvent.click(document.querySelector('[data-legal-affidavit-form="declaration"]')!)
-    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Declaration of Thanh Nguyen')
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Declaration of Tobin Newell')
     expect(document.querySelector('[data-legal-affidavit-opener]')!.textContent).toContain('capable of making this declaration. I am the foreman for Brightline Electric. I have no interest in the outcome of this dispute.')
     expect(document.querySelector('[data-legal-affidavit-county="Williamson"]')!.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(document.querySelector('[data-legal-affidavit-county="blank"]')!)
@@ -64,9 +64,9 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
     expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.textContent).toBe('Leave it blank for the signer')
     expect(screen.getByText('They write the county in by hand where they sign.')).toBeTruthy()
     // A title typed by hand stops following the picks.
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'What Thanh saw' } })
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'What Tobin saw' } })
     fireEvent.click(document.querySelector('[data-legal-affidavit-form="notary"]')!)
-    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('What Thanh saw')
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('What Tobin saw')
   })
 
   it('Save sleeps with the reason until the draft is sound, then sends the draft trimmed and closes', async () => {

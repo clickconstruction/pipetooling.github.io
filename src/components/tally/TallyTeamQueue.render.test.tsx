@@ -137,6 +137,10 @@ vi.mock('../../lib/tally/fetchTallyTeamQueue', () => ({
   fetchTallyJobLabels: vi.fn(async () => ({ 'job-a': '101 Hill Street', 'job-office': '000 Office' })),
 }))
 
+/** Copy the receipt link (punch list #299): the function and the clipboard are stood in for. */
+const copyReceiptLinkFor = vi.fn()
+vi.mock('../../lib/tickets/receiptLinkIo', () => ({ copyReceiptLinkFor: (...a: unknown[]) => copyReceiptLinkFor(...a) }))
+
 const { TallyTeamQueue } = await import('./TallyTeamQueue')
 
 beforeEach(() => {
@@ -200,6 +204,27 @@ describe('TallyTeamQueue', () => {
     expect(screen.getByTestId('assign-window')).toBeTruthy()
     fireEvent.click(within(card).getAllByRole('button', { name: 'Invoices' })[0]!)
     expect(screen.getByTestId('invoices-window')).toBeTruthy()
+  })
+
+  it('Copy the receipt link makes the charge\'s link, and says what it copied or why it could not', async () => {
+    copyReceiptLinkFor.mockReset()
+    copyReceiptLinkFor.mockResolvedValueOnce({ url: 'https://clicktooling.com/r/k7m2p9xq4d', closesOn: '2026-10-14', copied: true })
+    renderWithProviders(<TallyTeamQueue />)
+    const card = await screen.findByTestId('tally-team-day-card')
+    await settle()
+    const presses = within(card).getAllByTestId('tally-team-receipt-link')
+    expect(presses).toHaveLength(2)
+    expect(presses[0]!.textContent).toBe('Copy the receipt link')
+    fireEvent.click(presses[0]!)
+    await waitFor(() => expect(copyReceiptLinkFor).toHaveBeenCalledWith('t-fuel'))
+    expect(await screen.findByText('Receipt link copied for $31.47 at Corner Fuel. It opens until Oct 14.')).toBeTruthy()
+    // A browser that would not copy shows the link, and a refusal shows its reason.
+    copyReceiptLinkFor.mockResolvedValueOnce({ url: 'https://clicktooling.com/r/k7m2p9xq4d', closesOn: null, copied: false })
+    fireEvent.click(within(card).getAllByTestId('tally-team-receipt-link')[1]!)
+    expect(await screen.findByText(/The receipt link for \$88\.20 at Ridge Supply is https:\/\/clicktooling\.com\/r\/k7m2p9xq4d/)).toBeTruthy()
+    copyReceiptLinkFor.mockRejectedValueOnce(new Error('Only the office can copy a receipt link.'))
+    fireEvent.click(within(card).getAllByTestId('tally-team-receipt-link')[0]!)
+    expect(await screen.findByText('Only the office can copy a receipt link.')).toBeTruthy()
   })
 
   it('the message after Sort the day offers Undo, which puts the day back with no rows', async () => {

@@ -42,7 +42,7 @@ export function quickEstimateBackTarget(
 
 export type QuickEstimateSummaryInput = {
   branch: QuickEstimateBranch
-  /** "HCP 5124 — Herber Custom Homes" (CO branch) — null when skipped. */
+  /** "HCP 5124 — Helbrow Custom Homes" (CO branch) — null when skipped. */
   jobLabel: string | null
   /** Picked customer name or free-typed name (estimate branch) — null when skipped. */
   customerLabel: string | null

@@ -10,7 +10,7 @@ vi.mock('../../hooks/useAuth', () => useAuthModuleMock({ profileName: 'Carla Ngu
 
 const fleet: Fleet = {
   machines: [
-    { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't1', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Tovi Pinpoint', heldSince: '2026-11-04T13:00:00Z', levels: defaultLevels('excavator'), rental: null, driveLink: null },
+    { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't1', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Tavin Pinpoint', heldSince: '2026-11-04T13:00:00Z', levels: defaultLevels('excavator'), rental: null, driveLink: null },
     { id: 'm2', unitLabel: 'R-1', make: 'Bobcat', model: 'E35', kind: 'excavator', templateId: 't1', code: 'R1BOBE35', jobId: null, jobWords: null, heldSince: null, levels: defaultLevels('excavator'), rental: { from: 'Sunbelt', agreementNo: '48812-3', outOn: '2026-11-03', dueBack: '2026-11-30' }, driveLink: 'https://drive.google.com/drive/folders/abc' },
     { id: 'm3', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'S70', kind: 'skid_steer', templateId: 't2', code: 'RZZT09T4', jobId: 'j2', jobWords: '1088 · Riders Walk', heldSince: null, levels: defaultLevels('skid_steer'), rental: { from: 'Sunbelt', agreementNo: '', outOn: todayDay(), dueBack: '' }, driveLink: null },
   ],
@@ -39,7 +39,7 @@ describe('the machines board at People → Vehicles', () => {
     renderWithProviders(<MachinesSection />)
     expect(await screen.findByText('E-12 · Kubota KX040')).toBeTruthy()
     expect(screen.getAllByText('Small excavator')).toHaveLength(2)
-    expect(screen.getByText('On 972 · Tovi Pinpoint')).toBeTruthy()
+    expect(screen.getByText('On 972 · Tavin Pinpoint')).toBeTruthy()
     expect(screen.getByText('In the yard')).toBeTruthy()
     expect(document.querySelector('[data-rental-chip]')?.textContent).toContain('Rental · Sunbelt · agreement 48812-3')
     fireEvent.click(document.querySelector('[data-machine-gauges="E-12"]')!)

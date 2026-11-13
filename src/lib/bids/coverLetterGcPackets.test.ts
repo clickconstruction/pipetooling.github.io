@@ -9,7 +9,7 @@ import {
   type GcPacketCustomer,
 } from './coverLetterGcPackets'
 
-const bidGc: GcPacketCustomer = { id: 'harper', name: 'Harper GC', address: '1 Main St' }
+const bidGc: GcPacketCustomer = { id: 'halden', name: 'Halden GC', address: '1 Main St' }
 const turner: GcPacketCustomer = { id: 'turner', name: 'Turner Construction', address: '2 Oak Ave' }
 const dpr: GcPacketCustomer = { id: 'dpr', name: 'DPR Builders', address: '3 Elm Rd' }
 
@@ -46,7 +46,7 @@ describe('groupSectionsByEffectiveGc', () => {
       { v1: turner, v2: dpr, v3: dpr, v4: null },
       bidGc,
     )
-    expect(packets.map((p) => p.customer.name)).toEqual(['Turner Construction', 'DPR Builders', 'Harper GC'])
+    expect(packets.map((p) => p.customer.name)).toEqual(['Turner Construction', 'DPR Builders', 'Halden GC'])
     expect(packets[1]!.sections.map((s) => s.name)).toEqual(['Base — DPR', 'Alt — DPR'])
     expect(packets[2]!.isBidDefault).toBe(true)
     expect(hasMultipleEffectiveGcs(packets)).toBe(true)
@@ -83,25 +83,25 @@ describe('groupSectionsByEffectiveGc', () => {
 
 describe('resolveSingleLetterGc', () => {
   it('uses the active Version override when set (the BP364 shape: letter follows the picker)', () => {
-    expect(resolveSingleLetterGc('v-burd', { 'v-burd': turner, 'v-spc': null }, bidGc)).toBe(turner)
+    expect(resolveSingleLetterGc('v-brund', { 'v-brund': turner, 'v-spc': null }, bidGc)).toBe(turner)
   })
 
   it('falls back to the bid GC when the active Version has no override', () => {
-    expect(resolveSingleLetterGc('v-spc', { 'v-burd': turner, 'v-spc': null }, bidGc)).toBe(bidGc)
+    expect(resolveSingleLetterGc('v-spc', { 'v-brund': turner, 'v-spc': null }, bidGc)).toBe(bidGc)
   })
 
   it('falls back to the bid GC when the active Version is unknown to the map', () => {
-    expect(resolveSingleLetterGc('v-missing', { 'v-burd': turner }, bidGc)).toBe(bidGc)
+    expect(resolveSingleLetterGc('v-missing', { 'v-brund': turner }, bidGc)).toBe(bidGc)
   })
 
   it('unsplit bids (null active Version) use the bid GC', () => {
-    expect(resolveSingleLetterGc(null, { 'v-burd': turner }, bidGc)).toBe(bidGc)
+    expect(resolveSingleLetterGc(null, { 'v-brund': turner }, bidGc)).toBe(bidGc)
   })
 
   it('never keys off other Versions: a sibling override cannot leak into the active letter', () => {
-    // Regression for the include_in_submission bug: the BURD-linked Pricing being
+    // Regression for the include_in_submission bug: the BRUND-linked Pricing being
     // flagged for submission must NOT head the letter while SPC is active.
-    expect(resolveSingleLetterGc('v-spc', { 'v-spc': null, 'v-burd': dpr }, bidGc)).toBe(bidGc)
+    expect(resolveSingleLetterGc('v-spc', { 'v-spc': null, 'v-brund': dpr }, bidGc)).toBe(bidGc)
   })
 })
 
@@ -135,25 +135,25 @@ describe('letterGcDiffersFromBid', () => {
   })
 
   it('an override pointing at the same customer as the bid GC shows no badge', () => {
-    expect(letterGcDiffersFromBid({ id: 'harper', name: 'Harper GC (renamed)', address: 'x' }, bidGc)).toBe(false)
+    expect(letterGcDiffersFromBid({ id: 'halden', name: 'Halden GC (renamed)', address: 'x' }, bidGc)).toBe(false)
   })
 
   it('falls back to name+address comparison when an id is missing', () => {
-    const noIdBid: GcPacketCustomer = { id: null, name: 'Harper GC', address: '1 Main St' }
+    const noIdBid: GcPacketCustomer = { id: null, name: 'Halden GC', address: '1 Main St' }
     expect(letterGcDiffersFromBid(turner, noIdBid)).toBe(true)
-    expect(letterGcDiffersFromBid({ id: null, name: 'Harper GC', address: '1 Main St' }, noIdBid)).toBe(false)
+    expect(letterGcDiffersFromBid({ id: null, name: 'Halden GC', address: '1 Main St' }, noIdBid)).toBe(false)
   })
 })
 
 describe('defaultGcPacketForActiveVersion', () => {
   const sections = [
     { name: 'To Plans', bidVersionId: 'v-base' },
-    { name: 'BURD', bidVersionId: 'v-burd' },
+    { name: 'BRUND', bidVersionId: 'v-brund' },
   ]
-  const packets = groupSectionsByEffectiveGc(sections, { 'v-burd': turner }, bidGc)
+  const packets = groupSectionsByEffectiveGc(sections, { 'v-brund': turner }, bidGc)
 
   it('picks the packet containing the active version', () => {
-    expect(defaultGcPacketForActiveVersion(packets, 'v-burd')?.customer).toEqual(turner)
+    expect(defaultGcPacketForActiveVersion(packets, 'v-brund')?.customer).toEqual(turner)
     expect(defaultGcPacketForActiveVersion(packets, 'v-base')?.customer).toEqual(bidGc)
   })
 
@@ -163,6 +163,6 @@ describe('defaultGcPacketForActiveVersion', () => {
   })
 
   it('returns null for no packets', () => {
-    expect(defaultGcPacketForActiveVersion([], 'v-burd')).toBeNull()
+    expect(defaultGcPacketForActiveVersion([], 'v-brund')).toBeNull()
   })
 })

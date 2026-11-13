@@ -50,7 +50,7 @@ export type WeeklyMoneyLens = 'earned' | 'cash'
 
 export type WeeklyMoneyJobRow = {
   jobId: string
-  /** "523 · Mission Hills" — effective number (HCP wins over Click) + name. */
+  /** "523 · Mission Flats" — effective number (HCP wins over Click) + name. */
   display: string
   address: string
   revenue: number | null

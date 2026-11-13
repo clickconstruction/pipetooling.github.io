@@ -91,11 +91,11 @@ describe('payerRecipientFromCustomer', () => {
     expect(
       payerRecipientFromCustomer({
         id: 'gc-1',
-        name: ' Loberg Contracting ',
-        billing_email: 'invoices@loberg.com',
-        contact_info: { email: 'estimating@loberg.com', phone: '847-392-4300' },
+        name: ' Lowbeck Contracting ',
+        billing_email: 'invoices@lowbeck.com',
+        contact_info: { email: 'estimating@lowbeck.com', phone: '847-392-4300' },
       }),
-    ).toEqual({ customerId: 'gc-1', name: 'Loberg Contracting', email: 'invoices@loberg.com', phone: '847-392-4300' })
+    ).toEqual({ customerId: 'gc-1', name: 'Lowbeck Contracting', email: 'invoices@lowbeck.com', phone: '847-392-4300' })
   })
   it('returns null without a row', () => {
     expect(payerRecipientFromCustomer(null)).toBeNull()
@@ -105,22 +105,22 @@ describe('payerRecipientFromCustomer', () => {
 describe('applyPayerToJobBillingContext', () => {
   const job = {
     customer_id: 'cust-1',
-    customer_name: 'ATI Schertz',
-    customer_email: 'invoices@loberg.com',
+    customer_name: 'AXO Schertz',
+    customer_email: 'invoices@lowbeck.com',
     customer_phone: null as string | null,
   }
   it('overlays the payer so every downstream consumer bills them', () => {
     expect(
       applyPayerToJobBillingContext(job, {
         customerId: 'gc-1',
-        name: 'Loberg Contracting',
-        email: 'invoices@loberg.com',
+        name: 'Lowbeck Contracting',
+        email: 'invoices@lowbeck.com',
         phone: '847-392-4300',
       }),
     ).toEqual({
       customer_id: 'gc-1',
-      customer_name: 'Loberg Contracting',
-      customer_email: 'invoices@loberg.com',
+      customer_name: 'Lowbeck Contracting',
+      customer_email: 'invoices@lowbeck.com',
       customer_phone: '847-392-4300',
     })
   })
@@ -135,7 +135,7 @@ describe('applyPayerToJobBillingContext', () => {
 
 describe('jobBillToPartyOptions', () => {
   it('offers the GC only when the job has one that differs from the customer', () => {
-    expect(jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: 'cust-1', gcName: 'Loberg' }).map((o) => o.value)).toEqual([
+    expect(jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: 'cust-1', gcName: 'Lowbeck' }).map((o) => o.value)).toEqual([
       'customer',
       'gc',
       'split',
@@ -150,11 +150,11 @@ describe('jobBillToPartyOptions', () => {
     ])
   })
   it('a GC job offers only the GC (v2.3403)', () => {
-    expect(jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: null, gcName: 'RMC' }).map((o) => o.value)).toEqual(['gc'])
+    expect(jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: null, gcName: 'RLC' }).map((o) => o.value)).toEqual(['gc'])
   })
   it('names the GC on its option', () => {
-    const gc = jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: 'cust-1', gcName: 'Loberg' }).find((o) => o.value === 'gc')
-    expect(gc?.label).toBe('GC · Loberg')
+    const gc = jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: 'cust-1', gcName: 'Lowbeck' }).find((o) => o.value === 'gc')
+    expect(gc?.label).toBe('GC · Lowbeck')
   })
 })
 

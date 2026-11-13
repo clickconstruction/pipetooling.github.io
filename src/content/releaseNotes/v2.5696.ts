@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'On the Messages page, Went out today called every customer’s own thread "A number nobody has named". It now reads the customer’s name.',
-    'The estimate text could read "Your estimate for Estimate for Evan Johnson is ready". It now reads "Your estimate for Evan Johnson is ready".',
+    'The estimate text could read "Your estimate for Estimate for Evan Jarrow is ready". It now reads "Your estimate for Evan Jarrow is ready".',
   ],
 }
 

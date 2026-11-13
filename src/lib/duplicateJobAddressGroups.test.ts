@@ -12,14 +12,14 @@ function job(id: string, address: string | null, status: string, created: string
 describe('buildDuplicateJobAddressGroups', () => {
   it('groups case/whitespace-normalized addresses with 2+ jobs and skips uniques and blanks', () => {
     const groups = buildDuplicateJobAddressGroups([
-      job('a', '109 Tuscarora Trail', 'working', '2026-02-24'),
-      job('b', '109  tuscarora   trail', 'paid', '2026-02-25'),
+      job('a', '109 Tamberline Trail', 'working', '2026-02-24'),
+      job('b', '109  tamberline   trail', 'paid', '2026-02-25'),
       job('c', '717 Trinity St', 'working', '2026-03-01'),
       job('d', '', 'working', '2026-03-02'),
       job('e', null as unknown as string, 'working', '2026-03-03'),
     ])
     expect(groups).toHaveLength(1)
-    expect(groups[0]?.address).toBe('109 Tuscarora Trail')
+    expect(groups[0]?.address).toBe('109 Tamberline Trail')
     expect(groups[0]?.jobs.map((j) => j.id)).toEqual(['a', 'b'])
   })
 

@@ -55,7 +55,7 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   }
 }
 
-const one: OwnerRecordsSigned = { count: 1, first: { requestId: 'r1', jobId: 'j273', name: 'Umar Khan', address: '9703 Lenox Hl, San Antonio, TX', signedOn: '2026-10-06' } }
+const one: OwnerRecordsSigned = { count: 1, first: { requestId: 'r1', jobId: 'j273', name: 'Ulric Karrow', address: '9703 Linmor Hl, San Antonio, TX', signedOn: '2026-10-06' } }
 const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ ownerRecordsSignedEnabled: true, ...over })).find((i) => i.key === 'owner-records-signed')
 
 describe('owner-records-signed (punch list #86)', () => {
@@ -70,7 +70,7 @@ describe('owner-records-signed (punch list #86)', () => {
 
   it('names who signed and where, says how long they have waited, and opens their request', () => {
     const c = card({ ownerRecordsSigned: one })!
-    expect(c).toMatchObject({ severity: 'amber', kicker: 'Records for an owner', title: 'Umar Khan signed for the records on 9703 Lenox Hl, San Antonio, TX', figure: '1', actionLabel: 'Open their request' })
+    expect(c).toMatchObject({ severity: 'amber', kicker: 'Records for an owner', title: 'Ulric Karrow signed for the records on 9703 Linmor Hl, San Antonio, TX', figure: '1', actionLabel: 'Open their request' })
     expect(c.detail).toBe('Signed on their portal Oct 6. They have waited 3 days. Finish the checks in the window, then press Record it as sent and pick On their portal. Their Download opens when you do.')
   })
 
@@ -78,7 +78,7 @@ describe('owner-records-signed (punch list #86)', () => {
     expect(card({ ownerRecordsSigned: { ...one, first: { ...one.first, signedOn: '2026-10-09' } } })!.detail).toBe('Signed on their portal Oct 9. Finish the checks in the window, then press Record it as sent and pick On their portal. Their Download opens when you do.')
     const many = card({ ownerRecordsSigned: { ...one, count: 3, first: { ...one.first, signedOn: '2026-10-08', address: '' } } })!
     expect(many.title).toBe('3 owners signed for their records on their portal')
-    expect(many.detail.startsWith('The first is Umar Khan, on their property. Signed on their portal Oct 8. They have waited 1 day. ')).toBe(true)
+    expect(many.detail.startsWith('The first is Ulric Karrow, on their property. Signed on their portal Oct 8. They have waited 1 day. ')).toBe(true)
     expect(many).toMatchObject({ figure: '3', actionLabel: 'Open the first' })
   })
 

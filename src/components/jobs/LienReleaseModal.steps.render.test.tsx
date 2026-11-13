@@ -47,10 +47,10 @@ const bill2 = makeInvoice({ id: 'b2', status: 'billed', amount: 6700, sequence_o
 const job = makeJob({
   id: 'j650',
   hcp_number: '650',
-  job_name: 'ATI Schertz — As per plans',
-  customer_name: 'SCHERTZ STATION LTD',
-  gc_customer_id: 'gc-loberg',
-  gcCustomer: { id: 'gc-loberg', name: 'Loberg Contracting' },
+  job_name: 'AXO Schertz — As per plans',
+  customer_name: 'SAMPLE STATION LTD',
+  gc_customer_id: 'gc-lowbeck',
+  gcCustomer: { id: 'gc-lowbeck', name: 'Lowbeck Contracting' },
   master_user_id: 'master-1',
   invoices: [bill1, bill2],
   revenue: 33500,
@@ -88,7 +88,7 @@ const AWAITING = {
   minted_at: '2026-10-01T18:00:00Z',
   signature_requested_at: '2026-10-01T18:00:00Z',
   signer_user_id: 'master-1',
-  fields: { amount: '17777.51', companyName: 'Click Plumbing and Electrical', projectDescription: 'ATI Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
+  fields: { amount: '17777.51', companyName: 'Click Plumbing and Electrical', projectDescription: 'AXO Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
 }
 
 afterEach(() => {
@@ -110,9 +110,9 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     expect([1, 2, 3, 4, 5, 6].map((n) => step(n).getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'done', 'now', 'wait'])
     expect(step(5).getAttribute('aria-current')).toBe('step')
     expect(within(step(1)).getByRole('heading', { name: '1 · Pick the bills' })).toBeTruthy()
-    expect(within(step(6)).getByRole('heading', { name: '6 · Send it to Loberg Contracting' })).toBeTruthy()
+    expect(within(step(6)).getByRole('heading', { name: '6 · Send it to Lowbeck Contracting' })).toBeTruthy()
     expect(step(6).textContent).toContain('Opens once he signs')
-    expect((within(step(6)).getByRole('button', { name: 'Send to Loberg Contracting' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((within(step(6)).getByRole('button', { name: 'Send to Lowbeck Contracting' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('lien-release-where').textContent).toBe('You are on step 5 of 6 · Get it signed')
     // The page marks the part step 5 fills.
     expect(screen.getByTestId('lien-waiver-foot').textContent).toContain('5 · He signs here')
@@ -196,7 +196,7 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     fireEvent.click(step(4).querySelector('.lienStep-dot')!)
     await waitFor(() => expect(within(step(4)).getByTestId('lien-waiver-details')).toBeTruthy())
     expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBe('project')
-    expect(screen.getAllByTestId('lien-waiver-amount-mark')[0]?.textContent).toBe('ATI Schertz')
+    expect(screen.getAllByTestId('lien-waiver-amount-mark')[0]?.textContent).toBe('AXO Schertz')
     // Nothing in a looked-at step can change the waiver.
     expect(within(step(4)).queryByRole('button', { name: 'Change a detail' })).toBeNull()
     // Fold step 4: the mark goes back to step 3, still open.

@@ -106,7 +106,7 @@ Legal Desk or on `/map` as a layer.
 - PR 1: color Bexar for firm A and Travis for firm B on a local preview against prod, read-only; the
   rows land in `legal_firm_counties`; clicking Bexar again clears it; a county held by A shows A's
   name when B's card is open.
-- PR 2: The Learning Experience (Bee Cave, Travis) reads the Austin firm; Burd & Assoc. (Amarillo,
+- PR 2: The Reading Corner (Bee Cave, Travis) reads the Austin firm; Brund & Assoc. (Amarillo,
   Potter) reads *No firm covers Potter County*; a two-county account shows the switch. Never press
   *Mark attorney ready* on a live account — use a ZZ test customer with a Collections job.
 - PR 3: every pinned account opens the desk on itself; the legend's dollars add up to the desk's list

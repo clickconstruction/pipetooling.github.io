@@ -16,7 +16,7 @@ import GcStatementMarkSentForm from './GcStatementMarkSentForm'
 describe('GcStatementMarkSentForm', () => {
   it('defaults to a send by email and saves the picked channel with a trimmed note', () => {
     const onSave = vi.fn()
-    render(<GcStatementMarkSentForm gcName="Southern Post" actorName="Malachi" busy={false} onSave={onSave} onCancel={() => {}} />)
+    render(<GcStatementMarkSentForm gcName="Southern Pine" actorName="Malachi" busy={false} onSave={onSave} onCancel={() => {}} />)
     expect(screen.getByRole('radio', { name: 'Email' }).getAttribute('aria-checked')).toBe('true')
     fireEvent.click(screen.getByRole('radio', { name: 'Text' }))
     fireEvent.change(screen.getByLabelText('Note'), { target: { value: '  texted Dave the PDF  ' } })
@@ -26,7 +26,7 @@ describe('GcStatementMarkSentForm', () => {
 
   it('a contact needs a temperature and a sentence, then saves the contacted payload', () => {
     const onSave = vi.fn()
-    render(<GcStatementMarkSentForm gcName="Knight" actorName="Malachi" busy={false} onSave={onSave} onCancel={() => {}} />)
+    render(<GcStatementMarkSentForm gcName="Kestrin" actorName="Malachi" busy={false} onSave={onSave} onCancel={() => {}} />)
     fireEvent.click(screen.getByRole('radio', { name: 'Spoke with them · no statement' }))
     expect(screen.queryByRole('radio', { name: 'Email' })).toBeNull()
     expect(screen.getByRole('radio', { name: 'Call' }).getAttribute('aria-checked')).toBe('true')
@@ -47,7 +47,7 @@ describe('GcStatementMarkSentForm', () => {
     const onSave = vi.fn()
     render(
       <GcStatementMarkSentForm
-        gcName="Knight"
+        gcName="Kestrin"
         actorName="Taunya"
         actorId="u-taunya"
         wordSources={[
@@ -85,7 +85,7 @@ describe('GcStatementMarkSentForm', () => {
     const onSave = vi.fn()
     render(
       <GcStatementMarkSentForm
-        gcName="Knight"
+        gcName="Kestrin"
         actorName="Taunya"
         actorId="u-taunya"
         wordSources={[
@@ -114,7 +114,7 @@ describe('GcStatementMarkSentForm', () => {
       { jobId: 'j-fifth', label: '4450 · 310 E 5th', amount: 4349.49, promisedYmd: null },
     ]
     const open = (onSave = vi.fn()) => {
-      render(<GcStatementMarkSentForm gcName="Knight" actorName="Taunya" defaultAction="contacted" bills={bills} todayYmd="2026-09-27" busy={false} onSave={onSave} onCancel={() => {}} />)
+      render(<GcStatementMarkSentForm gcName="Kestrin" actorName="Taunya" defaultAction="contacted" bills={bills} todayYmd="2026-09-27" busy={false} onSave={onSave} onCancel={() => {}} />)
       return onSave
     }
 

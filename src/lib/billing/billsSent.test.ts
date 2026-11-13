@@ -15,9 +15,12 @@ import {
   billsSentLines,
   billsSentListHtml,
   billsSentPaidWords,
+  billsSentPhoneWords,
   billsSentRecord,
   billsSentRecordHtml,
   billsSentRecordPath,
+  byHandFiling,
+  byHandProblem,
   billsSentSumWords,
   billsSentTiles,
   canOpenBillsSent,
@@ -459,5 +462,87 @@ describe('billsSent — out of the app (PR 5)', () => {
     expect(html).toContain('<td class="when">Day only</td>')
     expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
     expect(html.indexOf('no send on record')).toBeLessThan(html.indexOf('Today · Thu, Nov 12'))
+  })
+})
+
+describe('billsSent — a record made by hand (PR 6)', () => {
+  const gap = { billId: BILL_A, jobId: JOB_A, jobWords: 'J1412 · Sable Ridge Lot 14' }
+  const draft = { how: 'handed' as const, toWhom: ' Hal Jensen, on site ', wentOnYmd: '2026-11-09', note: ' With the permit card. ' }
+
+  it('asks for what is missing, one thing at a time', () => {
+    expect(byHandProblem({ ...draft, how: '' }, '2026-11-12')).toBe('Pick how the bill went.')
+    expect(byHandProblem({ ...draft, toWhom: '  ' }, '2026-11-12')).toBe('Say who the bill went to.')
+    expect(byHandProblem({ ...draft, wentOnYmd: '' }, '2026-11-12')).toBe('Pick the day the bill went.')
+    expect(byHandProblem({ ...draft, wentOnYmd: '2026-11-13' }, '2026-11-12')).toBe('The day cannot be after today.')
+    expect(byHandProblem(draft, '2026-11-12')).toBe('')
+  })
+
+  it('files one sent copy with no addresses, the bill as its source and what was said', () => {
+    expect(byHandFiling(gap, draft)).toEqual({
+      kind: 'bill_by_hand',
+      title: 'Bill · J1412 · Sable Ridge Lot 14 · Handed over, recorded by hand',
+      how: 'hand',
+      recipientName: 'Hal Jensen, on site',
+      jobIds: [JOB_A],
+      source: { table: 'jobs_ledger_invoices', id: BILL_A },
+      sourceSnapshot: { by_hand: true, how: 'handed', went_on: '2026-11-09', note: 'With the permit card.' },
+    })
+    expect(byHandFiling(gap, { ...draft, how: 'mailed' }).how).toBe('mail')
+    expect(byHandFiling(gap, { ...draft, how: 'own_mailbox' }).how).toBe('email')
+    expect(byHandFiling(gap, { ...draft, how: 'housecall_pro' }).how).toBe('email')
+  })
+
+  it('reads the record as a line on the day it went, marked as someone\u2019s word, and closes the gap', () => {
+    const record = copy({
+      id: 'h1',
+      kind: 'bill_by_hand',
+      how: 'hand',
+      title: 'Bill · J1412 · Sable Ridge Lot 14 · Handed over, recorded by hand',
+      recipientName: 'Hal Jensen, on site',
+      recipientEmails: [],
+      copyPath: null,
+      copyHash: '',
+      sentAt: '2026-11-12T20:30:00.000Z',
+      sentByName: 'Priya',
+      sourceSnapshot: { by_hand: true, how: 'handed', went_on: '2026-11-09', note: 'With the permit card.' },
+      resendEmailId: null,
+    })
+    const data = input([record], {
+      unsent: [{ billId: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+      stamps: [{ billId: BILL_A, atIso: '2026-11-08T18:00:00.000Z', channel: 'housecallpro' }],
+    })
+    const lines = billsSentLines(data)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatchObject({ id: 'h1', route: 'by_hand', routeWords: 'Handed over', dayOnly: true, toName: 'Hal Jensen, on site', toAddresses: [], by: 'Priya', copy: null, amount: 4860, counts: true, nth: 1 })
+    expect(lines[0]!.note).toBe('Recorded by hand on Thu, Nov 12. The app sent nothing and kept no copy. With the permit card.')
+    expect(billsSentDays(lines, '2026-11-12').map((d) => d.label)).toEqual(['Mon, Nov 9'])
+    expect(billsSentGaps(data, lines)).toEqual({ open: [], paid: [] })
+    expect(billsSentFilter(lines, 'by_hand', '').map((l) => l.id)).toEqual(['h1'])
+  })
+})
+
+describe('billsSentPhoneWords — a line in three rows', () => {
+  it('names the work first and leaves the long bill number to the record', () => {
+    const [line] = billsSentLines(input([copy({})]))
+    expect(billsSentPhoneWords(line!)).toEqual({ main: 'J1412 · Sable Ridge Lot 14 · Sable Ridge Builders', to: 'To hal@sableridge.example', again: '' })
+  })
+
+  it('says which send it is, short, and the copy list with the address', () => {
+    const first = copy({ id: 'c1', sentAt: '2026-11-03T22:41:00.000Z' })
+    const second = copy({ id: 'c2', sentAt: '2026-11-12T17:02:00.000Z' })
+    const rider = copy({ id: 'c9', kind: 'bill_copy', recipientName: '', recipientEmails: ['pm@sableridge.example'], sentAt: '2026-11-12T17:02:03.000Z' })
+    const [line] = billsSentLines(input([second, rider, first]))
+    expect(billsSentPhoneWords(line!)).toEqual({ main: 'J1412 · Sable Ridge Lot 14 · Sable Ridge Builders', to: 'To hal@sableridge.example, copy to pm@sableridge.example', again: '2nd send' })
+  })
+
+  it('names the paper when the line is not a bill\u2019s, and the person when there is no address', () => {
+    const statement = copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s' })
+    const [s1] = billsSentLines(input([statement], { statements: new Map([['re_s', { resendEmailId: 're_s', total: 48210, jobCount: 12 }]]) }))
+    expect(billsSentPhoneWords(s1!)).toEqual({ main: 'Statement · 12 jobs · Ridgeway Builders', to: 'To billing@ridgeway.example', again: '' })
+    const byHand = copy({ id: 'h1', kind: 'bill_by_hand', how: 'hand', recipientName: 'Hal Jensen, on site', recipientEmails: [], copyPath: null, sourceSnapshot: { how: 'handed', went_on: '2026-11-09' } })
+    expect(billsSentPhoneWords(billsSentLines(input([byHand]))[0]!)).toMatchObject({ main: 'J1412 · Sable Ridge Lot 14 · Sable Ridge Builders', to: 'To Hal Jensen, on site' })
+    // A Housecall Pro day has nobody to name.
+    const [stamp] = billsSentLines(input([], { stamps: [{ billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' }] }))
+    expect(billsSentPhoneWords(stamp!)).toEqual({ main: 'J1398 · Larkfield Clinic · Larkfield Construction', to: '', again: '' })
   })
 })

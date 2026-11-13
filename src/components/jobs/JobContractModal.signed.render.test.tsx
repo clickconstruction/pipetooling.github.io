@@ -47,14 +47,14 @@ vi.mock('../../lib/supabase', async () => {
 
 afterEach(cleanup)
 
-const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmer@example.com', customer_phone: '512-555-0100', revenue: 31400 })
+const job = makeJob({ id: 'j1', hcp_number: '363', job_name: 'Michael Palvern', customer_name: 'Michael Palvern', customer_email: 'palvern@example.com', customer_phone: '512-555-0100', revenue: 31400 })
 const signedRow = (p: Record<string, unknown> = {}) => ({
   id: 'c1', job_id: 'j1', status: 'signed', revision: 2, fields: { scope_lines: ['Water heater'], amount_cents: 3_140_000, payment_terms_key: 'half_down', payment_terms_text: '' },
   body_html: '1. Scope. The work.\n2. Payment. Half down.', body_format: 'plain', template_name: 'Service agreement', template_document_id: null, template_version_date: '2026-09-01',
-  recipient_name: 'Michael Palmer', recipient_email: 'palmer@example.com', recipient_phone: null, cc_emails: [],
+  recipient_name: 'Michael Palvern', recipient_email: 'palvern@example.com', recipient_phone: null, cc_emails: [],
   public_token: 'tok', public_token_expires_at: '2026-12-20T00:00:00Z', sent_at: '2026-09-20T15:00:00Z', last_sent_at: '2026-09-20T15:00:00Z', send_count: 1, first_viewed_at: '2026-09-20T16:00:00Z', last_viewed_at: '2026-09-20T16:00:00Z', view_count: 2,
   reminders_enabled: true, reminder_count: 0, next_reminder_at: null,
-  signed_at: '2026-09-21T14:30:00Z', signer_mode: 'draw', signer_printed_name: 'Michael Palmer', signer_consented_at: '2026-09-21T14:29:00Z', signer_ip: '203.0.113.9', signer_user_agent: 'Mozilla/5.0 (iPhone) AppleWebKit Safari/604.1',
+  signed_at: '2026-09-21T14:30:00Z', signer_mode: 'draw', signer_printed_name: 'Michael Palvern', signer_consented_at: '2026-09-21T14:29:00Z', signer_ip: '203.0.113.9', signer_user_agent: 'Mozilla/5.0 (iPhone) AppleWebKit Safari/604.1',
   signer_signature_storage_path: 'sig/c1.png', signed_pdf_path: 'pdf/c1.pdf', paper_upload_path: null, signed_document_url: null, paper_signed_on: null,
   voided_at: null, sent_channel: null, created_at: '2026-09-20T14:00:00Z', updated_at: '2026-09-21T14:30:00Z',
   ...p,
@@ -65,8 +65,8 @@ describe('JobContractModal — the signed state', () => {
     rowsState.current = [signedRow()]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     const rail = await screen.findByTestId('contract-signed-rail')
-    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palmer$/)
-    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Signed by Michael Palmer')
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palvern$/)
+    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Signed by Michael Palvern')
     expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Drawn on their phone')
     expect(within(rail).getByTestId('contract-signed-email').textContent).toContain('Email a copy…')
     expect(within(rail).getByTestId('contract-signed-copy-link')).toBeTruthy()
@@ -76,7 +76,7 @@ describe('JobContractModal — the signed state', () => {
     await waitFor(() => expect(screen.getByTestId('contract-signed-pdf').getAttribute('href')).toBe('https://files.example/sig.png'))
     // the paper is read-only and signed
     const paper = screen.getByTestId('contract-paper')
-    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Michael Palmer')
+    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Michael Palvern')
     expect(within(paper).getByTestId('paper-signature').textContent).toContain('Signed electronically')
     expect(within(paper).queryByTestId('paper-scope-textarea')).toBeNull()
     expect(screen.queryByTestId('contract-rail')).toBeNull()
@@ -95,10 +95,10 @@ describe('JobContractModal — the signed state', () => {
     rowsState.current = [
       signedRow({
         signed_at: '2026-09-21T14:45:00Z',
-        co_signer_name: 'Grace Palmer',
+        co_signer_name: 'Grace Palvern',
         co_signer_email: 'grace@example.com',
         co_signed_at: '2026-09-21T14:45:00Z',
-        co_signer_printed_name: 'Grace Palmer',
+        co_signer_printed_name: 'Grace Palvern',
         co_signer_mode: 'type',
         co_signer_consented_at: '2026-09-21T14:45:00Z',
         co_signer_signature_storage_path: null,
@@ -106,12 +106,12 @@ describe('JobContractModal — the signed state', () => {
     ]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     const rail = await screen.findByTestId('contract-signed-rail')
-    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palmer and Grace Palmer$/)
-    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Signed by Michael Palmer and Grace Palmer')
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palvern and Grace Palvern$/)
+    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Signed by Michael Palvern and Grace Palvern')
     // the paper's first frame carries its own signing time (9:29 AM), not the agreement's (9:45 AM)
     const sig = within(screen.getByTestId('contract-paper')).getByTestId('paper-signature').textContent ?? ''
-    expect(sig).toContain('Signed electronically by Michael Palmer (drawn) · Sep 21, 2026, 9:29 AM CT')
-    expect(sig).toContain('Signed electronically by Grace Palmer (typed) · Sep 21, 2026, 9:45 AM CT')
+    expect(sig).toContain('Signed electronically by Michael Palvern (drawn) · Sep 21, 2026, 9:29 AM CT')
+    expect(sig).toContain('Signed electronically by Grace Palvern (typed) · Sep 21, 2026, 9:45 AM CT')
     // Print / save as PDF: the record with both blocks, as the stored PDF has them
     fireEvent.click(within(rail).getByRole('button', { name: 'Print / save as PDF' }))
     expect(printed.current).toHaveLength(1)
@@ -119,18 +119,18 @@ describe('JobContractModal — the signed state', () => {
     expect(html).toContain('Customer signature')
     expect(html).toContain('<h2>Second signature</h2>')
     expect(html.match(/class="frame"/g)).toHaveLength(2)
-    expect(html).toContain('<div class="mark">Grace Palmer</div>')
+    expect(html).toContain('<div class="mark">Grace Palvern</div>')
     expect(html).toContain('Sep 21, 2026, 9:29 AM CT')
     expect(html).toContain('Sep 21, 2026, 9:45 AM CT')
   })
 
   it('a paper record whose draft named a second signer: one Signed on paper block, no open "signs here" frame beside it (v2.4590)', async () => {
-    rowsState.current = [signedRow({ signer_mode: 'paper', public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signer_signature_storage_path: null, signed_pdf_path: null, signer_ip: null, signer_user_agent: null, signer_consented_at: null, signer_printed_name: 'Michael Palmer and Grace Palmer', co_signer_name: 'Grace Palmer' })]
+    rowsState.current = [signedRow({ signer_mode: 'paper', public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signer_signature_storage_path: null, signed_pdf_path: null, signer_ip: null, signer_user_agent: null, signer_consented_at: null, signer_printed_name: 'Michael Palvern and Grace Palvern', co_signer_name: 'Grace Palvern' })]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     const rail = await screen.findByTestId('contract-signed-rail')
-    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Michael Palmer and Grace Palmer')
+    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Michael Palvern and Grace Palvern')
     const paper = screen.getByTestId('contract-paper')
-    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Signed on paper by Michael Palmer and Grace Palmer')
+    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Signed on paper by Michael Palvern and Grace Palvern')
     expect(within(paper).queryByTestId('paper-cosigner-frame')).toBeNull()
   })
 
@@ -138,20 +138,20 @@ describe('JobContractModal — the signed state', () => {
     rowsState.current = [
       signedRow({
         signer_mode: 'paper', public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signer_signature_storage_path: null, signed_pdf_path: null, signer_ip: null, signer_user_agent: null, signer_consented_at: null,
-        signer_printed_name: 'Michael Palmer', paper_signed_on: '2026-09-21', signed_at: '2026-09-21T12:00:00Z',
-        co_signer_name: 'Grace Palmer', co_signed_at: '2026-09-21T12:00:00Z', co_signer_printed_name: 'Grace Palmer', co_signer_mode: 'paper', co_signer_consented_at: null, co_signer_signature_storage_path: null,
+        signer_printed_name: 'Michael Palvern', paper_signed_on: '2026-09-21', signed_at: '2026-09-21T12:00:00Z',
+        co_signer_name: 'Grace Palvern', co_signed_at: '2026-09-21T12:00:00Z', co_signer_printed_name: 'Grace Palvern', co_signer_mode: 'paper', co_signer_consented_at: null, co_signer_signature_storage_path: null,
       }),
     ]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     const rail = await screen.findByTestId('contract-signed-rail')
-    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palmer and Grace Palmer$/)
-    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Michael Palmer and Grace Palmer')
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Signed .* · Michael Palvern and Grace Palvern$/)
+    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Michael Palvern and Grace Palvern')
     const paper = screen.getByTestId('contract-paper')
-    expect(paper.textContent).toContain('for Michael Palmer and Grace Palmer')
+    expect(paper.textContent).toContain('for Michael Palvern and Grace Palvern')
     const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
-    expect(sig).toContain('✍ Michael Palmer and Grace Palmer')
+    expect(sig).toContain('✍ Michael Palvern and Grace Palvern')
     // v2.4876: a Signed on day reads as the day they signed, with no time nobody recorded.
-    expect(sig).toContain('Signed on paper by Michael Palmer and Grace Palmer on Sep 21, 2026')
+    expect(sig).toContain('Signed on paper by Michael Palvern and Grace Palvern on Sep 21, 2026')
     expect(sig).not.toContain('7:00 AM')
     const banner = within(rail).getByTestId('contract-signed-banner').textContent ?? ''
     expect(banner).toContain('· Sep 21, 2026')
@@ -164,18 +164,18 @@ describe('JobContractModal — the signed state', () => {
     rowsState.current = [
       signedRow({
         signer_mode: 'paper', public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signer_signature_storage_path: null, signed_pdf_path: null, signer_ip: null, signer_user_agent: null, signer_consented_at: null,
-        signer_printed_name: 'Michael Palmer', paper_signed_on: '2026-09-21', signed_at: '2026-09-21T12:00:00Z',
-        co_signer_name: 'Grace Palmer', co_signed_at: '2026-09-20T17:00:00Z', co_signer_printed_name: 'Grace Palmer', co_signer_mode: 'draw', co_signer_consented_at: '2026-09-20T17:00:00Z', co_signer_signature_storage_path: 'sig/c1-co.png',
+        signer_printed_name: 'Michael Palvern', paper_signed_on: '2026-09-21', signed_at: '2026-09-21T12:00:00Z',
+        co_signer_name: 'Grace Palvern', co_signed_at: '2026-09-20T17:00:00Z', co_signer_printed_name: 'Grace Palvern', co_signer_mode: 'draw', co_signer_consented_at: '2026-09-20T17:00:00Z', co_signer_signature_storage_path: 'sig/c1-co.png',
       }),
     ]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     await screen.findByTestId('contract-signed-rail')
-    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palmer and Grace Palmer$/)
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palvern and Grace Palvern$/)
     const paper = screen.getByTestId('contract-paper')
     const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
-    expect(sig).toContain('Signed on paper by Michael Palmer on Sep 21, 2026')
-    expect(sig).not.toContain('Signed on paper by Michael Palmer and Grace Palmer')
-    expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed electronically by Grace Palmer (drawn) · Sep 20, 2026, 12:00 PM CT')
+    expect(sig).toContain('Signed on paper by Michael Palvern on Sep 21, 2026')
+    expect(sig).not.toContain('Signed on paper by Michael Palvern and Grace Palvern')
+    expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed electronically by Grace Palvern (drawn) · Sep 20, 2026, 12:00 PM CT')
   })
 
   it('a paper filed after the first signer signed through the link (v2.5101): the link signature keeps its mark, the paper’s signer has their own, and the rail reads the paper', async () => {
@@ -183,21 +183,21 @@ describe('JobContractModal — the signed state', () => {
       signedRow({
         public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signed_pdf_path: null, sent_channel: 'pdf_email',
         paper_signed_on: '2026-09-22', signed_at: '2026-09-22T12:00:00Z',
-        co_signer_name: 'Grace Palmer', co_signed_at: '2026-09-22T12:00:00Z', co_signer_printed_name: 'Grace Palmer', co_signer_mode: 'paper', co_signer_consented_at: null, co_signer_signature_storage_path: null,
+        co_signer_name: 'Grace Palvern', co_signed_at: '2026-09-22T12:00:00Z', co_signer_printed_name: 'Grace Palvern', co_signer_mode: 'paper', co_signer_consented_at: null, co_signer_signature_storage_path: null,
       }),
     ]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
     const rail = await screen.findByTestId('contract-signed-rail')
-    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palmer and Grace Palmer$/)
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palvern and Grace Palvern$/)
     const banner = within(rail).getByTestId('contract-signed-banner').textContent ?? ''
-    expect(banner).toContain('Michael Palmer and Grace Palmer')
+    expect(banner).toContain('Michael Palvern and Grace Palvern')
     expect(banner).toContain('One signed on their phone, one on paper · filed as a Google Doc')
     expect(within(rail).getByRole('link', { name: /Open the signed Google Doc/ })).toBeTruthy()
     expect(within(rail).queryByRole('button', { name: 'Print / save as PDF' })).toBeNull()
     const paper = screen.getByTestId('contract-paper')
     const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
-    expect(sig).toContain('Signed electronically by Michael Palmer (drawn) · Sep 21, 2026, 9:29 AM CT · consent recorded')
-    expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed on paper by Grace Palmer on Sep 22, 2026')
+    expect(sig).toContain('Signed electronically by Michael Palvern (drawn) · Sep 21, 2026, 9:29 AM CT · consent recorded')
+    expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed on paper by Grace Palvern on Sep 22, 2026')
     expect(within(paper).queryByTestId('paper-cosigner-frame')).toBeNull()
   })
 
@@ -215,7 +215,7 @@ describe('JobContractModal — the signed state', () => {
     expect(within(paper).getByTestId('paper-filed-note').textContent).toContain('the Google Doc filed with this record is the agreement')
     expect(within(paper).queryByText('Scope as discussed.')).toBeNull()
     expect(within(paper).queryByTestId('contract-terms-row')).toBeNull()
-    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Signed on paper by Michael Palmer')
+    expect(within(paper).getByTestId('paper-signature').textContent).toContain('Signed on paper by Michael Palvern')
     expect(screen.queryByRole('button', { name: 'Open full size' })).toBeNull()
   })
 
@@ -226,14 +226,14 @@ describe('JobContractModal — the signed state', () => {
         open
         onClose={() => undefined}
         job={job}
-        coverage={{ kind: 'signed', source: 'estimate', signedAt: '2026-09-18T12:00:00Z', signerName: 'Michael Palmer', contractId: null, estimateNumber: 412, estimateId: 'e1' }}
+        coverage={{ kind: 'signed', source: 'estimate', signedAt: '2026-09-18T12:00:00Z', signerName: 'Michael Palvern', contractId: null, estimateNumber: 412, estimateId: 'e1' }}
       />,
     )
     const rail = await screen.findByTestId('contract-signed-rail')
     expect(screen.getByTestId('contract-acceptance-record')).toBeTruthy()
     expect(screen.queryByTestId('contract-paper')).toBeNull()
     expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/^✍ Accepted /)
-    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Accepted by Michael Palmer')
+    expect(within(rail).getByTestId('contract-signed-banner').textContent).toContain('Accepted by Michael Palvern')
     expect(within(rail).getByTestId('contract-signed-open-estimate').textContent).toBe('Open estimate #412')
     expect(within(rail).getByTestId('contract-signed-email')).toBeTruthy()
     // the draft's signing rail stays away while the acceptance is the agreement

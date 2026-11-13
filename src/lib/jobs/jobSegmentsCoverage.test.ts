@@ -486,8 +486,8 @@ describe('v2.3775 — dollarCoverageForSegments nets a partly paid billed line',
 
 describe('v2.5102 — a returned check fee is its bill’s own line, never covered work', () => {
   const FEE = { description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount: 30, case_id: 'mtx-sp' }
-  // Southern Post: bill 1 bills the $13,680 rough-in and carries the $30 fee; the $2,000 Final is not billed.
-  const southernPost = (bill1Status: 'billed' | 'paid') =>
+  // Southern Pine: bill 1 bills the $13,680 rough-in and carries the $30 fee; the $2,000 Final is not billed.
+  const southernPine = (bill1Status: 'billed' | 'paid') =>
     buildJobSegmentsBar({
       fixtures: [
         line({ id: 'rough', name: 'Rough-in', line_unit_price: 13_680, invoice_id: 'inv-878' }),
@@ -499,7 +499,7 @@ describe('v2.5102 — a returned check fee is its bill’s own line, never cover
 
   it('the fee on an open bill covers nothing on the Final line, and $2,000 is left to bill', () => {
     const coverage = dollarCoverageForSegments({
-      segments: southernPost('billed'),
+      segments: southernPine('billed'),
       grossDollars: 15_710,
       paidDollars: 0,
       invoices: [{ id: 'inv-878', status: 'billed', amount: 13_710, fee_lines: [FEE] }],
@@ -509,7 +509,7 @@ describe('v2.5102 — a returned check fee is its bill’s own line, never cover
 
   it('once the new check pays bill 1, fee included, the Final line is still uncovered', () => {
     const coverage = dollarCoverageForSegments({
-      segments: southernPost('paid'),
+      segments: southernPine('paid'),
       grossDollars: 15_710,
       paidDollars: 13_710,
       invoices: [{ id: 'inv-878', status: 'paid', amount: 13_710, fee_lines: [FEE] }],
@@ -543,7 +543,7 @@ describe('v2.5102 — a returned check fee is its bill’s own line, never cover
 
   it('a fee line that names no case is not a returned check fee and stays spoken-for money', () => {
     const coverage = dollarCoverageForSegments({
-      segments: southernPost('billed'),
+      segments: southernPine('billed'),
       grossDollars: 15_710,
       paidDollars: 0,
       invoices: [{ id: 'inv-878', status: 'billed', amount: 13_710, fee_lines: [{ description: 'Other', amount: 30 }] }],

@@ -20,8 +20,30 @@ The strip is a door. You click anywhere on the strip. The link at the strip's ri
 - **The receipts**: you click any customer row and their story unfolds in two halves. ***Owes now — by job*** lists each open bill with its wait clock and dollars, straight into the job. *Paid before — the payments behind the median* shows when they owe something now. Each payment is a row: a {{chip:green|+8}} pill, then *05/01–05/09*, then the job. That one means billed May 1, and the money hit May 9, eight days later. Tap a row to open its job. Green is at or under the company median. Amber is above it. Red is twice it or more. So one glance shows whether a median is built on steady habits or one slow outlier. A customer with none says why: *No invoice-linked payments in the last 12 months — nothing measurable yet.*
 
 :::example Who's actually slow?
-The Comm median says ~25d — but the breakdown shows that's Knight Contracting at ~25d with $16,893 open, while TF Harper runs ~44d with $2,918 open. One number was hiding two very different customers.
+The Comm median says ~25d — but the breakdown shows that's Kestrin Contracting at ~25d with $16,893 open, while TF Halden runs ~44d with $2,918 open. One number was hiding two very different customers.
 :::
+
+## A customer on a pay calendar
+
+Some customers pay on a set day of the month. A count of days cannot judge them. A bill in on the 1st and a bill in on the 30th are paid the same day.
+
+So **Money waiting** reads their bills against the calendar.
+
+- The row leads with how far past expected their worst bill is, like *37d past expected*.
+- The small line under it reads *pay calendar · lands ~6d after the pay day*.
+- Each bill names its due day, like *due Oct 10 · 37d past expected*.
+
+A bill is green until its expected day. The expected day is the due day plus how late they usually run. A bill past it is amber. A bill 30 days past it has missed a whole pay run, and is red.
+
+A customer with every bill still ahead of its expected day is on pace. Their bills fold into the quiet line at the bottom.
+
+:::example The same three bills, read two ways
+Larkfield Construction pays the 10th of the next month. Their money usually lands 6 days after.
+By the wait, a bill in on Oct 20 looks 33 days slow on Nov 22.
+**By the calendar it is due Nov 30, and nothing is late.**
+:::
+
+You set the calendar on the customer. See [set a payer's pay calendar](/help/set-a-payers-pay-calendar).
 
 ## More on pay speed
 

@@ -1,5 +1,5 @@
 /**
- * The Questions look (v2.6214, the owner on the Gun Dog page: *these could just be buttons, and if there
+ * The Questions look (v2.6214, the owner on the Gray Fox page: *these could just be buttons, and if there
  * are outstanding questions then they should show up in tables below*). Two presses at the top, one per
  * lane, always there; under them one table per lane that has questions, the open ones first and oldest
  * first, the answered ones folded under a count. The Waiting tile keeps its kinds (the customer's

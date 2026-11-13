@@ -100,7 +100,7 @@ export function useQuickfillSectionMetric(sectionId: string): QuickfillSectionMe
  * Registers backlog count for a Quickfill section; clears on unmount. No-ops when used outside a provider (e.g. Schedule Dispatch Day tab).
  * `markNote` (v2.5825) is the note the Mark writes when nobody typed one: a station with no box, the Physical inbox deck,
  * says its day in words (*2 undecided · oldest 4 d · 1 task · 1 filed*). `nextLine` (v2.5839) is the first row to act on
- * and its verb, *Lean on TF Harper · $29,323 · 38 days*. They ride the same call so one cleanup clears all three.
+ * and its verb, *Lean on TF Halden · $29,323 · 38 days*. They ride the same call so one cleanup clears all three.
  */
 export function useReportQuickfillSectionMetric(
   sectionId: string,

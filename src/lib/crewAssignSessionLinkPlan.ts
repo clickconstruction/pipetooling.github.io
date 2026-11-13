@@ -90,7 +90,7 @@ export function crewLinkButtonLabel(state: Extract<CrewAssignCellState, { kind: 
   return `Link ${n} ${n === 1 ? 'session' : 'sessions'} (${formatCrewLinkHours(state.unlinkedHours)})`
 }
 
-/** Toast after a link: "Linked 2 sessions (3.40 h) to J523 · Mission Hills — split recomputed from the clock". */
+/** Toast after a link: "Linked 2 sessions (3.40 h) to J523 · Mission Flats — split recomputed from the clock". */
 export function crewLinkSuccessMessage(count: number, hours: number, pickLabel: string): string {
   return `Linked ${count} ${count === 1 ? 'session' : 'sessions'} (${formatCrewLinkHours(hours)}) to ${pickLabel} — split recomputed from the clock`
 }

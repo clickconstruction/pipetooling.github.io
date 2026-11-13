@@ -3,7 +3,7 @@ import { resolveSignerName } from './signerNameField'
 
 describe('resolveSignerName', () => {
   it('takes the box over the state when they differ (AutoFill wrote without an event)', () => {
-    expect(resolveSignerName('', 'Kimberly Coe')).toEqual({ name: 'Kimberly Coe', drifted: true })
+    expect(resolveSignerName('', 'Kimberly Corl')).toEqual({ name: 'Kimberly Corl', drifted: true })
   })
   it('trims, and reports no drift when the box and the state agree', () => {
     expect(resolveSignerName('  Dana Ruiz ', '  Dana Ruiz ')).toEqual({ name: 'Dana Ruiz', drifted: false })

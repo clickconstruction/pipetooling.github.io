@@ -33,7 +33,7 @@ describe('parsePortalRequestPayload', () => {
     const p = parsePortalRequestPayload({
       source: 'customer_portal',
       kind: 'gc_stage_ask',
-      gcName: 'Knight Contracting',
+      gcName: 'Kestrin Contracting',
       start: '2026-09-15',
       end: '2026-09-17',
       note: 'framing slipped a week',
@@ -41,7 +41,7 @@ describe('parsePortalRequestPayload', () => {
       phoneSource: 'on_file',
     })
     expect(p?.kind).toBe('gc_stage_ask')
-    expect(p?.customerName).toBe('Knight Contracting')
+    expect(p?.customerName).toBe('Kestrin Contracting')
     expect(p?.availability).toBe('2026-09-15 → 2026-09-17')
     expect(p?.description).toBe('framing slipped a week')
     expect(p?.phone).toBeNull()
@@ -52,8 +52,8 @@ describe('parsePortalRequestPayload', () => {
       source: 'portal',
       kind: 'share_bill_ask',
       customerId: 'gc-1',
-      customerName: 'Done Right Foundation',
-      description: 'Done Right Foundation asks to be billed for J1017 · 4410 Cedar Hollow ($4,420.00) instead of Maria Delgado.',
+      customerName: 'Dead Level Foundation',
+      description: 'Dead Level Foundation asks to be billed for J1017 · 4410 Cedar Hollow ($4,420.00) instead of Maria Delgado.',
       ask: 'bill_me',
       jobNumber: '1017',
       amount: 4420,
@@ -62,7 +62,7 @@ describe('parsePortalRequestPayload', () => {
       phoneSource: 'on_file',
     })!
     expect(p.kind).toBe('share_bill_ask')
-    expect(p.customerName).toBe('Done Right Foundation')
+    expect(p.customerName).toBe('Dead Level Foundation')
     expect(p.description).toMatch(/asks to be billed for J1017/)
     expect(p.phoneSource).toBe('on_file')
     expect(p.availability).toBeNull()

@@ -204,7 +204,7 @@ describe('buildSubOffers', () => {
           labor_job_id: 'sheet-1',
           offer_scope_snapshot: {
             anchor: 'sheet',
-            sheetLabel: 'J977 · 415 Springtown Way',
+            sheetLabel: 'J977 · 415 Stonewick Way',
             lines: [{ label: 'Fixtures per plans', amount: null }],
             startsLabel: 'Starts Sep 15 → Sep 26',
             exclusions: ['Sales tax'],
@@ -217,7 +217,7 @@ describe('buildSubOffers', () => {
       ],
       TODAY,
     )
-    expect(o!.title).toBe('J977 · 415 Springtown Way')
+    expect(o!.title).toBe('J977 · 415 Stonewick Way')
     expect(o!.anchor).toBe('sheet')
     expect(o!.exclusions).toEqual(['Sales tax'])
     expect(o!.references).toEqual([

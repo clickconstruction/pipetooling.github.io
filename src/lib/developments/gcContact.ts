@@ -1,5 +1,5 @@
 /**
- * The GC contact, edited in place on the Development page (the Gun Dog spike, 2026-11-02). The head reads
+ * The GC contact, edited in place on the Development page (the Gray Fox spike, 2026-11-02). The head reads
  * the contact off the newest bid that names one (`sitePeople`), and until now the only way to add or change
  * it was that bid's Edit tab. The sheet writes the three fields onto every bid of the site that carries no
  * contact or carries the one being changed, so the head reads it whichever bid is newest and no bid keeps a

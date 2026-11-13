@@ -33,9 +33,9 @@ const BLOCK = {
   jobId: 'job-1',
   hcpNumber: '951',
   clickNumber: null,
-  jobName: 'Shearer Pinpoint',
+  jobName: 'Shellan Pinpoint',
   jobAddress: '717 Trinity St',
-  customerName: 'Laura Shearer',
+  customerName: 'Laura Shellan',
   serviceTypeName: 'Plumbing',
 }
 
@@ -54,7 +54,7 @@ describe('ManagePersonDayModal', () => {
   it('lists the day blocks with edit/remove and the crew badge', async () => {
     fetchDayBlocks.mockResolvedValue({ data: [BLOCK], error: null })
     renderWithProviders(<ManagePersonDayModal {...makeProps()} />)
-    await waitFor(() => expect(screen.getByText('951 · Shearer Pinpoint')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('951 · Shellan Pinpoint')).toBeTruthy())
     expect(screen.getByText('Gate code 4482')).toBeTruthy()
     expect(screen.getByText('⛓ linked crew')).toBeTruthy()
     expect(screen.getByLabelText('Edit 951 block')).toBeTruthy()
@@ -65,7 +65,7 @@ describe('ManagePersonDayModal', () => {
   it('renders the four ±30 nudge chips per block, crew-aware tooltips (v2.1817)', async () => {
     fetchDayBlocks.mockResolvedValue({ data: [BLOCK], error: null })
     renderWithProviders(<ManagePersonDayModal {...makeProps()} />)
-    await waitFor(() => expect(screen.getByText('951 · Shearer Pinpoint')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('951 · Shellan Pinpoint')).toBeTruthy())
     const shiftBack = screen.getByLabelText('Shift the whole block 30 minutes earlier for 951')
     expect(shiftBack.title).toContain('whole crew moves together')
     expect(screen.getByLabelText('Shift the whole block 30 minutes later for 951')).toBeTruthy()

@@ -19,7 +19,7 @@ describe('fillAiaG702G703Workbook', () => {
     const out = await fillAiaG702G703Workbook(templateAb, {
       g702_n6_period_to: 'March 31st 2026',
       g703_k3_application_date: 'Wed, Apr 23, 2026, 12:00 PM CDT',
-      g703_k2_project: 'Mission Hills Park: Phase 2',
+      g703_k2_project: 'Mission Flats Park: Phase 2',
       g703_k5_architect_project_no: '240393cz',
     })
 
@@ -227,7 +227,7 @@ describe('fillAiaG702G703Workbook', () => {
     const out = await fillAiaG702G703Workbook(templateAb, {
       g702_n6_period_to: 'March 31st 2026',
       g703_k3_application_date: 'Wed, Apr 23, 2026, 12:00 PM CDT',
-      g703_k2_project: 'Mission Hills Park: Phase 2',
+      g703_k2_project: 'Mission Flats Park: Phase 2',
       g703_k5_architect_project_no: '240393cz',
     })
 

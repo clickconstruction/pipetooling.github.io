@@ -23,8 +23,8 @@ const matches = matchFileToRows(read, rows, parts)
 describe('SubmittalHouseFileModal', () => {
   it('a card per tag: where it lands, each file part with its pages and what it takes the place of; the row’s parts the file does not carry', () => {
     const onApply = vi.fn<(c: FileTagChoice[], h: string | null) => void>()
-    render(<SubmittalHouseFileModal fileName="SPACEX BA-2 CORE & SHELL.pdf" read={read} matches={matches} rows={rows} partsByItem={parts} houses={[{ id: 'h-nws', name: 'National Wholesale' }]} houseId={null} onApply={onApply} onClose={() => {}} />)
-    expect(screen.getByRole('dialog', { name: 'What SPACEX BA-2 CORE & SHELL.pdf says' })).toBeTruthy()
+    render(<SubmittalHouseFileModal fileName="SKYLAB BA-2 CORE & SHELL.pdf" read={read} matches={matches} rows={rows} partsByItem={parts} houses={[{ id: 'h-nws', name: 'National Wholesale' }]} houseId={null} onApply={onApply} onClose={() => {}} />)
+    expect(screen.getByRole('dialog', { name: 'What SKYLAB BA-2 CORE & SHELL.pdf says' })).toBeTruthy()
     const cards = screen.getAllByTestId('house-file-tag')
     expect(cards).toHaveLength(10)
     const lav2 = cards.find((c) => c.textContent?.startsWith('LAV-2'))!
@@ -62,7 +62,7 @@ describe('SubmittalHouseFileModal', () => {
   })
   it('2026-10-04 · choices changed and not applied: a click outside asks first; untouched, Esc closes at once', () => {
     const onClose = vi.fn()
-    const props = { fileName: 'SPACEX BA-2 CORE & SHELL.pdf', read, matches, rows, partsByItem: parts, houses: [{ id: 'h-nws', name: 'National Wholesale' }], houseId: null, onApply: () => {}, onClose }
+    const props = { fileName: 'SKYLAB BA-2 CORE & SHELL.pdf', read, matches, rows, partsByItem: parts, houses: [{ id: 'h-nws', name: 'National Wholesale' }], houseId: null, onApply: () => {}, onClose }
     const { unmount } = render(<SubmittalHouseFileModal {...props} />)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
