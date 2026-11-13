@@ -36,8 +36,8 @@
  * gone Oct 15*, and a filed lien whose copies are not served asks *Serve the
  * affidavit* by its fifth day.
  */
-import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
-import { billedPayModel } from './billedDuePay'
+import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
 import { usuallyLandsShort, usuallyLandsWords, type PayCalendar } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
@@ -124,7 +124,7 @@ export type BilledDatesLedger = {
 export type BilledDatesLedgerInput = {
   todayYmd: string
   /** Null on a job-shell row (no bill line). */
-  row: ExpectedPayRowInput | null
+  row: BilledPayRowInput | null
   data: PaySpeedData | null
   /** The GC facts and the GC pace here for this bill (v2.6034, `paceInputFor`); null or absent reads the payer as one that is not a GC. */
   pace?: ExpectedPayPaceInput | null

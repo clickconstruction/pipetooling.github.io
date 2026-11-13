@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/pay_calendar against a throwaway copy of the WHOLE schema (Pay calendar, punch list #323 PR 1:
-# the payer_pay_calendars table and set_payer_pay_calendar).
+# the payer_pay_calendars table and set_payer_pay_calendar; PR 4: invoice_payer_acceptances and
+# set_invoice_payer_accepted_on).
 #
 #   npm run test:pg:pay-calendar
 #
 # The same bed as scripts/pgtest-job-people.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then the pay calendar migration a second time, which must change nothing. The scenario, inside one
+# applied in order, then the two pay calendar migrations a second time, which must change nothing. The scenario, inside one
 # transaction that rolls back: the office sets a payer's calendar and the row stamps who set it, a second set replaces
 # the one row, a job carries its own row or an off switch, clearing removes one row and leaves the rest, the
 # billed-money roles read the table and a subcontractor reads nothing, a subcontractor, a primary and a read-only account cannot
@@ -19,7 +20,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55615}"
 NAME="pgtest-pay-calendar"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_payer_pay_calendars.sql)"
+WRITES="$(ls supabase/migrations/*_payer_pay_calendars.sql supabase/migrations/*_invoice_payer_acceptances.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -37,7 +38,7 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: IF NOT EXISTS on the table and its indexes, DROP POLICY IF EXISTS, CREATE OR REPLACE.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+for w in $WRITES; do psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }; done
 out="$(psql_as postgres -f - < supabase/tests/pay_calendar/20_scenario.sql 2>&1 || true)"
 if ! grep -q "pay_calendar PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
