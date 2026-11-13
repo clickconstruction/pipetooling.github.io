@@ -1,8 +1,8 @@
 ---
 name: "A site's materials on one screen: every part across the site's jobs, with the boxes that hold it"
 number: 330
-group: gated
-status: asked 2026-11-12 · the card and the mock-up the same day · nothing built · waits on Grace's go and her calls
+group: close
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PRs 2 to 5 stacked behind it
 mockup: to-dos/site-materials-view/mockup.html
 summary: >
   A company manager cannot see all the material on a site on a screen. The desk is one row per job
@@ -15,10 +15,11 @@ summary: >
   hold it. Two spellings of the same words are one row by themselves. Two names that are nearly
   the same ask a person once, Same part or Different, and a name never folds by closeness alone.
   The first PR needs no migration.
-next: Grace's go and her six calls, then PR 1 (the screen, read only, no migration), then a look at it on the real site before anything else.
+next: PRs 2 to 5 merge in order behind PR 1; PR 3's migration is pushed right after its merge. Then Grace's look at the screen on the real site.
 size: L as a train of five (M · S · M · M · S); PR 1 is the whole screen, then a stop to look at it on the site
-blocker: Grace's go, and her calls on where it lives, who sees the money and how names fold.
-opinion: build PR 1 and PR 2, then look — the screen needs no migration and shows the gaps in the record, and PR 2 stops new spellings before the stickers walk adds a hundred boxes
+blocker: none. The stack merges one PR at a time.
+opinion: build — Grace said build the entire train; look at the screen on the real site once PR 1 is live
+ver: v2.7074
 ---
 
 # A site's materials on one screen (#330)
@@ -173,10 +174,10 @@ touch adds nothing to the screen, and the head says *2 of 3 jobs shown* when tha
 - **Door 1, the desk.** The desk groups its job rows under their site. A site is one row with its
   totals, **Juniper Ridge · 2 jobs**, and opens the screen. Its jobs sit under it and open as
   today. A job in no development keeps its own row under *Not on a site*.
-- **Door 2, the Development page.** The head of Jobs & bids gains one line beside the print press:
-  *96 boxes · 5 due a count · 2 can't find* with **Open the site's materials**. The line is read
-  with the two small reads the screen starts with, never the ledger.
-- **Door 3, Go anywhere.** A site with boxes is a row in the *Boxes on site* group.
+- **Door 2, the Development page.** The head of Jobs & bids gains **Open the site's materials**
+  beside the print press. As built it is a press with no counts: a count there would be a read
+  with the page, which the report's own rule avoids.
+- **Door 3, Go anywhere.** A site with boxes is a row in the *Boxes on site* group (PR 5).
 
 The other way, a seventh look on the Development page that holds the whole list: the page is six
 stacked looks already, a primary and a superintendent cannot open it, and the materials store and
@@ -263,18 +264,22 @@ place on a task is a point on a map for a task and is not this.
 
 ### 6 · Scale, and the reads behind it
 
-The screen never reads a ledger to the device.
+As built, the screen adds no ledger read of its own. It is a state of the desk, and the desk's
+`loadDesk` has already read every job with a live box into the on-site store, so the screen sums
+the store's rows: the numbers are the desk's own, and a press on the phone shows at once.
 
-1. `job_containers` and `job_places` over the site's job ids, chunked and paged as
-   `siteMaterialsRead.ts` already does. Two reads, whatever the site's size.
-2. `on_site_job_summary(job, since)` for each job that has a live box. Two round trips on her
-   site, not one per job of the development. It answers every line, the last counts, the gaps and the Can't find
-   presses, so the 5,000-row cap does not matter here.
-3. The week's rows for those jobs, three columns, for *came in* and *used*.
+1. The store's containers, places and movements for the site's jobs, already read.
+2. For a job past the 5,000-row cap, the database's lines (`on_site_job_summary`, through
+   `serverLines`), as the desk's summary reads them.
+3. Two small reads for the sites: each job's `development_id`, and the developments' names
+   (`useOnSiteSites`).
 4. The parts book's prices for the book parts named, as the store reads them today.
 
-**No new SQL function yet.** One function over an array of jobs would be one round trip in place
-of one per job with boxes. It is worth its migration when a site passes about ten jobs with
+The first drawing read `on_site_job_summary` for each job and no ledger. That is the better read
+once the desk itself stops reading every ledger, which is #209's scale gap, not this card's.
+
+**No new SQL function yet.** One function over an array of jobs would replace the store's read
+for a site. It is worth its migration when a site passes about ten jobs with
 boxes, or when the roll-up across sites is wanted. The kernel takes lines, so the read can change
 under it.
 
@@ -289,12 +294,12 @@ the client reads what it makes. PR 4 writes the same table and needs none.
 
 | PR | What | Size |
 |---|---|---|
-| 1 · the screen | The kernel `src/lib/materials/siteRollup.ts` (lines into part rows, the same-words fold after the sums, the glance, the search's total) with tests; the read; the screen as `?site=` on both mounts, desk and phone; the desk grouped by site; the Development page's line and door; the Go anywhere row; the guide, the release note, the docs. No migration. | M |
+| 1 · the screen, **v2.7074** | The kernel `src/lib/materials/siteRollup.ts` (lines into part rows, the same-words fold after the sums, the glance, the search's total) with tests; the screen as `?site=` on both mounts, desk and phone; the desk grouped by site; the field roles' site row; the Development page's door; the guide, the release note, the docs. No migration. | M |
 | | **Stop here and look at it on the real site.** | |
 | 2 · names at the source | Add a part and the delivery lines offer the site's own names first, then the parts book's. No migration. Lands before the stickers walk adds its hundred boxes. | S |
 | 3 · Same part? | The migration; **Same part?** with **Same part** and **Different**; *Names joined here* with **Undo**; the search and the paper read the ties. | M |
 | 4 · the parts book and the worth | **This is a parts-book part** from a row; the worth with its cover and the list of lines with no price. | M |
-| 5 · the paper and the job | **By part** as a third reading of the material location report, and on one job's page. | S |
+| 5 · the paper and the job | **By part** as a third reading of the material location report, and on one job's page; the print press on the site's screen; the Go anywhere row. | S |
 
 Each PR ships its release note, fragment and guide, and updates
 `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`; PR 1 also `ACCESS_CONTROL.md`, `GLOSSARY.md` (the site's

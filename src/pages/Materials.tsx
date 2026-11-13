@@ -1406,8 +1406,11 @@ export default function Materials() {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.set('tab', tab)
-      // A job belongs to On site's desk; leaving the tab leaves the job.
-      if (tab !== 'on-site') next.delete('job')
+      // A job and a site belong to On site's desk; leaving the tab leaves them.
+      if (tab !== 'on-site') {
+        next.delete('job')
+        next.delete('site')
+      }
       return next
     })
   }
