@@ -1,9 +1,10 @@
 ---
 name: "A site's materials: press the Worth, see everything with no price, and price it fast"
 number: 342
-group: gated
-status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · nothing built · waits on his word to build and on calls 2 to 9, each with a recommended answer
+group: ready
+status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
+ver: v2.7156
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -15,10 +16,10 @@ summary: >
   book where the book has the part, and otherwise a price kept for the site in one new table that
   every on-site money figure reads through the one price rule. Three drawings: the list priced in
   place, one name at a time, and a table grouped by where the price comes from.
-next: The owner says build. PR 1, the window with its offers, needs no migration and rests on calls 2, 3 and 9 alone. Calls 4 to 8 are PR 2's and can wait for the look on the real site.
+next: PR 2, a price of the site's own (one new table, pushed right after its merge), then PR 3, the end and the old prices.
 size: M · M · S as a train of three (the window and its offers · a price of the site's own · the end and the old prices)
-blocker: The owner's word to build. The drawing is picked: B.
-opinion: build — drawing B as the owner picked it, PR 1 first; the window prices the 34 rows the book fits at one key each with no migration, and shows on the real site how often the first offer is right before anything is saved in a new place
+blocker: None.
+opinion: build — the owner said build the whole train; the walk on the real site after PR 1 shows how often the first offer is right
 ---
 
 # A site's materials: price what has no price (#342)
@@ -288,8 +289,16 @@ Each takes a word. My pick is first. Call 1 is answered. PR 1 rests on calls 2, 
 
 ## Where it stands
 
-Designed and measured 2026-11-13. The owner picked drawing A the same day and then changed to B, one at a time, and the plan was redrawn for the window. Nothing is built, no migration is written and nothing was
-written to prod. The measure was run as the dev on a local copy of the app, reads only.
+Designed and measured 2026-11-13. The owner picked drawing A, changed to B, one at a time, and
+then said *build the entire PR train*. So calls 2 to 9 stand on their recommended answers.
+
+- **PR 1, the window and its offers (v2.7156).** Built. On the real site, read only: Worth reads
+  *48 rows have an offer*, the press reads **Price 96 rows one at a time**, and the window opens
+  on row 1 of 96. The first row had three numbered answers and 25 more fits, which is the
+  measure's point: a short name fits many parts. No answer was pressed, since each is a write.
+  The first look showed one house's part three times under three of its numbers, so the bills'
+  offers fold by house and wording.
+- **PR 2 and PR 3**: not built yet.
 
 ## How to verify (when it is built)
 

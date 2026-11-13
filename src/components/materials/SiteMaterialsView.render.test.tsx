@@ -64,8 +64,22 @@ vi.mock('../../lib/materials/partTiesIo', () => ({
   },
 }))
 
+// The price offers' sources (punch list #342): a made-up parts book of one part and one bill line.
+const offersIo = vi.hoisted(() => ({ load: vi.fn() }))
+vi.mock('../../lib/materials/priceOffersIo', () => ({ loadOfferSources: offersIo.load }))
+
 function fill() {
   seq = 0
+  offersIo.load.mockReset()
+  offersIo.load.mockResolvedValue({
+    sources: {
+      parts: [{ id: 'book-9', name: '2 PVC 90 DWV', manufacturer: 'Charlotte' }],
+      prices: [{ partId: 'book-9', supplyHouse: 'Pecan Supply', price: 1.5, checkedOn: '2026-10-03' }],
+      lines: [{ id: 'l1', houseId: 'h1', houseName: 'Cedar Fork Supply', datedOn: '2026-10-09', houseCode: 'P290', description: '2 PVC DWV 90 ELL', unit: 'EA', pricingUnit: 'each', unitPrice: 2.18, quantity: 10, extendedCents: 2180 }],
+    },
+    bookError: null,
+    billsError: null,
+  })
   tiesDb.rows = []
   tiesDb.failRead = false
   store.containers = { ja: [box('r12', 'ja', 'R12', 'ya'), box('r58', 'ja', 'R58', 'ya'), box('r22', 'ja', 'R22', null)], jb: [box('p1', 'jb', 'P1', 'yb')] }
@@ -242,6 +256,75 @@ describe('SiteMaterialsView', () => {
     expect(rows.map((r) => r.querySelector('button')!.textContent!.slice(0, 9))).toEqual(['2" 90 pvc', '2" 9042R5'])
     expect(screen.getByTestId('site-shown-total').textContent).toContain('the rows with a line that has no price')
     expect(document.querySelector('[data-row-worth]')).toBeNull()
+    // A viewer who may not tie is offered no pricing, and the offers are never read.
+    expect(screen.queryByRole('button', { name: /one at a time/ })).toBeNull()
+    expect(offersIo.load).not.toHaveBeenCalled()
+  })
+
+  it('Price rows one at a time: the window asks about one row, a number key takes an offer, Undo takes it back', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    // The tile counts the rows with an offer, never dollars.
+    await waitFor(() => expect(worth.textContent).toContain('2 rows have an offer'))
+    expect(worth.textContent).toContain('$100.00 known')
+    expect(offersIo.load).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Price 2 rows one at a time' }))
+
+    const win = await screen.findByTestId('site-pricing-window')
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
+    expect(win.textContent).toContain('Row 1 of 2')
+    expect(win.textContent).toContain('2 left · 156 pieces to go')
+    // The parts-book fit is an answer. What a bill paid is read, not pressed.
+    expect(within(win).getByRole('button', { name: 'Use 2 PVC 90 DWV at $1.50 for 2" 90 pvc' }).textContent).toContain('Offer · parts book · checked Oct 3')
+    const bills = within(win).getByRole('group', { name: 'What a bill paid' })
+    expect(bills.textContent).toContain('Offer · a bill · Cedar Fork Supply · Oct 9')
+    expect(bills.textContent).toContain('$2.18 each')
+    expect(within(bills).queryByRole('button')).toBeNull()
+
+    // 1 takes the first answer: the tie is written, and the window moves on.
+    fireEvent.keyDown(window, { key: '1' })
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    expect(tiesDb.rows).toHaveLength(1)
+    expect(tiesDb.rows[0]).toMatchObject({ aKey: 'id:book-9', aName: '2 PVC 90 DWV', verdict: 'same' })
+    expect(win.textContent).toContain('Row 2 of 2')
+    expect(win.textContent).toContain('1 left · 42 pieces to go')
+    expect(screen.getByTestId('pricing-last-answer').textContent).toContain('Just now: 2" 90 pvc · 2 PVC 90 DWV · $1.50')
+    await waitFor(() => expect(worth.textContent).toContain('3 of 4 lines have a price'))
+
+    // Undo takes the tie back and returns to that row.
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc'))
+    expect(tiesDb.rows).toHaveLength(0)
+
+    // S skips. Past the last row the window says what is left and offers it again.
+    fireEvent.keyDown(window, { key: 's' })
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90')
+    fireEvent.click(within(win).getByRole('button', { name: /^Skip/ }))
+    const end = screen.getByTestId('pricing-walk-end')
+    expect(end.textContent).toContain('0 rows priced. 2 rows still have no price.')
+    fireEvent.click(within(end).getByRole('button', { name: 'Go through the 2 left' }))
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
+    fireEvent.click(screen.getByRole('button', { name: 'Done for now' }))
+    expect(screen.queryByTestId('site-pricing-window')).toBeNull()
+  })
+
+  it('a source that did not answer is named, and a typed key in a box is not an answer', async () => {
+    setup({ canTie: true, byName: 'Dana', searchBook: vi.fn(async () => []) })
+    offersIo.load.mockResolvedValue({ sources: { parts: [], prices: [], lines: [] }, bookError: null, billsError: 'You do not have access to the bills.' })
+    await findAsk()
+    fireEvent.click(within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    await waitFor(() => expect(win.textContent).toContain('The bills’ offers are not here. You do not have access to the bills.'))
+    expect(win.textContent).toContain('Nothing found in the parts book or on a bill.')
+    // Other part… opens the picker on the folded words; typing an s there does not skip the row.
+    fireEvent.click(within(win).getByRole('button', { name: 'Other part…' }))
+    const box = within(win).getByRole('searchbox', { name: 'Find it in the parts book' }) as HTMLInputElement
+    expect(box.value).toBe('2 90 pvc')
+    fireEvent.keyDown(box, { key: 's' })
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
   })
 
   it('This is a parts-book part ties a typed name to the book, and the row takes the book’s name and price', async () => {
