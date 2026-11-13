@@ -18,6 +18,30 @@ describe('JobsSubsTab', () => {
     expect(onViewChange).toHaveBeenCalledWith('pay')
   })
 
+  it('draws the Ledger when the page hands one in, and not otherwise (#347)', () => {
+    const onViewChange = vi.fn()
+    const view = renderWithProviders(<JobsSubsTab view="ledger" onViewChange={onViewChange} canSeeWork work={<div>WORK VIEW</div>} pay={<div>PAY VIEW</div>} ledger={<div>LEDGER VIEW</div>} payToolbar={<div>PAY TOOLBAR</div>} />)
+    expect(screen.getByText('LEDGER VIEW')).toBeTruthy()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Work', 'Pay', 'Ledger'])
+    // The Ledger carries its own search: Pay's toolbar stays off its row.
+    expect(screen.queryByText('PAY TOOLBAR')).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Pay' }))
+    expect(onViewChange).toHaveBeenCalledWith('pay')
+    view.unmount()
+    // No ledger handed in: no tab, and a ledger link opens Work.
+    renderWithProviders(<JobsSubsTab view="ledger" onViewChange={() => {}} canSeeWork work={<div>WORK VIEW</div>} pay={<div>PAY VIEW</div>} />)
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Work', 'Pay'])
+    expect(screen.getByText('WORK VIEW')).toBeTruthy()
+  })
+
+  it('a Pay-only role gets no Ledger, by the control or by the address', () => {
+    renderWithProviders(<JobsSubsTab view="ledger" onViewChange={() => {}} canSeeWork={false} work={null} pay={<div>PAY VIEW</div>} ledger={<div>LEDGER VIEW</div>} />)
+    expect(screen.getByText('PAY VIEW')).toBeTruthy()
+    expect(screen.queryByText('LEDGER VIEW')).toBeNull()
+    expect(subsViewFromParam('ledger', false)).toBe('pay')
+    expect(subsViewFromParam('ledger', true)).toBe('ledger')
+  })
+
   it('shows Pay only, with no control, when Work is hidden', () => {
     renderWithProviders(<JobsSubsTab view="work" onViewChange={() => {}} canSeeWork={false} work={<div>WORK VIEW</div>} pay={<div>PAY VIEW</div>} />)
     expect(screen.getByText('PAY VIEW')).toBeTruthy()
