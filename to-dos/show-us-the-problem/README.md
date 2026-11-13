@@ -2,7 +2,7 @@
 name: "First look: a caller gets a link by text, shows us the problem in photos and a short video with no sign-in, and the office prices it before a truck rolls"
 number: 319
 group: gated
-status: asked 2026-11-11 · the spike live 2026-11-12 (v2.6981, v2.6993, v2.6995) · the owner's side tried it, said *I like all of it, start PR one and build it all* · THE TRAIN IS BUILT AND ON MAIN 2026-11-12: the ask and the card (v2.6999), the three presses (v2.7000, moved onto the Text row in v2.7054), Drive (v2.7001, v2.7025), the kept place (v2.7002), the estimate (v2.7004), the job (v2.7005), the page's own entry (v2.7007, v2.7038), Spanish (v2.7009), What customers see (v2.7017) · every migration pushed, every function deployed · the tech's piece (v2.7006, #7834) is the last through the queue
+status: asked 2026-11-11 · the spike live 2026-11-12 (v2.6981, v2.6993, v2.6995) · the owner's side tried it, said *I like all of it, start PR one and build it all* · THE TRAIN IS BUILT AND ON MAIN 2026-11-12: the ask and the card (v2.6999), the three presses (v2.7000, moved onto the Text row in v2.7054), Drive (v2.7001, v2.7025), the kept place (v2.7002), the estimate (v2.7004), the job (v2.7005), the page's own entry (v2.7007, v2.7038), Spanish (v2.7009), What customers see (v2.7017) · the tech (v2.7006) · every migration pushed, every function deployed
 summary: >
   The owner's idea: when someone calls or texts, the office texts back a link to a page with no
   sign-in, tied to their number, where they add photos and videos of the problem. The office
@@ -17,7 +17,7 @@ summary: >
   so the card calls the record a First look and the customer's page Show us the problem. The
   files are kept in Google Drive, in a new Customer supplied photos folder under the customer and
   under each job, and what is picked on the phone is kept there until it has signal to send.
-next: the owner's first real call with it, and his try of a real iPhone clip on the office's machines; the tech's piece (#7834) merges, then its migration is pushed
+next: the owner's first real call with it, and his try of a real iPhone clip on the office's machines
 size: L, built as nine PRs and four small ones after
 blocker: Three things that are the owner's: the Worker's /show/ line in the Cloudflare dashboard, raising the 50 MiB a file limit if a video longer than about 40 seconds is wanted, and a real iPhone clip played on the office's machines.
 opinion: built — what is left is small and named under *What is not done*
@@ -433,7 +433,7 @@ Asked 2026-11-11 and read against `main` the same day. The owner's side read the
 
 **2026-11-12, later: the train.** The owner's side said to build it all, and it was built that day (*The train, built 2026-11-12* above). The whole suite ran green on the stack's tip, 4,568 files and 42,197 tests, with every check script and lint. PR 1 (#7755) merged at 16:25 UTC; its migration was pushed (1,251 local files, 1,251 remote versions) and `first-look` redeployed. The others follow through the queue one at a time.
 
-**2026-11-12, by the end of the day: on main, and walked.** Every piece but the tech's is merged, with its migration pushed and its functions deployed (1,258 local files, 1,258 remote versions, no drift). The tech's piece is #7834, armed; its migration is pushed the moment it merges.
+**2026-11-12, by the end of the day: on main, and walked.** Every piece is merged, with its migration pushed and its functions deployed (1,261 local files, 1,261 remote versions, no drift). The tech's piece (#7834) merged last, at 00:23 UTC on the 13th, and its migration was pushed two minutes later.
 
 **The live walks**, on clicktooling.com with ZZ Test looks on a ZZ Test customer's thread, signed in as the dev, no text sent:
 
@@ -448,6 +448,6 @@ Asked 2026-11-11 and read against `main` the same day. The owner's side read the
 
 Every ZZ Test look was removed from the desk afterwards, with its rows and its files. Two Drive folders the walks made stay under the ZZ Test customer and the ZZ Test job, since nothing here can delete from Drive.
 
-**Not walked live**: the Job Mode card itself. It draws only for a job the signed-in person is clocked in on or scheduled for, and that would write a real person's hours on the live data. Its drawing is held by its render tests, and the read behind it is what the job walk checked. A swap of a kept file (v2.7002) was not tried on the live site by hand either. The sample of the page after Send reads in English on a Spanish phone, because the sample's words come from the function with no language; a real send answers in the page's language.
+**Not walked live**: **Ask a tech…**, since the walk would put a task on a real person's Checklist. Its tests hold the gate, the page and the answer. Nor the Job Mode card itself. It draws only for a job the signed-in person is clocked in on or scheduled for, and that would write a real person's hours on the live data. Its drawing is held by its render tests, and the read behind it is what the job walk checked. A swap of a kept file (v2.7002) was not tried on the live site by hand either. The sample of the page after Send reads in English on a Spanish phone, because the sample's words come from the function with no language; a real send answers in the page's language.
 
 **Next**: the owner's first real call with it.
