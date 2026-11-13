@@ -117,7 +117,7 @@ A pay application saved as a file reads *Saved as a file*. The app cannot know w
 
 Type in the box at the top. You can type a job, a customer, an address or a bill number.
 
-Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}} and {{chip:gray|Housecall Pro}}. Press {{chip:gray|All}} to see every send again.
+Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}}, {{chip:gray|Housecall Pro}} and {{chip:gray|Recorded by hand}}. Press {{chip:gray|All}} to see every send again.
 
 ## Print the list or save it as a spreadsheet
 

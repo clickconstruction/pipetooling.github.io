@@ -156,7 +156,8 @@ describe('buildStagesSectionToolsMenu', () => {
     const billed = (authRole: string | null) => buildStagesSectionToolsMenu({ ...base, authRole }).find((g) => g.section === 'Billed Awaiting Payment')!.items
     for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
       expect(canOpenBillsSent(authRole)).toBe(true)
-      const last = billed(authRole).at(-1)!
+      const items = billed(authRole)
+      const last = items[items.length - 1]!
       expect(last).toEqual({ key: 'bills-sent', label: 'Bills sent', title: BILLS_SENT_DOOR_TITLE, disabled: false, icon: 'send' })
     }
     expect(BILLS_SENT_DOOR_TITLE).toBe('Every bill that left, who it went to, and the minute it went')
