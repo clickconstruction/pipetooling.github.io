@@ -85,8 +85,8 @@ export function BridgeTodoWindow({ state, todayYmd, dayLabel, readLines, onOpen,
   const fine: CSSProperties = { fontSize: '0.84rem', color: 'var(--text-700)' }
   const done = lines ? lines.filter((l) => l.done).length : 0
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 770, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} data-testid="bridge-todo-window-backdrop">
-      <div role="dialog" aria-modal="true" aria-label="The to-do" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', width: 'min(520px, 100%)', maxHeight: '86vh', overflowY: 'auto', padding: '1rem 1.1rem 1.1rem' }} data-testid="bridge-todo-window">
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 770, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px' }} data-testid="bridge-todo-window-backdrop">
+      <div role="dialog" aria-modal="true" aria-label="The to-do" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', width: 'min(520px, 100%)', maxHeight: 'min(86vh, 100%)', overflowY: 'auto', padding: '1rem 1.1rem 1.1rem' }} data-testid="bridge-todo-window">
         <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{state.kind === 'covered' ? 'The customer’s to-do' : 'The to-do'}</div>
         <div style={{ fontSize: '1.02rem', fontWeight: 700, lineHeight: 1.3, margin: '4px 0 8px' }}>{card.title}</div>
         <div style={{ display: 'grid', gap: 2 }} data-testid="bridge-todo-window-facts">
