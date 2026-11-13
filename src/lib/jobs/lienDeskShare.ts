@@ -1,7 +1,7 @@
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienCalendarJob } from './lienCalendar'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
-import type { LienAffidavitPile } from './lienDeskAffidavits'
+import type { LienAffidavitGateKey, LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainagePile } from './lienDeskRetainage'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -184,7 +184,20 @@ export function lienShareScopeOptions(data: LienDeskData | null, houses: Readonl
   return [optionFor('all', 'Everything on the desk', all), ...housesOption, ...gcs]
 }
 
-const NEED_BY_GATE: Record<string, LienStatusNeed> = { owner: 'owner', legal: 'legal', notice: 'notice', homestead: 'homestead' }
+/**
+ * The need each closed gate becomes in the message. Keyed by every gate `affidavitGates` can return, so a gate added
+ * there does not compile until it has a need here (v2.7138: the contractor's address, the homestead answer and the
+ * public owner had none, and a paper held by one of them alone was counted ready to file).
+ */
+const NEED_BY_GATE: Record<LienAffidavitGateKey, LienStatusNeed> = {
+  owner: 'owner',
+  public_owner: 'public_owner',
+  legal: 'legal',
+  contractor: 'contractor',
+  notice: 'notice',
+  homestead: 'homestead',
+  homestead_answer: 'homestead_answer',
+}
 
 /** Everything the text and the email say, for the whole desk or one GC. */
 export function buildLienStatusPayload(input: {
@@ -223,7 +236,7 @@ export function buildLienStatusPayload(input: {
         gc: gcName(data, e.gcCustomerId),
         owed: Math.round(e.openBalance * 100) / 100,
         byYmd: e.daysLeft >= 0 ? e.deadline : '',
-        needs: e.gates.filter((g) => !g.ok).map((g) => NEED_BY_GATE[g.key]).filter((n): n is LienStatusNeed => Boolean(n)),
+        needs: e.gates.filter((g) => !g.ok).map((g) => NEED_BY_GATE[g.key]),
       }
     })
 

@@ -2,7 +2,7 @@ import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { groupLegalPortalLinks, legalLinkAddress, parseLegalPortalLinks } from '../legal/legalPortalLinks'
 import { fetchActiveUsers } from '../people/fetchActiveUsers'
-import type { LienStatusPayload } from '../../../supabase/functions/_shared/lienDeskStatus'
+import { lienStatusPayloadToPost, type LienStatusPayload } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 /**
  * The Lien desk Share's reads and its one send (v2.4311): who may get the team email, the
@@ -79,7 +79,7 @@ export async function sendLienStatusEmail(input: {
   note: string
 }): Promise<{ sentTo: string[]; failed: string[] }> {
   const { data, error } = await supabase.functions.invoke('send-lien-desk-summary', {
-    body: { mode: input.mode, payload: input.payload, recipient_user_ids: input.recipientIds, subject: input.subject, note: input.note },
+    body: { mode: input.mode, payload: lienStatusPayloadToPost(input.payload), recipient_user_ids: input.recipientIds, subject: input.subject, note: input.note },
   })
   if (error) throw new Error(await fnErrorMessage(error, 'The email did not send'))
   const d = (data ?? {}) as { error?: string; sent_to?: unknown; failed?: unknown }
