@@ -2,7 +2,7 @@
 name: "The window that gives a task: redraw Add checklist item as New task, so the common task fits one phone screen and every row has its own shape"
 number: 331
 group: close
-status: asked 2026-11-12 · the card and the mock-up the same day · built 2026-11-13 on Grace's "Yes, build it" and "Build them now" · all four PRs live and walked on clicktooling.com by 17:00 UTC · open for the notes below
+status: asked 2026-11-12 · the card and the mock-up the same day · built 2026-11-13 on Grace's "Yes, build it" and "Build them now" · all four PRs live and walked on clicktooling.com by 17:00 UTC · walked in the iPhone simulator the same day, where a low box pushed the window off the top · fixed, and the second Send taken off, in v2.7155 · left: the owner's word and the notes below
 summary: >
   The Add checklist item window works, but it shows every choice at once and at the same weight.
   On a phone it is 1,267 px tall, one and a half screens, and the day sits 711 px down. Of the 137
@@ -11,11 +11,11 @@ summary: >
   where. People become a row of faces, the day one joined bar, places a shelf, and the rare things
   quiet presses in a row called Add. A bar at the bottom says in words what will happen, and its
   button names who gets the task. The drawn window is about 570 px tall. No database change.
-next: Grace opens New task on a phone and types a task, to see Send sit just above the keyboard; if it does, the second Send at the top of a phone comes off. The notes under What should change next wait for her word.
-size: M as a train of four (S · M · M · S), built; left: the phone walk and notes
-blocker: Nothing built is left. The phone walk needs a real phone, which a headless walk cannot be.
-opinion: build PRs 1 and 2, then walk it on a real phone before the other two windows follow — the bar above the keyboard is the one thing a drawing cannot prove
-ver: v2.7082 · v2.7085 · v2.7092 · v2.7093
+next: the owner's word to retire the card. When a real iPhone and an Android phone are at hand, one minute on each: open New task, tap Done when…, and see the title and Send stay on screen. The notes under What should change next wait for Grace's word.
+size: M as a train of four (S · M · M · S), built, and walked in a simulator; left: a look on a real phone and the notes
+blocker: Nothing. The walk was a simulator's, so a real phone has not shown it yet.
+opinion: close it. The bar holds in every state the simulator could show, and the notes left are small things for other cards, none of them a reason to keep this one open
+ver: v2.7082 · v2.7085 · v2.7092 · v2.7093 · v2.7155
 ---
 
 # The window that gives a task (#331)
@@ -105,9 +105,8 @@ Opened from a job, the Job row sits above What as it does now.
   is what a phone shows without a swipe, held everyone on 87. Five held 93, six held 95. On the
   rest the giver presses *Someone else* first, one press more than today, where the list is already
   open. Me and three names, about what the Recent line offers now, held 80.
-- **The bar above the keyboard is not proven.** The window today keeps a second Send at the top so
-  it can be reached with the keyboard up. PR 2 keeps that top Send until a walk on a real phone
-  shows the bar holds its place.
+- **The bar above the keyboard is proven on a simulator, not on a phone.** See The walk below. The
+  second Send at the top, kept until that walk, came off in v2.7155.
 - **Nothing here was timed.** The app does not record how long a giver spends in the window, so
   this card cannot promise a faster task. It promises a shorter window and fewer things to read.
 
@@ -143,6 +142,7 @@ All four PRs are on main and live, 2026-11-13. No migration and no edge function
 | #7866 | v2.7085 | the New task window | about 14:00 UTC |
 | #7873 | v2.7092 | Edit task draws the same rows | 15:53 UTC |
 | #7876 | v2.7093 | the roadmap's Add task draws the same rows, with the photo of the spot | 16:55 UTC |
+| the close-out | v2.7155 | the window follows the keyboard's slide on an iPhone, and the second Send comes off | with its merge |
 
 **Walked live** on clicktooling.com, signed in, every write refused, phone and desk, light and dark. Send, Save and Add task were never pressed.
 
@@ -150,13 +150,72 @@ All four PRs are on main and live, 2026-11-13. No migration and no edge function
 - **Edit task:** Manage → ⋮ → Edit opens on the task's own words, its person lit, its saved reminder lit on the Add row, Save live, the bar on screen.
 - **The roadmap's Add task:** the stage named under the title, no When row, nobody picked, the sentence naming the stage and who gets it when the stage unlocks, the place, the Photo press, Done when… turning the photo on, and *Where is it?* opening on top.
 
-**Not proven:** the bar above a real phone's keyboard. A headless walk shrank the visible height and the bar held, but only a real phone can show it.
+**The bar above the keyboard** was then walked in the iPhone simulator, which has a keyboard where a headless walk has none. That is the next section.
+
+## The walk
+
+2026-11-13, in the iOS Simulator: an iPhone 17 Pro on iOS 26.4, Safari, the on-screen keyboard up.
+The dev's own sign-in on the local app. One *ZZ Test* task was sent to the dev's own list from the
+bar, with the keyboard up, and deleted after. Nothing else was sent.
+
+**What it found.** With the keyboard on the words, the bar held as drawn. With the keyboard on a
+field low in the window, it did not. Safari slides the page up to show such a field, and the
+window was pinned to the page. So the title, the × and the box being typed in left the top of the
+screen, and only the bar stayed. The second Send at the top left with them, so it was no way out
+in the one place it was kept for. Safari's larger text (its aA menu at 125%) failed the same way.
+
+**What v2.7155 does.** The window follows the part of the page that shows, and the box that has
+the keyboard is scrolled back into view. All three windows share the frame, so all three are fixed.
+
+| Window | Keyboard on | Title and × | The box | The bar and Send |
+|---|---|---|---|---|
+| New task | the words | show | shows | above the keyboard |
+| New task | Done when… | show | shows | above the keyboard |
+| New task | a link | show | shows | above the keyboard |
+| New task | Someone else's search | show | shows | above the keyboard |
+| New task | Done when…, text at 125% | show | shows | above the keyboard |
+| Edit task | the words, Done when… | show | shows | above the keyboard |
+| Roadmap Add task | the words, Done when… | show | shows | above the keyboard |
+
+The rows scroll between the title and the bar with the keyboard up. Putting the keyboard away
+gives the window its full height back. Pick a day and Due by open the iPhone's own calendar and
+raise no keyboard. Turned sideways, the window is the desk's centred card and its bar shows.
+
+**Its limits.**
+
+- A simulator, not a phone. Its Safari and keyboard are Apple's own, and it is close. A real
+  iPhone's keyboard, and a keyboard from another maker, were not seen.
+- One phone size. A small iPhone could not be driven, so text at 125% on the 17 Pro stood in. That
+  leaves less room than an iPhone SE does.
+- iPhone only. Android was not walked. Chrome there makes the page smaller for the keyboard, so it
+  should not need the fix, and that is a guess.
+- Sideways with the keyboard up, the iPhone leaves a strip a finger high. No window fits there.
 
 ## What should change next (notes, not built)
 
-- **The second Send at the top of a phone** stays until the phone walk shows the bar holds. Then it comes off: a small GUI change.
 - **An old task's sentence in Edit task** reads like *Theo gets it on Tue, Feb 17.* for a day long past. Accurate, but *has had it since Tue, Feb 17.* may read better. Wording only.
 - **The faces do not hold everyone.** Replayed on the record, Me and the last four people covered 87 of 137 tasks; the rest press Someone else first. Count it again in two weeks before changing anything.
+
+**Seen on the simulator walk.** Small things, each for a card of its own or none.
+
+1. **Where is it?** With the keyboard on the place's name the sheet slides as the window did. Its
+   title and Cancel leave the top. The name and **Use this place** stay in view.
+2. **Someone else.** With the keyboard up, the search box sits just above the bar. The names it
+   finds are under the bar until the rows are swiped.
+3. **Done when…** Its hint is five lines on a phone. Open, it pushes the window past one screen.
+4. **Pick a day.** The four weeks open under the bar and push Where and Add below the screen.
+5. **A narrow screen or larger text.** At 322 px wide, *Repeats* is cut at the edge of the When
+   bar and the Add row takes four lines.
+6. **The roadmap's sentence.** A stage whose name ends in a full stop reads "It joins the stage
+   Concrete the upper bridge.. Nobody has it yet."
+7. **Edit task.** A one-time task shows "Saving reshapes the days still to come", which is about
+   a task that repeats.
+8. **Manage.** A task only for its giver reads *notifies on done*. On a phone the ⋮ menu of the
+   last task is cut by the list's edge, so only the top of Edit shows and Delete is out of reach.
+9. **Opening.** The roadmap's Add task raises the keyboard as it opens. New task rings its box and
+   waits for a tap.
+10. **Other sheets.** `PhoneSheet` and the dispatch job picker are pinned to the page the same way
+    and were not walked.
 
 ## How it was checked
 
@@ -164,3 +223,7 @@ All four PRs are on main and live, 2026-11-13. No migration and no edge function
 - The counts and the replay were read the same way, through the signed-in page, GET only.
 - The mock-up was shot at 375, 768 and 1400 in light and dark, and its suggested window was pressed
   through a task, a crew, a pick from the list and a reminder.
+- The built windows were walked in the iPhone simulator with the keyboard up, before and after
+  v2.7155. Two pictures are kept here. [walk-new-task.jpg](walk-new-task.jpg) shows the failure,
+  the same box after the fix, the words with one Send, and the low box at 125%.
+  [walk-edit-and-roadmap.jpg](walk-edit-and-roadmap.jpg) shows Edit task and the roadmap's Add task.
