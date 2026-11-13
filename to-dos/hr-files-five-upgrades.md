@@ -2,7 +2,7 @@
 name: "HR files, five upgrades: corrections as links, rows the system numbers, one approvals list, engagement history, one text with many views"
 number: 315
 group: ready
-status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884) · not built: the seat's verbs for the numbers and the case, upgrade 3, upgrade 4, 5b and 5c
+status: mapped 2026-11-11 (#7707) · the access fix v2.6966 live the same day · the owner's go for the whole train 2026-11-11 · upgrade 1 PR 1 merged as v2.6969 (#7716), its migration on prod · built 2026-11-12 as one stack, each waiting its turn in the queue: v2.7098 the Timeline's links (#7879), v2.7104 the seat's reads of them (#7880), v2.7106 the numbers' migration (#7881), v2.7107 the numbers on the screen and the Case view (#7882), v2.7108 section freshness (#7884), v2.7111 the engagements' migration (#7886) · not built: the seat's verbs for the numbers and the case, upgrade 3, the rest of upgrade 4 (the strip, the seat, the mark on hours), 5b and 5c
 summary: >
   One day of about ten agent sessions on the largest HR file showed where the system leans on prose.
   A correcting entry names what it corrects only in its words, so the old entry never reads as
@@ -11,8 +11,8 @@ summary: >
   Apply it in six places. The person row cannot say what a person was over time. The same text is
   copied to the matter and to Drive, and the copies go stale. Five upgrades, each a train of small
   additive PRs, mapped here with the tables, screens and seat verbs each touches.
-ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108
-next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
+ver: v2.6966, v2.6969, v2.7098, v2.7104, v2.7106, v2.7107, v2.7108, v2.7111
+next: Merge the stack bottom first (#7879, #7880 then deploy dev-mcp, #7881 then push its migration, #7882, #7884, #7886 then push its migration). Then upgrade 2 PR 3, the seat's reads of the numbers and plan_case, which needs the pushed migration in the catalog. Then upgrade 3 from the mock-up, upgrade 4, 5b and 5c.
 size: L as a train of five upgrades (S · M · M · M · M), about fifteen PRs
 blocker: None. The calls that are the owner's are listed under each upgrade; the train builds the safe default and never runs a change on a real file.
 opinion: build in the order given — each first PR is additive (a new table, a kernel), so nothing that works today is disturbed, and upgrade 1 pays back on the next correction anyone writes
@@ -140,7 +140,7 @@ right to apply in the session on his word, as today.
 | Screens | The fact strip reads the standing (*Subcontractor · since … · still engaged*) and opens **Standing…**; the Timeline's Employment source draws each change. 4b: the hours statement, the Hours grid, the attendance strip and utilization label or leave out a placed row. |
 | Seat | `get_person_file` and the brief carry `engagements`; `plan_engagement` → `apply_engagement`; `get_hours_statement` says how many rows it left out as placed pay. |
 
-- **PR 4a (first, S):** the table, the function, the kernel (`standingOn(day)`, overlaps refused).
+- **PR 4a (v2.7111, built):** migration `20261113090000`, the table, the one door `dev_engagement_write` (no direct write to the table), the kernel (`standingOn(day)`, overlaps refused), the bed. Kinds built: employee and subcontractor.
 - **4b:** the strip and the Timeline. **4c:** the seat. **4d:** the mark on hours and `isPresence` in
   the statement's reader (`hoursStatementRead.ts` takes its first recorded day from every row today).
   **4e:** the other readers.

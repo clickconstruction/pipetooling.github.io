@@ -4,47 +4,27 @@ import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
-import { SearchableMultiSelect } from './SearchableMultiSelect'
-import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMaterialize'
-import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
+import { dayBeforeApplicable, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
-import { ChecklistCrewTagsRow } from './checklist/ChecklistCrewTagsRow'
-import { crewChipState, type CrewView } from '../lib/checklistCrewTags'
-import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar'
 import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
 import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
 import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
-import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
-import { TaskPlaceRow } from './checklist/TaskPlaceRow'
-import { TaskSpotPhotoField, type TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
+import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
-import {
-  dropSoloSelfWhenAddingOthers,
-  newTaskSentence,
-  recentAssigneeIds as recentAssigneeIdsOf,
-  taskAddRow,
-  taskFaces,
-  taskPersonName,
-  taskSendLabel,
-  toggleFace,
-  whenBarChoice,
-  whenBarDayLabel,
-  whenBarPick,
-  type TaskAddKey,
-  type TaskAddPress,
-} from '../lib/tasks/newTaskWindow'
-import { TaskFacesRow, type TaskCrewFace } from './checklist/newTask/TaskFacesRow'
-import { TaskWhenBar } from './checklist/newTask/TaskWhenBar'
-import { TaskAddRow } from './checklist/newTask/TaskAddRow'
+import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
+import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
+import { TaskFormRows } from './checklist/newTask/TaskFormRows'
+import { TASK_WORDS_BOX_STYLE, focusPeopleSearchIfOpen } from './checklist/newTask/taskWindowBits'
 import { TaskSendBar } from './checklist/newTask/TaskSendBar'
+import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindowShell'
+import { ADD_TASK_PICKER_Z, ADD_TASK_WINDOW_Z } from '../lib/windowLayers'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -73,8 +53,6 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
 type UserRole =
   | 'dev'
   | 'master_technician'
@@ -91,25 +69,19 @@ export default function ChecklistAddModal({
   const { user: authUser } = useAuth()
   const navigate = useNavigate()
   const phone = useIsMobile()
-  /** The part of a phone's screen the keyboard leaves, so the bar with Send sits above the keyboard. Null off a phone browser. */
-  const keyboardRoom = useVisualViewportHeight()
   const modalContext = useChecklistAddModal()
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
-  const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
+  /** The faces (v2.7085): the people given to last, newest task first, in place of three names in the order the rows came back. */
+  const recentAssigneeIds = useRecentTaskAssignees(authUser?.id ?? null, Boolean(modalContext?.isOpen))
   const [role, setRole] = useState<UserRole | null>(null)
-  const [customTimeOpen, setCustomTimeOpen] = useState(false)
   /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
-  /** The one press of the Add row whose panel is open under it (v2.7085), or null. */
-  const [addOpen, setAddOpen] = useState<TaskAddKey | null>(null)
-  /** The full list of people is open under the faces. */
-  const [listOpen, setListOpen] = useState(false)
-  /** People who get a face though they are not recent: whoever the window opened on, and anyone picked from the full list. */
-  const [extraFaceIds, setExtraFaceIds] = useState<string[]>([])
-  /** The day bar: Tomorrow was pressed, as against that day picked in the date box. */
-  const [asTomorrow, setAsTomorrow] = useState(false)
-  /** The crews, as the crew row inside the full list loaded them; the faces draw one each. */
-  const [crews, setCrews] = useState<CrewView[]>([])
+  /** The rows under the words (v2.7085) keep what is open themselves. A new open of the window gives them a new key, so they start closed. */
+  const [rowsKey, setRowsKey] = useState(0)
+  /** The press of the Add row the rows open with: the links, for a task that arrives with some. */
+  const [rowsOpen, setRowsOpen] = useState<TaskAddKey | null>(null)
+  /** People who get a face though they are not recent: whoever the window opened on. */
+  const [seatIds, setSeatIds] = useState<string[]>([])
   /** Task cards (#273, PR 2): the Done when… lines, one a row; each becomes a box the person ticks. */
   const [linesText, setLinesText] = useState('')
   const lineCount = parseLines(linesText).length
@@ -150,15 +122,6 @@ export default function ChecklistAddModal({
   /** The When control (v2.2058): scheduling is first-class, not "Advanced". */
   const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('today')
   const [repeatMode, setRepeatMode] = useState<'weekly' | 'after_done'>('weekly')
-
-  const assignToSelectOptions = useMemo(
-    () =>
-      users.map((u) => ({
-        value: u.id,
-        label: u.name?.trim() || u.email,
-      })),
-    [users],
-  )
 
   const canManage = useMemo(
     () =>
@@ -205,27 +168,6 @@ export default function ChecklistAddModal({
       supabase.from('users').select('role').eq('id', authUser.id).single().then(({ data }) => {
         setRole((data as { role: UserRole } | null)?.role ?? null)
       })
-      supabase
-        .from('checklist_items')
-        .select('id')
-        .eq('created_by_user_id', authUser.id)
-        .order('created_at', { ascending: false })
-        .limit(30)
-        .then(async ({ data: items }) => {
-          const ids = (items ?? []).map((r) => r.id)
-          if (ids.length === 0) {
-            setRecentAssigneeIds([])
-            return
-          }
-          const { data: assignees } = await supabase
-            .from('checklist_item_assignees')
-            .select('checklist_item_id, user_id')
-            .in('checklist_item_id', ids)
-          // The faces (v2.7085): the people given to last, newest task first, in place of three names in the order the rows came back.
-          setRecentAssigneeIds(recentAssigneeIdsOf(ids, (assignees ?? []) as Array<{ checklist_item_id: string; user_id: string }>, authUser.id))
-        })
-    } else {
-      setRecentAssigneeIds([])
     }
   }, [modalContext?.isOpen, authUser?.id])
 
@@ -238,7 +180,7 @@ export default function ChecklistAddModal({
       )
       if (defaultId) {
         setForm((f) => ({ ...f, assigned_to_user_ids: [defaultId] }))
-        setExtraFaceIds((prev) => (prev.includes(defaultId) ? prev : [...prev, defaultId]))
+        setSeatIds((prev) => (prev.includes(defaultId) ? prev : [...prev, defaultId]))
       }
     }
   }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, form.assigned_to_user_ids.length, authUser?.id])
@@ -294,22 +236,20 @@ export default function ChecklistAddModal({
         escalate_enabled: false,
         escalate_days: 3,
       })
-      setCustomTimeOpen(false)
       setFormError(null)
       setPlace(null)
       setSpotPhoto(null)
       // The job bar already shows its link, so the links stay closed behind it (v2.3751).
-      setAddOpen(presetLinks.length > 0 && !preset?.job ? 'link' : null)
-      setListOpen(false)
-      setExtraFaceIds(defaultAssignee ? [defaultAssignee] : [])
-      setAsTomorrow(false)
+      setRowsOpen(presetLinks.length > 0 && !preset?.job ? 'link' : null)
+      setSeatIds(defaultAssignee ? [defaultAssignee] : [])
+      setRowsKey((k) => k + 1)
       setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
       // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
       const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
       setLinesText(presetLines.join('\n'))
       // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
-      if (presetLines.length > 0) setAddOpen('lines')
+      if (presetLines.length > 0) setRowsOpen('lines')
       setAsksForPhotoPick(preset?.asksForPhoto ?? null)
     }
   }, [
@@ -490,7 +430,6 @@ export default function ChecklistAddModal({
         }
       }
       setLinesText('')
-      setAddOpen(null)
       setAsksForPhotoPick(null)
       setPlace(null)
       setSpotPhoto(null)
@@ -509,22 +448,7 @@ export default function ChecklistAddModal({
   const todayStr = toLocalDateString(new Date())
   const meId = authUser?.id ?? null
   const nameOf = (id: string) => taskPersonName(users.find((u) => u.id === id))
-  const faces = taskFaces({ meId, roster: users, recentIds: recentAssigneeIds, extraIds: extraFaceIds })
-  const assigneeMap = Object.fromEntries(form.assigned_to_user_ids.map((id) => [id, true]))
-  const crewFaces: TaskCrewFace[] = crews
-    .filter((c) => c.memberUserIds.length > 0)
-    .map((c) => ({ id: c.id, name: c.name, count: c.memberUserIds.length, state: crewChipState(c.memberUserIds, assigneeMap) }))
-  // One tap staffs the whole crew; the solo-self rule applies to a crew like a single pick.
-  const staffCrew = (memberIds: string[], checked: boolean) =>
-    setForm((f) => {
-      const prev = f.assigned_to_user_ids
-      const proposed = checked ? [...prev, ...memberIds.filter((id) => !prev.includes(id))] : prev.filter((id) => !memberIds.includes(id))
-      return { ...f, assigned_to_user_ids: checked ? dropSoloSelfWhenAddingOthers(prev, proposed, meId) : proposed }
-    })
-  const whenChoice = whenBarChoice({ when, startDate: form.start_date }, todayStr, asTomorrow)
   const onlyMine = form.assigned_to_user_ids.length === 1 && form.assigned_to_user_ids[0] === meId
-  const tellOtherName = form.notify_on_complete_user_id ? nameOf(form.notify_on_complete_user_id) : null
-  const staysUntilDone = form.due_date ? true : form.show_until_completed
   const sentence = newTaskSentence({
     meId,
     assigneeIds: form.assigned_to_user_ids,
@@ -537,102 +461,51 @@ export default function ChecklistAddModal({
     daysOfWeek: form.repeat_days_of_week,
     daysAfter: form.repeat_days_after,
     endDate: form.repeat_end_date || null,
-    staysUntilDone,
+    staysUntilDone: form.due_date ? true : form.show_until_completed,
     dueDate: when !== 'repeat' ? form.due_date || null : null,
     lineCount,
     asksForPhoto,
     tellMe: form.notify_creator_on_complete,
-    tellOtherName,
+    tellOtherName: form.notify_on_complete_user_id ? nameOf(form.notify_on_complete_user_id) : null,
   })
-  const addPresses = taskAddRow({
-    when,
-    reminderTime: form.reminder_time,
-    tellOtherName,
-    linkCount: form.links.filter((u) => u.trim()).length,
-    dueDate: form.due_date,
-    lineCount,
-    asksForPhoto,
-    staysUntilDone: form.show_until_completed,
-  })
-  // A panel belongs to a press on the row, so it closes with a press that has left the row (Due by on a repeating task).
-  const openPanel = addOpen && addPresses.some((p) => p.key === addOpen) ? addOpen : null
-  const onAddPress = (press: TaskAddPress) => {
-    if (press.key === 'photo') return setAsksForPhotoPick(!asksForPhoto)
-    if (press.key === 'oneDay') return setForm((f) => ({ ...f, show_until_completed: !f.show_until_completed }))
-    const opening = openPanel !== press.key
-    setAddOpen(opening ? press.key : null)
-    // A first link has its box waiting, so the press is one press to a place to type.
-    if (opening && press.key === 'link' && form.links.length === 0) setForm((f) => ({ ...f, links: [''] }))
-    if (opening && press.key === 'remind' && !form.reminder_time) setCustomTimeOpen(false)
-  }
-
-  // Phone (v2.3188): dock the card to the top instead of centering it, so the title sits
-  // right under the iPhone status bar. The overlay keeps only the safe-area inset above
-  // (viewport-fit=cover makes env() real on iPhones; 0 elsewhere), and the card runs edge to
-  // edge with rounded bottom corners. Since v2.7085 the card is a column: the head, the form
-  // that scrolls, and the bar with Send. On a phone it is no taller than the part of the
-  // screen the keyboard leaves, so the bar sits just above the keyboard. Desktop is centered.
-  const overlayPadding = phone ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))'
-  const padX = phone ? '1rem' : '1.25rem'
-  const cardColumn = { display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', background: 'var(--surface)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }
-  const rowStyle = { display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gap: 8, padding: '10px 0', borderTop: '1px solid var(--border)', alignItems: 'center' as const }
-  const labStyle = { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-muted)' }
-  const panelStyle = { gridColumn: '1 / -1', padding: '9px 10px', borderRadius: 10, background: 'var(--bg-subtle)', border: '1px solid var(--border)', minWidth: 0, fontSize: '0.875rem' }
-  const takeOff = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)', textDecoration: 'underline', fontSize: '0.8125rem', fontFamily: 'inherit' }
-  const lit = (on: boolean) => ({
-    border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-    background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-    color: on ? 'var(--text-blue-800)' : 'var(--text-700)',
-    fontWeight: on ? 600 : 400,
-  })
-  const choiceStyle = { flex: '0 1 auto', padding: '0.45rem 0.7rem', fontSize: '0.875rem', borderRadius: 9, cursor: 'pointer' }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="checklist-add-modal-title"
+    <TaskWindowShell
+      titleId="checklist-add-modal-title"
+      title="New task"
+      phone={phone}
       // Above Job Detail (1004) and Edit Job (1010) so the header send-as-task buttons stack this over either
       // (v2.1529), and above a thread's window (1200) so Ask a tech… and Send as a task do too (v2.7069).
-      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: ADD_TASK_WINDOW_Z }}
+      zIndex={ADD_TASK_WINDOW_Z}
+      overlayBackground={overlayBackground}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header or a successful Send.
-    >
-      <div
-        data-testid="checklist-add-modal-card"
-        style={
-          phone
-            ? { ...cardColumn, borderRadius: '0 0 14px 14px', width: '100%', maxHeight: keyboardRoom ? `min(100%, calc(${Math.round(keyboardRoom)}px - env(safe-area-inset-top, 0px)))` : '100%', boxSizing: 'border-box' }
-            : { ...cardColumn, borderRadius: 12, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)' }
-        }
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: phone ? `0.75rem ${padX} 0.4rem` : `1.1rem ${padX} 0.4rem` }}>
-          <h3 id="checklist-add-modal-title" style={{ margin: 0 }}>New task</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-            {/* Header Send (v2.2740): a second Send at the top of a phone, once a title is typed. The bar's Send
-                sits above the keyboard since v2.7085; this one stays until a walk on a real phone shows that holds. */}
-            {phone && form.title.trim() ? (
-              <button
-                type="button"
-                onClick={saveItem}
-                disabled={submitting}
-                aria-label="Send"
-                style={{
-                  padding: '0.3rem 0.85rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  opacity: submitting ? 0.7 : 1,
-                }}
-              >
-                {submitting ? 'Sending…' : 'Send'}
-              </button>
-            ) : null}
+      cardTestId="checklist-add-modal-card"
+      headActions={
+        <>
+          {/* Header Send (v2.2740): a second Send at the top of a phone, once a title is typed. The bar's Send
+              sits above the keyboard since v2.7085; this one stays until a walk on a real phone shows that holds. */}
+          {phone && form.title.trim() ? (
+            <button
+              type="button"
+              onClick={saveItem}
+              disabled={submitting}
+              aria-label="Send"
+              style={{
+                padding: '0.3rem 0.85rem',
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: 999,
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                opacity: submitting ? 0.7 : 1,
+              }}
+            >
+              {submitting ? 'Sending…' : 'Send'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -666,696 +539,234 @@ export default function ChecklistAddModal({
               <path d="M197.8 100.3C208.7 107.9 211.3 122.9 203.7 133.7L147.7 213.7C143.6 219.5 137.2 223.2 130.1 223.8C123 224.4 116 222 111 217L71 177C61.7 167.6 61.7 152.4 71 143C80.3 133.6 95.6 133.7 105 143L124.8 162.8L164.4 106.2C172 95.3 187 92.7 197.8 100.3zM197.8 260.3C208.7 267.9 211.3 282.9 203.7 293.7L147.7 373.7C143.6 379.5 137.2 383.2 130.1 383.8C123 384.4 116 382 111 377L71 337C61.6 327.6 61.6 312.4 71 303.1C80.4 293.8 95.6 293.7 104.9 303.1L124.7 322.9L164.3 266.3C171.9 255.4 186.9 252.8 197.7 260.4zM288 160C288 142.3 302.3 128 320 128L544 128C561.7 128 576 142.3 576 160C576 177.7 561.7 192 544 192L320 192C302.3 192 288 177.7 288 160zM288 320C288 302.3 302.3 288 320 288L544 288C561.7 288 576 302.3 576 320C576 337.7 561.7 352 544 352L320 352C302.3 352 288 337.7 288 320zM224 480C224 462.3 238.3 448 256 448L544 448C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512L256 512C238.3 512 224 497.7 224 480zM128 440C150.1 440 168 457.9 168 480C168 502.1 150.1 520 128 520C105.9 520 88 502.1 88 480C88 457.9 105.9 440 128 440z"/>
             </svg>
           </button>
-            <button
-              type="button"
-              onClick={() => modalContext.closeModal()}
-              aria-label="Close"
-              title="Close"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent',
-                border: 'none',
-                padding: '0.25rem',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '1.5rem',
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-        <div data-testid="new-task-form" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${padX}` }}>
-            {form.job ? (
-              /* The job bar (v2.3751): the job a door opened with, as the pipeline row
-                 shows it — number pill, name, address · customer — with a door to the
-                 job and a × for "not about this job after all". The title box below
-                 holds only the task. */
-              <div
-                role="group"
-                aria-label="Job"
-                data-testid="checklist-add-job-bar"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.4rem 0.5rem',
-                  marginBottom: '0.5rem',
-                  border: '1px solid rgba(124, 58, 237, 0.35)',
-                  borderRadius: 8,
-                  background: 'rgba(124, 58, 237, 0.08)',
-                }}
-              >
+          <TaskWindowClose onClose={() => modalContext.closeModal()} />
+        </>
+      }
+      bar={
+        <TaskSendBar
+          sentence={sentence.text}
+          dead={sentence.dead}
+          label={taskSendLabel({ meId, assigneeIds: form.assigned_to_user_ids, nameOf })}
+          submitting={submitting}
+          onSend={saveItem}
+          tellMe={onlyMine ? null : form.notify_creator_on_complete}
+          onTellMe={(next) => setForm((f) => ({ ...f, notify_creator_on_complete: next }))}
+          error={formError}
+          sendRef={saveButtonRef}
+          onSendKeyDown={(e) => {
+            if (e.key !== 'Tab') return
+            e.preventDefault()
+            if (!(e.shiftKey && focusPeopleSearchIfOpen(ASSIGN_SEARCH_ID))) titleInputRef.current?.focus()
+          }}
+        />
+      }
+    >
+      {form.job ? (
+        /* The job bar (v2.3751): the job a door opened with, as the pipeline row
+           shows it — number pill, name, address · customer — with a door to the
+           job and a × for "not about this job after all". The title box below
+           holds only the task. */
+        <div
+          role="group"
+          aria-label="Job"
+          data-testid="checklist-add-job-bar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.4rem 0.5rem',
+            marginBottom: '0.5rem',
+            border: '1px solid rgba(124, 58, 237, 0.35)',
+            borderRadius: 8,
+            background: 'rgba(124, 58, 237, 0.08)',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              background: '#7c3aed',
+              color: 'white',
+              flexShrink: 0,
+              lineHeight: 0,
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
+              <path d="M128 96C110.3 96 96 110.3 96 128L96 544C96 561.7 110.3 576 128 576C145.7 576 160 561.7 160 544L160 416L480 416C497.7 416 512 401.7 512 384C512 379.3 511 374.8 509.1 370.8L448 256L509.1 141.2C511 137.2 512 132.7 512 128C512 110.3 497.7 96 480 96L128 96z" />
+            </svg>
+          </span>
+          <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+              {form.job.number ? (
                 <span
-                  aria-hidden
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 22,
-                    height: 22,
-                    borderRadius: 6,
-                    background: '#7c3aed',
-                    color: 'white',
-                    flexShrink: 0,
-                    lineHeight: 0,
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
-                    <path d="M128 96C110.3 96 96 110.3 96 128L96 544C96 561.7 110.3 576 128 576C145.7 576 160 561.7 160 544L160 416L480 416C497.7 416 512 401.7 512 384C512 379.3 511 374.8 509.1 370.8L448 256L509.1 141.2C511 137.2 512 132.7 512 128C512 110.3 497.7 96 480 96L128 96z" />
-                  </svg>
-                </span>
-                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-                    {form.job.number ? (
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '0.15rem 0.4rem',
-                          fontSize: '0.6875rem',
-                          fontWeight: 600,
-                          lineHeight: 1.2,
-                          borderRadius: 4,
-                          letterSpacing: '0.02em',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          border: form.job.trade ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
-                          background: form.job.trade ? form.job.trade.color : 'var(--bg-muted)',
-                          color: form.job.trade ? '#fff' : 'var(--text-700)',
-                        }}
-                      >
-                        {form.job.number}
-                        {form.job.trade ? ` ${form.job.trade.tag}` : ''}
-                      </span>
-                    ) : null}
-                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {form.job.name}
-                    </span>
-                  </div>
-                  {form.job.address || form.job.customer ? (
-                    <div
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {[form.job.address, form.job.customer].filter(Boolean).join(' · ')}
-                    </div>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Same rule as "Go to checklist": the page behind navigates, the
-                    // dialog and its draft stay open (the standalone /task page opts out).
-                    const path = form.job?.path
-                    if (!path) return
-                    if (goToChecklistKeepsModalOpen) {
-                      navigate(path)
-                      titleInputRef.current?.focus({ preventScroll: true })
-                    } else {
-                      modalContext.closeModal()
-                      navigate(path)
-                    }
-                  }}
-                  aria-label="Open the job"
-                  title="Open the job"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '0.25rem 0.15rem',
-                    color: '#7c3aed',
-                    fontSize: '0.8125rem',
+                    display: 'inline-block',
+                    padding: '0.15rem 0.4rem',
+                    fontSize: '0.6875rem',
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    lineHeight: 1.2,
+                    borderRadius: 4,
+                    letterSpacing: '0.02em',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    border: form.job.trade ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
+                    background: form.job.trade ? form.job.trade.color : 'var(--bg-muted)',
+                    color: form.job.trade ? '#fff' : 'var(--text-700)',
                   }}
                 >
-                  open ↗
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((f) => ({
-                      ...f,
-                      job: null,
-                      links: f.links.filter((u) => u !== f.job?.url),
-                    }))
-                  }
-                  aria-label="Remove job"
-                  title="Not about this job"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '0 0.25rem',
-                    color: 'var(--text-muted)',
-                    fontSize: '1.25rem',
-                    lineHeight: 1,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ) : null}
-            <div style={{ paddingBottom: 12 }}>
-              <textarea
-                ref={titleInputRef}
-                autoFocus
-                aria-label="Checklist item title"
-                value={form.title}
-                onChange={(e) => {
-                  const t = e.target.value.replace(/\n/g, ' ')
-                  setForm((f) => ({ ...f, title: t }))
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.preventDefault()
-                  if (e.key === 'Tab') {
-                    e.preventDefault()
-                    if (!e.shiftKey && listOpen) document.getElementById(ASSIGN_SEARCH_ID)?.focus()
-                    else saveButtonRef.current?.focus()
-                  }
-                }}
-                rows={2}
-                placeholder={form.job ? 'What needs doing on this job?' : 'What needs to be done?'}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  minHeight: '4.25rem',
-                  padding: '0.65rem 0.75rem',
-                  boxSizing: 'border-box',
-                  font: 'inherit',
-                  fontSize: '1.0625rem',
-                  lineHeight: 1.35,
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                  resize: 'none',
-                  border: '1.5px solid var(--border-strong)',
-                  borderRadius: 12,
-                }}
-              />
+                  {form.job.number}
+                  {form.job.trade ? ` ${form.job.trade.tag}` : ''}
+                </span>
+              ) : null}
+              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {form.job.name}
+              </span>
             </div>
-
-            {/* ── For: who the task is for, as faces (v2.7085) ── */}
-            <div style={{ ...rowStyle, alignItems: 'start' }} role="group" aria-labelledby="checklist-add-assign-label">
-              <span id="checklist-add-assign-label" style={{ ...labStyle, paddingTop: 13 }}>For</span>
-              <TaskFacesRow
-                faces={faces}
-                pickedIds={form.assigned_to_user_ids}
-                onToggle={(id) => setForm((f) => ({ ...f, assigned_to_user_ids: toggleFace(f.assigned_to_user_ids, id, meId) }))}
-                crews={crewFaces}
-                onCrew={(crewId) => {
-                  const crew = crews.find((c) => c.id === crewId)
-                  if (crew) staffCrew(crew.memberUserIds, crewChipState(crew.memberUserIds, assigneeMap) !== 'all')
-                }}
-                listOpen={listOpen}
-                onList={() => setListOpen((o) => !o)}
-                phone={phone}
-              />
-              {/* The full list, in place. It stays mounted while closed, since the crew row inside it loads the crews the faces draw. */}
+            {form.job.address || form.job.customer ? (
               <div
-                hidden={!listOpen}
-                data-testid="new-task-everyone"
-                style={panelStyle}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Tab') return
-                  const target = e.target as HTMLElement
-                  if (target.id !== ASSIGN_SEARCH_ID) return
-                  e.preventDefault()
-                  if (e.shiftKey) titleInputRef.current?.focus()
-                  else saveButtonRef.current?.focus()
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <SearchableMultiSelect
-                  id="checklist-add-assign"
-                  searchPlaceholder="Search people…"
-                  options={assignToSelectOptions}
-                  value={form.assigned_to_user_ids}
-                  onChange={(ids) => {
-                    // A person picked here takes a seat right after Me, so the pick shows on the row.
-                    setExtraFaceIds((prev) => [...prev, ...ids.filter((id) => id !== meId && !recentAssigneeIds.includes(id) && !prev.includes(id))])
-                    setForm((f) => ({ ...f, assigned_to_user_ids: dropSoloSelfWhenAddingOthers(f.assigned_to_user_ids, ids, meId) }))
-                  }}
-                  listAriaLabel="Assign to"
-                  pinSelectedToTop
-                  keyboardSelect
-                />
-                <div style={{ marginTop: 8 }}>
-                  {/* Crew chips (People → Teams): one tap staffs the whole crew, and New crew and Edit live here. */}
-                  <ChecklistCrewTagsRow users={users} assignees={assigneeMap} currentUserId={meId} onStaffCrew={staffCrew} onCrewsLoaded={setCrews} />
-                </div>
+                {[form.job.address, form.job.customer].filter(Boolean).join(' · ')}
               </div>
-            </div>
-
-            {/* ── When: one joined bar (v2.7085, over the When control of v2.2058) ── */}
-            <div style={rowStyle}>
-              <span style={labStyle}>When</span>
-              <TaskWhenBar
-                choice={whenChoice}
-                dayLabel={whenBarDayLabel(whenChoice, form.start_date)}
-                onPick={(choice) => {
-                  const next = whenBarPick(choice, { when, startDate: form.start_date }, todayStr)
-                  setAsTomorrow(choice === 'tomorrow')
-                  setWhen(next.when)
-                  setForm((f) => ({ ...f, start_date: next.startDate }))
-                }}
-              />
-              {whenChoice === 'day' ? (
-                <div style={panelStyle}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span>Do on</span>
-                    <input
-                      type="date"
-                      value={form.start_date}
-                      min={todayStr}
-                      onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                      style={{ padding: '0.4rem' }}
-                    />
-                  </label>
-                </div>
-              ) : null}
-              {when === 'repeat' ? (
-                <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {/* Task cards (#273, v2.6617): the one thing a writer decides here without knowing it. */}
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="repeat-ring-hint">
-                    A repeating task keeps its tick. A one-off gets the % ring.
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {([['weekly', 'Weekly on…'], ['after_done', "— days after it's done"]] as const).map(([key, label]) => (
-                      <button key={key} type="button" onClick={() => setRepeatMode(key)} aria-pressed={repeatMode === key} style={{ ...choiceStyle, ...lit(repeatMode === key) }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {repeatMode === 'weekly' ? (
-                    <>
-                      <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Days of the week">
-                        {DAYS.map((name, i) => {
-                          const on = form.repeat_days_of_week.includes(i)
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              aria-pressed={on}
-                              aria-label={name}
-                              onClick={() =>
-                                setForm((f) => ({
-                                  ...f,
-                                  repeat_days_of_week: on
-                                    ? f.repeat_days_of_week.filter((d) => d !== i)
-                                    : [...f.repeat_days_of_week, i].sort((a, b) => a - b),
-                                }))
-                              }
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                padding: '0.35rem 0',
-                                borderRadius: 8,
-                                fontSize: '0.8125rem',
-                                fontWeight: on ? 700 : 400,
-                                border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
-                                background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                                color: on ? 'var(--text-blue-800)' : 'var(--text-muted)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {name[0]}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
-                          <input
-                            type="date"
-                            value={form.start_date}
-                            onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                            style={{ padding: '0.4rem' }}
-                          />
-                        </label>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Ends (optional)</span>
-                          <input
-                            type="date"
-                            value={form.repeat_end_date}
-                            onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
-                            style={{ padding: '0.4rem' }}
-                          />
-                        </label>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span>Repeat</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={form.repeat_days_after}
-                          onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
-                          style={{ padding: '0.4rem', width: 64 }}
-                        />
-                        <span>days after it's completed</span>
-                      </label>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
-                        <input
-                          type="date"
-                          value={form.start_date}
-                          onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                          style={{ padding: '0.4rem' }}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-              {/* The schedule drawn (punch list #217, office-13): this week and the next three. It draws for a repeating
-                  task, a picked day and a one-off with a due day. Tomorrow needs no picture, the sentence says it. */}
-              {whenChoice === 'tomorrow' && !form.due_date ? null : (
-              <div style={{ gridColumn: '1 / -1', minWidth: 0 }} data-testid="new-task-calendar">
-                <ChecklistScheduleCalendar
-                  input={{
-                    when,
-                    repeatMode,
-                    startDate: form.start_date,
-                    todayStr,
-                    daysOfWeek: form.repeat_days_of_week,
-                    daysAfter: form.repeat_days_after,
-                    endDate: form.repeat_end_date || null,
-                    dueDate: when !== 'repeat' ? form.due_date || null : null,
-                  }}
-                />
-              </div>
-              )}
-            </div>
-
-            {/* ── Where: the place and the photo of the spot on one row (#328, drawn as a shelf in v2.7085) ── */}
-            <div style={rowStyle}>
-              <span style={labStyle}>Where</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                <TaskPlaceRow value={place} onChange={setPlace} variant="shelf" />
-                <TaskSpotPhotoField value={spotPhoto} onChange={setSpotPhoto} busy={submitting} variant="press" />
-              </div>
-            </div>
-
-            {/* ── Add: the rare things, each by name. A press opens that one thing here (v2.7085). ── */}
-            <div style={{ ...rowStyle, alignItems: 'start', paddingBottom: 14 }}>
-              <span style={{ ...labStyle, paddingTop: 9 }}>Add</span>
-              <TaskAddRow presses={addPresses} openKey={openPanel} onPress={onAddPress} />
-
-              {openPanel === 'remind' ? (
-                /* Remind (v2.2096): open to every task creator — preset chips, plain-words options, reachability. */
-                <div style={panelStyle} data-testid="new-task-panel-remind">
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {(() => {
-                      const isPreset = REMINDER_PRESETS.some((p) => p.time === form.reminder_time)
-                      const customVisible = customTimeOpen || (form.reminder_time !== '' && !isPreset)
-                      const chips: Array<{ label: string; active: boolean; onClick: () => void }> = [
-                        {
-                          label: 'No reminder',
-                          active: !form.reminder_time && !customVisible,
-                          onClick: () => {
-                            setForm((f) => ({ ...f, reminder_time: '' }))
-                            setCustomTimeOpen(false)
-                          },
-                        },
-                        ...REMINDER_PRESETS.map((p) => ({
-                          label: p.label,
-                          active: !customVisible && form.reminder_time === p.time,
-                          onClick: () => {
-                            setForm((f) => ({ ...f, reminder_time: p.time }))
-                            setCustomTimeOpen(false)
-                          },
-                        })),
-                        { label: 'Custom…', active: customVisible, onClick: () => setCustomTimeOpen(true) },
-                      ]
-                      return chips.map((c) => (
-                        <button key={c.label} type="button" aria-pressed={c.active} onClick={c.onClick} style={{ ...choiceStyle, ...lit(c.active) }}>
-                          {c.label}
-                        </button>
-                      ))
-                    })()}
-                  </div>
-                  {(customTimeOpen || (form.reminder_time !== '' && !REMINDER_PRESETS.some((p) => p.time === form.reminder_time))) && (
-                    <label style={{ display: 'block', marginTop: '0.6rem' }}>
-                      <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Remind at (CST)</span>
-                      <input
-                        type="time"
-                        value={form.reminder_time}
-                        onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
-                        style={{ padding: '0.5rem' }}
-                      />
-                    </label>
-                  )}
-                  {form.reminder_time ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.75rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={form.reminder_daily}
-                          onChange={(e) => setForm((f) => ({ ...f, reminder_daily: e.target.checked }))}
-                        />
-                        Keep reminding every day until it&apos;s done
-                      </label>
-                      {dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayStr) && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={form.remind_day_before}
-                            onChange={(e) => setForm((f) => ({ ...f, remind_day_before: e.target.checked }))}
-                          />
-                          Also remind the day before it&apos;s due
-                        </label>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={form.escalate_enabled}
-                            onChange={(e) => setForm((f) => ({ ...f, escalate_enabled: e.target.checked }))}
-                          />
-                          Still not done after
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={30}
-                          value={form.escalate_days}
-                          disabled={!form.escalate_enabled}
-                          onChange={(e) => setForm((f) => ({ ...f, escalate_days: Math.min(30, Math.max(1, Number(e.target.value) || 1)) }))}
-                          aria-label="Days overdue before reminding the creator"
-                          style={{ width: 52, padding: '0.25rem 0.35rem' }}
-                        />
-                        <span>days? Remind me too</span>
-                      </div>
-                      {canSeeReach && pushEnabledIds && form.assigned_to_user_ids.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border)', paddingTop: '0.55rem' }}>
-                          {form.assigned_to_user_ids.map((uid) => {
-                            const hasPush = pushEnabledIds.has(uid)
-                            return (
-                              <span key={uid}>
-                                <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{nameOf(uid)}</b>{' '}
-                                {hasPush ? (
-                                  <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{'📱'} phone alert</span>
-                                ) : (
-                                  <>
-                                    <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{'✉️'} email</span>
-                                    <span> {'—'} no phone alerts set up</span>
-                                  </>
-                                )}
-                              </span>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-                      {(() => {
-                        const s = reminderSummary(
-                          {
-                            time: form.reminder_time,
-                            dailyUntilDone: form.reminder_daily,
-                            dayBefore: form.remind_day_before && dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayStr),
-                            escalateAfterDays: form.escalate_enabled ? form.escalate_days : null,
-                          },
-                          form.assigned_to_user_ids.map(nameOf).filter((n) => n !== '…'),
-                        )
-                        return s ? (
-                          <div data-testid="new-task-reminder-summary" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem' }}>
-                            {s}
-                          </div>
-                        ) : null
-                      })()}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {openPanel === 'tellOther' ? (
-                /* Notify (v2.2058): who else hears when the task is done. The giver's own bell is beside Send. */
-                <div style={panelStyle} data-testid="new-task-panel-tell">
-                  <span style={{ display: 'block', marginBottom: '0.35rem' }}>Who else hears when it is done?</span>
-                  <SearchableSelect
-                    id="checklist-add-notify-on-complete"
-                    portalZIndex={ADD_TASK_PICKER_Z}
-                    value={form.notify_on_complete_user_id}
-                    onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
-                    options={assignToSelectOptions}
-                    emptyOption={{ value: '', label: '— add someone else —' }}
-                    placeholder="— add someone else —"
-                    listAriaLabel="Also notify when completed"
-                    searchReplacesTrigger
-                    hideEmptyOptionInListWhenUnset
-                  />
-                </div>
-              ) : null}
-
-              {openPanel === 'link' ? (
-                <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="new-task-panel-link">
-                  {form.links.map((url, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        title="Put this link's number in the task's words"
-                        onClick={() => {
-                          const input = titleInputRef.current
-                          if (input) {
-                            const start = input.selectionStart ?? form.title.length
-                            const end = input.selectionEnd ?? form.title.length
-                            const placeholder = `[${i + 1}]`
-                            const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
-                            setForm((f) => ({ ...f, title: newTitle }))
-                            setTimeout(() => {
-                              input.focus()
-                              const pos = start + placeholder.length
-                              input.setSelectionRange(pos, pos)
-                            }, 0)
-                          }
-                        }}
-                        style={{
-                          flexShrink: 0,
-                          padding: '0.25rem 0.5rem',
-                          background: 'var(--bg-muted)',
-                          border: '1px solid var(--border-strong)',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        [{i + 1}]
-                      </button>
-                      <input
-                        type="url"
-                        value={url}
-                        aria-label={`Link ${i + 1}`}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            links: f.links.map((u, j) => (j === i ? e.target.value : u)),
-                          }))
-                        }
-                        placeholder="URL"
-                        style={{ flex: 1, minWidth: 0, padding: '0.5rem' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            links: f.links.filter((_, j) => j !== i),
-                          }))
-                        }
-                        style={{
-                          padding: '0.25rem',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--text-muted)',
-                          fontSize: '1.25rem',
-                          lineHeight: 1,
-                        }}
-                        aria-label={`Remove link ${i + 1}`}
-                        title="Remove link"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))} style={{ ...takeOff, alignSelf: 'flex-start', color: 'var(--text-link)' }}>
-                    Add another link
-                  </button>
-                </div>
-              ) : null}
-
-              {openPanel === 'due' ? (
-                /* Due by (v2.2351): optional deadline — on the list from its day, late after this. */
-                <div style={panelStyle} data-testid="new-task-panel-due">
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span>Due by</span>
-                    <input
-                      type="date"
-                      value={form.due_date}
-                      min={when === 'today' ? todayStr : form.start_date || undefined}
-                      onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-                      style={{ padding: '0.4rem' }}
-                    />
-                  </label>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>The task is late after this day. A task with a due day stays until it is done.</div>
-                  {form.due_date ? (
-                    <button type="button" onClick={() => setForm((f) => ({ ...f, due_date: '' }))} style={{ ...takeOff, display: 'block', marginTop: '0.4rem' }}>
-                      Take it off
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {openPanel === 'lines' ? (
-                /* Task cards (#273, PR 2): Done when…, the lines the person ticks; the card reads its percent from them. */
-                <div style={panelStyle} data-testid="new-task-panel-lines">
-                  <textarea
-                    value={linesText}
-                    onChange={(e) => setLinesText(e.target.value)}
-                    rows={3}
-                    aria-label="Done when"
-                    placeholder="One line a row. Each becomes a box the person ticks."
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', fontSize: '1rem', fontFamily: 'inherit', lineHeight: 1.4 }}
-                  />
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand. A photo is offered at each new percent on every card. With Photo at the finish on, the finish holds until a photo is in or a reason is typed.
-                  </div>
-                </div>
-              ) : null}
-            </div>
-        </div>
-        <div style={{ flex: 'none', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: `0.6rem ${padX} 0.8rem` }}>
-          <TaskSendBar
-            sentence={sentence.text}
-            dead={sentence.dead}
-            label={taskSendLabel({ meId, assigneeIds: form.assigned_to_user_ids, nameOf })}
-            submitting={submitting}
-            onSend={saveItem}
-            tellMe={onlyMine ? null : form.notify_creator_on_complete}
-            onTellMe={(next) => setForm((f) => ({ ...f, notify_creator_on_complete: next }))}
-            error={formError}
-            sendRef={saveButtonRef}
-            onSendKeyDown={(e) => {
-              if (e.key !== 'Tab') return
-              e.preventDefault()
-              if (e.shiftKey && listOpen) document.getElementById(ASSIGN_SEARCH_ID)?.focus()
-              else titleInputRef.current?.focus()
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              // Same rule as "Go to checklist": the page behind navigates, the
+              // dialog and its draft stay open (the standalone /task page opts out).
+              const path = form.job?.path
+              if (!path) return
+              if (goToChecklistKeepsModalOpen) {
+                navigate(path)
+                titleInputRef.current?.focus({ preventScroll: true })
+              } else {
+                modalContext.closeModal()
+                navigate(path)
+              }
             }}
-          />
+            aria-label="Open the job"
+            title="Open the job"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0.25rem 0.15rem',
+              color: '#7c3aed',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            open ↗
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                job: null,
+                links: f.links.filter((u) => u !== f.job?.url),
+              }))
+            }
+            aria-label="Remove job"
+            title="Not about this job"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0 0.25rem',
+              color: 'var(--text-muted)',
+              fontSize: '1.25rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
         </div>
+      ) : null}
+      <div style={{ paddingBottom: 12 }}>
+        <textarea
+          ref={titleInputRef}
+          autoFocus
+          aria-label="Checklist item title"
+          value={form.title}
+          onChange={(e) => {
+            const t = e.target.value.replace(/\n/g, ' ')
+            setForm((f) => ({ ...f, title: t }))
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault()
+            if (e.key === 'Tab') {
+              e.preventDefault()
+              if (e.shiftKey || !focusPeopleSearchIfOpen(ASSIGN_SEARCH_ID)) saveButtonRef.current?.focus()
+            }
+          }}
+          rows={2}
+          placeholder={form.job ? 'What needs doing on this job?' : 'What needs to be done?'}
+          style={TASK_WORDS_BOX_STYLE}
+        />
       </div>
-    </div>
+      <TaskFormRows
+        key={rowsKey}
+        value={form}
+        onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+        when={when}
+        onWhen={setWhen}
+        repeatMode={repeatMode}
+        onRepeatMode={setRepeatMode}
+        linesText={linesText}
+        onLinesText={setLinesText}
+        linesHint="The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand. A photo is offered at each new percent on every card. With Photo at the finish on, the finish holds until a photo is in or a reason is typed."
+        asksForPhoto={asksForPhoto}
+        onAsksForPhoto={setAsksForPhotoPick}
+        place={place}
+        onPlace={setPlace}
+        spotPhoto={spotPhoto}
+        onSpotPhoto={setSpotPhoto}
+        busy={submitting}
+        users={users}
+        meId={meId}
+        recentIds={recentAssigneeIds}
+        seatIds={seatIds}
+        soloSelfRule
+        canSeeReach={canSeeReach}
+        pushEnabledIds={pushEnabledIds}
+        phone={phone}
+        todayStr={todayStr}
+        searchId={ASSIGN_SEARCH_ID}
+        onSearchTab={(shift) => (shift ? titleInputRef.current : saveButtonRef.current)?.focus()}
+        onLinkToken={(i) => {
+          const input = titleInputRef.current
+          if (!input) return
+          const start = input.selectionStart ?? form.title.length
+          const end = input.selectionEnd ?? form.title.length
+          const placeholder = `[${i + 1}]`
+          const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
+          setForm((f) => ({ ...f, title: newTitle }))
+          setTimeout(() => {
+            input.focus()
+            const pos = start + placeholder.length
+            input.setSelectionRange(pos, pos)
+          }, 0)
+        }}
+        initialOpen={rowsOpen}
+        // What the rows open through a portal, the notify list and the place sheet, sits over this window (v2.7069).
+        pickerZIndex={ADD_TASK_PICKER_Z}
+      />
+    </TaskWindowShell>
   )
 }

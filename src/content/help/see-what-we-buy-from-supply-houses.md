@@ -2,7 +2,7 @@
 title: see what we buy from supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: what we buy, purchases, bill lines, line items, parts, spend, quantity, how often, how many, supply house, by month, last paid, price, price over time, price history, cheapest, chart, stock, charges, freight, code, no part yet
+keywords: what we buy, purchases, bill lines, line items, parts, spend, quantity, how often, how many, supply house, by month, last paid, price, price over time, price history, cheapest, chart, stock, what to stock, trips, counter, shelf, charges, freight, code, no part yet
 ---
 Every supply house bill is read line by line. **What we buy** adds those lines up. The page shows which parts the company buys, how often, how many and for how much.
 
@@ -57,11 +57,27 @@ Every purchase is also a row under the chart, with its bill, its quantity and it
 
 A return is not a price paid. Price over time leaves returns out.
 
+## See what to stock
+
+Press {{button:outline|What to stock}} at the top. The list shows the parts bought on three or more separate days. The part with the most trips is first.
+
+- **Trips** is how many separate days it was bought. Two bills on one day are one trip.
+- **At a time** is the fewest and the most on one bill.
+- **Jobs** is how many jobs those bills were for.
+- **Where** says *the counter* when most trips were small bills or carried a PO Generator code. **Where** says *delivered* when most came on big orders.
+- **Read as** puts the row in one line, such as *a trip every 18 days for a $3.10 part*.
+
+Pick **Last 30 days**, **Last 90 days** or **Last 180 days** under **Window**. Press a row's name to see its prices.
+
+A part that is cheap and bought often is the one to keep on a shelf. The trip costs more than the part.
+
+This list shows purchases, not use. A bill cannot say how many the jobs used.
+
 ## A row with no part yet
 
 A house prints its own code for a part on every line. The parts book learns a house's code once. Until then the row is counted by the house and its code, and it reads *no part yet*.
 
-The same part bought at two houses is two rows until both codes are matched. Teach a code under **Their numbers** on the part. See [keep a supply house's number on a part](/help/keep-a-supply-houses-number-on-a-part).
+The same part bought at two houses is two rows until both codes are matched. Match the codes in one place with **Codes with no part** on the Parts Book. See [Match the codes on the bills](/help/keep-a-supply-houses-number-on-a-part#match-the-codes-on-the-bills).
 
 ## What the page cannot say
 

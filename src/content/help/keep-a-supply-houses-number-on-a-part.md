@@ -2,7 +2,7 @@
 title: keep a supply house's number on a part
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: house number, item number, their number, sku, part number, supply house, parts book, prices, duplicate, price sheet, quote, catalog number
+keywords: house number, item number, their number, sku, part number, supply house, parts book, prices, duplicate, price sheet, quote, catalog number, codes with no part, match a code, bill lines, this is it, not a part
 order: 83
 ---
 Every supply house prints its own number for a part. You can keep that number on the part, so the part is found by it.
@@ -43,6 +43,32 @@ Many parts already carry a house's number at the start of the name, or in **Note
 A number is offered only when one supply house prices the part. That house is the one the number came from.
 
 The rest are listed under **held**, each with its reason. Open a held part's prices and type the number beside the right house.
+
+## Match the codes on the bills
+
+Every supply house bill is read line by line, and each line prints the house's code. The office can match those codes to parts in one place.
+
+Press {{button:outline|Codes with no part}} on the Parts Book. The window lists every code no part answers to yet. The code with the most dollars behind it is first.
+
+Each row shows the line as printed, how often it was bought and what was spent. **The book offers** shows a part when the book has one that fits.
+
+:::steps
+
+1. Press {{button:outline|This is it}} when the offered part is right.
+
+2. Press *Pick a part* when it is not, or when nothing is offered. Type a few words and press the part.
+
+3. Press *New part in the book* when the book has no such part. The Add Part form opens with the line's words as the name.
+
+4. Press *Not a part* for a freight or a fee that prints a code.
+
+5. Press *Later* to set a code aside until you open the window again.
+
+:::
+
+{{button:blue|Match 97 offered codes}} takes every sure offer at once. An offer is sure when the part was found by its manufacturer's number or by the same name. The press names any code it could not keep, with the reason, and goes on with the rest.
+
+A matched code works on every bill, past and to come. See the result on [What we buy](/help/see-what-we-buy-from-supply-houses).
 
 ## What comes next
 

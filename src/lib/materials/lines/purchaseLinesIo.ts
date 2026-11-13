@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../types/database'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { isZzTestName } from '../../jobs/zzTestJobSweep'
+import { parsePoGeneratorCodeFromPurchaseOrderName } from '../../parsePoGeneratorCodeFromPurchaseOrderName'
 import type { PricingUnit } from './paperChecks'
 import type { CodeTeach, PurchaseLine } from './whatWeBuy'
 
@@ -28,6 +29,8 @@ export interface PurchaseData {
   shares: BillShare[]
   /** The jobs that carry a counted bill, by id: *JP1042 Oak Hollow C*. */
   jobNames: Map<string, string>
+  /** The counted bills whose PO text carries a PO Generator code on the ledger: bought at the counter. */
+  counterBills: Set<string>
 }
 
 /** The parts book's price for a part at one house, with the day it was last checked. */
@@ -53,6 +56,7 @@ type LineDb = {
   dated_on: string | null
   line_kind: string
   house_code: string | null
+  mfr_number: string | null
   description: string | null
   unit: string | null
   pricing_unit: string | null
@@ -77,14 +81,16 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
   return {
     async load() {
       const client = (given ?? (await appClient())) as unknown as SupabaseClient
-      const [lineRows, teachRows, houseRows, shareRows] = await Promise.all([
+      const [lineRows, teachRows, houseRows, shareRows, poRows, codeRows] = await Promise.all([
         fetchAllRows<LineDb>(
-          (from, to) => client.from('supply_purchase_lines').select('id, invoice_id, number, supply_house_id, dated_on, line_kind, house_code, description, unit, pricing_unit, unit_price, part_id, quantity, extended_cents').order('id').range(from, to),
+          (from, to) => client.from('supply_purchase_lines').select('id, invoice_id, number, supply_house_id, dated_on, line_kind, house_code, mfr_number, description, unit, pricing_unit, unit_price, part_id, quantity, extended_cents').order('id').range(from, to),
           'the lines of the supply house bills',
         ),
         fetchAllRows<{ supply_house_id: string; code_key: string; part_id: string | null; not_a_part: boolean; unit_factor: number | string | null }>((from, to) => client.from('supply_part_codes').select('supply_house_id, code_key, part_id, not_a_part, unit_factor').order('id').range(from, to), 'the houses’ numbers for parts'),
         fetchAllRows<{ id: string; name: string | null }>((from, to) => client.from('supply_houses').select('id, name').order('id').range(from, to), 'the supply houses'),
         fetchAllRows<{ invoice_id: string; job_id: string; pct: number | string }>((from, to) => client.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct').order('invoice_id').order('job_id').range(from, to), 'the bills’ jobs'),
+        fetchAllRows<{ id: string; purchase_order_number: string | null }>((from, to) => client.from('supply_house_invoices').select('id, purchase_order_number').not('purchase_order_number', 'is', null).order('id').range(from, to), 'the bills’ purchase orders'),
+        fetchAllRows<{ po_code: number }>((from, to) => client.from('material_po_generator_entries').select('po_code').order('po_code').range(from, to), 'the PO Generator’s codes'),
       ])
       const zzHouses = new Set(houseRows.filter((h) => isZzTestName(h.name)).map((h) => h.id))
       const lines: PurchaseLine[] = lineRows
@@ -97,6 +103,7 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
           datedOn: r.dated_on,
           lineKind: r.line_kind === 'charge' ? 'charge' : 'part',
           houseCode: r.house_code ?? '',
+          mfrNumber: r.mfr_number ?? '',
           description: r.description ?? '',
           unit: r.unit ?? '',
           pricingUnit: (r.pricing_unit === 'per_hundred' || r.pricing_unit === 'per_thousand' ? r.pricing_unit : 'each') as PricingUnit,
@@ -108,6 +115,14 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
       const teaches: CodeTeach[] = teachRows.map((t) => ({ houseId: t.supply_house_id, codeKey: t.code_key, partId: t.part_id, notAPart: t.not_a_part, unitFactor: Number(t.unit_factor) > 0 ? Number(t.unit_factor) : 1 }))
       const counted = new Set(lines.map((l) => l.invoiceId))
       const shares: BillShare[] = shareRows.filter((s) => counted.has(s.invoice_id)).map((s) => ({ invoiceId: s.invoice_id, jobId: s.job_id, pct: Number(s.pct) || 0 }))
+
+      const ledger = new Set(codeRows.map((c) => Number(c.po_code)))
+      const counterBills = new Set<string>()
+      for (const r of poRows) {
+        if (!counted.has(r.id)) continue
+        const code = parsePoGeneratorCodeFromPurchaseOrderName(r.purchase_order_number ?? '')
+        if (code != null && ledger.has(code)) counterBills.add(r.id)
+      }
 
       const partIds = [...new Set([...lines.map((l) => l.partId), ...teaches.map((t) => t.partId)].filter((id): id is string => !!id))]
       const jobIds = [...new Set(shares.map((s) => s.jobId))]
@@ -127,6 +142,7 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
         houseNames: new Map(houseRows.filter((h) => !zzHouses.has(h.id)).map((h) => [h.id, (h.name ?? '').trim()])),
         shares,
         jobNames: new Map(jobRows.map((j) => [j.id, jobWords(j)])),
+        counterBills,
       }
     },
     async bookPrices(partId) {

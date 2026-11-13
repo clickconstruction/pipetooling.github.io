@@ -29,7 +29,7 @@ Reminders follow the deadline too. Here **remind the day before** fires the day 
 
 ### Pushed back — the app remembers the original promise
 
-You move a due date later and the task starts carrying its history. A {{chip:yellow|pushed ×2}} chip appears on **Manage**. An amber *"Originally due Fri, Aug 29 — pushed ×2, +5 days so far"* line appears in the edit window. A named entry lands in the task's activity: *Robert pushed the due date Fri, Aug 29 → Mon, Sep 1*. Escalation messages carry the same rider, so a deadline cannot be quietly managed around. Pulling a date **earlier** never earns a marker. Bringing it back to the original clears it.
+You move a due date later and the task starts carrying its history. A {{chip:yellow|pushed ×2}} chip appears on **Manage**. An amber *"Originally due Fri, Aug 29 — pushed ×2, +5 days so far"* line appears in the **Edit task** window, under the Add row. A named entry lands in the task's activity: *Robert pushed the due date Fri, Aug 29 → Mon, Sep 1*. Escalation messages carry the same rider, so a deadline cannot be quietly managed around. Pulling a date **earlier** never earns a marker. Bringing it back to the original clears it.
 
 :::example The sentence tells you
 Theo gets it on Fri, Aug 28. It stays until it is done.
@@ -52,7 +52,7 @@ For *days after it's done*, the first day is filled in. The days after it are da
 
 For a one-off with a **Due by** date, a grey bar runs from its day to the due day. The due day has a dark ring.
 
-You hover a day to read what it means. The Edit window draws the same calendar.
+You hover a day to read what it means. The **Edit task** window has the same rows and draws the same calendar.
 
 To see every repeating task in one place, you open **Manage** and tap the {{chip:blue|↻ Repeating}} pill. Each row shows its schedule and a green chip with its next occurrence.
 
