@@ -7,7 +7,6 @@ import { BridgeMoveTable } from './BridgeMoveTable'
 import { TODO_FOOT } from '../../lib/bridge/callTodo'
 import type { TodoState } from '../../lib/bridge/callTodoState'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
-import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
 
 /**
  * The Bridge's first screen (punch list #303, PR 1): the tiles, then the card *What to do now* with its moves. The
@@ -16,7 +15,7 @@ import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
  *
  * The page is a pulse (punch list #334, PR 7). The card reads today: the slowest step, or cash in a week it leads,
  * and the moves that would change it. It records nothing, hands nothing to a person and asks nothing on Friday.
- * The words of the step and its moves are still `buildWeekCall`'s, read with no call on record.
+ * The words of the card, the step and its moves are `buildWeekCall`'s.
  *
  * Each move names its things (punch list #334, PR 8; `callDive.ts`): a heading line with the move's one press, then
  * its lines as a table (`BridgeMoveTable.tsx`). The card is framed by a rule down its left side, not a box.
@@ -224,14 +223,14 @@ export function BridgeWeek({
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: `4px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
             {/* The card is a reading of today, so it is not named a call. */}
             <div style={label} data-testid="bridge-week-label">
-              {NOW_CARD_LABEL}
+              {model.card.label}
             </div>
             <div style={{ fontSize: '1.12rem', fontWeight: 800, lineHeight: 1.25, margin: '2px 0' }} data-testid="bridge-week-lead">
               {model.card.lead}
             </div>
             {model.card.line && (
               <div style={{ fontSize: '0.86rem', color: 'var(--text-700)' }} data-testid="bridge-week-line">
-                {model.link == null ? NOW_NOT_READ_LINE : model.card.line}
+                {model.card.line}
               </div>
             )}
             {shown.length > 0 && <ol style={{ listStyle: 'none', margin: '7px 0 0', padding: 0 }}>{shown.map(moveRow)}</ol>}
