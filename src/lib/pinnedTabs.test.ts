@@ -9,6 +9,15 @@ describe('front-door pins (v2.2330)', () => {
     expect(PATH_TO_LABEL['/accounts-receivable']).toBe('Accounts Receivable')
   })
 
+  it('makes /bills-sent pinnable, for the roles that can open it (punch list #327)', () => {
+    expect(PINNABLE_PATHS).toContain('/bills-sent')
+    expect(PATH_TO_LABEL['/bills-sent']).toBe('Bills sent')
+    expect(pathToLabel('/bills-sent')).toBe('Bills sent')
+    const pin: PinnedItem[] = [{ path: '/bills-sent', label: 'Bills sent' }]
+    expect(['dev', 'master_technician', 'assistant', 'controller'].map((r) => filterPinnedByRole(pin, r as Parameters<typeof filterPinnedByRole>[1]).length)).toEqual([1, 1, 1, 1])
+    expect(['subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'].map((r) => filterPinnedByRole(pin, r as Parameters<typeof filterPinnedByRole>[1]).length)).toEqual([0, 0, 0, 0, 0])
+  })
+
   it('role-filters through the layoutRouteAccess kernel (stale local sets removed)', () => {
     const pins: PinnedItem[] = [
       { path: '/tally', label: 'Job Parts Tally' },
