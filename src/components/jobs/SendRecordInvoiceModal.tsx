@@ -58,6 +58,7 @@ import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import BillCustomerFaces, { type BillTextFaceState } from './BillCustomerFaces'
 import { billEmailFace, billTextFace, type BillFace } from '../../lib/billing/billCustomerFaces'
 import { loadBillTextFace } from '../../lib/billing/billCustomerFacesIo'
+import { rememberBillEmailSent, sendStripeBillEmail } from '../../lib/billing/sendStripeBillEmail'
 import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
@@ -523,6 +524,11 @@ export default function SendRecordInvoiceModal({
     invoice_preview: StripeInvoiceLinesSnapshot | null
   } | null>(null)
   const [stripeSuccessInvoice, setStripeSuccessInvoice] = useState<InvoiceWithJobForBillView | null>(null)
+  /**
+   * Punch list #343, PR 3: how the one press's email went. `sent` holds the send's own line (*Bill email sent to …*),
+   * `failed` its reason: the bill is made either way, and the made-bill screen says which. Null for *send later*.
+   */
+  const [stripeMadeEmail, setStripeMadeEmail] = useState<{ kind: 'sent'; line: string } | { kind: 'failed'; error: string } | null>(null)
   const stripeSuccessInvoiceRef = useRef<InvoiceWithJobForBillView | null>(null)
   stripeSuccessInvoiceRef.current = stripeSuccessInvoice
 
@@ -1017,6 +1023,7 @@ export default function SendRecordInvoiceModal({
     setStripeError(null)
     setStripeResult(null)
     setStripeSuccessInvoice(null)
+    setStripeMadeEmail(null)
     setStripePreview(null)
     setStripePreviewLoading(false)
     setStripePreviewError(null)
@@ -1754,7 +1761,13 @@ export default function SendRecordInvoiceModal({
     }
   }
 
-  async function submitStripeInvoice() {
+  /**
+   * Make the Stripe bill. With `alsoEmail` (punch list #343, PR 3, the main press) the bill email goes right after the
+   * bill is made, by the same call **Send Email invoice** makes; without it (the quiet press) nothing goes, as before.
+   * A send that fails leaves the bill made: the made-bill screen opens on it, says the email did not go, and offers
+   * Send Email invoice.
+   */
+  async function submitStripeInvoice(alsoEmail: boolean) {
     if (!job?.customer_id) return
     const amt = Number(billAmountStr)
     if (!Number.isFinite(amt) || amt <= 0) {
@@ -1776,6 +1789,7 @@ export default function SendRecordInvoiceModal({
 
     setStripeSubmitting(true)
     setStripeError(null)
+    setStripeMadeEmail(null)
     try {
       const { data: auth } = await supabase.auth.getSession()
       const token = auth.session?.access_token
@@ -1829,7 +1843,7 @@ export default function SendRecordInvoiceModal({
           headers: { Authorization: `Bearer ${token}` },
         }),
         BILL_STRIPE_INVOKE_TIMEOUT_MS,
-        'Make the Stripe bill',
+        'Make the bill',
       )
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
@@ -1851,7 +1865,8 @@ export default function SendRecordInvoiceModal({
 
       const promote = await maybePromoteJobToBilledAfterCustomerInvoice(job.id)
       if (!promote.ok) {
-        setStripeError(promote.error)
+        // The bill is made and nothing after this ran, the email included: say so beside the reason.
+        setStripeError(alsoEmail ? `${promote.error} The bill is made. The bill email did not go: send it from the bill’s row.` : promote.error)
         return
       }
       recordBillCustomerCommitted('stripe')
@@ -1901,6 +1916,30 @@ export default function SendRecordInvoiceModal({
           if (!noticeRes.ok) noticeStatus = noticeRes.error ?? 'Notice email failed'
         }
         setHazmatNoticeEmailStatus(noticeStatus)
+      }
+
+      // The one press (punch list #343, PR 3): the bill email goes now, by the call Send Email invoice makes. The
+      // bill is already made, so a refusal or a slow server is said on the made-bill screen and never undoes the bill.
+      if (alsoEmail) {
+        try {
+          const sent = await withOperationTimeout(sendStripeBillEmail(invId, stripeModeForBilling), BILL_EMAIL_INVOKE_TIMEOUT_MS, 'Send the bill email')
+          if (sent.ok) {
+            rememberBillEmailSent(invId, stripeId, sent.line)
+            setStripeMadeEmail({ kind: 'sent', line: sent.line })
+            showToast(`${sent.line}${sent.copiesHint}`, 'success')
+            if (sent.copiesFailed) showToast(sent.copiesFailed, 'error')
+          } else {
+            setStripeMadeEmail({ kind: 'failed', error: sent.error })
+          }
+        } catch (sendErr) {
+          setStripeMadeEmail({
+            kind: 'failed',
+            error:
+              sendErr instanceof OperationTimeoutError
+                ? 'The server is not responding. The email may or may not have gone. Check Bills sent before sending again.'
+                : formatErrorMessage(sendErr, 'Could not send the bill email'),
+          })
+        }
       }
 
       const fresh = await fetchJobWithDetailsById(job.id)
@@ -2377,6 +2416,7 @@ export default function SendRecordInvoiceModal({
       email: job?.customer_email,
       ...(channel === 'stripe' && billedThemself ? { phone: job?.customer_phone ?? null } : {}),
       copyEmails: physicalAdditionalEmails(),
+      ...(channel === 'stripe' && stripeModeForBilling === 'test' ? { testMode: true } : {}),
     })
   }
 
@@ -2417,6 +2457,20 @@ export default function SendRecordInvoiceModal({
     }
   }
 
+  /** Punch list #343, PR 3: on the made-bill screen, how the one press's email went. Nothing for *send later*. */
+  function madeEmailLine() {
+    if (!stripeMadeEmail) return null
+    return stripeMadeEmail.kind === 'sent' ? (
+      <p role="status" data-testid="bill-customer-made-email" data-kind="sent" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-green-700)' }}>
+        {stripeMadeEmail.line}
+      </p>
+    ) : (
+      <p role="alert" data-testid="bill-customer-made-email" data-kind="failed" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+        The bill is made. The bill email did not go: {stripeMadeEmail.error} Press Send Email invoice below to send it.
+      </p>
+    )
+  }
+
   /** Punch list #343: what the press does, what it does not, and where the copy is kept, in a box right above the press. */
   function pressBox(channel: BillSendChannel) {
     // A paid job's presses are dead until the tick: the notice above says why, and this box would promise a send.
@@ -2433,6 +2487,7 @@ export default function SendRecordInvoiceModal({
             <li key={line}>{line}</li>
           ))}
         </ol>
+        {words.later ? <div style={{ marginTop: '0.3rem' }}>{words.later.line}</div> : null}
         {canSeeWhatCustomersSee(authRole) ? (
           <a href={billSampleHref(channel)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.3rem', color: 'var(--text-link)' }}>
             See a sample of this email
@@ -3429,7 +3484,8 @@ export default function SendRecordInvoiceModal({
                     : ''}
                   .
                 </p>
-                {physicalAdditionalEmails().length > 0 ? (
+                {madeEmailLine()}
+                {stripeMadeEmail?.kind !== 'sent' && physicalAdditionalEmails().length > 0 ? (
                   <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     Copies to <strong>{physicalAdditionalEmails().join(', ')}</strong> go out from Click Plumbing and Electrical when you press Send Email invoice.
                   </p>
@@ -3488,6 +3544,7 @@ export default function SendRecordInvoiceModal({
                   viewBillOnClose={onClose}
                   voidConfirmOverlayZIndex={overlayZIndex + 1}
                   justMade
+                  {...(stripeMadeEmail?.kind === 'sent' ? { justMadeLead: stripeMadeEmail.line } : {})}
                 />
               </>
             ) : stripeResult ? (
@@ -3499,6 +3556,7 @@ export default function SendRecordInvoiceModal({
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', marginBottom: '0.75rem' }}>
                   Could not reload job details; showing summary from the server response.
                 </p>
+                {madeEmailLine()}
                 <StripeInvoiceSharePanel
                   hostedInvoiceUrl={stripeResult.hosted_invoice_url}
                   stripeInvoiceId={stripeResult.stripe_invoice_id}
@@ -3510,7 +3568,7 @@ export default function SendRecordInvoiceModal({
                   amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   jobId={job.id}
                   customerId={job.customer_id}
-                  textOffer={{ lead: BILL_TEXT_OFFER_WORDS.leadMade, key: 'made' }}
+                  textOffer={{ lead: stripeMadeEmail?.kind === 'sent' ? stripeMadeEmail.line : BILL_TEXT_OFFER_WORDS.leadMade, key: 'made' }}
                 />
                 {stripeFallbackLedgerInvoiceId ? (
                   <StripeInvoiceSendFromStripeButton
@@ -4047,7 +4105,7 @@ export default function SendRecordInvoiceModal({
                   </p>
                 ) : null}
                 {pressBox('stripe')}
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={onClose}
@@ -4055,22 +4113,42 @@ export default function SendRecordInvoiceModal({
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    disabled={!outsideReady || busy}
-                    aria-describedby={lineLeadingLowercaseHint ? BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID : undefined}
-                    onClick={() => void submitStripeInvoice()}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: outsideReady && !busy ? '#2563eb' : DEAD_PRESS_FILL,
-                      color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
-                    }}
-                  >
-                    {busy ? '…' : sendWords('stripe').press}
-                  </button>
+                  {/* Punch list #343, PR 3: the main press makes the bill and emails it; the quiet one makes it and sends nothing. */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      disabled={!outsideReady || busy}
+                      data-testid="bill-customer-make-send-later"
+                      onClick={() => void submitStripeInvoice(false)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '1px solid var(--border-strong)',
+                        background: 'var(--surface)',
+                        color: outsideReady && !busy ? 'var(--text-strong)' : DEAD_PRESS_TEXT,
+                        borderRadius: 4,
+                        cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {busy ? '…' : sendWords('stripe').later?.press}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!outsideReady || busy}
+                      data-testid="bill-customer-make-and-email"
+                      aria-describedby={lineLeadingLowercaseHint ? BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID : undefined}
+                      onClick={() => void submitStripeInvoice(true)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: outsideReady && !busy ? '#2563eb' : DEAD_PRESS_FILL,
+                        color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {busy ? '…' : sendWords('stripe').press}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

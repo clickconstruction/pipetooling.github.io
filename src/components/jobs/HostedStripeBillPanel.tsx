@@ -187,6 +187,7 @@ export function HostedStripeBillPanel({
   voidConfirmOverlayZIndex = 820,
   viewBillOnClose,
   justMade = false,
+  justMadeLead,
 }: {
   invoice: InvoiceWithJobForBillView
   /** Runs after a successful `get-stripe-invoice-details` (server backfill has returned). */
@@ -206,6 +207,11 @@ export function HostedStripeBillPanel({
   viewBillOnClose?: () => void
   /** Bill Customer just made this Stripe bill (v2.6772): the share row opens with the strip offering the text. */
   justMade?: boolean
+  /**
+   * Bill Customer's one press made the bill and emailed it (punch list #343, PR 3): the strip leads with the send's own
+   * line, *Bill email sent to …*, in place of *Nothing has gone to the customer yet*.
+   */
+  justMadeLead?: string
 }) {
   const { role: authRole } = useAuth()
   const stripeModeForBilling = authRole === 'dev' ? getBillingStripeModePref() : 'live'
@@ -222,7 +228,7 @@ export function HostedStripeBillPanel({
   const [stripeError, setStripeError] = useState<string | null>(null)
   const [stripeDetailsGeneration, setStripeDetailsGeneration] = useState(0)
   /** The offer after the bill went or was made (v2.6772, punch list #291): the strip's first line and a key per event. */
-  const [textOffer, setTextOffer] = useState<{ lead: string; key: number } | null>(justMade ? { lead: BILL_TEXT_OFFER_WORDS.leadMade, key: 0 } : null)
+  const [textOffer, setTextOffer] = useState<{ lead: string; key: number } | null>(justMade ? { lead: justMadeLead ?? BILL_TEXT_OFFER_WORDS.leadMade, key: 0 } : null)
   const [unwindOobOpen, setUnwindOobOpen] = useState(false)
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false)
   const [voidConfirmChecked, setVoidConfirmChecked] = useState(false)
