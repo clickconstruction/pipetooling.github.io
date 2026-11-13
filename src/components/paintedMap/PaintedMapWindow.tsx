@@ -8,12 +8,14 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
+import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { useAuth } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { isOfficeRole } from '../../lib/doorRoles'
+import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { requestMyLocation } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -83,7 +85,9 @@ export type PaintedMapToStart = { id: string; name: string; words: string; home:
 type Props = {
   /** A saved map by its id, or a new one from the start sheet. */
   ask: { mapId: string } | { start: PaintedMapToStart }
-  /** Where the map opens when nothing is on it: the job's address, placed. */
+  /** The job's or the site's address. Looked up only when the map has nothing on it to open on. */
+  address?: string | null
+  /** Where the map opens when nothing is on it, for a caller that already knows the point. */
   center?: PaintedPoint | null
   onClose: () => void
 }
@@ -116,7 +120,7 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, center, onClose }: Props) {
+export function PaintedMapWindow({ ask, address = null, center: givenCenter = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
@@ -129,10 +133,11 @@ export function PaintedMapWindow({ ask, center, onClose }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [gone, setGone] = useState(false)
   const [names, setNames] = useState<Map<string, string>>(() => new Map())
-  // A new map opens on what the painter chose to start with. A place needs somewhere to put its dot.
+  // A new map opens on what the painter chose to start with. A place needs somewhere to put its dot, and waits for one.
   const placeFirst = starting?.first === 'place'
-  const [mode, setMode] = useState<'view' | 'draw' | 'place'>(!starting ? 'view' : !placeFirst ? 'draw' : center ? 'place' : 'view')
-  const [placing, setPlacing] = useState<Placing | null>(() => (placeFirst && center ? { place: null, point: center, fix: null } : null))
+  const [mode, setMode] = useState<'view' | 'draw' | 'place'>(!starting ? 'view' : !placeFirst ? 'draw' : givenCenter ? 'place' : 'view')
+  const [placing, setPlacing] = useState<Placing | null>(() => (placeFirst && givenCenter ? { place: null, point: givenCenter, fix: null } : null))
+  const openedOnPlace = useRef(placeFirst && !!givenCenter)
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
   const [viewing, setViewing] = useState<string | null>(null)
   const [pickedPlace, setPickedPlace] = useState<string | null>(null)
@@ -149,6 +154,28 @@ export function PaintedMapWindow({ ask, center, onClose }: Props) {
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   const [confirm, setConfirm] = useState<{ kind: 'line'; line: PaintedLine } | { kind: 'place'; place: PaintedPlace } | { kind: 'map' } | { kind: 'leave' } | { kind: 'stop' } | null>(null)
+
+  // Somewhere to open: only a map with nothing on it needs the address looked up. A saved map with a line or a place
+  // frames itself, and its window asks the geocoder nothing.
+  const needsStart = !givenCenter && (starting ? true : !!whole && whole.lines.length === 0 && whole.places.length === 0)
+  const addresses = useMemo(() => {
+    const display = (address ?? '').trim()
+    return display ? [{ key: normalizeAddressForGeocodeKey(display), display }] : []
+  }, [address])
+  const { coords } = useAddressGeocodeCoords(addresses, needsStart && addresses.length > 0, 'painted map start')
+  const found = addresses[0] ? (coords.get(addresses[0].key) ?? null) : null
+  const center = givenCenter ?? found
+
+  // The address was found after the window opened: the map goes there, and a map that starts with a place gets its dot.
+  useEffect(() => {
+    if (!found || givenCenter) return
+    setFly((f) => f ?? { lat: found.lat, lng: found.lng })
+    if (placeFirst && !openedOnPlace.current) {
+      openedOnPlace.current = true
+      setPlacing((pl) => pl ?? { place: null, point: { lat: found.lat, lng: found.lng }, fix: null })
+      setMode((m) => (m === 'view' ? 'place' : m))
+    }
+  }, [found, givenCenter, placeFirst])
 
   const map: PaintedMap | null = whole?.map ?? (starting ? { id: starting.id, name: starting.name, words: starting.words, jobId: starting.home.jobId ?? null, developmentId: starting.home.jobId ? null : (starting.home.developmentId ?? null), createdBy: user?.id ?? null, createdAt: new Date().toISOString() } : null)
   const lines = useMemo(() => whole?.lines ?? [], [whole])

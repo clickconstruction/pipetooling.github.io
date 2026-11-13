@@ -5,14 +5,13 @@
  */
 import { useEffect, useState } from 'react'
 import { onPaintedMapAsk, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
-import type { PaintedPoint } from '../../lib/paintedMap/paintedLine'
 import { PaintAMapStartSheet } from './PaintAMapStartSheet'
 import { PaintedMapWindow, type PaintedMapToStart } from './PaintedMapWindow'
 
 type Open =
   | { kind: 'sheet'; home: PaintedMapHome }
   | { kind: 'new'; start: PaintedMapToStart }
-  | { kind: 'map'; mapId: string; center: PaintedPoint | null }
+  | { kind: 'map'; mapId: string; address: string | null }
 
 export function PaintedMapHost() {
   const [open, setOpen] = useState<Open | null>(null)
@@ -21,13 +20,13 @@ export function PaintedMapHost() {
     () =>
       onPaintedMapAsk((ask) => {
         if (ask.kind === 'start') setOpen({ kind: 'sheet', home: ask.home })
-        else setOpen({ kind: 'map', mapId: ask.mapId, center: ask.center ?? null })
+        else setOpen({ kind: 'map', mapId: ask.mapId, address: ask.address ?? null })
       }),
     [],
   )
 
   if (!open) return null
   if (open.kind === 'sheet') return <PaintAMapStartSheet home={open.home} onStart={(start) => setOpen({ kind: 'new', start })} onClose={() => setOpen(null)} />
-  if (open.kind === 'new') return <PaintedMapWindow key={open.start.id} ask={{ start: open.start }} center={open.start.home.center ?? null} onClose={() => setOpen(null)} />
-  return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} center={open.center} onClose={() => setOpen(null)} />
+  if (open.kind === 'new') return <PaintedMapWindow key={open.start.id} ask={{ start: open.start }} address={open.start.home.address ?? null} center={open.start.home.center ?? null} onClose={() => setOpen(null)} />
+  return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} onClose={() => setOpen(null)} />
 }

@@ -13,6 +13,14 @@ import type { PaintedCanvasDraft } from './PaintedMapCanvas'
 const auth = vi.hoisted(() => ({ value: { user: { id: 'me' } as { id: string } | null, role: 'helpers' as string } }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => auth.value }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => true }))
+/** The geocoder, stood in for: it places any address it is asked for, and counts the asks. */
+const geo = vi.hoisted(() => ({ asked: 0 }))
+vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
+  useAddressGeocodeCoords: (addresses: Array<{ key: string }>, enabled: boolean) => {
+    if (enabled) geo.asked += 1
+    return { coords: new Map(enabled ? addresses.map((a) => [a.key, { lat: 29.4, lng: -98.1 }] as const) : []), resolving: false }
+  },
+}))
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
@@ -85,6 +93,7 @@ afterEach(() => {
   io.refuse = null
   io.refuseUpload = null
   camera.shot = null
+  geo.asked = 0
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
 })
@@ -172,6 +181,29 @@ describe('a new map', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
     await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace']))
     expect(io.calls[1]!.args[1]).toMatchObject({ lat: 29.5, lng: -98.2, name: 'Gate', accuracyM: null, photoPath: null })
+  })
+})
+
+describe('where a map opens', () => {
+  it('looks the address up for a new map, and puts a first place\'s dot there', async () => {
+    render(<PaintedMapWindow ask={{ start: { id: 'new-map', name: 'What is where', words: '', first: 'place', home: { jobId: 'j1' } } }} address="1 Made Up Road" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    expect(geo.asked).toBeGreaterThan(0)
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:29.4,-98.1')
+  })
+
+  it('asks the geocoder nothing for a saved map that has a line to open on', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} address="1 Made Up Road" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(geo.asked).toBe(0)
+  })
+
+  it('looks the address up for a saved map with nothing on it yet', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} address="1 Made Up Road" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    await waitFor(() => expect(geo.asked).toBeGreaterThan(0))
   })
 })
 

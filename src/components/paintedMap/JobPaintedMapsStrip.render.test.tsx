@@ -9,19 +9,17 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import type { PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
 
-const io = vi.hoisted(() => ({ answer: { ok: true as const, value: [] as unknown[] } as { ok: true; value: unknown[] } | { ok: false; error: string }, calls: 0 }))
+const io = vi.hoisted(() => ({ answer: { ok: true as const, value: [] as unknown[] } as { ok: true; value: unknown[] } | { ok: false; error: string }, calls: 0, asked: [] as unknown[] }))
 vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
-  loadPaintedMapsFor: async () => {
+  loadPaintedMapsFor: async (home: unknown) => {
     io.calls += 1
+    io.asked.push(home)
     return io.answer
   },
 }))
-vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
-  useAddressGeocodeCoords: (addresses: Array<{ key: string }>) => ({ coords: new Map(addresses.map((a) => [a.key, { lat: 29.5, lng: -98.2 }])), resolving: false }),
-}))
 
 import { onPaintedMapAsk, paintedMapsChanged } from '../../lib/paintedMap/paintedMapDoor'
-import { JobPaintedMapsStrip } from './JobPaintedMapsStrip'
+import { DevelopmentPaintedMapsStrip, JobPaintedMapsStrip } from './JobPaintedMapsStrip'
 
 const whole = (id: string, name: string, home: { jobId?: string; developmentId?: string }, lengthM: number, placeCount: number): PaintedMapWhole => ({
   map: { id, name, words: '', jobId: home.jobId ?? null, developmentId: home.developmentId ?? null, createdBy: 'u1', createdAt: `2026-11-13T15:0${id.length}:00Z` },
@@ -42,6 +40,7 @@ afterEach(() => {
   asks.length = 0
   io.answer = { ok: true, value: [] }
   io.calls = 0
+  io.asked = []
 })
 
 describe('JobPaintedMapsStrip', () => {
@@ -51,7 +50,7 @@ describe('JobPaintedMapsStrip', () => {
     await waitFor(() => expect(io.calls).toBe(1))
     expect(document.querySelectorAll('[data-painted-map-line]')).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: '＋ Paint a map' }))
-    expect(asks).toEqual([{ kind: 'start', home: { jobId: 'j1', developmentId: 'd1', label: 'Lot 14', developmentLabel: 'Juniper Ridge', center: { lat: 29.5, lng: -98.2 } } }])
+    expect(asks).toEqual([{ kind: 'start', home: { jobId: 'j1', developmentId: 'd1', label: 'Lot 14', developmentLabel: 'Juniper Ridge', address: '1 Made Up Road' } }])
   })
 
   it('draws a line for each map with its length and places, and opens the one pressed', async () => {
@@ -61,7 +60,7 @@ describe('JobPaintedMapsStrip', () => {
     const line = await screen.findByRole('button', { name: /The way in for deliveries/ })
     expect(line.textContent).toContain('about 830 ft · 3 places')
     fireEvent.click(line)
-    expect(asks).toEqual([{ kind: 'open', mapId: 'm1', center: { lat: 29.5, lng: -98.2 } }])
+    expect(asks).toEqual([{ kind: 'open', mapId: 'm1', address: '1 Made Up Road' }])
   })
 
   it('says a development\'s map is from the development, after the job\'s own', async () => {
@@ -92,5 +91,62 @@ describe('JobPaintedMapsStrip', () => {
     io.answer = { ok: true, value: [] }
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+  })
+})
+
+describe('JobPaintedMapsStrip, the maps alone', () => {
+  it('draws nothing at all for a job with no painted map', async () => {
+    const r = render(<JobPaintedMapsStrip jobId="j1" only="maps" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    expect(r.container.textContent).toBe('')
+  })
+
+  it('shows the maps and no press to paint one', async () => {
+    listen()
+    io.answer = { ok: true, value: [whole('m1', 'The way in', { jobId: 'j1' }, 253, 1)] }
+    render(<JobPaintedMapsStrip jobId="j1" only="maps" />)
+    fireEvent.click(await screen.findByRole('button', { name: /The way in/ }))
+    expect(screen.getByText('Painted for this job')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '＋ Paint a map' })).toBeNull()
+    expect(asks).toEqual([{ kind: 'open', mapId: 'm1', address: null }])
+  })
+
+  it('stays quiet when the read fails: the sheet it sits on is about something else', async () => {
+    io.answer = { ok: false, error: 'no signal' }
+    const r = render(<JobPaintedMapsStrip jobId="j1" only="maps" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    expect(r.container.textContent).toBe('')
+  })
+})
+
+describe('DevelopmentPaintedMapsStrip', () => {
+  const JOBS = [
+    { id: 'j1', label: 'Lot 14' },
+    { id: 'j2', label: 'Lot 15' },
+  ]
+
+  it('reads the site\'s maps and its lots\' maps in one ask', async () => {
+    render(<DevelopmentPaintedMapsStrip developmentId="d1" developmentLabel="Juniper Ridge" jobs={JOBS} />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    expect(io.asked[0]).toEqual({ developmentId: 'd1', jobIds: ['j1', 'j2'] })
+  })
+
+  it('lists the site\'s own maps first and names the lot on a lot\'s map', async () => {
+    io.answer = { ok: true, value: [whole('lot', 'Side door', { jobId: 'j2' }, 0, 1), whole('site', 'Truck route', { developmentId: 'd1' }, 500, 0)] }
+    render(<DevelopmentPaintedMapsStrip developmentId="d1" developmentLabel="Juniper Ridge" jobs={JOBS} />)
+    await screen.findByRole('button', { name: /Truck route/ })
+    const lines = [...document.querySelectorAll('[data-painted-map-line]')].map((e) => e.textContent ?? '')
+    expect(lines[0]).toContain('Truck route')
+    expect(lines[0]).not.toContain('Lot')
+    expect(lines[1]).toContain('Side door')
+    expect(lines[1]).toContain('Lot 15 · 1 place')
+  })
+
+  it('starts a map for the whole development', async () => {
+    listen()
+    render(<DevelopmentPaintedMapsStrip developmentId="d1" developmentLabel="Juniper Ridge" jobs={JOBS} address="1 Made Up Road" />)
+    await waitFor(() => expect(io.calls).toBe(1))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Paint a map' }))
+    expect(asks).toEqual([{ kind: 'start', home: { developmentId: 'd1', developmentLabel: 'Juniper Ridge', address: '1 Made Up Road' } }])
   })
 })

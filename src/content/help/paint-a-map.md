@@ -12,7 +12,13 @@ Anyone who can open a job can paint a map for it.
 
 ## Start a map
 
-Open the job. Look under the address at the top of the job's window. Press {{button:outline|＋ Paint a map}}.
+A painted map sits wherever the app shows an address.
+
+- On a job's window, look under the address at the top.
+- On your own job card in Job Mode, look above the customer's lines.
+- On a development's page, look under its address.
+
+Press {{button:outline|＋ Paint a map}}.
 
 The **Paint a map** sheet opens.
 
@@ -23,6 +29,8 @@ The **Paint a map** sheet opens.
 The map opens on the job's address. Nothing is saved yet.
 
 A job in a development has two choices under **For**. Press the job's name to paint for that job alone. Press the development's name to paint for every lot.
+
+A map started on a development's page is for every lot. It shows on each job in the development.
 
 ## Draw the line
 
@@ -99,7 +107,11 @@ The line then reads *612 ft, measured with a wheel*.
 
 A job with a painted map shows a line under its address. The line has the map's name, its length and how many places it holds. Press it to open the map.
 
-The line shows on every tab of the job's window.
+The line shows on every tab of the job's window. It shows on your job card in Job Mode too.
+
+Press **On my way** on your job card. The sheet lists the maps painted for the job you picked. Press one to see the way in before you drive.
+
+A development's page lists its own maps first. Each lot's maps come after, with the lot's name.
 
 Press {{button:outline|Directions to the start}} to open the phone's maps app at the start of the first line. A maps app can route to a gate on a road. It cannot follow a painted line.
 

@@ -14,12 +14,17 @@ export type PaintedMapHome = {
   label?: string | null
   /** The development in words, for a job that is in one: the map can be for the whole site. */
   developmentLabel?: string | null
-  /** Where the map opens when it has nothing on it yet: the job's address, placed. */
+  /**
+   * The job's or the site's address. A map with nothing on it yet opens there, and the window is what looks the
+   * address up, only when it needs to: a line under an address must cost nothing to draw.
+   */
+  address?: string | null
+  /** The same thing for a caller that already knows the point. */
   center?: PaintedPoint | null
 }
 
 export type PaintedMapAsk =
-  | { kind: 'open'; mapId: string; center?: PaintedPoint | null }
+  | { kind: 'open'; mapId: string; address?: string | null }
   | { kind: 'start'; home: PaintedMapHome }
 
 type AskListener = (ask: PaintedMapAsk) => void
@@ -37,9 +42,9 @@ export function onPaintedMapAsk(listener: AskListener): () => void {
 }
 
 /** Open a saved map. `false` when no host is listening, so a caller can say so instead of doing nothing. */
-export function openPaintedMap(mapId: string, center?: PaintedPoint | null): boolean {
+export function openPaintedMap(mapId: string, address?: string | null): boolean {
   if (askListeners.size === 0) return false
-  for (const l of askListeners) l({ kind: 'open', mapId, center })
+  for (const l of askListeners) l({ kind: 'open', mapId, address: address ?? null })
   return true
 }
 

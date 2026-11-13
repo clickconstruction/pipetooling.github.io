@@ -63,10 +63,12 @@ async function fillMaps(maps: PaintedMap[]): Promise<PaintedMapWhole[]> {
  * their lines and places. Row security decides what comes back, so a caller who cannot open the
  * job gets an empty list and no error.
  */
-export async function loadPaintedMapsFor(home: { jobId?: string | null; developmentId?: string | null }): Promise<Landed<PaintedMapWhole[]>> {
+export async function loadPaintedMapsFor(home: { jobId?: string | null; developmentId?: string | null; /** A development's lots: their own maps are read with the site's. */ jobIds?: ReadonlyArray<string> }): Promise<Landed<PaintedMapWhole[]>> {
   const filters: string[] = []
   if (home.jobId) filters.push(`job_id.eq.${home.jobId}`)
   if (home.developmentId) filters.push(`development_id.eq.${home.developmentId}`)
+  const lots = [...new Set((home.jobIds ?? []).filter(Boolean))]
+  if (lots.length > 0) filters.push(`job_id.in.(${lots.join(',')})`)
   if (filters.length === 0) return { ok: true, value: [] }
   try {
     const res = (await supabase
