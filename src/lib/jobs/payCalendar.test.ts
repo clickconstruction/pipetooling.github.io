@@ -289,3 +289,10 @@ describe('the cutoff as a row and the send window say it (PR 3)', () => {
     expect(nextCutoffChip([])).toBeNull()
   })
 })
+
+describe('the cutoff on a job still being worked (PR 5)', () => {
+  it('says Bill by in place of Send by', () => {
+    expect(payCutoffLine('2026-11-22', TENTH, 'Bill')).toMatchObject({ sendBy: 'Bill by Nov 30 to be due Dec 10.', after: 'After that, Jan 10.', daysLeft: 8 })
+    expect(cutoffWordsFor(nextCutoff('2026-11-12', BY_25TH)!, 'Bill').sendBy).toBe('Bill by Nov 25 to be due Dec 30.')
+  })
+})

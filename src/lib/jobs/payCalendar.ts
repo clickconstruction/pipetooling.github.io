@@ -268,9 +268,12 @@ export function payCalendarPreview(cal: PayCalendar, todayYmd: string): { inBy: 
   }
 }
 
+/** What the office does by the cutoff: send a bill that is ready, or bill a job still being worked. */
+export type PayCutoffVerb = 'Send' | 'Bill'
+
 /** The cutoff as someone about to bill meets it: "Send by Nov 30 to be due Dec 10." and "After that, Jan 10." */
-export function cutoffWordsFor(cut: PayCutoff): { sendBy: string; after: string } {
-  return { sendBy: `Send by ${payCalendarMonthDay(cut.cutoffYmd)} to be due ${payCalendarMonthDay(cut.dueYmd)}.`, after: `After that, ${payCalendarMonthDay(cut.nextDueYmd)}.` }
+export function cutoffWordsFor(cut: PayCutoff, verb: PayCutoffVerb = 'Send'): { sendBy: string; after: string } {
+  return { sendBy: `${verb} by ${payCalendarMonthDay(cut.cutoffYmd)} to be due ${payCalendarMonthDay(cut.dueYmd)}.`, after: `After that, ${payCalendarMonthDay(cut.nextDueYmd)}.` }
 }
 
 /** A measured payment: the day its bill went in and the day the money landed. */
@@ -368,11 +371,14 @@ export type PayCutoffLineWords = {
 
 const leftWords = (days: number): string => (days === 0 ? 'The cutoff is today.' : days === 1 ? 'The cutoff is tomorrow.' : `The cutoff is in ${days} days.`)
 
-/** The cutoff line for a bill not yet sent; null on a bad day. */
-export function payCutoffLine(todayYmd: string, cal: PayCalendar): PayCutoffLineWords | null {
+/** A job still being worked says its cutoff only this close to it (PR 5): before that the line would sit on every row all month. */
+export const PAY_CUTOFF_WORKING_DAYS = 10
+
+/** The cutoff line for a bill not yet sent, or with `Bill` for a job not yet billed; null on a bad day. */
+export function payCutoffLine(todayYmd: string, cal: PayCalendar, verb: PayCutoffVerb = 'Send'): PayCutoffLineWords | null {
   const cut = nextCutoff(todayYmd, cal)
   if (!cut) return null
-  return { ...cutoffWordsFor(cut), soon: cut.daysLeft <= PAY_CUTOFF_SOON_DAYS, daysLeft: cut.daysLeft, cutoffYmd: cut.cutoffYmd, title: `${payCalendarWords(cal)} ${leftWords(cut.daysLeft)}` }
+  return { ...cutoffWordsFor(cut, verb), soon: cut.daysLeft <= PAY_CUTOFF_SOON_DAYS, daysLeft: cut.daysLeft, cutoffYmd: cut.cutoffYmd, title: `${payCalendarWords(cal)} ${leftWords(cut.daysLeft)}` }
 }
 
 /** The cutoff at the moment of sending (PR 3): what sending today makes the bill, and what waiting costs. */
