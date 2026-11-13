@@ -73,8 +73,8 @@
   .pad { padding: 14px; }
   .colhead { font-size: 11px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); padding: 6px 14px; background: var(--bg-subtle); }
 
-  /* the dates block, at the column's own width (14.5rem) */
-  .led { width: 232px; max-width: 100%; display: flex; flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; text-align: left; }
+  /* the dates block, at the width measured on the live board: 208 px */
+  .led { width: 208px; max-width: 100%; display: flex; flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; text-align: left; }
   .r { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; color: var(--text-muted); }
   .r .w { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; overflow: hidden; }
   .r .w > span.t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -168,7 +168,7 @@
     <a href="#press">3 · The press and the tip</a>
     <a href="#places">4 · One job, every place</a>
     <a href="#phone">5 · On a phone</a>
-    <a href="#calls">Your calls</a>
+    <a href="#calls">Your calls, answered</a>
   </nav>
 
   <h2 id="short">The short of it</h2>
@@ -178,6 +178,7 @@
       <h3>My suggestion</h3>
       <ol>
         <li><b>One lien line.</b> Its words are the next act on the lien path. Its day is the legal last day that act protects. The count shows once.</li>
+        <li><b>Words from the paper. Day, dot, weight and colour from the clock.</b> So the row and the Lien calendar can never show two days.</li>
         <li><b>A second line only for paper that is out.</b> Sent, delivered, held, the attorney's letter. It never carries a day and count the first line has.</li>
         <li><b>The line under the rule speaks of money only.</b> It never names a lien act again.</li>
         <li><b>The press opens the Lien window on the right paper.</b> Today it opens on Demand letter.</li>
@@ -197,7 +198,7 @@
   </div>
 
   <h2 id="spot">1 · The row you sent <small>the affidavit is approved and ready to file</small></h2>
-  <p class="lede">The whole dates block, as the column draws it. Yellow marks what is said twice. Violet marks what changes.</p>
+  <p class="lede">The whole dates block, at the column's real width of 208 px. Yellow marks what is said twice. Violet marks what changes.</p>
   <div class="two">
     <div class="col sug">
       <div class="cap">My suggestion</div>
@@ -273,7 +274,7 @@
     </div>
   </div>
 
-  <h2 id="calls">Your calls</h2>
+  <h2 id="calls">Your calls, answered <small>2026-11-12: "I like all of your suggestions"</small></h2>
   <ol class="calls">
     <li><b>One line with the next act first, or only trim the repeat?</b> My pick is the next act first. The trim alone is the first PR either way, and it fixes the row you sent.</li>
     <li><b>The name of the paper on the line.</b> My pick is <i>File the affidavit</i>, the Lien window's and the Lien desk's own words. The other choice is <i>File the lien</i> everywhere.</li>
@@ -323,10 +324,10 @@
       sug: A('Waiting on Marisol', 'by Nov 16', '4d') },
     { t: 'Notice due in 4 days, held by the leader', v: 'adds', vt: 'Held', p: 'A hold is the leader\'s choice. The legal day does not move, so the line keeps it. The second line gives the reason.',
       now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: 'by Nov 16', far: '4d' }) + sub('Held · they promised · asks again Nov 13', 'amber'),
-      sug: A('Review the hold', 'by Nov 16', '4d') + sub('Held · they promised · asks again Nov 13', 'amber') },
-    { t: 'Notice printed and in the mail', v: 'adds', vt: 'The second line adds', p: 'The notice is out. What is left is typing the certified number, so the line turns blue, not red.',
+      sug: A('Review the hold', 'by Nov 16', '4d') + sub('Held · asks again Nov 13', 'amber') },
+    { t: 'Notice printed with the run', v: 'adds', vt: 'The second line adds', p: 'The notice is printed. The app cannot tell that it was mailed until the certified number is typed. So the line keeps the clock\'s colour.',
       now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: 'by Nov 16', far: '4d' }) + sub('In the mail · tracking owed', 'blue'),
-      sug: A('Record the mailing', 'by Nov 16', '4d', 'blue') },
+      sug: A('Record the mailing', 'by Nov 16', '4d') },
     { t: 'Affidavit approved, ready to file', v: 'repeat', vt: 'Repeat', p: 'The row you sent. The most common pair on the board today.',
       now: row({ tone: 'red', loud: true, l: 'File the lien', press: true, rest: '<mark>by Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('File the affidavit · <mark>by Nov 16 · 4d</mark>', 'red'),
       sug: A('File the affidavit', 'by Nov 16', '4d') },
@@ -354,9 +355,15 @@
     { t: 'Lien filed and served', v: 'repeat', vt: 'Repeat', p: 'The filing day prints twice.',
       now: row({ tone: 'green', rest: '<mark>Lien filed Nov 9</mark>', far: '' }) + sub('<mark>Lien filed Nov 9</mark> · served Nov 11', 'green'),
       sug: row({ tone: 'green', rest: 'Lien filed Nov 9 · served Nov 11', far: '' }) },
-    { t: 'The lien window closed with nothing filed', v: 'repeat', vt: 'Repeat', p: 'Two lines say closed and gone. One line can say both. It is red until someone writes the closed window down, grey after.',
+    { t: 'The lien window closed with nothing filed', v: 'repeat', vt: 'Repeat', p: 'Two lines say closed and gone, and the first is cut to three dots on all eight such rows today. One short line says both. It is red until someone writes the closed window down, grey after.',
       now: row({ rest: 'Lien window <mark>closed</mark> Oct 15', far: '28d ago' }) + verdict('<mark>Lien gone</mark>', '', 'red'),
-      sug: row({ tone: 'red', loud: true, wrap: true, l: 'Lien gone', rest: '· closed Oct 15', press: true, far: '28d ago' }) },
+      sug: row({ tone: 'red', loud: true, wrap: true, l: 'Lien gone', rest: 'Oct 15', press: true, far: '28d ago' }) },
+    { t: 'One notice covers two months, and one window has closed', v: 'differ', vt: 'Differ: two days', p: 'Three rows on the board read this way today. The clock shows the month that can still be saved. The chip shows the month already lost. The day now always comes from the clock, and the closed month stays in the Lien window.',
+      now: row({ tone: 'red', loud: true, l: 'Lien notice', press: true, rest: 'by <mark>Nov 16</mark>', far: '<mark>4d</mark>' }) + sub('Approve the notice · by <mark>Oct 15 · 28d late</mark>', 'red'),
+      sug: A('Approve the notice', 'by Nov 16', '4d') },
+    { t: 'A paper is in work, and nothing is urgent', v: 'differ', vt: 'Differ, day repeats', p: 'The words come from the paper. The dot, the weight and the colour come from the clock. At 33 days the line is a quiet ring that names the step.',
+      now: row({ ring: true, rest: 'Lien <mark>by Dec 15</mark>', far: '<mark>33d</mark>' }) + sub('Affidavit · Notice to draft · <mark>by Dec 15 · 33d</mark>', 'amber') + verdict('Ask for a date', '21d past', 'amber'),
+      sug: row({ ring: true, wrap: true, rest: '<span class="press">Draft the affidavit</span>', by: 'by Dec 15', far: '33d' }) + verdict('Ask for a date', '', 'amber') },
     { t: 'A retainage notice is the nearest paper', v: 'differ', vt: 'Differ: two papers, two days', p: 'The small line names another paper with another day. The nearest act takes the line. The far lien day stays in the Lien window.',
       now: row({ tone: 'green', ring: true, rest: 'Lien by Jan 15', far: '64d' }) + sub('Retainage · Notice to draft · by Dec 2 · 20d', 'amber') + verdict('Can run late', '46d', 'green'),
       sug: A('Draft the retainage notice', 'by Dec 2', '20d', 'amber') },

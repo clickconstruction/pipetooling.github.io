@@ -264,7 +264,7 @@ export default function PayCalendarModal({ payerId, payerName, onClose, onSaved 
           ) : null}
         </div>
         <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {canSet ? 'The Pipeline’s dates do not read it yet.' : 'The office sets this.'}
+          {canSet ? 'Every bill this payer pays reads it.' : 'The office sets this.'}
           {storedWords ? ` ${storedWords}` : ''}
         </p>
       </div>

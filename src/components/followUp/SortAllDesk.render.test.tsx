@@ -122,6 +122,8 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     takeIt: vi.fn(async () => undefined),
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
+    noReplyNeeded: vi.fn(async () => undefined),
+    loadDoneFold: vi.fn(async () => ({ said: [], filed: [] })),
     markOwed: vi.fn(async () => 'o-new'),
     owedDone: vi.fn(async () => 'n-new'),
     owedSentDone: vi.fn(async () => undefined),
@@ -164,6 +166,7 @@ function sortIo(): NewLaneCardIo {
     loadKnown: vi.fn(async () => ({})),
     markNotice: vi.fn(async () => undefined),
     unmarkNotice: vi.fn(async () => undefined),
+    noReplyNeeded: vi.fn(async () => undefined),
     makeCustomerRecord: vi.fn(async () => 'c-new'),
     startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '512', customer: 'Ridgeway Builders' })),
     answerInvitation: vi.fn(async () => undefined),
@@ -237,6 +240,17 @@ describe('Sort all', () => {
     expect(progress()).toEqual(['New', '2 to sort', '2 of 3'])
     expect(desk().getByText('1 more after this')).toBeTruthy()
     expect(await desk().findByRole('region', { name: 'Sort: Which job?' })).toBeTruthy()
+  })
+
+  it('No reply needed under the card closes the thread as the presser, and the next person comes up (v2.7029)', async () => {
+    const io = followUpIo(SORTING, GREG_SORTED)
+    const { sort, say } = renderPanel(io)
+    await openDesk()
+    await desk().findByRole('region', { name: 'Sort: Who has it?' })
+    fireEvent.click(desk().getByRole('button', { name: 'No reply needed' }))
+    await waitFor(() => expect(sort.noReplyNeeded).toHaveBeenCalledWith('greg', ME.name))
+    await waitFor(() => expect(say).toHaveBeenCalledWith('Greg Paulk cleared from Follow up.', 'success'))
+    await waitFor(() => expect(cardFor()).toBe('priya'))
   })
 
   it('Someone else closes the desk and opens the thread at the line', async () => {

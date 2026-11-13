@@ -33,6 +33,8 @@ A pay application is the bill a commercial job sends in each month.
 
 You reach the customer two ways. On **Jobs → Pipeline**, press the customer's name on a row. Or open **Customers** and pick them.
 
+There are two shorter ways from a billed row. Press the *Pays in* words under the row's dates, and the same line sits on the customer's card in Pay speeds. Once a calendar is set, the calendar's own words sit under the row's dates. Press them to open the window.
+
 Once a calendar is set, the line reads like *In by month end, paid the 10th*. Press the line to change the calendar.
 
 ## Fill it in
@@ -74,9 +76,32 @@ Leave the calendar unset for a customer who pays some days after each bill. The 
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
-## What it changes today
+## The cutoff, before a bill goes out
 
-Saving a calendar changes no date on the Pipeline yet. The window and the line under **Pays in** are the whole of it for now. The billed rows and the payment forecast read the calendar in a later release.
+A bill that has not gone out yet shows its cutoff. You see the line in three places.
+
+- A row in **Ready to Bill** on the Pipeline reads *Send by Nov 30 to be due Dec 10. After that, Jan 10.*
+- The **Ready to Bill** header shows the nearest cutoff, like *Next cutoff Nov 25 · 1 bill*.
+- The Bill Customer window says what sending today makes the bill.
+
+The line is blue while the cutoff is far. It turns amber in the last 7 days. Press the first sentence on a row to open the calendar.
+
+:::example One day decides a month
+Send by Nov 30 to be due Dec 10. After that, Jan 10.
+:::
+
+The cutoff never stops a bill. It tells you what waiting costs.
+
+## What it changes
+
+Every bill that customer pays reads the calendar.
+
+- A billed row on the Pipeline reads **Due** with the day the contract makes it due. See [see when a customer will pay](/help/see-when-a-customer-will-pay#when-the-payer-pays-on-a-calendar).
+- The line under the row says when their money usually lands.
+- The payment forecast puts the bill in the week their money usually lands, and shows its due day.
+- The Lien desk weighs its deadlines against the day their money usually lands.
+
+A customer with no calendar reads exactly as before.
 
 ## Who can set one
 

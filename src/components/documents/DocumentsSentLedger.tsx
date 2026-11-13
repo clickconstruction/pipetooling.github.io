@@ -10,6 +10,8 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { documentsQuietButton } from '../jobs/jobDocumentsStyles'
 import { SentCopyRows } from './SentCopyRows'
+import { Link } from 'react-router-dom'
+import { BILLS_SENT_PATH } from '../../lib/billing/billsSent'
 
 /**
  * Documents → Sent copies (v2.4573): everything the company sent, newest first, each with the copy as
@@ -130,6 +132,15 @@ export function DocumentsSentLedger() {
           </button>
         ))}
       </div>
+      {group === 'bills' ? (
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }} data-testid="documents-sent-bills-door">
+          See these with amounts, addresses and a total for each day on{' '}
+          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+            Bills sent
+          </Link>
+          .
+        </p>
+      ) : null}
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="documents-sent-copies" idempotent busy={reading} /> : null}
       {rows == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>

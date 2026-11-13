@@ -7,6 +7,7 @@ import {
 } from './billedPaymentForecast'
 import type { PaySpeedData } from './billedExpectedPay'
 import { paceContextFor } from './payPace'
+import { indexPayCalendars } from './payCalendar'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -199,5 +200,56 @@ describe('usual slip (Their Word PR 3)', () => {
     expect(noPromise.buckets.flatMap((b) => b.rows)[0]!.slipDays).toBeNull()
     const tiny = buildBilledPaymentForecast(rows, speeds, TODAY, { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }, { knight: 0.4 })
     expect(tiny.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!.slipDays).toBeNull()
+  })
+})
+
+describe('buildBilledPaymentForecast with Pay calendars (punch list #323)', () => {
+  // Today is Thursday 2026-11-12: this week is Nov 8 to 14, next week Nov 15 to 21. Larkfield pays the 10th of the
+  // month after a bill is in, and runs about 6 days past it; its median pay speed is 41 days.
+  const today = '2026-11-12'
+  const larkSpeeds: PaySpeedData = {
+    company: { medianDays: 12, samples: 200 },
+    customers: { lark: { medianDays: 41, samples: 4 }, dana: { medianDays: 10, samples: 5 } },
+    segments: { residential: null, commercial: null },
+    customerTypes: { lark: 'commercial', dana: 'residential' },
+    receipts: {
+      lark: [
+        { billedYmd: '2026-10-06', paidYmd: '2026-11-10', gapDays: 35, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-10-27', paidYmd: '2026-11-16', gapDays: 20, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-09-03', paidYmd: '2026-10-24', gapDays: 51, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-08-20', paidYmd: '2026-09-16', gapDays: 27, jobId: null, jobName: null, address: null },
+      ],
+    },
+    quality: null,
+  }
+  const calendars = indexPayCalendars([{ payerCustomerId: 'lark', jobId: null, off: false, calendar: { cutoffDay: null, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '', words: '' }, setByName: null, setAt: null }])
+  const billedRow = (j: Partial<JobWithDetails>, inv: { id: string; amount: number; estimated_bill_date: string }): StageRow => invRow({ ...inv, job: job(j) })
+  const bills = [
+    billedRow({ id: 'j1', customer_id: 'lark', customer_name: 'Larkfield Construction', revenue: 18400 }, { id: 'i1', amount: 18400, estimated_bill_date: '2026-10-06' }),
+    billedRow({ id: 'j2', customer_id: 'lark', customer_name: 'Larkfield Construction', revenue: 22750 }, { id: 'i2', amount: 22750, estimated_bill_date: '2026-10-27' }),
+    billedRow({ id: 'j3', customer_id: 'lark', customer_name: 'Larkfield Construction', revenue: 9600 }, { id: 'i3', amount: 9600, estimated_bill_date: '2026-11-03' }),
+    billedRow({ id: 'j4', customer_id: 'dana', customer_name: 'Dana Whitfield', revenue: 1840 }, { id: 'i4', amount: 1840, estimated_bill_date: '2026-11-03' }),
+  ]
+  const sums = (f: ReturnType<typeof buildBilledPaymentForecast>) => Object.fromEntries(f.buckets.filter((b) => b.rows.length).map((b) => [b.key, b.sum]))
+
+  it('without calendars three bills from one payer land on three dates', () => {
+    const f = buildBilledPaymentForecast(bills, larkSpeeds, today)
+    expect(sums(f)).toEqual({ thisWeek: 1840, nextWeek: 18400, later: 32350 })
+  })
+
+  it('with the calendar the two October bills share a due day and a week, and each row carries its due day', () => {
+    const f = buildBilledPaymentForecast(bills, larkSpeeds, today, null, null, null, calendars)
+    expect(sums(f)).toEqual({ thisWeek: 1840, nextWeek: 41150, later: 9600 })
+    const next = f.buckets.find((b) => b.key === 'nextWeek')!.rows
+    expect(next.map((r) => [r.invoiceId, r.model?.source, r.model?.dueYmd, r.model?.daysPastDue, r.forecastYmd])).toEqual([
+      ['i2', 'terms', '2026-11-10', 2, '2026-11-16'],
+      ['i1', 'terms', '2026-11-10', 2, '2026-11-16'],
+    ])
+    const later = f.buckets.find((b) => b.key === 'later')!.rows[0]!
+    expect([later.model?.dueYmd, later.forecastYmd]).toEqual(['2026-12-10', '2026-12-16'])
+    // A payer with no calendar reads as before.
+    const dana = f.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!
+    expect([dana.model?.source, dana.model?.dueYmd, dana.forecastYmd]).toEqual(['customer', null, '2026-11-13'])
+    expect(f.openTotal).toBe(52590)
   })
 })

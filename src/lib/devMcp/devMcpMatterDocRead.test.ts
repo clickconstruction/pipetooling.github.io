@@ -62,7 +62,7 @@ describe('get_matter_document (a matter\'s text document a piece at a time, v2.6
   it('the server, the README and the migration carry the verb; the function refuses a file alone and a counsel-only paper to the seat, and the slice is one grammar', () => {
     expect(SERVER).toContain("name: 'get_matter_document'")
     expect(SERVER).toContain("case 'get_matter_document': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.78.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.79.0'")
     expect(README).toContain('`get_matter_document(matter_id, doc_id, section?)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain("CREATE OR REPLACE FUNCTION public.hr_doc_slice(p_text text, p_section text DEFAULT NULL, p_who text DEFAULT 'the document')")
