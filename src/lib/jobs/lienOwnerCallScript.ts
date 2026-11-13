@@ -20,7 +20,7 @@ import { affidavitPileFor, releasedAgainstHold, type AffidavitPile, type OwnerCa
 export type CallLetterKind = CoverLetterKind | 'paid_out' | 'unresponsive' | 'retainage'
 
 export type CallLetterFacts = {
-  /** "273 · Dudley (Lennox)" */
+  /** "273 · Dunmere (Linmoor)" */
   jobLabel: string
   /** The property, as the letter addressed it. */
   property: string
@@ -150,7 +150,7 @@ function streetOf(property: string): string {
   return property.split(',')[0]?.trim() || 'your property'
 }
 
-/** "the notice on 9703 Lenox Hl" / "the retainage notice on …" */
+/** "the notice on 9703 Linmor Hl" / "the retainage notice on …" */
 function theNotice(f: CallLetterFacts): string {
   return `${f.instrument === 'retainage_53_057' ? 'the retainage notice' : 'the notice'} on ${streetOf(f.property)}`
 }

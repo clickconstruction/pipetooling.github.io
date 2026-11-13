@@ -1,6 +1,6 @@
 /**
  * AR refresh PR 4 (v2.3382): the footer says what Apply will do, in words —
- * "Applies $250.00 to 992 · Done Right Foundation. The bill is settled." —
+ * "Applies $250.00 to 992 · Dead Level Foundation. The bill is settled." —
  * or why it can't yet. Pure; tested beside it.
  */
 import { parseAllocationDollars } from './arAllocationProgress'

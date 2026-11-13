@@ -19,7 +19,7 @@ import { formatUsdNoCents } from './jobFormatting'
 
 export interface LienBookJob {
   id: string
-  /** `273 · Dudley (Lennox)` */
+  /** `273 · Dunmere (Linmoor)` */
   label: string
   address: string
   gcId: string | null

@@ -1,5 +1,5 @@
 /**
- * The GC contact sheet (the Gun Dog spike, 2026-11-02): the name, the phone and the email, edited on the
+ * The GC contact sheet (the Gray Fox spike, 2026-11-02): the name, the phone and the email, edited on the
  * Development page instead of the newest bid's Edit tab. The button names the act and its count, and the
  * caption under it says which bids take it and which keep their own.
  */

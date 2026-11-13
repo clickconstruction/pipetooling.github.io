@@ -15,7 +15,7 @@
 
 export const THEIR_PAPER_KIND = 'their_paper'
 
-/** The key terms the record keeps, in the order the Burd matter needed them. */
+/** The key terms the record keeps, in the order the Brund matter needed them. */
 export const THEIR_PAPER_TERM_KEYS = ['termination', 'notice_to_proceed', 'default_cure', 'retainage_release', 'payment_contingency', 'pay_calendar', 'change_orders', 'venue', 'fees_arbitration'] as const
 export type TheirPaperTermKey = (typeof THEIR_PAPER_TERM_KEYS)[number]
 

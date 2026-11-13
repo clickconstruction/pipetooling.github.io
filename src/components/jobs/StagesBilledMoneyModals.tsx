@@ -324,6 +324,8 @@ export default function StagesBilledMoneyModals({
           focusRows={payerFocusRows}
           rows={unfilteredBoardLists.billedActiveRows}
           paySpeeds={billedPaySpeeds}
+          payCalendars={payCalendars}
+          acceptedByInvoice={acceptedByInvoice}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setPaySpeedsPayer(null)}
           onOpenJobDetail={(jobId) => {

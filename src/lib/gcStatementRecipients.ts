@@ -183,7 +183,7 @@ function joinNames(names: readonly string[]): string {
 
 /**
  * One sentence under the header that says the send back, in plain words:
- * *Goes to RMC- Dudley Mason. Their reply goes to Malachi. You get a copy.*
+ * *Goes to RLC- Dunmere Mallin. Their reply goes to Malachi. You get a copy.*
  */
 export function recipientReadback(input: {
   toName: string | null
