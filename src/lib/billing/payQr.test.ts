@@ -62,7 +62,7 @@ describe('payQr — the half-sheet', () => {
   })
 })
 
-describe('payQr — the code as a picture (v2.7086)', () => {
+describe('payQr — the code as a picture (v2.7090)', () => {
   it('the markup gets the SVG namespace before it is loaded as an image, once', async () => {
     // The drawing is made for a page and carries no namespace; a browser reading it as an image file refuses it without one.
     const svg = await payQrSvgMarkup(payLinkUrl(ID), 120, null)

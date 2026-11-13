@@ -87,6 +87,10 @@ type ChecklistInstanceCardProps = {
   /** The dot's number, once the list has a map over it (PR 4). */
   placeNumber?: number | null
   placeOverdue?: boolean
+  /** How far the place is, once the person asked where they are on the map above: `250 ft north-east`. */
+  placeFar?: string | null
+  /** Bumped by Show the task on the map (PR 4): the card opens. Zero or absent does nothing. */
+  openSignal?: number
 }
 
 /**
@@ -120,8 +124,13 @@ export function ChecklistInstanceCard({
   place = null,
   placeNumber = null,
   placeOverdue = false,
+  placeFar = null,
+  openSignal = 0,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
+  useEffect(() => {
+    if (openSignal) setThreadOpen(true)
+  }, [openSignal])
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const composerRef = useRef<HTMLInputElement | null>(null)
@@ -428,6 +437,7 @@ export function ChecklistInstanceCard({
 
   return (
     <li
+      data-task-instance={instance.id}
       className={variant === 'row' ? 'myInboxRow' : undefined}
       style={
         variant === 'row'
@@ -499,7 +509,7 @@ export function ChecklistInstanceCard({
           >
             {title}
           </div>
-          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} /> : null}
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue={placeOverdue} far={placeFar} /> : null}
           {statusStrip}
           {reopenedCallout}
           {linesBlock}

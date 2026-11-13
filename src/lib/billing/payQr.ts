@@ -92,7 +92,7 @@ export async function payQrSvgMarkup(url: string, size: number, markDataUrl: str
 }
 
 /**
- * The markup with the SVG namespace on its root (v2.7086). The code is drawn as markup for a page, where the
+ * The markup with the SVG namespace on its root (v2.7090). The code is drawn as markup for a page, where the
  * HTML parser supplies the namespace. Loaded into an `<img>` it is read as XML, and without the namespace the
  * browser refuses it, so no code ever became a PNG: a PDF drew an empty square and Copy image failed.
  */

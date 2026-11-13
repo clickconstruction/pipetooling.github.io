@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, directions, how far
+keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick, place, where, map, directions, how far, where my tasks are, satellite, hide map
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -71,6 +71,20 @@ The app asks your phone where it is only when you tap **How far am I?**. Your lo
 The line under the buttons says who set the place and when. A machine moves and a gate gets rebuilt. If the place looks wrong, say so in a note.
 
 With no signal the picture may not load. The task says so. **How far am I?** still works, since your phone finds itself without a signal.
+
+## See all my tasks on a map
+
+When an open task of yours has a place, the Today tab opens on a map. The map is called **Where my tasks are**. It sits above the list, in Task Mode too.
+
+- Each place is a dot with a number. The same number sits beside the place's name on the task below.
+- A red dot means a task there is overdue.
+- Tasks at one place share a dot. The dot shows the first number and a plus, like *2+*.
+- Tap a dot to see its tasks under the map. Tap {{button:outline|Show the task}} and the list scrolls to that task and opens it. {{button:blue|Directions}} takes you to the place.
+- Tasks with no place are not on the map. A line under the map counts them, and they are still in the list.
+
+Tap {{button:outline|Show where I am}} to add a dark dot for you. Each task's line then says how far away its place is, like *250 ft north-east*. Your location stays on your phone.
+
+**Satellite** shows the ground from above. **Streets** shows roads. Tap **Hide map** to fold the map away. Your phone remembers, and **Show map** brings it back.
 
 ## Notes are a conversation
 
