@@ -166,6 +166,32 @@ describe('BillsSentLedger', () => {
     expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Delivered means their mail server took it.')
   })
 
+  it('opens one bill\u2019s record from its address, every send in order, and prints it', async () => {
+    const printed: string[] = []
+    const opener = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (h: string) => printed.push(h), close: () => {}, images: [] }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    io.data = data([copy({ id: 'c2', sentAt: '2026-11-05T17:02:00.000Z' }), copy({ id: 'c1' })])
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    const record = await screen.findByTestId('bills-sent-record')
+    expect(record.textContent).toContain('Bill 1412-0002 · J1412 · Sable Ridge Lot 14')
+    expect(record.textContent).toContain('Sable Ridge Builders · Not paid')
+    expect(screen.getAllByTestId('bills-sent-record-event').map((e) => e.textContent?.replace(/\d{1,2}:\d\d [AP]M/, 'T'))).toEqual([
+      'Thu, Nov 5 · T · Emailed again by PriyaTo Sable Ridge Builders, hal@sableridge.example. Copy as sent',
+      'Tue, Nov 3 · T · Emailed by PriyaTo Sable Ridge Builders, hal@sableridge.example. Copy as sent',
+    ])
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    expect(screen.getByRole('link', { name: '← All bills sent' }).getAttribute('href')).toBe('/bills-sent')
+    fireEvent.click(screen.getByRole('button', { name: 'Print this record' }))
+    expect(printed[0]).toContain('<h1>Bill 1412-0002 · J1412 · Sable Ridge Lot 14</h1>')
+    opener.mockRestore()
+  })
+
+  it('makes a bill\u2019s name on a line the door to its record', async () => {
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    expect(screen.getByRole('link', { name: 'Bill 1412-0002' }).getAttribute('href')).toBe(`/bills-sent?bill=${BILL}`)
+  })
+
   it('says what fills an empty list, and offers the Pipeline', async () => {
     renderWithProviders(<BillsSentLedger />)
     const empty = await screen.findByTestId('bills-sent-empty')

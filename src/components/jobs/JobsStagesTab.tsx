@@ -195,6 +195,7 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
+import { lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -4815,6 +4816,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
+        // v2.7077: the window's header names the step the row names (a notice waiting on its owner, its approval or its mailing).
+        deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {
