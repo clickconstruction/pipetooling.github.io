@@ -74,7 +74,10 @@ import {
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
-import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
+import { billedPayModel } from '../../lib/jobs/billedDuePay'
+import { calendarFor, nextCutoffChip, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import PayCutoffLine from './PayCutoffLine'
+import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
 import { jobIsScheduledInKind } from '../../lib/inKind/inKindLedger'
 import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/payPace'
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
@@ -1013,7 +1016,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     chaseTouches,
     loadChaseTouches,
     paceFacts,
+    payCalendars,
+    loadPayCalendars,
   } = useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay })
+  /** The Pay calendar window's opener (punch list #323): a billed row whose payer is on a calendar opens it from the calendar's words. */
+  const payCalendarModal = usePayCalendarModal()
   /**
    * UNFILTERED board lists — the single "what's true" derivation, as opposed
    * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
@@ -1025,6 +1032,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    */
   // Declared up here since v2.6034, so the pace context below and the billed chips above the filters can read it.
   const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  /** Punch list #323, PR 3: the nearest cutoff among the bills waiting to go, for the Ready to Bill header. Null with no payer on a Pay calendar there. */
+  const readyToBillCutoffChip = useMemo(() => {
+    if (!payCalendars) return null
+    const today = todayYmdInAppTz()
+    const lines = []
+    for (const r of unfilteredBoardLists.readyToBillRows) {
+      const payer = paySpeedPayer(r.job, r.kind === 'job' ? null : r.inv)
+      const calendar = payer.id ? calendarFor(payCalendars, { payerId: payer.id, jobId: r.job.id }) : null
+      const line = calendar ? payCutoffLine(today, calendar) : null
+      if (line) lines.push(line)
+    }
+    return nextCutoffChip(lines)
+  }, [payCalendars, unfilteredBoardLists])
   // v2.6034 (punch list #177, decision 1): the GC facts and the GC pace here, worked out once for every billed chip,
   // forecast row, call and dates ledger on the board. The GC pace rests on the GC payers among the open bills on the
   // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
@@ -1045,8 +1065,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienRunwayFor = useCallback(
     // The runway's read is `lienCalendarRows.ts`'s (punch list #182): the Lien desk's page reads the same one.
     (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null =>
-      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()) }),
-    [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext],
+      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()), payCalendars }),
+    [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext, payCalendars],
   )
   // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
   // below once the desk's reads are in (`lienStateFor`) and handed here as state, since the desk's hook sits later in
@@ -1061,16 +1081,35 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // runway kernel still decides the deadlines; the ledger arranges them
       // with the money.
       const inv = row.kind === 'job' ? null : row.inv
+      // Punch list #323, PR 3: a bill not yet sent, for a payer on a Pay calendar, says its cutoff. Nothing else of
+      // this block belongs to a Ready to Bill row: it has no bill date, no expected day and no lien clock yet.
+      if (row.job.status === 'ready_to_bill') {
+        const rtbPayer = paySpeedPayer(row.job, inv)
+        const rtbCalendar = rtbPayer.id ? calendarFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id }) : null
+        const cutoff = rtbCalendar ? payCutoffLine(todayYmdInAppTz(), rtbCalendar) : null
+        if (!cutoff) return null
+        const rtbPayerId = rtbPayer.id
+        return (
+          <PayCutoffLine
+            line={cutoff}
+            payerName={rtbPayer.name}
+            onOpen={payCalendarModal && rtbPayerId ? () => payCalendarModal.openPayCalendar({ id: rtbPayerId, name: rtbPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars() }) : undefined}
+          />
+        )
+      }
       const runway = lienRunwayFor(row.job, inv)
       const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
       const promise = promisedPayDates?.[row.job.id] ?? null
       const payer = inv ? paySpeedPayer(row.job, inv) : null
+      // Punch list #323: a payer on a Pay calendar reads Due, with when their money usually lands under it.
+      const calendar = inv && payer ? calendarFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
       const ledger = buildBilledDatesLedger({
         todayYmd,
         row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name } : null,
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
+        calendar,
         // v2.6695: the customer's word that they paid takes the money row (They say paid).
         claim: paidClaimsByJob?.get(row.job.id) ?? null,
         // v2.6834: a bill an in-kind deal pays reads Scheduled in kind, with no expected day (punch list #301).
@@ -1080,7 +1119,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         uncollectible: jobUncollectible(row.job),
         lienState: (() => {
           const chip = lienStateFn(row.job.id)
-          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence } : null
+          // v2.7042: the chip's parts go with its words, so the line never repeats the row's day and count (punch list #325).
+          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence, lead: chip.lead, dueOn: chip.dueOn, paper: chip.paper, action: chip.action, act: chip.act, noted: chip.state === 'gone' && chip.tone === 'muted' } : null
         })(),
       })
       if (ledger.rows.length === 0) return null
@@ -1093,10 +1133,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             payer?.id ? billedPaySpeeds?.receipts[payer.id] : null,
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
             canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
+            // The calendar's own words stand where Pays in stood: the spread is the calendar's doing, not the payer's.
+            calendar ? payCalendarShort(calendar) : null,
           )}
           showBars={false}
-          // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens).
-          onOpenPaySpeeds={pressedPayer ? () => setPaySpeedsPayer(pressedPayer) : undefined}
+          // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens). On a Pay
+          // calendar they are the calendar's words, and open its window instead.
+          onOpenPaySpeeds={
+            pressedPayer && calendar && payCalendarModal
+              ? () => payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars() })
+              : pressedPayer
+                ? () => setPaySpeedsPayer(pressedPayer)
+                : undefined
+          }
+          opens={calendar && payCalendarModal ? 'the pay calendar' : 'pay speeds'}
           payerName={payer?.name}
         />
       ) : null
@@ -1109,7 +1159,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
+    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn, payCalendars, payCalendarModal, loadPayCalendars],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
@@ -2563,12 +2613,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const payer = inv ? paySpeedPayer(job, inv) : null
     const expectedPay =
       (stage === 'billed' || stage === 'collections') && inv && payer && !jobIsScheduledInKind(job)
-        ? billedExpectedPayModel(
+        ? billedPayModel(
             { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
             billedPaySpeeds,
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
             paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
+            calendarFor(payCalendars, { payerId: payer.id, jobId: job.id }),
           )
         : null
     const bDetail = deriveStagesBillingActivityDetail(job)
@@ -3800,6 +3851,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
+                  {readyToBillCutoffChip ? (
+                    <span
+                      data-testid="pay-cutoff-chip"
+                      title="The nearest cutoff among the bills waiting to go, for payers on a pay calendar. A bill in one day past it waits a whole month."
+                      style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 9px', borderRadius: 9999, whiteSpace: 'nowrap', background: readyToBillCutoffChip.soon ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)', color: readyToBillCutoffChip.soon ? 'var(--text-amber-800)' : 'var(--text-blue-800)' }}
+                    >
+                      {readyToBillCutoffChip.label}
+                    </span>
+                  ) : null}
                   {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"
@@ -4548,6 +4608,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         chaseTouches={chaseTouches}
         loadChaseTouches={loadChaseTouches}
         billedPace={billedPaceContext}
+        payCalendars={payCalendars}
         gcTemperatureById={gcTemperatureById}
         chaseTodayYmd={chaseTodayYmd}
         forecastTodayYmd={forecastTodayYmd}

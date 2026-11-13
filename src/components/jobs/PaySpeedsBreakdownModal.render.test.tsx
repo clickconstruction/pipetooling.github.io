@@ -12,6 +12,8 @@ import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 // The portal globe (v2.2564) needs Toast/Confirm/Router providers — it has
 // its own surface; stub it so this smoke stays provider-free.
 vi.mock('../customers/CustomerPortalGlobeButton', () => ({ default: () => null }))
+// The payer card's Pay calendar line (punch list #323) is a door to another window, with its own render test.
+vi.mock('../customers/PayCalendarLine', () => ({ default: () => null }))
 
 vi.mock('../../lib/supabase', () => ({
   supabase: { rpc: vi.fn(async () => ({ data: null })), from: vi.fn() },

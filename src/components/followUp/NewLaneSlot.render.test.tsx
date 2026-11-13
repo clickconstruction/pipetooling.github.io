@@ -115,6 +115,7 @@ function fakeIo(over: Partial<NewLaneCardIo> = {}, rows: Record<string, NewLaneC
     loadKnown: vi.fn(async () => ({ customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })),
     markNotice: vi.fn(async () => undefined),
     unmarkNotice: vi.fn(async () => undefined),
+    noReplyNeeded: vi.fn(async () => undefined),
     makeCustomerRecord: vi.fn(async () => 'c-new'),
     startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '512', customer: 'Ridgeway Builders' })),
     answerInvitation: vi.fn(async () => undefined),

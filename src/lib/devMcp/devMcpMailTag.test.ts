@@ -41,7 +41,6 @@ const plan: MyMailTagPlan = {
     { kind: 'skip', gmailId: 'm3', why: 'draft' },
   ],
   threadRow: { user_id: 'u-dana', gmail_thread_id: THREAD, bid_id: null, project_id: null, jobs_ledger_id: JOB, tagged_by: 'u-dana' },
-  label: 'Tagged in ClickTooling',
   counts: { lines: 1, tied: 1, files: 1, skipped: 1, filed: 0 },
 }
 const emails = [email({}), email({ gmailId: 'm2', at: '2026-08-04T15:00:00.000Z', subject: 'Re: Invoice 4471', from: { name: null, address: 'dana@example-plumbing.test' } }), email({ gmailId: 'm3', at: null, labels: ['DRAFT'] })]
@@ -154,7 +153,7 @@ describe('plan_mail_tag · the kernel', () => {
 describe('the doors and the docs', () => {
   it('gmail-mine opens the tag to a dev’s key with the seat header, as a current login, and answers the plan before anything is written', () => {
     expect(MINE).toContain("if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(")
-    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile)) return refuse(")
+    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile && ask.action !== 'untag')) return refuse(")
     // Punch list #289: a person target goes to its own tag, a person's own press never carries one, and the follow reads the file rows.
     expect(MINE).toContain("if ('person' in ask) return await tagPerson(ctx, ask,")
     expect(MINE).toContain("if ('person' in ask) return refuse(")
@@ -169,7 +168,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.78.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.79.0'")
     expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
     expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {

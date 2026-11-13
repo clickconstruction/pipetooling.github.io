@@ -300,7 +300,7 @@ describe('the function, the server and the docs', () => {
   })
 
   it('the seat asks after the move’s rows land, as the dev, and never before', () => {
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.78\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.79\.0'/)
     expect(SERVER).toContain("refiledForSeat(toJob, await invokeAsDev(session, 'photo-save', { refile_box_photos: toJob }))")
     expect(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)')).toBeLessThan(SERVER.indexOf("refiledForSeat(toJob, await invokeAsDev(session, 'photo-save'"))
     expect(SERVER).toContain("name === 'plan_materials_move' ? moveReplyWithRefileWords(redactSecrets(res.body)) : redactSecrets(res.body), await planHash(name, built.body.p, res.body)")

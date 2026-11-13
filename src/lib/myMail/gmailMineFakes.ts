@@ -64,6 +64,13 @@ const compared = (v: unknown, raw: unknown, op: Compare): boolean => {
   return op === 'gt' ? c > 0 : op === 'gte' ? c >= 0 : op === 'lt' ? c < 0 : c <= 0
 }
 
+/** Whether `have` contains `want` as jsonb `@>` reads it: every key of an object held, down the tree; a scalar equal. */
+function holds(have: unknown, want: unknown): boolean {
+  if (want === null || typeof want !== 'object') return have === want
+  if (have === null || typeof have !== 'object') return false
+  return Object.entries(want as Row).every(([k, v]) => holds((have as Row)[k], v))
+}
+
 /** One term of a PostgREST `or` (`a.eq.1`, `b.in.(x,y)`, `c->>d.ilike.*@e`, `e.gt.2026-…`, `and(f.is.null,g.gt.…)`). */
 function orTerm(term: string): (r: Row) => boolean {
   const and = /^and\(([\s\S]*)\)$/i.exec(term.trim())
@@ -219,6 +226,15 @@ export class FakeDb {
               return { data: null, error: { message: 'update or delete on table "messages" violates foreign key constraint "contact_owed_done_note_message_id_fkey" on table "contact_owed"', code: '23503' } }
             }
           }
+          if (name === 'contacts') {
+            // messages.contact_id is ON DELETE RESTRICT: a contact a line stands on cannot go.
+            const ids = new Set(matched.map((r) => r.id))
+            if (this.rows('messages').some((m) => ids.has(m.contact_id))) {
+              return { data: null, error: { message: 'update or delete on table "contacts" violates foreign key constraint "messages_contact_id_fkey" on table "messages"', code: '23503' } }
+            }
+            // contact_channels and contact_jobs are ON DELETE CASCADE on their contact_id.
+            for (const t of ['contact_channels', 'contact_jobs']) this.tables[t] = this.rows(t).filter((c) => !ids.has(c.contact_id))
+          }
           this.tables[name] = rows.filter((r) => !matched.includes(r))
           // message_attachments, message_promises and message_highlights are ON DELETE CASCADE on their message_id.
           if (name === 'messages') {
@@ -228,7 +244,8 @@ export class FakeDb {
           return { data: matched, error: null }
         }
         case 'insert': {
-          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...v }))
+          // contact_jobs rows carry the database's own created_at, which the seat's untag reads to tell the tag's ties.
+          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...(name === 'contact_jobs' ? { created_at: new Date().toISOString() } : {}), ...v }))
           // contact_jobs holds one row a person and a job: its partial unique indexes, one a job column.
           if (name === 'contact_jobs') {
             for (const m of made) {
@@ -269,6 +286,8 @@ export class FakeDb {
         where.push((r) => typeof r[c] === 'string' && re.test(r[c] as string))
         return chain
       },
+      // jsonb containment (`@>`), as the untag asks the seat's call log for a conversation: every key of `v` held, nested.
+      contains: (c: string, v: unknown) => (where.push((r) => holds(r[c], v)), chain),
       not: (c: string, operator: string, v: unknown) => (where.push((r) => (operator === 'is' ? (r[c] ?? null) !== v : r[c] !== v)), chain),
       gt: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gt')), chain),
       gte: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gte')), chain),
@@ -345,7 +364,7 @@ export class FakeDb {
         if (kind) {
           const column = kind === 'bid' ? 'bid_id' : kind === 'project' ? 'project_id' : 'jobs_ledger_id'
           if (!this.rows('contact_jobs').some((j) => j.contact_id === line.contact_id && j[column] === id)) {
-            this.rows('contact_jobs').push({ contact_id: line.contact_id, bid_id: null, project_id: null, jobs_ledger_id: null, is_default: false, [column]: id })
+            this.rows('contact_jobs').push({ id: `contact_jobs-${this.nextId++}`, contact_id: line.contact_id, bid_id: null, project_id: null, jobs_ledger_id: null, is_default: false, created_at: new Date().toISOString(), [column]: id })
           }
         }
         return { data: null, error: null }
@@ -361,7 +380,7 @@ export class FakeDb {
         const contactId = `c-new-${this.nextId++}`
         const channelId = `ch-new-${this.nextId++}`
         const name = String(args.p_name ?? '').trim() || value
-        this.rows('contacts').push({ id: contactId, kind: 'unknown', name })
+        this.rows('contacts').push({ id: contactId, kind: 'unknown', name, created_at: new Date().toISOString() })
         this.rows('contact_channels').push({ id: channelId, contact_id: contactId, kind: 'email', value, key })
         return { data: [{ placed_contact: contactId, placed_channel: channelId, made: true, placed_kind: 'unknown', placed_name: name, placed_goes_by: null }], error: null }
       }
@@ -451,6 +470,8 @@ export class FakeGoogle {
   sent: { sub: string; raw: string; id: string; threadId: string }[] = []
   /** Boxes whose send Gmail refuses (a 403), until a test takes them out. */
   sendRefused = new Set<string>()
+  /** Boxes whose label Gmail will not delete (a 403), until a test takes them out. */
+  labelDeleteRefused = new Set<string>()
 
   reset() {
     this.boxes = {}
@@ -465,6 +486,7 @@ export class FakeGoogle {
     this.nextLabel = 1
     this.sent = []
     this.sendRefused = new Set()
+    this.labelDeleteRefused = new Set()
   }
 
   /** A mail as `users.messages.get` answers it, in the format asked. */
@@ -570,6 +592,15 @@ export class FakeGoogle {
       const made = { id: `Label_${this.nextLabel++}`, name: String(body.name) }
       box.labels.push(made)
       return reply(200, made)
+    }
+    // `users.labels.delete`: the label goes, and comes off every mail that carried it, as Gmail takes it.
+    if ((m = /^\/labels\/([^/]+)$/.exec(path)) && method === 'DELETE') {
+      const id = decodeURIComponent(m[1]!)
+      if (this.labelDeleteRefused.has(sub)) return reply(403, { error: { code: 403, message: 'Insufficient Permission' } })
+      if (!box.labels.some((l) => l.id === id)) return reply(404, { error: { code: 404, message: 'Not Found' } })
+      box.labels = box.labels.filter((l) => l.id !== id)
+      for (const mail of box.mails) mail.labelIds = mail.labelIds.filter((l) => l !== id)
+      return new Response(null, { status: 204 })
     }
     return reply(400, { error: { code: 400, message: `the fake has no ${method} ${path}` } })
   }

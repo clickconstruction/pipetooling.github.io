@@ -47,7 +47,7 @@ describe('MyMailCard', () => {
     expect(card.querySelector('[data-my-mail-reads]')?.textContent).toBe('Reads marisol@clickplumbing.example, your Inbox and Sent, live. Nothing is kept until you tag a conversation.')
     for (const words of [
       'A tag copies that conversation onto the job, where the office team reads it. Untag takes it back, unless the office already put it on a legal matter.',
-      'Nothing writes to your Gmail except the label Tagged in ClickTooling on a tagged mail.',
+      'Nothing writes to your Gmail. A tag adds no label and changes no mail.',
       'Only you see this tab. Nobody on the team reads your mail through the app.',
     ]) {
       expect(within(card).getByText(words)).toBeTruthy()

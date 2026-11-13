@@ -2,7 +2,8 @@
 /**
  * Render smoke for Share with a teammate carrying both prices (v2.3685 "Send both"): the
  * caption names the pair, the preview shows one labeled table per price (★ first), and
- * Copy for text puts both headings and both totals on the clipboard.
+ * Copy for text puts both headings and both totals on the clipboard. The text reads in
+ * whole dollars (v2.7045); the preview table and the email keep their cents.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -73,6 +74,7 @@ describe('PackageAndSendBidPricingModal — Send both', () => {
     const text = writeText.mock.calls[0]?.[0] as string
     expect(text).toContain("★ Value Engineered — customer's price")
     expect(text).toContain('Written to Plan — second price')
-    expect(text.split('\n').filter((l) => l.startsWith('Total:'))).toEqual(['Total: $200.00', 'Total: $50.00'])
+    expect(text).toContain('Toilet \u2014 2 \u00d7 $100 = $200')
+    expect(text.split('\n').filter((l) => l.startsWith('Total:'))).toEqual(['Total: $200', 'Total: $50'])
   })
 })

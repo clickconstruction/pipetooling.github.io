@@ -33,7 +33,7 @@ describe('the card’s words', () => {
   it('names the person’s own address when it is known', () => {
     expect(MY_MAIL_CARD_WORDS.reads(' marisol@clickplumbing.example ')).toBe('Reads marisol@clickplumbing.example, your Inbox and Sent, live. Nothing is kept until you tag a conversation.')
     expect(MY_MAIL_CARD_WORDS.reads('')).toBe('Reads your own Inbox and Sent, live. Nothing is kept until you tag a conversation.')
-    expect(MY_MAIL_CARD_WORDS.gmailLabel).toBe('Nothing writes to your Gmail except the label Tagged in ClickTooling on a tagged mail.')
+    expect(MY_MAIL_CARD_WORDS.gmailLabel).toBe('Nothing writes to your Gmail. A tag adds no label and changes no mail.')
   })
 
   it('keeps every sentence in plain words', () => {
