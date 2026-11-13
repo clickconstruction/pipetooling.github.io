@@ -250,6 +250,30 @@ export function taskPlaceNoFixWords(why: TaskPlaceNoFix): string {
   return 'Could not find you. Try again in the open, or use Directions.'
 }
 
+/**
+ * What the doer reads when adding a place from where they stand gets no reading (PR 8). There is no
+ * map here to fall back on, so the words say only what would make the press work.
+ */
+export function taskPlaceAddNoFixWords(why: TaskPlaceNoFix): string {
+  if (why === 'refused') return 'Location is off for this app. To add a place from where you stand, allow location in the phone’s settings.'
+  if (why === 'none') return 'This device gives no location, so it cannot add a place from where you stand.'
+  return 'Could not find you. Try again in the open.'
+}
+
+/** A doer's reading too wide to keep: nobody looks at this place on a map before it is saved, so the phone must be sure. */
+export function taskPlaceAddPoorWords(accuracyM: number | null | undefined): string {
+  const sure = taskPlaceAccuracyWords(accuracyM)
+  return sure ? `Your phone is only sure ${sure}. Try again in the open.` : 'Your phone did not say how sure it is. Try again in the open.'
+}
+
+/** May a doer's reading be kept as a place? It needs a margin, and one inside the limit the database also holds. */
+export function isTaskPlaceAddFix(accuracyM: number | null | undefined): boolean {
+  return typeof accuracyM === 'number' && Number.isFinite(accuracyM) && accuracyM >= 0 && Math.round(accuracyM) <= TASK_PLACE_POOR_FIX_METERS
+}
+
+/** What the press saves, said before it saves: the reading becomes the task's place, and the phone is not followed. */
+export const TASK_PLACE_ADD_SAVES_WORDS = 'This saves where you stand as the task’s place. The app does not follow you after.'
+
 /** What the card says where its map should be when the tiles did not come. */
 export const TASK_PLACE_NO_MAP_WORDS = 'The map did not load. There is no signal here.'
 /** Where a doer's reading goes: nowhere. Said beside the press that asks for it. */
