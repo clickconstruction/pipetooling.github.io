@@ -186,12 +186,12 @@ The call lands in the thread as our line. Only the team sees it. The row leaves 
 
 Sometimes you answer a person from your own mailbox, not from bids@ or the team inbox. The app does not read your mailbox. The thread still reads *Our move*. A strip above the box asks **Answered them from your own mailbox?** It shows while the move is ours and we owe them nothing.
 
-Press {{button:outline|Find my sent mail}}. The app reads your own Sent folder through My email. It lists each email you sent them in the last 30 days. Press {{button:outline|Tag it}} on the right one. The email lands on the thread as ours, under your name. The move becomes theirs. An email already on the thread says so instead. This door needs **Show my mail** on. The guide [tag an email onto a job from your own mail](/help/tag-an-email-onto-a-job-from-your-own-mail) shows the switch.
+Press {{button:outline|Find my sent mail}}. The app reads your own Sent folder through My email. It lists each email you sent them in the last 30 days. Press {{button:outline|Save it}} on the right one. The email lands on the thread as ours, under your name. The move becomes theirs. An email already on the thread says so instead. This door needs **Show my mail** on. The guide [tag an email onto a job from your own mail](/help/save-an-email-to-a-job-from-your-own-mail) shows the switch.
 
 Press {{button:outline|I answered, write it down}} when there is no mail to find. Type one line of what you told them, or leave it blank. Press {{button:outline|Write it down}}. The answer lands on the thread as our line. Only the team sees it. The move becomes theirs.
 
 :::example Wendi answered from wendi@
-Wendi emailed Rusty from her own mailbox on Tuesday. On Wednesday his thread still read *Our move*. She pressed **Find my sent mail**, saw Tuesday's email and pressed **Tag it**. The thread read *Their move*.
+Wendi emailed Rusty from her own mailbox on Tuesday. On Wednesday his thread still read *Our move*. She pressed **Find my sent mail**, saw Tuesday's email and pressed **Save it**. The thread read *Their move*.
 :::
 
 ## Say no reply is needed

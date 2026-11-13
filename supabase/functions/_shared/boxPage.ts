@@ -5,6 +5,10 @@
  * count; since v2.6874 the lines emptied since that count, a line's Can't find presses and the company's own number.
  * Never the job, the customer, a price or a person's name. The pure part lives here, shared with the client
  * through `src/lib/materials/boxPage.ts` and tested from `src/lib/materials/boxPage.test.ts`. Deno-free on purpose.
+ *
+ * Since v2.7072 (punch list #329) a code may be a sticker's: a printed code that points at a box, or at nothing yet.
+ * The function reads the sticker first (`boxPageStickerAnswer`). One on a box answers that box's page as a label does;
+ * a blank one answers its number and nothing else; a lost one says so.
  */
 
 /** A box's code: the container id's first eight hex characters, as `job_containers.code` keeps them (capitals). */
@@ -57,13 +61,43 @@ export type BoxPagePayload = {
     /** The app calendar's day of the last count in this box, or null when never counted. */
     lastCountedOn: string | null
     photo: BoxPagePhoto | null
+    /** The number of the sticker that was scanned (v2.7072), when the code was a sticker's and not the box's own label. */
+    stickerNumber?: number
   }
   /** The company's own number, for *Text the office* (v2.6874): the team box's line since v2.6910 (`boxPageOfficePhone`). Never a person's. */
   office: { phone: string } | null
 }
 
-/** The answers that are not a box: the code is not one, no live box carries it, the box was retired, or the source is locked. */
-export type BoxPageRefusal = 'bad_code' | 'not_found' | 'retired' | 'locked'
+/**
+ * The answers that are not a box: the code is not one, no live box carries it, the box was retired, or the source is locked.
+ * Since v2.7072 two more: the code is a sticker that is on no box yet, or a sticker that was marked lost.
+ */
+export type BoxPageRefusal = 'bad_code' | 'not_found' | 'retired' | 'locked' | 'sticker_blank' | 'sticker_lost'
+
+/** A sticker row as the function reads it (`box_stickers`, punch list #329). */
+export type BoxPageStickerRow = { id: string; number: number; code: string; container_id: string | null; lost_at: string | null }
+
+/**
+ * What a sticker's code answers before any box is read (v2.7072):
+ *  - `none`: no sticker carries the code, so it is read as a box's own.
+ *  - `box`: the sticker is on a box, and the function goes on to that box's page as for a label.
+ *  - `blank`: 404 `sticker_blank` with the number and nothing else. A build from before stickers reads the 404 as
+ *    *not a box on any job*, which is true of it.
+ *  - `lost`: 410 `sticker_lost` with the number and the day. An older build reads the 410 as a label that can come off.
+ * A lost sticker says lost even while it keeps the box it was on.
+ */
+export type BoxPageStickerAnswer =
+  | { kind: 'none' }
+  | { kind: 'box'; containerId: string; number: number }
+  | { kind: 'blank'; status: 404; body: { error: 'sticker_blank'; number: number } }
+  | { kind: 'lost'; status: 410; body: { error: 'sticker_lost'; number: number; lostOn: string | null } }
+
+export function boxPageStickerAnswer(row: BoxPageStickerRow | null, lostOn: string | null = null): BoxPageStickerAnswer {
+  if (!row) return { kind: 'none' }
+  if (row.lost_at) return { kind: 'lost', status: 410, body: { error: 'sticker_lost', number: row.number, lostOn } }
+  if (!row.container_id) return { kind: 'blank', status: 404, body: { error: 'sticker_blank', number: row.number } }
+  return { kind: 'box', containerId: row.container_id, number: row.number }
+}
 
 /** The container row as the function reads it. */
 export type BoxPageContainerRow = { id: string; job_id: string; label: string; kind: string; where_note: string | null; place_id: string | null; retired_at: string | null; code: string }
@@ -163,13 +197,18 @@ export function buildBoxPagePayload(input: {
   now?: string
   /** The company's own number, as `boxPageOfficePhone` picked it. */
   officePhone?: string | null
+  /** The code that was scanned, when it was a sticker's (v2.7072): the page keeps the code in the person's hand. */
+  scannedCode?: string | null
+  /** That sticker's number. */
+  stickerNumber?: number | null
 }): BoxPagePayload {
   const c = input.container
   const phone = (input.officePhone ?? '').trim()
+  const stickerNumber = typeof input.stickerNumber === 'number' && input.stickerNumber > 0 ? input.stickerNumber : null
   return {
     ok: true,
     box: {
-      code: c.code,
+      code: input.scannedCode || c.code,
       stencil: c.label,
       kind: boxPageKind(c.kind),
       place: input.place,
@@ -178,6 +217,7 @@ export function buildBoxPagePayload(input: {
       gone: boxPageGoneLines(input.lines, c.id, input.lastCountAt ?? null, input.now ?? ''),
       lastCountedOn: input.lastCountedOn,
       photo: input.photo,
+      ...(stickerNumber ? { stickerNumber } : {}),
     },
     office: phone ? { phone } : null,
   }
@@ -232,6 +272,7 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
       gone,
       lastCountedOn: typeof x.lastCountedOn === 'string' ? x.lastCountedOn : null,
       photo,
+      ...(typeof x.stickerNumber === 'number' && x.stickerNumber > 0 ? { stickerNumber: x.stickerNumber } : {}),
     },
     office: officePhone ? { phone: officePhone } : null,
   }
