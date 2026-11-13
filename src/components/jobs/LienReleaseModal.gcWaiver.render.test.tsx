@@ -51,7 +51,7 @@ vi.mock('../../lib/supabase', async () => {
     if (table === 'customers') {
       const builder: Record<string, unknown> = {}
       for (const m of ['select', 'eq']) builder[m] = () => builder
-      builder.maybeSingle = () => Promise.resolve({ data: { billing_email: 'ap@knight.example' }, error: null })
+      builder.maybeSingle = () => Promise.resolve({ data: { billing_email: 'ap@kestrin.example' }, error: null })
       return builder
     }
     if (table !== 'job_lien_releases') return realFrom(table)
@@ -78,11 +78,11 @@ const inv2 = makeInvoice({ id: 'inv-2', status: 'billed', amount: 15406, sequenc
 const job = makeJob({
   id: 'j977',
   hcp_number: '977',
-  job_name: 'Springtown',
+  job_name: 'Stonewick',
   customer_name: 'Hospital',
   customer_email: 'owner@example.com',
-  gc_customer_id: 'gc-knight',
-  gcCustomer: { id: 'gc-knight', name: 'Knight Contracting' },
+  gc_customer_id: 'gc-kestrin',
+  gcCustomer: { id: 'gc-kestrin', name: 'Kestrin Contracting' },
   master_user_id: 'master-1',
   invoices: [inv1, inv2],
   revenue: 36000,
@@ -103,7 +103,7 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(within(form).getByRole('button', { name: 'Progress' }).getAttribute('aria-pressed')).toBe('true')
     expect(form.textContent).toContain('§ 53.284(b)')
     expect(form.textContent).toContain('picked from the bill · Not settled yet · Bill 2 of 2 · not the last')
-    expect(screen.getByTestId('lien-waiver-why').textContent).toContain('Takes effect when Knight Contracting’s check clears')
+    expect(screen.getByTestId('lien-waiver-why').textContent).toContain('Takes effect when Kestrin Contracting’s check clears')
     expect(screen.getByText('Conditional Waiver and Release on Progress Payment')).toBeTruthy()
     fireEvent.click(within(form).getByRole('button', { name: 'Final' }))
     expect(screen.getByText('Conditional Waiver and Release on Final Payment')).toBeTruthy()

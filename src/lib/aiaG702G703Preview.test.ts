@@ -38,7 +38,7 @@ function held(wb: ExcelJS.Workbook, sheet: string, ref: string): unknown {
 /** One line of an application, for these tests. */
 const line = (p: Partial<PayApplicationLine>): PayApplicationLine => ({ id: 'l1', label: '', scheduledValue: 0, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 0, ...p })
 
-const MISSION_HILLS = ['Mission Hills', 'Harper', '1685 Farm', 'Buda', '240393cz', 'March 31st', 'Malachi', '15400']
+const MISSION_FLATS = ['Mission Flats', 'Halden', '1685 Farm', 'Buda', '240393cz', 'March 31st', 'Malachi', '15400']
 
 describe('an empty form', () => {
   it('downloads none of the job the template was saved from', async () => {
@@ -51,7 +51,7 @@ describe('an empty form', () => {
     for (const ws of out.worksheets) {
       ws.eachRow((row) => row.eachCell((c) => void (typeof c.value === 'string' && strings.push(c.value))))
     }
-    for (const word of MISSION_HILLS) expect(strings.filter((t) => t.includes(word)), word).toEqual([])
+    for (const word of MISSION_FLATS) expect(strings.filter((t) => t.includes(word)), word).toEqual([])
     // The totals a viewer shows without recalculating are this application's, not the template's.
     expect(held(out, AIA_G702_SHEET, 'H22')).toBe(0)
     expect(held(out, AIA_G702_SHEET, 'H24')).toBe(0)

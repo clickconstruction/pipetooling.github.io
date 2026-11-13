@@ -25,9 +25,9 @@ import {
 
 const FIELDS: LienWaiverFields = {
   companyName: 'ClickConstruction LLC',
-  checkFrom: 'Knight Contracting',
+  checkFrom: 'Kestrin Contracting',
   amount: '2200',
-  projectDescription: 'Knight Springtown Vet — 415 Springtown Way, San Marcos, TX 7866',
+  projectDescription: 'Kestrin Stonewick Vet — 415 Stonewick Way, San Marcos, TX 7866',
   throughDate: '2026-08-29',
   signedDate: '2026-09-01',
   signerName: 'Robert Douglas',
@@ -47,9 +47,9 @@ function inv(partial: Partial<InvoiceLike> & { id: string; amount: number }): Jo
 function jobWith(overrides: Partial<JobWithDetails>): JobWithDetails {
   return {
     id: 'job-1',
-    job_name: 'Knight Springtown Vet',
-    job_address: '415 Springtown Way, San Marcos, TX 7866',
-    customer_name: 'Knight Contracting',
+    job_name: 'Kestrin Stonewick Vet',
+    job_address: '415 Stonewick Way, San Marcos, TX 7866',
+    customer_name: 'Kestrin Contracting',
     revenue: 6762,
     payments_made: 0,
     last_work_date: '2026-08-28',
@@ -116,10 +116,10 @@ describe('buildLienWaiverParagraphs', () => {
   it('conditional progress carries the drafted conditional language with values inline', () => {
     const paras = buildLienWaiverParagraphs('conditional_progress', FIELDS)
     expect(paras).toHaveLength(4)
-    expect(paras[0]).toContain('Upon receipt by the undersigned of a check from Knight Contracting')
+    expect(paras[0]).toContain('Upon receipt by the undersigned of a check from Kestrin Contracting')
     expect(paras[0]).toContain('$2,200.00 payable to ClickConstruction LLC')
     expect(paras[0]).toContain('has cleared the bank')
-    expect(paras[1]).toContain('Knight Springtown Vet — 415 Springtown Way')
+    expect(paras[1]).toContain('Kestrin Stonewick Vet — 415 Stonewick Way')
     expect(paras[2]).toContain('progress payments through: August 29, 2026')
     expect(paras[2]).toContain('does not cover any retentions')
     expect(paras[3]).toContain('conditional upon actual receipt and clearance')
@@ -228,13 +228,13 @@ describe('buildLienWaiverPrefill', () => {
       job,
       invoices: job.invoices,
       issuer: { companyName: 'Click Plumbing and Electrical', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' },
-      ownerName: 'Knight Contracting (owner row)',
+      ownerName: 'Kestrin Contracting (owner row)',
       signerName: 'Robert Douglas',
     })
     expect(f.companyName).toBe('Click Plumbing and Electrical')
-    expect(f.checkFrom).toBe('Knight Contracting (owner row)')
+    expect(f.checkFrom).toBe('Kestrin Contracting (owner row)')
     expect(f.amount).toBe('2200.00')
-    expect(f.projectDescription).toBe('Knight Springtown Vet — 415 Springtown Way, San Marcos, TX 7866')
+    expect(f.projectDescription).toBe('Kestrin Stonewick Vet — 415 Stonewick Way, San Marcos, TX 7866')
     expect(f.throughDate).toBe('2026-08-29')
     expect(f.signerName).toBe('Robert Douglas')
   })
@@ -363,14 +363,14 @@ describe('the four forms as two questions (v2.4274)', () => {
     expect(lienWaiverUsesField('conditional_final', 'checkFrom')).toBe(true)
     expect(lienWaiverUsesField('conditional_final', 'throughDate')).toBe(false)
     const paras = buildLienWaiverParagraphs('conditional_final', { ...FIELDS, amount: '4800' })
-    expect(paras[0]).toContain('check from Knight Contracting in the sum of $4,800.00')
+    expect(paras[0]).toContain('check from Kestrin Contracting in the sum of $4,800.00')
     expect(paras[2]).toContain('This is the final payment')
     expect(paras[3]).toContain('conditional upon actual receipt and clearance')
     expect(LIEN_WAIVER_FORM_SHORT_LABELS.conditional_final).toBe('Conditional · final')
   })
   it('the why line names the payor and warns on the unconditional forms', () => {
-    expect(lienWaiverWhy('conditional_progress', 'Knight Contracting')).toBe('Takes effect when Knight Contracting’s check clears. Safe to sign now; the unconditional follows when the payment settles.')
-    expect(lienWaiverWhy('unconditional_progress', 'Knight')).toContain('Texas forbids requiring it before payment')
+    expect(lienWaiverWhy('conditional_progress', 'Kestrin Contracting')).toBe('Takes effect when Kestrin Contracting’s check clears. Safe to sign now; the unconditional follows when the payment settles.')
+    expect(lienWaiverWhy('unconditional_progress', 'Kestrin')).toContain('Texas forbids requiring it before payment')
     expect(lienWaiverWhy('conditional_final', '')).toContain('The last bill')
   })
   it('v2.4330: a bill settled by a check that has not cleared says when it clears; the form stays the unconditional', () => {

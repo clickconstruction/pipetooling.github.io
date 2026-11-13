@@ -2,7 +2,7 @@
 name: Demand letter — the letter on one page, the account behind it
 number: 333
 group: close
-status: built 2026-11-12 on claude/demand-letter-first (v2.7086), on the owner's word *Yes, build it* · left: her look, and counsel's eye on the one changed phrase
+status: LIVE 2026-11-13 (v2.7086, PR #7870), on the owner's word *Yes, build it* · left: her look, and counsel's eye on the one changed phrase
 summary: >
   A demand letter from the Lien window runs about a page and a half. It breaks after the statement of account, so the
   demand and the signature land on page 2. The suggestion puts the whole letter on page 1, signed, with the pay code in
@@ -101,3 +101,17 @@ Built as v2.7086 on her word *Yes, build it* (2026-11-12), the way the mock-up s
 drawn. The PDF, the page, the email and the plain text follow one order, a letter recorded before draws as it was
 sent, and the sample in Settings is the letter the Lien window builds. `docs/recent-features/v2.7086.md` has the
 measurements and what was not checked. Left: her look, and counsel's eye on the changed phrase.
+
+Live 2026-11-13 07:05Z. Walked on clicktooling.com with every write refused: the sample's *Open the PDF* press makes
+two pages, the letter signed on page 1 with the pay code drawn in the amount box as a picture (v2.7090), and the
+statement of account, the notice history and the enclosures on page 2. The code was not read back by a scanner.
+
+## Seen on the live walk, for later
+
+Not changed: a note, by the owner's rule of 2026-11-13 that a session on Opus 5.5 writes what should change on a card.
+
+- **The statement table on a narrow page.** In the Settings preview, which is 390 px wide, the *For* column is 73 px
+  and a line's words stand one per line, so the row is about 200 px tall. A debtor reading the letter's email on a
+  phone sees the same. The table (`statementHtml`) is older than this card. The Settings sample shows it since v2.7086
+  because the sample now carries a statement. A fix would give a line's words their own row under the invoice row on a
+  narrow page, or let *Sent* and *Due* wrap. It is the look of a paper a customer gets, so it waits for the owner.

@@ -20,8 +20,8 @@ describe('normalizeHeartbeatProgress', () => {
   it('a round’s check-in (v2.5753): ready and nothing keep a zero, held keeps bid, project and why, capped', () => {
     expect(normalizeHeartbeatProgress({ ready: 0, nothing: 0 })).toEqual({ ready: 0, nothing: 0 })
     expect(normalizeHeartbeatProgress({ ready: -1, nothing: 'x' })).toBeNull()
-    const held = normalizeHeartbeatProgress({ held: [{ bid: ' b516 ', project: 'Take 5', why: ' Made over 30 days ago and nobody asked. ' }, { bid: 'b1' }, 'junk', { bid: 'b2', why: 'x'.repeat(200) }] })
-    expect(held).toEqual({ held: [{ bid: 'b516', project: 'Take 5', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b2', why: 'x'.repeat(120) }] })
+    const held = normalizeHeartbeatProgress({ held: [{ bid: ' b516 ', project: 'Tune 5', why: ' Made over 30 days ago and nobody asked. ' }, { bid: 'b1' }, 'junk', { bid: 'b2', why: 'x'.repeat(200) }] })
+    expect(held).toEqual({ held: [{ bid: 'b516', project: 'Tune 5', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b2', why: 'x'.repeat(120) }] })
     const many = normalizeHeartbeatProgress({ held: Array.from({ length: 20 }, (_, i) => ({ bid: `b${i}`, why: 'Not a plumbing bid.' })) })
     expect(many?.held?.length).toBe(12)
     expect(normalizeHeartbeatProgress({ held: [] })).toBeNull()
@@ -30,8 +30,8 @@ describe('normalizeHeartbeatProgress', () => {
 
 describe('heartbeatHeldWords', () => {
   it('names each bid the round passed over and why, one plain sentence each', () => {
-    const words = heartbeatHeldWords({ ready: 0, held: [{ bid: 'b516', project: 'TAKE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b519', why: 'Not a plumbing bid.' }] })
-    expect(words).toBe('Passed over 2 bids. b516 TAKE 5 N LAMAR, made over 30 days ago and nobody asked. b519, not a plumbing bid.')
+    const words = heartbeatHeldWords({ ready: 0, held: [{ bid: 'b516', project: 'TUNE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b519', why: 'Not a plumbing bid.' }] })
+    expect(words).toBe('Passed over 2 bids. b516 TUNE 5 N LAMAR, made over 30 days ago and nobody asked. b519, not a plumbing bid.')
     expect(plainWordsFailures(words)).toEqual([])
     expect(heartbeatHeldWords({ held: [{ bid: 'b1', why: 'Left to a person.' }] })).toBe('Passed over 1 bid. b1, left to a person.')
   })

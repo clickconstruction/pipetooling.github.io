@@ -90,14 +90,14 @@ describe('a file off a mail · the file and the inner verbs', () => {
 
   it('a job landing commits to the job, the landing and the bytes, and says where it lands', () => {
     const args: MailFileArgs = { account: KNOWN[0]!, id: 'm1', name: 'invoice 4471.pdf', to: { kind: 'job', job: { jobs_ledger_id: JOB }, where: 'top' }, target: `job ${JOB}` }
-    const c = jobCommitment(args, '912 Limitless Renovations', bytes)
-    expect(c).toEqual({ job: { jobs_ledger_id: JOB }, job_label: '912 Limitless Renovations', where: 'top', file: { name: 'invoice 4471.pdf', mime: 'application/pdf', size_bytes: 1200, sha256: 'ab'.repeat(32) }, from: { account: 'dana@example-plumbing.test', id: 'm1' } })
+    const c = jobCommitment(args, '912 Linwick Renovations', bytes)
+    expect(c).toEqual({ job: { jobs_ledger_id: JOB }, job_label: '912 Linwick Renovations', where: 'top', file: { name: 'invoice 4471.pdf', mime: 'application/pdf', size_bytes: 1200, sha256: 'ab'.repeat(32) }, from: { account: 'dana@example-plumbing.test', id: 'm1' } })
     expect(JSON.stringify(c)).not.toContain('JVBERi0=')
     const plan = jobPlanReply(c, 'abcdef0123456789')
     expect(plan.plan_hash).toBe('abcdef0123456789')
-    expect(plan.lands).toBe("invoice 4471.pdf (application/pdf, 1 KB) into the job's folder itself of 912 Limitless Renovations.")
+    expect(plan.lands).toBe("invoice 4471.pdf (application/pdf, 1 KB) into the job's folder itself of 912 Linwick Renovations.")
     expect(String(plan.next)).toContain('apply_mail_file')
-    expect(jobApplyReply(c, { driveFileId: 'd1', url: 'https://drive.google.com/file/d/d1/view' }).filed).toBe("invoice 4471.pdf is in the job's folder itself of 912 Limitless Renovations.")
+    expect(jobApplyReply(c, { driveFileId: 'd1', url: 'https://drive.google.com/file/d/d1/view' }).filed).toBe("invoice 4471.pdf is in the job's folder itself of 912 Linwick Renovations.")
     expect(mailFileChangedWords('invoice 4471.pdf')).toContain('nothing was written')
     expect(mailFileAppliedWords({ target: `job ${JOB}`, at: '2026-11-06T00:00:00Z' })).toContain('applied already at 2026-11-06T00:00:00Z')
   })
@@ -329,7 +329,7 @@ describe('a file off a mail · its words', () => {
 
 describe('the server and the docs', () => {
   it('declares the three verbs, files a job through drive-link as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     for (const verb of ['read_mail_file', 'plan_mail_file', 'apply_mail_file']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)

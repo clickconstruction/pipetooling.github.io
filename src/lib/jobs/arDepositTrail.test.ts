@@ -28,10 +28,10 @@ const row = (o: Partial<ArDepositTrailRow> & Pick<ArDepositTrailRow, 'payment_id
 })
 
 // The three real cases of 2026-09-30, times as prod holds them (UTC).
-const lobersLive = row({ payment_id: 'p-650', live: true, job_number: '650', job_name: 'ATI Schertz — As per plans', amount: 6077.51, applied_at: '2026-09-30T21:02:53Z', applied_by: 'Taunya' })
-const lobersGone = row({ payment_id: 'p-878', live: false, job_number: '878', job_name: 'Take 5- Seguin', amount: 6077.51, applied_at: '2026-09-29T15:29:40Z', applied_by: 'Taunya', removed_at: '2026-09-30T21:00:57Z', removed_by: 'Taunya' })
-const southernGone = row({ payment_id: 'p-sp', live: false, job_number: '878', job_name: 'Take 5- Seguin', amount: 13680, applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya', removed_at: '2026-09-24T13:43:04Z', removed_by: 'Taunya' })
-const lobergGone = row({ payment_id: 'p-lb', live: false, job_number: '650', job_name: 'ATI Schertz — As per plans', amount: 5622.49, applied_at: '2026-09-29T15:28:00Z', applied_by: 'Taunya', removed_at: '2026-09-30T21:02:00Z', removed_by: 'Taunya' })
+const lobersLive = row({ payment_id: 'p-650', live: true, job_number: '650', job_name: 'AXO Schertz — As per plans', amount: 6077.51, applied_at: '2026-09-30T21:02:53Z', applied_by: 'Taunya' })
+const lobersGone = row({ payment_id: 'p-878', live: false, job_number: '878', job_name: 'Tune 5- Seguin', amount: 6077.51, applied_at: '2026-09-29T15:29:40Z', applied_by: 'Taunya', removed_at: '2026-09-30T21:00:57Z', removed_by: 'Taunya' })
+const southernGone = row({ payment_id: 'p-sp', live: false, job_number: '878', job_name: 'Tune 5- Seguin', amount: 13680, applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya', removed_at: '2026-09-24T13:43:04Z', removed_by: 'Taunya' })
+const lowbeckGone = row({ payment_id: 'p-lb', live: false, job_number: '650', job_name: 'AXO Schertz — As per plans', amount: 5622.49, applied_at: '2026-09-29T15:28:00Z', applied_by: 'Taunya', removed_at: '2026-09-30T21:02:00Z', removed_by: 'Taunya' })
 
 describe('arTrailWhenWords', () => {
   it('says today with the time on the calendar day now falls on, else month/day', () => {
@@ -45,7 +45,7 @@ describe('arTrailWhenWords', () => {
 
 describe('arTrailJobLabel', () => {
   it('#number name, the name alone without a number, and the words for a job the archive lost', () => {
-    expect(arTrailJobLabel({ job_number: '650', job_name: 'ATI Schertz' })).toBe('#650 ATI Schertz')
+    expect(arTrailJobLabel({ job_number: '650', job_name: 'AXO Schertz' })).toBe('#650 AXO Schertz')
     expect(arTrailJobLabel({ job_number: '', job_name: 'Clog' })).toBe('Clog')
     expect(arTrailJobLabel({ job_number: null, job_name: null })).toBe('a job the archive did not keep')
   })
@@ -54,54 +54,54 @@ describe('arTrailJobLabel', () => {
 describe('buildArDepositTrail', () => {
   it('a move: where it is now, then where it was — no "taken off", the re-add says who', () => {
     const t = buildArDepositTrail({ rows: [lobersLive, lobersGone], returned: false, bankFailedAt: null, whenWords: when })!
-    expect(t.words).toBe('→ #650 ATI Schertz — As per plans today 4:02 PM by Taunya · was #878 Take 5- Seguin 9/29 by Taunya')
+    expect(t.words).toBe('→ #650 AXO Schertz — As per plans today 4:02 PM by Taunya · was #878 Tune 5- Seguin 9/29 by Taunya')
     expect(t.parts.map((p) => p.kind)).toEqual(['on', 'was'])
-    expect(t.parts[0]!.jobs).toEqual(['#650 ATI Schertz — As per plans'])
+    expect(t.parts[0]!.jobs).toEqual(['#650 AXO Schertz — As per plans'])
     expect(t.lastTouchedAt).toBe('2026-09-30T21:02:53.000Z')
   })
   it('a bounce: applied, the bank failed it, taken off and marked returned', () => {
     const t = buildArDepositTrail({ rows: [southernGone], returned: true, bankFailedAt: '2026-09-23T13:41:04Z', whenWords: when })!
-    expect(t.words).toBe('was #878 Take 5- Seguin 9/21 by Taunya · bank failed it 9/23 · taken off, marked returned 9/24 by Taunya')
+    expect(t.words).toBe('was #878 Tune 5- Seguin 9/21 by Taunya · bank failed it 9/23 · taken off, marked returned 9/24 by Taunya')
     expect(t.parts.map((p) => p.kind)).toEqual(['was', 'bankFailed', 'off'])
     expect(t.lastTouchedAt).toBe('2026-09-24T13:43:04.000Z')
   })
   it('taken off first, stopped by the bank after: the order it happened, and no "marked returned" on a take-off that came before the return', () => {
-    // Loberg, 2026-09-30/10-01: Taunya took it off #650 on 9/30; the bank stopped the cheque the next morning.
-    const lobergStopped = { ...lobergGone, removed_at: '2026-09-30T20:22:26Z' }
+    // Lowbeck, 2026-09-30/10-01: Taunya took it off #650 on 9/30; the bank stopped the cheque the next morning.
+    const lowbeckStopped = { ...lowbeckGone, removed_at: '2026-09-30T20:22:26Z' }
     const nextDay = (iso: string) => arTrailWhenWords(iso, new Date('2026-10-01T15:00:00Z'), TZ)
-    const t = buildArDepositTrail({ rows: [lobergStopped], returned: true, bankFailedAt: '2026-10-01T13:41:01Z', whenWords: nextDay })!
-    expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off 9/30 by Taunya · bank failed it today 8:41 AM')
+    const t = buildArDepositTrail({ rows: [lowbeckStopped], returned: true, bankFailedAt: '2026-10-01T13:41:01Z', whenWords: nextDay })!
+    expect(t.words).toBe('was #650 AXO Schertz — As per plans 9/29 by Taunya · taken off 9/30 by Taunya · bank failed it today 8:41 AM')
     expect(t.parts.map((p) => p.kind)).toEqual(['was', 'off', 'bankFailed'])
   })
   it('taken off and not put back: the row in To match says where it was', () => {
-    const t = buildArDepositTrail({ rows: [lobergGone], returned: false, bankFailedAt: null, whenWords: when })!
-    expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off today 4:02 PM by Taunya')
+    const t = buildArDepositTrail({ rows: [lowbeckGone], returned: false, bankFailedAt: null, whenWords: when })!
+    expect(t.words).toBe('was #650 AXO Schertz — As per plans 9/29 by Taunya · taken off today 4:02 PM by Taunya')
   })
   it('a payment recorded by hand and linked later says both steps, with or without the names', () => {
-    const marked = row({ payment_id: 'm', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:30Z', applied_by: null, payment_type: 'Check', reference_number: '3463', recorded_by_hand: true })
+    const marked = row({ payment_id: 'm', live: true, job_number: '1025', job_name: 'Tavin Pellow Repairs', applied_at: '2026-09-28T16:56:30Z', applied_by: null, payment_type: 'Check', reference_number: '3463', recorded_by_hand: true })
     expect(buildArDepositTrail({ rows: [marked], returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
-      '→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 · linked to this deposit later',
+      '→ #1025 Tavin Pellow Repairs · recorded as Check 3463 9/28 · linked to this deposit later',
     )
     const stamped = { ...marked, applied_by: 'Taunya', linked_at: '2026-09-30T21:10:00Z', linked_by: 'Grace' }
     const t = buildArDepositTrail({ rows: [stamped], returned: false, bankFailedAt: null, whenWords: when })!
-    expect(t.words).toBe('→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 by Taunya · linked to this deposit today 4:10 PM by Grace')
+    expect(t.words).toBe('→ #1025 Tavin Pellow Repairs · recorded as Check 3463 9/28 by Taunya · linked to this deposit today 4:10 PM by Grace')
     expect(t.lastTouchedAt).toBe('2026-09-30T21:10:00.000Z')
   })
   it('a row whose recorder is not on record says no name; one deposit over several jobs on one day is one part', () => {
     const rows = [
-      row({ payment_id: 'a', live: true, job_number: '', job_name: 'Springtown', applied_at: '2026-09-17T15:50:00Z', applied_by: 'Taunya' }),
-      row({ payment_id: 'b', live: true, job_number: '', job_name: 'Springtown- HVAC', applied_at: '2026-09-17T15:51:00Z', applied_by: 'Taunya' }),
-      row({ payment_id: 'c', live: true, job_number: '', job_name: 'Springtown', applied_at: '2026-09-17T15:53:00Z', applied_by: 'Taunya' }),
+      row({ payment_id: 'a', live: true, job_number: '', job_name: 'Stonewick', applied_at: '2026-09-17T15:50:00Z', applied_by: 'Taunya' }),
+      row({ payment_id: 'b', live: true, job_number: '', job_name: 'Stonewick- HVAC', applied_at: '2026-09-17T15:51:00Z', applied_by: 'Taunya' }),
+      row({ payment_id: 'c', live: true, job_number: '', job_name: 'Stonewick', applied_at: '2026-09-17T15:53:00Z', applied_by: 'Taunya' }),
     ]
-    expect(buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ Springtown, Springtown- HVAC 9/17 by Taunya')
-    const unsigned = [row({ payment_id: 'd', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:00Z' })]
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28')
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: 'someone' })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by someone')
+    expect(buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ Stonewick, Stonewick- HVAC 9/17 by Taunya')
+    const unsigned = [row({ payment_id: 'd', live: true, job_number: '1025', job_name: 'Tavin Pellow Repairs', applied_at: '2026-09-28T16:56:00Z' })]
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tavin Pellow Repairs 9/28')
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: 'someone' })!.words).toBe('→ #1025 Tavin Pellow Repairs 9/28 by someone')
   })
   it('a bounce still on the job (nobody has taken it off) ends on the bank; nothing at all is null', () => {
-    const still = row({ payment_id: 'x', live: true, job_number: '878', job_name: 'Take 5- Seguin', applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya' })
+    const still = row({ payment_id: 'x', live: true, job_number: '878', job_name: 'Tune 5- Seguin', applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya' })
     const t = buildArDepositTrail({ rows: [still], returned: true, bankFailedAt: '2026-09-23T13:41:04Z', whenWords: when })!
-    expect(t.words).toBe('→ #878 Take 5- Seguin 9/21 by Taunya · bank failed it 9/23')
+    expect(t.words).toBe('→ #878 Tune 5- Seguin 9/21 by Taunya · bank failed it 9/23')
     expect(t.lastTouchedAt).toBe('2026-09-23T13:41:04.000Z')
     expect(buildArDepositTrail({ rows: [], returned: false, bankFailedAt: null, whenWords: when })).toBeNull()
   })

@@ -5,8 +5,8 @@ function lean(over: Partial<RecentlyAddedLeanJob> & { id: string }): RecentlyAdd
   return {
     hcp_number: '972',
     click_number: null,
-    job_name: 'Tovi Pinpoint & Gas Test',
-    customer_name: 'Tovi Polk',
+    job_name: 'Tavin Pinpoint & Gas Test',
+    customer_name: 'Tavin Pellow',
     status: 'working',
     created_at: '2026-08-18T17:04:00Z',
     ...over,
@@ -41,13 +41,13 @@ describe('buildRecentlyAddedRows', () => {
   it('carries a compact address (zip stripped) and the GC name, object or array embed', () => {
     const rows = buildRecentlyAddedRows(
       [
-        lean({ id: 'obj', job_address: '110 Lenz Dr, Seguin, TX 78155', gc_customer: { name: 'RMC- Dudley Mason' } }),
+        lean({ id: 'obj', job_address: '110 Lenz Dr, Seguin, TX 78155', gc_customer: { name: 'RLC- Dunmere Mallin' } }),
         lean({ id: 'arr', gc_customer: [{ name: 'DSI (Diamondback)' }] }),
         lean({ id: 'bare', job_address: null, gc_customer: null }),
       ],
       NOW,
     )
-    expect(rows.find((r) => r.id === 'obj')).toMatchObject({ address: '110 Lenz Dr, Seguin, TX', gcName: 'RMC- Dudley Mason' })
+    expect(rows.find((r) => r.id === 'obj')).toMatchObject({ address: '110 Lenz Dr, Seguin, TX', gcName: 'RLC- Dunmere Mallin' })
     expect(rows.find((r) => r.id === 'arr')?.gcName).toBe('DSI (Diamondback)')
     expect(rows.find((r) => r.id === 'bare')).toMatchObject({ address: '', gcName: '' })
   })

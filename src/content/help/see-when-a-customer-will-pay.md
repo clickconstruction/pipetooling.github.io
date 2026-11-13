@@ -32,7 +32,7 @@ Each billed row ends with the bill's dates in one block. The block is a short le
 You hover over the row and it spells out the math. In Collections, the row reads red whatever the dates say.
 
 :::example Answering "when do we get paid on 964?"
-Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *Expected Sep 8 · in 12d*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
+Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *Expected Sep 8 · in 12d*. Kestrin Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
 ## When the customer names a real date

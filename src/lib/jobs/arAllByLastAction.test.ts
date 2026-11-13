@@ -17,26 +17,26 @@ describe('arAllDayHeading', () => {
 })
 
 describe('orderArAllByLastAction', () => {
-  // The 2026-09-30 rows: Lober's (banked 9/28, moved today), Loberg (banked 9/28, taken off today),
-  // Southern Post (banked 9/18, returned 9/24), KCG (banked 9/17, applied 9/17), an August deposit nothing touched.
+  // The 2026-09-30 rows: Lowbe's (banked 9/28, moved today), Lowbeck (banked 9/28, taken off today),
+  // Southern Pine (banked 9/18, returned 9/24), KCG (banked 9/17, applied 9/17), an August deposit nothing touched.
   const lobers = row('lobers', '2026-09-28T22:01:16Z')
-  const loberg = row('loberg', '2026-09-28T22:01:16Z')
+  const lowbeck = row('lowbeck', '2026-09-28T22:01:16Z')
   const southern = row('southern', '2026-09-18T22:00:58Z')
   const kcg = row('kcg', '2026-09-17T15:00:00Z')
   const august = row('august', '2026-08-20T15:00:00Z')
   const marcos = row('marcos', '2026-09-30T14:00:00Z') // banked today, nothing happened to it
   const touched = new Map<string, string>([
     ['lobers', '2026-09-30T21:02:53Z'],
-    ['loberg', '2026-09-30T20:22:26Z'],
+    ['lowbeck', '2026-09-30T20:22:26Z'],
     ['southern', '2026-09-24T13:43:04Z'],
     ['kcg', '2026-09-17T15:53:00Z'],
   ])
   const lastTouchedOf = (id: string) => touched.get(id) ?? null
 
   it('reads down the days by last action, a deposit nothing happened to on its bank date', () => {
-    const groups = orderArAllByLastAction({ rows: [august, kcg, southern, loberg, lobers, marcos], lastTouchedOf, now: NOW, timeZone: TZ })
+    const groups = orderArAllByLastAction({ rows: [august, kcg, southern, lowbeck, lobers, marcos], lastTouchedOf, now: NOW, timeZone: TZ })
     expect(groups.map((g) => [g.heading, g.rows.map((r) => r.mercury_transaction_id)])).toEqual([
-      ['Today', ['lobers', 'loberg', 'marcos']],
+      ['Today', ['lobers', 'lowbeck', 'marcos']],
       ['Thu 9/24', ['southern']],
       ['Thu 9/17', ['kcg']],
       [AR_ALL_OLDER_HEADING, ['august']],

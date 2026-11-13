@@ -20,7 +20,7 @@ const job = (status: string, collections_at: string | null = null) => ({
   collections_at,
   hcp_number: '523',
   click_number: null,
-  job_name: 'Mission Hills',
+  job_name: 'Mission Flats',
   revenue: 1000,
   payments_made: 0,
 })

@@ -49,8 +49,8 @@ describe('humanizeArchiveTable', () => {
 describe('summarizeDeletedRow', () => {
   it('composes title · date · money from whichever fields the row has', () => {
     expect(
-      summarizeDeletedRow({ job_name: 'Take 5- Seguin', work_date: '2026-07-29', amount: 1250.5, id: 'x' }),
-    ).toBe('Take 5- Seguin · 2026-07-29 · $1,250.50')
+      summarizeDeletedRow({ job_name: 'Tune 5- Seguin', work_date: '2026-07-29', amount: 1250.5, id: 'x' }),
+    ).toBe('Tune 5- Seguin · 2026-07-29 · $1,250.50')
   })
 
   it('prefers the most specific title field and trims to the date part', () => {
@@ -76,7 +76,7 @@ describe('summarizeDeletedRow', () => {
 
 describe('filterDeletedBundles', () => {
   const bundles = [
-    { kind: 'job', label: 'Take 5- Seguin', deleted_by_name: 'Wendi' },
+    { kind: 'job', label: 'Tune 5- Seguin', deleted_by_name: 'Wendi' },
     { kind: 'clock session', label: 'Robert · 2026-07-26', deleted_by_name: 'Robert' },
     { kind: 'clock session', label: 'Malachi · 2026-07-21', deleted_by_name: null },
   ]

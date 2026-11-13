@@ -54,7 +54,7 @@ export type ArReturnCaseView = {
   /** The job the They said… button records a promise on, when there is one. */
   promiseJob: { jobId: string; label: string } | null
   takeOff: { jobs: ArCaseTakeOffJob[]; payments: number; summary: string; blocked: boolean } | null
-  /** "When a $13,680 deposit from Southern Post lands, it shows here to pick." */
+  /** "When a $13,680 deposit from Southern Pine lands, it shows here to pick." */
   watch: string | null
   /** A hand mark the bank never confirmed. */
   handNote: string | null
@@ -106,7 +106,7 @@ function daysBetween(fromYmd: string | null, toYmd: string): number {
   return Math.max(0, Math.round((b - a) / 86_400_000))
 }
 
-/** "#878 Take 5- Seguin" — the job's number and name as the office says them. */
+/** "#878 Tune 5- Seguin" — the job's number and name as the office says them. */
 export function arCaseJobLabel(j: { job_number?: string | null; job_name?: string | null }): string {
   const n = asText(j.job_number)
   const name = asText(j.job_name)
@@ -622,7 +622,7 @@ export function arCameBackCount(n: number): string {
 /**
  * v2.4328: the payer's history on a new deposit's row — how many of their checks came
  * back in the last year (bank or rejected cases, open or closed), keyed by the first five
- * letters of the name, so "Poolcorp" on a new deposit reads "2 came back · Apr".
+ * letters of the name, so "Poolmark" on a new deposit reads "2 came back · Apr".
  */
 export function arPayerCameBackNote(
   counterparty: string | null | undefined,

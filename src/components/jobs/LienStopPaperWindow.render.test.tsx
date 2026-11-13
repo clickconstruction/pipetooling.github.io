@@ -30,7 +30,7 @@ const timeline = buildLienTimeline({
 
 const paperFor = (step: { kind: string }): LienStopPaper =>
   step.kind === 'notice'
-    ? { pages: [{ key: 'notice', label: 'Page 1 of 1 · the notice', html: '<p>NOTICE OF CLAIM</p>' }], envelope: 'To JBI LIBERTY HILL LLC and Burd & Assoc. by certified mail', before: [{ key: 'owner', words: 'Owner of record: missing' }], record: null, act: { label: 'Go to the paper on the desk ▾', onPress: vi.fn() }, noticeMonths: ['2026-07', '2026-08'] }
+    ? { pages: [{ key: 'notice', label: 'Page 1 of 1 · the notice', html: '<p>NOTICE OF CLAIM</p>' }], envelope: 'To JBI LIBERTY HILL LLC and Brund & Assoc. by certified mail', before: [{ key: 'owner', words: 'Owner of record: missing' }], record: null, act: { label: 'Go to the paper on the desk ▾', onPress: vi.fn() }, noticeMonths: ['2026-07', '2026-08'] }
     : { pages: [], envelope: null, before: [], record: null, act: null }
 
 describe('LienStopPaperWindow', () => {
@@ -38,13 +38,13 @@ describe('LienStopPaperWindow', () => {
     const onIndex = vi.fn()
     const onClose = vi.fn()
     const jul = timeline.steps.findIndex((s) => s.key === 'notice:2026-07')
-    render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={onIndex} onClose={onClose} jobLabel="891 · Take 5- Liberty Hill" paperFor={paperFor} />)
+    render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={onIndex} onClose={onClose} jobLabel="891 · Tune 5- Liberty Hill" paperFor={paperFor} />)
     expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jul')
     expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The July and August 2026 notice')
     expect(screen.getByTestId('lien-stop-paper-line').textContent).toContain('go on one notice')
-    expect(screen.getByTestId('lien-stop-paper-count').textContent).toBe(`stop ${jul + 1} of ${timeline.steps.length} · 891 · Take 5- Liberty Hill`)
+    expect(screen.getByTestId('lien-stop-paper-count').textContent).toBe(`stop ${jul + 1} of ${timeline.steps.length} · 891 · Tune 5- Liberty Hill`)
     expect(screen.getByTestId('lien-stop-paper-page').textContent).toContain('NOTICE OF CLAIM')
-    expect(screen.getByTestId('lien-stop-paper-envelope').textContent).toContain('Burd & Assoc.')
+    expect(screen.getByTestId('lien-stop-paper-envelope').textContent).toContain('Brund & Assoc.')
     expect(screen.getByTestId('lien-stop-paper-before').textContent).toBe('Owner of record: missing')
     expect(screen.getByTestId('lien-stop-paper-rule').textContent).toBe('§ 53.056 · What the notice is and where it goes ›')
     expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Go to the paper on the desk ▾')

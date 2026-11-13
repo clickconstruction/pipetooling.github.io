@@ -37,10 +37,10 @@ const sources = (): MoveWindowSources => ({
     { job_id: 'j-650', supply_house_id: 'h-1', status: 'open', account_ref: '44812', opened_at: '2026-10-10T15:00:00Z', requested_at: null },
     { job_id: 'j-900', supply_house_id: 'h-2', status: 'not_needed', account_ref: '', opened_at: null, requested_at: null },
   ],
-  asks: [{ id: 'ask-1', invoice_id: 'inv-a', requested_at: '2026-10-27T14:00:00Z', via: 'email', sent_to: 'curly@bluebonnet.com' }],
+  asks: [{ id: 'ask-1', invoice_id: 'inv-a', requested_at: '2026-10-27T14:00:00Z', via: 'email', sent_to: 'curly@bluebonnet.example' }],
   reps: [
     { id: 'rep-2', supply_house_id: 'h-1', name: 'Dot', email: null, phone: '210-555-0101' },
-    { id: 'rep-1', supply_house_id: 'h-1', name: 'Curly', email: 'curly@bluebonnet.com', phone: '210-555-0100' },
+    { id: 'rep-1', supply_house_id: 'h-1', name: 'Curly', email: 'curly@bluebonnet.example', phone: '210-555-0100' },
   ],
   houses: [
     { id: 'h-1', name: 'Bluebonnet Supply' },
@@ -75,10 +75,10 @@ describe('fillInMoveWindow · the rows (punch list #178, PR 3)', () => {
       'Invoice INV-a of Oct 1, PO 1182.',
       'The window closes Mon Nov 2, in 4 days.',
       'The job account there is open, ref 44812.',
-      'The rep for job accounts is Curly, 210-555-0100, curly@bluebonnet.com.',
-      'Asked by email Oct 27, 2 days ago, to curly@bluebonnet.com. The house has not confirmed.',
+      'The rep for job accounts is Curly, 210-555-0100, curly@bluebonnet.example.',
+      'Asked by email Oct 27, 2 days ago, to curly@bluebonnet.example. The house has not confirmed.',
     ])
-    expect(b!.knows).toEqual(['Invoice INV-b of Oct 2.', 'The window closes today, Thu Oct 29.', 'No job account on record for this job at Bluebonnet Supply.', 'The rep for job accounts is Curly, 210-555-0100, curly@bluebonnet.com.'])
+    expect(b!.knows).toEqual(['Invoice INV-b of Oct 2.', 'The window closes today, Thu Oct 29.', 'No job account on record for this job at Bluebonnet Supply.', 'The rep for job accounts is Curly, 210-555-0100, curly@bluebonnet.example.'])
     expect(m!.knows[3]).toBe('No job-accounts rep is on file for the house.')
   })
 
@@ -89,7 +89,7 @@ describe('fillInMoveWindow · the rows (punch list #178, PR 3)', () => {
       ['asked', 'Ask the house by email', false],
       ['not_needed', 'No job account needed', false],
     ])
-    expect(moveWindowChoices(a!)[1]).toMatchObject({ label: 'Send the email again', hint: 'to Curly, curly@bluebonnet.com' })
+    expect(moveWindowChoices(a!)[1]).toMatchObject({ label: 'Send the email again', hint: 'to Curly, curly@bluebonnet.example' })
     expect(moveWindowChoices(m!)[1]).toMatchObject({ disabled: true, hint: 'no job-accounts rep with an email on file' })
     expect(moveWindowDecisionReady(b!, EMPTY_MOVE_WINDOW_DECISION)).toBe(false)
     expect(moveWindowDecisionReady(b!, { ...EMPTY_MOVE_WINDOW_DECISION, choice: 'moved' })).toBe(true)
@@ -118,8 +118,8 @@ describe('fillInMoveWindow · the rows (punch list #178, PR 3)', () => {
     expect(moved).toMatchObject({ choice: 'moved', account: null })
     expect(moveWindowTrailWords(moved)).toBe('moved onto the job account · Accounts payable has it')
     const asked = moveWindowWrites(a!, { choice: 'asked', ref: '', note: '' })!
-    expect(asked).toEqual({ choice: 'asked', invoiceId: 'inv-a', includeAsked: true, sentTo: 'curly@bluebonnet.com' })
-    expect(moveWindowTrailWords(asked)).toBe('asked curly@bluebonnet.com by email · follow up with a call until the house confirms')
+    expect(asked).toEqual({ choice: 'asked', invoiceId: 'inv-a', includeAsked: true, sentTo: 'curly@bluebonnet.example' })
+    expect(moveWindowTrailWords(asked)).toBe('asked curly@bluebonnet.example by email · follow up with a call until the house confirms')
     expect(moveWindowWrites(b!, { choice: 'asked', ref: '', note: '' })).toMatchObject({ includeAsked: false })
     const no = moveWindowWrites(b!, { choice: 'not_needed', ref: '', note: ' the insurer pays the house direct ' })!
     expect(no).toEqual({

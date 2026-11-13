@@ -5,10 +5,10 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 describe('payloadFromDraft', () => {
   it('trims every text field and nulls an empty note and lookup stamp', () => {
     const payload = payloadFromDraft(
-      { ...emptyPropertyDraft('  628 Terrell Rd, San Antonio, TX 78209 '), owner_name: ' Jane Doe ', parcel_id: ' 12345 ' },
+      { ...emptyPropertyDraft('  628 Tarrow Rd, San Antonio, TX 78209 '), owner_name: ' Jane Doe ', parcel_id: ' 12345 ' },
       new Date('2026-09-14T15:00:00Z'),
     )
-    expect(payload.address).toBe('628 Terrell Rd, San Antonio, TX 78209')
+    expect(payload.address).toBe('628 Tarrow Rd, San Antonio, TX 78209')
     expect(payload.owner_name).toBe('Jane Doe')
     expect(payload.parcel_id).toBe('12345')
     expect(payload.note).toBeNull()

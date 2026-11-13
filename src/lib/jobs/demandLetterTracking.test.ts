@@ -14,7 +14,7 @@ function letter(partial: Partial<JobDemandLetterRow>): JobDemandLetterRow {
     amount: 2711.5,
     deadline_date: '2026-09-16',
     fields: {},
-    recipient_name: 'Knight Contracting',
+    recipient_name: 'Kestrin Contracting',
     recipient_email: '',
     recipient_address: '',
     sent_method: 'certified_mail',

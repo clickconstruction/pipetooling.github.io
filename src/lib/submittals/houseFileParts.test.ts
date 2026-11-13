@@ -7,8 +7,8 @@ const read = readHouseFile(BP375_NWS_PAGES)!
 
 describe('reading a house’s submittal file (BP375, National Wholesale, 2026-09-28)', () => {
   it('finds the job line, the tags in file order, and 32 parts', () => {
-    expect(rawCommonHeader(BP375_NWS_PAGES)).toBe('SPACEX BA-2 CORE & SHELL ')
-    expect(read.header).toBe('SPACEX BA-2 CORE & SHELL')
+    expect(rawCommonHeader(BP375_NWS_PAGES)).toBe('SKYLAB BA-2 CORE & SHELL ')
+    expect(read.header).toBe('SKYLAB BA-2 CORE & SHELL')
     expect(read.tags).toEqual(['DWH-1', 'ET-1', 'HWCP-1', 'PRV-1', 'WC-1 & WC-2', 'UR-1', 'LAV-1', 'LAV-2', 'MB-1', 'EWC-1'])
     expect(read.parts).toHaveLength(32)
   })

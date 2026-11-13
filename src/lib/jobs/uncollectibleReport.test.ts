@@ -6,14 +6,14 @@ const row = (o: Partial<UncollectibleReportRow>): UncollectibleReportRow => ({ i
 describe('buildUncollectibleReport — the accountant\'s list (punch list #94)', () => {
   it('groups by the year the office gave up, newest first, with totals, and carries an undated row under undated', () => {
     const r = buildUncollectibleReport([
-      row({ id: 'a', hcp_number: '717', job_name: 'TLE HVAC', customer_name: 'The Learning Experience', revenue: 7502, uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'Theft of service.' }),
+      row({ id: 'a', hcp_number: '717', job_name: 'TLE HVAC', customer_name: 'The Reading Corner', revenue: 7502, uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'Theft of service.' }),
       row({ id: 'b', click_number: '008', job_name: 'Car wash', customer_name: 'Surf Thru', revenue: 250, uncollectible_at: '2026-02-01T12:00:00Z', uncollectible_reason: 'No response.' }),
       row({ id: 'c', hcp_number: '500', revenue: 1000, payments_made: 400, uncollectible_at: '2025-12-20T12:00:00Z' }),
       row({ id: 'd', hcp_number: '501', revenue: 100 }),
     ])
     expect(r.years.map((y) => [y.year, y.count, y.total])).toEqual([['undated', 1, 100], ['2026', 2, 7752], ['2025', 1, 600]])
     expect(r.years[1]!.lines.map((l) => l.number)).toEqual(['717', '008'])
-    expect(r.years[1]!.lines[0]).toMatchObject({ ymd: '2026-10-06', customer: 'The Learning Experience', reason: 'Theft of service.' })
+    expect(r.years[1]!.lines[0]).toMatchObject({ ymd: '2026-10-06', customer: 'The Reading Corner', reason: 'Theft of service.' })
     expect(r.count).toBe(4)
     expect(r.total).toBe(8452)
   })

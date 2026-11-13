@@ -78,9 +78,9 @@ describe('billingMaterialsCellText', () => {
 describe('billingJobMatchesSearch — line items (v2.1619)', () => {
   const job = {
     hcp_number: '917',
-    job_name: 'John Ingram',
+    job_name: 'John Inglow',
     job_address: '1 Elm St',
-    customer_name: 'Ingram Family',
+    customer_name: 'Inglow Family',
     fixtures: [{ name: 'Water heater', line_description: 'Replaced burner assembly' }],
     materials: [{ description: 'Permit fee' }],
   }
@@ -88,7 +88,7 @@ describe('billingJobMatchesSearch — line items (v2.1619)', () => {
     expect(billingJobMatchesSearch(job, 'water heater')).toBe(true)
     expect(billingJobMatchesSearch(job, 'burner')).toBe(true)
     expect(billingJobMatchesSearch(job, 'permit')).toBe(true)
-    expect(billingJobMatchesSearch(job, 'ingram family')).toBe(true)
+    expect(billingJobMatchesSearch(job, 'inglow family')).toBe(true)
     expect(billingJobMatchesSearch(job, 'faucet')).toBe(false)
   })
 })

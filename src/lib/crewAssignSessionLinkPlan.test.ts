@@ -84,8 +84,8 @@ describe('labels', () => {
   it('pluralises the session count and shows hours to two places', () => {
     expect(crewLinkButtonLabel({ kind: 'link', unlinkedIds: ['a'], unlinkedHours: 0.72, linkedCount: 0 })).toBe('Link 1 session (0.72 h)')
     expect(crewLinkButtonLabel({ kind: 'link', unlinkedIds: ['a', 'b'], unlinkedHours: 3.4, linkedCount: 0 })).toBe('Link 2 sessions (3.40 h)')
-    expect(crewLinkSuccessMessage(2, 3.4, 'J523 · Mission Hills')).toBe(
-      'Linked 2 sessions (3.40 h) to J523 · Mission Hills — split recomputed from the clock',
+    expect(crewLinkSuccessMessage(2, 3.4, 'J523 · Mission Flats')).toBe(
+      'Linked 2 sessions (3.40 h) to J523 · Mission Flats — split recomputed from the clock',
     )
   })
 })

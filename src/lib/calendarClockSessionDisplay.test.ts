@@ -32,7 +32,7 @@ const raw = (over: Partial<CalendarClockSessionRaw> = {}): CalendarClockSessionR
 })
 const row = (over: Partial<CalendarClockSessionRaw> = {}): ClockSessionRow => calendarRawToClockSessionRow(raw(over))
 
-const job = { hcp_number: '1234', click_number: null, job_name: 'Mission Hills', job_address: '123 Main St', service_type_id: 'plumb' }
+const job = { hcp_number: '1234', click_number: null, job_name: 'Mission Flats', job_address: '123 Main St', service_type_id: 'plumb' }
 const bid = { bid_number: '77', project_name: 'Oak Ridge Phase 2', address: null, service_type_id: 'plumb', customers: { name: 'Acme Builders' } }
 const prefixMap = buildLedgerPrefixMap([{ id: 'plumb', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }])
 const defaultMap = buildLedgerPrefixMap([])
@@ -120,19 +120,19 @@ describe('calendar chips', () => {
     expect(CALENDAR_SESSION_CHIP_CAP).toBe(3)
   })
   it('labels a chip with the short job or bid line, else Scheduled for a salary block, else No job', () => {
-    expect(calendarSessionChipLabel(row({ jobs_ledger: job }), prefixMap)).toBe('JP1234 · Mission Hills')
-    expect(calendarSessionChipLabel(row({ jobs_ledger: job }), defaultMap)).toBe('J1234 · Mission Hills')
-    expect(calendarSessionChipLabel(row({ jobs_ledger: { ...job, hcp_number: null, click_number: 'C9' } }), defaultMap)).toBe('JC9 · Mission Hills')
+    expect(calendarSessionChipLabel(row({ jobs_ledger: job }), prefixMap)).toBe('JP1234 · Mission Flats')
+    expect(calendarSessionChipLabel(row({ jobs_ledger: job }), defaultMap)).toBe('J1234 · Mission Flats')
+    expect(calendarSessionChipLabel(row({ jobs_ledger: { ...job, hcp_number: null, click_number: 'C9' } }), defaultMap)).toBe('JC9 · Mission Flats')
     expect(calendarSessionChipLabel(row({ jobs_ledger: { ...job, job_name: '  ' } }), defaultMap)).toBe('J1234 · —')
     expect(calendarSessionChipLabel(row({ bids: bid }), prefixMap)).toBe('BP77 · Oak Ridge Phase 2')
-    expect(calendarSessionChipLabel(row({ jobs_ledger: job, bids: bid }), defaultMap)).toBe('J1234 · Mission Hills') // job wins over bid
+    expect(calendarSessionChipLabel(row({ jobs_ledger: job, bids: bid }), defaultMap)).toBe('J1234 · Mission Flats') // job wins over bid
     expect(calendarSessionChipLabel(row({ origin: 'salary_schedule' }), defaultMap)).toBe('Scheduled')
     expect(calendarSessionChipLabel(row({ origin: 'user_punch' }), defaultMap)).toBe('No job')
     expect(calendarSessionChipLabel(row(), defaultMap)).toBe('No job')
   })
   it('the tooltip carries the full job or bid line and the notes, with long notes cut at 120', () => {
-    expect(calendarSessionChipTooltip(row({ jobs_ledger: job, notes: 'left early' }), prefixMap)).toBe('JP1234 · Mission Hills - 123 Main St · left early')
-    expect(calendarSessionChipTooltip(row({ jobs_ledger: job }), defaultMap)).toBe('J1234 · Mission Hills - 123 Main St')
+    expect(calendarSessionChipTooltip(row({ jobs_ledger: job, notes: 'left early' }), prefixMap)).toBe('JP1234 · Mission Flats - 123 Main St · left early')
+    expect(calendarSessionChipTooltip(row({ jobs_ledger: job }), defaultMap)).toBe('J1234 · Mission Flats - 123 Main St')
     expect(calendarSessionChipTooltip(row({ bids: bid }), defaultMap)).toBe('B77 · Oak Ridge Phase 2 - Acme Builders') // customer name stands in for a missing bid address
     expect(calendarSessionChipTooltip(row({ bids: { ...bid, address: '9 Elm' } }), defaultMap)).toBe('B77 · Oak Ridge Phase 2 - 9 Elm')
     expect(calendarSessionChipTooltip(row({ origin: 'salary_schedule', notes: '  ' }), defaultMap)).toBe('Scheduled (salary)')

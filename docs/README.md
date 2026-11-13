@@ -53,6 +53,7 @@
 | Doc | Purpose |
 |---|---|
 | [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md) | App looks "database down": lock-pileup vs instance-stall triage (`/db-freeze` runs it). Read BEFORE restarting anything. |
+| [`MAIL_BACKFILL.md`](./MAIL_BACKFILL.md) | Filing old mail from the office's mailboxes onto Pipeline jobs, for the record: the run's commands, its never-tag list and what it may never do. |
 | [`runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) | Ordered checklist for "why did the app crash" (503s, timeouts). |
 | [`runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) | Deep Supabase incident inspection (CLI + Dashboard logs). |
 | [`runbooks/CLICKPLUMBING_SENDER.md`](./runbooks/CLICKPLUMBING_SENDER.md) | Customer email from billing@clickplumbing.com, with replies to office@: the Resend DNS records, the Google Workspace alias, the order of steps, the checks and the flip PR with its 57-function deploy. |
@@ -155,4 +156,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-11-08
+last_updated: 2026-11-13

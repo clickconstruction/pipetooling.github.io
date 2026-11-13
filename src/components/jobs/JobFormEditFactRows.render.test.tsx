@@ -45,7 +45,7 @@ const OFFICE_PROPERTY: PropertyCandidate = {
   address: '574 Co Rd 660, Devine TX 78016',
   county: 'Medina',
   legal_description: 'ABS 1 SUR 2',
-  owner_name: 'Todd Cop',
+  owner_name: 'Todd Crayle',
   owner_company: '',
   owner_mailing_address: '574 Co Rd 660, Devine TX 78016',
 }
@@ -59,7 +59,7 @@ beforeEach(() => {
 const CUSTOMERS: CustomerRow[] = [
   {
     id: 'cust-1',
-    name: 'Todd Cop',
+    name: 'Todd Crayle',
     address: '6414 Maverick Oak Dr San Antonio, TX 78240',
     contact_info: null,
     date_met: null,
@@ -83,8 +83,8 @@ function Harness({
   propertyCandidates = [],
   propertyRecordFocus = false,
   customerAddressId = null,
-  customerName = 'Todd Cop',
-  customerEmail = 'Todd@CopProperties.com',
+  customerName = 'Todd Crayle',
+  customerEmail = 'Todd@crayleproperties.example',
   customerPhone = '(210) 415-5375',
 }: {
   customerName?: string
@@ -162,7 +162,7 @@ function Harness({
       onOpenCreateCustomerModal={() => {}}
       projectId={null}
       setProjectId={() => {}}
-      projects={[{ id: 'p1', name: 'Gun Dog Rough In', customer_id: 'cust-1', customers: { name: 'Todd Cop' } }]}
+      projects={[{ id: 'p1', name: 'Gray Fox Rough In', customer_id: 'cust-1', customers: { name: 'Todd Crayle' } }]}
       jobPlansLink=""
       setJobPlansLink={() => {}}
       bidId={null}
@@ -200,8 +200,8 @@ describe('JobFormEditFactRows', () => {
     await settle()
     const phone = screen.getByRole('link', { name: '(210) 415-5375' }) as HTMLAnchorElement
     expect(phone.getAttribute('href')).toBe('tel:2104155375')
-    const email = screen.getByRole('link', { name: 'Todd@CopProperties.com' }) as HTMLAnchorElement
-    expect(email.getAttribute('href')).toBe('mailto:Todd@CopProperties.com')
+    const email = screen.getByRole('link', { name: 'Todd@crayleproperties.example' }) as HTMLAnchorElement
+    expect(email.getAttribute('href')).toBe('mailto:Todd@crayleproperties.example')
   })
 
   it('opening the Phone row reveals the editor and edits flow to state', async () => {
@@ -225,9 +225,9 @@ describe('JobFormEditFactRows', () => {
   it('a linked GC grows read-only Phone/Email/Date met sub-rows — no pencils (v2.1701)', async () => {
     const gc = {
       id: 'gc-1',
-      name: 'Done Right Foundation',
+      name: 'Dead Level Foundation',
       address: '99 Slab Way',
-      contact_info: { phone: '(210) 555-1111', email: 'ap@doneright.com' },
+      contact_info: { phone: '(210) 555-1111', email: 'ap@deadlevel.example' },
       date_met: '2026-05-01',
       master_user_id: 'master-1',
       customer_type: 'commercial',
@@ -237,7 +237,7 @@ describe('JobFormEditFactRows', () => {
     await settle()
     expect(screen.getByText(/99 Slab Way/)).toBeTruthy()
     expect(screen.getByText('(210) 555-1111')).toBeTruthy()
-    expect(screen.getByText('ap@doneright.com')).toBeTruthy()
+    expect(screen.getByText('ap@deadlevel.example')).toBeTruthy()
     expect(screen.getByText('05/01/26')).toBeTruthy()
     // Read-only: no Edit buttons exist for the GC's sub-rows (the customer's
     // own Phone/Email rows still have theirs — exactly one each).
@@ -251,15 +251,15 @@ describe('JobFormEditFactRows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Project' }))
     const select = screen.getByLabelText('Project') as HTMLSelectElement
     expect(select.options.length).toBe(2)
-    expect(select.options[1]?.textContent).toContain('Gun Dog Rough In')
+    expect(select.options[1]?.textContent).toContain('Gray Fox Rough In')
   })
 
   it('share this bill (v2.3376): a two-party job shows the Show <GC> memory row; none without a GC or on an unsaved job', async () => {
     const gc = {
       id: 'gc-1',
-      name: 'Done Right Foundation',
+      name: 'Dead Level Foundation',
       address: '99 Slab Way',
-      contact_info: { phone: '(210) 555-1111', email: 'ap@doneright.com' },
+      contact_info: { phone: '(210) 555-1111', email: 'ap@deadlevel.example' },
       date_met: null,
       master_user_id: 'master-1',
       customer_type: 'commercial',
@@ -267,7 +267,7 @@ describe('JobFormEditFactRows', () => {
     } as unknown as CustomerRow
     renderWithProviders(<Harness gc={gc} showBillsToOtherParty />)
     await settle()
-    expect(screen.getByText('Show Done Right Foundation')).toBeTruthy()
+    expect(screen.getByText('Show Dead Level Foundation')).toBeTruthy()
     expect(screen.getByText('on new bills')).toBeTruthy()
     cleanup()
     renderWithProviders(<Harness gc={gc} />)
@@ -280,7 +280,7 @@ describe('JobFormEditFactRows', () => {
     cleanup()
     renderWithProviders(<Harness gc={gc} jobId={null} />)
     await settle()
-    expect(screen.queryByText('Show Done Right Foundation')).toBeNull()
+    expect(screen.queryByText('Show Dead Level Foundation')).toBeNull()
   })
 
   it('Property record: the job address can be added as a property when no saved one matches (v2.3401)', async () => {
@@ -290,7 +290,7 @@ describe('JobFormEditFactRows', () => {
     // The picker still lists the builder's office…
     expect(screen.getByRole('option', { name: '574 Co Rd 660, Devine TX 78016' })).toBeTruthy()
     // …and the job address, which is not on it, is one click from becoming a property.
-    const add = screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })
+    const add = screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Crayle' })
     fireEvent.click(add)
     expect(screen.getByTestId('job-form-property-add-sheet')).toBeTruthy()
     expect((screen.getByLabelText('Address') as HTMLInputElement).value).toBe('10 Cascade Gln')
@@ -298,7 +298,7 @@ describe('JobFormEditFactRows', () => {
     // Cancel folds the sheet and the offer comes back.
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByTestId('job-form-property-add-sheet')).toBeNull()
-    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Crayle' })).toBeTruthy()
   })
 
   it('Property record: a saved property matching the job address is offered to link, not re-added (v2.3401)', async () => {
@@ -358,15 +358,15 @@ describe('JobFormEditFactRows', () => {
     renderWithProviders(<Harness />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
-    expect(screen.getByText('No saved properties on Todd Cop yet.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
+    expect(screen.getByText('No saved properties on Todd Crayle yet.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Crayle' })).toBeTruthy()
   })
 
   it('a GC job — GC set, no customer — reads the GC as the only party on the Customer row (v2.3403)', async () => {
-    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RMC- Dudley Mason' } as CustomerRow
+    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RLC- Dunmere Mallin' } as CustomerRow
     renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
     await settle()
-    expect(screen.getByText('none · GC job — RMC- Dudley Mason is the party')).toBeTruthy()
+    expect(screen.getByText('none · GC job — RLC- Dunmere Mallin is the party')).toBeTruthy()
     expect(screen.queryByText('Not in Customers')).toBeNull()
   })
 
@@ -375,13 +375,13 @@ describe('JobFormEditFactRows', () => {
       proposalFromLookupPayload(address, {
         ok: true,
         county_geocoder: 'Bexar',
-        parcel: { propId: '1', ownerName: 'KHAN UMAR & BANGASH SHAZMEENA', nameCare: '', legalDescription: 'CB 4696A BLK 3 LOT 35', situsAddress: '10 CASCADE GLN', mailingAddress: '3203 SPIDER LILY, SAN ANTONIO, TX 78258', county: 'Bexar', source: 'Bexar Appraisal District', taxYear: '2025' },
+        parcel: { propId: '1', ownerName: 'KARROW ULRIC & BARROWBY SHELMINA', nameCare: '', legalDescription: 'CB 4696A BLK 3 LOT 35', situsAddress: '10 CASCADE GLN', mailingAddress: '3203 SPIDER LILY, SAN ANTONIO, TX 78258', county: 'Bexar', source: 'Bexar Appraisal District', taxYear: '2025' },
       }),
     )
-    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RMC- Dudley Mason' } as CustomerRow
+    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RLC- Dunmere Mallin' } as CustomerRow
     const { unmount } = renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
     await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
-    expect(screen.getByText('Khan Umar & Bangash Shazmeena')).toBeTruthy()
+    expect(screen.getByText('Karrow Ulric & Barrowby Shelmina')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Save this owner' })).toBeTruthy()
     // The row above stops contradicting the card: it says a suggestion is waiting (v2.3666).
     await waitFor(() => expect(screen.getByText('1 suggestion')).toBeTruthy())

@@ -3,7 +3,7 @@ import { gcRunPolicyWords, gcRunReceiptHasUndo, gcRunUndoMessage, gcRunUndoPlan,
 import { ownerShareTurnedOn } from './ownerBillShare'
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `item-${i + 1}`)
-const receipt = (over: Partial<GcRunReceipt> = {}): GcRunReceipt => ({ gcId: 'gc1', gcName: 'RMC- Dudley Mason', itemIds: ids(11), rule: null, terms: null, owners: null, legal: null, ...over })
+const receipt = (over: Partial<GcRunReceipt> = {}): GcRunReceipt => ({ gcId: 'gc1', gcName: 'RLC- Dunmere Mallin', itemIds: ids(11), rule: null, terms: null, owners: null, legal: null, ...over })
 const termsBefore = { payment_terms: null, payment_terms_note: null, payment_terms_set_by: null, payment_terms_set_at: null }
 
 describe('gcRunUndoPlan', () => {
@@ -50,8 +50,8 @@ describe('the words on screen', () => {
   })
 
   it('the strip says what was just done', () => {
-    expect(gcRunUndoStripWords(receipt())).toBe('You just approved these 11 notices for RMC- Dudley Mason. Pressed it by mistake?')
-    expect(gcRunUndoStripWords(receipt({ itemIds: ids(1) }))).toBe('You just approved this notice for RMC- Dudley Mason. Pressed it by mistake?')
+    expect(gcRunUndoStripWords(receipt())).toBe('You just approved these 11 notices for RLC- Dunmere Mallin. Pressed it by mistake?')
+    expect(gcRunUndoStripWords(receipt({ itemIds: ids(1) }))).toBe('You just approved this notice for RLC- Dunmere Mallin. Pressed it by mistake?')
   })
 
   it('no receipt, or one with no notices, offers nothing', () => {

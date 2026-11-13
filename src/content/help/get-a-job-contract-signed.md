@@ -16,7 +16,7 @@ On **Jobs → Pipeline**, every job row carries one contract chip under the job 
 - {{chip:gray|No contract}}: nothing is on file and no crew is booked yet. A job with no price stays grey too, because a contract names the amount.
 - {{chip:gray|No subcontract on file}}: a job billed to a GC. Tap it to file their signed subcontract once. Tick every job it names and they all read signed. Its **Send ours or mark not needed** link opens the Contract window instead.
 - {{chip:yellow|Contract sent · opened 2× · 6d}}: out for signature. It says how many times the customer opened it and how long ago it went out.
-- {{chip:green|✍ Signed Sep 1 · M. Palmer}}: signed electronically, with the signer and date.
+- {{chip:green|✍ Signed Sep 1 · M. Palvern}}: signed electronically, with the signer and date.
 
 Once a job is billed, a missing contract reads a grey {{chip:gray|No contract}}. A job in **Paid in full** shows no chip. On the phone board, the row's one chip asks only for the two amber cases.
 
@@ -35,7 +35,7 @@ Hover the chip for the full story: who it went to, and whether it's been opened.
 Save a new job by hand and one small question follows. It reads {{chip:blue|Does J523 need a contract?}} with the job line and three doors:
 
 - {{button:blue|Send our agreement}} opens the Contract modal, the contract's pop-up window, prefilled from the job.
-- {{button:outline|File a signed copy}} opens it straight onto the filing sheet. On a builder's job this door comes first and reads {{button:blue|File Summit GC's subcontract}}. A subcontract is the builder's own contract with us. Their paper is the agreement, so file it rather than sending ours.
+- {{button:outline|File a signed copy}} opens it straight onto the filing sheet. On a builder's job this door comes first and reads {{button:blue|File Selwick GC's subcontract}}. A subcontract is the builder's own contract with us. Their paper is the agreement, so file it rather than sending ours.
 - {{button:outline|Not needed…}} takes the reason and the job leaves the count.
 - **Later** leaves the job in the count for the sweep.
 
@@ -49,7 +49,7 @@ Two things keep the count honest. Both show on the card's third line. It reads {
 - **Not needed.** Open the job's Contract window. Under the rail, press **Not needed…**. Pick why: {{chip:blue|GC job — their subcontract}}, {{chip:gray|Service call}} or {{chip:gray|Warranty / no charge}}. Or say it in your own words. Then press {{button:blue|Mark not needed}}. The row reads {{chip:gray|No contract · not needed}}. The job leaves the count, and nothing goes to the customer. Changed your mind? The window shows the answer with {{button:outline|Needed after all}}.
 
 :::example A builder's job
-Summit GC sends you their subcontract; you don't send them a service agreement. Mark the job **Not needed · GC job — their subcontract**, or better, file their signed subcontract (below) so the row reads signed.
+Selwick GC sends you their subcontract; you don't send them a service agreement. Mark the job **Not needed · GC job — their subcontract**, or better, file their signed subcontract (below) so the row reads signed.
 :::
 
 Sending or filing an agreement still works on a not-needed job. A signed record always wins over the Not needed answer.
@@ -80,9 +80,9 @@ Tap the {{chip:gray|No contract}} chip on the row. The Contract window opens wit
 {{button:blue|Download & mark handed over}} · *Downloads the PDF with Sign and Date rules and marks the agreement handed over today. The job leaves the count; nothing is emailed.*
 :::
 
-On a builder's job the rail leads with {{button:outline|File Summit GC's subcontract}}. Their paper is the agreement. It keeps our three ways one tap behind **Send ours anyway**.
+On a builder's job the rail leads with {{button:outline|File Selwick GC's subcontract}}. Their paper is the agreement. It keeps our three ways one tap behind **Send ours anyway**.
 
-Under the rail sit the two exits: **Already signed outside the app? File their signed contract** and **This job doesn't need one? Not needed…**. The title bar's pill says where the agreement stands. It reads {{chip:gray|Draft · nothing sent yet}} or {{chip:yellow|Sent Sep 12 · opened 2×}}. It reads {{chip:yellow|Handed over Sep 12 · awaiting the signed page}} or {{chip:green|✍ Signed Sep 14 · M. Palmer}}.
+Under the rail sit the two exits: **Already signed outside the app? File their signed contract** and **This job doesn't need one? Not needed…**. The title bar's pill says where the agreement stands. It reads {{chip:gray|Draft · nothing sent yet}} or {{chip:yellow|Sent Sep 12 · opened 2×}}. It reads {{chip:yellow|Handed over Sep 12 · awaiting the signed page}} or {{chip:green|✍ Signed Sep 14 · M. Palvern}}.
 
 ## How this one gets signed
 
@@ -117,7 +117,7 @@ You send J363's agreement at 9:00 with $3,140 where $31,400 belongs — a line i
 
 ## What the customer sees
 
-The customer sees one page on their phone. It holds your letterhead, the job address, the work in plain words, and the contract amount and payment line. The terms are one tap away. They type their full name. Or they switch to **Draw** and sign with a finger. They tick **I agree to sign electronically** and the agreement box. They press a button that names the amount: {{button:blue|Sign agreement — $5,000.00}}. Under the signature sits one quiet line. It says a typed or drawn signature has the same legal effect as ink, and paper is available on request. **How electronic signing works ▸** sits at its end. It opens two short paragraphs citing the federal ESIGN Act and the Texas UETA. Those are the two e-signature laws. It also shows a **Full disclosure ›** link. The words they saw are kept with the signature. The page then shows the signed record with **Download signed PDF**. It emails them the signed agreement as a PDF. You and the job's leader get an email too. The row turns {{chip:green|✍ Signed Sep 2 · M. Palmer}}.
+The customer sees one page on their phone. It holds your letterhead, the job address, the work in plain words, and the contract amount and payment line. The terms are one tap away. They type their full name. Or they switch to **Draw** and sign with a finger. They tick **I agree to sign electronically** and the agreement box. They press a button that names the amount: {{button:blue|Sign agreement — $5,000.00}}. Under the signature sits one quiet line. It says a typed or drawn signature has the same legal effect as ink, and paper is available on request. **How electronic signing works ▸** sits at its end. It opens two short paragraphs citing the federal ESIGN Act and the Texas UETA. Those are the two e-signature laws. It also shows a **Full disclosure ›** link. The words they saw are kept with the signature. The page then shows the signed record with **Download signed PDF**. It emails them the signed agreement as a PDF. You and the job's leader get an email too. The row turns {{chip:green|✍ Signed Sep 2 · M. Palvern}}.
 
 The link never dies. It shows the signed record afterwards. It shows a polite note if you voided the contract. It asks them to reply for a fresh one only if 90 days pass without a signature. Every resend restarts that clock.
 
@@ -219,7 +219,7 @@ The header says how much work has no contract on file, such as *$1,349,981 of wo
 - {{chip:blue|GC job · file theirs}}: the customer is a builder. Their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
 - {{chip:blue|+ J798}}: this customer has another job in the sweep. Each job sends its own agreement.
 
-**The sweep shows the agreement before it sends.** Tap a row. The right side shows that job's agreement exactly as the customer will see it. That is the letterhead, the work, the amount and payment line, and the terms. It is built from the job's fixtures, or its accepted estimate, and the terms you pick above it. Fix the signer's email in the **To** box. Type the **Scope** right above the document, one line per item. The page redraws as you type. The edits save to the job's draft, so what you see is what goes out. The **Amount** is read out, not typed. It is the job's number with where it comes from. That reads *from the job's 14 line items*, or *from the estimate the customer accepted Sep 12*. **Adjust line items ›** opens the job. A job with no line items reads *No amount — the agreement says time and materials* with **Add line items ›**. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do. It reads *Emails the PDF to kcallison@tfharper.com · then J363*. The blue button does it and lands you on the next job. On a homeowner's row it reads {{button:blue|Email PDF & next}}. {{button:outline|Skip}} moves on without sending.
+**The sweep shows the agreement before it sends.** Tap a row. The right side shows that job's agreement exactly as the customer will see it. That is the letterhead, the work, the amount and payment line, and the terms. It is built from the job's fixtures, or its accepted estimate, and the terms you pick above it. Fix the signer's email in the **To** box. Type the **Scope** right above the document, one line per item. The page redraws as you type. The edits save to the job's draft, so what you see is what goes out. The **Amount** is read out, not typed. It is the job's number with where it comes from. That reads *from the job's 14 line items*, or *from the estimate the customer accepted Sep 12*. **Adjust line items ›** opens the job. A job with no line items reads *No amount — the agreement says time and materials* with **Add line items ›**. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do. It reads *Emails the PDF to kc@tfhalden.example · then J363*. The blue button does it and lands you on the next job. On a homeowner's row it reads {{button:blue|Email PDF & next}}. {{button:outline|Skip}} moves on without sending.
 
 :::example The footer follows the row
 On a builder's job the button reads {{button:blue|File their subcontract}} — their paper is the agreement. A thin scope or no amount takes away the *& next* fast path and leaves the one-job button, with the sentence saying what is unusual. No email? The two email ways dim, the line under the row says they need a signer email, and **Download to print** is picked. **Preview PDF** and **⋯ More** sit at the left of the footer.

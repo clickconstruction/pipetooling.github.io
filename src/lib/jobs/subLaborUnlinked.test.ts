@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildUnlinkedSubLaborRows, sumUnlinkedSubLabor, unlinkedSheetAge } from './subLaborUnlinked'
 
 const jobs = [
-  { id: 'j1', hcp_number: '977', click_number: null, job_name: 'Springtown', customer_name: null, job_address: '415 Springtown Way' },
+  { id: 'j1', hcp_number: '977', click_number: null, job_name: 'Stonewick', customer_name: null, job_address: '415 Stonewick Way' },
   { id: 'j2', hcp_number: null, click_number: 'C-12', job_name: 'Click job', customer_name: null, job_address: null },
 ]
 
@@ -10,9 +10,9 @@ describe('buildUnlinkedSubLaborRows', () => {
   it('keeps sheets with no number or an unmatched number; drops linked ones', () => {
     const rows = buildUnlinkedSubLaborRows(
       [
-        { id: 'a', assigned_to_name: 'Airfordable', address: '150 E Sonterra', job_number: null, job_date: '2026-08-06', labor_rate: null, items: [{ direct_labor_amount: 4200 }], payments: [] },
+        { id: 'a', assigned_to_name: 'Airlowe', address: '150 E Sonmere', job_number: null, job_date: '2026-08-06', labor_rate: null, items: [{ direct_labor_amount: 4200 }], payments: [] },
         { id: 'b', assigned_to_name: 'Behar Kraja | Kyle', address: '7722 Citadel Peak', job_number: 'H-2291', job_date: '2026-07-30', labor_rate: 20, items: [{ count: 5, hrs_per_unit: 2.5 }], payments: [{ amount: 250 }] },
-        { id: 'c', assigned_to_name: 'Texas R & A', address: '415 Springtown Way', job_number: '977', job_date: '2026-08-20', labor_rate: null, items: [{ direct_labor_amount: 40000 }], payments: [] },
+        { id: 'c', assigned_to_name: 'Texas Q & E', address: '415 Stonewick Way', job_number: '977', job_date: '2026-08-20', labor_rate: null, items: [{ direct_labor_amount: 40000 }], payments: [] },
         { id: 'd', assigned_to_name: 'Sub', address: '', job_number: ' c-12 ', job_date: null, labor_rate: null, items: [], payments: [] },
         // v2.3065: linked by id — the number text is irrelevant
         { id: 'e', assigned_to_name: 'Sub', address: '', job_number: 'NOPE', job_ledger_id: 'j1', job_date: null, labor_rate: null, items: [{ direct_labor_amount: 5 }], payments: [] },
@@ -21,7 +21,7 @@ describe('buildUnlinkedSubLaborRows', () => {
     )
     // Oldest labor date first (punch list #184 sweep B): b's Jul 30 before a's Aug 6.
     expect(rows.map((r) => r.id)).toEqual(['b', 'a'])
-    expect(rows[1]).toMatchObject({ contractor: 'Airfordable', typedNumber: null, total: 4200, due: 4200 })
+    expect(rows[1]).toMatchObject({ contractor: 'Airlowe', typedNumber: null, total: 4200, due: 4200 })
     expect(rows[0]).toMatchObject({ contractor: 'Behar Kraja, Kyle', typedNumber: 'H-2291', total: 250, paid: 250, due: 0 })
   })
   it('sorts oldest labor date first, undated last, then by dollars; sums (punch list #184 sweep B)', () => {

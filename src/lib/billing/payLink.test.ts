@@ -75,7 +75,7 @@ describe('payLink — the state a scan lands in', () => {
 })
 
 describe('payLink — the payload', () => {
-  const base = { jobName: '  Dudley (Lennox) ', company: 'Click Plumbing and Electrical', phone: '(512) 360-0599' }
+  const base = { jobName: '  Dunmere (Linmoor) ', company: 'Click Plumbing and Electrical', phone: '(512) 360-0599' }
 
   it("carries Stripe's fresh link, number and balance for an open bill", () => {
     const p = buildPayLinkPayload({ row: row(), facts: { number: '1025-2609180905', status: 'open', hosted_invoice_url: 'https://invoice.stripe.com/i/fresh', amount_remaining: 466000, currency: 'USD' }, paidOn: null, ...base })
@@ -84,7 +84,7 @@ describe('payLink — the payload', () => {
       state: 'open',
       url: 'https://invoice.stripe.com/i/fresh',
       number: '1025-2609180905',
-      jobName: 'Dudley (Lennox)',
+      jobName: 'Dunmere (Linmoor)',
       company: 'Click Plumbing and Electrical',
       phone: '(512) 360-0599',
       amountRemainingCents: 466000,
@@ -143,8 +143,8 @@ describe('payLink — the pay offer on the payload (v2.4704)', () => {
   it('rides on the payload as given and reads back only when whole', () => {
     const offer = { pct: 10, by: '2026-11-15', state: 'live' as const, fullCents: 624000 }
     const facts = { number: '650-1', status: 'open', hosted_invoice_url: 'https://invoice.stripe.com/i/fresh', amount_remaining: 561600, currency: 'usd' }
-    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'ATI', company: 'Click', phone: '', paidOn: null, offer }).offer).toEqual(offer)
-    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'ATI', company: 'Click', phone: '', paidOn: null }).offer).toBeNull()
+    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'AXO', company: 'Click', phone: '', paidOn: null, offer }).offer).toEqual(offer)
+    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'AXO', company: 'Click', phone: '', paidOn: null }).offer).toBeNull()
     expect(parsePayLinkOffer(offer)).toEqual(offer)
     expect(parsePayLinkOffer({ ...offer, fullCents: null })).toEqual({ ...offer, fullCents: null })
     expect(parsePayLinkOffer({ ...offer, state: 'maybe' })).toBeNull()

@@ -105,7 +105,7 @@ describe('barMatchesSearch', () => {
 
 describe('filterBarsBySearch', () => {
   const A = bar({ hcpNumber: '740', jobName: 'San Marcos Housing Authority' })
-  const B = bar({ hcpNumber: '251', jobName: 'Michael Palmer Residence', jobAddress: '99 Pecan' })
+  const B = bar({ hcpNumber: '251', jobName: 'Michael Palvern Residence', jobAddress: '99 Pecan' })
   const C = bar({ hcpNumber: '900', jobName: 'Acme Office', jobAddress: '12921 FM 20 Kingsbury TX' })
 
   it('returns the same array reference when the query is empty', () => {

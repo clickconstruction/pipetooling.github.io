@@ -3,11 +3,11 @@ import { composeRepEmail, composeRepEmailForProperties, orderHousesForBid, repFi
 import type { JobAccountStripEntry } from './jobAccountStrip'
 
 const facts = {
-  bidLabel: 'B398 · Pondhill Building 2',
-  propertyName: 'Pondhill Building 2',
-  address: '4114 Pond Hill Rd, Building #2, San Antonio, TX 78231',
+  bidLabel: 'B398 · Penmoor Building 2',
+  propertyName: 'Penmoor Building 2',
+  address: '4114 Pen Moor Rd, Building #2, San Antonio, TX 78231',
   startDate: '2026-09-22',
-  gc: { company: 'H & I Construction', contactName: 'Marco Reyes', phone: '210-555-0170', email: 'marco@hiconstruction.com' },
+  gc: { company: 'B & D Construction', contactName: 'Marco Reyes', phone: '210-555-0170', email: 'marco@bdconstruction.example' },
   owner: null,
 }
 const org = { companyName: 'Click Plumbing and Electrical', officePhone: '(512) 360-0599' }
@@ -15,11 +15,11 @@ const org = { companyName: 'Click Plumbing and Electrical', officePhone: '(512) 
 describe('composeRepEmail', () => {
   it('names the company, the property, the GC, and the soft owner, in the estimator’s voice', () => {
     const { subject, text } = composeRepEmail({ repFirstName: 'Curly', houseName: 'Ferguson', facts, org, senderName: 'Tristen' })
-    expect(subject).toBe('Job account — 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231 (Click Plumbing and Electrical)')
+    expect(subject).toBe('Job account — 4114 Pen Moor Rd, Building #2, San Antonio, TX 78231 (Click Plumbing and Electrical)')
     expect(text).toContain('Curly — we won this one. Please open a job account for Click Plumbing and Electrical at the property below; first parts run is around Sep 22.')
-    expect(text).toContain('Property: 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231')
-    expect(text).toContain('Project: Pondhill Building 2')
-    expect(text).toContain('General contractor: H & I Construction — Marco Reyes, 210-555-0170, marco@hiconstruction.com')
+    expect(text).toContain('Property: 4114 Pen Moor Rd, Building #2, San Antonio, TX 78231')
+    expect(text).toContain('Project: Penmoor Building 2')
+    expect(text).toContain('General contractor: B & D Construction — Marco Reyes, 210-555-0170, marco@bdconstruction.example')
     expect(text).toContain('Owner of record: to follow from our office.')
     expect(text).toContain('Reply here or call the office at (512) 360-0599. — Tristen')
   })
@@ -40,7 +40,7 @@ describe('composeRepEmail', () => {
   })
 
   it('takes the rep’s first name', () => {
-    expect(repFirstName('Curly Conley')).toBe('Curly')
+    expect(repFirstName('Curly Conmere')).toBe('Curly')
     expect(repFirstName('  ')).toBe('')
   })
 })
@@ -67,15 +67,15 @@ describe('composeRepEmailForProperties', () => {
     propertyName: 'Vaughn residence',
     address: '118 Vaughn Ln, Buda, TX 78610',
     startDate: '2026-09-24',
-    gc: { company: 'Dudley Mason', contactName: null, phone: null, email: null },
+    gc: { company: 'Dunmere Mallin', contactName: null, phone: null, email: null },
     owner: { name: 'R. Vaughn', mailingAddress: '118 Vaughn Ln, Buda, TX 78610' },
   }
   it('lists each property as a numbered block with its own GC and owner line, the start weeks joined', () => {
     const { subject, text } = composeRepEmailForProperties({ repFirstName: 'Curly', houseName: 'Ferguson', properties: [facts, second], org, senderName: 'Tristen' })
     expect(subject).toBe('Job accounts — 2 properties (Click Plumbing and Electrical)')
     expect(text).toContain('Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21.')
-    expect(text).toContain('1. 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231\n   Project: Pondhill Building 2\n   General contractor: H & I Construction — Marco Reyes, 210-555-0170, marco@hiconstruction.com\n   Owner of record: to follow from our office.')
-    expect(text).toContain('2. 118 Vaughn Ln, Buda, TX 78610\n   Project: Vaughn residence\n   General contractor: Dudley Mason\n   Owner of record: R. Vaughn, 118 Vaughn Ln, Buda, TX 78610')
+    expect(text).toContain('1. 4114 Pen Moor Rd, Building #2, San Antonio, TX 78231\n   Project: Penmoor Building 2\n   General contractor: B & D Construction — Marco Reyes, 210-555-0170, marco@bdconstruction.example\n   Owner of record: to follow from our office.')
+    expect(text).toContain('2. 118 Vaughn Ln, Buda, TX 78610\n   Project: Vaughn residence\n   General contractor: Dunmere Mallin\n   Owner of record: R. Vaughn, 118 Vaughn Ln, Buda, TX 78610')
     expect(text.endsWith('Reply here or call the office at (512) 360-0599. — Tristen')).toBe(true)
   })
   it('names two different weeks when the starts fall in different weeks, and skips the clause with no dates', () => {

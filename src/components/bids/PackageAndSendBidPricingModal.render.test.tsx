@@ -21,7 +21,7 @@ import { settle } from '../../test/renderSmokeMocks'
 
 const bid = {
   id: 'bid-1',
-  project_name: 'Galloway Park Concession Stand',
+  project_name: 'Gallenby Park Concession Stand',
   bid_number: '385',
   plans_link: 'https://example.com/plans',
   count_tooling_plans_link: null,

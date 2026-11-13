@@ -204,7 +204,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
   })
 
   it('a job with two sent bills: each bill row says what is paid and left on its own bill; a draft keeps its draft note (table + cards, v2.4349)', async () => {
-    // Springtown's shape: bill 2 part-paid by a linked payment, bill 3 nothing paid.
+    // Stonewick's shape: bill 2 part-paid by a linked payment, bill 3 nothing paid.
     const job = makeJob({ job_name: 'Two Bills Job', status: 'billed', revenue: 40000, payments_made: 11181.78 })
     const bill2 = makeInvoice({ job_id: job.id, amount: 11770.3, status: 'billed', sequence_order: 1, billed_at: '2026-09-01T15:00:00Z' })
     const bill3 = makeInvoice({ job_id: job.id, amount: 3635.92, status: 'billed', sequence_order: 2, billed_at: '2026-09-23T15:00:00Z' })
@@ -253,7 +253,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     ]
     ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).invoices = bills
     ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).fixtures = [{ id: 'fx-1', name: 'Electrical according to spec', count: 1, line_unit_price: 40000, sequence_order: 0, invoice_id: null }]
-    // Springtown: $11,181.78 paid on the second bill — it sits across the green and the blue (v2.4387).
+    // Stonewick: $11,181.78 paid on the second bill — it sits across the green and the blue (v2.4387).
     ;(job as unknown as { payments: unknown[] }).payments = [
       { id: 'pay-1', invoice_id: bills[0]!.id, amount: 13412, paid_on: '2026-08-01' },
       { id: 'pay-2', invoice_id: bills[1]!.id, amount: 11181.78, paid_on: '2026-09-20' },
@@ -436,9 +436,9 @@ describe('one door for each thing on the row (v2.4324)', () => {
 
   it('v2.4342 · a GC job reads No subcontract on file and opens the GC paper door', async () => {
     const { job, rows } = billedRow()
-    job.gc_customer_id = 'gc-dudley'
+    job.gc_customer_id = 'gc-dunmere'
     // No id on the GC: its 🌐 portal button reads useAuth, which this file does not mock.
-    job.gcCustomer = { name: 'RMC- Dudley Mason' } as never
+    job.gcCustomer = { name: 'RLC- Dunmere Mallin' } as never
     const onOpenJobContract = vi.fn()
     renderWithProviders(
       <JobsStagesUnifiedTable
@@ -447,7 +447,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
     )
     await settle()
     const chip = screen.getByRole('button', { name: /No subcontract on file/ })
-    expect(chip.getAttribute('title')).toContain('RMC- Dudley Mason')
+    expect(chip.getAttribute('title')).toContain('RLC- Dunmere Mallin')
     fireEvent.click(chip)
     expect(onOpenJobContract).toHaveBeenCalledWith(job, 'gc-paper')
   })

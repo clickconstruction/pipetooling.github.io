@@ -26,7 +26,7 @@ describe('stripAddressZip', () => {
   })
 
   it('drops zip+4 and a trailing comma variant', () => {
-    expect(stripAddressZip('380 TX-123 Seguin, TX, 78155-1234')).toBe('380 TX-123 Seguin, TX')
+    expect(stripAddressZip('410 TX-123 Seguin, TX, 78155-1234')).toBe('410 TX-123 Seguin, TX')
   })
 
   it('leaves addresses without a zip alone (and keeps road numbers)', () => {

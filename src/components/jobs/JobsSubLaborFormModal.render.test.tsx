@@ -278,7 +278,7 @@ describe('JobsSubLaborFormModal render smoke', () => {
 
   it('edit mode: picking a job persists immediately with a confirming toast (closing without Save keeps it)', async () => {
     const { handleRef } = mountHarness()
-    const laborJob = makeLaborJob({ assigned_to_name: 'Sub Sam', address: '230 Terrell Road', job_number: '944' })
+    const laborJob = makeLaborJob({ assigned_to_name: 'Sub Sam', address: '230 Tarrow Road', job_number: '944' })
     await act(async () => handleRef.current!.openEdit(laborJob))
     // Unmatched number: the Job field reads as unlinked — clicking it opens the picker.
     fireEvent.click(screen.getByText('No job with this number'))

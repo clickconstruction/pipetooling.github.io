@@ -9,7 +9,7 @@ export function signedCurrency(n: number): string {
   return `${n < 0 ? '-$' : '$'}${formatCurrency(Math.abs(n))}`
 }
 
-/** "105 Dover Rd San Antonio, TX 78209" → "105 Dover Rd San Antonio": Jobs Worked drops the state and ZIP for its own layout. */
+/** "105 Dorrow Rd San Antonio, TX 78209" → "105 Dorrow Rd San Antonio": Jobs Worked drops the state and ZIP for its own layout. */
 export function stripAddressZipState(addr: string): string {
   return (addr ?? '').replace(/\s*,\s*[A-Z]{2}\s+\d{5}(-\d{4})?\s*$/i, '').trim()
 }

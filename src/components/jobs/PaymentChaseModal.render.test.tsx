@@ -29,9 +29,9 @@ const TODAY = '2026-08-21'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 16, samples: 40 },
-  customers: { knight: { medianDays: 25, samples: 6 } },
+  customers: { kestrin: { medianDays: 25, samples: 6 } },
   segments: { residential: { medianDays: 7, samples: 8 }, commercial: { medianDays: 25, samples: 32 } },
-  customerTypes: { knight: 'commercial' },
+  customerTypes: { kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
@@ -42,8 +42,8 @@ function invRow(jobId: string, invoiceId: string, amount: number, billedAt: stri
     hcp_number: jobId.replace('j', '9'),
     click_number: null,
     job_name: 'Job',
-    customer_id: 'knight',
-    customer_name: 'Knight Contracting',
+    customer_id: 'kestrin',
+    customer_name: 'Kestrin Contracting',
     payments: [],
     invoices: [],
   } as unknown as JobWithDetails
@@ -65,7 +65,7 @@ function invRow(jobId: string, invoiceId: string, amount: number, billedAt: stri
 function mountModal() {
   const queue = buildPaymentChaseQueue(
     [
-      // Knight pays in ~25d, so both are past expected on 2026-08-21:
+      // Kestrin pays in ~25d, so both are past expected on 2026-08-21:
       // Jul 15 → expected Aug 9 (12d late); Jul 8 → expected Aug 2 (19d late).
       invRow('j1', 'i1', 3600, '2026-07-15T12:00:00Z'),
       invRow('j2', 'i2', 2700, '2026-07-08T12:00:00Z'),

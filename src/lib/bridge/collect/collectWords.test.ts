@@ -11,27 +11,27 @@ import { collectHowItReads, collectLegend, collectPaceWords, collectRestWords, c
 const TODAY = '2026-10-25'
 const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
-  customers: { rmc: { medianDays: 35, samples: 4 }, harper: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 } },
+  customers: { rlc: { medianDays: 35, samples: 4 }, halden: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rmc: 'commercial', southern: 'commercial', harper: 'commercial', handi: 'commercial', tom: 'residential' },
+  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', tom: 'residential' },
   receipts: {},
   quality: null,
 }
 const bill = (key: string, payerId: string, payerName: string, billedYmd: string, usd: number, over: Partial<CollectBill> = {}): CollectBill => ({ key, jobId: `j-${key}`, payerId, payerName, billedYmd, usd, ...over })
 const bills: CollectBill[] = [
-  bill('spacex', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
-  bill('rmc-a', 'rmc', 'RMC- Dudley Mason', '2026-03-16', 13_420),
-  bill('rmc-b', 'rmc', 'RMC- Dudley Mason', '2026-08-20', 55_151),
-  bill('rmc-c', 'rmc', 'RMC- Dudley Mason', '2026-09-21', 8_780, { sentFromHere: false }),
-  bill('sp', 'southern', 'Southern Post Construction', '2026-09-16', 38_625, { sentFromHere: false }),
-  bill('tfh', 'harper', 'TF Harper', '2026-09-16', 29_323, { sentFromHere: false }),
-  bill('tfh2', 'harper', 'TF Harper', '2026-07-06', 2_918),
-  bill('hi', 'handi', 'H & I Construction', '2026-10-23', 14_220),
-  bill('hi2', 'handi', 'H & I Construction', '2026-09-03', 350),
+  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  bill('rlc-a', 'rlc', 'RLC- Dunmere Mallin', '2026-03-16', 13_420),
+  bill('rlc-b', 'rlc', 'RLC- Dunmere Mallin', '2026-08-20', 55_151),
+  bill('rlc-c', 'rlc', 'RLC- Dunmere Mallin', '2026-09-21', 8_780, { sentFromHere: false }),
+  bill('sp', 'southern', 'Southern Pine Construction', '2026-09-16', 38_625, { sentFromHere: false }),
+  bill('tfh', 'halden', 'TF Halden', '2026-09-16', 29_323, { sentFromHere: false }),
+  bill('tfh2', 'halden', 'TF Halden', '2026-07-06', 2_918),
+  bill('hi', 'handi', 'B & D Construction', '2026-10-23', 14_220),
+  bill('hi2', 'handi', 'B & D Construction', '2026-09-03', 350),
   bill('tom', 'tom', 'Tom Coyle', '2026-10-23', 215),
   bill('coll', 'old', 'An old GC', '2026-02-01', 19_522, { inCollections: true }),
 ]
-const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(['j-spacex']), gcPayerIds: new Set(['rmc', 'harper', 'southern']), todayYmd: TODAY })
+const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(['j-skylab']), gcPayerIds: new Set(['rlc', 'halden', 'southern']), todayYmd: TODAY })
 const cut = buildCollectPayers(pile)
 const plain = (s: string) => expect(plainWordsFailures(s), s).toEqual([])
 
@@ -78,19 +78,19 @@ describe('collectWords (v2.5853)', () => {
   })
 
   it('says where each payer stands, in plain words, with the lien chip after', () => {
-    const sp = cut.cut.find((p) => p.payerName === 'Southern Post Construction')!
+    const sp = cut.cut.find((p) => p.payerName === 'Southern Pine Construction')!
     const words = collectStandsWords(sp, { tone: 'green', state: 'out', paper: 'notice', words: 'Notice sent Oct 14', lead: 'Notice sent Oct 14', action: null, act: null, sentence: 'July to September, to the owner and the GC.', title: '', door: { kind: 'desk' } as never, dueOn: null, daysLeft: null }, TODAY)
     expect(words[0]).toBe('Promised for Oct 16, recorded by Taunya. 9 days past.')
     expect(words).toContain('Marked billed by hand, never sent from here.')
     // The chip's own words ride on the move's paper link; the row reads its sentence (v2.5873).
     expect(words[words.length - 1]).toBe('July to September, to the owner and the GC.')
     for (const w of words) plain(w)
-    const rmc = cut.cut.find((p) => p.payerName === 'RMC- Dudley Mason')!
-    const rmcWords = collectStandsWords(rmc, null, TODAY)
-    expect(rmcWords).toContain('$13.4k is doubtful by their pace.')
-    expect(rmcWords.some((w) => w.startsWith('$55.2k is late.'))).toBe(true)
-    expect(rmcWords).toContain('No call recorded.')
-    for (const w of rmcWords) plain(w)
+    const rlc = cut.cut.find((p) => p.payerName === 'RLC- Dunmere Mallin')!
+    const rlcWords = collectStandsWords(rlc, null, TODAY)
+    expect(rlcWords).toContain('$13.4k is doubtful by their pace.')
+    expect(rlcWords.some((w) => w.startsWith('$55.2k is late.'))).toBe(true)
+    expect(rlcWords).toContain('No call recorded.')
+    for (const w of rlcWords) plain(w)
     for (const p of cut.payers) for (const w of collectStandsWords(p, null, TODAY)) plain(w)
   })
 
@@ -117,7 +117,7 @@ describe('collectWords (v2.5853)', () => {
 
 describe('collectStandsWords after the call (v2.5873)', () => {
   const touch = (over: Partial<ChaseTouch>): ChaseTouch => ({ id: 't', customerId: 'southern', jobId: 'j-sp', outcome: 'note', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-24T15:00:00Z', createdByName: 'Taunya', ...over })
-  const sp = () => cut.payers.find((p) => p.payerName === 'Southern Post Construction')!
+  const sp = () => cut.payers.find((p) => p.payerName === 'Southern Pine Construction')!
   it('reads a dispute with their words, marked disputed', () => {
     const w = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'dispute', note: 'the trip charge is not ours' }) }, null, TODAY)
     expect(w).toContain('Disputed Oct 24, recorded by Taunya. Their words: the trip charge is not ours')

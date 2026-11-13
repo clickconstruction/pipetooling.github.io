@@ -18,7 +18,7 @@ const draft: HazmatIncidentDraft = {
 describe('buildHazmatFeeNoticeHtml', () => {
   it('includes fee, incident, photos, statements, and the clause verbatim', () => {
     const html = buildHazmatFeeNoticeHtml(
-      { jobNumber: '834', jobName: 'Larry Morrison', jobAddress: '20027 Park Bluff St', customerName: 'Larry Morrison' },
+      { jobNumber: '834', jobName: 'Larry Morlow', jobAddress: '20027 Park Bluff St', customerName: 'Larry Morlow' },
       draft,
     )
     expect(html).toContain('$500.00')

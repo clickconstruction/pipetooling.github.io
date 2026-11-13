@@ -39,7 +39,7 @@ export function LienJobNumber({ number, muted, onOpen, phone, style }: { number:
 }
 
 /**
- * A pane's job heading: "663 · Knight Contracting". With a door the whole line is the button
+ * A pane's job heading: "663 · Kestrin Contracting". With a door the whole line is the button
  * (since v2.4628; the number alone was, as a chip, from v2.4535); with none it is the one bold
  * line it always was.
  */
