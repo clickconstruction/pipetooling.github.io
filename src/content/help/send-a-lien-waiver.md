@@ -21,7 +21,7 @@ The window sends the signing link itself. There is no second email to write.
 The sub signs on their phone. The form arrives filled in. It has the project, the job number, the amount, the payee, the owner and the address. They check it and sign. The signed PDF files to **People → Contracts**.
 
 :::example What the window shows
-The title reads **Send a lien waiver · Texas R & A**. The chips read {{chip:blue|Payment $17,752.65}}, {{chip:gray|Not settled yet}} and {{chip:gray|One of several payments}}. The form is **Conditional Waiver and Release on Progress Payment**. It goes out with this check. It releases the sub's lien rights for the period once the check clears. So it is safe to sign before the money arrives.
+The title reads **Send a lien waiver · Texas Q & E**. The chips read {{chip:blue|Payment $17,752.65}}, {{chip:gray|Not settled yet}} and {{chip:gray|One of several payments}}. The form is **Conditional Waiver and Release on Progress Payment**. It goes out with this check. It releases the sub's lien rights for the period once the check clears. So it is safe to sign before the money arrives.
 :::
 
 ## If the app read the payment wrong

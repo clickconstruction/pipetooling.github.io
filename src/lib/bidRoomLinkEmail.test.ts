@@ -11,7 +11,7 @@ const payload: BidRoomLinkEmailInput['payload'] = {
   add_ons: [],
   project_name: 'ZZ Test <Studio>',
   project_address: '2530 Hunter Rd, San Marcos, TX 78666',
-  gc_name: 'Knight Contracting',
+  gc_name: 'Kestrin Contracting',
   service_type_name: 'Plumbing',
   options: [
     { key: 'a', name: 'To Plans', is_base: true, total_cents: 5_634_300, fixture_rows: [] },
@@ -76,7 +76,7 @@ describe('buildBidRoomLinkEmail (v2.2729 letterhead)', () => {
   it('validity, address, GC and date land in the meta line and fine print', () => {
     const m = buildBidRoomLinkEmail(base)
     expect(m.html).toContain('Pricing is good for 30 days.')
-    expect(m.html).toContain('2530 Hunter Rd, San Marcos, TX 78666 &middot; prepared for Knight Contracting &middot; Sept 3, 2026')
+    expect(m.html).toContain('2530 Hunter Rd, San Marcos, TX 78666 &middot; prepared for Kestrin Contracting &middot; Sept 3, 2026')
     expect(m.text).toContain('https://clicktooling.com/bid-room?t=abc123')
   })
   it('no banner and no validity when the payload has neither', () => {

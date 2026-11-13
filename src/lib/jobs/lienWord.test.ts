@@ -49,10 +49,10 @@ describe('lienWord — the leader’s word and the two “he is here” declarat
 
 describe('the preview of the record (v2.4856)', () => {
   it('says the same words the desk draws afterwards, in every place they land, and that the paper is untouched', () => {
-    const p = wordRecordPreview({ leaderName: 'Malachi Whites', note: 'Malachi Whites, October 7, 2026', channel: 'standing_over', recorderName: 'Taunya', jobLabel: '878 · Take 5- Seguin', gcName: 'Southern Post Construction', amountWords: '$38,625' })
+    const p = wordRecordPreview({ leaderName: 'Malachi Whites', note: 'Malachi Whites, October 7, 2026', channel: 'standing_over', recorderName: 'Taunya', jobLabel: '878 · Tune 5- Seguin', gcName: 'Southern Pine Construction', amountWords: '$38,625' })
     expect(p.ready).toBe('On Malachi’s word · Malachi Whites, October 7, 2026 · standing over the desk')
-    expect(p.strip).toBe('Sent on your word: 878 · Take 5- Seguin')
-    expect(p.row).toBe('878 · Take 5- Seguin · GC Southern Post Construction · $38,625 · on Malachi’s word · Malachi Whites, October 7, 2026 · standing over the desk')
+    expect(p.strip).toBe('Sent on your word: 878 · Tune 5- Seguin')
+    expect(p.row).toBe('878 · Tune 5- Seguin · GC Southern Pine Construction · $38,625 · on Malachi’s word · Malachi Whites, October 7, 2026 · standing over the desk')
     expect(p.record).toContain('Recorded by Taunya: Malachi was at the desk and said to send it.')
     expect(p.paper).toContain('The notice itself does not change.')
     // A remembered word names how it came; no master known falls back to the leader.
@@ -72,16 +72,16 @@ describe('the leader’s FYI list in the title bar (v2.5028)', () => {
     expect(
       lienFyiStrip([
         { jobLabel: '650', by: 'word' },
-        { jobLabel: '702', by: 'rule', gcName: 'Loberg Contracting' },
+        { jobLabel: '702', by: 'rule', gcName: 'Lowbeck Contracting' },
         { jobLabel: '878', by: 'word' },
-        { jobLabel: '715', by: 'rule', gcName: 'Loberg Contracting' },
-        { jobLabel: '801', by: 'rule', gcName: 'Knight Contracting' },
+        { jobLabel: '715', by: 'rule', gcName: 'Lowbeck Contracting' },
+        { jobLabel: '801', by: 'rule', gcName: 'Kestrin Contracting' },
       ]),
-    ).toBe('Sent on your word: 650, 878 · by Loberg Contracting’s rule: 702, 715 · by Knight Contracting’s rule: 801')
+    ).toBe('Sent on your word: 650, 878 · by Lowbeck Contracting’s rule: 702, 715 · by Kestrin Contracting’s rule: 801')
   })
 
   it('with only rule sends the rule leads; with nothing sent it is empty', () => {
-    expect(lienFyiStrip([{ jobLabel: '702', by: 'rule', gcName: 'Loberg Contracting' }])).toBe('Sent by Loberg Contracting’s rule: 702')
+    expect(lienFyiStrip([{ jobLabel: '702', by: 'rule', gcName: 'Lowbeck Contracting' }])).toBe('Sent by Lowbeck Contracting’s rule: 702')
     expect(lienFyiStrip([{ jobLabel: '702', by: 'rule', gcName: ' ' }])).toBe('Sent by the GC’s rule: 702')
     expect(lienFyiStrip([])).toBe('')
   })

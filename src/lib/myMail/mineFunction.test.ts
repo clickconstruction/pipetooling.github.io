@@ -992,7 +992,7 @@ describe('the tag’s grey line on the thread', () => {
       channel: 'event',
       direction: 'team',
       who_text: 'The app',
-      body: 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.',
+      body: 'Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.',
       quo_id: 'mytag:tag-1',
       bid_id: null,
       project_id: null,
@@ -1004,9 +1004,9 @@ describe('the tag’s grey line on the thread', () => {
     const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
     const dev = { name: 'Nadia Reyes', email: 'nadia@clickplumbing.example' }
     const own = myMailTagEventWords(marisol, null, true)
-    expect(own).toBe('Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
+    expect(own).toBe('Marisol Vega saved this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.')
     const seat = myMailTagEventWords(marisol, dev, true)
-    expect(seat).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
+    expect(seat).toBe("Nadia Reyes saved this conversation from Marisol Vega's mail, through the dev seat. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.")
     for (const words of [own, seat]) expect(plainWordsFailures(words)).toEqual([])
     expect(myMailTagEventRow({ tagRowId: 'r1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: 'j1' }, filed: true }).body).toBe(own)
     expect(tagAllFiled({ lines: 3, filed: 3 })).toBe(true)
@@ -1018,16 +1018,16 @@ describe('the tag’s grey line on the thread', () => {
     const marisol = { name: 'Marisol Vega', email: 'marisol@clickplumbing.example' }
     const dev = { name: ' Nadia Reyes ', email: 'nadia@clickplumbing.example' }
     const words = myMailTagEventWords(marisol, dev)
-    expect(words).toBe("Nadia Reyes tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
+    expect(words).toBe("Nadia Reyes saved this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself.")
     expect(plainWordsFailures(words)).toEqual([])
     // No names: the addresses. The dev's own box through the seat: their mail, and still the seat.
     expect(myMailTagEventWords({ name: '', email: marisol.email }, { name: '', email: dev.email })).toBe(
-      "nadia@clickplumbing.example tagged this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
+      "nadia@clickplumbing.example saved this conversation from marisol@clickplumbing.example's mail, through the dev seat. Later mail in it lands here by itself.",
     )
-    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes tagged this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
+    expect(myMailTagEventWords({ name: 'Nadia Reyes', email: 'Nadia@ClickPlumbing.example' }, dev)).toBe('Nadia Reyes saved this conversation from their mail, through the dev seat. Later mail in it lands here by itself.')
     // A person's own press reads as it always has, with no seat or a null one.
     expect(myMailTagEventWords(marisol, null)).toBe(myMailTagEventWords(marisol))
-    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.')
+    expect(myMailTagEventWords(marisol)).toBe('Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.')
     // The row carries the seat's words, and the app's own words still win when it placed the conversation itself.
     const row = { tagRowId: 'tag-1', who: marisol, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: ELM } }
     expect(myMailTagEventRow({ ...row, seat: dev }).body).toBe(words)
@@ -1050,7 +1050,7 @@ describe('the tag’s grey line on the thread', () => {
 
   it('names the address when the person has no name, and says it in plain words', () => {
     expect(myMailTagEventWords({ name: ' ', email: 'marisol@clickplumbing.example' })).toBe(
-      'marisol@clickplumbing.example tagged this conversation from their mail. Later mail in it lands here by itself.',
+      'marisol@clickplumbing.example saved this conversation from their mail. Later mail in it lands here by itself.',
     )
     expect(plainWordsFailures(myMailTagEventWords({ name: 'Marisol Vega', email: '' }))).toEqual([])
     expect(plainWordsFailures(MY_MAIL_FOLLOW_GONE)).toEqual([])

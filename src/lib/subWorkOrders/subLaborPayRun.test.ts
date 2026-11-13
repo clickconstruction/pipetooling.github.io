@@ -60,10 +60,10 @@ describe('buildSubLaborPayRun', () => {
       sheet({ id: 'a', balance: 1500, teammates: ['Malachi', 'Abraham'], kind: { bills: { out: 1, paid: 1 } } }),
       sheet({ id: 'b', balance: 200, teammates: ['Malachi', 'Trace'], kind: { bills: { out: 2, paid: 1 } } }),
       sheet({ id: 'c', balance: 150, teammates: ['Abraham', 'Bryan'], kind: { stage: 'working' } }),
-      sheet({ id: 'd', subKey: 'id:texas', subName: 'Texas R & A Electrical LLC', personId: 'texas', balance: 40000, kind: { stage: 'working', gap: true } }),
+      sheet({ id: 'd', subKey: 'id:texas', subName: 'Texas Q & E Electrical LLC', personId: 'texas', balance: 40000, kind: { stage: 'working', gap: true } }),
       sheet({ id: 'e', subKey: 'id:taunya', subName: 'Misses Taunya TESTING', balance: 1000, teammates: ['Abraham'], kind: { payableAfter: '2026-09-11' } }),
       sheet({ id: 'f', subKey: 'malachi | abraham', subName: 'Malachi | Abraham', personId: null, balance: 600, crew: true, kind: { crew: true, stage: 'working' } }),
-      sheet({ id: 'g', subKey: 'id:air', subName: 'Airfordable', balance: 0, kind: { balance: 0 } }),
+      sheet({ id: 'g', subKey: 'id:air', subName: 'Airlowe', balance: 0, kind: { balance: 0 } }),
     ],
     { payRunDay: 'friday', todayYmd: TODAY },
   )
@@ -83,10 +83,10 @@ describe('buildSubLaborPayRun', () => {
   })
   it('one row per sub, biggest owed first, crew last, with segments, the ready sheets and the sentence', () => {
     expect(run.subs.map((s) => [s.name, s.owed, s.sheetCount])).toEqual([
-      ['Texas R & A Electrical LLC', 40000, 1],
+      ['Texas Q & E Electrical LLC', 40000, 1],
       ['Behar Kraja', 1850, 3],
       ['Misses Taunya TESTING', 1000, 1],
-      ['Airfordable', 0, 0],
+      ['Airlowe', 0, 0],
       ['Malachi | Abraham', 0, 1],
     ])
     const behar = run.subs[1]!

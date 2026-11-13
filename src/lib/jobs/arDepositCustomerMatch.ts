@@ -3,7 +3,7 @@
  * counterparty (then the internal note, then the bank memo) and finds the one
  * customer or GC whose open billed lines this deposit most plausibly pays.
  *
- * Conservative by design — a wrong "From Reliant Health" header is worse than
+ * Conservative by design — a wrong "From Relwyn Health" header is worse than
  * none, so a name qualifies only on 2+ shared distinctive tokens or full
  * containment of one name in the other, and any tie between different payers
  * returns no match for that text field (the next field still gets a try).
@@ -33,7 +33,7 @@ const PAYER_STOP_TOKENS = new Set([
 /**
  * Lowercased identity tokens of a payer/counterparty name (stop words and
  * single chars dropped). Runs of single letters merge first so dotted
- * initials survive: "T.F. Harper" → ['tf', 'harper'].
+ * initials survive: "T.F. Halden" → ['tf', 'halden'].
  */
 export function payerNameTokens(name: string | null | undefined): string[] {
   const raw = (name ?? '')
@@ -93,8 +93,8 @@ function payerGroupsFromTargets(targets: PayerTargetSlice[]): PayerGroup[] {
       let g = byNorm.get(norm)
       if (!g) {
         const tokenSet = new Set(tokens)
-        // Banks often shorten multi-word payers to initials ("Done Right
-        // Foundation" deposits as "DRF") — the acronym joins the token set so
+        // Banks often shorten multi-word payers to initials ("Dead Level
+        // Foundation" deposits as "DLF") — the acronym joins the token set so
         // subset matching catches it. Match-only: never part of `tokens`, so
         // it can't inflate the shared-token score.
         if (tokens.length >= 2) {
@@ -130,7 +130,7 @@ function bestGroupForText(text: string | null, groups: PayerGroup[]): PayerGroup
   let tied = false
   for (const g of groups) {
     const shared = sharedTokenCount(fieldTokens, g)
-    /** Full containment either way also qualifies — including a pure acronym hit ("DRF" ⊆ tokenSet of Done Right Foundation). */
+    /** Full containment either way also qualifies — including a pure acronym hit ("DLF" ⊆ tokenSet of Dead Level Foundation). */
     const contained = isSubset(g.tokens, fieldTokens) || isSubset(fieldTokens, g.tokenSet)
     if (shared < 2 && !contained) continue
     const score = Math.max(shared, contained ? 1 : 0)
@@ -148,7 +148,7 @@ function bestGroupForText(text: string | null, groups: PayerGroup[]): PayerGroup
 /**
  * The payer this deposit most plausibly came from, or null when nothing
  * qualifies. Counterparty is tried first; the note and memo fields are
- * fallbacks — DRF-style check services put the real customer in the memo.
+ * fallbacks — DLF-style check services put the real customer in the memo.
  */
 export function matchArDepositToPayer(
   deposit: ArDepositTextSlice,

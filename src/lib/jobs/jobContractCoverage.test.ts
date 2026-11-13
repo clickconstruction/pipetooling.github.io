@@ -19,7 +19,7 @@ function contract(p: Partial<JobContractRowLike>): JobContractRowLike {
     job_id: 'j1',
     status: 'sent',
     revision: 1,
-    recipient_email: 'mpalmer@example.com',
+    recipient_email: 'mpalvern@example.com',
     sent_at: '2026-08-29T15:00:00Z',
     last_sent_at: '2026-08-29T15:00:00Z',
     view_count: 0,
@@ -39,7 +39,7 @@ function estimate(p: Partial<SignedEstimateLike>): SignedEstimateLike {
     doc_kind: 'estimate',
     status: 'customer_accepted',
     acceptor_consented_at: '2026-08-12T18:00:00Z',
-    acceptor_printed_name: 'Kimberly Coe',
+    acceptor_printed_name: 'Kimberly Corl',
     estimate_number: 84,
     total_cents: 375912,
     ...p,
@@ -56,18 +56,18 @@ describe('buildJobContractCoverage', () => {
 
   it('a sent contract reads sent with opens and recipient', () => {
     const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ view_count: 2 })], [])
-    expect(cov.get('j1')).toMatchObject({ kind: 'sent', contractId: 'c1', viewCount: 2, recipientEmail: 'mpalmer@example.com' })
+    expect(cov.get('j1')).toMatchObject({ kind: 'sent', contractId: 'c1', viewCount: 2, recipientEmail: 'mpalvern@example.com' })
     expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('Contract sent · opened 2× · 5d')
   })
 
   it('a signed contract beats an accepted estimate', () => {
     const cov = buildJobContractCoverage(
       [{ id: 'j1', bid_id: null }],
-      [contract({ status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw' })],
+      [contract({ status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'draw' })],
       [estimate({})],
     )
-    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'contract', signerName: 'Michael Palmer' })
-    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('✍ Signed Sep 1 · M. Palmer')
+    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'contract', signerName: 'Michael Palvern' })
+    expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('✍ Signed Sep 1 · M. Palvern')
   })
 
   it('a paper upload reads as on file', () => {
@@ -96,9 +96,9 @@ describe('buildJobContractCoverage', () => {
   it("a signed bid-room proposal on the job's bid counts; change orders never do", () => {
     const jobs = [{ id: 'j1', bid_id: 'b1' }]
     const cov = buildJobContractCoverage(jobs, [], [
-      estimate({ job_ledger_id: null, bid_id: 'b1', doc_kind: 'bid_proposal', acceptor_printed_name: 'Dan Knight' }),
+      estimate({ job_ledger_id: null, bid_id: 'b1', doc_kind: 'bid_proposal', acceptor_printed_name: 'Dan Kestrin' }),
     ])
-    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'bid_room', signerName: 'Dan Knight' })
+    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'bid_room', signerName: 'Dan Kestrin' })
     const co = buildJobContractCoverage(jobs, [], [estimate({ doc_kind: 'change_order' })])
     expect(co.get('j1')).toEqual({ kind: 'none' })
   })
@@ -129,7 +129,7 @@ describe('filters and helpers', () => {
   it('parses the deep-link param and abbreviates names', () => {
     expect(parseStagesContractFilter('missing')).toBe('missing')
     expect(parseStagesContractFilter('bogus')).toBe('')
-    expect(abbreviateSignerName('Michael  Palmer')).toBe('M. Palmer')
+    expect(abbreviateSignerName('Michael  Palvern')).toBe('M. Palvern')
     expect(abbreviateSignerName('Cher')).toBe('Cher')
     expect(abbreviateSignerName('  ')).toBeNull()
   })
@@ -142,7 +142,7 @@ describe('Not needed and the floor (Contract sweep PR 0)', () => {
         { id: 'j1', bid_id: null, contract_not_needed_at: '2026-09-13T15:00:00Z', contract_not_needed_reason: 'GC job — their subcontract' },
         { id: 'j2', bid_id: null, contract_not_needed_at: '2026-09-13T15:00:00Z' },
       ],
-      [contract({ id: 'c2', job_id: 'j2', status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw' })],
+      [contract({ id: 'c2', job_id: 'j2', status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'draw' })],
       [],
     )
     expect(cov.get('j1')).toEqual({ kind: 'not_needed', at: '2026-09-13T15:00:00Z', reason: 'GC job — their subcontract' })
@@ -188,21 +188,21 @@ describe('a second signer (v2.4590): the chip names both and counts the frames',
     const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [row], [])
     expect(cov.get('j1')).toMatchObject({ kind: 'sent', frames: '1 of 2 signed', framesDone: 1, framesWaiting: 'Sam Owner signed · waiting on Alex Owner' })
     expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('Contract sent · 1 of 2 signed · 5d')
-    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 3 times · Sam Owner signed · waiting on Alex Owner')
+    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalvern@example.com · opened 3 times · Sam Owner signed · waiting on Alex Owner')
   })
 
   it('two frames, nobody signed yet: the opens still read, and the title carries the count', () => {
     const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ ...twoFrames, view_count: 2 })], [])
     expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('Contract sent · opened 2× · 5d')
-    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 2 times · 0 of 2 signed')
+    expect(jobContractChipTitle(cov.get('j1'))).toBe('Contract rev 1 sent to mpalvern@example.com · opened 2 times · 0 of 2 signed')
   })
 
   it('one signer reads exactly as before', () => {
-    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw' })], [])
-    expect(jobContractChipLabel(signed.get('j1'), NOW)).toBe('✍ Signed Sep 1 · M. Palmer')
-    expect(jobContractChipTitle(signed.get('j1'))).toBe('Contract signed electronically by Michael Palmer')
+    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-02T00:14:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'draw' })], [])
+    expect(jobContractChipLabel(signed.get('j1'), NOW)).toBe('✍ Signed Sep 1 · M. Palvern')
+    expect(jobContractChipTitle(signed.get('j1'))).toBe('Contract signed electronically by Michael Palvern')
     const sent = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ view_count: 2 })], [])
-    expect(jobContractChipTitle(sent.get('j1'))).toBe('Contract rev 1 sent to mpalmer@example.com · opened 2 times')
+    expect(jobContractChipTitle(sent.get('j1'))).toBe('Contract rev 1 sent to mpalvern@example.com · opened 2 times')
   })
 
   it('a paper filing with a second signer named reads the typed name, with no count', () => {
@@ -244,15 +244,15 @@ describe('the warranty in place of a contract (2026-11-02): the chip says Warran
     const sent = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', view_count: 1 })], []).get('j1')
     expect(sent).toMatchObject({ kind: 'sent', agreement: 'warranty' })
     expect(jobContractChipLabel(sent, NOW)).toBe('Warranty sent · opened 1× · 5d')
-    expect(jobContractChipTitle(sent)).toContain('Warranty rev 1 sent to mpalmer@example.com')
-    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'type' })], []).get('j1')
-    expect(jobContractChipLabel(signed, NOW)).toBe('✍ Warranty signed Sep 1 · M. Palmer')
-    expect(jobContractChipTitle(signed)).toBe('Warranty signed electronically by Michael Palmer — the warranty in place of a contract, each line initialled')
+    expect(jobContractChipTitle(sent)).toContain('Warranty rev 1 sent to mpalvern@example.com')
+    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'type' })], []).get('j1')
+    expect(jobContractChipLabel(signed, NOW)).toBe('✍ Warranty signed Sep 1 · M. Palvern')
+    expect(jobContractChipTitle(signed)).toBe('Warranty signed electronically by Michael Palvern — the warranty in place of a contract, each line initialled')
     const draft = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', status: 'draft', sent_at: null, last_sent_at: null })], []).get('j1')
     expect(jobContractChipLabel(draft, NOW)).toBe('Warranty draft')
     expect(jobContractChipTitle(draft)).toBe('A warranty draft is saved but has not been sent')
-    const old = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'type' })], []).get('j1')
+    const old = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palvern', signer_mode: 'type' })], []).get('j1')
     expect(old).toMatchObject({ kind: 'signed', agreement: 'contract' })
-    expect(jobContractChipLabel(old, NOW)).toBe('✍ Signed Sep 1 · M. Palmer')
+    expect(jobContractChipLabel(old, NOW)).toBe('✍ Signed Sep 1 · M. Palvern')
   })
 })

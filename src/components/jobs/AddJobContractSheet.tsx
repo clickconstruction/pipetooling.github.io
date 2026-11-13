@@ -36,7 +36,7 @@ export type AddJobContractSheetProps = {
   partyIds: string[]
   /** The name the paper is filed as signed by, until the office types another. */
   signerName: string
-  /** One line under the title: "Job 251 · Michael Palmer is the GC on this job". */
+  /** One line under the title: "Job 251 · Michael Palvern is the GC on this job". */
   subtitle: string
   /** Edit mode: the paper whose jobs are being changed. */
   paper?: CoversPaper | null

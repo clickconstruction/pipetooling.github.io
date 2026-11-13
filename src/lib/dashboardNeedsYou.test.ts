@@ -562,19 +562,19 @@ describe('buildNeedsYouItems', () => {
   it('robot-locked (v2.3126): no sealed shadows (null, [], or disabled) → no item', () => {
     expect(buildNeedsYouItems(inputs({ robotLockedShadows: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ robotLockedShadows: [] }))).toEqual([])
-    const sealed = [{ shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }]
+    const sealed = [{ shadowBid: '490', referenceBid: '481', project: 'Gallenby Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }]
     expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotLockedShadows: sealed }))).toEqual([])
   })
 
   it('robot-locked (v2.3126): one names the bid, many count them — blue, figure = count, opens the Robot Board (v2.3222)', () => {
     const one = buildNeedsYouItems(inputs({
-      robotLockedShadows: [{ shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }],
+      robotLockedShadows: [{ shadowBid: '490', referenceBid: '481', project: 'Gallenby Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }],
     }))
     expect(one[0]).toMatchObject({
       key: 'robot-locked',
       severity: 'blue',
       kicker: 'Robot bid',
-      title: 'The robot has a sealed number on b481 (Galloway Park)',
+      title: 'The robot has a sealed number on b481 (Gallenby Park)',
       figure: '1',
       actionLabel: 'Open Robot Board',
     })
@@ -584,7 +584,7 @@ describe('buildNeedsYouItems', () => {
       robotLockedShadows: [
         { shadowBid: '492', referenceBid: '485', project: null, lockedAt: '2026-09-07T09:00:00Z', teacher: null },
         { shadowBid: '491', referenceBid: '483', project: 'Elm St', lockedAt: '2026-09-06T18:00:00Z', teacher: 'Wendi' },
-        { shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' },
+        { shadowBid: '490', referenceBid: '481', project: 'Gallenby Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' },
       ],
     }))
     expect(many[0]?.title).toBe('The robot has sealed numbers on 3 live bids')
@@ -613,8 +613,8 @@ describe('buildNeedsYouItems', () => {
     const item = (over: Partial<BankReturnedPayments> = {}): BankReturnedPayments => ({
       count: 1,
       total: 13680,
-      first: { paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Take 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' },
-      items: [{ paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Take 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' }],
+      first: { paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Tune 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' },
+      items: [{ paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Tune 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' }],
       ...over,
     })
     expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturned: null }))).toEqual([])
@@ -625,7 +625,7 @@ describe('buildNeedsYouItems', () => {
     expect(one[0]?.key).toBe('returned-check')
     expect(one[0]?.severity).toBe('amber')
     expect(one[0]?.title).toBe('A deposit the bank returned is still counted as paid ($13,680)')
-    expect(one[0]?.detail).toContain('J878 Take 5 – Seguin · $13,680 · Insufficient funds')
+    expect(one[0]?.detail).toContain('J878 Tune 5 – Seguin · $13,680 · Insufficient funds')
     expect(one[0]?.detail).toContain('Unlink and remove')
     expect(one[0]?.figure).toBe('1')
     expect(one[0]?.actionLabel).toBe('Open J878')
@@ -648,7 +648,7 @@ describe('buildNeedsYouItems', () => {
     const row = (over: Record<string, unknown>) =>
       ({
         mercury_transaction_id: 'tx',
-        counterparty_name: 'Loberg',
+        counterparty_name: 'Lowbeck',
         amount: 5622.49,
         kind: 'checkDeposit',
         posted_at: '2026-09-28T22:00:00Z',
@@ -663,24 +663,24 @@ describe('buildNeedsYouItems', () => {
         replaced_by_mercury_transaction_id: null,
         notified_at: null,
         live_payments: [],
-        last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya', job_revenue: 33500, job_payments_made: 24477.51 },
+        last_job: { job_id: 'job-650', job_number: '650', job_name: 'AXO Schertz', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya', job_revenue: 33500, job_payments_made: 24477.51 },
         recorded_payment: null,
         ...over,
       }) as never
     const one = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({})], todayYmd: '2026-10-01' }))
-    expect(one[0]).toMatchObject({ key: 'returned-check', severity: 'amber', title: "Loberg's $5,622 check came back", figure: '1', actionLabel: 'Open the check' })
-    expect(one[0]?.detail).toBe('Loberg · $5,622 · off #650 since 9/30 · came back today. Each one sits on top of To match in Accounts Receivable with its next step.')
-    const rejected = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({ counterparty_name: 'Sal Iannotti', amount: 600, source: 'rejected', last_job: null, recorded_payment: { payment_id: 'p', job_id: 'j', job_number: '1040', job_name: 'Iannotti PRV', amount: 600, paid_on: '2026-09-29', job_revenue: 600, job_payments_made: 600 } })], todayYmd: '2026-10-01' }))
-    expect(rejected[0]?.title).toBe("Sal Iannotti's $600 check never reached the bank")
-    const two = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), row({ mercury_transaction_id: 'tx2', counterparty_name: 'Southern Post', amount: 13680 })], todayYmd: '2026-10-01' }))
+    expect(one[0]).toMatchObject({ key: 'returned-check', severity: 'amber', title: "Lowbeck's $5,622 check came back", figure: '1', actionLabel: 'Open the check' })
+    expect(one[0]?.detail).toBe('Lowbeck · $5,622 · off #650 since 9/30 · came back today. Each one sits on top of To match in Accounts Receivable with its next step.')
+    const rejected = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({ counterparty_name: 'Sal Ilmotti', amount: 600, source: 'rejected', last_job: null, recorded_payment: { payment_id: 'p', job_id: 'j', job_number: '1040', job_name: 'Ilmotti PRV', amount: 600, paid_on: '2026-09-29', job_revenue: 600, job_payments_made: 600 } })], todayYmd: '2026-10-01' }))
+    expect(rejected[0]?.title).toBe("Sal Ilmotti's $600 check never reached the bank")
+    const two = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), row({ mercury_transaction_id: 'tx2', counterparty_name: 'Southern Pine', amount: 13680 })], todayYmd: '2026-10-01' }))
     expect(two[0]).toMatchObject({ title: '2 checks came back ($19,302)', actionLabel: 'Open Accounts Receivable' })
     expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [], todayYmd: '2026-10-01' }))).toEqual([])
     // v2.4950: a card dispute and a failed bank debit on a Stripe bill ride the same card.
-    const stripeCase = (source: string, kind: string) => ({ kind, object_id: 'x', mode: 'test', status: null, due_by: null, lost_at: null, lost_notified_at: null, amount: 500, invoice_id: 'i', invoice_sequence_order: 0, invoice_status: 'paid', job_id: 'job-878', job_number: '878', job_name: 'Take 5', payment_live: source === 'stripe_dispute' })
-    const disputed = row({ counterparty_name: 'Heron Construction', amount: 500, source: 'stripe_dispute', last_job: null, stripe_case: stripeCase('stripe_dispute', 'dispute') })
-    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [disputed], todayYmd: '2026-10-01' }))[0]).toMatchObject({ title: 'Heron Construction disputed a $500 card payment', actionLabel: 'Open the payment' })
-    const debit = row({ counterparty_name: 'Heron Construction', amount: 500, source: 'stripe_debit', last_job: null, stripe_case: stripeCase('stripe_debit', 'debit_failed') })
-    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [debit], todayYmd: '2026-10-01' }))[0]?.title).toBe("Heron Construction's $500 bank payment did not go through")
+    const stripeCase = (source: string, kind: string) => ({ kind, object_id: 'x', mode: 'test', status: null, due_by: null, lost_at: null, lost_notified_at: null, amount: 500, invoice_id: 'i', invoice_sequence_order: 0, invoice_status: 'paid', job_id: 'job-878', job_number: '878', job_name: 'Tune 5', payment_live: source === 'stripe_dispute' })
+    const disputed = row({ counterparty_name: 'Hadlow Construction', amount: 500, source: 'stripe_dispute', last_job: null, stripe_case: stripeCase('stripe_dispute', 'dispute') })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [disputed], todayYmd: '2026-10-01' }))[0]).toMatchObject({ title: 'Hadlow Construction disputed a $500 card payment', actionLabel: 'Open the payment' })
+    const debit = row({ counterparty_name: 'Hadlow Construction', amount: 500, source: 'stripe_debit', last_job: null, stripe_case: stripeCase('stripe_debit', 'debit_failed') })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [debit], todayYmd: '2026-10-01' }))[0]?.title).toBe("Hadlow Construction's $500 bank payment did not go through")
     expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), disputed], todayYmd: '2026-10-01' }))[0]?.title).toBe('2 payments came back ($6,122)')
   })
 
@@ -751,7 +751,7 @@ describe('buildNeedsYouItems', () => {
   it('one lien card (v2.3704): the next deadline leads, the colour says the urgency, the closed windows are one secondary line', () => {
     const quiet = { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 0, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0 } }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } }
     const missed = { jobs: 5, months: 5, dollars: 51_780, lines: [] }
-    const next = { deadline: '2026-10-15', notices: 10, dollars: 101_681, gcIds: ['rmc', 'knight', 'burd', 'harper'], gcNames: ['RMC- Dudley Mason', 'Knight Contracting', 'Burd & Assoc.', 'TF Harper'], toDraft: 9, needsOwner: 1 }
+    const next = { deadline: '2026-10-15', notices: 10, dollars: 101_681, gcIds: ['rlc', 'kestrin', 'brund', 'halden'], gcNames: ['RLC- Dunmere Mallin', 'Kestrin Contracting', 'Brund & Assoc.', 'TF Halden'], toDraft: 9, needsOwner: 1 }
     const today = new Date(); today.setDate(today.getDate() + 23)
     const in23 = today.toISOString().slice(0, 10)
     const desk = { ...quiet, office: { ...quiet.office, jobs: 10, months: 10, dollars: 101_681, needsOwner: 1, earliestDeadline: in23, next: { ...next, deadline: in23 } }, missed }
@@ -759,17 +759,17 @@ describe('buildNeedsYouItems', () => {
     expect(a.map((i) => i.key)).toEqual(['lien-notice-draft'])
     expect(a[0]?.severity).toBe('gray')
     expect(a[0]?.title).toMatch(/^Next lien deadline: \w{3} \d{1,2} · in 2[234] days$/)
-    expect(a[0]?.detail).toBe('10 notices to 4 GCs — RMC- Dudley Mason, Knight Contracting and 2 more. 9 on the desk to draft, 1 waiting on the owner of record.')
+    expect(a[0]?.detail).toBe('10 notices to 4 GCs — RLC- Dunmere Mallin, Kestrin Contracting and 2 more. 9 on the desk to draft, 1 waiting on the owner of record.')
     expect(a[0]?.figure).toBe('$101,681')
     expect(a[0]?.secondary).toEqual([{ key: 'missed', label: '5 windows closed with nothing recorded · $51,780 · note them ›' }])
     // Inside seven days: red, the days lead, the sentence says what is lost.
     const soon = new Date(); soon.setDate(soon.getDate() + 5)
     const in5 = soon.toISOString().slice(0, 10)
-    const urgent = { ...desk, office: { ...desk.office, next: { ...next, deadline: in5, notices: 4, dollars: 41_850, gcIds: ['rmc', 'knight'], gcNames: ['RMC- Dudley Mason', 'Knight Contracting'], toDraft: 3, needsOwner: 1 } }, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } }
+    const urgent = { ...desk, office: { ...desk.office, next: { ...next, deadline: in5, notices: 4, dollars: 41_850, gcIds: ['rlc', 'kestrin'], gcNames: ['RLC- Dunmere Mallin', 'Kestrin Contracting'], toDraft: 3, needsOwner: 1 } }, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } }
     const b = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: urgent }))
     expect(b[0]?.severity).toBe('red')
     expect(b[0]?.title).toMatch(/^4 lien windows close in [456] days · \w{3} \d{1,2}$/)
-    expect(b[0]?.detail).toMatch(/^4 notices to 2 GCs — RMC- Dudley Mason and Knight Contracting\. 3 on the desk to draft, 1 waiting on the owner of record\. Mail by \w{3} \d{1,2} or the lien right on that work is gone\.$/)
+    expect(b[0]?.detail).toMatch(/^4 notices to 2 GCs — RLC- Dunmere Mallin and Kestrin Contracting\. 3 on the desk to draft, 1 waiting on the owner of record\. Mail by \w{3} \d{1,2} or the lien right on that work is gone\.$/)
     expect(b[0]?.secondary).toBeUndefined()
     // Nothing upcoming, something missed: one quiet card of its own.
     const onlyMissed = { ...quiet, missed }
@@ -1021,20 +1021,20 @@ describe('statement round (v2.2771; the office week since punch list #49)', () =
     const items = buildNeedsYouItems(
       inputs({
         statementRoundEnabled: true,
-        statementRound: { count: 3, total: 146000, gcNames: ['Knight Contracting', 'Structura', 'TF Harper'], late: 1 },
+        statementRound: { count: 3, total: 146000, gcNames: ['Kestrin Contracting', 'Structura', 'TF Halden'], late: 1 },
       }),
     )
     const sr = items.find((i) => i.key === 'statement-round')
     expect(sr?.kicker).toBe('GC statements')
     expect(sr?.title).toBe('3 GC statements are ready to send')
-    expect(sr?.detail).toBe('Knight Contracting, Structura, TF Harper · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
+    expect(sr?.detail).toBe('Kestrin Contracting, Structura, TF Halden · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
     expect(sr?.figure).toBe('3')
     expect(sr?.actionLabel).toBe('Open the list')
-    const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Knight'], late: 0 } })).find((i) => i.key === 'statement-round')
+    const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Kestrin'], late: 0 } })).find((i) => i.key === 'statement-round')
     expect(one?.title).toBe('One GC statement is ready to send')
-    expect(one?.detail).toBe('Knight · $26,000 checked and ready — grouped by the account man to ask.')
-    const four = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 4, total: 96257.27, gcNames: ['RMC- Dudley Mason', 'Knight Contracting', 'Structura', 'TF Harper'] } })).find((i) => i.key === 'statement-round')
-    expect(four?.detail).toBe('RMC- Dudley Mason, Knight Contracting, Structura +1 more · $96,257 checked and ready — grouped by the account man to ask.')
+    expect(one?.detail).toBe('Kestrin · $26,000 checked and ready — grouped by the account man to ask.')
+    const four = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 4, total: 96257.27, gcNames: ['RLC- Dunmere Mallin', 'Kestrin Contracting', 'Structura', 'TF Halden'] } })).find((i) => i.key === 'statement-round')
+    expect(four?.detail).toBe('RLC- Dunmere Mallin, Kestrin Contracting, Structura +1 more · $96,257 checked and ready — grouped by the account man to ask.')
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
   })
@@ -1156,12 +1156,12 @@ describe('job-account-window (the move window’s Needs You line, punch list #13
 })
 
 describe('price-matrix-ready (Price Matrix PR 5)', () => {
-  const first = { bidId: 'b359', bidLabel: 'BP359', project: 'SpaceX BA-2', picks: 23, toSettle: 4, expiredHouses: 1 }
+  const first = { bidId: 'b359', bidLabel: 'BP359', project: 'SkyLab BA-2', picks: 23, toSettle: 4, expiredHouses: 1 }
   it('one ready matrix reads as its own sentence, amber while rows wait on a choice', () => {
     const items = buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: { count: 1, first } }))
     const it1 = items.find((i) => i.key === 'price-matrix-ready')!
     expect(it1.severity).toBe('amber')
-    expect(it1.title).toBe('The robot priced BP359 SpaceX BA-2 — 23 picks ready, 4 to settle')
+    expect(it1.title).toBe('The robot priced BP359 SkyLab BA-2 — 23 picks ready, 4 to settle')
     expect(it1.detail).toMatch(/already expired when read/)
     expect(it1.figure).toBe('1')
     expect(it1.actionLabel).toBe('Review matrix')
@@ -1170,7 +1170,7 @@ describe('price-matrix-ready (Price Matrix PR 5)', () => {
     const items = buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: { count: 3, first: { ...first, toSettle: 0, expiredHouses: 0 } } }))
     const it1 = items.find((i) => i.key === 'price-matrix-ready')!
     expect(it1.severity).toBe('blue')
-    expect(it1.title).toBe('3 robot price matrices are ready — newest BP359 SpaceX BA-2')
+    expect(it1.title).toBe('3 robot price matrices are ready — newest BP359 SkyLab BA-2')
     expect(it1.detail).toMatch(/Apply picks to costs/)
   })
   it('disabled or empty → no item', () => {
@@ -1182,14 +1182,14 @@ describe('price-matrix-ready (Price Matrix PR 5)', () => {
 describe('robot-backlog (v2.3287, dev only)', () => {
   const backlog = {
     bidsWaiting: 4, bidsRequested: 2, oldestRequestMs: 3 * 86400000, firstBid: 'BP482 Marriott shell', requestOverdue: false,
-    matricesOpen: 2, matricesStuck: 0, oldestMatrixMs: 5 * 3600000, firstMatrix: 'BP359 SpaceX BA-2',
+    matricesOpen: 2, matricesStuck: 0, oldestMatrixMs: 5 * 3600000, firstMatrix: 'BP359 SkyLab BA-2',
   }
   it('reads as one sentence with both piles, their ages, and the first of each — blue, hygiene tier', () => {
     const items = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: backlog }))
     const it1 = items.find((i) => i.key === 'robot-backlog')!
     expect(it1.severity).toBe('blue')
     expect(it1.title).toBe('Robots have work waiting')
-    expect(it1.detail).toBe('4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours) — BP482 Marriott shell · BP359 SpaceX BA-2 matrix. The next round takes the top row by itself while the Mac is awake. Nothing to press.')
+    expect(it1.detail).toBe('4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours) — BP482 Marriott shell · BP359 SkyLab BA-2 matrix. The next round takes the top row by itself while the Mac is awake. Nothing to press.')
     expect(it1.figure).toBe('6')
     expect(it1.actionLabel).toBe('Open the Console')
     expect(it1.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
@@ -1209,7 +1209,7 @@ describe('robot-backlog (v2.3287, dev only)', () => {
     const only = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 1, bidsRequested: 0, oldestRequestMs: null, matricesOpen: 0, oldestMatrixMs: null, firstMatrix: null } })).find((i) => i.key === 'robot-backlog')!
     expect(only.detail).toBe('1 bid wants a shadow (nobody asked yet) — BP482 Marriott shell. The next round takes the top row by itself while the Mac is awake. Nothing to press.')
     const mx = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 0, bidsRequested: 0, oldestRequestMs: null, firstBid: null, matricesOpen: 1 } })).find((i) => i.key === 'robot-backlog')!
-    expect(mx.detail).toBe('1 price matrix queued (oldest 5 hours) — BP359 SpaceX BA-2 matrix. The next round takes the top row by itself while the Mac is awake. Nothing to press.')
+    expect(mx.detail).toBe('1 price matrix queued (oldest 5 hours) — BP359 SkyLab BA-2 matrix. The next round takes the top row by itself while the Mac is awake. Nothing to press.')
   })
   it('disabled, null, or empty → no item', () => {
     expect(buildNeedsYouItems(inputs({ robotBacklogEnabled: false, robotBacklog: backlog })).some((i) => i.key === 'robot-backlog')).toBe(false)
@@ -1238,14 +1238,14 @@ describe('legal-review (Legal portal PR 2)', () => {
 })
 
 describe('legal-firm-activity (Legal portal PR 4)', () => {
-  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, settlements: 0, reads: 0, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }
+  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, settlements: 0, reads: 0, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Reading Corner', latestAt: '2026-09-11T11:00:00Z' }
   it('one amber card naming payments to apply, questions and fees', () => {
     const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: activity })).find((i) => i.key === 'legal-firm-activity')!
     expect(it1.title).toBe('The law firm has 3 things for you')
     expect(it1.detail).toContain('1 payment received by counsel ($2,000) to apply to the job')
     expect(it1.detail).toContain('1 question to answer')
     expect(it1.detail).toContain('1 fee or cost added ($450)')
-    expect(it1.detail).toContain('starts with The Learning Experience')
+    expect(it1.detail).toContain('starts with The Reading Corner')
     expect(it1.severity).toBe('amber')
   })
   it('fees alone stay blue; absent when disabled or empty', () => {
@@ -1261,27 +1261,27 @@ describe('legal-firm-activity (Legal portal PR 4)', () => {
 
 describe('submittals (stage 4b)', () => {
   const nudge = {
-    notStarted: { count: 1, first: { bidId: 'b5', bidLabel: 'B411 DRF', days: 7 } },
+    notStarted: { count: 1, first: { bidId: 'b5', bidLabel: 'B411 DLF', days: 7 } },
     unopened: { count: 2, first: { bidId: 'b1', bidLabel: 'B398 ZZ Test', days: 8, names: ['Marco Ellis'] } },
-    sentBack: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SpaceX', revNumber: 2, rows: 2 } },
-    leadTime: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SpaceX', tag: 'WC-1', leadDays: 28, landsYmd: '2026-10-18', windowEndYmd: '2026-10-02', overrunDays: 16 } },
+    sentBack: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SkyLab', revNumber: 2, rows: 2 } },
+    leadTime: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SkyLab', tag: 'WC-1', leadDays: 28, landsYmd: '2026-10-18', windowEndYmd: '2026-10-02', overrunDays: 16 } },
   }
   it('four cards, worded from the nudge, ranked lead time first', () => {
     const items = buildNeedsYouItems(inputs({ submittalsEnabled: true, submittalNudge: nudge }))
     const keys = items.filter((i) => i.key.startsWith('submittal-')).map((i) => i.key)
     expect([...keys].sort()).toEqual(['submittal-lead-time', 'submittal-not-started', 'submittal-sent-back', 'submittal-unopened'])
     const lead = items.find((i) => i.key === 'submittal-lead-time')!
-    expect(lead.title).toBe('A lead time runs past its stage window — B375 SpaceX WC-1')
+    expect(lead.title).toBe('A lead time runs past its stage window — B375 SkyLab WC-1')
     expect(lead.detail).toContain('lands Oct 18, and the job\'s earliest stage window ends Oct 2 — 16 days late')
     expect(lead.severity).toBe('red')
     const back = items.find((i) => i.key === 'submittal-sent-back')!
-    expect(back.title).toBe('2 rows sent back on B375 SpaceX Rev 2, no resubmit yet')
+    expect(back.title).toBe('2 rows sent back on B375 SkyLab Rev 2, no resubmit yet')
     expect(back.detail).toContain('A Rev 3 draft with those rows is one tap on the Submittals tab. Nothing is sent until you share it')
     const un = items.find((i) => i.key === 'submittal-unopened')!
     expect(un.title).toBe('2 shared submittals sit unopened — B398 ZZ Test longest, 8 days')
     expect(un.detail).toContain('Marco Ellis has not opened their link')
     const ns = items.find((i) => i.key === 'submittal-not-started')!
-    expect(ns.title).toBe('Won 7 days ago, no submittal started — B411 DRF')
+    expect(ns.title).toBe('Won 7 days ago, no submittal started — B411 DLF')
     expect(ns.figure).toBe('1')
     expect(rankNeedsYouItems(items).findIndex((i) => i.key === 'submittal-lead-time')).toBeLessThan(rankNeedsYouItems(items).findIndex((i) => i.key === 'submittal-not-started'))
   })

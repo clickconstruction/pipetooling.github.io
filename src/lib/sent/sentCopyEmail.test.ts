@@ -46,8 +46,8 @@ describe('sentEmailRow', () => {
   })
 
   it('still writes the row when the page was not kept, takes a given title, and names no source without an id', () => {
-    const row = sentEmailRow(ID, { kind: 'lien_notice', title: ' § 53.056 notice ', recipientName: ' Umar Khan ', source: { table: 'job_lien_filings', id: null } }, msg, { copyPath: null, copyHash: 'abc', copyBytes: 900, attachments: [] })
-    expect(row).toMatchObject({ title: '§ 53.056 notice', recipient_name: 'Umar Khan', copy_path: null, copy_type: '', copy_hash: '', copy_bytes: null, source_table: '', source_id: null, sent_by: null })
+    const row = sentEmailRow(ID, { kind: 'lien_notice', title: ' § 53.056 notice ', recipientName: ' Ulric Karrow ', source: { table: 'job_lien_filings', id: null } }, msg, { copyPath: null, copyHash: 'abc', copyBytes: 900, attachments: [] })
+    expect(row).toMatchObject({ title: '§ 53.056 notice', recipient_name: 'Ulric Karrow', copy_path: null, copy_type: '', copy_hash: '', copy_bytes: null, source_table: '', source_id: null, sent_by: null })
   })
 
   it('refuses a kind the table would refuse', () => {

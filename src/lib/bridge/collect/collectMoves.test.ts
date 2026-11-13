@@ -14,26 +14,26 @@ const md = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-
 const plain = (s: string | null) => s != null && expect(plainWordsFailures(s.replace(/^Say: /, '')), s).toEqual([])
 const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
-  customers: { rmc: { medianDays: 35, samples: 4 }, harper: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 }, knight: { medianDays: 30, samples: 31 } },
+  customers: { rlc: { medianDays: 35, samples: 4 }, halden: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 }, kestrin: { medianDays: 30, samples: 31 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rmc: 'commercial', southern: 'commercial', harper: 'commercial', handi: 'commercial', knight: 'commercial' },
+  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
 const bill = (key: string, payerId: string, payerName: string, billedYmd: string, usd: number, over: Partial<CollectBill> = {}): CollectBill => ({ key, jobId: `j-${key}`, payerId, payerName, billedYmd, usd, ...over })
 const bills: CollectBill[] = [
-  bill('spacex', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
-  ...[13_420, 9_800, 8_780, 7_902, 3_500, 3_500, 2_650, 2_245].map((usd, i) => bill(`rmc-${i}`, 'rmc', 'RMC- Dudley Mason', i === 0 ? '2026-03-16' : '2026-08-18', usd, i === 2 ? { billedYmd: '2026-09-21', sentFromHere: false } : {})),
-  bill('sp', 'southern', 'Southern Post Construction', '2026-09-16', 38_625, { sentFromHere: false }),
-  bill('tfh', 'harper', 'TF Harper', '2026-09-16', 29_323, { sentFromHere: false }),
-  bill('tfh2', 'harper', 'TF Harper', '2026-07-06', 2_918),
-  bill('hi', 'handi', 'H & I Construction', '2026-10-23', 14_220),
-  bill('hi2', 'handi', 'H & I Construction', '2026-09-03', 350),
-  bill('kn', 'knight', 'Knight Contracting', '2026-09-20', 4_087),
-  bill('kn2', 'knight', 'Knight Contracting', '2026-09-01', 2_000),
+  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  ...[13_420, 9_800, 8_780, 7_902, 3_500, 3_500, 2_650, 2_245].map((usd, i) => bill(`rlc-${i}`, 'rlc', 'RLC- Dunmere Mallin', i === 0 ? '2026-03-16' : '2026-08-18', usd, i === 2 ? { billedYmd: '2026-09-21', sentFromHere: false } : {})),
+  bill('sp', 'southern', 'Southern Pine Construction', '2026-09-16', 38_625, { sentFromHere: false }),
+  bill('tfh', 'halden', 'TF Halden', '2026-09-16', 29_323, { sentFromHere: false }),
+  bill('tfh2', 'halden', 'TF Halden', '2026-07-06', 2_918),
+  bill('hi', 'handi', 'B & D Construction', '2026-10-23', 14_220),
+  bill('hi2', 'handi', 'B & D Construction', '2026-09-03', 350),
+  bill('kn', 'kestrin', 'Kestrin Contracting', '2026-09-20', 4_087),
+  bill('kn2', 'kestrin', 'Kestrin Contracting', '2026-09-01', 2_000),
 ]
-const touches: ChaseTouch[] = [{ id: 't1', customerId: 'knight', jobId: 'j-kn', outcome: 'dispute', note: 'the trip charge is not ours', promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-22T15:00:00Z', createdByName: 'Taunya' }]
-const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rmc', 'harper', 'knight', 'southern']), gcPaceFromIds: new Set(['rmc', 'harper', 'knight']), todayYmd: TODAY })
+const touches: ChaseTouch[] = [{ id: 't1', customerId: 'kestrin', jobId: 'j-kn', outcome: 'dispute', note: 'the trip charge is not ours', promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-22T15:00:00Z', createdByName: 'Taunya' }]
+const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-10-16', markedByName: 'Taunya' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rlc', 'halden', 'kestrin', 'southern']), gcPaceFromIds: new Set(['rlc', 'halden', 'kestrin']), todayYmd: TODAY })
 const cut = buildCollectPayers(pile, { touches })
 const payer = (name: string) => cut.payers.find((p) => p.payerName === name)!
 const lienHref = (door: LienArChip['door']) => `/lien?${'jobId' in door ? door.jobId : ''}`
@@ -42,7 +42,7 @@ const chip = (over: Partial<LienArChip>): LienArChip => ({ tone: 'amber', state:
 describe('collectMoveFor (v2.5854)', () => {
   const opts = { todayYmd: TODAY, dayLabel: md, lienHref }
   it('calls a broken promise first, in its own words', () => {
-    const m = collectMoveFor(payer('Southern Post Construction'), opts)
+    const m = collectMoveFor(payer('Southern Pine Construction'), opts)
     expect(m).toMatchObject({ kind: 'call_promise', title: 'Call: the Oct 16 promise', isCall: true, askUsd: 38_625, owner: '' })
     expect(m.opener).toBe('Say: the $38.6k promised for Oct 16 has not landed. What happened, and what is the new date?')
     plain(m.opener)
@@ -52,31 +52,31 @@ describe('collectMoveFor (v2.5854)', () => {
     expect(s.kind).toBe(s.title === 'Call for the pay date' ? 'call_date' : 'call_payapp')
     expect(s.opener).toBe('Say: the pay application for $103k, marked billed here Sep 24. When did it go in, is it approved, and which pay run is it on?')
     plain(s.opener)
-    const h = collectMoveFor(payer('TF Harper'), { ...opts, chip: chip({}) })
+    const h = collectMoveFor(payer('TF Halden'), { ...opts, chip: chip({}) })
     expect(h).toMatchObject({ kind: 'call_date', title: 'Call for the pay date', paper: { label: 'Notice by Nov 16 · 22d', href: '/lien?j-tfh' } })
-    const due = collectMoveFor({ ...payer('TF Harper'), bills: payer('TF Harper').bills.map((b) => (b.key === 'tfh' ? { ...b, state: 'late' as const } : b)) }, opts)
+    const due = collectMoveFor({ ...payer('TF Halden'), bills: payer('TF Halden').bills.map((b) => (b.key === 'tfh' ? { ...b, state: 'late' as const } : b)) }, opts)
     expect(due).toMatchObject({ kind: 'call_payapp', title: 'Call: is the pay app approved?' })
     plain(h.opener)
   })
   it('sends a statement before the call on an account with many bills', () => {
-    const m = collectMoveFor(payer('RMC- Dudley Mason'), opts)
-    expect(m).toMatchObject({ kind: 'statement_call', title: 'Send the statement, then call', isCall: true, askUsd: payer('RMC- Dudley Mason').usd })
+    const m = collectMoveFor(payer('RLC- Dunmere Mallin'), opts)
+    expect(m).toMatchObject({ kind: 'statement_call', title: 'Send the statement, then call', isCall: true, askUsd: payer('RLC- Dunmere Mallin').usd })
     expect(m.opener).toBe('Say: 8 open bills, $51.8k, the oldest from March. Which can you pay this week, and when?')
     plain(m.opener)
   })
   it('asks about the one late bill on an account that pays on time', () => {
-    const m = collectMoveFor(payer('H & I Construction'), opts)
+    const m = collectMoveFor(payer('B & D Construction'), opts)
     expect(m).toMatchObject({ kind: 'ask_one', title: 'Ask about the $350', isCall: true, askUsd: 350 })
     expect(m.opener).toBe('Say: the $350 from Sep 3 is 9 times your usual pace. Is something wrong with it?')
     plain(m.opener)
   })
   it('sends a statement alone on a small account, and reads the owner from the recorded plan', () => {
-    const m = collectMoveFor({ ...payer('Knight Contracting'), lastTouch: null }, { ...opts, smallUsd: 10_000, recordedMoves: [{ key: 'chase', title: 'Send the statement', who: 'Taunya · Tue', then: 6_087 }] })
+    const m = collectMoveFor({ ...payer('Kestrin Contracting'), lastTouch: null }, { ...opts, smallUsd: 10_000, recordedMoves: [{ key: 'chase', title: 'Send the statement', who: 'Taunya · Tue', then: 6_087 }] })
     expect(m).toMatchObject({ kind: 'statement', title: 'Send the statement', opener: null, isCall: false, owner: 'Taunya · Tue' })
   })
   it('builds the sheet: calls, statements, the ask, the money that pays itself; the call moves; the text', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, opts))
-    // The cut is four payers here: Structura, RMC, Southern Post and TF Harper hold over nine tenths.
+    // The cut is four payers here: Structura, RLC, Southern Pine and TF Halden hold over nine tenths.
     expect(sheet.rows.map((r) => r.move.kind)).toEqual(['call_date', 'statement_call', 'call_promise', 'call_date'])
     expect(sheet.calls).toBe(4)
     expect(sheet.statements).toBe(0)
@@ -87,20 +87,20 @@ describe('collectMoveFor (v2.5854)', () => {
     expect(moves[0]).toMatchObject({ key: 'chase', title: `Structura, Inc. – Austin: ${sheet.rows[0]!.move.title}`, who: 'Taunya · Mon', then: sheet.rows[0]!.move.askUsd })
     const text = collectSheetText(sheet, 'The Collect desk, Sun, Oct 25')
     expect(text.split('\n')[0]).toBe('The Collect desk, Sun, Oct 25')
-    expect(text).toContain('Southern Post Construction · $38.6k · Call: the Oct 16 promise')
+    expect(text).toContain('Southern Pine Construction · $38.6k · Call: the Oct 16 promise')
     expect(text.trim().endsWith(`4 moves, $${Math.round(sheet.askUsd / 1000)}k asked for.`)).toBe(true)
   })
 })
 
 describe('collectDecisions (v2.5854)', () => {
-  const opts = { chipFor: (p: { payerName: string }) => (p.payerName === 'RMC- Dudley Mason' ? chip({ paper: 'affidavit', words: 'Affidavit by Nov 16', sentence: 'Noticed Sep 22, three jobs.', dueOn: '2026-11-16', door: { to: 'desk', jobId: 'j-rmc-0', kind: 'affidavit', pile: null } }) : null), lienHref, jobsHref: (ids: ReadonlyArray<string>) => (ids.length === 1 ? `/jobs?edit=${ids[0]}` : '/jobs'), customerHref: (id: string) => `/customers/${id}`, dayLabel: md }
+  const opts = { chipFor: (p: { payerName: string }) => (p.payerName === 'RLC- Dunmere Mallin' ? chip({ paper: 'affidavit', words: 'Affidavit by Nov 16', sentence: 'Noticed Sep 22, three jobs.', dueOn: '2026-11-16', door: { to: 'desk', jobId: 'j-rlc-0', kind: 'affidavit', pile: null } }) : null), lienHref, jobsHref: (ids: ReadonlyArray<string>) => (ids.length === 1 ? `/jobs?edit=${ids[0]}` : '/jobs'), customerHref: (id: string) => `/customers/${id}`, dayLabel: md }
   it('lifts the GC record, the affidavit, the slow payer and the dispute into the owner’s strip, money first, three at most', () => {
     const d = collectDecisions(cut, opts)
     expect(d.map((x) => x.kind)).toEqual(['gc_record', 'affidavit', 'terms'])
     // One job: the door opens its Edit Job (v2.5873); it opened the whole board.
-    expect(d[0]).toMatchObject({ head: 'Is Structura, Inc. – Austin the GC on this job?', door: { label: 'Open the job', href: '/jobs?edit=j-spacex' }, usd: 103_386 })
-    expect(d[1]).toMatchObject({ head: 'File the RMC- Dudley Mason lien by Nov 16.', door: { href: '/lien?j-rmc-0' } })
-    expect(d[2]).toMatchObject({ head: 'Terms for TF Harper on the next bid.', door: { href: '/customers/harper' } })
+    expect(d[0]).toMatchObject({ head: 'Is Structura, Inc. – Austin the GC on this job?', door: { label: 'Open the job', href: '/jobs?edit=j-skylab' }, usd: 103_386 })
+    expect(d[1]).toMatchObject({ head: 'File the RLC- Dunmere Mallin lien by Nov 16.', door: { href: '/lien?j-rlc-0' } })
+    expect(d[2]).toMatchObject({ head: 'Terms for TF Halden on the next bid.', door: { href: '/customers/halden' } })
     for (const x of d) {
       plain(x.head)
       plain(x.words)
@@ -136,13 +136,13 @@ describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () 
   const opts = { todayYmd: TODAY, dayLabel: md, lienHref }
   const touch = (customerId: string, over: Partial<ChaseTouch>): ChaseTouch => ({ id: `t-${customerId}`, customerId, jobId: null, outcome: 'note', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-24T15:00:00Z', createdByName: 'Taunya', ...over })
   it('a dispute leaves the sheet for the owner', () => {
-    // Knight's dispute of Oct 22 is in the fixture's touches.
-    const m = collectMoveFor(payer('Knight Contracting'), opts)
+    // Kestrin's dispute of Oct 22 is in the fixture's touches.
+    const m = collectMoveFor(payer('Kestrin Contracting'), opts)
     expect(m).toMatchObject({ kind: 'owner_dispute', title: 'On the owner: the dispute', isCall: false, onSheet: false, askUsd: 0 })
   })
   it('a call that named no date waits three days, then the payer is back', () => {
     const quietCut = buildCollectPayers(pile, { touches: [touch('handi', { outcome: 'cant_reach' })] })
-    const hi = quietCut.payers.find((p) => p.payerName === 'H & I Construction')!
+    const hi = quietCut.payers.find((p) => p.payerName === 'B & D Construction')!
     expect(collectMoveFor(hi, opts)).toMatchObject({ kind: 'quiet', title: 'Back on the sheet Oct 27', onSheet: false })
     expect(collectMoveFor(hi, { ...opts, todayYmd: '2026-10-27' })).toMatchObject({ kind: 'ask_one', onSheet: true })
     // A resolved touch quiets nothing.
@@ -151,35 +151,35 @@ describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () 
   })
   it('an evening call counts its three days from Chicago’s day (v2.5956: 01:30 UTC on Oct 25 is 8:30 PM on Oct 24)', () => {
     const eveningCut = buildCollectPayers(pile, { touches: [touch('handi', { outcome: 'cant_reach', createdAt: '2026-10-25T01:30:00Z' })] })
-    const hi = eveningCut.payers.find((p) => p.payerName === 'H & I Construction')!
+    const hi = eveningCut.payers.find((p) => p.payerName === 'B & D Construction')!
     expect(collectMoveFor(hi, opts)).toMatchObject({ kind: 'quiet', title: 'Back on the sheet Oct 27', onSheet: false })
     expect(collectMoveFor(hi, { ...opts, todayYmd: '2026-10-27' })).toMatchObject({ kind: 'ask_one', onSheet: true })
   })
   it('a live promise with nothing else late waits for its day', () => {
-    const promised = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-11-06', markedByName: 'Robert' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rmc', 'harper', 'knight', 'southern']), gcPaceFromIds: new Set(['rmc', 'harper', 'knight']), todayYmd: TODAY })
-    const sp = buildCollectPayers(promised).payers.find((p) => p.payerName === 'Southern Post Construction')!
+    const promised = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-11-06', markedByName: 'Robert' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rlc', 'halden', 'kestrin', 'southern']), gcPaceFromIds: new Set(['rlc', 'halden', 'kestrin']), todayYmd: TODAY })
+    const sp = buildCollectPayers(promised).payers.find((p) => p.payerName === 'Southern Pine Construction')!
     expect(collectMoveFor(sp, opts)).toMatchObject({ kind: 'promised_wait', title: 'Promised for Nov 6', onSheet: false })
   })
   it('a second miss puts the owner on the call', () => {
-    // Southern Post's promise is broken: one miss. A no-answer since its oldest bill is the second.
+    // Southern Pine's promise is broken: one miss. A no-answer since its oldest bill is the second.
     const twice = buildCollectPayers(pile, { touches: [touch('southern', { outcome: 'cant_reach', createdAt: '2026-10-01T15:00:00Z' })] })
-    const sp = twice.payers.find((p) => p.payerName === 'Southern Post Construction')!
+    const sp = twice.payers.find((p) => p.payerName === 'Southern Pine Construction')!
     expect(sp.misses).toBe(2)
     expect(collectMoveFor(sp, opts)).toMatchObject({ kind: 'call_promise', isCall: true, escalated: true, owner: 'the owner' })
-    expect(payer('Southern Post Construction').misses).toBe(1)
-    expect(collectMoveFor(payer('Southern Post Construction'), opts)).toMatchObject({ escalated: false, owner: '' })
+    expect(payer('Southern Pine Construction').misses).toBe(1)
+    expect(collectMoveFor(payer('Southern Pine Construction'), opts)).toMatchObject({ escalated: false, owner: '' })
   })
   it('the copied sheet, the plan and the counts leave the waiting rows out', () => {
     const all = buildCollectPayers(pile, { touches, maxCut: 10, shareTarget: 1 })
     const sheet = buildCollectSheet(all, (p) => collectMoveFor(p, opts))
     const waiting = sheet.rows.filter((r) => !r.move.onSheet)
-    expect(waiting.map((r) => r.payer.payerName)).toEqual(['Knight Contracting'])
+    expect(waiting.map((r) => r.payer.payerName)).toEqual(['Kestrin Contracting'])
     expect(sheet.moves).toBe(sheet.rows.length - 1)
     expect(sheet.waiting).toBe(1)
     expect(sheet.askUsd).toBe(sheet.rows.filter((r) => r.move.onSheet).reduce((s, r) => s + r.move.askUsd, 0))
-    expect(collectSheetAsCallMoves(sheet, new Map()).some((m) => m.title.startsWith('Knight'))).toBe(false)
+    expect(collectSheetAsCallMoves(sheet, new Map()).some((m) => m.title.startsWith('Kestrin'))).toBe(false)
     const text = collectSheetText(sheet, 'The Collect desk')
-    expect(text).not.toContain('Knight Contracting')
+    expect(text).not.toContain('Kestrin Contracting')
     expect(text.trim().endsWith('1 more payer waits off the sheet.')).toBe(true)
   })
 })

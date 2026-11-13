@@ -115,7 +115,7 @@ describe('SubmittalItemEditDialog · the window fits the screen (2026-10-02)', (
 })
 
 describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)', () => {
-  const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SPACEX', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
+  const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SKYLAB', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
   const parts = [part('tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', 1), part('faucet', 'TOTO T25S51E#CP', 2), part('stop', 'BRASSCRA PLB113XP ANG', 3, { on_submittal: false })]
   const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-nws', name: 'National Wholesale' }]
 
@@ -140,7 +140,7 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
     expect(screen.getAllByTestId('part-editor-row')).toHaveLength(3)
     expect(screen.getAllByTestId('part-group').map((g) => g.getAttribute('aria-label'))).toEqual(['The GC sees these · 2', 'Order only · 1'])
-    expect(screen.getByTestId('edit-from-where').textContent).toBe('Specified: TOTO CT708UVG#01 · from LAV 1 assembly SPACEX')
+    expect(screen.getByTestId('edit-from-where').textContent).toBe('Specified: TOTO CT708UVG#01 · from LAV 1 assembly SKYLAB')
     // The row's own house and lead time are read from its parts.
     expect(screen.queryByRole('combobox', { name: 'Supply house' })).toBeNull()
     fireEvent.change(screen.getByLabelText('House for part 1'), { target: { value: 'h-nws' } })
@@ -245,8 +245,8 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
 })
 
 describe('SubmittalItemEditDialog · one screen: a line a part, in groups (2026-10-05)', () => {
-  const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SPACEX', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
-  // LAV-1 as the SpaceX bid has it: the GC's parts are first, second and last; the order-only parts sit between.
+  const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SKYLAB', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
+  // LAV-1 as the SkyLab bid has it: the GC's parts are first, second and last; the order-only parts sit between.
   const lav = [
     part('tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', 1),
     part('faucet', 'TOTO T25S51E#CP', 2, { review_decision: 'rejected', review_note: 'TEL145', reviewed_at: '2026-10-02T15:00:00Z' }),
@@ -265,7 +265,7 @@ describe('SubmittalItemEditDialog · one screen: a line a part, in groups (2026-
   it('the title names the row, the tag has its label, and the parts sit in two groups under one line of headings', () => {
     open()
     expect(screen.getByRole('heading').textContent).toBe('Edit LAV-1')
-    expect(screen.getByTestId('edit-from-where').textContent).toBe('from LAV 1 assembly SPACEX')
+    expect(screen.getByTestId('edit-from-where').textContent).toBe('from LAV 1 assembly SKYLAB')
     expect((screen.getByLabelText('Tag') as HTMLInputElement).closest('label')!.textContent).toBe('Tag')
     expect(screen.getByTestId('parts-editor').querySelector('.sub-parts-head')!.textContent).toBe('PartEachHouseLead timeStageShown to')
     const [gc, order] = screen.getAllByTestId('part-group') as [HTMLElement, HTMLElement]

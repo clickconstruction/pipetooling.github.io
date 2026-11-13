@@ -335,7 +335,7 @@ cell, so the owner reads a week of grey cells on Prospects as the answer it is.
 ### 2 · Every station leads with a Next line (words · one PR, no server)
 
 Under the banner question, one line that names the next row and its verb, in plain words
-(`plainWords.ts`): *Lean on Loberg · $5,622 · 24 days* on Billed Awaiting; *Approve
+(`plainWords.ts`): *Lean on Lowbeck · $5,622 · 24 days* on Billed Awaiting; *Approve
 Thursday's 3 sessions for the crew on 1007* on People Hours; *Read the 2007 Ram's miles* on
 Vehicle check-ins; *Decide the toll paper from Oct 2* on Physical inbox. The body already
 sorts its rows worst first; the line is the first row's sentence. A station with no row-level

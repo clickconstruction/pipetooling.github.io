@@ -4,7 +4,7 @@ A data repair, no schema change. A version's ★ (`bid_versions.starred_price_bo
 
 | Bid | Version | Stray ★ (owned by) | Repaired ★ |
 |---|---|---|---|
-| BP385 Galloway Park | Written to Plan (active base) | `731c244e` *Value Engineered* (Value Engineered) | `bc56b7ce` *Written to Plan*, its only price |
+| BP385 Gallenby Park | Written to Plan (active base) | `731c244e` *Value Engineered* (Value Engineered) | `bc56b7ce` *Written to Plan*, its only price |
 | BP384 Game Show Battle Rooms (lost) | NORTHSTAR CONSTRUCTION SERVICES (active) | `3c6b6a7b` *WENDI* (PlanHub) | `1c233cba` *WENDI*, its first price (sort 3) |
 
 **How they got there.** Deleting the price open on the Pricing Workbench re-picked the lowest `sort_order` price on the whole bid and saved it as the active version's ★ and as `bids.selected_price_book_version_id`. Each stray ★ is exactly that price on its bid. The write is guarded since v2.4377 (`starWriteAllowed`, `afterOpenPriceDeleted` in `lib/bids/versionStar.ts`).

@@ -5,7 +5,7 @@ import { buildBidFixtureCountsText, buildBidFixtureCountsTextGrouped } from './b
 describe('buildBidFixtureCountsText', () => {
   it('formats the bid label, one line per row, and the item count', () => {
     const text = buildBidFixtureCountsText({
-      bidLabel: 'BP375 SPACEX BA-02N Architectural',
+      bidLabel: 'BP375 SKYLAB BA-02N Architectural',
       rows: [
         { fixture: 'WHA-300', count: 1 },
         { fixture: 'HB-3', count: 2 },
@@ -14,7 +14,7 @@ describe('buildBidFixtureCountsText', () => {
     })
     expect(text).toBe(
       [
-        'Bid: BP375 SPACEX BA-02N Architectural',
+        'Bid: BP375 SKYLAB BA-02N Architectural',
         '',
         'WHA-300 — 1',
         'HB-3 — 2',
@@ -147,7 +147,7 @@ describe('buildBidFixtureCountsText', () => {
 
   it('never contains money — no dollar signs, totals, or price words', () => {
     const text = buildBidFixtureCountsText({
-      bidLabel: 'BP375 SPACEX BA-02N Architectural',
+      bidLabel: 'BP375 SKYLAB BA-02N Architectural',
       rows: [
         { fixture: 'WHA-300', count: 1 },
         { fixture: 'ft of 1IN WATER', count: 66.13 },

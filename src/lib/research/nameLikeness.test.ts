@@ -46,7 +46,7 @@ describe('nameLikeness', () => {
 
   it('refuses a word that only sits inside a longer, unrelated name', () => {
     expect(nameLikeness('Structura', 'Bandit Structural Concrete Works')).toBeNull()
-    expect(nameLikeness('Summit General Contractors', 'Summit Ridge Electric and Mechanical Works')).toBeNull()
+    expect(nameLikeness('Selwick General Contractors', 'Selwick Ridge Electric and Mechanical Works')).toBeNull()
   })
 
   it('refuses a shared trade word, a shared number and nothing in common', () => {

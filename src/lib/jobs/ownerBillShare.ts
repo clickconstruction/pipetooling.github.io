@@ -3,7 +3,7 @@
  *
  * A job whose bills go to the GC and whose customer is someone else — the owner of the
  * property — shows the owner nothing on their portal: the statement lists what they pay, so it
- * reads $0 and "all paid up" while the GC owes us on their house (Umar Khan, 9703 Lenox Hl,
+ * reads $0 and "all paid up" while the GC owes us on their house (Ulric Karrow, 9703 Linmor Hl,
  * 2026-09-25). Sharing already exists (v2.3375): a bill stamped `shown_to_party = 'customer'`
  * reaches their portal for their records, no Pay button, never in their balance; the job's
  * `show_bills_to_other_party` stamps its NEXT bills. This kernel is the switch over both, for

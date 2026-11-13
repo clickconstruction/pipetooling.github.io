@@ -68,6 +68,8 @@ export type SitePartRow = {
   due: boolean
   /** The newest count of any of its lines; null when none was ever counted. */
   countedAt: string | null
+  /** The same-words keys folded into the row: one unless a person joined names (`partTies.ts`). */
+  memberKeys: string[]
 }
 
 const INCH = '"'
@@ -140,21 +142,31 @@ function boxIsDue(c: Container, countedAt: string | undefined, now: Date): boole
   return c.kind !== 'unsorted' && countIsDue(countedAt ? { at: countedAt } : null, now)
 }
 
-/** The roll-up: one row per part across the site's jobs, by name as people read it (2" before 10"). */
-export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date): SitePartRow[] {
+/**
+ * The roll-up: one row per part across the site's jobs, by name as people read it (2" before 10").
+ * `canon` maps a same-words key to the row it belongs to once a person has joined names
+ * (`tieCanon` in `partTies.ts`); left out, every key is its own row.
+ */
+export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, canon: (key: string) => string = (key) => key): SitePartRow[] {
   const rows = new Map<string, SitePartRow>()
+  /** A row that holds a parts-book line reads by the book's name. */
+  const bookName = new Map<string, string>()
   for (const job of jobs) {
     const live = new Map(liveBoxes(job).map((c) => [c.id, c] as const))
     const counted = boxCountedAt(job.lines)
     for (const l of job.lines) {
       const c = live.get(l.containerId)
       if (!c || !shown(l)) continue
-      const key = rollKey(l)
+      const own = rollKey(l)
+      const key = canon(own)
       let row = rows.get(key)
       if (!row) {
-        row = { key, name: l.partName, partId: l.partId, manufacturer: l.manufacturer, spellings: [], total: 0, boxes: [], cannotFind: 0, short: 0, due: false, countedAt: null }
+        row = { key, name: l.partName, partId: null, manufacturer: l.manufacturer, spellings: [], total: 0, boxes: [], cannotFind: 0, short: 0, due: false, countedAt: null, memberKeys: [] }
         rows.set(key, row)
       }
+      if (!row.memberKeys.includes(own)) row.memberKeys.push(own)
+      // A row with a parts-book line reads as the book's part, whatever was typed beside it.
+      if (l.partId && !row.partId) row.partId = l.partId
       const short = Math.max(0, -(l.lastCountDiff ?? 0))
       const due = boxIsDue(c, counted.get(c.id), now)
       row.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, jobId: job.jobId, jobLabel: job.label, placeName: placeOf(job, c), spelling: l.partName, onHand: l.onHand, lineCountedAt: l.lastCountAt, due, cannotFind: l.cannotFindSinceCount, short })
@@ -164,6 +176,7 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date): Sit
       row.due = row.due || due
       if (l.lastCountAt && (!row.countedAt || l.lastCountAt > row.countedAt)) row.countedAt = l.lastCountAt
       if (!row.manufacturer && l.manufacturer) row.manufacturer = l.manufacturer
+      if (l.partId && !bookName.has(key)) bookName.set(key, l.partName)
       const spelling = row.spellings.find((s) => s.name === l.partName)
       if (spelling) spelling.pieces += l.onHand
       else row.spellings.push({ name: l.partName, pieces: l.onHand })
@@ -172,7 +185,8 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date): Sit
   const out = [...rows.values()]
   for (const row of out) {
     row.spellings.sort((a, b) => b.pieces - a.pieces || a.name.localeCompare(b.name))
-    row.name = row.spellings[0]?.name ?? row.name
+    row.name = bookName.get(row.key) ?? row.spellings[0]?.name ?? row.name
+    row.memberKeys.sort()
     row.boxes.sort((a, b) => b.onHand - a.onHand || compareLabels(a.label, b.label))
   }
   return out.sort((a, b) => compareLabels(a.name, b.name) || a.key.localeCompare(b.key))

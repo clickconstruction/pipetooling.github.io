@@ -106,7 +106,7 @@ describe('buildBridgedChangeOrderDraft — the money lands where the CO editor r
     impactOnSchedule: '+2 days',
     impactOnCost: 'Labor $1,200\nMaterials $1,250\nNet $2,450.00',
     responseRequestDate: '2026-09-12',
-    submittedTo: 'Knight Contracting',
+    submittedTo: 'Kestrin Contracting',
   }
 
   it('a non-zero net change becomes total_cents plus one real line', () => {
@@ -115,7 +115,7 @@ describe('buildBridgedChangeOrderDraft — the money lands where the CO editor r
     expect(d.line_items_snapshot).toEqual([
       { line_item: BRIDGED_NET_CHANGE_LINE_LABEL, description: form.impactOnCost, quantity: 1, unit_price_cents: 245000, amount_cents: 245000 },
     ])
-    expect(d.internal_notes).toBe(`Created from Bids → Change Order.\nCost impact (from the Bids form): ${form.impactOnCost}\nBid submitted to: Knight Contracting`)
+    expect(d.internal_notes).toBe(`Created from Bids → Change Order.\nCost impact (from the Bids form): ${form.impactOnCost}\nBid submitted to: Kestrin Contracting`)
     expect(d.change_order_fields).toEqual({
       description_of_change: 'Reroute condensate',
       reason_for_change: 'Field condition',

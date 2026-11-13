@@ -11,7 +11,7 @@ import type { LienNextUpRow } from '../../lib/jobs/lienNextUp'
 afterEach(cleanup)
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
-  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-09', daysLeft: 4, severity: 'red', group: 'now', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' }, ...over,
+  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to draft', dueOn: '2026-10-09', daysLeft: 4, severity: 'red', group: 'now', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' }, ...over,
 })
 
 describe('LienDeskNextUp', () => {
@@ -19,8 +19,8 @@ describe('LienDeskNextUp', () => {
     const onAct = vi.fn()
     const rows = [
       row({}),
-      row({ key: 'run:gc1', jobId: null, title: 'Loberg Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
-      row({ key: 'affidavit:j2', kind: 'affidavit', jobId: 'j2', title: '977 · Springtown', sub: 'Affidavit approved · ready to file', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: 'j2' } }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'affidavit:j2', kind: 'affidavit', jobId: 'j2', title: '977 · Stonewick', sub: 'Affidavit approved · ready to file', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming', action: 'file_affidavit', button: 'File the affidavit', target: { open: 'affidavits', jobId: 'j2' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} />)
     const now = screen.getByRole('region', { name: 'Needs you now' })
@@ -28,7 +28,7 @@ describe('LienDeskNextUp', () => {
     expect(screen.getByRole('region', { name: 'Coming up' }).textContent).toContain('Coming up · 1')
     const first = document.querySelector('[data-lien-next-up-row="notice:j1"]') as HTMLElement
     expect(first.textContent).toContain('Notice')
-    expect(first.textContent).toContain('650 · ATI Schertz')
+    expect(first.textContent).toContain('650 · AXO Schertz')
     expect(first.textContent).toContain('Oct 9 · 4 days left')
     fireEvent.click(within(first).getByRole('button', { name: 'Draft notice' }))
     expect(onAct).toHaveBeenCalledTimes(1)
@@ -80,11 +80,11 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
   it('with onOpenJob the number and name are a text button that opens the job and not the row; a GC run row stays plain', () => {
     const onAct = vi.fn()
     const onOpenJob = vi.fn()
-    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Loberg Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } })]
+    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } })]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} />)
     const door = screen.getByTestId('lien-next-up-job-j1')
     expect(door.tagName).toBe('BUTTON')
-    expect(door.textContent).toBe('650 · ATI Schertz')
+    expect(door.textContent).toBe('650 · AXO Schertz')
     expect(door.className).toBe('lienJobDoor')
     expect(door.getAttribute('title')).toBe('Open the job: its history, its bills and Edit')
     fireEvent.click(door)
@@ -92,14 +92,14 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     expect(onAct).not.toHaveBeenCalled()
     // The run row names a GC, not a job: plain words, and the row still opens on a press.
     const run = document.querySelector('[data-lien-next-up-row="run:gc1"]') as HTMLElement
-    expect(within(run).queryByRole('button', { name: 'Loberg Contracting' })).toBeNull()
+    expect(within(run).queryByRole('button', { name: 'Lowbeck Contracting' })).toBeNull()
     fireEvent.click(run)
     expect(onAct).toHaveBeenCalledTimes(1)
   })
   it('without onOpenJob the title is plain words, as before', () => {
     render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={() => {}} />)
     expect(screen.queryByTestId('lien-next-up-job-j1')).toBeNull()
-    expect(screen.getByText('650 · ATI Schertz').tagName).toBe('SPAN')
+    expect(screen.getByText('650 · AXO Schertz').tagName).toBe('SPAN')
   })
   it('on a phone the card\u2019s title is the same door', () => {
     const onOpenJob = vi.fn()
@@ -112,9 +112,9 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
 describe('LienDeskNextUp · the steps (v2.4631)', () => {
   const rows = [
     row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
-    row({ key: 'notice:j2', jobId: 'j2', title: '651 · ATI Schertz II' }),
-    row({ key: 'notice:j3', jobId: 'j3', title: '652 · Take 5', action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }),
-    row({ key: 'affidavit:j4', jobId: 'j4', kind: 'affidavit', title: '977 · Springtown', action: 'fix_property', sub: 'Affidavit · the property record is not complete', button: 'Fix the property', target: { open: 'affidavits', jobId: 'j4' } }),
+    row({ key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II' }),
+    row({ key: 'notice:j3', jobId: 'j3', title: '652 · Tune 5', action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }),
+    row({ key: 'affidavit:j4', jobId: 'j4', kind: 'affidavit', title: '977 · Stonewick', action: 'fix_property', sub: 'Affidavit · the property record is not complete', button: 'Fix the property', target: { open: 'affidavits', jobId: 'j4' } }),
   ]
   it('draws a rail per ladder with its counts, the run count on the fourth rung, and a press narrows the list to that rung', () => {
     const onOpenRun = vi.fn()
@@ -168,7 +168,7 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
   })
   it('every row wears four dots and its fraction; hovering them opens the card beside, with the ladder written out and the row’s own button', () => {
     const onAct = vi.fn()
-    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} factsFor={() => ({ ownerName: 'Elbel Holdings LLC', viewerIsLeader: true })} viewerIsLeader />)
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} factsFor={() => ({ ownerName: 'Elwick Holdings LLC', viewerIsLeader: true })} viewerIsLeader />)
     expect(screen.getAllByTestId('lien-step-mark')).toHaveLength(4)
     // By row, not by place: the leader's approval leads the list since punch list #101 PR 3.
     const markOf = (key: string) => within(document.querySelector(`[data-lien-next-up-row="${key}"]`) as HTMLElement).getByTestId('lien-step-mark')
@@ -178,10 +178,10 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     fireEvent.mouseEnter(marks[2]!)
     const card = screen.getByTestId('lien-step-card')
     expect(card.getAttribute('data-place')).toBe('beside')
-    expect(screen.getByTestId('lien-step-card-title').textContent).toBe('652 · Take 5')
+    expect(screen.getByTestId('lien-step-card-title').textContent).toBe('652 · Tune 5')
     expect(screen.getByTestId('lien-step-card-deadline').textContent).toBe('In the mail by Oct 9 · 4 days left')
     expect(screen.getAllByTestId('lien-step-card-item').map((el) => el.getAttribute('data-state'))).toEqual(['done', 'done', 'now', 'todo'])
-    expect(card.textContent).toContain('Elbel Holdings LLC, from the property record.')
+    expect(card.textContent).toContain('Elwick Holdings LLC, from the property record.')
     expect(screen.getByTestId('lien-step-card-foot').textContent).toBe('Step 3 of 4 · 2 done · 2 to go')
     fireEvent.click(screen.getByTestId('lien-step-card-act'))
     expect(onAct).toHaveBeenCalledTimes(1)
@@ -208,8 +208,8 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
     const onOpenPaper = vi.fn()
     const rows = [
       row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
-      row({ key: 'notice:j2', jobId: 'j2', title: '651 · ATI Schertz II', action: 'approve', button: 'Approve' }),
-      row({ key: 'run:gc1', jobId: null, title: 'Loberg Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
+      row({ key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II', action: 'approve', button: 'Approve' }),
+      row({ key: 'run:gc1', jobId: null, title: 'Lowbeck Contracting', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } }),
       row({ key: 'retainage:j3', jobId: 'j3', kind: 'retainage', title: '700 · Retainage', action: 'draft', button: 'Draft notice', target: { open: 'retainage', jobId: 'j3' } }),
     ]
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenPaper={onOpenPaper} gapsFor={(r) => (r.jobId === 'j1' ? 1 : 0)} />)
@@ -293,11 +293,11 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
       { jobId: 'j7', title: '741 · Ridgeway', step: 2 as const, state: 'sent' as const, words: 'courtesy sent Nov 2 by email and text', day: 9, counted: true },
       { jobId: 'j8', title: '733 · Castell II', step: 3 as const, state: 'two_drafting' as const, words: 'the attorney’s letter · unresponsive · drafting', day: 16, counted: true },
       { jobId: 'j9', title: '729 · Pecan Grove II', step: 4 as const, state: 'paid' as const, words: 'paid', day: 30, counted: true },
-      { jobId: 'j10', title: '706 · Summit', step: 4 as const, state: 'owner_called' as const, words: 'owner called Nov 1', day: 22, counted: true },
+      { jobId: 'j10', title: '706 · Selwick', step: 4 as const, state: 'owner_called' as const, words: 'owner called Nov 1', day: 22, counted: true },
     ],
   }
   const rows = [
-    row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner', key: 'notice:j2', jobId: 'j2', title: '651 · ATI Schertz II' }),
+    row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner', key: 'notice:j2', jobId: 'j2', title: '651 · AXO Schertz II' }),
     row({ key: 'courtesy:j1', title: '744 · Castell', action: 'courtesy', button: 'Send a courtesy notice', sub: 'day 21 · nothing since the packet', dueOn: null, daysLeft: null, severity: 'red', target: { open: 'notices', jobId: 'j1', pile: 'sent' }, reminder: reminders.rows[0] }),
     row({ key: 'courtesy:j5', jobId: 'j5', title: '752 · Pecan Grove', action: 'courtesy', button: 'Send a courtesy notice', sub: 'day 29 · nothing since the packet', dueOn: null, daysLeft: null, severity: 'red', target: { open: 'notices', jobId: 'j5', pile: 'sent' }, reminder: reminders.rows[1] }),
   ]

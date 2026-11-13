@@ -31,7 +31,7 @@ export function arRecordedPaymentJobNumber(c: Pick<ArRecordedPaymentCandidate, '
   return (c.hcp_number ?? '').trim() || (c.click_number ?? '').trim()
 }
 
-/** One-line search label: "#941 Berg AirBnb — check $2,500.00 · 2026-07-22 · chk 1042". */
+/** One-line search label: "#941 Birkby AirBnb — check $2,500.00 · 2026-07-22 · chk 1042". */
 export function arRecordedPaymentSearchLabel(c: ArRecordedPaymentCandidate): string {
   const num = arRecordedPaymentJobNumber(c)
   const name = (c.job_name ?? '').trim()

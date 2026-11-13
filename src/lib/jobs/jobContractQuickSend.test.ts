@@ -49,10 +49,10 @@ import { quickSendJobContract } from './jobContractQuickSend'
 const BOOK = { id: 't1', document_name: 'Service agreement', book_body_html: '<p>New wording</p>', book_body_format: 'html', book_version_date: '2026-09-27' }
 const TERMS_NOW = { body_html: '<p>New wording</p>', body_format: 'html', template_document_id: 't1', template_name: 'Service agreement', template_version_date: '2026-09-27' }
 const STALE_DRAFT = { id: 'd1', job_id: 'j1', status: 'draft', voided_at: null, body_html: '<p>Old wording</p>', body_format: 'html', template_document_id: 't1', template_name: 'Service agreement', template_version_date: '2026-09-20' }
-const JOB = { id: 'j1', job_name: 'Mission Hills', customer_name: 'TF Harper', customer_phone: null, revenue: 1200, fixtures: [{ name: 'Water closet', count: 14, line_description: null }] } as unknown as JobWithDetails
+const JOB = { id: 'j1', job_name: 'Mission Flats', customer_name: 'TF Halden', customer_phone: null, revenue: 1200, fixtures: [{ name: 'Water closet', count: 14, line_description: null }] } as unknown as JobWithDetails
 
 function send(template: typeof BOOK | null = BOOK) {
-  return quickSendJobContract({ job: JOB, template, recipientEmail: 'kcallison@tfharper.com', recipientName: 'TF Harper', authUserId: 'u1' })
+  return quickSendJobContract({ job: JOB, template, recipientEmail: 'kc@tfhalden.example', recipientName: 'TF Halden', authUserId: 'u1' })
 }
 const ops = () => db.steps.map((s) => s.op)
 
@@ -110,7 +110,7 @@ describe('quickSendJobContract', () => {
   it('no live row: the draft is minted with the template’s terms, then sent', async () => {
     await expect(send()).resolves.toMatchObject({ ok: true })
     expect(ops()).toEqual(['read', 'insert', 'invoke'])
-    expect(db.steps[1]!.payload).toMatchObject({ ...TERMS_NOW, job_id: 'j1', status: 'draft', recipient_email: 'kcallison@tfharper.com', created_by: 'u1' })
+    expect(db.steps[1]!.payload).toMatchObject({ ...TERMS_NOW, job_id: 'j1', status: 'draft', recipient_email: 'kc@tfhalden.example', created_by: 'u1' })
     expect(db.steps[2]!.payload!.contract_id).toBe('new')
   })
 

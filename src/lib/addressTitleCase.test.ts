@@ -36,7 +36,7 @@ describe('titleCaseAddress', () => {
     expect(titleCaseAddress('11704 fm1117 seguin')).toBe('11704 FM1117 Seguin')
     expect(titleCaseAddress('3939 i35 south space 735')).toBe('3939 I35 South Space 735')
     expect(titleCaseAddress('10370 5TH e 498 universal city')).toBe('10370 5th E 498 Universal City')
-    expect(titleCaseAddress('150 e sonterra blvd 200b san antonio')).toBe('150 E Sonterra Blvd 200B San Antonio')
+    expect(titleCaseAddress('150 e sonmere blvd 200b san antonio')).toBe('150 E Sonmere Blvd 200B San Antonio')
   })
 
   it('keeps connective words small except at the start', () => {
@@ -51,8 +51,8 @@ describe('titleCaseAddress', () => {
 
   it('pattern rules survive adjacent punctuation (the sweep dry-run regression)', () => {
     expect(titleCaseAddress('11704 FM1117, Seguin, TX 78155')).toBe('11704 FM1117, Seguin, TX 78155')
-    expect(titleCaseAddress('150 E Sonterra Blvd 200B, San Antonio, TX 78258')).toBe(
-      '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+    expect(titleCaseAddress('150 E Sonmere Blvd 200B, San Antonio, TX 78258')).toBe(
+      '150 E Sonmere Blvd 200B, San Antonio, TX 78258',
     )
     expect(titleCaseAddress('11704 fm1117, seguin')).toBe('11704 FM1117, Seguin')
     expect(titleCaseAddress('(lockbox 4460)')).toBe('(Lockbox 4460)')

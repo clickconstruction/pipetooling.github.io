@@ -14,9 +14,9 @@ function raw(over: Partial<LienBookRaw> = {}): LienBookRaw {
     ],
     items: [],
     filings: [],
-    jobs: [{ id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl', gc_customer_id: 'gc-1', customer_address_id: 'addr-1', revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'no', lien_contract_ended_on: '2026-11-30' }],
-    gcs: [{ id: 'gc-1', name: 'Lenox', lien_notice_policy: null }],
-    addresses: [{ id: 'addr-1', customer_id: 'cust-1', address: '9703 Lenox Hl', county: 'Bexar', county_source: null, legal_description: 'CB 4696A BLOCK 3 LOT 36', owner_mode: 'building_owner', owner_name: 'R. Dudley', owner_company: '', owner_mailing_address: '9703 Lenox Hl', parcel_id: '', parcel_source: null, parcel_tax_year: null, parcel_looked_up_at: null, homestead: false, property_kind: 'residential', is_primary: true, note: '', sequence_order: 0, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' } as unknown as LienBookRaw['addresses'][number]],
+    jobs: [{ id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dunmere (Linmoor)', job_address: '9703 Linmor Hl', gc_customer_id: 'gc-1', customer_address_id: 'addr-1', revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'no', lien_contract_ended_on: '2026-11-30' }],
+    gcs: [{ id: 'gc-1', name: 'Linmor', lien_notice_policy: null }],
+    addresses: [{ id: 'addr-1', customer_id: 'cust-1', address: '9703 Linmor Hl', county: 'Bexar', county_source: null, legal_description: 'CB 4696A BLOCK 3 LOT 36', owner_mode: 'building_owner', owner_name: 'R. Dunmere', owner_company: '', owner_mailing_address: '9703 Linmor Hl', parcel_id: '', parcel_source: null, parcel_tax_year: null, parcel_looked_up_at: null, homestead: false, property_kind: 'residential', is_primary: true, note: '', sequence_order: 0, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' } as unknown as LienBookRaw['addresses'][number]],
     owners: [],
     ...over,
   }
@@ -27,19 +27,19 @@ describe('assembleLienBookInput', () => {
     const input = assembleLienBookInput(raw(), TODAY)
     expect(input.rows[0]).toEqual(expect.objectContaining({ approved_hours: 12, open_balance: 17585 }))
     const job = input.jobs['job-273']!
-    expect(job).toEqual(expect.objectContaining({ label: '273 · Dudley (Lennox)', gcName: 'Lenox', propertyKind: 'residential', county: 'Bexar', ownerName: 'R. Dudley', openBalance: 17585, isSub: true, paymentBond: 'no', contractEndedOn: '2026-11-30' }))
+    expect(job).toEqual(expect.objectContaining({ label: '273 · Dunmere (Linmoor)', gcName: 'Linmor', propertyKind: 'residential', county: 'Bexar', ownerName: 'R. Dunmere', openBalance: 17585, isSub: true, paymentBond: 'no', contractEndedOn: '2026-11-30' }))
     expect(input.policyByCustomer['gc-1']).toBeDefined()
     expect(input.todayYmd).toBe(TODAY)
   })
   it('the same fold feeds the book: one row for the job, on the GC, the affidavit as its next step', () => {
     const book = buildLienTimelineBook(assembleLienBookInput(raw(), TODAY))
     expect(book.rows).toHaveLength(1)
-    expect(book.gcs).toEqual([{ id: 'gc-1', name: 'Lenox', count: 1 }])
+    expect(book.gcs).toEqual([{ id: 'gc-1', name: 'Linmor', count: 1 }])
     expect(book.rows[0]!.timeline.next.kind).toBe('notice')
   })
   it('the demand letters ride through by job (v2.3880): the row’s strip carries the letter, a voided one is dropped, and a payload without them draws none', () => {
     const letter = (over: Record<string, unknown> = {}) =>
-      ({ id: 'd1', job_id: 'job-273', amount: 8940, created_at: '2026-09-14T16:00:00Z', created_by: null, deadline_date: '2026-09-28', debtor_party: 'gc', exhibits: [], fields: {}, invoice_ids: ['i1'], recipient_address: '', recipient_email: '', recipient_name: 'Lenox', sent_at: '2026-09-14T16:10:00Z', sent_method: 'certified', tracking_number: '', voided_at: null, ...over }) as unknown as NonNullable<LienBookRaw['demandLetters']>[number]
+      ({ id: 'd1', job_id: 'job-273', amount: 8940, created_at: '2026-09-14T16:00:00Z', created_by: null, deadline_date: '2026-09-28', debtor_party: 'gc', exhibits: [], fields: {}, invoice_ids: ['i1'], recipient_address: '', recipient_email: '', recipient_name: 'Linmor', sent_at: '2026-09-14T16:10:00Z', sent_method: 'certified', tracking_number: '', voided_at: null, ...over }) as unknown as NonNullable<LienBookRaw['demandLetters']>[number]
     const input = assembleLienBookInput(raw({ demandLetters: [letter(), letter({ id: 'old', voided_at: '2026-09-15T00:00:00Z' }), letter({ id: 'other', job_id: 'job-999' })] }), TODAY)
     expect(input.demandLettersByJob?.['job-273']).toHaveLength(2)
     const t = buildLienTimelineBook(input).rows[0]!.timeline

@@ -17,7 +17,7 @@ const entries: LegalEntryRow[] = [
   entry({ id: 'p-late', kind: 'plan', occurred_on: '2026-10-21', body: 'Call the GC’s AP desk', meta: { notes: '', source: 'office' } }),
   entry({ id: 'p-done', kind: 'plan', occurred_on: '2026-10-20', body: 'Pull the photos', meta: { notes: '', done_at: '2026-10-18', done_by: 'u1', source: 'office' } }),
   entry({ id: 'p-next', kind: 'plan', occurred_on: '2026-10-27', body: 'Send the response letter and settlement offer', meta: { notes: 'Certified mail and email.', source: 'office' } }),
-  entry({ id: 'p-held', kind: 'plan', occurred_on: '2026-11-03', body: 'Burd’s response date', meta: { notes: '', source: 'office' } }),
+  entry({ id: 'p-held', kind: 'plan', occurred_on: '2026-11-03', body: 'Brund’s response date', meta: { notes: '', source: 'office' } }),
 ]
 const docs = timelineDocumentsFromRows([{ id: 'd1', title: 'Final invoice 891', shows: 'The amount owed.', added_at: '2026-10-22T18:00:00Z', added_by: 'u1', held_reason: '' }], (iso) => iso.slice(0, 10), () => 'Grace')
 const timeline = (holds: Record<string, boolean> = {}) => buildLegalTimeline({ entries, documents: docs, todayYmd: TODAY, holds, holdReasons: { [planHoldKey('p-held')]: 'Not settled yet' }, userNameOf: () => 'Grace', reader: 'office' })
@@ -401,7 +401,7 @@ describe('LegalTimelinePanel · a document line’s two doors (v2.6166)', () => 
 describe('LegalTimelinePanel · a statement on the Said lane (punch list #220, v2.6209)', () => {
   const rows: LegalEntryRow[] = [
     entry({ id: 'st', kind: 'statement', occurred_on: '2026-09-03', body: 'Northline never called us back.', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u1', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', state: 'draft', prints: [], source: 'office' } }),
-    entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'I saw their men carrying PVC.', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd1', source: 'office' } }),
+    entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'I saw their men carrying PVC.', meta: { title: 'Declaration of Tobin Newell', affiant: { kind: 'witness', name: 'Tobin Newell', role: 'the foreman' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd1', source: 'office' } }),
   ]
   const t = (reader: 'office' | 'firm') => buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader, userNameOf: () => 'Grace' })
 
@@ -470,7 +470,7 @@ describe('LegalTimelinePanel · swear a statement from the line (punch list #220
 describe('LegalTimelinePanel · a signed statement’s doors (punch list #220, v2.6212)', () => {
   it('a signed row opens its scan and lands on Evidence; a draft offers File the signed copy… into the window', async () => {
     const rows: LegalEntryRow[] = [
-      entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'x', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd-scan' } }),
+      entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'x', meta: { title: 'Declaration of Tobin Newell', affiant: { kind: 'witness', name: 'Tobin Newell' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd-scan' } }),
       entry({ id: 'st-draft', kind: 'statement', occurred_on: '2026-09-03', body: 'x', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] } }),
     ]
     const openDoc = vi.fn(async () => {})

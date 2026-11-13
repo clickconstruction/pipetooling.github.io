@@ -31,7 +31,7 @@ function collectionsJob(id: string, hcp: string, amount: number) {
     collections_at: '2026-08-20T15:00:00Z',
     collections_note: id === 'job-a' ? 'Customer is engaging in theft of service.' : null,
     customer_id: 'tle',
-    customer_name: 'The Learning Experience',
+    customer_name: 'The Reading Corner',
     customer_email: 'aaron@tle.test',
     invoices: [makeInvoice({ id: `inv-${id}`, job_id: id, amount, status: 'billed', billed_at: '2026-04-17T12:00:00Z', stripe_invoice_status: 'open' })],
   })
@@ -61,7 +61,7 @@ describe('LegalDesk', () => {
     await settle()
     // A page since punch list #182: a named region, not a dialog.
     expect(screen.getByRole('region', { name: /^Legal Desk/ })).toBeTruthy()
-    expect(screen.getAllByText('The Learning Experience').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('The Reading Corner').length).toBeGreaterThan(0)
     expect(screen.getByText(/1 account · \$8,982\.00/)).toBeTruthy()
     // v2.5851: six tabs; the Record of contact is the Timeline's Said lane and Fees & steps reads With the firm.
     for (const label of ['Narrative', 'Account', 'Paper', 'Evidence', 'With the firm', 'Timeline']) expect(screen.getByRole('tab', { name: label })).toBeTruthy()
@@ -83,7 +83,7 @@ describe('LegalDesk', () => {
     const parties = document.querySelector('[data-legal-parties]')!
     expect(parties).toBeTruthy()
     expect([...parties.querySelectorAll('[data-legal-party]')].map((b) => b.getAttribute('data-legal-party'))).toEqual(['contract', 'owner', 'venue'])
-    expect(parties.querySelector('[data-legal-party="contract"]')!.textContent).toContain('The Learning Experience')
+    expect(parties.querySelector('[data-legal-party="contract"]')!.textContent).toContain('The Reading Corner')
     expect(parties.querySelector('[data-legal-party="owner"]')!.getAttribute('data-legal-party-amber')).toBe('true')
     expect(document.querySelector('[data-legal-account-line]')!.textContent).toMatch(/^717 · 718/)
     expect(document.querySelector('[data-legal-venue-line]')).toBeNull()
@@ -116,7 +116,7 @@ describe('LegalDesk', () => {
   })
 
   it('the Map opened from the venue press lists the county, holds the case and draws its venue block (v2.6174, punch list #219)', () => {
-    const c = { id: 'case-1', key: 'c:tle', name: 'The Learning Experience', balance: 7502, jobLabels: '717', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: 30.5, lng: -97.8, county: 'Williamson', countyFrom: 'record' } as unknown as Parameters<typeof LegalDeskMapView>[0]['cases'][number]
+    const c = { id: 'case-1', key: 'c:tle', name: 'The Reading Corner', balance: 7502, jobLabels: '717', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: 30.5, lng: -97.8, county: 'Williamson', countyFrom: 'record' } as unknown as Parameters<typeof LegalDeskMapView>[0]['cases'][number]
     const venue: VenueBlock = { title: 'Venue for job 717', places: [{ basis: 'work', label: 'Where the work was done', main: 'Williamson County · justice precinct not yet', quiet: '1 Main St · the county from the property record', county: 'Williamson', jobLabels: ['717'] }], rules: ['$7,502.00 is within the justice court limit.'], source: 'County from the property record.' }
     renderWithProviders(<LegalDeskMapView cases={[c]} loading={false} firms={[]} coverage={new Map()} onOpenCase={noop} openOn={{ county: 'Williamson', heldId: 'case-1', nonce: 1 }} venueFor={(x) => (x.key === 'c:tle' ? venue : null)} />)
     expect(document.querySelector('[data-legal-county-card="Williamson"]')).toBeTruthy()
@@ -294,7 +294,7 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
 
   it('the firm’s window opens on where it covers, and Show on the desk map opens the Map with the firm lit (v2.6195, punch list #222 PR 1)', async () => {
     // The smoke's account names no county; a matter already with the firm keeps its firm in the header whatever the counties say.
-    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: firm.id, stage: 'referred', handling_name: '', note_to_firm: '', released_at: '2026-10-20T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-20T00:00:00Z', updated_at: '2026-10-20T00:00:00Z' }
+    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Reading Corner', firm_id: firm.id, stage: 'referred', handling_name: '', note_to_firm: '', released_at: '2026-10-20T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-20T00:00:00Z', updated_at: '2026-10-20T00:00:00Z' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]), countiesByFirm: new Map([[firm.id, ['Bexar', 'Comal']]]) } as never} canMarkReady canEditReview />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
@@ -344,7 +344,7 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(screen.getByText('Given up on — not for the firm')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Mark attorney ready/ })).toBeNull()
     // The chased account keeps the desk's usual header (the smoke has no legal tables, so that is the read-only note).
-    fireEvent.click(screen.getByRole('button', { name: /The Learning Experience/ }))
+    fireEvent.click(screen.getByRole('button', { name: /The Reading Corner/ }))
     await settle()
     expect(screen.queryByText('Given up on — not for the firm')).toBeNull()
     expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
@@ -382,7 +382,7 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(legendRow.textContent).toContain('2 counties · Bexar, Comal')
     expect(legendRow.textContent).toContain('0 cases')
     expect(document.querySelector('[data-legal-map-legend-row="none"]')!.textContent).toContain('1 case')
-    expect(document.querySelector('[data-legal-map-flag]')!.textContent).toMatch(/1 case in a county no firm covers · The Learning Experience \(off the map\)/)
+    expect(document.querySelector('[data-legal-map-flag]')!.textContent).toMatch(/1 case in a county no firm covers · The Reading Corner \(off the map\)/)
     expect(document.querySelector('[data-legal-map-summary]')!.textContent).toBe('1 account · 2 jobs · $8,982.00 open')
     expect(document.querySelector('[data-legal-county-card]')!.textContent).toContain('Tap a county to see the cases in it.')
     // v2.6195 (punch list #222, PR 1): a firm's row is a press that lights it alone, and again lights every firm.
@@ -402,7 +402,7 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
 describe('LegalDesk · the firm’s entries waiting on the office', () => {
   const firm = { id: 'firm-1', name: 'Sample Law', handling_name: 'Sample Counsel', email: 'counsel@sample-law.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
   const base = { available: true, loading: false, firm, firms: [firm], activeFirms: [firm], countiesByFirm: new Map(), byJobId: new Map(), documentsByMatter: new Map(), recipients: [], firmPaused: false, readState: 'ok' as const, reload: async () => {} }
-  const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: 'firm-1', stage: 'demand', handling_name: 'Sample Counsel', note_to_firm: '', released_at: '2026-10-01T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' }
+  const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Reading Corner', firm_id: 'firm-1', stage: 'demand', handling_name: 'Sample Counsel', note_to_firm: '', released_at: '2026-10-01T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' }
   const entry = (id: string, kind: string, created_at: string, over: Record<string, unknown> = {}) => ({ id, matter_id: 'm-1', kind, amount: null, body: `${kind} ${id}`, occurred_on: created_at.slice(0, 10), meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at, ...over })
   afterEach(() => {
     vi.useRealTimers()
@@ -442,7 +442,7 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.queryByRole('dialog', { name: 'Run it in house' })).toBeNull()
   })
   it('in house: the pill, Back to review, the offers log on Fees & steps, and Question for counsel…', async () => {
-    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
+    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Reading Corner', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
     // v2.6193: the pill says the day alone; the reason sits under the account's name.

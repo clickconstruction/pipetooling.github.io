@@ -58,7 +58,7 @@ const defaultHandler: Handler = (c) => {
 }
 
 const A: PacketAfter = { key: 'gc-a', name: 'Acme', outcome: null, sentOn: '2026-09-01', versionIds: ['va'] }
-const B: PacketAfter = { key: 'gc-b', name: 'Burd', outcome: null, sentOn: '2026-09-02', versionIds: ['vb'] }
+const B: PacketAfter = { key: 'gc-b', name: 'Brund', outcome: null, sentOn: '2026-09-02', versionIds: ['vb'] }
 const C: PacketAfter = { key: 'gc-c', name: 'Cortez', outcome: null, sentOn: null, versionIds: ['vc'] } // never sent
 const S: PacketAfter = { key: 'shared:1', name: 'Shared', outcome: null, sentOn: '2026-09-01', versionIds: ['va'], sharedLetter: true }
 const ACTOR = { userId: 'u-1', role: 'estimator', path: 'board' as const }
@@ -124,7 +124,7 @@ describe('marking a packet lost', () => {
 describe('marking a packet won — the cascade', () => {
   it('snapshots first, writes the winner, auto-loses the sent unanswered siblings, rolls the bid, notes it, and keeps the snapshot for undo', async () => {
     const res = await setGcPacketOutcome({ bidId: 'bid-1', bidOutcome: null, versionIds: ['va'], outcome: 'won', packetsAfter: [{ ...A, outcome: 'won' }, B, C, S], actor: ACTOR })
-    expect(res).toEqual({ error: null, bidOutcomeSet: 'won', autoLost: ['Burd'] })
+    expect(res).toEqual({ error: null, bidOutcomeSet: 'won', autoLost: ['Brund'] })
 
     // 1. read the rows the cascade will touch — the winner and the auto-lost sibling, not the unsent or shared ones
     expect(method(calls[0]!)).toBe('select')
@@ -138,11 +138,11 @@ describe('marking a packet won — the cascade', () => {
     expect(first(calls[3]!).args).toEqual([{ outcome: 'won' }])
     const note = first(calls[4]!).args[0] as Record<string, unknown>
     expect(note).toMatchObject({ bid_id: 'bid-1', gc_customer_id: 'gc-a', created_by: 'u-1', contact_method: null })
-    expect(note.notes).toBe('Marked Won via packet — Acme · siblings marked Lost: Burd (GC lost the project) · bid marked Won.')
+    expect(note.notes).toBe('Marked Won via packet — Acme · siblings marked Lost: Brund (GC lost the project) · bid marked Won.')
     expect(recordNavClick).toHaveBeenCalledWith('u-1', 'estimator', 'bid_outcome_set', '#board:won')
 
     const snap = peekWonCascadeSnapshot('bid-1')
-    expect(snap).toMatchObject({ bidId: 'bid-1', targetKey: 'gc-a', targetVersionIds: ['va'], autoLostNames: ['Burd'], bidOutcomeBefore: null, bidOutcomeWritten: true, source: 'session' })
+    expect(snap).toMatchObject({ bidId: 'bid-1', targetKey: 'gc-a', targetVersionIds: ['va'], autoLostNames: ['Brund'], bidOutcomeBefore: null, bidOutcomeWritten: true, source: 'session' })
     expect(snap?.versions.map((v) => v.id)).toEqual(['va', 'vb'])
   })
 
@@ -155,7 +155,7 @@ describe('marking a packet won — the cascade', () => {
 
   it('a bid already Won or Started is not rolled again; the packet still records', async () => {
     const res = await setGcPacketOutcome({ bidId: 'bid-1', bidOutcome: 'started_or_complete', versionIds: ['va'], outcome: 'won', packetsAfter: [{ ...A, outcome: 'won' }, B] })
-    expect(res).toEqual({ error: null, bidOutcomeSet: null, autoLost: ['Burd'] })
+    expect(res).toEqual({ error: null, bidOutcomeSet: null, autoLost: ['Brund'] })
     expect(writes()).toEqual(['bid_versions:update', 'bid_versions:update'])
     expect(peekWonCascadeSnapshot('bid-1')?.bidOutcomeWritten).toBe(false)
   })
@@ -163,7 +163,7 @@ describe('marking a packet won — the cascade', () => {
   it('a bid update that touches no rows (RLS) is reported, after the packets were already written', async () => {
     bidUpdateApplies = false
     const res = await setGcPacketOutcome({ bidId: 'bid-1', bidOutcome: null, versionIds: ['va'], outcome: 'won', packetsAfter: [{ ...A, outcome: 'won' }, B], actor: ACTOR })
-    expect(res).toEqual({ error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost: ['Burd'] })
+    expect(res).toEqual({ error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost: ['Brund'] })
     expect(writes()).toEqual(['bid_versions:update', 'bid_versions:update', 'bids:update'])
     expect(recordNavClick).not.toHaveBeenCalled()
   })
@@ -188,15 +188,15 @@ describe('undoing a win ("↩ waiting" on the winner)', () => {
     recordNavClick.mockClear()
 
     const res = await setGcPacketOutcome({ bidId: 'bid-1', bidOutcome: 'won', versionIds: ['va'], outcome: null, previousOutcome: 'won', packetsAfter: [A, { ...B, outcome: 'lost' }], actor: ACTOR })
-    expect(res).toEqual({ error: null, bidOutcomeSet: null, autoLost: [], undone: { restoredSiblings: ['Burd'], bidOutcomeRestoredTo: null } })
+    expect(res).toEqual({ error: null, bidOutcomeSet: null, autoLost: [], undone: { restoredSiblings: ['Brund'], bidOutcomeRestoredTo: null } })
     expect(writes()).toEqual(['bid_versions:update', 'bid_versions:update', 'bids:update', 'bids_submission_entries:insert'])
     expect(first(calls[0]!).args).toEqual([{ outcome: null, outcome_at: null, loss_category: null }])
     expect(arg(calls[0]!, 'in')).toEqual(['id', ['va']])
-    expect(first(calls[1]!).args).toEqual([{ outcome: null, outcome_at: null, loss_category: null }]) // Burd back to what it was
+    expect(first(calls[1]!).args).toEqual([{ outcome: null, outcome_at: null, loss_category: null }]) // Brund back to what it was
     expect(arg(calls[1]!, 'in')).toEqual(['id', ['vb']])
     expect(first(calls[2]!).args).toEqual([{ outcome: null }])
     expect(calls[2]!.steps.filter((s) => s.method === 'eq').map((s) => s.args)).toEqual([['id', 'bid-1'], ['outcome', 'won']]) // only un-roll a bid that still reads won
-    expect((first(calls[3]!).args[0] as { notes: string }).notes).toBe('Won undone via packet — Acme back to waiting · Burd back to waiting · bid back to Not set.')
+    expect((first(calls[3]!).args[0] as { notes: string }).notes).toBe('Won undone via packet — Acme back to waiting · Brund back to waiting · bid back to Not set.')
     expect(recordNavClick).toHaveBeenCalledWith('u-1', 'estimator', 'bid_outcome_set', '#board:undone')
     expect(peekWonCascadeSnapshot('bid-1')).toBeNull()
   })

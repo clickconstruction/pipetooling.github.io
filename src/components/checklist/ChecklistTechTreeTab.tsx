@@ -27,6 +27,7 @@ import { supabase } from '../../lib/supabase'
 import { writeTaskLines } from '../../lib/taskLinesIo'
 import { setRoadmapTaskPercent, setTaskPercent } from '../../lib/taskProgressIo'
 import { fractionWords, stageFraction } from '../../lib/taskProgress'
+import { taskPlaceColumns, type TaskPlaceDraft } from '../../lib/tasks/taskPlace'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   layoutTechTreeFlow,
@@ -1009,7 +1010,7 @@ export function ChecklistTechTreeTab({
   }, [treeEdges, groups, linksSearchQuery])
 
   const addTaskToGroup = useCallback(
-    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false): Promise<boolean> => {
+    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false, place: TaskPlaceDraft | null = null): Promise<boolean> => {
       if (!canEditStructure || !authUserId || !title.trim()) return false
       try {
         setError(null)
@@ -1025,6 +1026,8 @@ export function ChecklistTechTreeTab({
                 sort_index: max + 1,
                 // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
                 ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
+                // A place (#328, PR 5) is written only when one is set; the columns are younger than the generated types.
+                ...(place ? (taskPlaceColumns(place, authUserId, new Date().toISOString()) as Record<string, unknown>) : {}),
               })
               .select('id')
               .single(),
@@ -2302,9 +2305,9 @@ export function ChecklistTechTreeTab({
         users={users}
         currentUserId={authUserId}
         onClose={() => setAddTaskModalGroupId(null)}
-        onSave={async (title, assigneeUserIds, lines, asksForPhoto) => {
+        onSave={async (title, assigneeUserIds, lines, asksForPhoto, place) => {
           if (addTaskModalGroupId) {
-            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto)
+            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto, place)
           }
           return false
         }}

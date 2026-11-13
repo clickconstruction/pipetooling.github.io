@@ -62,6 +62,14 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-jobs')).toEqual({ tabId: 'settings-jobs', anchorId: null })
   })
 
+  it('a hash that repeats the tab lands on the card of that name: Most recent notifications sits under an owner’s sent emails', () => {
+    expect(resolveSettingsDeepLink('?tab=settings-recent-push', '#settings-recent-push')).toEqual({
+      tabId: 'settings-recent-push',
+      anchorId: 'settings-recent-push',
+    })
+    expect(resolveSettingsDeepLink('?tab=settings-recent-push', '')).toEqual({ tabId: 'settings-recent-push', anchorId: null })
+  })
+
   it('?tab= wins over a tab-shaped hash, but a section anchor still scrolls', () => {
     expect(resolveSettingsDeepLink('?tab=settings-data', '#settings-jobs')).toEqual({
       tabId: 'settings-data',

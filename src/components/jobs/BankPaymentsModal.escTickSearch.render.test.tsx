@@ -30,9 +30,9 @@ const deposit = (id: string, name: string, amount: number, postedAt: string) => 
 })
 
 const DEPOSITS = [
-  deposit('mtx-drf', 'DRF', 250, '2026-09-29T15:00:00Z'),
-  // The new check from Southern Post, after theirs came back.
-  deposit('mtx-sp-new', 'SOUTHERN POST CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
+  deposit('mtx-dlf', 'DLF', 250, '2026-09-29T15:00:00Z'),
+  // The new check from Southern Pine, after theirs came back.
+  deposit('mtx-sp-new', 'SOUTHERN PINE CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
 ]
 
 const caseRow = (over: Record<string, unknown>) => ({
@@ -54,13 +54,13 @@ const caseRow = (over: Record<string, unknown>) => ({
 const CASES = [
   caseRow({
     mercury_transaction_id: 'mtx-sp',
-    counterparty_name: 'Southern Post',
+    counterparty_name: 'Southern Pine',
     amount: 13680,
     posted_at: '2026-09-18T22:00:58Z',
     failed_at: '2026-09-23T15:00:00Z',
     opened_at: '2026-09-23T15:00:00Z',
     bank_reason: 'Insufficient funds',
-    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
+    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
   }),
   caseRow({
     mercury_transaction_id: 'mtx-kcg',
@@ -71,8 +71,8 @@ const CASES = [
     opened_at: '2026-09-29T15:00:00Z',
     bank_reason: 'Stop payment',
     live_payments: [
-      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
-      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Springtown', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
+      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
+      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Stonewick', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
     ],
   }),
 ]
@@ -84,7 +84,7 @@ const TRAILS = [
     live: false,
     job_id: 'job-878',
     job_number: '878',
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     invoice_id: 'inv-878',
     amount: 13680,
     applied_at: '2026-09-21T16:00:00Z',
@@ -149,9 +149,9 @@ function job878(): JobWithDetails {
     status: 'billed',
     hcp_number: '878',
     click_number: null,
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     job_address: '1 Main St, Seguin, TX',
-    customer_name: 'Southern Post',
+    customer_name: 'Southern Pine',
     revenue: 38625,
     payments_made: 0,
     materials: [],
@@ -181,7 +181,7 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
     await open(onClose)
     fireEvent.click(screen.getByRole('button', { name: 'More Accounts Receivable options' }))
     fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Mark returned deposits/ }))
-    fireEvent.click(await screen.findByLabelText('Returned: DRF'))
+    fireEvent.click(await screen.findByLabelText('Returned: DLF'))
     await screen.findByTestId('ar-mark-ask')
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByTestId('ar-mark-ask')).toBeNull())
@@ -193,7 +193,7 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
   it('Esc closes They said… first, then the window', async () => {
     const onClose = vi.fn()
     await open(onClose)
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
     fireEvent.click(within(pane).getByTestId('ar-return-case-they-said'))
     const dialogs = () => screen.getAllByRole('dialog').length
@@ -210,10 +210,10 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
     await screen.findByTestId('ar-return-case-pane')
     fireEvent.click(screen.getByRole('button', { name: 'More Accounts Receivable options' }))
     fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Mark returned deposits/ }))
-    fireEvent.click(await screen.findByLabelText('Returned: DRF'))
+    fireEvent.click(await screen.findByLabelText('Returned: DLF'))
     fireEvent.click(within(await screen.findByTestId('ar-mark-ask')).getByRole('button', { name: 'Yes, it bounced' }))
     await waitFor(() => expect(calls.rpc.map((c) => c.fn)).toEqual(['set_mercury_transaction_ar_returned']))
-    await waitFor(() => expect(screen.queryByLabelText('Returned: DRF')).toBeNull())
+    await waitFor(() => expect(screen.queryByLabelText('Returned: DLF')).toBeNull())
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20))
     })
@@ -226,9 +226,9 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
     let release: () => void = () => {}
     calls.holdHidden = new Promise<void>((r) => (release = r))
     await open()
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
-    fireEvent.change(screen.getByLabelText(/Search bank transactions/), { target: { value: 'weiss' } })
+    fireEvent.change(screen.getByLabelText(/Search bank transactions/), { target: { value: 'welby' } })
     await waitFor(() => expect(calls.hidden).toBe(1))
     // A case write refreshes the list while that read is still out.
     fireEvent.click(within(pane).getByRole('button', { name: /More/ }))
@@ -250,9 +250,9 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
     calls.holdHidden = null
     await open()
     const box = screen.getByLabelText(/Search bank transactions/) as HTMLInputElement
-    fireEvent.change(box, { target: { value: 'weiss' } })
+    fireEvent.change(box, { target: { value: 'welby' } })
     const nowhere = await screen.findByTestId('ar-search-nowhere')
-    expect(nowhere.textContent).toBe('No bank transactions match ‘weiss’ here or in All. Clear the search')
+    expect(nowhere.textContent).toBe('No bank transactions match ‘welby’ here or in All. Clear the search')
     fireEvent.click(within(nowhere).getByRole('button', { name: 'Clear the search' }))
     expect(box.value).toBe('')
     await waitFor(() => expect(screen.queryByTestId('ar-search-nowhere')).toBeNull())

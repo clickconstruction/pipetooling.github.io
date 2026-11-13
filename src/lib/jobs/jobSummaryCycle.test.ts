@@ -21,10 +21,10 @@ const mk = (id: string, o: { lastWork?: string; billed?: string[]; paid?: string
 })
 const rows = enrichJobSummaryRows({
   rows: [
-    mk('a', { lastWork: '2026-08-01', billed: ['2026-08-05'], paid: ['2026-08-25'], status: 'paid', gc: 'Knight' }),
-    mk('b', { lastWork: '2026-08-10', billed: ['2026-08-10'], paid: ['2026-09-19'], status: 'paid', gc: 'Palmer' }),
-    mk('c', { lastWork: '2026-08-12', billed: ['2026-08-20'], status: 'billed', gc: 'Palmer' }),
-    mk('d', { lastWork: '2026-07-20', billed: ['2026-07-18'], paid: ['2026-08-01'], status: 'paid', gc: 'Knight' }), // billed before last work → 0
+    mk('a', { lastWork: '2026-08-01', billed: ['2026-08-05'], paid: ['2026-08-25'], status: 'paid', gc: 'Kestrin' }),
+    mk('b', { lastWork: '2026-08-10', billed: ['2026-08-10'], paid: ['2026-09-19'], status: 'paid', gc: 'Palvern' }),
+    mk('c', { lastWork: '2026-08-12', billed: ['2026-08-20'], status: 'billed', gc: 'Palvern' }),
+    mk('d', { lastWork: '2026-07-20', billed: ['2026-07-18'], paid: ['2026-08-01'], status: 'paid', gc: 'Kestrin' }), // billed before last work → 0
     mk('e', { lastWork: '2026-08-30', status: 'working' }),
   ],
   reportPctByJobId: new Map(),
@@ -49,7 +49,7 @@ describe('cycle (v2.2823)', () => {
 
   it('derives the two lags per job from last work, first bill, and the paid date', () => {
     const c = jobCycleRows(rows, null)
-    expect(c[0]).toMatchObject({ number: 'a', workToBillDays: 4, billToPaidDays: 20, gcLabel: 'Knight' })
+    expect(c[0]).toMatchObject({ number: 'a', workToBillDays: 4, billToPaidDays: 20, gcLabel: 'Kestrin' })
     expect(c[1]).toMatchObject({ workToBillDays: 0, billToPaidDays: 40 })
     expect(c[2]).toMatchObject({ workToBillDays: 8, billToPaidDays: null, paidYmd: null })
     expect(c[3]).toMatchObject({ workToBillDays: 0, billToPaidDays: 14 })
@@ -62,7 +62,7 @@ describe('cycle (v2.2823)', () => {
     expect(s.paidJobs).toBe(3)
     expect(s.medianWorkToBill).toBe(2)
     expect(s.medianBillToPaid).toBe(20)
-    expect(s.slowestPayer).toEqual({ label: 'Knight', medianDays: 17, jobs: 2 })
+    expect(s.slowestPayer).toEqual({ label: 'Kestrin', medianDays: 17, jobs: 2 })
     expect(s.fastestPayer).toBeNull()
   })
 
@@ -76,7 +76,7 @@ describe('cycle (v2.2823)', () => {
 
   it('lists open jobs idle at least N days, longest first, skipping billed and paid', () => {
     const jobs = [
-      { id: 'x', hcp_number: '901', job_name: 'Open old', status: 'working', last_work_date: '2026-08-01', revenue: 5000, gcCustomer: { name: 'Knight' } },
+      { id: 'x', hcp_number: '901', job_name: 'Open old', status: 'working', last_work_date: '2026-08-01', revenue: 5000, gcCustomer: { name: 'Kestrin' } },
       { id: 'y', hcp_number: '902', job_name: 'Open fresh', status: 'working', last_work_date: '2026-08-30', revenue: 800 },
       { id: 'z', hcp_number: '903', job_name: 'Billed', status: 'billed', last_work_date: '2026-06-01', revenue: 900 },
       { id: 'w', hcp_number: '904', job_name: 'Never worked', status: 'working', last_work_date: null, created_at: '2026-07-01T10:00:00Z', revenue: 1200 },
@@ -85,7 +85,7 @@ describe('cycle (v2.2823)', () => {
     const stale = staleOpenJobs(jobs, '2026-09-05', 21, null)
     expect(stale.map((s) => [s.number, s.idleDays, s.gcLabel])).toEqual([
       ['904', 66, 'Direct'],
-      ['901', 35, 'Knight'],
+      ['901', 35, 'Kestrin'],
     ])
     expect(staleOpenJobs(jobs, '2026-09-05', 5, null).map((s) => s.number)).toEqual(['904', '901', '902'])
   })

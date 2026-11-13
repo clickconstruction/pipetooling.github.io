@@ -45,7 +45,7 @@ export function sheetMoney(sheet: Pick<LaborJob, 'items' | 'payments' | 'labor_r
   return { totalCost, paid, backcharges, balance: totalCost - paid - backcharges }
 }
 
-/** `880 Reliant Health-HVAC` · `880` · `Reliant Health-HVAC` · the address — whatever the sheet has. */
+/** `880 Relwyn Health-HVAC` · `880` · `Relwyn Health-HVAC` · the address — whatever the sheet has. */
 export function sheetLabel(sheet: Pick<LaborJob, 'job_number' | 'job_ledger_id' | 'address'>, jobNamesById: Record<string, string>): string {
   const num = (sheet.job_number ?? '').trim()
   const name = sheet.job_ledger_id ? (jobNamesById[sheet.job_ledger_id] ?? '').trim() : ''
@@ -149,7 +149,7 @@ export type SubPaymentTraceLine = {
   /** YYYY-MM-DD of the event. */
   date: string
   amount: number
-  /** `Moved → 922 Michael Palmer · Taunya · wrong job` */
+  /** `Moved → 922 Michael Palvern · Taunya · wrong job` */
   text: string
   /** The sheet on the other end of a move, when there is one. */
   otherSheetId: string | null

@@ -76,7 +76,7 @@ describe('the row from its parts', () => {
     expect(submittedParts(lav1).map((p) => p.id)).toEqual(['tsl', 'faucet', 'soap'])
     expect(rollUpFromParts(lav1)).toEqual({ submitted_label: 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES + TOTO T25S51E#CP + BOBRICK B-8236', supply_house_id: 'h-moore', lead_time_days: 42 })
     expect(partHouseIds(lav1)).toEqual(['h-moore', 'h-reece'])
-    expect(assemblyLine([{ assembly: 'LAV 1 assembly SPACEX' }, { assembly: 'LAV 1 assembly SPACEX' }, { assembly: null }])).toBe('from LAV 1 assembly SPACEX')
+    expect(assemblyLine([{ assembly: 'LAV 1 assembly SKYLAB' }, { assembly: 'LAV 1 assembly SKYLAB' }, { assembly: null }])).toBe('from LAV 1 assembly SKYLAB')
     expect(assemblyLine([{ assembly: null }])).toBe('')
   })
 
@@ -88,13 +88,13 @@ describe('the row from its parts', () => {
 })
 
 describe('parts from the takeoff, carried to the next revision', () => {
-  const piece = (key: string, label: string, extra: Partial<ProductPiece> = {}): ProductPiece => ({ key, label, partId: `p-${key}`, partTypeName: null, trim: false, houseId: null, houseName: null, quantity: 1, lineId: 'l-1', templateItemId: `i-${key}`, assembly: 'LAV 1 assembly SPACEX', manufacturer: null, ...extra })
+  const piece = (key: string, label: string, extra: Partial<ProductPiece> = {}): ProductPiece => ({ key, label, partId: `p-${key}`, partTypeName: null, trim: false, houseId: null, houseName: null, quantity: 1, lineId: 'l-1', templateItemId: `i-${key}`, assembly: 'LAV 1 assembly SKYLAB', manufacturer: null, ...extra })
 
   it('every piece is a part; the switched-on ones are on the submittal, the rest order only', () => {
     const rows = partsFromPieces([piece('tsl', 'TSL.MON…'), piece('supply', 'SUPPLY', { trim: true, quantity: 2, houseId: 'h-moore' })], ['tsl'], 'item-9', 'bid-9')
     expect(rows).toEqual([
-      { item_id: 'item-9', bid_id: 'bid-9', sequence_order: 1, label: 'TSL.MON…', manufacturer: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: 'p-tsl', source_line_id: 'l-1', source_template_item_id: 'i-tsl', assembly: 'LAV 1 assembly SPACEX', supply_house_id: null },
-      { item_id: 'item-9', bid_id: 'bid-9', sequence_order: 2, label: 'SUPPLY', manufacturer: null, quantity: 2, on_submittal: false, source: 'takeoff', part_id: 'p-supply', source_line_id: 'l-1', source_template_item_id: 'i-supply', assembly: 'LAV 1 assembly SPACEX', supply_house_id: 'h-moore' },
+      { item_id: 'item-9', bid_id: 'bid-9', sequence_order: 1, label: 'TSL.MON…', manufacturer: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: 'p-tsl', source_line_id: 'l-1', source_template_item_id: 'i-tsl', assembly: 'LAV 1 assembly SKYLAB', supply_house_id: null },
+      { item_id: 'item-9', bid_id: 'bid-9', sequence_order: 2, label: 'SUPPLY', manufacturer: null, quantity: 2, on_submittal: false, source: 'takeoff', part_id: 'p-supply', source_line_id: 'l-1', source_template_item_id: 'i-supply', assembly: 'LAV 1 assembly SKYLAB', supply_house_id: 'h-moore' },
     ])
   })
 

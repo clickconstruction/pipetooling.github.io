@@ -1,5 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
-import { failureQueues, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
+import { failureQueues, type BidPhotosPayload, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -29,6 +29,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'task-photo': 'task_photo',
   /** Never sent to the RPC: a counter ticket lands through its table's own policies and guard (`landCounterTicket`). */
   'counter-ticket': 'counter_ticket',
+  /** Never sent to the RPC: a bid photos press lands through the table's own policies (`landBidPhotos`). */
+  'bid-photos': 'bid_photos',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -65,6 +67,10 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
     case 'counter-ticket': {
       const p = press.payload as CounterTicketPayload
       return { ticket_id: p.ticketId, job_id: p.jobId, page_ids: p.photos.map((ph) => ph.id) }
+    }
+    case 'bid-photos': {
+      const p = press.payload as BidPhotosPayload
+      return { bid_id: p.bidId, photo_ids: p.photos.map((ph) => ph.id) }
     }
   }
 }
@@ -170,6 +176,30 @@ export async function landJobPhotos(press: OutboxPress, io: LandJobPhotosIo = {}
   }
 }
 
+export type LandBidPhotosIo = {
+  land?: (writes: ReadonlyArray<{ id: string; name: string }>) => Promise<unknown>
+}
+
+/**
+ * A bid photos press lands without the RPC (punch list #306, PR 8): its rows already exist under the phone-minted ids
+ * (the replay sent each kept shot's bytes and row first, `sendKeptPhotos`), so landing is the same update the window
+ * makes online, the name and `added_at` on each sent row, under the table's own policies; a row an earlier try added
+ * is left as it is, so a repeat counts once and the sweep never files a photo twice. A shot whose bytes were lost
+ * with the phone's data is off the press by now, and the rest still land. The outcome is classed as any press's: a
+ * lost signal or a timeout fails and waits, a refusal keeps the server's reason.
+ */
+export async function landBidPhotos(press: OutboxPress, io: LandBidPhotosIo = {}): Promise<LandOutcome> {
+  try {
+    const land = io.land ?? (await import('../bids/bidPhotosIo')).landBidPhotoRows
+    const p = press.payload as BidPhotosPayload
+    const writes = p.photos.filter((ph) => ph.sent).map((ph) => ({ id: ph.id, name: ph.name }))
+    const result = await withOperationTimeout(land(writes), LAND_TIMEOUT_MS, 'Add photos')
+    return { kind: 'landed', result: { bid_id: p.bidId, ...(result && typeof result === 'object' ? result : {}) } }
+  } catch (e) {
+    return outcomeOfFailure(e)
+  }
+}
+
 function online(): boolean {
   return typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean' ? true : navigator.onLine
 }
@@ -189,6 +219,7 @@ export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
   if (press.kind === 'checklist-sign') return landChecklistSign(press)
   if (press.kind === 'task-photo') return landTaskPhoto(press)
   if (press.kind === 'counter-ticket') return landCounterTicket(press)
+  if (press.kind === 'bid-photos') return landBidPhotos(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')

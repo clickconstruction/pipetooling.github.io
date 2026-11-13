@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { newPress, type OutboxPress } from '../offline/outbox'
 import type { BidPhotoFolderState } from './bidPhotos'
 import {
   addPress,
@@ -12,7 +13,16 @@ import {
   gridHeadWords,
   gridTileWords,
   heldFilesWords,
+  keptCount,
+  keptNextWords,
+  keptPlace,
+  landedBidPhotos,
   newestFirst,
+  onThisPhoneWords,
+  photosOnThisPhone,
+  queuedBidPhotos,
+  queuedWords,
+  shotIsReady,
   photoDayWords,
   photosSlot,
   sortPickedFiles,
@@ -84,6 +94,62 @@ describe('the press', () => {
     expect(addPress({ tiles: [tile(), tile({ id: 't2', status: 'sending' })], adding: false, folder: folder('ready') })).toEqual({ label: 'Add 1 photo', dead: true })
     expect(addPress({ tiles: [tile({ status: 'failed' })], adding: false, folder: folder('ready') })).toEqual({ label: 'Add photos', dead: true })
     expect(addPress({ tiles: [tile()], adding: true, folder: folder('ready') })).toEqual({ label: 'Adding…', dead: true })
+  })
+
+  // PR 8: a shot kept on the phone with no signal is ready, and the press takes it through the outbox.
+  it('counts a shot kept on the phone as ready, so the press is live with no signal', () => {
+    expect(addPress({ tiles: [tile({ status: 'kept', storagePath: null })], adding: false, folder: null })).toEqual({ label: 'Add 1 photo', dead: false })
+    expect(addPress({ tiles: [tile(), tile({ id: 't2', status: 'kept', storagePath: null })], adding: false, folder: folder('project') })).toEqual({ label: 'Make the folder and add 2 photos', dead: false })
+    expect(shotIsReady(tile({ status: 'kept' }))).toBe(true)
+    expect(shotIsReady(tile({ status: 'failed' }))).toBe(false)
+    expect(keptCount([tile(), tile({ id: 't2', status: 'kept' }), tile({ id: 't3', status: 'failed' })])).toBe(1)
+    // The direct press still writes only what is in the bucket.
+    expect(addWrites([tile(), tile({ id: 't2', status: 'kept' })])).toEqual([{ id: 't1', name: '' }])
+  })
+
+  it('hands a kept press its shots: a kept one unsent, a sent one with only the landing left, a failed one left out', () => {
+    const queued = queuedBidPhotos(
+      [tile({ id: 'k1', status: 'kept', storagePath: null, name: '  Meter   bank ', bytes: 290_000 }), tile({ id: 's1', name: 'Riser' }), tile({ id: 'f1', status: 'failed' }), tile({ id: 'g1', status: 'sending' })],
+      'Dana Whitfield',
+    )
+    expect(queued).toEqual([
+      { id: 'k1', sent: false, name: 'Meter bank', takenAt: '2026-11-10T15:00:00.000Z', bytes: 290_000, originalBytes: 4_000_000, width: 1600, height: 1200, byName: 'Dana Whitfield' },
+      { id: 's1', sent: true, name: 'Riser', takenAt: '2026-11-10T15:00:00.000Z', bytes: 300_000, originalBytes: 4_000_000, width: 1600, height: 1200, byName: 'Dana Whitfield' },
+    ])
+  })
+
+  it('says what the press does with no signal, by the press’s own name, and nothing when no shot is kept', () => {
+    expect(keptNextWords({ tiles: [tile()], pressLabel: 'Add 1 photo', phone: true })).toBeNull()
+    expect(keptNextWords({ tiles: [tile({ status: 'kept' })], pressLabel: 'Add 1 photo', phone: true })).toBe('There is no signal. Add 1 photo keeps it on this phone. It goes to the bid when the signal is back.')
+    expect(keptNextWords({ tiles: [tile(), tile({ id: 't2', status: 'kept' })], pressLabel: 'Add 2 photos', phone: false })).toBe('There is no signal. Add 2 photos keeps them on this device. They go to the bid when the signal is back.')
+  })
+
+  it('names the device by its width, in the tile, the toast and the window’s line', () => {
+    expect(keptPlace(true)).toBe('this phone')
+    expect(keptPlace(false)).toBe('this device')
+    expect(tileStatusWords(tile({ status: 'kept' }), false)).toEqual({ text: 'Kept on this device.', tone: 'warn' })
+    expect(queuedWords(1, true)).toBe('Kept on this phone. The photo goes to the bid when the signal is back.')
+    expect(queuedWords(3, false)).toBe('Kept on this device. The photos go to the bid when the signal is back.')
+    expect(onThisPhoneWords(0, true)).toBeNull()
+    expect(onThisPhoneWords(1, true)).toBe('1 photo waits on this phone. It goes to the bid when the signal is back.')
+    expect(onThisPhoneWords(2, false)).toBe('2 photos wait on this device. They go to the bid when the signal is back.')
+  })
+
+  it('counts this bid’s photos still on the phone: waiting or in flight, never another bid’s, a landed press’s or a refused one’s', () => {
+    const shot = (id: string) => ({ id, sent: false, name: '', takenAt: '2026-11-12T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: '' })
+    const bidPress = (id: string, bidId: string, n: number, state: OutboxPress['state'] = 'waiting'): OutboxPress => ({ ...newPress({ id, seq: 1, kind: 'bid-photos', userId: 'u1', pressedAt: 1_780_000_000_000, payload: { bidId, photos: Array.from({ length: n }, (_, i) => shot(`${id}-${i}`)) } }), state })
+    const note = newPress({ id: 'n', seq: 9, kind: 'job-note', userId: 'u1', pressedAt: 1_780_000_000_000, payload: { jobId: 'b1', body: 'x' } })
+    const presses = [bidPress('a', 'b1', 2), bidPress('b', 'b1', 1, 'sending'), bidPress('c', 'b2', 4), bidPress('d', 'b1', 3, 'sent'), bidPress('e', 'b1', 5, 'refused'), note]
+    expect(photosOnThisPhone(presses, 'b1')).toBe(3)
+    expect(photosOnThisPhone(presses, 'b2')).toBe(4)
+    expect(photosOnThisPhone(presses, 'b3')).toBe(0)
+  })
+
+  it('reads whose photos a landed press was, and nothing for any other kind', () => {
+    expect(landedBidPhotos({ kind: 'bid-photos', result: { bid_id: 'b1', added: 2 } })).toBe('b1')
+    expect(landedBidPhotos({ kind: 'job-photos', result: { bid_id: 'b1' } })).toBeNull()
+    expect(landedBidPhotos({ kind: 'bid-photos', result: {} })).toBeNull()
+    expect(landedBidPhotos(null)).toBeNull()
   })
 
   it('writes each ready shot with its name trimmed', () => {

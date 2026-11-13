@@ -65,7 +65,7 @@ export type ArBilledLineRowParts = {
   number: string
   /** The job's name; the line's kind when the job has no name. */
   title: string
-  /** `Elaine Giesber · 1180 Cibolo Valley Dr, Cibolo · Billed line` — payers, address, line kind; '' when nothing is known. */
+  /** `Elaine Gilbrow · 1180 Cinder Valley Dr, Cibolo · Billed line` — payers, address, line kind; '' when nothing is known. */
   secondary: string
   stripe: boolean
 }
@@ -84,7 +84,7 @@ export function arBilledLineRowParts(t: BankPaymentTarget): ArBilledLineRowParts
   }
 }
 
-/** The closed trigger after a pick: `$250.00 · 1015 · Montolongo Post Test`. */
+/** The closed trigger after a pick: `$250.00 · 1015 · Montelby Post Test`. */
 export function arBilledLineTriggerText(t: BankPaymentTarget): string {
   const p = arBilledLineRowParts(t)
   return `${p.dollars} · ${p.number} · ${p.title}`

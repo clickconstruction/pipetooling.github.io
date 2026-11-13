@@ -14,7 +14,7 @@ const ask: GcWordAskRow = { id: 'ask-1', week_start: '2026-09-28', owner_user_id
 
 function open(over: Partial<ComponentProps<typeof GcWordAskDialog>> = {}) {
   const h = { onMake: vi.fn(), onCopyLink: vi.fn(), onCopyText: vi.fn(), onEmail: vi.fn(), onNewLink: vi.fn(), onTurnOff: vi.fn(), onClose: vi.fn() }
-  render(<GcWordAskDialog ownerName="Malachi Douglas" ownerHasEmail gcNames={['Knight Contracting', 'Loberg Contracting']} ask={null} url={null} busy={false} error={null} notice={null} {...h} {...over} />)
+  render(<GcWordAskDialog ownerName="Malachi Douglas" ownerHasEmail gcNames={['Kestrin Contracting', 'Lowbeck Contracting']} ask={null} url={null} busy={false} error={null} notice={null} {...h} {...over} />)
   return h
 }
 

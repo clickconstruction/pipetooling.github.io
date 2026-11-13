@@ -35,9 +35,9 @@ const job = (id: string, over: Partial<JobWithDetails> = {}) =>
     status: 'billed',
     hcp_number: id.replace('j', ''),
     click_number: '',
-    job_name: 'Dudley Mason',
-    job_address: '628 Terrell Rd, San Antonio, TX 78209',
-    customer_name: 'Bobby Urrabazo',
+    job_name: 'Dunmere Mallin',
+    job_address: '628 Tarrow Rd, San Antonio, TX 78209',
+    customer_name: 'Bobby Urrell',
     customer_email: '',
     customer_id: 'c1',
     gc_customer_id: null,
@@ -96,7 +96,7 @@ describe('openGcUnpaidInvoicesPdfInNewTab', () => {
     jobs.set('j890', job('j890', { invoices: [inv('i-b', 'j890', 285)] }))
     jobs.set('j790', job('j790', { invoices: [inv('i-c', 'j790', 1712.5)] }))
     await openGcUnpaidInvoicesPdfInNewTab(
-      'RMC- Dudley Mason',
+      'RLC- Dunmere Mallin',
       {
         targets: [
           { jobId: 'j867', invoiceId: 'i-a' },
@@ -108,19 +108,19 @@ describe('openGcUnpaidInvoicesPdfInNewTab', () => {
       cb,
     )
     expect(failed).not.toHaveBeenCalled()
-    expect(tab!.written).toContain('Building 3 unpaid invoices for RMC- Dudley Mason')
+    expect(tab!.written).toContain('Building 3 unpaid invoices for RLC- Dunmere Mallin')
     expect(tab!.location.href).toBe('blob:invoices-1')
     expect(blobs).toHaveLength(1)
     const merged = await PDFDocument.load(await blobs[0]!.arrayBuffer())
     expect(merged.getPageCount()).toBe(3)
     expect(rendered).toEqual(['$1,710.00', '$285.00', '$1,712.50'])
-    expect(done).toHaveBeenCalledWith({ message: '3 unpaid invoices for RMC- Dudley Mason.', complete: true, printed: 3 })
+    expect(done).toHaveBeenCalledWith({ message: '3 unpaid invoices for RLC- Dunmere Mallin.', complete: true, printed: 3 })
   })
 
   it('reads each job once however many of its bills are on the statement', async () => {
     jobs.set('j1', job('j1', { invoices: [inv('i-1', 'j1', 100), inv('i-2', 'j1', 200)] }))
     await openGcUnpaidInvoicesPdfInNewTab(
-      'Knight',
+      'Kestrin',
       {
         targets: [
           { jobId: 'j1', invoiceId: 'i-1' },
@@ -138,7 +138,7 @@ describe('openGcUnpaidInvoicesPdfInNewTab', () => {
     jobs.set('j1', job('j1', { invoices: [inv('i-1', 'j1', 100)] }))
     jobs.set('j2', job('j2', { invoices: [inv('i-2', 'j2', 200)], payments: [{ invoice_id: 'i-2', amount: 200 }] as never }))
     await openGcUnpaidInvoicesPdfInNewTab(
-      'Knight',
+      'Kestrin',
       {
         targets: [
           { jobId: 'j1', invoiceId: 'i-1' },
@@ -151,21 +151,21 @@ describe('openGcUnpaidInvoicesPdfInNewTab', () => {
     )
     expect(tab!.location.href).toBe('blob:invoices-1')
     expect(done).toHaveBeenCalledWith({
-      message: '1 unpaid invoice for Knight — left out: 1 row is a job balance with no invoice; 1 bill is no longer unpaid; 1 bill could not be built.',
+      message: '1 unpaid invoice for Kestrin — left out: 1 row is a job balance with no invoice; 1 bill is no longer unpaid; 1 bill could not be built.',
       complete: false,
       printed: 1,
     })
   })
 
   it('opens no tab when the statement has no bill to print', async () => {
-    await openGcUnpaidInvoicesPdfInNewTab('Knight', { targets: [], rowsWithoutBill: 2 }, cb)
+    await openGcUnpaidInvoicesPdfInNewTab('Kestrin', { targets: [], rowsWithoutBill: 2 }, cb)
     expect((window.open as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
     expect(done.mock.calls[0]![0].printed).toBe(0)
   })
 
   it('closes the tab when every bill turned out paid', async () => {
     jobs.set('j2', job('j2', { invoices: [inv('i-2', 'j2', 200)], payments: [{ invoice_id: 'i-2', amount: 200 }] as never }))
-    await openGcUnpaidInvoicesPdfInNewTab('Knight', { targets: [{ jobId: 'j2', invoiceId: 'i-2' }], rowsWithoutBill: 0 }, cb)
+    await openGcUnpaidInvoicesPdfInNewTab('Kestrin', { targets: [{ jobId: 'j2', invoiceId: 'i-2' }], rowsWithoutBill: 0 }, cb)
     expect(tab!.closed).toBe(true)
     expect(blobs).toHaveLength(0)
     expect(done.mock.calls[0]![0]).toMatchObject({ printed: 0, complete: false })
@@ -173,7 +173,7 @@ describe('openGcUnpaidInvoicesPdfInNewTab', () => {
 
   it('reports a blocked pop-up and reads nothing', async () => {
     tab = null
-    await openGcUnpaidInvoicesPdfInNewTab('Knight', { targets: [{ jobId: 'j1', invoiceId: 'i-1' }], rowsWithoutBill: 0 }, cb)
+    await openGcUnpaidInvoicesPdfInNewTab('Kestrin', { targets: [{ jobId: 'j1', invoiceId: 'i-1' }], rowsWithoutBill: 0 }, cb)
     expect(blocked).toHaveBeenCalledTimes(1)
     expect(fetched).toEqual([])
     expect(done).not.toHaveBeenCalled()

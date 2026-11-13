@@ -34,7 +34,7 @@ const statusEvent = (dedupeKey: string, at: string, summary: string) =>
 const mixedActivity = [
   note('n1', '2026-08-12T14:45:00Z', 'Arrived at job', 'Abraham'),
   statusEvent('ev1', '2026-08-12T15:00:00Z', 'Status: waiting → working'),
-  note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DRF', 'Roxi'),
+  note('n2', '2026-08-14T16:53:00Z', 'Still Pending Pinpoint-DLF', 'Roxi'),
 ]
 
 describe('JobsStagesActivityExpandModal', () => {
@@ -42,7 +42,7 @@ describe('JobsStagesActivityExpandModal', () => {
     const onClose = vi.fn()
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={mixedActivity}
         upcoming={null}
         onClose={onClose}
@@ -50,7 +50,7 @@ describe('JobsStagesActivityExpandModal', () => {
       />,
     )
     await settle()
-    expect(screen.getByLabelText('Job activity for Shearer Pinpoint')).toBeTruthy()
+    expect(screen.getByLabelText('Job activity for Shellan Pinpoint')).toBeTruthy()
     expect(screen.getByText(/Wed, Aug 12/)).toBeTruthy()
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
     expect(screen.getByLabelText('Entry 2')).toBeTruthy()
@@ -77,7 +77,7 @@ describe('JobsStagesActivityExpandModal', () => {
     } as unknown as JobThreadActivityItem
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={[...mixedActivity, reportItem]}
         upcoming={null}
         onClose={vi.fn()}
@@ -94,7 +94,7 @@ describe('JobsStagesActivityExpandModal', () => {
   it('filter pills narrow the feed; numbers stay stable', async () => {
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={mixedActivity}
         upcoming={null}
         onClose={vi.fn()}
@@ -119,7 +119,7 @@ describe('JobsStagesActivityExpandModal', () => {
     const onPeople = vi.fn()
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={[]}
         upcoming={null}
         onClose={vi.fn()}
@@ -143,7 +143,7 @@ describe('JobsStagesActivityExpandModal', () => {
     const onCommitPct = vi.fn(async () => {})
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={[]}
         upcoming={null}
         onClose={vi.fn()}
@@ -169,7 +169,7 @@ describe('JobsStagesActivityExpandModal', () => {
   it('shows the loading state before the lazy thread load lands', async () => {
     renderWithProviders(
       <JobsStagesActivityExpandModal
-        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        job={makeJob({ job_name: 'Shellan Pinpoint' })}
         activity={null}
         upcoming={null}
         onClose={vi.fn()}
@@ -184,7 +184,7 @@ describe('JobsStagesActivityExpandModal', () => {
   it('composer posts through the pipeline on Enter; Escape in the composer blurs without closing', async () => {
     const submitNoteWithBody = vi.fn(async () => true)
     const onClose = vi.fn()
-    const job = makeJob({ job_name: 'Shearer Pinpoint' })
+    const job = makeJob({ job_name: 'Shellan Pinpoint' })
     renderWithProviders(
       <JobsStagesActivityExpandModal
         job={job}

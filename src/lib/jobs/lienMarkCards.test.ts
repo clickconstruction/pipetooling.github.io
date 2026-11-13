@@ -14,7 +14,7 @@ function job(over: Partial<LienCalendarJob> & { r?: Partial<LienRunwayInput> } =
   const isSub = rest.isSub ?? Boolean(rest.gcId)
   return { jobId: 'j', number: '1046 PLUM', name: 'Pretest', customer: 'Randolph Field Reality', gcId: null, gcName: null, address: '214 Beechwood Ave', openBalance: 1000, isSub, runway: runway({ isSub, openBalance: rest.openBalance ?? 1000, ...r }), ...rest }
 }
-const RMC = { gcId: 'gc-rmc', gcName: 'RMC · Dudley Mason' }
+const RLC = { gcId: 'gc-rlc', gcName: 'RLC · Dunmere Mallin' }
 const ALL: LienMarkDoors = { pen: true, lastWork: true, record: true, kinds: true, draft: true }
 
 function marksOf(j: LienCalendarJob, rows: LienCalendarJob[] = [j]) {
@@ -50,7 +50,7 @@ describe('daysWords / deadlineTone / monthName', () => {
 
 describe('lienMarkCard', () => {
   it('a notice owed: the month, send by with the days, the owner and the GC, the money, Draft the notice', () => {
-    const j = job({ ...RMC, openBalance: 9800 })
+    const j = job({ ...RLC, openBalance: 9800 })
     const c = lienMarkCard(mark(j, 'notice'), j, TODAY, NO_DOORS)
     expect(c.glyph).toBe('notice')
     expect(c.title).toBe('Notice owed · August')
@@ -61,7 +61,7 @@ describe('lienMarkCard', () => {
     expect(c.pct).toBeGreaterThan(0)
   })
   it('a notice on file, and one in the mail with Record the mailing when the desk has the door', () => {
-    const j = job({ ...RMC, r: { workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } })
+    const j = job({ ...RLC, r: { workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } })
     const done = lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.done), j, TODAY, ALL)
     expect(done.glyph).toBe('notice_done')
     expect(done.title).toBe('Notice on file · July')
@@ -73,7 +73,7 @@ describe('lienMarkCard', () => {
     expect(mailed.door).toEqual({ kind: 'record', label: 'Record the mailing ›', jobIds: ['j'] })
     expect(lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.mailed), j, TODAY, NO_DOORS).door?.kind).toBe('lien_window')
     // v2.5529: a mailed notice whose date has passed is not to record "by" a day gone by
-    const late = job({ ...RMC, r: { lastWorkYmd: '2026-07-20', workMonths: ['2026-07'], mailedMonths: ['2026-07'] } })
+    const late = job({ ...RLC, r: { lastWorkYmd: '2026-07-20', workMonths: ['2026-07'], mailedMonths: ['2026-07'] } })
     const lateCard = lienMarkCard(mark(late, 'notice', (m) => m.kind === 'notice' && m.mailed), late, TODAY, ALL)
     expect(lateCard.when).toBe('Its date was Sep 15 · 13 days ago')
     expect(lateCard.whenTone).toBe('amber')
@@ -95,7 +95,7 @@ describe('lienMarkCard', () => {
     expect(marksOf(filed).marks.map((m) => m.kind)).toEqual(['work'])
   })
   it('a dead row: the closed flag and the grey wash both read Lien gone, the window that shut and the money still owed', () => {
-    const j = job({ ...RMC, openBalance: 658, r: { lastWorkYmd: '2026-03-01' } })
+    const j = job({ ...RLC, openBalance: 658, r: { lastWorkYmd: '2026-03-01' } })
     const flag = lienMarkCard(mark(j, 'lien'), j, TODAY, ALL)
     const wash = lienMarkCard(mark(j, 'gone'), j, TODAY, ALL)
     expect(flag.title).toBe('Lien gone')
@@ -154,16 +154,16 @@ describe('lienMarkCard', () => {
   })
   it('every fact on every card is plain words', () => {
     const jobs = [
-      job({ ...RMC, r: { workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } }),
+      job({ ...RLC, r: { workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } }),
       job({ r: { expectedPayYmd: '2026-09-30' } }),
       job({ r: { expectedPayYmd: '2026-11-20', propertyKind: '' } }),
-      job({ ...RMC, r: { lastWorkYmd: '2026-03-01' } }),
+      job({ ...RLC, r: { lastWorkYmd: '2026-03-01' } }),
       job({ r: { lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z' } }),
       job({ r: { filedYmd: '2026-09-10' } }),
     ]
     const failures: string[] = []
     for (const j of jobs) for (const m of marksOf(j).marks) for (const f of lienMarkCard(m, j, TODAY, ALL).facts) failures.push(...plainWordsFailures(f))
-    for (const f of lienGroupWordCard({ name: 'RMC', jobs }, null, TODAY, true).facts) failures.push(...plainWordsFailures(f))
+    for (const f of lienGroupWordCard({ name: 'RLC', jobs }, null, TODAY, true).facts) failures.push(...plainWordsFailures(f))
     expect(failures).toEqual([])
   })
 })
@@ -193,9 +193,9 @@ describe('lienMarkClusters', () => {
 describe('lienGroupFlagCards / lienGroupWordCard', () => {
   it('a GC row’s folded flag lists the jobs behind each count, sums them and offers the bar’s door for exactly those jobs', () => {
     const rows = [
-      job({ jobId: 'a', number: '890', name: 'Rizvi', ...RMC, openBalance: 9800 }),
-      job({ jobId: 'b', number: '881', name: 'Umar', ...RMC, openBalance: 7902 }),
-      job({ jobId: 'c', number: '258', name: 'Dudley', ...RMC, openBalance: 285, r: { mailedMonths: ['2026-08'] } }),
+      job({ jobId: 'a', number: '890', name: 'Rilvo', ...RLC, openBalance: 9800 }),
+      job({ jobId: 'b', number: '881', name: 'Ulric', ...RLC, openBalance: 7902 }),
+      job({ jobId: 'c', number: '258', name: 'Dunmere', ...RLC, openBalance: 285, r: { mailedMonths: ['2026-08'] } }),
     ]
     const axis = lienCalendarAxis(rows, TODAY)
     const flags = lienCalendarGroupFlags({ jobs: rows }, axis)
@@ -204,8 +204,8 @@ describe('lienGroupFlagCards / lienGroupWordCard', () => {
     expect(cards.map((c) => c.title)).toEqual(['2 notices owed', '1 in the mail'])
     expect(cards[0]!.when).toBe('Send by Oct 15 · in 17 days')
     expect(cards[0]!.jobs).toEqual([
-      { jobId: 'a', number: '890', name: 'Rizvi', month: 'August', money: 9800 },
-      { jobId: 'b', number: '881', name: 'Umar', month: 'August', money: 7902 },
+      { jobId: 'a', number: '890', name: 'Rilvo', month: 'August', money: 9800 },
+      { jobId: 'b', number: '881', name: 'Ulric', month: 'August', money: 7902 },
     ])
     expect(cards[0]!.facts).toEqual(['$17,702 across the 2.'])
     expect(cards[0]!.door).toEqual({ kind: 'draft', label: 'Draft the 2 ›', ymd: '2026-10-15', jobIds: ['a', 'b'] })
@@ -218,15 +218,15 @@ describe('lienGroupFlagCards / lienGroupWordCard', () => {
     expect(lienGroupFlagCards(oct, { jobs: rows, kind: 'gc' }, axis, TODAY, NO_DOORS).map((c) => c.door)).toEqual([null, null])
   })
   it('the GC’s word: one date for every job, or none yet; the pen is its door for the office', () => {
-    const g = { name: 'Burd & Assoc.', jobs: [job({ jobId: 'a' }), job({ jobId: 'b' }), job({ jobId: 'c' })] }
+    const g = { name: 'Brund & Assoc.', jobs: [job({ jobId: 'a' }), job({ jobId: 'b' }), job({ jobId: 'c' })] }
     const said = lienGroupWordCard(g, '2026-10-20', TODAY, true)
-    expect(said.title).toBe('Burd & Assoc. said Oct 20')
+    expect(said.title).toBe('Brund & Assoc. said Oct 20')
     expect(said.when).toBe('Oct 20 · in 22 days')
     expect(said.facts).toEqual(['One word for all 3 jobs.'])
     expect(said.door).toEqual({ kind: 'pen', label: 'Change it ›' })
     const none = lienGroupWordCard(g, null, TODAY, false)
     expect(none.title).toBe('No pay date yet')
-    expect(none.facts[0]).toBe('No one date for Burd & Assoc.’s 3 jobs yet.')
+    expect(none.facts[0]).toBe('No one date for Brund & Assoc.’s 3 jobs yet.')
     expect(none.door).toBeNull()
   })
 })

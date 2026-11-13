@@ -57,7 +57,7 @@ describe('parseSubWorkOrderSnapshot', () => {
 describe('buildSheetWorkOrderSnapshot', () => {
   it('freezes the sheet label, dedupes lines, and labels the window', () => {
     const s = buildSheetWorkOrderSnapshot({
-      sheet: { job_number: 'J977', address: '415 Springtown Way' },
+      sheet: { job_number: 'J977', address: '415 Stonewick Way' },
       scopeLines: ['Fixtures per plans', ' fixtures per plans ', '', 'Med-gas rough-in'],
       exclusions: ['Sales tax'],
       references: [{ kind: 'book', documentId: 'd1', name: 'General Conditions', versionDate: '2026-06-19' }, { kind: 'setting', documentId: null, name: '', versionDate: null }],
@@ -68,7 +68,7 @@ describe('buildSheetWorkOrderSnapshot', () => {
       proposedEnd: '2026-09-26',
     })
     expect(s.anchor).toBe('sheet')
-    expect(s.sheetLabel).toBe('J977 · 415 Springtown Way')
+    expect(s.sheetLabel).toBe('J977 · 415 Stonewick Way')
     expect(s.lines.map((l) => l.label)).toEqual(['Fixtures per plans', 'Med-gas rough-in'])
     expect(s.startsLabel).toBe('Starts Sep 15 → Sep 26')
     expect(s.references).toHaveLength(1)

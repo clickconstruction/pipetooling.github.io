@@ -145,7 +145,7 @@ describe('buildJobBidLabelMapsFromClockRows', () => {
   it('maps each linked job and bid id to a short label, skipping unlinked rows', () => {
     const rows = [
       { job_ledger_id: 'J1', bid_id: null, jobs_ledger: { hcp_number: '878', job_name: 'Smith', click_number: null, service_type_id: null }, bids: null },
-      { job_ledger_id: null, bid_id: 'B1', jobs_ledger: null, bids: { bid_number: 'b404', project_name: 'Hyper Kidz', service_type_id: null } },
+      { job_ledger_id: null, bid_id: 'B1', jobs_ledger: null, bids: { bid_number: 'b404', project_name: 'Jumpy Kidz', service_type_id: null } },
       { job_ledger_id: null, bid_id: null, jobs_ledger: null, bids: null },
     ] as unknown as ClockSessionRow[]
     const { jobLabels, bidLabels } = buildJobBidLabelMapsFromClockRows(rows, prefixMap)

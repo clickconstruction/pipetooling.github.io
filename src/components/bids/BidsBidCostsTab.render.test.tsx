@@ -18,8 +18,8 @@ vi.mock('../../hooks/useBidVsActual', () => ({
     loaded: enabled,
     jobs: enabled
       ? [
-          { id: 'j879', hcp_number: '879', job_name: 'Palmer · Moses Hughes', revenue: 41_550, status: 'waiting', pct_complete: 50, bid_id: 'b76' },
-          { id: 'j523', hcp_number: '523', job_name: 'Mission Hills', revenue: 123_600, status: 'working', pct_complete: 90, bid_id: 'b66' },
+          { id: 'j879', hcp_number: '879', job_name: 'Palvern · Milo Hollin', revenue: 41_550, status: 'waiting', pct_complete: 50, bid_id: 'b76' },
+          { id: 'j523', hcp_number: '523', job_name: 'Mission Flats', revenue: 123_600, status: 'working', pct_complete: 90, bid_id: 'b66' },
         ]
       : [],
     // v2.5046 · the whole row, as the hook now reads it (not usable: no labor rate tile counts it).
@@ -27,13 +27,13 @@ vi.mock('../../hooks/useBidVsActual', () => ({
     hoursByJob: new Map([['j879', 6], ['j523', 959]]),
     bidsById: new Map([
       ['b76', { id: 'b76', bid_number: '76', project_name: 'ADAMS' }],
-      ['b66', { id: 'b66', bid_number: '66', project_name: 'Mission Hill Park' }],
+      ['b66', { id: 'b66', bid_number: '66', project_name: 'Mission Flat Park' }],
     ]),
     pricedByBid: new Map([['b76', stamp]]),
   }),
 }))
 
-// v2.5046 · the burn read is stubbed with one loaded job (Moses Hughes), one still loading, none failed.
+// v2.5046 · the burn read is stubbed with one loaded job (Milo Hollin), one still loading, none failed.
 const day = (d: number) => `2026-09-${String(d).padStart(2, '0')}`
 const burnInputs = {
   chargeEvents: [
@@ -61,9 +61,9 @@ describe('BidsBidCostsTab · Bid vs actual · Priced (v2.5043)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Bid vs actual' }))
     await settle()
     expect(screen.getByRole('columnheader', { name: 'Priced' })).toBeTruthy()
-    const adams = screen.getByText('J879 Palmer · Moses Hughes').closest('tr')!
+    const adams = screen.getByText('J879 Palvern · Milo Hollin').closest('tr')!
     expect(within(adams).getByTestId('bva-priced').textContent).toBe('31%$28,495 cost on $41,550 · no labor rate')
-    const mission = screen.getByText('J523 Mission Hills').closest('tr')!
+    const mission = screen.getByText('J523 Mission Flats').closest('tr')!
     expect(within(mission).getByTestId('bva-priced').textContent).toBe('—not priced on the Workbench')
     expect(screen.getByText('0 with a labor rate set · 1 priced on the Workbench')).toBeTruthy()
   })
@@ -76,12 +76,12 @@ describe('BidsBidCostsTab · Bid vs actual · Direct and the burn by section (v2
     await settle()
     expect(burnRead).toHaveBeenLastCalledWith(true, ['j879', 'j523'])
     expect(screen.getByRole('columnheader', { name: 'Direct' })).toBeTruthy()
-    const adams = screen.getByText('J879 Palmer · Moses Hughes').closest('tr')!
+    const adams = screen.getByText('J879 Palvern · Milo Hollin').closest('tr')!
     // $16,500 spent at 50% done → $33,000 at completion → $8,550 · 21%, ten points under the 31% it was priced at
     expect(within(adams).getByTestId('bva-direct').textContent).toBe('21%$8,550 at completion · 10 pts under the price')
-    const mission = screen.getByText('J523 Mission Hills').closest('tr')!
+    const mission = screen.getByText('J523 Mission Flats').closest('tr')!
     expect(within(mission).getByTestId('bva-direct').textContent).toBe('…')
-    fireEvent.click(within(adams).getByRole('button', { name: "Open J879 Palmer · Moses Hughes's burn" }))
+    fireEvent.click(within(adams).getByRole('button', { name: "Open J879 Palvern · Milo Hollin's burn" }))
     expect(screen.getByTestId('bva-direct-margin').textContent).toBe('$8,550 · 21%')
     // The budget resolves off the whole row, as on the Costs tab: the bid's materials figure stands.
     expect(within(screen.getByTestId('bva-section-materials')).getByText('$9,000')).toBeTruthy()
@@ -93,8 +93,8 @@ describe('BidsBidCostsTab · Bid vs actual · Direct and the burn by section (v2
     await settle()
     expect(screen.queryByRole('columnheader', { name: 'Direct' })).toBeNull()
     expect(burnRead.mock.calls.every(([enabled]) => enabled === false)).toBe(true)
-    const adams = screen.getByText('J879 Palmer · Moses Hughes').closest('tr')!
-    fireEvent.click(within(adams).getByRole('button', { name: "Open J879 Palmer · Moses Hughes's burn" }))
+    const adams = screen.getByText('J879 Palvern · Milo Hollin').closest('tr')!
+    fireEvent.click(within(adams).getByRole('button', { name: "Open J879 Palvern · Milo Hollin's burn" }))
     expect(screen.queryByTestId('bva-sections')).toBeNull()
     expect(screen.getByTestId('bva-stage-ev')).toBeTruthy()
   })

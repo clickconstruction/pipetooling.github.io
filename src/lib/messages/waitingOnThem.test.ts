@@ -11,14 +11,14 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
   it('lists each person whose newest line is ours and two days old or more, longest quiet first', () => {
     const lines = [
       line({ id: 'd1' }), // Dana: ours, Oct 18 → 2 days
-      line({ id: 'k1', contactId: 'c2', name: 'Kim Coe', body: 'Kim, the water heater is on the truck for Tuesday.', atMs: at('2026-10-14T20:00:00Z') }), // Kim: ours, 6 days
+      line({ id: 'k1', contactId: 'c2', name: 'Kim Corl', body: 'Kim, the water heater is on the truck for Tuesday.', atMs: at('2026-10-14T20:00:00Z') }), // Kim: ours, 6 days
       line({ id: 'm1', contactId: 'c3', name: 'Marcus Calloway', atMs: at('2026-10-20T16:05:00Z') }), // Marcus: ours, 13 hours → not yet
       line({ id: 'p1', contactId: 'c4', name: 'Priya Natarajan', atMs: at('2026-10-15T14:00:00Z') }),
       line({ id: 'p2', contactId: 'c4', name: 'Priya Natarajan', direction: 'in', body: 'Thursday works.', atMs: at('2026-10-16T14:00:00Z') }), // Priya answered → not waiting
     ]
     const rows = waitingOnThem(lines, 'all', NOW)
     expect(rows.map((r) => [r.name, r.days, r.chip])).toEqual([
-      ['Kim Coe', 6, 'Their move · 6 d'],
+      ['Kim Corl', 6, 'Their move · 6 d'],
       ['Dana Whitfield', 2, 'Their move · 2 d'],
     ])
     expect(rows[0]).toMatchObject({ contactId: 'c2', words: 'Kim, the water heater is on the truck for Tuesday.', when: 'Wed, Oct 14', number: '(830) 555-0121' })
@@ -40,7 +40,7 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
   it('a last text Quo could not deliver marks the row; a delivered text, an email or a call does not (punch list #140 PR 4)', () => {
     const lines = [
       line({ id: 'd1', channel: 'text', delivery: 'failed' }),
-      line({ id: 'k1', contactId: 'c2', name: 'Kim Coe', channel: 'text', delivery: 'delivered', atMs: at('2026-10-14T20:00:00Z') }),
+      line({ id: 'k1', contactId: 'c2', name: 'Kim Corl', channel: 'text', delivery: 'delivered', atMs: at('2026-10-14T20:00:00Z') }),
       line({ id: 'g1', contactId: 'c3', name: 'Greg Paulk', channel: 'email', delivery: null, atMs: at('2026-10-13T20:00:00Z') }),
       line({ id: 'p1', contactId: 'c4', name: 'Priya Natarajan', channel: 'text', delivery: 'undelivered', atMs: at('2026-10-12T20:00:00Z') }),
       line({ id: 'o1', contactId: 'c5', name: 'Old Row' }),
@@ -49,7 +49,7 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
     expect(rows.map((r) => [r.name, r.mark?.bad ?? null, r.mark?.words ?? null])).toEqual([
       ['Priya Natarajan', true, '⚠ not delivered'],
       ['Greg Paulk', null, null],
-      ['Kim Coe', false, '✓ delivered'],
+      ['Kim Corl', false, '✓ delivered'],
       ['Dana Whitfield', true, '⚠ not sent'],
       ['Old Row', null, null],
     ])
@@ -63,7 +63,7 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
 
 // Now: Wed Oct 28, 12:10 AM Chicago (CDT); our text went Tue Oct 20.
 const NOW_28 = new Date('2026-10-28T05:10:00Z')
-const ours = (set: Partial<WaitLine> = {}): WaitLine => line({ id: 'o1', contactId: 'c-evan', name: 'Evan Johnson', body: 'Evan, this is Taunya with Click Plumbing. Your estimate is ready, $6,250.00.', atMs: at('2026-10-20T20:00:00Z'), channel: 'text', ...set })
+const ours = (set: Partial<WaitLine> = {}): WaitLine => line({ id: 'o1', contactId: 'c-evan', name: 'Evan Jarrow', body: 'Evan, this is Taunya with Click Plumbing. Your estimate is ready, $6,250.00.', atMs: at('2026-10-20T20:00:00Z'), channel: 'text', ...set })
 const event = (set: Partial<WaitLine>): WaitLine => ({ id: 'e1', contactId: 'c-evan', name: null, kind: null, direction: 'event', channel: 'event', body: '', atMs: at('2026-10-22T15:00:00Z'), ...set })
 
 describe('their word that is not a line in (v2.6500, Taunya’s report of 2026-11-03)', () => {
@@ -71,7 +71,7 @@ describe('their word that is not a line in (v2.6500, Taunya’s report of 2026-1
     const accepted = event({ key: 'estimate:est-1:accepted', body: '✍️ Evan accepted estimate #212.' })
     expect(waitingOnThem([ours(), accepted], 'all', NOW_28)).toEqual([])
     const opened = event({ key: 'estimate:est-1:opened', body: '👀 Evan opened estimate #212.' })
-    expect(waitingOnThem([ours(), opened], 'all', NOW_28).map((r) => [r.name, r.days])).toEqual([['Evan Johnson', 7]])
+    expect(waitingOnThem([ours(), opened], 'all', NOW_28).map((r) => [r.name, r.days])).toEqual([['Evan Jarrow', 7]])
     const declined = event({ key: 'estimate:est-1:declined', body: '🚫 Evan declined estimate #212.' })
     expect(waitingOnThem([ours(), declined], 'all', NOW_28)).toEqual([])
     // An answer before our text is no answer to it: the newest line is still ours.
@@ -95,9 +95,9 @@ describe('their word that is not a line in (v2.6500, Taunya’s report of 2026-1
     expect(heardBackBody('Taunya', 'none', 'Nov 3')).toBe('Taunya said on Nov 3 that no answer is needed.')
     expect(heardBackBody('  ', 'phone', 'Nov 3')).toBe('Someone heard back by phone on Nov 3.')
     expect(heardBackOf('Taunya set how Evan hears from us: email.')).toBeNull()
-    expect(heardBackOf('Rosa took Evan Johnson.')).toBeNull()
+    expect(heardBackOf('Rosa took Evan Jarrow.')).toBeNull()
     // The morning run's line, a take, the customer's say: none of them is their word, and none restarts the wait.
-    const took = event({ body: 'Rosa took Evan Johnson.', atMs: at('2026-10-26T15:00:00Z') })
+    const took = event({ body: 'Rosa took Evan Jarrow.', atMs: at('2026-10-26T15:00:00Z') })
     expect(theirWord(took)).toBeNull()
     expect(waitingOnThem([ours(), took], 'all', NOW_28).map((r) => r.days)).toEqual([7])
   })
@@ -107,13 +107,13 @@ describe('their word that is not a line in (v2.6500, Taunya’s report of 2026-1
     expect(waitingOnThem([ours(), logged], 'all', NOW_28)).toEqual([])
     const quo = ours({ id: 'q1', channel: 'call', body: 'Outgoing call · 0:12', atMs: at('2026-10-21T15:00:00Z') })
     expect(theirWord(quo)).toBe(false)
-    expect(waitingOnThem([ours(), quo], 'all', NOW_28).map((r) => [r.name, r.days])).toEqual([['Evan Johnson', 6]])
+    expect(waitingOnThem([ours(), quo], 'all', NOW_28).map((r) => [r.name, r.days])).toEqual([['Evan Jarrow', 6]])
   })
   it('Heard back’s words are plain', () => {
     expect(HEARD_ROWS.map((r) => r.label)).toEqual(['By phone', 'By text from my phone', 'In person', 'No answer needed'])
-    for (const words of [HEARD_WORDS.tip, HEARD_WORDS.undone('Evan Johnson'), ...HEARD_ROWS.map((r) => HEARD_WORDS.toast(r.how, 'Evan Johnson'))]) expect(plainWordsFailures(words), words).toEqual([])
-    expect(HEARD_WORDS.toast('phone', 'Evan Johnson')).toBe('Heard back from Evan Johnson by phone. The line lands on the thread in ten seconds.')
-    expect(HEARD_WORDS.toast('none', 'Evan Johnson')).toBe('No answer needed from Evan Johnson. The line lands on the thread in ten seconds.')
+    for (const words of [HEARD_WORDS.tip, HEARD_WORDS.undone('Evan Jarrow'), ...HEARD_ROWS.map((r) => HEARD_WORDS.toast(r.how, 'Evan Jarrow'))]) expect(plainWordsFailures(words), words).toEqual([])
+    expect(HEARD_WORDS.toast('phone', 'Evan Jarrow')).toBe('Heard back from Evan Jarrow by phone. The line lands on the thread in ten seconds.')
+    expect(HEARD_WORDS.toast('none', 'Evan Jarrow')).toBe('No answer needed from Evan Jarrow. The line lands on the thread in ten seconds.')
   })
 })
 

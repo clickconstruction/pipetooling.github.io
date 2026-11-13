@@ -14,8 +14,8 @@ On **Customers**, click {{button:outline|Show similar (N)}}. It sits top right, 
 :::example A duplicate group
 **Possible duplicates (2) — matching name + address**
 
-**John Ingram** · 1603 Sycamore Street Bandera, TX 78003
-**John Ingram** · 1603 Sycamore Street Bandera, TX 78003
+**John Inglow** · 1603 Sycamore Street Bandera, TX 78003
+**John Inglow** · 1603 Sycamore Street Bandera, TX 78003
 :::
 
 Two customers land in a group when they share **any** of: name, address, phone, or email. The comparison is loose. Capitalization, punctuation, and phone formatting don't matter. *"(210) 889-1297"* matches *"+1 210 889 1297"*. Matching is exact after that cleanup, so every group is explainable. There are no fuzzy guesses. Groups chain. If A and B share a phone and B and C share an address, all three show together.

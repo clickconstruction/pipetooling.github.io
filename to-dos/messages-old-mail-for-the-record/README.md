@@ -17,7 +17,7 @@ summary: >
   reply this week, each with Reopen. No new lane, no new state, no third word.
 next: Watch the first tag an office person presses in Messages → My email, and read the line the green bar prints after it. Then the dev's call 2, whether the batch of 2026-11-09 stays on its jobs. Delete the folder after both.
 size: M as a train of five (S · S · S · S · S), all built; left: a look at one real press (XS)
-blocker: Nobody in the office has tagged by their own press yet, so the line after a tag is unproven by use.
+blocker: Nobody in the office has tagged by their own press since the line after a tag went live (v2.7032), so the line is unproven by use.
 ver: v2.7026 · 7027 · 7029 · 7030 · 7032
 opinion: built — the cause is gone and the exit is in sight; watch one real press, then close the card
 ---
@@ -239,7 +239,7 @@ Five PRs, each shippable alone, smallest first.
 
 **Left.**
 
-- The first tag a person in the office presses in My email. Every tag so far came through the seat, so the green bar's line and its press have run only in tests.
+- The first tag a person in the office presses in My email. None has come since the line went live (v2.7032, 00:46 UTC on 11-13), so the green bar's line and its press have run only in tests. One save before it, at 19:05 UTC on 11-12, has no seat call behind it and was most likely a person's own press (#230, Where it stands, 2026-11-13).
 - No apply has run with this code: the live checks were plans. The first real apply is the seat's or a person's next tag.
 - Call 2, the batch of 2026-11-09: it stays on its jobs until the dev says otherwise. Its threads are Done and read as filed either way.
 

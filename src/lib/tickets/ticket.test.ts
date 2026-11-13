@@ -103,7 +103,7 @@ describe('where a ticket stands', () => {
 
   it('keeps every line to the plain words', () => {
     const paid: TicketPaidOther[] = ['cash', 'own_money', 'another_card', 'other']
-    const kinds: TicketMatchKind[] = ['minute', 'total', 'asked', 'picked']
+    const kinds: TicketMatchKind[] = ['minute', 'total', 'asked', 'picked', 'link']
     const lines = [
       ticketStateWords(base),
       ticketStateWords({ ...base, po_entry_id: 'po' }),

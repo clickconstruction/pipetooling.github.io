@@ -23,8 +23,8 @@ const detailJob = makeJob({
   revenue: 3630,
   payments_made: 0,
   customer_id: 'cust-1',
-  customer_name: 'Knight Contracting',
-  customer_email: 'ap@knight.test',
+  customer_name: 'Kestrin Contracting',
+  customer_email: 'ap@kestrin.test',
   // One $1,000 partial already carved off and no primary yet: the RPC would
   // INSERT a $2,630 primary — the plan must show that number without inserting.
   invoices: [makeInvoice({ id: 'partial-1', job_id: 'job-978', amount: 1000, is_primary_rtb_bundle: false })],
@@ -110,10 +110,10 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
             master_user_id: SMOKE_AUTH_USER_ID,
             hcp_number: '978',
             click_number: null,
-            job_name: 'Pondhill demo',
+            job_name: 'Penmoor demo',
             customer_id: 'cust-1',
-            customer_name: 'Knight Contracting',
-            customer_email: 'ap@knight.test',
+            customer_name: 'Kestrin Contracting',
+            customer_email: 'ap@kestrin.test',
           },
         }}
         onClose={onClose}
@@ -158,7 +158,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       <SendRecordInvoiceModal
         payload={{
           kind: 'job',
-          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: 'ap@knight.test' },
+          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test' },
         }}
         onClose={() => {}}
         onSuccess={async () => {}}
@@ -178,7 +178,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       <SendRecordInvoiceModal
         payload={{
           kind: 'job',
-          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: null },
+          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: null },
         }}
         onClose={() => {}}
         onSuccess={async () => {}}
@@ -190,7 +190,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
     })
     const banner = screen.getByRole('group', { name: 'Customer email missing' })
-    fireEvent.change(within(banner).getByRole('textbox', { name: 'Customer email' }), { target: { value: 'ap@knight.test' } })
+    fireEvent.change(within(banner).getByRole('textbox', { name: 'Customer email' }), { target: { value: 'ap@kestrin.test' } })
     fireEvent.click(within(banner).getByRole('button', { name: 'Save' }))
     // The saved email overlays the job and stays: the banner goes and does not come back.
     await waitFor(() => {

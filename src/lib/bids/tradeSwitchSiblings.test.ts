@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { groupTradeSwitchSiblings, tradeSwitchProjectKey, type TradeSwitchSiblingRow } from './tradeSwitchSiblings'
 
-const row = (over: Partial<TradeSwitchSiblingRow>): TradeSwitchSiblingRow => ({ id: 'b-1', bid_number: '100', service_type_id: 'st-p', project_name: 'Pondhill Building 2', ...over })
+const row = (over: Partial<TradeSwitchSiblingRow>): TradeSwitchSiblingRow => ({ id: 'b-1', bid_number: '100', service_type_id: 'st-p', project_name: 'Penmoor Building 2', ...over })
 
 describe('tradeSwitchProjectKey', () => {
   it('trims and folds case; blank and missing are empty', () => {
-    expect(tradeSwitchProjectKey('  Pondhill Building 2 ')).toBe('pondhill building 2')
+    expect(tradeSwitchProjectKey('  Penmoor Building 2 ')).toBe('penmoor building 2')
     expect(tradeSwitchProjectKey('   ')).toBe('')
     expect(tradeSwitchProjectKey(null)).toBe('')
     expect(tradeSwitchProjectKey(undefined)).toBe('')
@@ -19,20 +19,20 @@ describe('groupTradeSwitchSiblings', () => {
       row({ id: 'b-h1', bid_number: '301', service_type_id: 'st-h' }),
       row({ id: 'b-e2', bid_number: '202', service_type_id: 'st-e' }),
     ]
-    expect(groupTradeSwitchSiblings(rows, 'Pondhill Building 2')).toEqual({
+    expect(groupTradeSwitchSiblings(rows, 'Penmoor Building 2')).toEqual({
       'st-e': [{ id: 'b-e1', bid_number: '201' }, { id: 'b-e2', bid_number: '202' }],
       'st-h': [{ id: 'b-h1', bid_number: '301' }],
     })
   })
 
   it('matches the project name loosely — case and surrounding spaces do not matter', () => {
-    const rows = [row({ id: 'b-e1', service_type_id: 'st-e', project_name: '  PONDHILL building 2 ' })]
-    expect(Object.keys(groupTradeSwitchSiblings(rows, 'Pondhill Building 2'))).toEqual(['st-e'])
+    const rows = [row({ id: 'b-e1', service_type_id: 'st-e', project_name: '  PENMOOR building 2 ' })]
+    expect(Object.keys(groupTradeSwitchSiblings(rows, 'Penmoor Building 2'))).toEqual(['st-e'])
   })
 
   it('leaves out the customer’s other projects', () => {
-    const rows = [row({ id: 'b-x', service_type_id: 'st-e', project_name: 'Pondhill Building 3' }), row({ id: 'b-y', service_type_id: 'st-e', project_name: null })]
-    expect(groupTradeSwitchSiblings(rows, 'Pondhill Building 2')).toEqual({})
+    const rows = [row({ id: 'b-x', service_type_id: 'st-e', project_name: 'Penmoor Building 3' }), row({ id: 'b-y', service_type_id: 'st-e', project_name: null })]
+    expect(groupTradeSwitchSiblings(rows, 'Penmoor Building 2')).toEqual({})
   })
 
   it('an empty project name groups nothing — not even other empty names', () => {
@@ -43,10 +43,10 @@ describe('groupTradeSwitchSiblings', () => {
   })
 
   it('keeps a missing bid number as null', () => {
-    expect(groupTradeSwitchSiblings([row({ bid_number: null })], 'Pondhill Building 2')).toEqual({ 'st-p': [{ id: 'b-1', bid_number: null }] })
+    expect(groupTradeSwitchSiblings([row({ bid_number: null })], 'Penmoor Building 2')).toEqual({ 'st-p': [{ id: 'b-1', bid_number: null }] })
   })
 
   it('no rows, no groups', () => {
-    expect(groupTradeSwitchSiblings([], 'Pondhill Building 2')).toEqual({})
+    expect(groupTradeSwitchSiblings([], 'Penmoor Building 2')).toEqual({})
   })
 })
