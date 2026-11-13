@@ -16,7 +16,7 @@ A GC is a general contractor, the builder you send the bid to. Each GC gets its 
 3. Inside a GC group, **+ version** adds another version to that packet. Its **Start from** picker lists every version on the bid. It opens on this packet's own version. Pick one from **another GC** to copy that version into this packet. The copy carries the counts, the takeoff and the prices. The name pre-fills from the source. Keep it or type your own. The ✎ on any version still renames it or points it at a different GC.
 
 :::example Copy a version between GCs
-Burd & Assoc. has an *Alternate 1* that Southern Post should get too? Press **+ version** on **Southern Post's** group, set *Start from* to **Burd & Assoc. · Alternate 1**, and create — Southern Post's packet gets its own copy, priced and editable on its own.
+Brund & Assoc. has an *Alternate 1* that Southern Pine should get too? Press **+ version** on **Southern Pine's** group, set *Start from* to **Brund & Assoc. · Alternate 1**, and create — Southern Pine's packet gets its own copy, priced and editable on its own.
 :::
 
 :::example Not split yet?
@@ -25,7 +25,7 @@ A bid that has never been split shows one group — its GC — with *one packet*
 
 ## Choose what each GC receives
 
-On **Pricing**, the Workbench shows the packet you are on. It reads *This GC — Burd & Assoc.* and *Price options — what Burd & Assoc. receives*.
+On **Pricing**, the Workbench shows the packet you are on. It reads *This GC — Brund & Assoc.* and *Price options — what Brund & Assoc. receives*.
 
 - The {{chip:green|★ base}} option is the price on that GC's letter. Cover Letter, {{button:green|Share with a teammate}}, Print and the bid value all use it. {{button:outline|☆ Make base}} moves it, with a confirm. **Share with a teammate** does exactly that. It hands the pricing package to someone on your team. It never sends anything to the GC and never marks the bid sent. Share while viewing a non-base price and it asks which to send. You can send the base, the one you are viewing, or **both** in one package.
 - Every price card ends in a bar that answers **who sees this price**. Green reads *★ The price on their letter*. Blue reads *On their letter · alternate*. An alternate is a price they may take instead of the base. Gray reads *Only you see this*. The bar's links do the work. They are **offer as alternate**, **stop offering** and **☆ make base**. The GC's chip on the Send to strip counts what they are getting: {{chip:blue|gets 2 prices}}.
@@ -34,10 +34,10 @@ On **Pricing**, the Workbench shows the packet you are on. It reads *This GC —
 
 ## Write each GC's letter
 
-1. On **Cover Letter**, tabs above the form pick whose letter you are writing. An *Alternate* here is priced **in lieu of** the proposal. In lieu of means instead of. It is a whole different bid. A section the customer wants **with and without** is a different thing. See *offer an alternate on a bid*. Under **In Burd & Assoc.'s letter**, tick the packets that go in. Each is **Base** or **Alternate**. The prices you offered them show as alternate sub-rows.
+1. On **Cover Letter**, tabs above the form pick whose letter you are writing. An *Alternate* here is priced **in lieu of** the proposal. In lieu of means instead of. It is a whole different bid. A section the customer wants **with and without** is a different thing. See *offer an alternate on a bid*. Under **In Brund & Assoc.'s letter**, tick the packets that go in. Each is **Base** or **Alternate**. The prices you offered them show as alternate sub-rows.
 2. The preview, {{button:blue|Print}} and the copy buttons follow the selected GC. Each letter holds **only that GC's packets and prices**. It is headed with their name and address. One builder never sees what another was quoted.
 3. The row above the form is **Addressed to**. It lists every GC on the bid. A chip marked *same letter* is a builder from the *Also sent to* list. Pick their chip to head the letter with their name and address. Nothing else in the letter changes. Their copy rides the bid's sent date. The note under the row offers **track separately** when they need their own prices. **+ GC** adds another builder to *Also sent to* without leaving the letter. {{button:outline|Print 3 letters}} under the letter prints one addressed copy per GC with a page break between them.
-4. {{button:blue|Mark sent to Burd & Assoc.}} stamps that GC's packets with today's date and their ★ value. A GC whose packet has no prices yet gets a *No prices yet* note. Its Mark sent stays off.
+4. {{button:blue|Mark sent to Brund & Assoc.}} stamps that GC's packets with today's date and their ★ value. A GC whose packet has no prices yet gets a *No prices yet* note. Its Mark sent stays off.
 
 **Every GC keeps its own sent record. The bid has one sent date, by one rule.** The bid's board date is the earliest send to any GC by any lane. A lane can be a Mark sent. It can be the bid room's first link send. On a bid with no versions, it can be the hand stamp. That is the day the bid left the building. It never moves when you mark a later GC. Sending a room link never moves a date you set by hand. On the Cover Letter of a bid that already has a date, the button reads {{button:blue|Move sent date to today}}. It asks first. That is the only thing that moves it. On every board and lens the bid counts **once**, whatever the number of GCs. The GC packets show up as the second figure. It reads *101 bids · 107 GC packets*. The board value stays with the bid's own GC's ★ base. So marking another GC's packet never overwrites it. In **Edit Bid**, the old single "Bid Date Sent" box is now a per-GC list on any bid with versions. Each GC shows its sent date with {{button:blue|Mark sent}}. **✎ Date…** sets or corrects when that letter actually went out, sent or phoned in. **Un-send…** removes one that was recorded by mistake. Un-sending the last GC puts the bid back on the Unsent/Working board.
 
@@ -45,12 +45,12 @@ On **Pricing**, the Workbench shows the packet you are on. It reads *This GC —
 
 - On the **Bid Board**, a bid with more than one packet shows a line per GC under its row. The line shows the name, then *sent 7/31*, then the ★ value, then the answer chip. The chip is {{chip:gray|waiting…}}, {{chip:green|won}} or {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**. The bid only rolls to **Lost** once every GC with a packet has said no. A *same letter* GC rides the bid and never holds it open.
 - **Followup → Full bid details** shows the same *Sent to — by GC* list with the same select.
-- **A win is one tap, but it is three changes. So the app says so first.** You can mark a GC {{chip:green|won}} in five places. They are Edit Bid, the board pill, Followup, Waiting to hear and the Call queue. Wherever you do it, a confirm reads *"Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won"*. If you had set the bid's Win/Loss to **Lost** by hand, it adds *"The bid is currently marked Lost by hand — it flips to Won"*. {{button:blue|Mark won}} does all of it. **Cancel** changes nothing.
-- **Mis-tapped? {{button:outline|↩ waiting}} on the winner undoes the whole thing.** The GCs the win marked lost go back to {{chip:gray|waiting}}. The bid goes back to where it was, Not set or the Lost you had set. The toast spells it out: *"Southern Post back to waiting · Burd & Assoc. back to waiting · bid back to Not set."* A GC you marked lost yourself with a reason stays lost.
-- Both moves leave a line in the bid's notes, so the story is readable later. The win reads *Marked Won via packet — Southern Post · siblings marked Lost: Burd & Assoc.* The undo reads *Won undone via packet — …*
+- **A win is one tap, but it is three changes. So the app says so first.** You can mark a GC {{chip:green|won}} in five places. They are Edit Bid, the board pill, Followup, Waiting to hear and the Call queue. Wherever you do it, a confirm reads *"Mark Southern Pine Won? This marks the other GC (Brund & Assoc.) Lost — GC lost the project and the bid Won"*. If you had set the bid's Win/Loss to **Lost** by hand, it adds *"The bid is currently marked Lost by hand — it flips to Won"*. {{button:blue|Mark won}} does all of it. **Cancel** changes nothing.
+- **Mis-tapped? {{button:outline|↩ waiting}} on the winner undoes the whole thing.** The GCs the win marked lost go back to {{chip:gray|waiting}}. The bid goes back to where it was, Not set or the Lost you had set. The toast spells it out: *"Southern Pine back to waiting · Brund & Assoc. back to waiting · bid back to Not set."* A GC you marked lost yourself with a reason stays lost.
+- Both moves leave a line in the bid's notes, so the story is readable later. The win reads *Marked Won via packet — Southern Pine · siblings marked Lost: Brund & Assoc.* The undo reads *Won undone via packet — …*
 
-:::example Marking Southern Post Won on a bid that also went to Burd
-Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won. ↩ waiting on the winner puts all of it back.
+:::example Marking Southern Pine Won on a bid that also went to Brund
+Mark Southern Pine Won? This marks the other GC (Brund & Assoc.) Lost — GC lost the project and the bid Won. ↩ waiting on the winner puts all of it back.
 
 {{button:outline|Cancel}} {{button:blue|Mark won}}
 :::
@@ -71,7 +71,7 @@ Either way the job needs to know **which GC gave you the job**. That GC becomes 
 - A bid that already has a job shows {{chip:green|J1007 opened from this bid}} in Edit Bid. Opening another asks first.
 
 :::example Two builders, one winner
-You bid the shell to Burd & Assoc. and Southern Post. Southern Post calls with the job: start **New Job → Import → the bid**, pick **Southern Post** in the ask, and the bid records their win (Burd reads lost) while the job opens with Southern Post as its GC.
+You bid the shell to Brund & Assoc. and Southern Pine. Southern Pine calls with the job: start **New Job → Import → the bid**, pick **Southern Pine** in the ask, and the bid records their win (Brund reads lost) while the job opens with Southern Pine as its GC.
 :::
 
 ## "Also sent to": the same letter, no packet

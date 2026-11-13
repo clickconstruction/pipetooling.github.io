@@ -41,7 +41,7 @@ The name on the line is the name your mail app puts on the From. Set it to your 
 An email sent from the inbox to a teammate only stays in Gmail with no label. An email the app sent from the inbox is already on the thread. It gets the label and nothing more.
 
 :::example An estimator answers from the inbox
-Wendi answers Rusty from bids@ in Apple Mail. A minute later his thread shows *Wendi Doll to Rusty Cottar · sent from bids@*. The thread reads *Their move*.
+Wendi answers Rusty from bids@ in Apple Mail. A minute later his thread shows *Wendi Doll to Rusty Cotterby · sent from bids@*. The thread reads *Their move*.
 :::
 
 ## What it never does
