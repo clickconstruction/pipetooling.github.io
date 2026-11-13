@@ -53,6 +53,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
 import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
+import { LIEN_LAST_WORK_COLUMNS, lienLastWorkFactsOf, type LienLastWorkFacts } from '../../lib/jobs/lienLastWorkJobs'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -164,8 +165,12 @@ export default function LienInstrumentsModal({
   onOpenRelease?: (job: JobWithDetails) => void
   /** Open with the last day of work's line already editing (v2.4735): the Deadlines grid's last-day label. */
   openLastWork?: boolean
-  /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
-  onLastWorkSaved?: () => void
+  /**
+   * The last day of work was set or cleared here: the opener re-reads its clocks and the desk, and writes the fresh
+   * facts onto the job it already holds (`withJobLastWork`), so the row behind this window moves without a reload.
+   * `facts` is null when the window's own re-read came back empty.
+   */
+  onLastWorkSaved?: (jobId: string, facts: LienLastWorkFacts | null) => void
   /** Where the job's § 53.056 notice stands on the Lien desk (v2.7077), from an opener that holds the desk's queue: the header then names the desk's step, not *Draft*. */
   deskNotice?: LienWindowDeskNotice | null
   /** Where the job's affidavit stands on the Lien desk (v2.7187, punch list #335, row 2), from an opener that holds the desk's queue; absent, the header reads *File the affidavit*. */
@@ -748,10 +753,12 @@ export default function LienInstrumentsModal({
   const canSetLastWork = isLienOffice(authRole)
   const reReadLastWork = useCallback(async () => {
     if (!job) return
-    const { data } = await supabase.from('jobs_ledger').select('last_work_date, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', job.id).maybeSingle()
-    if (data) setLastWorkPatch(data as NonNullable<typeof lastWorkPatch>)
+    const { data } = await supabase.from('jobs_ledger').select(LIEN_LAST_WORK_COLUMNS.join(', ')).eq('id', job.id).maybeSingle()
+    const facts = lienLastWorkFactsOf(data as Record<string, unknown> | null)
+    if (facts) setLastWorkPatch(facts as NonNullable<typeof lastWorkPatch>)
     setLastWorkOpen(false)
-    onLastWorkSaved?.()
+    // The opener gets what was read, so the row behind this window counts from the new day too.
+    onLastWorkSaved?.(job.id, facts)
   }, [job, onLastWorkSaved])
   const clock = useMemo(
     () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),

@@ -196,6 +196,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
 import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import { withJobLastWork } from '../../lib/jobs/lienLastWorkJobs'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -4855,7 +4856,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         deskAffidavit={lienWindowDeskAffidavit(lienInstrumentsModal ? lienDeskData?.affidavits.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
-        onLastWorkSaved={() => {
+        onLastWorkSaved={(jobId, facts) => {
+          // v2.7208: the billed row counts from the day on the job the board holds: write it there, so the row moves with no reload.
+          cacheSetJobs((prev) => withJobLastWork(prev, jobId, facts))
           setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()
         }}
@@ -4869,6 +4872,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {
           void loadDemandOutJobIds()
+          // v2.7208: the billed row reads its notice, its filing and its service off the lien clocks: read them again.
+          setLienClocksRefresh((k) => k + 1)
           // A recorded notice that names the desk item's months sends the item (v2.3405).
           const jobId = lienInstrumentsModal?.job.id
           if (jobId) void syncLienDeskAfterRecord(jobId).finally(() => refetchLienDesk())
