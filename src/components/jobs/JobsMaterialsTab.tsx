@@ -44,7 +44,7 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
-import { EditBoxWindow } from '../materials/EditBoxForm'
+import { BoxWindow } from '../materials/BoxTabs'
 import { editBoxTitle } from '../../lib/materials/editBox'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
@@ -877,7 +877,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <EditBoxWindow container={box} containers={containers} places={places} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

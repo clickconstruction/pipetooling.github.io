@@ -1,13 +1,12 @@
 /**
  * Edit a box (v2.7179, the owner's ask of 2026-11-13): a cage's or a box's name, its kind and its where line,
- * changed after it was made. Since v2.7199 the same window also moves it to another place on the site. One form for both pages: the phone's box screen hosts it in its own sheet, the
- * office page in `EditBoxWindow` below. The rules and every word are `editBox.ts`; the write is the store's
+ * changed after it was made. Since v2.7199 the same form also moves it to another place on the site, and it sits
+ * on the Cage tab of the box window (`BoxTabs.tsx`), which both pages host. The rules and every word are `editBox.ts`; the write is the store's
  * `editContainer`, so a press made with no signal is kept and sent later like any other on-site press.
  */
-import { useEffect, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, type CSSProperties } from 'react'
 import type { Container, Place } from '../../lib/materials/onSite'
-import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxPlan, editBoxPressLabel, editBoxTitle, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
+import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxPlan, editBoxPressLabel, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
 import { addPlace, editContainer, moveContainer } from '../../lib/materials/onSiteStore'
 
 const BLUE = '#2563eb'
@@ -81,27 +80,5 @@ export default function EditBoxForm({ container, containers, places, byName, byU
       {!plan.ok && plan.words ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{plan.words}</p> : null}
       <button type="submit" disabled={!plan.ok} style={{ ...press(touch ? 52 : 40), width: '100%', background: BLUE, borderColor: BLUE, color: '#fff', ...(plan.ok ? {} : { opacity: 0.45, cursor: 'default' }) }}>{editBoxPressLabel(container, draft)}</button>
     </form>
-  )
-}
-
-/** The office page's host: a small window over the page, closed by ×, Escape or a press outside it. */
-export function EditBoxWindow({ container, containers, places, byName, byUserId, onClose, onSaved }: Omit<Props, 'touch'> & { onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  const title = editBoxTitle(container)
-  return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={title} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, width: 'min(440px, 100%)', maxHeight: '100%', overflowY: 'auto', padding: '1rem 1.25rem 1.25rem', display: 'grid', gap: '0.75rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem', flex: '1 1 auto' }}>{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', minHeight: 36, minWidth: 36 }}>×</button>
-        </div>
-        <EditBoxForm container={container} containers={containers} places={places} byName={byName} byUserId={byUserId} onSaved={onSaved} />
-      </div>
-    </div>,
-    document.body,
   )
 }

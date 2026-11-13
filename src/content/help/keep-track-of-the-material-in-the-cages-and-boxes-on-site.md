@@ -139,6 +139,8 @@ The press says what it will do, such as **Rename to G70** or **Save G70**.
 
 A label printed with the old name still opens the box, because its code never changes. Only the large words are old. Print the label again to show the new name.
 
+The window has two tabs. **Cage** holds those fields, the box's code and its history: when it was added, each move and each rename. **Contents** lists each part in the box. Under a part is the day it came in, who added it and where the box stood then. Open the fold under a part to read every count, use and move of it.
+
 Rename a box only when the same things are inside. For different things, retire the box and add a new one. Last week's count then still means what it meant.
 
 ## Retire a box

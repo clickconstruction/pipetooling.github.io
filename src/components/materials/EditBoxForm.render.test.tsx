@@ -17,7 +17,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   addPlace: (a: { jobId: string; name: string; byUserId?: string | null }) => addPlace(a),
 }))
 
-import EditBoxForm, { EditBoxWindow } from './EditBoxForm'
+import EditBoxForm from './EditBoxForm'
 
 afterEach(() => { cleanup(); editContainer.mockReset(); moveContainer.mockReset(); addPlace.mockClear() })
 
@@ -80,15 +80,5 @@ describe('EditBoxForm', () => {
     expect(press.disabled).toBe(true)
     fireEvent.submit(screen.getByTestId('edit-box-form'))
     expect(editContainer).not.toHaveBeenCalled()
-  })
-})
-
-describe('EditBoxWindow', () => {
-  it('is a window named for the box and closes on its ×', () => {
-    const onClose = vi.fn()
-    renderWithProviders(<EditBoxWindow container={site[1]!} containers={site} {...who} onClose={onClose} onSaved={() => {}} />)
-    expect(screen.getByRole('dialog', { name: 'Edit R71' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
