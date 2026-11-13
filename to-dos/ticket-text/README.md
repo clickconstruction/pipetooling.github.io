@@ -2,7 +2,7 @@
 name: "A text when a charge lands on your card, with a place to photograph the receipt"
 number: 299
 group: gated
-status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · waiting on her look and five calls · nothing built
+status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101) built 2026-11-12: the page at /r/<code>, the function receipt-link, Copy the receipt link on the Team queue · no text goes yet · PRs 2 and 3 not built
 mockup: to-dos/ticket-text/mockup.html
 summary: >
   The second door on the supply house ticket (#295). When a card charge posts to a card assigned
@@ -11,9 +11,9 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: Diane's look at the mock-up and her word on the five calls at its foot; then PR 1, the request table and the no-sign-in link's page, before any text goes.
+next: PR 1's merge, its push (20261113061500) and the deploy of receipt-link; a walk on a ZZ Test person's charge with a real phone; the rule for /r/ on the short host's Worker; then PR 2, the text, behind its switch. Diane's look at the mock-up and her word on the five calls can still change PR 2.
 size: M as a train of three (M · M · S), after #295's PR 3 has shipped
-blocker: #295 PR 3 (the match written and the office's Tickets list), since the text's photo is a ticket the office reads there; then the five calls.
+blocker: None for PR 1; #295's four PRs are on main and on prod (checked 2026-11-12). PR 2 texts teammates from the company number, so it merges switched off and the owner switches it on.
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
 ---
 
@@ -198,6 +198,10 @@ only as an addition (call 4 of the foot), never instead of the text she chose.
    Needs you items. Switched on by one `app_settings` key, off at merge, on by the owner's press.
 3. **PR 3, the rest** (S): the guide, the charge row in Banking and Job Summary's costs, the
    push beside the text if she wants it.
+
+## Where it stands (2026-11-12)
+
+PR 1 is built as `docs/recent-features/v2.7101.md` says. Two things differ from the design above, each for a reason the fragment gives: a link is its own row (`receipt_links`, one row a code) instead of a hash on the request, and the link rides the app's own address until the short host's Worker forwards `/r/`. The page says whose card by first name, since the app keeps no last four. Built at the card's defaults: call 2 (the day's jobs, skippable). Waiting for PR 2: calls 1, 3 and 5. Not built: call 4, the push.
 
 ## How to verify
 
