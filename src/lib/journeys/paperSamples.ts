@@ -131,7 +131,8 @@ export function sampleDemandLetterFields(todayYmd: string): DemandLetterFields {
     paymentsReceived: '0.00',
     outstanding: SAMPLE_JOB.amount.toFixed(2),
     deadlineDate: ymdPlusDays(todayYmd, 10),
-    paymentMethod: 'by card or bank transfer from the bill link, or by check to the office',
+    // A whole sentence: the letter sets it in front of the dispute line as it is typed.
+    paymentMethod: 'Pay by card or bank transfer from the bill link, or by check to the office.',
     includeSmallClaims: true,
     includeLien: false,
     lienFilingDeadline: '',
