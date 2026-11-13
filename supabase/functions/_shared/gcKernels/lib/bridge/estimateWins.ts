@@ -53,6 +53,10 @@ export type EstimateSent = {
   addressKey?: string | null
   /** The day the customer approved it, company time, on an approved estimate. */
   answeredYmd?: string | null
+  /** The estimate's own id, number and title, for a list that names the estimates behind a count. The counting never reads them. */
+  id?: string
+  number?: number | null
+  name?: string | null
 }
 
 type Tally = { count: number; usd: number }
@@ -83,6 +87,8 @@ export type EstimateWins = {
   line: string
   /** The sentences behind the line, for a breakdown. */
   detail: string[]
+  /** Which estimates are behind each count, as their places in the list handed in, so a list that names them cannot disagree with the counts. */
+  members: { won: number[]; declined: number[]; notChosen: number[]; expired: number[]; out: number[] }
 }
 
 const DAY = 86_400_000
@@ -121,18 +127,30 @@ export function buildEstimateWins(input: { todayYmd: string; windowStart: string
     const address = e.addressKey ?? ''
     return (choices.get(e.customerKey) ?? []).some((c) => c.day >= sent && (c.address === address || c.address === '' || address === ''))
   }
+  const members = { won: [] as number[], declined: [] as number[], notChosen: [] as number[], expired: [] as number[], out: [] as number[] }
+  let at = -1
   for (const e of input.estimates) {
+    at += 1
     const sent = dayOf(e.sentYmd)
     if (!Number.isFinite(sent) || sent > today) continue
     const usd = Number.isFinite(e.usd) && e.usd > 0 ? e.usd : 0
     const age = Math.round((today - sent) / DAY)
-    if (e.status === 'customer_accepted') add(won, usd)
-    else if (e.status === 'declined') add(declined, usd)
-    else if (e.status === 'sent') {
-      if (passedOver(e, sent)) add(notChosen, usd)
-      else if (age >= ESTIMATE_LOST_AFTER_DAYS) add(expired, usd)
-      else {
+    if (e.status === 'customer_accepted') {
+      add(won, usd)
+      members.won.push(at)
+    } else if (e.status === 'declined') {
+      add(declined, usd)
+      members.declined.push(at)
+    } else if (e.status === 'sent') {
+      if (passedOver(e, sent)) {
+        add(notChosen, usd)
+        members.notChosen.push(at)
+      } else if (age >= ESTIMATE_LOST_AFTER_DAYS) {
+        add(expired, usd)
+        members.expired.push(at)
+      } else {
         add(out, usd)
+        members.out.push(at)
         if (age >= ESTIMATE_USUAL_ANSWER_DAYS) add(agingOut, usd)
       }
     } else continue
@@ -170,5 +188,5 @@ export function buildEstimateWins(input: { todayYmd: string; windowStart: string
   } else {
     detail.push('No estimate is won or lost yet, so there is no won share to use.')
   }
-  return { coefficient, thin, won, declined, notChosen, expired, window: { count: win.count, usd: win.usd, weeks, sentPerWeekUsd, wonUsd: win.wonUsd }, soldPerWeekUsd, out: { ...out, expectedUsd }, agingOut, coefficientIfAgedOut, line, detail }
+  return { coefficient, thin, won, declined, notChosen, expired, window: { count: win.count, usd: win.usd, weeks, sentPerWeekUsd, wonUsd: win.wonUsd }, soldPerWeekUsd, out: { ...out, expectedUsd }, agingOut, coefficientIfAgedOut, line, detail, members }
 }

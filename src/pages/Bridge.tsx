@@ -1911,6 +1911,9 @@ export default function Bridge() {
               worth={marketWorth}
               bidWins={bidWins}
               estimateWins={estimateWins}
+              bids={bidsSent}
+              estimates={estimatesSent}
+              todayYmd={data.todayYmd}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setMarketOpen(false)}
             />

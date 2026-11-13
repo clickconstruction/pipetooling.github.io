@@ -146,3 +146,21 @@ describe('buildMarketWorth', () => {
     expect(none.pace).toBe('not read yet')
   })
 })
+
+describe('buildBidWins: which bids are behind each count (punch list #334, PR 4)', () => {
+  it('keeps each size’s bids by their place in the list handed in, and a left-out bid in none', () => {
+    // 2026-06-01 is before the window: it is behind the rate and not among the bids sent in the window.
+    const w = build([
+      bid({ sentYmd: '2026-10-01', usd: 20_000, outcome: 'won' }),
+      bid({ sentYmd: '2026-10-02', usd: 5_000, outcome: 'lost' }),
+      bid({ sentYmd: '2026-06-01', usd: 30_000, outcome: 'lost' }),
+      bid({ sentYmd: '2026-10-03', usd: 900_000, outcome: 'lost', leftOut: true }),
+      bid({ sentYmd: '2026-10-04', usd: 40_000 }),
+    ])
+    expect(size(w, 'mid').members).toEqual({ sent: [0, 4], won: [0], lost: [2], noMark: [4] })
+    expect(size(w, 'small').members).toEqual({ sent: [1], won: [], lost: [1], noMark: [] })
+    expect(size(w, 'giant').members).toEqual({ sent: [], won: [], lost: [], noMark: [] })
+    // The lists and the counts are one count.
+    for (const s of w.sizes) expect([s.members.won.length, s.members.lost.length, s.members.noMark.length]).toEqual([s.won.count, s.lost.count, s.noMark.count])
+  })
+})
