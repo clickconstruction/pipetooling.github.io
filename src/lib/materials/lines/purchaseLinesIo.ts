@@ -56,6 +56,7 @@ type LineDb = {
   dated_on: string | null
   line_kind: string
   house_code: string | null
+  mfr_number: string | null
   description: string | null
   unit: string | null
   pricing_unit: string | null
@@ -82,7 +83,7 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
       const client = (given ?? (await appClient())) as unknown as SupabaseClient
       const [lineRows, teachRows, houseRows, shareRows, poRows, codeRows] = await Promise.all([
         fetchAllRows<LineDb>(
-          (from, to) => client.from('supply_purchase_lines').select('id, invoice_id, number, supply_house_id, dated_on, line_kind, house_code, description, unit, pricing_unit, unit_price, part_id, quantity, extended_cents').order('id').range(from, to),
+          (from, to) => client.from('supply_purchase_lines').select('id, invoice_id, number, supply_house_id, dated_on, line_kind, house_code, mfr_number, description, unit, pricing_unit, unit_price, part_id, quantity, extended_cents').order('id').range(from, to),
           'the lines of the supply house bills',
         ),
         fetchAllRows<{ supply_house_id: string; code_key: string; part_id: string | null; not_a_part: boolean; unit_factor: number | string | null }>((from, to) => client.from('supply_part_codes').select('supply_house_id, code_key, part_id, not_a_part, unit_factor').order('id').range(from, to), 'the houses’ numbers for parts'),
@@ -102,6 +103,7 @@ export function supabasePurchaseLinesIo(given?: SupabaseClient<Database>): Purch
           datedOn: r.dated_on,
           lineKind: r.line_kind === 'charge' ? 'charge' : 'part',
           houseCode: r.house_code ?? '',
+          mfrNumber: r.mfr_number ?? '',
           description: r.description ?? '',
           unit: r.unit ?? '',
           pricingUnit: (r.pricing_unit === 'per_hundred' || r.pricing_unit === 'per_thousand' ? r.pricing_unit : 'each') as PricingUnit,

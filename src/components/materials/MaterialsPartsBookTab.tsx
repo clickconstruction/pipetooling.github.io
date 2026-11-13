@@ -1,4 +1,4 @@
-import { Fragment, useState, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
 import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
@@ -7,6 +7,8 @@ import { EmptyState } from '../EmptyState'
 import { partsBookEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { supabase } from '../../lib/supabase'
 import { HouseNumbersWindow } from './HouseNumbersWindow'
+import { CodesWithNoPartWindow } from './CodesWithNoPartWindow'
+import { supabaseCodesIo } from '../../lib/materials/lines/codesWithNoPartIo'
 import { PriceSheetDoor } from './PriceSheetDoor'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -46,6 +48,8 @@ export type MaterialsPartsBookTabProps = {
   setExpandedPartId: Dispatch<SetStateAction<string | null>>
   setViewingPartPrices: Dispatch<SetStateAction<MaterialPart | null>>
   openAddPart: () => void
+  /** Codes with no part (punch list #298 PR 2a): opens the Add Part form with a bill line's words as the name. The press shows only when this is given, which the page does for the office, who may read the bills' lines. */
+  openAddPartNamed?: (name: string) => void
   openEditPart: (part: MaterialPart & { part_type_id?: string | null }) => void
   openSupplyHousesModal: () => void
 }
@@ -86,11 +90,15 @@ export function MaterialsPartsBookTab({
   setExpandedPartId,
   setViewingPartPrices,
   openAddPart,
+  openAddPartNamed,
   openEditPart,
   openSupplyHousesModal,
 }: MaterialsPartsBookTabProps) {
   // House numbers (punch list #308): what each supply house calls a part.
   const [houseNumbersOpen, setHouseNumbersOpen] = useState(false)
+  // Codes with no part (punch list #298 PR 2a): the houses' codes on the bills that the book does not know yet.
+  const [codesOpen, setCodesOpen] = useState(false)
+  const codesIo = useMemo(() => supabaseCodesIo(), [])
   // Parts are already filtered and sorted server-side, so just use them directly
   const sortedParts = parts
 
@@ -135,6 +143,30 @@ export function MaterialsPartsBookTab({
               House numbers
             </button>
             {houseNumbersOpen ? <HouseNumbersWindow onClose={() => setHouseNumbersOpen(false)} /> : null}
+            {openAddPartNamed ? (
+              <button
+                type="button"
+                onClick={() => setCodesOpen(true)}
+                title="The supply houses' codes on the bills that no part in the book answers to yet, the most dollars first"
+                style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Codes with no part
+              </button>
+            ) : null}
+            {codesOpen && openAddPartNamed ? (
+              <CodesWithNoPartWindow
+                io={codesIo}
+                onClose={() => {
+                  setCodesOpen(false)
+                  // A code taught here changes what a part's prices and numbers show.
+                  void reloadPartsFirstPage()
+                }}
+                onNewPart={(name) => {
+                  setCodesOpen(false)
+                  openAddPartNamed(name)
+                }}
+              />
+            ) : null}
             {/* A supply house's price sheet, or one price, with no bid behind it: part prices only (punch list #308, PR 7). */}
             {serviceTypeId ? <PriceSheetDoor serviceTypeId={serviceTypeId} onBookChanged={() => void reloadPartsFirstPage()} /> : null}
             <input
