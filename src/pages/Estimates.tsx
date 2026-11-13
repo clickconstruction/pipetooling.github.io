@@ -4283,9 +4283,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       cursor:
                         !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'not-allowed' : 'pointer',
                       color:
-                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? '#9ca3af'
-                        : catalogIconHovered ? '#1d4ed8'
-                        : '#2563eb',
+                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'var(--text-faint)'
+                        : catalogIconHovered ? 'var(--text-blue-700)'
+                        : 'var(--text-link)',
                     }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} aria-hidden>

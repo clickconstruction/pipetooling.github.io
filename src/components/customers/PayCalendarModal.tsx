@@ -9,7 +9,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { isStagesOfficeRole } from '../../lib/jobs/stagesRoleGates'
-import { loadDevelopmentJobIds, loadPayerPayCalendars, loadPayerReceipts, savePayCalendar, type PayCalendarSave } from '../../lib/jobs/payCalendarIo'
+import { dispatchPayCalendarChanged, loadDevelopmentJobIds, loadPayerPayCalendars, loadPayerReceipts, savePayCalendar, type PayCalendarSave } from '../../lib/jobs/payCalendarIo'
 import {
   PAY_CALENDAR_CLAUSE_MAX,
   PAY_CALENDAR_CUTOFF_MAX,
@@ -25,6 +25,7 @@ import {
   type PayCalendarReceipt,
   type PayCalendarRow,
 } from '../../lib/jobs/payCalendar'
+import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 
 /**
  * Pay calendar · <payer> (punch list #323): the day bills must be in by, the day they pay, and
@@ -39,14 +40,7 @@ import {
  * calendar, or none, and one in a development can set the development's other jobs with it.
  */
 
-/** The job a press sat on: the window can set a calendar for it alone. */
-export type PayCalendarJob = {
-  id: string
-  /** The job in the board's words: "1412 · Larkfield retail shell". */
-  label: string
-  developmentId?: string | null
-  developmentName?: string | null
-}
+export type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 
 type Scope = 'payer' | 'job'
 
@@ -169,6 +163,8 @@ export default function PayCalendarModal({
 
   const finish = (line: string, tone: 'success' | 'warning' | 'error') => {
     showToast(line, tone)
+    // Every screen that reads a calendar reads again (punch list #341), whichever door opened this window.
+    dispatchPayCalendarChanged()
     onSaved?.()
     if (tone === 'success') onClose()
   }

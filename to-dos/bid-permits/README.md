@@ -4,7 +4,7 @@ number: 307
 group: gated
 status: asked 2026-11-10 as an idea to explore · #302's train read on main the same day and its two open PRs checked · the latest 120 bids and the permits on hand tested against each other through the dev seat, counts only · the ask drawn as given, then a second look and the pick, at desk and phone width · the owner's word the same day on the first panel, that these are the permits we can see and saying the GC pulled them overstates it · a third look redrew the pick so every line claims only what the records show, and the GC's half now leads with the jobs priced for them · his word on the live tab's same fault: yes, fix it · the live tab's count lines built as v2.6857, the words half of PR 4 · his word the same day: yes, start PR 1 · PR 1, the bid's site kernel, built as v2.6858 and run on the open bids: 7 of 25 San Antonio sites have a permit · his word after that: build it all · PR 2 and 3, the bid window's two blocks, built together as v2.6866 with one read · PR 5, permit news on the Bid Board, built as v2.6870 · PR 6 and 7, the answer on a name and the names tied to a GC, built together as v2.6872 with one table · the rest of PR 4, the read back as history, built as v2.6873 · PR 8, Austin, came with #292's revision 4 the same day (v2.6859, v2.6861), with New Braunfels, San Marcos and Seguin, so the bid's panels read all five cities · his word on the first screenshots: let a person link one of our customers to a name on permits and see what the two share · drawn as link-a-name.html with a second look, twelve GCs probed on real rows · his word: yes, build both · PR 9 and 10 built together as v2.6886, with no migration · the read back held the same night before its first run: the Permits reads would slow past their limit on older rows · two causes found and fixed the same night: the pairing in those reads made index-driven as v2.6893, proven row for row on prod, and the access rule asked once a read in place of once a row by the Permits session (`20261111013000_permit_policies_once`) · signed in, 2 to 3 seconds became 45 to 70 ms, and the hold is lifted
 mockup: to-dos/bid-permits/mockup.html (the live tab's words, before and after: before-after-live-words.html; linking a customer to its names: link-a-name.html)
-ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC) · v2.6870 (PR 5, permit news on the Bid Board) · v2.6872 (PR 6 and 7, the answer on a name) · v2.6873 (the rest of PR 4, the read back) · v2.6886 (PR 9 and 10, linking a customer to its names) · v2.6893 (the Permits reads' pairing, index-driven, and the read back on again) · v2.6924 (the lists past 1,000 rows, and the year on another year's day) · v2.6933 (the bid's own reads past 1,000 rows)
+ver: v2.6857 (the live Permits tab's count lines, the words half of PR 4) · v2.6858 (PR 1, the bid's site kernel and the count) · v2.6866 (PR 2 and 3, This site and What we can see about the GC) · v2.6870 (PR 5, permit news on the Bid Board) · v2.6872 (PR 6 and 7, the answer on a name) · v2.6873 (the rest of PR 4, the read back) · v2.6886 (PR 9 and 10, linking a customer to its names) · v2.6893 (the Permits reads' pairing, index-driven, and the read back on again) · v2.6924 (the lists past 1,000 rows, and the year on another year's day) · v2.6933 (the bid's own reads past 1,000 rows) · v2.6959 (our own plumbing permit reads Ours) · v2.6960 (Mark lost from a news line) · v2.6962 (the Needs you line for names that look like a customer) · v2.6963 (Builders counts a tied customer's bids, and the likely grade)
 summary: >
   The owner asked to collect who pulls permits, match the names, and show a GC's other permits to
   a person bidding. The test on real rows says the name is the weak join and the address is the
@@ -19,8 +19,8 @@ summary: >
   its address. Collecting needs no new table of pullers: #302's builder is the home, plus one
   small table of answers. San Antonio covers about three bid sites in ten, so every line says
   what it can see: the city, the first day of the records, and what a count is out of.
-next: Two weeks of use, and a look at what the answers on names have taught. Left unbuilt and named under each PR: the Ours chip, Mark lost on a news line, the likely name grade, Builders' column reading the answers. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
-size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 10; left: the four small pieces named in next (S)
+next: Two weeks of use, and a look at what the answers on names have taught. The four pieces left under the PRs were built 2026-11-11: the Ours chip (v2.6959), Mark lost on a news line (v2.6960), the likely name grade and Builders' column reading the answers (v2.6963), and with them the Needs you line (v2.6962). Still unbuilt and named under each PR: the follow-up's line, a phone or web domain in Compare, and dropping `builders.customer_id`. The owner said build it all, so calls 2 to 7 stand on the picks drawn until he overturns one.
+size: L as a train of eight (S · M · M · S · M · M · S · M); shipped: PR 1 to 10; the four small pieces left under them shipped 2026-11-11 (v2.6959, v2.6960, v2.6962, v2.6963)
 blocker: none; the owner said build it all on 2026-11-10, and PR 1 to 10 are built. What is left waits on two weeks of use.
 opinion: build, site first — the site match and the jobs priced for a GC work today on tables #302 already filled; permits under a GC's names wait until the answers have taught the app whose names are whose
 ---
@@ -415,8 +415,10 @@ fences when they make a table, and are pushed from a checkout of main after the 
    line, the verdict with what it is out of, and each bid to that customer with what the city
    shows on its address, folded behind a press on a phone. The bids in towns with no records
    are counted and named. A setting holds the names that are us on a plumbing permit.
-   **Built 2026-11-10 with PR 2 as v2.6866.** Not built: the setting and the *Ours* chip. A
-   plumbing permit is marked only when it lists a name other than the building permit's contact.
+   **Built 2026-11-10 with PR 2 as v2.6866.** The setting and the *Ours* chip were built 2026-11-11 as v2.6959
+   (`docs/recent-features/v2.6959.md`): Settings → Company → **Our names on plumbing permits**. A
+   plumbing permit under one of those names reads **Ours**, and any other is marked only when it
+   lists a name other than the building permit's contact.
 4. **A year and more of history, and the live tab's words (S, the function redeployed).**
    `permit-pull` takes a first day for a one-time run back to January 2025 and fills
    `builder_key` on the plumbing rows. **The words were built 2026-11-10 as v2.6857**
@@ -442,8 +444,9 @@ fences when they make a table, and are pushed from a checkout of main after the 
 5. **Permit news on the Bid Board (M).** One read for every open and sent bid, never one per
    row. The strip, the chips on the row and the phone card, the line on a follow-up, and
    *Mark lost…* opening the outcome the board already has.
-   **Built 2026-11-10 as v2.6870** (`docs/recent-features/v2.6870.md`). Not built: *Mark lost…*
-   and the follow-up's line. The news line has one press, Open the bid.
+   **Built 2026-11-10 as v2.6870** (`docs/recent-features/v2.6870.md`). *Mark lost…* was built 2026-11-11 as v2.6960
+   (`docs/recent-features/v2.6960.md`): a sent bid's plumbing line has it beside Open the bid.
+   Not built: the follow-up's line.
    **Paged 2026-11-11 as v2.6933** (`docs/recent-features/v2.6933.md`). The API returns at most
    1,000 rows to a read that asks for no range, and the board's read for San Antonio holds 738
    after the read back. `bid_site_permits` is now read a page at a time, cut by id and put back
@@ -459,8 +462,9 @@ fences when they make a table, and are pushed from a checkout of main after the 
    answers.
    **Built 2026-11-10 with PR 7 as v2.6872** (`docs/recent-features/v2.6872.md`): the table
    `builder_customer_answers`, `nameAnswers.ts`, and the question under the site's lead permit.
-   Not built: the *likely* grade, the question on a builder's sheet, Builders' column reading
-   the answers, and dropping `builders.customer_id`, which stays unwritten.
+   The *likely* grade, the question on a builder's sheet and Builders' column reading the
+   answers were built 2026-11-11 as v2.6963 (`docs/recent-features/v2.6963.md`). Not built:
+   dropping `builders.customer_id`, which stays unwritten.
 7. **Other permits under names tied to them (S).** The second half of the GC's panel: each name
    with how it was tied and its permits, opening #302's builder sheet.
    **Built 2026-11-10 with PR 6 as v2.6872.** The permits open in the panel, not in the sheet.
@@ -481,7 +485,8 @@ fences when they make a table, and are pushed from a checkout of main after the 
     count, every customer against every name through one index of telling words, and a Needs
     you line while the count is above zero.
     **PR 9 and 10 were built together 2026-11-10 as v2.6886** (`docs/recent-features/v2.6886.md`).
-    Not built: the Needs you line, and a phone or web domain in Compare.
+    The Needs you line was built 2026-11-11 as v2.6962 (`docs/recent-features/v2.6962.md`).
+    Not built: a phone or web domain in Compare.
 
 **Held:** the same phone or web domain as a grade (it needs Places lookups on hand); the suburbs'
 weekly file (#292); a Permits tab on the customer's page; merging customer rows that are one GC.

@@ -16,7 +16,9 @@ You do nothing to fill it. A line appears when someone sends a bill from the app
 
 On a phone you can add the page to your home screen. The list opens to the newest day.
 
-You can also reach it from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
+You can also reach it from the [Pipeline](/jobs?tab=stages). Find the **Billed Awaiting Payment** header. Press {{button:outline|Bills sent}} at the end of its row of buttons.
+
+There is a third way in from [Documents](/documents?tab=sent). Press **Sent copies**, then {{chip:green|Bills}}, then the **Bills sent** link.
 
 ## Put a button on your Dashboard
 
@@ -115,7 +117,7 @@ A pay application saved as a file reads *Saved as a file*. The app cannot know w
 
 Type in the box at the top. You can type a job, a customer, an address or a bill number.
 
-Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}} and {{chip:gray|Housecall Pro}}. Press {{chip:gray|All}} to see every send again.
+Press a chip to see one kind of send. The chips are {{chip:gray|Email}}, {{chip:gray|Text}}, {{chip:gray|Printed}}, {{chip:gray|Statement}}, {{chip:gray|Housecall Pro}} and {{chip:gray|Recorded by hand}}. Press {{chip:gray|All}} to see every send again.
 
 ## Print the list or save it as a spreadsheet
 

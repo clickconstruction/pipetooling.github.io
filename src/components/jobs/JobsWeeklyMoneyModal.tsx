@@ -130,7 +130,7 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.moneyIn > 0 ? 'var(--text-green-700)' : 'var(--text-muted)', fontWeight: r.moneyIn > 0 ? 600 : 400 }}>
                 {r.moneyIn > 0 ? formatWeeklyMoneyPlain(r.moneyIn) : '—'}
               </td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? '#b45309' : net >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-amber-700)' : net >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
                 {net != null ? formatWeeklyMoneySigned(net) : '?'}
               </td>
             </tr>

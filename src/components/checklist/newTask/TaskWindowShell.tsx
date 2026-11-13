@@ -1,10 +1,14 @@
+import { useLayoutEffect, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { useVisualViewportHeight } from '../../../hooks/useVisualViewportHeight'
+import { useVisualViewportBox } from '../../../hooks/useVisualViewportBox'
+import { scrollTopToReveal, taskWindowPhoneFrame } from '../../../lib/tasks/taskWindowFrame'
 
 type Props = {
   /** The id of the title, which the dialog is labelled by. */
   titleId: string
   title: string
+  /** A quiet line under the title, such as the stage a roadmap task joins. */
+  subtitle?: ReactNode
   /** The presses at the right of the title: a second Send, a door, the ×. */
   headActions: ReactNode
   /** The form. It scrolls between the head and the bar. */
@@ -25,10 +29,26 @@ type Props = {
  * On a phone (v2.3188) the card docks to the top, under the status bar, edge to edge with rounded bottom corners. The
  * overlay keeps only the safe-area inset above (viewport-fit=cover makes env() real on iPhones; 0 elsewhere). Since
  * v2.7085 the card is no taller than the part of the screen the keyboard leaves, so the bar sits just above the
- * keyboard. At a desk the card is centered.
+ * keyboard. An iPhone also slides the page under a field that sits where the keyboard will be, which pushed the
+ * card off the top of the screen, so the card follows the part that shows (`taskWindowPhoneFrame`) and the field
+ * that has the keyboard is scrolled back into the form. At a desk the card is centered.
  */
-export function TaskWindowShell({ titleId, title, headActions, children, bar, phone, zIndex, overlayBackground = 'rgba(0,0,0,0.5)', onBackdrop, cardTestId }: Props) {
-  const keyboardRoom = useVisualViewportHeight()
+export function TaskWindowShell({ titleId, title, subtitle, headActions, children, bar, phone, zIndex, overlayBackground = 'rgba(0,0,0,0.5)', onBackdrop, cardTestId }: Props) {
+  const shows = useVisualViewportBox()
+  const frame = taskWindowPhoneFrame(shows)
+  const formRef = useRef<HTMLDivElement>(null)
+  const showsHeight = shows?.height ?? null
+  const showsTop = frame.top
+  // The card has just changed size or place, so the field that has the keyboard may sit under the bar. Bring it back.
+  useLayoutEffect(() => {
+    const form = formRef.current
+    const field = document.activeElement
+    if (!phone || !form || !(field instanceof HTMLElement) || !form.contains(field)) return
+    const box = form.getBoundingClientRect()
+    const at = field.getBoundingClientRect()
+    const next = scrollTopToReveal({ scrollTop: form.scrollTop, boxTop: box.top, boxBottom: box.bottom, fieldTop: at.top, fieldBottom: at.bottom })
+    if (next !== form.scrollTop) form.scrollTop = next
+  }, [phone, showsHeight, showsTop])
   const overlayPadding = phone ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))'
   const padX = phone ? '1rem' : '1.25rem'
   const column: CSSProperties = { display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }
@@ -44,18 +64,21 @@ export function TaskWindowShell({ titleId, title, headActions, children, bar, ph
         data-testid={cardTestId}
         style={
           phone
-            ? { ...column, borderRadius: '0 0 14px 14px', width: '100%', maxHeight: keyboardRoom ? `min(100%, calc(${Math.round(keyboardRoom)}px - env(safe-area-inset-top, 0px)))` : '100%', boxSizing: 'border-box' }
+            ? { ...column, borderRadius: '0 0 14px 14px', width: '100%', marginTop: frame.top, maxHeight: frame.maxHeight, boxSizing: 'border-box' }
             : { ...column, borderRadius: 12, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)' }
         }
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: phone ? `0.75rem ${padX} 0.4rem` : `1.1rem ${padX} 0.4rem` }}>
-          <h3 id={titleId} style={{ margin: 0 }}>
-            {title}
-          </h3>
+          <div style={{ minWidth: 0 }}>
+            <h3 id={titleId} style={{ margin: 0 }}>
+              {title}
+            </h3>
+            {subtitle ? <div style={{ fontSize: 13, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</div> : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headActions}</div>
         </div>
-        <div data-testid="new-task-form" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${padX}` }}>
+        <div ref={formRef} data-testid="new-task-form" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${padX}` }}>
           {children}
         </div>
         <div style={{ flex: 'none', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: `0.6rem ${padX} 0.8rem` }}>{bar}</div>

@@ -24,6 +24,10 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
+// The Pay calendar line draws nothing here (no opener in a test); a marker says which job the window handed it (punch list #341).
+vi.mock('../customers/PayCalendarLine', () => ({
+  default: ({ payerId, job }: { payerId: string; job?: { id: string; label: string } | null }) => <span data-testid="pay-calendar-line-stub">{`${payerId} | ${job ? `${job.id} | ${job.label}` : 'no job'}`}</span>,
+}))
 // The board's pay speeds come from one RPC through useBilledMoneyData; hand it the answer a case sets.
 const money = vi.hoisted(() => ({ speeds: null as unknown }))
 vi.mock('../../hooks/useBilledMoneyData', async (original) => {
@@ -161,6 +165,14 @@ describe('JobsStagesTab — a billed row’s Pays in line opens Pay speeds on it
     expect(win.getAllByText('Made Up Foundation').length).toBeGreaterThanOrEqual(1)
     fireEvent.click(win.getByRole('button', { name: 'Close pay speeds breakdown' }))
     expect(screen.queryByRole('dialog', { name: /^Pay speeds/ })).toBeNull()
+  })
+
+  it('hands the window the row’s job, so its Pay calendar line opens on that job (punch list #341)', async () => {
+    renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: jobs() })} />)
+    await settle()
+    fireEvent.click(within(rowOf('job-diner')).getByRole('button', { name: /^Pays in 3–67d\. Open pay speeds/ }))
+    const win = within(screen.getByRole('dialog', { name: 'Pay speeds for Made Up Diner' }))
+    expect(win.getByTestId('pay-calendar-line-stub').textContent).toMatch(/^cust-diner \| job-diner \| .+ · Sink Drain$/)
   })
 
   it('the other row opens on the other payer', async () => {

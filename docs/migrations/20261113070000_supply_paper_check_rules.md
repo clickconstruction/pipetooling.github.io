@@ -24,3 +24,5 @@ The column add is a catalog change with a constant default, so its lock is held 
 
 - A throwaway local Postgres 15 with stub tables (Docker was not running on the Mac that built it): the migration applied twice, then nine assertions as an office account. A charge outside the subtotal adds up and is stamped 2. The same lines against a total that never took the charge in read *The lines are $5.00 over the subtotal.* Two charges that are outside together add up. A negative line takes its money off the sum.
 - The same assertions are in the bed `npm run test:pg:bill-lines-sweep` (`supabase/tests/bill_lines_sweep/20_scenario.sql`), which re-applies this file too and runs against the whole schema in CI.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

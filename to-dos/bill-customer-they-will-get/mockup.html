@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill Customer · They will get</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e5e7eb; color: #1a1a1a; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.45; }
+  a { color: #2563eb; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  h2 { margin: 36px 0 6px; font-size: 17px; }
+  p.lead { margin: 0 0 14px; color: #374151; max-width: 900px; }
+  .pair { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #6b7280; }
+  .label.now { color: #b91c1c; }
+  .label.next { color: #15803d; }
+  .back { background: #64748b; border-radius: 12px; padding: 22px; }
+  .back.phone { padding: 14px; width: 390px; max-width: 100%; box-sizing: border-box; }
+  .win { background: #ffffff; border-radius: 10px; padding: 20px; box-sizing: border-box; width: 520px; }
+  .back.phone .win { width: 100%; padding: 16px; }
+  .title { font-size: 20px; font-weight: 700; margin: 0; }
+  .sub { color: #6b7280; margin: 4px 0 12px; }
+  .ghost { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 7px 10px; color: #6b7280; font-size: 12px; margin-bottom: 10px; }
+  .tabs { display: flex; gap: 6px; align-items: center; border-bottom: 1px solid #e5e7eb; margin-bottom: 10px; }
+  .tab { padding: 7px 12px; border-radius: 6px 6px 0 0; color: #6b7280; font-size: 14px; }
+  .tab.on { background: #2563eb; color: #ffffff; font-weight: 700; border-radius: 6px; }
+  .caption { color: #6b7280; font-size: 12.5px; margin: 0 0 10px; }
+  .box { border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .box .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .box .row span:last-child { color: #6b7280; font-size: 12.5px; }
+  .boxhead { text-align: center; font-weight: 600; margin-bottom: 4px; }
+  .sendto { margin-bottom: 10px; }
+  .sendto .h { font-weight: 600; margin-bottom: 2px; }
+  .muted { color: #6b7280; font-size: 13px; }
+  .small { color: #6b7280; font-size: 12px; }
+  .input { border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 8px; color: #9ca3af; font-size: 13px; margin-top: 6px; }
+  .tick { display: flex; gap: 6px; align-items: center; font-size: 13px; padding: 2px 0; }
+  .tick i { width: 13px; height: 13px; border-radius: 3px; background: #2563eb; display: inline-block; flex: none; }
+  .seehead { text-align: center; font-weight: 700; margin: 12px 0 8px; }
+  .grey { background: #f0f1f5; border-radius: 8px; padding: 14px; margin-bottom: 8px; }
+  .amt { font-size: 22px; font-weight: 800; }
+  .due { text-decoration: underline; margin: 2px 0 10px; }
+  .kv { display: grid; grid-template-columns: 62px 1fr; row-gap: 4px; font-size: 13px; }
+  .kv b { font-weight: 400; color: #6b7280; }
+  .line { display: flex; justify-content: space-between; padding: 4px 0; }
+  .line.t { border-top: 1px solid #d1d5db; margin-top: 4px; padding-top: 8px; font-weight: 600; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .btn { border: 1px solid #cbd5e1; background: #ffffff; border-radius: 4px; padding: 8px 16px; font-size: 14px; }
+  .btn.p { background: #2563eb; color: #ffffff; border-color: #2563eb; font-weight: 600; }
+  .mark { display: inline-flex; width: 18px; height: 18px; border-radius: 999px; background: #b91c1c; color: #ffffff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; margin-left: 6px; vertical-align: middle; flex: none; }
+  .mark.g { background: #15803d; }
+  .new { border-left: 3px solid #16a34a; padding-left: 9px; }
+  .press { border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #14532d; }
+  .press b { color: #14532d; }
+  .press ol { margin: 4px 0 0 18px; padding: 0; }
+  .faces { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin: 0 auto 8px; }
+  .faces span { padding: 6px 12px; font-size: 13px; border-right: 1px solid #cbd5e1; color: #374151; background: #ffffff; }
+  .faces span:last-child { border-right: 0; }
+  .faces span.on { background: #1e3a8a; color: #ffffff; font-weight: 600; }
+  .center { text-align: center; }
+  .mail { border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; background: #ffffff; }
+  .mail .env { background: #f8fafc; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; font-size: 12.5px; color: #374151; }
+  .mail .band { background: #1f2937; color: #ffffff; padding: 12px 14px; font-weight: 700; }
+  .mail .body { padding: 12px 14px; font-size: 13.5px; }
+  .mail .paynow { display: inline-block; background: #b45309; color: #ffffff; border-radius: 6px; padding: 9px 22px; font-weight: 700; margin: 8px 0 4px; }
+  .chip { display: inline-block; border: 1px solid #cbd5e1; border-radius: 999px; padding: 1px 9px; font-size: 12px; color: #374151; background: #ffffff; }
+  .phonebubble { background: #e5e7eb; border-radius: 16px 16px 16px 4px; padding: 10px 12px; font-size: 13.5px; max-width: 290px; }
+  .notes { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; max-width: 520px; box-sizing: border-box; }
+  .notes div { margin: 5px 0; }
+  table { border-collapse: collapse; background: #ffffff; border-radius: 10px; overflow: hidden; max-width: 1100px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+  th { background: #f8fafc; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+  .strip { background: #ffffff; border-radius: 10px; padding: 14px 16px; width: 520px; box-sizing: border-box; }
+  @media (max-width: 640px) { body { padding: 12px; } .win, .strip, .notes { width: 100%; } .back { padding: 10px; } .col { max-width: 100%; } table { min-width: 720px; } }
+</style>
+</head>
+<body>
+
+<h1>Bill Customer · “They will get”</h1>
+<p class="lead">Punch list #343. The window an office person opens from a Ready to Bill row. Left is the window as it is today, drawn from a walk of the live app on 2026-11-13. Right is the proposal. Every name, address and amount here is made up. Green bars mark what is new. Nothing else in the window moves.</p>
+
+<h2>Desktop · the Stripe bill tab</h2>
+<div class="pair">
+
+  <div class="col">
+    <div class="label now">Today</div>
+    <div class="back"><div class="win">
+      <p class="title">Bill Customer</p>
+      <p class="sub">1042 · Water heater, 100 Sample St · RTB $1,850.00</p>
+      <div class="ghost">Contract strip and lien release strip</div>
+      <div class="tabs"><span class="tab on">Stripe bill</span><span class="tab">Physical invoice</span><span class="tab">▾</span></div>
+      <div class="box">
+        <div class="boxhead">Invoice Modifications (optional)</div>
+        <div class="row"><span>▶ Line item override</span><span>—</span></div>
+        <div class="row"><span>▶ Memo</span><span>Check</span></div>
+        <div class="row"><span>▶ Footer</span><span>Plumbing</span></div>
+      </div>
+      <div class="sendto">
+        <div class="h">Send to <span class="mark">1</span></div>
+        <div class="muted">dana@example.com (primary)</div>
+        <div class="small">The bill email goes to that address. Everyone ticked below gets a copy from Click Plumbing and Electrical with the same Pay link when you press <strong>Send Email invoice</strong>. <span class="mark">2</span></div>
+        <div class="tick"><i></i> Ridgeway Builders AP <span class="muted">ap@ridgeway.example</span></div>
+        <div class="input">Also send to… (one-off email)</div>
+      </div>
+      <div class="seehead">What the customer will see: <span class="mark">3</span></div>
+      <div class="grey">
+        <div class="amt">$1,850.00</div>
+        <div class="due">Due November 13, 2026</div>
+        <div class="kv"><b>To</b><span>Dana Whitfield<br><span class="muted">dana@example.com</span></span><b>From</b><span>Click Plumbing and Electrical</span><b>Invoice</b><span>#1042-2611131019</span><b>Memo</b><span>Paper checks can be sent to the office. Call first.</span></div>
+      </div>
+      <div class="grey">
+        <div class="line"><span>Replace 50 gal water heater</span><span>$1,850.00</span></div>
+        <div class="line t"><span>Total due</span><span>$1,850.00</span></div>
+      </div>
+      <div class="foot"><span class="btn">Cancel</span><span><span class="btn p">Create Stripe invoice</span><span class="mark">4</span></span></div>
+    </div></div>
+    <div class="notes">
+      <div><span class="mark">1</span> An address and the word primary. No name, and no phone, though a text is the next thing offered.</div>
+      <div><span class="mark">2</span> Names a press, Send Email invoice, that is not on this screen. It is on the next one.</div>
+      <div><span class="mark">3</span> This is the bill’s own facts. It is not the email or the text that lands. She never sees those before they go.</div>
+      <div><span class="mark">4</span> Makes the bill and moves the job to Billed Awaiting Payment. Sends nothing. The button does not say so.</div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="label next">Proposed</div>
+    <div class="back"><div class="win">
+      <p class="title">Bill Customer</p>
+      <p class="sub">1042 · Water heater, 100 Sample St · RTB $1,850.00</p>
+      <div class="ghost">Contract strip and lien release strip, as today</div>
+      <div class="tabs"><span class="tab on">Stripe bill</span><span class="tab">Physical invoice</span><span class="tab">▾</span></div>
+      <p class="caption new">An email with a Pay now button. They pay by card or bank on Stripe’s page.</p>
+      <div class="box">
+        <div class="boxhead">Invoice Modifications (optional)</div>
+        <div class="row"><span>▶ Line item override</span><span>—</span></div>
+        <div class="row"><span>▶ Memo</span><span>Check</span></div>
+        <div class="row"><span>▶ Footer</span><span>Plumbing</span></div>
+      </div>
+      <div class="sendto">
+        <div class="h">Send to</div>
+        <div class="new">
+          <div><strong>Dana Whitfield</strong> <span class="muted">dana@example.com (primary)</span></div>
+          <div class="small">Mobile (512) 555-0142. A text can follow the email.</div>
+          <div class="small">Each person ticked gets a copy of their own, with a Pay or view button.</div>
+        </div>
+        <div class="tick"><i></i> Ridgeway Builders AP <span class="muted">ap@ridgeway.example</span></div>
+        <div class="input">Also send to… (one-off email)</div>
+      </div>
+      <div class="center new" style="border-left: 0; padding-left: 0">
+        <div class="seehead" style="margin-bottom: 6px">What Dana will get</div>
+        <div class="faces"><span>The bill</span><span class="on">The email</span><span>The text</span></div>
+      </div>
+      <div class="mail new" style="border-left: 3px solid #16a34a">
+        <div class="env"><strong>To</strong> dana@example.com · <strong>From</strong> Click Plumbing and Electrical<br><strong>Subject</strong> Invoice #1042-2611131019 from Click Plumbing and Electrical</div>
+        <div class="band">Click Plumbing and Electrical</div>
+        <div class="body">
+          Hello Dana,<br>Here is your invoice for 100 Sample St.
+          <div style="font-size: 20px; font-weight: 800; margin-top: 8px">$1,850.00</div>
+          <div class="muted">Due November 13, 2026</div>
+          <span class="paynow">Pay now</span>
+          <div class="small">Card or bank transfer, on Stripe’s secure page.</div>
+          <div style="margin-top: 8px"><span class="chip">📎 Invoice-1042-2611131019.pdf</span> <span class="chip">QR code to their statement</span></div>
+        </div>
+      </div>
+      <div class="small center" style="margin-top: 6px">Drawn here from this bill, by the builder the real send uses. <a href="#">Open the sample in What customers see</a></div>
+      <div class="press new" style="border-left: 3px solid #16a34a">
+        <b>When you press Make the Stripe bill</b>
+        <ol>
+          <li>The bill is made. The job moves to Billed Awaiting Payment.</li>
+          <li><strong>Nothing goes to Dana yet.</strong> The next screen sends it: Send Email invoice, or Text Dana the bill.</li>
+          <li>Every send is kept in Bills sent. To take a bill back, open View bill and press Void Stripe invoice.</li>
+        </ol>
+      </div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Make the Stripe bill</span></div>
+    </div></div>
+    <div class="notes">
+      <div><span class="mark g">1</span> Name, address and phone on one line. With no mobile on file it reads: No mobile on file. Email only.</div>
+      <div><span class="mark g">2</span> The helper says what a copy is. It no longer points at a press on another screen.</div>
+      <div><span class="mark g">3</span> Three faces. The bill is today’s box, untouched, lines still open to edit. The email and the text are the real ones.</div>
+      <div><span class="mark g">4</span> The box above the press says what it does and what it does not. The press takes the verb the app already uses for this act, Make Stripe bill.</div>
+    </div>
+  </div>
+</div>
+
+<h2>Phone · the same tab</h2>
+<p class="lead">The office also bills from a phone. The window is the same one column there, so the changes are the same. The text face is shown here.</p>
+<div class="pair">
+
+  <div class="col">
+    <div class="label now">Today</div>
+    <div class="back phone"><div class="win">
+      <p class="title">Bill Customer</p>
+      <p class="sub">1042 · Water heater, 100 Sample St · RTB $1,850.00</p>
+      <div class="ghost">Contract strip and lien release strip</div>
+      <div class="tabs"><span class="tab on">Stripe bill</span><span class="tab">Physical invoice</span><span class="tab">▾</span></div>
+      <div class="box">
+        <div class="boxhead">Invoice Modifications (optional)</div>
+        <div class="row"><span>▶ Line item override</span><span>—</span></div>
+        <div class="row"><span>▶ Memo</span><span>Check</span></div>
+        <div class="row"><span>▶ Footer</span><span>Plumbing</span></div>
+      </div>
+      <div class="sendto">
+        <div class="h">Send to</div>
+        <div class="muted">dana@example.com (primary)</div>
+        <div class="small">The bill email goes to that address. Everyone ticked below gets a copy from Click Plumbing and Electrical with the same Pay link when you press <strong>Send Email invoice</strong>.</div>
+        <div class="input">Also send to… (one-off email)</div>
+      </div>
+      <div class="seehead">What the customer will see:</div>
+      <div class="grey">
+        <div class="amt">$1,850.00</div>
+        <div class="due">Due November 13, 2026</div>
+        <div class="kv"><b>To</b><span>Dana Whitfield<br><span class="muted">dana@example.com</span></span><b>From</b><span>Click Plumbing and Electrical</span><b>Invoice</b><span>#1042-2611131019</span></div>
+      </div>
+      <div class="grey">
+        <div class="line"><span>Replace 50 gal water heater</span><span>$1,850.00</span></div>
+        <div class="line t"><span>Total due</span><span>$1,850.00</span></div>
+      </div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Create Stripe invoice</span></div>
+    </div></div>
+  </div>
+
+  <div class="col">
+    <div class="label next">Proposed</div>
+    <div class="back phone"><div class="win">
+      <p class="title">Bill Customer</p>
+      <p class="sub">1042 · Water heater, 100 Sample St · RTB $1,850.00</p>
+      <div class="ghost">Contract strip and lien release strip, as today</div>
+      <div class="tabs"><span class="tab on">Stripe bill</span><span class="tab">Physical invoice</span><span class="tab">▾</span></div>
+      <p class="caption new">An email with a Pay now button. They pay by card or bank on Stripe’s page.</p>
+      <div class="box">
+        <div class="boxhead">Invoice Modifications (optional)</div>
+        <div class="row"><span>▶ Line item override</span><span>—</span></div>
+        <div class="row"><span>▶ Memo</span><span>Check</span></div>
+        <div class="row"><span>▶ Footer</span><span>Plumbing</span></div>
+      </div>
+      <div class="sendto">
+        <div class="h">Send to</div>
+        <div class="new">
+          <div><strong>Dana Whitfield</strong></div>
+          <div class="muted">dana@example.com (primary)</div>
+          <div class="small">Mobile (512) 555-0142. A text can follow the email.</div>
+        </div>
+        <div class="input">Also send to… (one-off email)</div>
+      </div>
+      <div class="center">
+        <div class="seehead" style="margin-bottom: 6px">What Dana will get</div>
+        <div class="faces"><span>The bill</span><span>The email</span><span class="on">The text</span></div>
+      </div>
+      <div class="grey new" style="border-left: 3px solid #16a34a">
+        <div class="small" style="margin-bottom: 6px">To (512) 555-0142, from the company number</div>
+        <div class="phonebubble">Hi Dana, this is Rosa with Click Plumbing. Your bill for Water heater is ready, $1,850.00. Text me here with any question. Pay it here: my.clickplumbing.com/pay/kyhsample</div>
+        <div class="small" style="margin-top: 6px">The text is your choice on the next screen. It is not sent by this press.</div>
+      </div>
+      <div class="press new" style="border-left: 3px solid #16a34a">
+        <b>When you press Make the Stripe bill</b>
+        <ol>
+          <li>The bill is made. The job moves to Billed Awaiting Payment.</li>
+          <li><strong>Nothing goes to Dana yet.</strong> The next screen sends it.</li>
+          <li>Every send is kept in Bills sent.</li>
+        </ol>
+      </div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Make the Stripe bill</span></div>
+    </div></div>
+  </div>
+</div>
+
+<h2>The Physical invoice tab · two lines and the press</h2>
+<p class="lead">This tab already draws the PDF in place and has Preview and Preview email, which open the exact PDF and the exact email. Those stay. Its press sends at once with no second question, so the words around it carry the weight.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label now">Today</div>
+    <div class="strip">
+      <div class="tabs"><span class="tab">Stripe bill</span><span class="tab on">Physical invoice</span><span class="tab">▾</span></div>
+      <div class="sendto"><div class="h">Send to</div><div class="muted">dana@example.com (primary)</div><div class="tick"><i></i> Ridgeway Builders AP <span class="muted">ap@ridgeway.example</span></div></div>
+      <div class="ghost">Invoice Modifications, dates, Preview, Preview email, the PDF drawn in place</div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Send email</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">Proposed</div>
+    <div class="strip">
+      <div class="tabs"><span class="tab">Stripe bill</span><span class="tab on">Physical invoice</span><span class="tab">▾</span></div>
+      <p class="caption new">An email with the invoice PDF attached. It has no pay link. They pay by check or call the office.</p>
+      <div class="sendto"><div class="h">Send to</div><div class="new"><strong>Dana Whitfield</strong> <span class="muted">dana@example.com (primary)</span></div><div class="tick"><i></i> Ridgeway Builders AP <span class="muted">ap@ridgeway.example</span></div></div>
+      <div class="ghost">Invoice Modifications, dates, Preview, Preview email, the PDF drawn in place, as today</div>
+      <div class="press new" style="border-left: 3px solid #16a34a">
+        <b>When you press Email the invoice to 2</b>
+        <ol>
+          <li>One email goes now to dana@example.com and ap@ridgeway.example. Each sees the other’s address.</li>
+          <li>The job moves to Billed Awaiting Payment. No text goes with it.</li>
+          <li>The copy is kept in Bills sent. Email again from the bill’s row.</li>
+        </ol>
+      </div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Email the invoice to 2</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>Step 3, the owner’s call · one press that makes the bill and emails it</h2>
+<p class="lead">Today a Stripe bill takes two screens: make it, then send it. A bill can be made and never sent. Bills sent listed 24 open bills with no send on record on the day of the walk. If the owner wants it, the main press does both, and the quiet press beside it keeps today’s way for a bill handed over in person.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label now">Today</div>
+    <div class="strip"><div class="foot"><span class="btn">Cancel</span><span class="btn p">Create Stripe invoice</span></div><div class="small" style="margin-top: 8px">Then, on the next screen: Send Email invoice, then Yes, send it.</div></div>
+  </div>
+  <div class="col">
+    <div class="label next">If chosen</div>
+    <div class="strip"><div class="foot"><span class="btn">Cancel</span><span style="display: flex; gap: 8px; flex-wrap: wrap"><span class="btn">Make the bill, send later</span><span class="btn p">Make the bill and email Dana</span></span></div><div class="small" style="margin-top: 8px">The next screen then opens on the sent bill, with Text Dana the bill as its offer.</div></div>
+  </div>
+</div>
+
+<h2>What leaves the building, by channel</h2>
+<p class="lead">Read from the code on 2026-11-13. The window’s new lines say these same facts in place.</p>
+<div style="overflow-x: auto"><table>
+  <tr><th>Channel</th><th>The press</th><th>What the customer gets</th><th>Copies</th><th>Can she see it first</th></tr>
+  <tr><td><strong>Stripe bill</strong></td><td>Create Stripe invoice sends nothing. Then Send Email invoice, with a Yes, send it question.</td><td>Our email: Invoice #N from Click Plumbing and Electrical. Amount, due day, a Pay now button to the pay page and on to Stripe, the invoice PDF attached, a QR code to their statement.</td><td>Each ticked person gets an email of their own: Copy of invoice #N, with Pay or view the bill.</td><td>The bill’s facts, yes. The email, no. A sample lives in Settings → What customers see.</td></tr>
+  <tr><td><strong>Text</strong>, after a Stripe bill</td><td>Text Dana the bill, then Send text to Dana.</td><td>Hi Dana, this is Rosa with Click Plumbing. Your bill for the job is ready, with the amount and the short pay link.</td><td>None. A text copies nobody.</td><td>Yes, on the text’s own sheet. No mobile on file is said there, not in this window.</td></tr>
+  <tr><td><strong>Physical invoice</strong></td><td>Send email. It sends at once.</td><td>One email: Click Plumbing Invoice [#N], the invoice PDF attached. No pay link. No text.</td><td>Everyone rides the same email and sees each address.</td><td>Yes. The PDF in place, Preview, and Preview email.</td></tr>
+  <tr><td><strong>HouseCall Pro</strong>, behind ▾</td><td>Save.</td><td>Nothing from this app. It records a bill sent elsewhere.</td><td>None.</td><td>Its caption already says so.</td></tr>
+</table></div>
+
+</body>
+</html>

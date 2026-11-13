@@ -16,6 +16,8 @@
  *   (mirrors the header's canSeeBilledExpectedPay gate — hidden otherwise).
  * - Ready to Bill notifications + Paid notifications + Paid in Full
  *   notifications: dev / master_technician / controller (the controller since v2.6760).
+ * - Bills sent: the page's own gate (`canOpenBillsSent`: dev / master_technician /
+ *   assistant / controller), last in the Billed group as it is last in the header's row.
  * - Lien desk: the office (the Accounts Receivable gate); first row of the
  *   Pipeline group since v2.3799 (punch list #34) — under Collections at the
  *   foot of the menu the owner looked and did not find it; the desk reads the
@@ -26,6 +28,7 @@
  *   disabled while that header reads 0, with the firm's acts awaiting the
  *   office as its badge. Hidden, not disabled, for everyone else.
  */
+import { canOpenBillsSent } from '../billing/billsSent'
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { canOpenBillingNotifications, canSeeStagesMoneyCharts } from './stagesRoleGates'
 
@@ -41,13 +44,17 @@ export type StagesSectionToolKey =
   | 'billed-aging-chart'
   | 'billed-payment-forecast'
   | 'paid-notifications'
+  | 'bills-sent'
   | 'paid-profit-chart'
   | 'paid-in-full-notifications'
   | 'lien-desk'
   | 'legal-desk'
 
-/** The menu's icons by name. The three notification rows share the bell; the two charts share the bars; the Legal desk wears the scales (v2.5750). */
-export type StagesToolGlyph = 'gavel' | 'history' | 'route' | 'cash' | 'file-dollar' | 'bell' | 'building' | 'bank' | 'share' | 'chart-bar' | 'calendar-bars' | 'scales'
+/** The menu's icons by name. The three notification rows share the bell; the two charts share the bars; the Legal desk wears the scales (v2.5750); Bills sent wears the paper plane. */
+export type StagesToolGlyph = 'gavel' | 'history' | 'route' | 'cash' | 'file-dollar' | 'bell' | 'building' | 'bank' | 'share' | 'chart-bar' | 'calendar-bars' | 'scales' | 'send'
+
+/** What the Bills sent door says it opens, in the page's own words: the header's button and this menu's row share it. */
+export const BILLS_SENT_DOOR_TITLE = 'Every bill that left, who it went to, and the minute it went'
 
 export type StagesSectionToolItem = {
   key: StagesSectionToolKey
@@ -244,6 +251,16 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       title: 'Payment email settings',
       disabled: false,
       icon: 'bell',
+    })
+  }
+  // The Bills sent page (`/bills-sent`, punch list #327): the page's own gate. Hidden, not disabled, for others.
+  if (canOpenBillsSent(authRole)) {
+    billedItems.push({
+      key: 'bills-sent',
+      label: 'Bills sent',
+      title: BILLS_SENT_DOOR_TITLE,
+      disabled: false,
+      icon: 'send',
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })

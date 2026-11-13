@@ -9,7 +9,7 @@ import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 // Item 9 (#85): a promise is measured against what was billed when it was made, as the desk's RPC does.
 import { billedAtPromise } from '../_shared/legalPromiseBilled.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
+import { sampleLegalPortalResponse } from '../_shared/customerSampleLegal.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'

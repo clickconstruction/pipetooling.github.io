@@ -1518,7 +1518,7 @@ export default function JobsJobSummaryTab({
                                                     style={{
                                                       padding: '0.25rem 0.4rem',
                                                       textAlign: 'right',
-                                                      color: cardColLoading ? '#6b7280' : undefined,
+                                                      color: cardColLoading ? 'var(--text-muted)' : undefined,
                                                     }}
                                                     role={cardPersonInteractive ? 'button' : undefined}
                                                     tabIndex={cardPersonInteractive ? 0 : -1}
@@ -1685,7 +1685,7 @@ export default function JobsJobSummaryTab({
                                                     style={{
                                                       padding: '0.25rem 0.4rem',
                                                       textAlign: 'right',
-                                                      color: cardColLoading ? '#6b7280' : undefined,
+                                                      color: cardColLoading ? 'var(--text-muted)' : undefined,
                                                     }}
                                                     role={
                                                       cardColLoading || jobSummaryPartsCostIsZero(unattributedCard)
@@ -2187,7 +2187,7 @@ export default function JobsJobSummaryTab({
                                                   style={{
                                                     padding: '0.25rem 0.4rem',
                                                     textAlign: 'right',
-                                                    color: cardColLoading ? '#6b7280' : undefined,
+                                                    color: cardColLoading ? 'var(--text-muted)' : undefined,
                                                   }}
                                                   role={cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt) ? undefined : 'button'}
                                                   tabIndex={cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt) ? -1 : 0}

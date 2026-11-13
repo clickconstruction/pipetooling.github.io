@@ -8,7 +8,8 @@ import { existsSync, readFileSync } from 'node:fs'
 /** One line of the ledger. The newest line for a mailbox and a thread says where that conversation stands. */
 export interface LedgerEntry {
   at: string
-  kind: 'plan' | 'applied' | 'refused' | 'untagged'
+  /** `held`: the conversation's sender has no named contact, so it was not planned (`backfillContact.ts`). */
+  kind: 'plan' | 'applied' | 'refused' | 'untagged' | 'held'
   jobKey: string
   account: string
   threadId: string
@@ -17,8 +18,10 @@ export interface LedgerEntry {
   counts?: Record<string, number>
   /** The rule that matched (`backfillMatch.ts`). */
   rule?: string
-  /** What the seat said: the filing's words, or the refusal's. */
+  /** What the seat said: the filing's words, or the refusal's. On a `held` line, the contact step's reason. */
   words?: string
+  /** On an `applied` line: the filing made an unnamed sender after all, and the run stopped there. */
+  unnamed?: boolean
 }
 
 export const ledgerLine = (entry: LedgerEntry): string => `${JSON.stringify(entry)}\n`
@@ -50,8 +53,8 @@ function newestOf(entries: readonly LedgerEntry[], jobKey: string): LedgerEntry[
 }
 
 /**
- * The conversations ready to file: planned, with a hash, and nothing since. One that was filed, refused or taken back
- * after its plan is not here: a person plans it again and reads the new sheet.
+ * The conversations ready to file: planned, with a hash, and nothing since. One that was filed, refused, taken back or
+ * held for a contact after its plan is not here: a person plans it again and reads the new sheet.
  */
 export function plannedOf(entries: readonly LedgerEntry[], jobKey: string): Array<LedgerEntry & { planHash: string }> {
   return newestOf(entries, jobKey).filter((e): e is LedgerEntry & { planHash: string } => e.kind === 'plan' && typeof e.planHash === 'string' && e.planHash !== '')

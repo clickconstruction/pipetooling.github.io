@@ -23,6 +23,7 @@ import { contractCoversLine, jobNumberLabel, siblingPaperOffers, streetOf } from
 import { formatErrorMessage } from '../../utils/errorHandling'
 import TheirPaperSheet from './TheirPaperSheet'
 import { theirPaperPayer } from '../../lib/jobs/theirPaperPayer'
+import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -166,6 +167,7 @@ export default function JobContractStrip({
         onDone={() => void reload()}
         job={{ id: job.id, num: jobNumberLabel(job), partyName: signer }}
         payer={theirPaperPayer(job)}
+        payCalendarJob={payCalendarJobOf(job)}
         existing={theirPaper}
       />
       {sheetOpen ? (

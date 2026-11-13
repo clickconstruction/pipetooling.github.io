@@ -50,7 +50,7 @@ export function PortalGcSchedule({ schedule }: { schedule: Schedule }) {
             <div key={`${s.label}:${s.start}`} data-portal-gc-stage style={{ display: 'contents' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, minWidth: 0 }}>
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
-                <span style={{ color: s.state === 'behind' ? '#b45309' : MUTED, fontVariantNumeric: 'tabular-nums' }}>{s.pct}%</span>
+                <span style={{ color: s.state === 'behind' ? 'var(--text-amber-700)' : MUTED, fontVariantNumeric: 'tabular-nums' }}>{s.pct}%</span>
               </div>
               <div style={{ position: 'relative', height: 16 }} title={`${s.label}: ${shortDate(s.start)} to ${shortDate(s.finish)}, ${s.pct}% done`}>
                 <span style={{ position: 'absolute', left: x(s.start), width: w(s.start, s.finish), top: 1, height: 14, borderRadius: 4, boxSizing: 'border-box', border: `1.5px solid ${color}`, background: s.state === 'done' ? 'var(--bg-green-100)' : 'var(--bg-blue-tint)', overflow: 'hidden' }}>

@@ -10,6 +10,8 @@
 import { HISTORY_HEAD_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
+import { indexPayCalendars, type PayCalendarIndex } from '../jobs/payCalendar'
+import { loadInvoiceAcceptances, loadPayCalendars } from '../jobs/payCalendarIo'
 import { paySpeedPayerIds } from './siteMoney'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
@@ -67,6 +69,10 @@ export type DevelopmentPageData = {
   twinUserIds: ReadonlySet<string>
   /** The site's payers' pace (`get_customer_pay_speeds`, v2.6739; the Pipeline's whole-list read until its migration is pushed), for the Money look's expected day; null when the read fails or the site bills no one. */
   paySpeed: PaySpeedData | null
+  /** The stored Pay calendars (punch list #323), for the Money look's due day; null when the read fails, absent on an older read. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id; null when the read fails, absent on an older read. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
 function fail(label: string, error: { message: string } | null): void {
@@ -289,6 +295,9 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const customerIds = [customerId, development.gc_customer_id].filter((x): x is string => !!x)
   // The Money look's expected day reads the site's payers' pace (every job the page holds, the ones at the address too, so the toggle asks nothing more); a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
   const paySpeedP: Promise<PaySpeedData | null> = office ? readPaySpeeds(paySpeedPayerIds([...inIt.jobs, ...atAddress.jobs])) : Promise.resolve(null)
+  // The payers' Pay calendars and the accepted days (punch list #323), beside the pace and as soft: a failed read leaves the Money look on the pace guess.
+  const payCalendarsP: Promise<PayCalendarIndex | null> = office ? loadPayCalendars(supabase).then(indexPayCalendars, () => null) : Promise.resolve(null)
+  const acceptedP: Promise<ReadonlyMap<string, string> | null> = office ? loadInvoiceAcceptances(supabase).catch(() => null) : Promise.resolve(null)
 
   const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes] = await Promise.all([
     readRequests('estimators', bidIds, jobIds, developmentId),
@@ -363,7 +372,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null
 
-  const paySpeed = await paySpeedP
+  const [paySpeed, payCalendars, acceptedByInvoice] = await Promise.all([paySpeedP, payCalendarsP, acceptedP])
 
   return {
     development,
@@ -386,5 +395,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     names,
     twinUserIds,
     paySpeed,
+    payCalendars,
+    acceptedByInvoice,
   }
 }

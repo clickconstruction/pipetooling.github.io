@@ -381,6 +381,8 @@ What no walk did, because each is a write and prod is the only database: a part 
 name, a **Same part** or **Different** answer and its **Undo**, and a tie to the parts book. Render
 tests hold each of them. The first real answers are the office's to make on the real site.
 
+**Pricing what has no price is its own card**: #342, `to-dos/site-materials-price-the-unpriced/README.md`, the owner's ask of 2026-11-13 to press the Worth, see every row with no price and price it fast.
+
 The migration went in out of order, behind a later stamp another session had pushed. It was
 tried on prod inside a transaction that was rolled back, then pushed. The types and the dev-mcp
 catalog were regenerated from prod (#7927), and dev-mcp was redeployed with the new catalog.

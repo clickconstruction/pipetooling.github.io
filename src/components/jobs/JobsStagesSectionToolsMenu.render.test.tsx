@@ -9,7 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 
-const KEYS: StagesSectionToolKey[] = ['recently-added', 'weekly-movement', 'weekly-money', 'capable-to-bill', 'ready-to-bill-notifications', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-aging-chart', 'billed-payment-forecast', 'paid-notifications', 'paid-profit-chart', 'paid-in-full-notifications', 'lien-desk', 'legal-desk']
+const KEYS: StagesSectionToolKey[] = ['recently-added', 'weekly-movement', 'weekly-money', 'capable-to-bill', 'ready-to-bill-notifications', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-aging-chart', 'billed-payment-forecast', 'paid-notifications', 'bills-sent', 'paid-profit-chart', 'paid-in-full-notifications', 'lien-desk', 'legal-desk']
 
 function doors() {
   return Object.fromEntries(KEYS.map((k) => [k, vi.fn()])) as unknown as Record<StagesSectionToolKey, () => void>
@@ -45,6 +45,19 @@ describe('JobsStagesSectionToolsMenu', () => {
     expect(glyphOf(/^Legal desk/).dataset.toolsGlyph).toBe('scales')
     expect(glyphOf(/^Legal desk/).style.color).toBe('var(--text-muted)')
     expect(screen.getByText('Collections')).toBeTruthy()
+    // Bills sent's row: the paper plane, right after Paid notifications as in the header's row.
+    expect(glyphOf(/^Bills sent/).dataset.toolsGlyph).toBe('send')
+    const labels = rows.map((r) => r.textContent ?? '')
+    expect(labels.indexOf('Bills sent')).toBe(labels.indexOf('Paid notifications') + 1)
+  })
+
+  it('the Bills sent row calls its door', () => {
+    const onSelect = doors()
+    render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={onSelect} />)
+    fireEvent.click(screen.getByLabelText('Section tools'))
+    fireEvent.click(screen.getByText('Bills sent'))
+    expect(onSelect['bills-sent']).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 
   it('is closed until the trigger is pressed, then lists the kernel items for a dev', () => {

@@ -13,6 +13,7 @@ import {
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
   SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR,
   SELECT_CUSTOMER_CONTACTS_WITH_CREATOR,
@@ -832,8 +833,8 @@ export function UnifiedBidCustomerNotesActionButtons({
         }}
         style={{
           padding: '0.25rem 0.65rem',
-          background: !customerId ? '#e5e7eb' : addingKind === 'customer' ? '#15803d' : '#16a34a',
-          color: !customerId ? 'var(--text-faint)' : 'white',
+          background: !customerId ? DEAD_PRESS_FILL : addingKind === 'customer' ? '#15803d' : '#16a34a',
+          color: !customerId ? DEAD_PRESS_TEXT : 'white',
           border: 'none',
           borderRadius: 4,
           cursor: !customerId ? 'not-allowed' : 'pointer',

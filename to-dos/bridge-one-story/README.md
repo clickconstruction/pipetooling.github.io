@@ -13,7 +13,7 @@ summary: >
   week, cash first, and the flow as one picture. The pick is the first, with the picture as one
   strip and one rule from the second: when cash goes under the floor, cash leads. Nothing built
   is deleted. It moves behind three doors.
-next: the train is built. Give it four Mondays, then read whether the call gets pressed. His calls 3 and 7 are still open, each with a pick drawn on 2026-11-11.
+next: the train is built. The four-Monday read of whether the call gets pressed will not happen: on the owner's word of 2026-11-12 the call came off the page in v2.7105 (punch list #334, `to-dos/bridge-pulse/`). His calls 3 and 7 are still open, each with a pick drawn on 2026-11-11.
 size: L as a train of five (M · M · S · M · S); left: none
 blocker: None.
 opinion: build the pick, PR 1 first, and give it four Mondays. If the call is still unpressed on the first screen with the moves reaching people, the ritual is the problem and the page falls back to three numbers and one list.

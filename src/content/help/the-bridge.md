@@ -15,6 +15,8 @@ The line beside the page's name says today's date and the pay week. That line al
 
 The line under it says [what the Bridge leaves out](#what-the-bridge-leaves-out).
 
+Press {{button:outline|Punch list}} at the top right of the page to open the [Punch list](/punch-list). On a phone the button sits under the page's name.
+
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## The first screen
@@ -113,7 +115,7 @@ Press a card to read it. The pressed card has the red border.
 
 A line under the page's name says what the Bridge leaves out. It reads *Leaves out Oak Hollow.* or *Nothing is left out.*
 
-The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole.
+The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole. [The weekly email](#the-weekly-email) leaves the same things out.
 
 To change the list, press **Change ›** beside the line.
 
@@ -278,7 +280,7 @@ Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on 
 
 The email shows three tiles, the strip of pipe and **What to do now** with its first three moves. The email's tiles are what the field made, cash's low point, and the slowest step. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
-Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
+The email leaves out [what the Bridge leaves out](#what-the-bridge-leaves-out). When the list names something, a line under the email's name says what is left out. Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 
 The email records nothing and names no person. The email's button opens the Bridge.
 

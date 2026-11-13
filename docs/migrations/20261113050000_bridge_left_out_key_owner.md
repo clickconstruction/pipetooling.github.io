@@ -9,3 +9,5 @@ The owner's role saves what the Bridge leaves out (punch list #334, PR 2). Under
 - Idempotent: each policy is dropped if it exists and made again.
 
 Deploy order: none. The client reads the row before and after; the owner's save passes once this is pushed, and until then says why it was refused and holds for the visit.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

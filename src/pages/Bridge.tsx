@@ -58,7 +58,7 @@ import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
-import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
+import { leftOutKey, leftOutPickerNames, withLeftOutJobIds, type LeftOutRule } from '../lib/bridge/leftOut'
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
@@ -126,6 +126,7 @@ import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
 import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
+import { BridgePunchListLink } from '../components/bridge/BridgePunchListLink'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -259,8 +260,7 @@ export default function Bridge() {
   /** The ids every Bridge read takes (v2.6813): the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
   const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
     const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
-    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
-    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+    return withLeftOutJobIds(zz, leftOutJobIds)
   }, [hideZz, user?.id, leftOutJobIds])
   /**
    * The viewer's ZZ switch alone, for the won rates. There a set stands for the switch, and a bid on something left
@@ -1480,6 +1480,7 @@ export default function Bridge() {
         <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
+        <BridgePunchListLink role={role} />
       </div>
       {leftOutRules && (
         <BridgeLeftOut

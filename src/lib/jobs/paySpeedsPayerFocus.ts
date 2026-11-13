@@ -10,8 +10,14 @@ import type { StageRow } from '../jobsStagesBoard'
 import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PayReceipt, type PaySpeedData } from './billedExpectedPay'
 import { openBillsForCustomers, type MoneyWaitingCalendars, type OpenBill } from './moneyWaiting'
 import { formatPaysIn, paySpeedSpread, type PaySpeedSpread } from './paymentReliability'
+import type { PayCalendarJob } from './payCalendarJob'
 
-export type PaySpeedsPayer = { id: string; name: string | null }
+export type PaySpeedsPayer = {
+  id: string
+  name: string | null
+  /** The job the press sat on (punch list #341): the window's Pay calendar line then opens on that job. */
+  job?: PayCalendarJob | null
+}
 
 export type PaySpeedsPayerFocus = {
   customerId: string
