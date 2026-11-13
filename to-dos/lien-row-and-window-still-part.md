@@ -83,6 +83,14 @@ what still differed. Counts only are given here, since the repo is public.
 - A paper that waits on someone else's approval reads *Waiting on Robert* on the row and *Approve
   the affidavit* in the header, whose second line says *the leader's approval*. A notice reads the
   same two ways. The header could name the leader.
+- An affidavit approved before a fact came to hold it stays on the desk's Ready pile, because
+  `pileFor` in `lienDeskAffidavits.ts` reads the paper's status before its gates. Its row, its chip
+  and its header all read *File the affidavit*. The window's Lien affidavit tab lists the closed
+  fact and draws no paper. The walk of 2026-11-13 found three live jobs this way, each three days
+  from its last day: one with the homestead question unanswered, one marked a homestead, one on
+  public property. The Lien desk's Share message already counts them as held (v2.7138). Card #305
+  says a hold changes which pile a paper sits in. Whether an approved paper leaves Ready is the
+  owner's call, since it takes papers off the list the office files from.
 - The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
   *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.
 - One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
