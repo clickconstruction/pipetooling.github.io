@@ -5,24 +5,24 @@ roles: all
 keywords: checklist, schedule, future task, repeat, weekly, day of week, days after completion, when, add task, remind, reminder, escalate, day before, phone alert, email
 order: 41
 ---
-When you add a checklist task, the When choice is right under the people picker. It has three plain options, and a green sentence below tells you exactly what Save will do.
+When you give a task, the **When** bar sits under the faces. It has four choices. The green sentence above Send tells you exactly what Send will do.
 
 ## Today
 
-This is the default. The task lands on the assignee's **Today** list immediately. You leave {{chip:blue|Stays on the list until done}} checked. It then keeps showing until someone completes it. That is almost always what you want.
+This is the default. The task lands on the assignee's **Today** list immediately. It keeps showing until someone completes it. That is almost always what you want. For a task that should leave when its day ends, press {{chip:gray|+ Just for the day}} in the **Add** row.
 
-## On a date
+## Tomorrow or another day
 
-You pick **Do on** and the task appears on that day instead. Until then it waits in Today → **Upcoming**. This is how you schedule something for next week.
+**Tomorrow** is one press. For any other day you press **Pick a day** and set **Do on**. The task appears on that day instead. Until then it waits in Today → **Upcoming**. This is how you schedule something for next week.
 
 On **Manage**, a future-dated task sits in its own **Scheduled** section below the open list. It wears a blue {{chip:blue|starts Mon, Aug 31}} chip instead of the red open clock. "Open" only counts tasks someone can act on today.
 
 ### Due by — startable Monday, late after Friday
 
-One-off tasks can also carry an optional **Due by** date. The task lands on the list on its **Do on** day as usual. It shows a calm {{chip:gray|due Fri, Sep 4}} chip through its window. It turns {{chip:yellow|due today}} on the day. It only goes red, {{chip:red|2 days late}}, once the deadline passes. Setting a due date locks **Stays on the list until done** on. A deadline is meaningless for a task that vanishes first. History marks completions that ran past it with *done N days late*.
+One-off tasks can also carry an optional **Due by** date. Press {{chip:gray|+ Due by}} in the **Add** row to set it. The task lands on the list on its **Do on** day as usual. It shows a calm {{chip:gray|due Fri, Sep 4}} chip through its window. It turns {{chip:yellow|due today}} on the day. It only goes red, {{chip:red|2 days late}}, once the deadline passes. A task with a due date always stays until it is done. A deadline is meaningless for a task that vanishes first. History marks completions that ran past it with *done N days late*.
 
 :::example The sentence tells you
-One task on Robert's list from Mon, Aug 31 — due Fri, Sep 4, stays until completed.
+Theo gets it on Mon, Aug 31. It is late after Fri, Sep 4. It stays until it is done.
 :::
 
 Reminders follow the deadline too. Here **remind the day before** fires the day before the due date. And **escalate after N days** now means N days *late*. You leave Due by empty and everything works exactly as it always has.
@@ -32,7 +32,7 @@ Reminders follow the deadline too. Here **remind the day before** fires the day 
 You move a due date later and the task starts carrying its history. A {{chip:yellow|pushed ×2}} chip appears on **Manage**. An amber *"Originally due Fri, Aug 29 — pushed ×2, +5 days so far"* line appears in the edit window. A named entry lands in the task's activity: *Robert pushed the due date Fri, Aug 29 → Mon, Sep 1*. Escalation messages carry the same rider, so a deadline cannot be quietly managed around. Pulling a date **earlier** never earns a marker. Bringing it back to the original clears it.
 
 :::example The sentence tells you
-One task on Robert's list on Fri, Aug 28 — stays until completed.
+Theo gets it on Fri, Aug 28. It stays until it is done.
 :::
 
 ## Repeats
@@ -46,7 +46,7 @@ Repeating tasks stay stocked about five weeks ahead automatically. They keep goi
 
 ### The calendar under the days
 
-Under the day pills, the window draws this week and the next three. Each day the task lands is filled in. Today has a blue ring. The start day and the end day have a ring inside their fill. A start that is not one of the picked days has an amber ring instead. An amber note under the calendar names the first day that lands. The green sentence stays under the calendar.
+Under the day pills, the window draws this week and the next three. Each day the task lands is filled in. Today has a blue ring. The start day and the end day have a ring inside their fill. A start that is not one of the picked days has an amber ring instead. An amber note under the calendar names the first day that lands. The green sentence stays above Send.
 
 For *days after it's done*, the first day is filled in. The days after it are dashed. Each one moves with the day you check off the one before.
 
@@ -58,11 +58,11 @@ To see every repeating task in one place, you open **Manage** and tap the {{chip
 
 ## Notifications
 
-**When it's done, notify** is one line. You check **Me** to hear when it is completed. You add one more person with the picker. Reminders at a set time of day live under **Advanced**.
+The bell beside Send is **Tell me**. It is lit, so you hear when the task is completed. Press the bell to turn that off. Press {{chip:gray|+ Tell someone else}} in the **Add** row to add one more person.
 
 ## Remind
 
-Below the notify options, the **Remind** row sets a nudge time. You pick {{chip:blue|Morning 7:00}}, {{chip:gray|Midday 12:00}}, {{chip:gray|End of day 4:00}}, or **Custom…** for any time. You pick one and three plain choices unfold:
+Press {{chip:gray|+ Remind}} in the **Add** row to set a nudge time. You pick {{chip:blue|Morning 7:00}}, {{chip:gray|Midday 12:00}}, {{chip:gray|End of day 4:00}}, or **Custom…** for any time. You pick one and three plain choices unfold:
 
 - **Keep reminding every day until it's done** is on by default. You uncheck it and the reminder fires only on the due date itself.
 - **Also remind the day before it's due** is a heads-up the afternoon before. It shows only when the task is due later than today.
@@ -76,7 +76,7 @@ Reminds Michael A & Bryan every day at 7:00 AM until it's done — and you after
 
 ## Peek at the checklist without losing your draft
 
-You tap the small checklist icon in the top-right corner of the Add-task window. It brings up the Checklist page **behind** the window. The window stays open and everything you have typed stays put. You use it to check whether the task already exists, then keep typing. If you hit it by accident, nothing is lost.
+You tap the small checklist icon in the top-right corner of the New task window. It brings up the Checklist page **behind** the window. The window stays open and everything you have typed stays put. You use it to check whether the task already exists, then keep typing. If you hit it by accident, nothing is lost.
 
 ### See dated tasks on a calendar
 
