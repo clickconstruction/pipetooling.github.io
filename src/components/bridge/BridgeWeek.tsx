@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { accrualPressLabel, type MoneyLine } from '../../lib/bridge/moneyCard'
+import { moveDive, type DiveFacts, type DiveTarget } from '../../lib/bridge/callDive'
+import { BridgeMoveTable } from './BridgeMoveTable'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
 
@@ -13,6 +15,9 @@ import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
  * The page is a pulse (punch list #334, PR 7). The card reads today: the slowest step, or cash in a week it leads,
  * and the moves that would change it. It records nothing, hands nothing to a person and asks nothing on Friday.
  * The words of the step and its moves are still `buildWeekCall`'s, read with no call on record.
+ *
+ * Each move names its things (punch list #334, PR 8; `callDive.ts`): a heading line with the move's one press, then
+ * its lines as a table (`BridgeMoveTable.tsx`). The card is framed by a rule down its left side, not a box.
  */
 
 const label: CSSProperties = { fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.25 }
@@ -113,6 +118,8 @@ export function BridgeWeek({
   stripSide = false,
   money,
   onAccrual,
+  dives = null,
+  onDive,
 }: {
   model: WeekCallModel
   /** Opens Money at the bank's accounts, from the sentence that names what is left out. */
@@ -125,6 +132,10 @@ export function BridgeWeek({
   money: { cash: MoneyLine; accrual: MoneyLine; foot: string }
   /** A press on the accrual balance: the page opens Money owed. */
   onAccrual: () => void
+  /** What the page has read behind each move (`callDive.ts`). Null while it is not read: a move is then its heading alone. */
+  dives?: DiveFacts | null
+  /** A press that opens a window or a sheet on the page. A page of the app is a link and needs no handler. */
+  onDive?: (target: DiveTarget) => void
 }) {
   const narrow = useIsNarrowScreen()
   const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
@@ -132,28 +143,47 @@ export function BridgeWeek({
   const shown = model.card.moves.slice(0, cap)
   const border = model.card.tone === 'lit' ? '#dc2626' : 'var(--border-strong)'
 
-  const moveRow = (m: WeekMove, i: number) => (
-    <li key={m.title} data-testid="bridge-week-move" style={{ display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr)', gap: '2px 8px', alignItems: 'start', padding: '6px 0', borderTop: '1px solid var(--border)', minHeight: 48 }}>
-      <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-        {i + 1}
-      </span>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, lineHeight: 1.3 }}>
-          {m.kind === 'cash' && (
-            <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: 4, padding: '1px 5px', marginRight: 5, verticalAlign: 1, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)' }}>cash</span>
-          )}
-          {m.door ? (
-            <Link to={m.door.to} title={m.door.label} style={{ color: 'inherit', textDecoration: 'none' }}>
-              {m.title} <span style={{ color: 'var(--text-link)' }}>›</span>
-            </Link>
-          ) : (
-            m.title
-          )}
-        </span>
-        {m.why && <span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>{m.why}</span>}
-      </span>
-    </li>
-  )
+  const moveRow = (m: WeekMove, i: number) => {
+    // The real things behind the move, and the one press that opens the place to act on them.
+    const dive = moveDive(m, dives)
+    const movePress: CSSProperties = { marginLeft: 'auto', font: 'inherit', fontSize: '0.84rem', fontWeight: 600, minHeight: narrow ? 44 : 32, display: 'inline-flex', alignItems: 'center', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }
+    return (
+      <li key={m.title} data-testid="bridge-week-move" style={{ padding: narrow ? '10px 0 6px' : '12px 0 8px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
+          <span aria-hidden style={{ width: 22, height: 22, flex: '0 0 auto', borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {i + 1}
+          </span>
+          <span style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3, minWidth: 0 }}>
+            {m.kind === 'cash' && (
+              <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: 4, padding: '1px 5px', marginRight: 6, verticalAlign: 2, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)' }}>cash</span>
+            )}
+            {/* A move the page names nothing for keeps its door on its title. */}
+            {m.door && !dive ? (
+              <Link to={m.door.to} title={m.door.label} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {m.title} <span style={{ color: 'var(--text-link)' }}>›</span>
+              </Link>
+            ) : (
+              m.title
+            )}
+          </span>
+          {m.why && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>{m.why}</span>}
+          {/* The move's own press sits on its heading, so no button floats beside the rows. */}
+          {dive?.press && dive.target ? (
+            dive.target.kind === 'page' ? (
+              <Link to={dive.target.to} style={movePress} data-testid="bridge-week-dive-press">
+                {dive.press} ›
+              </Link>
+            ) : (
+              <button type="button" onClick={() => dive.target && onDive?.(dive.target)} style={movePress} data-testid="bridge-week-dive-press">
+                {dive.press} ›
+              </button>
+            )
+          ) : null}
+        </div>
+        {dive && dive.items.length > 0 && <BridgeMoveTable dive={dive} narrow={narrow} onDive={onDive} />}
+      </li>
+    )
+  }
 
   // The side panel *How the week runs* is off the page (punch list #318): the owner could not read it, and chose to take it off.
   const side = !narrow && stripSide && strip != null
@@ -173,7 +203,8 @@ export function BridgeWeek({
       <div style={side ? { display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 12, alignItems: 'start' } : undefined}>
         {side && <div style={{ minWidth: 0 }}>{strip}</div>}
         <div style={{ marginTop: narrow ? 8 : 12 }}>
-          <div style={{ background: 'var(--surface)', border: `2px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
+          {/* The card is framed quietly: its tone is a rule down the left side, not a box around every line. */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: `4px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
             {/* The card is a reading of today, so it is not named a call. */}
             <div style={label} data-testid="bridge-week-label">
               {NOW_CARD_LABEL}

@@ -130,6 +130,19 @@ describe('BridgeCollectDesk (v2.5853, on the step frame since punch list #334)',
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('opens on the customer a press on What to do now named: first on the list, with where it stands open (#334, PR 8)', () => {
+    const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
+    const { unmount } = renderWithProviders(<BridgeCollectDesk {...desk} todayYmd="2026-10-25" readStamp="Sun, Oct 25" onClose={() => {}} sheet={sheet} focusPayerKey="pinestone" />)
+    expect(screen.getAllByTestId('bridge-step-row')[0]!.textContent).toContain('Pinestone Construction')
+    expect(screen.getAllByTestId('bridge-collect-stands-body')).toHaveLength(1)
+    expect(screen.getAllByTestId('bridge-collect-stands')[0]!.getAttribute('aria-expanded')).toBe('true')
+    unmount()
+    // Opened as it is, from the pipe or the move's own press: the sheet's order, and nothing open.
+    renderWithProviders(<BridgeCollectDesk {...desk} todayYmd="2026-10-25" readStamp="Sun, Oct 25" onClose={() => {}} sheet={sheet} />)
+    expect(screen.getAllByTestId('bridge-step-row')[0]!.textContent).toContain('Ridgeway Builders')
+    expect(screen.queryByTestId('bridge-collect-stands-body')).toBeNull()
+  })
+
   it('holds the window’s own words to the plain-words rule', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
     const words = [collectHeadline(pile, cut).words, collectPileLead(pile, { paidPerWeekUsd: 29_200 }, 6.8), collectPlanLine(null), collectPlanLine(sheet), collectPlanLine({ ...sheet, calls: 1, moves: 1, waiting: 2 }), ...collectCountedLines(pile, cut, { commercial: 12, residential: 2, company: 7 })]

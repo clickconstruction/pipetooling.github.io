@@ -1,0 +1,203 @@
+import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
+import { DIVE_SHOWN, isSupplyMove, moveDive, type DiveFacts } from './callDive'
+
+// Made-up customers, jobs and supply houses.
+const facts: DiveFacts = {
+  payers: [
+    { key: 'p-alder', name: 'Alder Builders', lateUsd: 40_000, usd: 52_000, oldestAgeDays: 71 },
+    { key: 'p-birch', name: 'Birch and Sons', lateUsd: 12_500, usd: 12_500, oldestAgeDays: 1 },
+    { key: 'p-cedar', name: 'Cedar Homes', lateUsd: 0, usd: 9_000, oldestAgeDays: null },
+    { key: 'p-dogwood', name: 'Dogwood Group', lateUsd: 3_000, usd: 3_000, oldestAgeDays: 40 },
+    { key: 'Elm Street LLC', name: 'Elm Street LLC', lateUsd: 900, usd: 900, oldestAgeDays: 35 },
+  ],
+  billJobs: [
+    { id: 'j201', label: '201 · Maple Lofts', usd: 18_000 },
+    { id: 'j202', label: '202 · Oak Court', usd: 6_400 },
+  ],
+  noPctJobs: [
+    { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000 },
+    { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null },
+  ],
+  noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk' }],
+  supplyBills: [
+    { houseId: 'h-north', name: 'Northside Supply', usd: 7_200, dueYmd: '2026-03-04', bills: 4 },
+    { houseId: null, name: 'Riverbend Pipe', usd: 1_100, dueYmd: null, bills: 1 },
+  ],
+  dayLabel: (ymd) => `d${ymd.slice(8)}`,
+}
+const jobsDoor = { to: '/jobs?tab=stages', label: 'Price the jobs' }
+
+// An item without its cells, which the tests of the cells read by themselves.
+const bareOne = <T extends object>(x: T): Omit<T, 'row'> => {
+  const { row: _row, ...rest } = x as T & { row?: unknown }
+  return rest as Omit<T, 'row'>
+}
+const bare = <T extends { projects?: ReadonlyArray<object> }>(items: ReadonlyArray<T> | undefined) =>
+  items?.map((i) => {
+    const one = bareOne(i) as Record<string, unknown>
+    return i.projects ? { ...one, projects: i.projects.map(bareOne) } : one
+  })
+
+describe('moveDive', () => {
+  it('names the first customers to call and opens the Collect window', () => {
+    const d = moveDive({ key: 'chase', title: 'Chase the 9 late invoices.', door: null }, facts)
+    expect(bare(d?.items.slice(0, 3))).toEqual([
+      { title: 'Alder Builders', detail: '$40.0k late. Oldest bill 71 days.', target: { kind: 'desk', stage: 'collect', payerKey: 'p-alder' } },
+      { title: 'Birch and Sons', detail: '$12.5k late. Oldest bill 1 day.', target: { kind: 'desk', stage: 'collect', payerKey: 'p-birch' } },
+      { title: 'Cedar Homes', detail: '$9.0k open.', target: { kind: 'desk', stage: 'collect', payerKey: 'p-cedar' } },
+    ])
+    // Every customer is handed over; the row draws the first few and the rest on a press.
+    expect(d?.items.length).toBe(5)
+    expect(d?.shown).toBe(DIVE_SHOWN)
+    expect(d?.press).toBe('See who to call')
+    expect(d?.target).toEqual({ kind: 'desk', stage: 'collect' })
+  })
+
+  it('says what each customer promised, and opens to their projects with a press that sets a pay date', () => {
+    const withWords: DiveFacts = {
+      ...facts,
+      payers: [
+        {
+          key: 'p-alder',
+          name: 'Alder Builders',
+          lateUsd: 40_000,
+          usd: 52_000,
+          oldestAgeDays: 71,
+          promise: { state: 'broken', ymd: '2026-03-01' },
+          projects: [
+            { key: 'inv:1', jobId: 'j201', label: '201 · Maple Lofts', usd: 30_000, ageDays: 71, broken: true, promisedYmd: '2026-03-01', promisedBy: 'Dana' },
+            { key: 'inv:2', jobId: 'j202', label: '202 · Oak Court', usd: 22_000, ageDays: 12, broken: false, promisedYmd: null, promisedBy: null },
+            { key: 'inv:3', jobId: null, label: 'A bill with no job', usd: 500, ageDays: null, broken: false, promisedYmd: null, promisedBy: null },
+          ],
+        },
+        { key: 'p-birch', name: 'Birch and Sons', lateUsd: 12_500, usd: 12_500, oldestAgeDays: 9, promise: { state: 'promised', ymd: '2026-03-20' }, projects: [{ key: 'inv:4', jobId: 'j301', label: '301 · Pine Row', usd: 12_500, ageDays: 9, broken: false, promisedYmd: '2026-03-20', promisedBy: 'Dana' }] },
+        { key: 'p-cedar', name: 'Cedar Homes', lateUsd: 0, usd: 9_000, oldestAgeDays: null, promise: { state: 'none', ymd: null } },
+      ],
+    }
+    const d = moveDive({ key: 'chase', title: 'Chase the 3 late invoices.', door: null }, withWords)
+    expect(d?.items.map((i) => i.detail)).toEqual(['$40.0k late. Oldest bill 71 days. They said d01. That day has passed.', '$12.5k late. Oldest bill 9 days. They said d20.', '$9.0k open. No pay date yet.'])
+    expect(bare(d?.items)?.[0]?.projects).toEqual([
+      {
+        key: 'inv:1',
+        title: '201 · Maple Lofts',
+        detail: '$30.0k owed. Billed 71 days ago. They said d01. That day has passed.',
+        press: { label: 'Change the pay date', target: { kind: 'promise', jobId: 'j201', jobLabel: 'Alder Builders · 201 · Maple Lofts', ymd: '2026-03-01', context: '$30.0k owed. Billed 71 days ago.' } },
+      },
+      {
+        key: 'inv:2',
+        title: '202 · Oak Court',
+        detail: '$22.0k owed. Billed 12 days ago. No pay date yet.',
+        press: { label: 'Set a pay date', target: { kind: 'promise', jobId: 'j202', jobLabel: 'Alder Builders · 202 · Oak Court', ymd: null, context: '$22.0k owed. Billed 12 days ago.' } },
+      },
+      // A bill with no job has nothing for the sheet to write to.
+      { key: 'inv:3', title: 'A bill with no job', detail: '$500 owed. No pay date yet.', press: null },
+    ])
+    expect(d?.items[1]?.projects?.[0]?.detail).toBe('$12.5k owed. Billed 9 days ago. They said d20, written down by Dana.')
+    // A customer with no projects handed in does not open.
+    expect(d?.items[2]?.projects).toBeUndefined()
+    for (const i of d?.items ?? []) {
+      expect(plainWordsFailures(i.detail)).toEqual([])
+      for (const p of i.projects ?? []) expect(plainWordsFailures(p.detail)).toEqual([])
+    }
+  })
+
+  it('names the finished jobs and opens the Bill window, with no "more" when all are shown', () => {
+    const d = moveDive({ key: 'bill', title: 'Bill the 2 finished jobs.', door: null }, facts)
+    expect(bare(d?.items)).toEqual([
+      { title: '201 · Maple Lofts', detail: '$18.0k finished, not billed.', target: { kind: 'page', to: '/jobs?tab=stages&edit=j201' } },
+      { title: '202 · Oak Court', detail: '$6.4k finished, not billed.', target: { kind: 'page', to: '/jobs?tab=stages&edit=j202' } },
+    ])
+    expect(d?.target).toEqual({ kind: 'desk', stage: 'bill' })
+  })
+
+  it('names the jobs with no percent or no price, each a press to that job, with no press to a page', () => {
+    const pct = moveDive({ key: 'pct', title: 'Set a percent on the 2 jobs without one.', door: jobsDoor }, facts)
+    expect(bare(pct?.items)).toEqual([
+      { title: '301 · Pine Row', detail: '$30.0k contract. No percent set.', target: { kind: 'page', to: '/jobs?tab=stages&edit=j301' } },
+      { title: '302 · Spruce Hall', detail: 'No percent set.', target: { kind: 'page', to: '/jobs?tab=stages&edit=j302' } },
+    ])
+    // The Jobs page would add nothing: each job acts by itself.
+    expect(pct?.press).toBeNull()
+    expect(pct?.target).toBeNull()
+    const price = moveDive({ key: 'price', title: 'Price the 1 job with no price.', door: jobsDoor }, facts)
+    expect(bare(price?.items)).toEqual([{ title: '401 · Willow Walk', detail: 'No price set.', target: { kind: 'page', to: '/jobs?tab=stages&edit=j401' } }])
+    expect(price?.press).toBeNull()
+  })
+
+  it('gives a job its own Set the percent when the page can hand the percent window that job', () => {
+    const pctJob = { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' }
+    const withJob: DiveFacts = { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob }, { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, pctJob: null }] }
+    const d = moveDive({ key: 'pct', title: 'Set a percent on the 2 jobs without one.', door: null }, withJob)
+    expect(d?.items[0]?.press).toEqual({ label: 'Set the percent', target: { kind: 'pct', job: pctJob } })
+    // A job the window cannot take keeps its press to the job itself, and no second one.
+    expect(d?.items[1]?.press).toBeUndefined()
+    expect(d?.items[1]?.target).toEqual({ kind: 'page', to: '/jobs?tab=stages&edit=j302' })
+    // A job set on this visit stays where it was and says so.
+    const set = moveDive({ key: 'pct', title: '', door: null }, { ...withJob, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob, setPct: 60 }] })
+    expect(set?.items[0]).toMatchObject({ detail: '$30.0k contract. Set to 60% just now.', press: { label: 'Change the percent' } })
+    expect(plainWordsFailures(set?.items[0]?.detail ?? '')).toEqual([])
+  })
+
+  it('gives the hours a press and no list', () => {
+    expect(moveDive({ key: 'approve', title: 'Approve the 40 hours waiting.', door: { to: '/people?tab=hours&approvals=1', label: 'Approve' } }, facts)).toEqual({ items: [], shown: DIVE_SHOWN, press: 'Open approvals', target: { kind: 'page', to: '/people?tab=hours&approvals=1' } })
+  })
+
+  it('names the supply bills behind the cash call’s ask and opens Money', () => {
+    const move = { key: 'other' as const, title: 'Ask the supply houses for more days.', door: null }
+    expect(isSupplyMove(move)).toBe(true)
+    const d = moveDive(move, facts)
+    expect(bare(d?.items)).toEqual([
+      { title: 'Northside Supply', detail: '$7.2k due d04, on 4 bills.', target: { kind: 'page', to: '/materials?tab=supply-houses&house=h-north&due=2026-03-04' } },
+      // A house with no id on its bill falls back to the bills behind Money.
+      { title: 'Riverbend Pipe', detail: '$1.1k.', target: { kind: 'money' } },
+    ])
+    expect(d?.press).toBe('See the bills')
+    expect(d?.target).toEqual({ kind: 'money' })
+  })
+
+  it('hands each line its facts as cells under the move’s headings, with a unit for a phone', () => {
+    const withWords: DiveFacts = {
+      ...facts,
+      payers: [
+        { key: 'p-alder', name: 'Alder Builders', lateUsd: 40_000, usd: 52_000, oldestAgeDays: 71, promise: { state: 'broken', ymd: '2026-03-01' }, projects: [{ key: 'inv:1', jobId: 'j201', label: '201 · Maple Lofts', usd: 30_000, ageDays: 71, broken: false, promisedYmd: '2026-03-20', promisedBy: 'Dana' }] },
+        { key: 'p-cedar', name: 'Cedar Homes', lateUsd: 0, usd: 9_000, oldestAgeDays: null, promise: { state: 'none', ymd: null } },
+      ],
+    }
+    const chase = moveDive({ key: 'chase', title: '', door: null }, withWords)
+    expect(chase?.columns).toEqual({ name: 'Customer', a: 'Late', b: 'Oldest bill', text: 'Pay date' })
+    expect(chase?.items[0]?.row).toEqual({ a: { text: '$40.0k', phone: '$40.0k late' }, b: { text: '71 days', phone: 'oldest bill 71 days', muted: true }, text: { text: 'Said d01, passed', warn: true } })
+    // Nothing late yet: what is open is said as open, so the heading does not call it late.
+    expect(chase?.items[1]?.row).toEqual({ a: { text: '$9.0k open', muted: true }, b: undefined, text: { text: 'None yet', muted: true } })
+    expect(chase?.items[0]?.projects?.[0]?.row).toEqual({ a: { text: '$30.0k', phone: '$30.0k owed' }, b: { text: '71 days', phone: 'billed 71 days ago', muted: true }, text: { text: 'Said d20' } })
+    const bill = moveDive({ key: 'bill', title: '', door: null }, facts)
+    expect(bill?.columns).toEqual({ name: 'Job', a: 'To bill', b: '', text: '' })
+    expect(bill?.items[0]?.row).toEqual({ a: { text: '$18.0k', phone: '$18.0k to bill' } })
+    const pct = moveDive({ key: 'pct', title: '', door: null }, { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000 }, { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, setPct: 60 }] })
+    expect(pct?.columns).toEqual({ name: 'Job', a: '', b: 'Contract', text: '' })
+    expect(pct?.items[0]?.row).toEqual({ b: { text: '$30.0k', phone: '$30.0k contract', muted: true } })
+    expect(pct?.items[1]?.row).toEqual({ text: { text: 'Set to 60% just now' } })
+    const supply = moveDive({ key: 'other', title: 'Ask the supply houses for more days.', door: null }, facts)
+    expect(supply?.columns).toEqual({ name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' })
+    expect(supply?.items[0]?.row).toEqual({ a: { text: '$7.2k', phone: '$7.2k due' }, b: { text: '4', phone: '4 bills', muted: true }, text: { text: 'd04' } })
+    expect(supply?.items[1]?.row).toEqual({ a: { text: '$1.1k', phone: '$1.1k due' }, b: { text: '1', phone: '1 bill', muted: true } })
+  })
+
+  it('leaves a move alone when there is nothing to name and nowhere to send', () => {
+    expect(moveDive({ key: 'other', title: 'Walk the two biggest jobs.', door: null }, facts)).toBeNull()
+    expect(moveDive({ key: 'pct', title: 'Set a percent on the 2 jobs without one.', door: null }, { ...facts, noPctJobs: [] })).toBeNull()
+    expect(moveDive({ key: 'price', title: 'Price the 1 job with no price.', door: null }, { ...facts, noPriceJobs: [] })).toBeNull()
+    expect(moveDive({ key: 'chase', title: 'Chase the late invoices.', door: null }, null)).toBeNull()
+  })
+
+  it('keeps every line plain', () => {
+    const moves = [
+      { key: 'chase' as const, title: '', door: null },
+      { key: 'bill' as const, title: '', door: null },
+      { key: 'pct' as const, title: '', door: jobsDoor },
+      { key: 'price' as const, title: '', door: jobsDoor },
+      { key: 'other' as const, title: 'Ask the supply houses for more days.', door: null },
+    ]
+    for (const m of moves) for (const item of moveDive(m, facts)?.items ?? []) expect(plainWordsFailures(item.detail)).toEqual([])
+  })
+})
