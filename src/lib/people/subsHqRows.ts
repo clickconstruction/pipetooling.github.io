@@ -2,6 +2,7 @@ import { subLaborJobBalance } from '../subLaborOutstanding'
 import { buildSubComplianceBadges, type ComplianceBadge, type ComplianceDocInput } from './subCompliance'
 import { generalConditionsStanding, type GeneralConditionsStanding } from '../subWorkOrders/subWorkOrder'
 import type { LaborJob } from '../../types/laborJob'
+import { isRosterSub, type NeedsWorkOrderRosterPerson } from '../subWorkOrders/rosterSub'
 
 /**
  * Subs HQ rollup (RUN_SUBS_PLAN Phase 3, PR 3.4) — one row per sub identity,
@@ -11,8 +12,16 @@ import type { LaborJob } from '../../types/laborJob'
  * Sheet attribution is JUNCTION-FIRST (people_labor_job_assignees), not the
  * delimited name string — this completes identity-plan item C1-7 for this
  * surface. Sheets whose junction resolves to no one (legacy name variants,
- * archived people) or to several people land in the `unattributed` bucket
+ * archived people) or to several subs land in the `unattributed` bucket
  * rather than silently inflating or splitting anyone's balance.
+ *
+ * Who a sheet is for is the Pay view's rule (`sheetParties`, v2.7169): the
+ * roster sub on it. A teammate named on a sub's sheet rode along and is paid
+ * through payroll, so the whole sheet counts once, on the sub. A sheet with
+ * teammates and no sub is crew pay and is in nobody's balance. Only a sheet
+ * with two or more roster subs is shared, and it is counted for none of them
+ * until the office says whose it is: every open dollar sits in exactly one
+ * place, a row or the `unattributed` list.
  */
 
 export type SubsHqPersonInput = {
@@ -88,13 +97,19 @@ export type SubsHqRow = {
   lastWorkedYmd: string | null
 }
 
+/**
+ * Why a sheet is on nobody's row. 'archived' = the sheet's person exists on the roster but is archived —
+ * historical, not broken. 'crew' (v2.7169) = teammates only, no sub: it pays through payroll, as the Pay
+ * view's Crew pay does, and is nothing to fix.
+ */
+export type UnattributedReason = 'unmatched' | 'shared' | 'archived' | 'crew'
+
 export type UnattributedSheet = {
   sheetId: string
   label: string
   jobNumber: string | null
   balance: number
-  /** 'archived' = the sheet's person exists on the roster but is archived — historical, not broken. */
-  reason: 'unmatched' | 'shared' | 'archived'
+  reason: UnattributedReason
   /** Raw `assigned_to_name` as written on the sheet ('' when blank). */
   rawAssignedTo: string
   /** Set when reason === 'archived': the archived person's roster name. */
@@ -108,6 +123,11 @@ export type SubsHqResult = {
 }
 
 const OPEN_COMMITMENT_STATUSES = new Set(['offered', 'accepted', 'approved'])
+
+/** How many names the sheet's `' | '` list holds. */
+function assignedNameCount(raw: string): number {
+  return raw.split('|').filter((n) => n.trim()).length
+}
 
 /** Keep the newest well-formed YYYY-MM-DD on the row. */
 function bumpLastWorked(row: SubsHqRow, ...candidates: Array<string | null | undefined>): void {
@@ -128,14 +148,28 @@ export function buildSubsHqRows(input: {
   docs: SubsHqDocInput[]
   todayYmd: string
   generalConditions?: SubsHqGeneralConditionsInput | null
+  /**
+   * v2.7169: the whole roster with each login's role, the list the Pay view reads (`useRosterSubKinds`).
+   * It tells a sub from a teammate, who carries kind `sub` too behind a team login. Absent, every active
+   * person in `people` counts as a sub and no sheet reads as crew pay (the rule before v2.7169).
+   */
+  roster?: readonly NeedsWorkOrderRosterPerson[]
 }): SubsHqResult {
   const activePeople = input.people.filter((p) => !p.archived)
   const usersById = new Map(input.users.map((u) => [u.id, u]))
   const peopleById = new Map(activePeople.map((p) => [p.id, p]))
+  const rosterById = input.roster ? new Map(input.roster.map((p) => [p.id, p])) : null
+  /** A roster person who is not a sub: a teammate, whatever their kind. Unknown ids are nobody's teammate. */
+  const isTeammate = (pid: string): boolean => {
+    const person = rosterById?.get(pid)
+    return !!person && !isRosterSub(person)
+  }
 
   const assigneesBySheet = new Map<string, string[]>()
   for (const a of input.assignees) {
-    ;(assigneesBySheet.get(a.labor_job_id) ?? assigneesBySheet.set(a.labor_job_id, []).get(a.labor_job_id)!).push(a.person_id)
+    const list = assigneesBySheet.get(a.labor_job_id) ?? assigneesBySheet.set(a.labor_job_id, []).get(a.labor_job_id)!
+    // One person once per sheet, however many rows name them.
+    if (!list.includes(a.person_id)) list.push(a.person_id)
   }
 
   const rowByPerson = new Map<string, SubsHqRow>()
@@ -187,7 +221,9 @@ export function buildSubsHqRows(input: {
   const unattributed: SubsHqResult['unattributed'] = []
   for (const sheet of input.sheets) {
     const balance = subLaborJobBalance(sheet)
-    const junctionOwners = assigneesBySheet.get(sheet.id) ?? []
+    const everyoneOnSheet = assigneesBySheet.get(sheet.id) ?? []
+    // The teammates rode along: the sheet is the sub's, so they are set aside before anyone counts owners.
+    const junctionOwners = everyoneOnSheet.filter((pid) => !isTeammate(pid))
     const owners = junctionOwners.filter((pid) => peopleById.has(pid))
     if (owners.length === 1) {
       const row = ensureRow(owners[0]!)
@@ -202,7 +238,7 @@ export function buildSubsHqRows(input: {
     }
     if (balance.balance > 0 || owners.length !== 1) {
       const rawAssignedTo = (sheet.assignedToName ?? '').trim()
-      let reason: UnattributedSheet['reason'] = owners.length > 1 ? 'shared' : 'unmatched'
+      let reason: UnattributedReason = owners.length > 1 ? 'shared' : 'unmatched'
       let archivedPersonName: string | null = null
       if (reason === 'unmatched') {
         const junctionArchived =
@@ -212,6 +248,10 @@ export function buildSubsHqRows(input: {
         if (archivedMatch) {
           reason = 'archived'
           archivedPersonName = archivedMatch.name
+        } else if (junctionOwners.length === 0 && everyoneOnSheet.length > 0 && assignedNameCount(rawAssignedTo) <= everyoneOnSheet.length) {
+          // Teammates and no sub at all: crew pay. A name the roster does not know beside them keeps the
+          // sheet unmatched, since that name may be a sub whose money would otherwise go quiet.
+          reason = 'crew'
         }
       }
       unattributed.push({
@@ -275,7 +315,7 @@ export type UnattributedGroup = {
   label: string
   jobNumber: string | null
   rawAssignedTo: string
-  reason: 'unmatched' | 'shared' | 'archived'
+  reason: UnattributedReason
   archivedPersonName: string | null
   /** Sheet ids in the group, highest open balance first. */
   sheetIds: string[]

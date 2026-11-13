@@ -388,3 +388,47 @@ describe('the houses list — lien jobs where a supply house is also owed (v2.44
     expect(parseLienStatusPayload({ ...JSON.parse(JSON.stringify(P)), houses: 'all' })).toBeNull()
   })
 })
+
+describe('a notice job with no GC on the job never prints a blank name', () => {
+  const o = { appUrl: 'https://clicktooling.com/', senderName: 'Grace', note: '', readerIsLeader: false }
+  const NO_GC: LienStatusPayload = {
+    ...OCT1,
+    liens: [],
+    jobs: [
+      job('804', 'Selwick GC- Tire Barn', '', 3553, ['2026-09'], 'approval', OCT, '2026-09-24'),
+      job('891', 'Tune 5- Liberty Hill', 'Brund & Assoc.', 2976, ['2026-09'], 'approval', OCT, '2026-09-25'),
+      job('650', 'AXO Schertz', '', 1000, ['2026-09'], 'draft'),
+    ],
+  }
+  const BLANK = /(^|\n)\s*(•\s*)?,|, ,/
+
+  it('names the group in the desk’s own words', () => {
+    expect(lienStatusGroups(NO_GC.jobs).map((g) => [g.name, g.jobs.length])).toEqual([['No GC on the job', 2], ['Brund & Assoc.', 1]])
+  })
+
+  it('says so in the text, under Waiting for approval and By GC', () => {
+    const text = lienStatusText(NO_GC)
+    expect(text).not.toMatch(BLANK)
+    expect(text).toContain('• Selwick GC- Tire Barn, no GC on the job, $3,553')
+    expect(text).toContain('• No GC on the job, 2 jobs, $4,553')
+    expect(text).toContain('• Tune 5- Liberty Hill, Brund & Assoc., $2,976')
+  })
+
+  it('says so in the email’s plain twin', () => {
+    const text = lienStatusEmailText(NO_GC, o)
+    expect(text).not.toMatch(BLANK)
+    expect(text).toContain('• 804 Selwick GC- Tire Barn, no GC on the job, Sep, $3,553, since Sep 24')
+    expect(text).toContain('No GC on the job, 2 jobs, $4,553, first by Oct 15')
+  })
+
+  it('says so in the email, on the waiting row and the group’s head', () => {
+    const html = lienStatusEmailHtml(NO_GC, o)
+    expect(html).not.toContain('<b></b>')
+    expect(html).toContain('<b>No GC on the job</b>')
+    expect(html).toContain('>No GC on the job &middot; Sep work</div>')
+  })
+
+  it('still takes the empty name off the payload: the words are the message’s, not the page’s', () => {
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(NO_GC)))?.jobs.map((j) => j.gc)).toEqual(['', 'Brund & Assoc.', ''])
+  })
+})

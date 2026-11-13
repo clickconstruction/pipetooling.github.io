@@ -10,7 +10,7 @@ import { formatUsdNoCents } from './jobFormatting'
 import type { BillTruthJob, BillTruthPayment } from '../billing/billTruth'
 
 /**
- * The § 53.054 affidavit as the job's Lien window fills it (v2.6809). Pure. The window's Mechanic's lien tab is
+ * The § 53.054 affidavit as the job's Lien window fills it (v2.6809). Pure. The window's Lien affidavit tab is
  * where the office prints the paper, and it filled the fields by hand beside the desk's recipe: the period read
  * the session months alone, so a job with no clock hours printed *from — through —* where the desk's draft
  * swore its month, and the original contractor's address was never handed over. Now the window gives what it

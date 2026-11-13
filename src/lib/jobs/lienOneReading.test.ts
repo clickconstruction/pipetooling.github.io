@@ -5,6 +5,7 @@ import { lienArChipFor, lienArLedgerTone, type LienArJobInput } from './lienArCh
 import type { LienNextUpAction, LienNextUpRow } from './lienNextUp'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 import { buildLienTimeline, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
+import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from './lienWindowNextStep'
 
 /**
  * One job, one reading (v2.7048, punch list #325, PR 5). Four places name a job's next lien step: the Pipeline's
@@ -90,5 +91,28 @@ describe('one job reads one way on the billed row, the AR chip and the Lien wind
     const after = '2026-12-20'
     expect(rowLabel(buildLienPayRunway(runwayInput({ todayYmd: after })), null, after)).toBe('Lien gone')
     expect(buildLienTimeline(timelineInput({ todayYmd: after, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'missed', at: '' }] })).next.kind).toBe('lien_gone')
+  })
+})
+
+describe('the Lien window’s tab names the paper the row and the header name (v2.7181, punch list #335, row 6)', () => {
+  const noticed = { months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'sent' as const, at: '2026-09-10' }], affidavit: { deadline: '2026-12-15', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: [] } }
+
+  it('a row that reads File the affidavit opens a tab that says affidavit, and so does the header’s button', () => {
+    const chip = chipFor(deskRow('affidavit', 'file_affidavit', 'Affidavit approved · ready to file', '2026-12-15'))
+    const ledger = buildBilledDatesLedger({ todayYmd: TODAY, row: null, data: null, promise: null, runway: buildLienPayRunway(runwayInput({ noticedMonths: ['2026-08'] })), inCollections: false, lienState: { words: chip.words, tone: lienArLedgerTone(chip.tone), lead: chip.lead, dueOn: chip.dueOn, paper: chip.paper, action: chip.action, act: chip.act } })
+    expect(ledger.rows.find((r) => r.action === 'lien-desk')?.label).toBe('File the affidavit')
+    expect(ledger.lienTab).toBe('affidavit')
+    expect(LIEN_WINDOW_TAB_LABEL[ledger.lienTab!]).toBe('Lien affidavit')
+    const t = buildLienTimeline(timelineInput(noticed))
+    const step = lienWindowNextStep(t.next, t.waitingOn)
+    expect(step.button).toEqual({ label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } })
+    expect(LIEN_WINDOW_TAB_LABEL.affidavit.toLowerCase()).toContain('affidavit')
+  })
+
+  it('a notice row opens the tab that says notice', () => {
+    const chip = chipFor(deskRow('notice', 'draft', 'Notice to draft', '2026-11-16'))
+    const ledger = buildBilledDatesLedger({ todayYmd: TODAY, row: null, data: null, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false, lienState: { words: chip.words, tone: lienArLedgerTone(chip.tone), lead: chip.lead, dueOn: chip.dueOn, paper: chip.paper, action: chip.action, act: chip.act } })
+    expect(ledger.lienTab).toBe('notice')
+    expect(LIEN_WINDOW_TAB_LABEL[ledger.lienTab!]).toBe('§ 53.056 notice')
   })
 })

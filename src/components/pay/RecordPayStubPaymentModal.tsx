@@ -1,4 +1,5 @@
 import { PaySourcePicker } from './PaySourcePicker'
+import { AmountPaidField, PaidDateField, PaymentNoteField, RecordPaymentFooter, RecordPaymentHelp, RecordPaymentShell, RecordPaymentSummary } from './RecordPaymentPieces'
 import { PersonOffsetFormModal } from './PersonOffsetFormModal'
 import { formatCurrency } from '../../lib/format'
 import { parsePayStubPaymentAmount, payStubBalance, payStubPaymentExcess } from '../../lib/pay/recordPayStubPayment'
@@ -46,49 +47,20 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
   return (
     <>
       {payStubMarkPaidTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_RECORD_PAYMENT, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
-              {` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`}{' '}
-              · Remaining $
-              {formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining)}
-            </p>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Amount paid</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={payStubMarkPaidAmount}
-                onChange={(e) => setPayStubMarkPaidAmount(e.target.value)}
-                placeholder="0.00"
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
-              />
-            </label>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-              <strong>Confirm</strong> records up to the <strong>remaining balance</strong> shown above from this amount (partial payments allowed). If you paid more than the remainder, use <strong>Record employee credit…</strong> below; it opens <strong>Add offset</strong> on top of this dialog so you can save the excess without leaving this flow.
-            </p>
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Paid date (sent)</span>
-              <input
-                type="date"
-                value={payStubMarkPaidDate}
-                onChange={(e) => setPayStubMarkPaidDate(e.target.value)}
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
-              />
-            </label>
+        <RecordPaymentShell title="Record payment" zIndex={Z_RECORD_PAYMENT}>
+          <RecordPaymentSummary>
+            {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
+            {` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`}{' '}
+            · Remaining $
+            {formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining)}
+          </RecordPaymentSummary>
+          <AmountPaidField value={payStubMarkPaidAmount} onChange={setPayStubMarkPaidAmount} />
+          <RecordPaymentHelp>
+            <strong>Confirm</strong> records up to the <strong>remaining balance</strong> shown above from this amount (partial payments allowed). If you paid more than the remainder, use <strong>Record employee credit…</strong> below; it opens <strong>Add offset</strong> on top of this dialog so you can save the excess without leaving this flow.
+          </RecordPaymentHelp>
+          <PaidDateField value={payStubMarkPaidDate} onChange={setPayStubMarkPaidDate} />
             <PaySourcePicker kind={payStubMarkPaidKind} onKind={setPayStubMarkPaidKind} cashAppId={payStubMarkPaidCashAppId} onCashAppId={setPayStubMarkPaidCashAppId} disabled={markingPayStubId === payStubMarkPaidTarget.id} idPrefix="record-payment" />
-            <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Note (optional)</span>
-              <textarea
-                value={payStubMarkPaidNote}
-                onChange={(e) => setPayStubMarkPaidNote(e.target.value)}
-                rows={3}
-                placeholder="e.g. check #, Venmo, GL code…"
-                style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
-              />
-            </label>
+            <PaymentNoteField value={payStubMarkPaidNote} onChange={setPayStubMarkPaidNote} placeholder="e.g. check #, Venmo, GL code…" />
             {(() => {
               const rem = payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining
               const excess = payStubPaymentExcess(payStubMarkPaidAmount, rem)
@@ -129,33 +101,8 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
                 </div>
               )
             })()}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={closePayStubMarkPaidModal}
-                disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                onClick={() => void confirmPayStubMarkPaid()}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: markingPayStubId !== payStubMarkPaidTarget.id ? '#059669' : DEAD_PRESS_FILL,
-                  color: markingPayStubId !== payStubMarkPaidTarget.id ? 'white' : DEAD_PRESS_TEXT,
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: markingPayStubId !== payStubMarkPaidTarget.id ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {markingPayStubId === payStubMarkPaidTarget.id ? 'Saving…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+            <RecordPaymentFooter onCancel={closePayStubMarkPaidModal} onConfirm={() => void confirmPayStubMarkPaid()} confirmLabel="Confirm" busy={markingPayStubId === payStubMarkPaidTarget.id} />
+        </RecordPaymentShell>
       )}
 
       <PersonOffsetFormModal

@@ -24,7 +24,7 @@ On a phone the window keeps its top short, so the paper gets the room.
 - The strip also says who you are waiting on. A red chip counts every notice window that closed.
 - Tap the strip to see the steps. They drop down over the paper and do not push it.
 - Tap the strip again, or the grey area, to put the steps away.
-- The papers sit in one bar: **Demand letter**, **§ 53.056 notice** and **Mechanic's lien**.
+- The papers sit in one bar: **Demand letter**, **§ 53.056 notice** and **Lien affidavit**.
 - **§ Rules** and **×** sit beside the title.
 - On **Demand letter** the four buttons at the foot sit in two rows. **×** closes the window, so there is no **Cancel**.
 - {{button:outline-blue|Email with the PDF…}} opens its own panel in place of those buttons. **Back** brings them back.
@@ -99,7 +99,7 @@ Off on day one. When it is on, every night the app looks up every open GC job wi
 
 ## Step 2 — the affidavit, behind its gate
 
-The **Mechanic's lien** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. The owner cannot be a city, a county, a school district or the State. A lien does not attach to public property, and the line says to ask the attorney about the payment bond. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. On a job with a GC, it needs the GC's address ✓. That address is on the GC's customer record. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over. A house also needs an answer to the homestead question. An unanswered question is not a no. Open the property record and pick **Yes** or **No** under *Is this the owner's homestead?*
+The **Lien affidavit** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. The owner cannot be a city, a county, a school district or the State. A lien does not attach to public property, and the line says to ask the attorney about the payment bond. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. On a job with a GC, it needs the GC's address ✓. That address is on the GC's customer record. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over. A house also needs an answer to the homestead question. An unanswered question is not a no. Open the property record and pick **Yes** or **No** under *Is this the owner's homestead?*
 
 The affidavit swears what the job's sent bills still owe. That is the amount the Lien desk shows for the job. Work not billed yet is not claimed until it is billed. A line under **The claim it swears** says how much that is. A claim set by hand on the Lien desk carries to this paper and to the notice. The line names who set it, when and why. To change it, open the job on the Lien desk. See [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk). On a job you contracted with the owner, the paper says your company is the original contractor.
 

@@ -403,5 +403,7 @@ session walked a label's box page signed out on clicktooling.com, and signed in 
 against prod. The dev seat reads no run and no sticker on prod yet, since no screen prints a run
 before PR 2.
 
+2026-11-13, later: **the Rename of PR 4 is built on its own** as v2.7179, on the owner's ask after a look at a real site's names. **Edit** on a box changes its name, its kind and its where line (`editBox.ts`, `EditBoxForm.tsx`, `editContainer`). PR 4 keeps the rest: the *Renamed from* line, the sticker's own presses and *Empty it and start over*.
+
 **PR 2 waits on Grace's go.** Her rule of 2026-11-13: while sessions run on Opus 5.5 they build no
 new screens. They only get what is open onto main, and write what should change on a card.
