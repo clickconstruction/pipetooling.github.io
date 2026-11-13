@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import OnSiteJobsNotLoaded from './OnSiteJobsNotLoaded'
 import JobsMaterialsTab, { type MaterialsJob } from '../jobs/JobsMaterialsTab'
 
 type Props = {
@@ -151,6 +152,8 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           </table>
         </div>
       ) : fieldSite && fieldSite.kind === 'site' ? (
+        <>
+        <OnSiteJobsNotLoaded jobIds={fieldSite.jobIds} surface="materials-on-site-field-site" />
         <SiteMaterialsView
           site={{ id: fieldSite.siteId, name: fieldSite.name }}
           jobs={fieldSite.jobIds.map((id) => ({ id, label: withBoxes.find((j) => j.jobId === id)?.label ?? `job ${id.slice(0, 8)}` }))}
@@ -160,6 +163,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           boxHref={boxOnSiteLink}
           loading={desk.loading && !desk.loaded}
         />
+        </>
       ) : office ? (
         <JobsMaterialsTab
           jobs={deskJobs}
