@@ -5,8 +5,8 @@ roles: dev, master_technician
 keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the numbers at the top. They are what the field made last week, the slowest step, and your two balances.
-2. Read the card under them. It names the slowest step and the moves that would change it.
+1. Read the numbers at the top. The numbers are what the field made last week, the slowest step, and your two balances.
+2. Read the card under the numbers. The card names the slowest step and the moves that would change it.
 3. Press a line under a move to act on that one thing.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
@@ -54,15 +54,15 @@ Each move names the things behind it, as a small table. A table shows three line
 
 On a phone a line is its name and its figure, with the rest under it.
 
-The card is a reading of today. It records nothing and it hands nothing to a person. It changes when the numbers change.
+The card is a reading of today. The card records nothing and hands nothing to a person. The card changes when the numbers change.
 
 ## Hand a line to one person
 
 Every line under a move has a check at its right edge.
 
 - A grey check means nobody has that line. Press it and the Add task window opens, already written for that one thing. The title names who, what and how much. The **Done when** lines say what finished looks like. Pick the person and press {{button:blue|Send}}.
-- A blue check means someone has it. Their name and how long they have had it sit under the line. Press the check to see the task, who has it and since when. Press {{button:blue|Open the to-do}} there to change it.
-- An amber check means the task has waited too long. That is past its due day, or three days with no due day.
+- A blue check means someone has it. The person's name sits under the line, with how long they have had the task. Press the check to see the task, who has it and since when. Press {{button:blue|Open the to-do}} there to change it.
+- An amber check means the task has waited too long. Too long means past the due day, or three days with no due day.
 - When the task is finished, the check turns grey again. The line names who finished it and when, for 14 days.
 
 A customer's line counts how many of its projects are handed out. A project under a customer whose own task is open reads as with that person.
