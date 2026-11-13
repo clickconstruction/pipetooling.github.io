@@ -186,7 +186,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
                         <td style={{ ...cell, minWidth: 180 }}><input aria-label={`Line ${d.lineNo} description`} value={d.description} onChange={(e) => setDraft(i, { description: e.target.value })} disabled={accepted || busy} style={input} /></td>
                         <td style={{ ...cell, width: 70 }}><input aria-label={`Line ${d.lineNo} quantity shipped`} inputMode="decimal" value={d.qtyShipped} onChange={(e) => setDraft(i, { qtyShipped: e.target.value })} disabled={accepted || busy} style={num} /></td>
                         <td style={{ ...cell, width: 56 }}><input aria-label={`Line ${d.lineNo} unit`} value={d.unit} onChange={(e) => setDraft(i, { unit: e.target.value })} disabled={accepted || busy} style={input} /></td>
-                        <td style={{ ...cell, width: 84 }}><input aria-label={`Line ${d.lineNo} unit price`} inputMode="decimal" value={d.unitPrice} onChange={(e) => setDraft(i, { unitPrice: e.target.value })} disabled={accepted || busy} style={num} /></td>
+                        <td style={{ ...cell, width: 104 }}><input aria-label={`Line ${d.lineNo} unit price`} inputMode="decimal" value={d.unitPrice} onChange={(e) => setDraft(i, { unitPrice: e.target.value })} disabled={accepted || busy} style={num} /></td>
                         <td style={{ ...cell, width: 70 }}>
                           <select aria-label={`Line ${d.lineNo} pricing unit`} value={d.pricingUnit} onChange={(e) => setDraft(i, { pricingUnit: e.target.value as PricingUnit })} disabled={accepted || busy} style={{ ...input, maxWidth: 70 }}>
                             <option value="each">each</option>
