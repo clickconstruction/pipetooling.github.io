@@ -12,6 +12,8 @@ const tables: Record<string, Row[]> = {}
 /** What the next insert answers, when a test wants something other than the table's own word. `lands` puts the row in first. */
 const nextInsert: Array<{ lands: boolean; answer: Answer }> = []
 const inserts: string[] = []
+/** Set to drop every read, as a phone with no signal would. */
+const reads = { fail: false }
 const NO_SIGNAL: Answer = { data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 }
 
 function query(table: string) {
@@ -23,7 +25,7 @@ function query(table: string) {
     in: (col: string, vs: unknown[]) => ((rows = rows.filter((r) => vs.includes(r[col]))), q),
     order: () => q,
     range: (from: number, to: number) => ((rows = rows.slice(from, to + 1)), q),
-    then: (resolve: (v: Answer) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
+    then: (resolve: (v: Answer) => unknown) => Promise.resolve(reads.fail ? NO_SIGNAL : { data: rows, error: null }).then(resolve),
     insert: (row: Row) => {
       inserts.push(`${table}:${String(row.id)}`)
       const scripted = nextInsert.shift()
@@ -73,6 +75,7 @@ beforeEach(() => {
   nextInsert.length = 0
   inserts.length = 0
   signal.online = true
+  reads.fail = false
   vi.stubGlobal('navigator', { get onLine() { return signal.online } })
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} })
 })
@@ -186,5 +189,70 @@ describe('an on-site press through the store', () => {
     expect(tables.job_containers![0]).toMatchObject({ place_id: 'p1', retired_at: null })
     expect(tables.job_container_moves).toHaveLength(1)
     expect(tables.job_container_moves![0]).toMatchObject({ container_id: 'a1', to_place_id: 'p1', by_name: 'Mateo' })
+  })
+
+  it('an edit with no signal is on the screen at once and lands with only what changed', async () => {
+    signal.online = false
+    const b = await bench()
+    const before = { ...tables.job_containers![0]! }
+    b.store.editContainer('a1', { label: 'R70', kind: 'loose' })
+    b.store.editContainer('a1', {})
+    await settle()
+    expect(b.outbox.presses()).toHaveLength(1)
+    expect(b.store.listContainers('j1')[0]).toMatchObject({ label: 'R70', kind: 'loose' })
+    expect(tables.job_containers![0]).toEqual(before)
+    signal.online = true
+    await b.replay()
+    expect(tables.job_containers![0]).toEqual({ ...before, label: 'R70', kind: 'loose' })
+  })
+})
+
+describe('the store reads a job again by itself (v2.7177)', () => {
+  it('a read old enough is made again, quietly, and brings what another phone did', async () => {
+    const b = await bench()
+    const at = b.store.jobLoadedAt('j1')!
+    expect(b.store.listMovements('j1')).toEqual([])
+    // Another phone used 3 from A1.
+    tables.job_material_movements = [{ id: 'other', job_id: 'j1', part_id: null, part_name: 'ZZ test elbow', manufacturer: null, quantity: 3, reason: 'used', from_container_id: 'a1', to_container_id: null, note: '', source: null, item_id: null, by_user_id: 'u2', by_name: 'Ana', at: '2026-11-13T14:00:00.000Z' }]
+    // Too soon: nothing is asked.
+    b.store.refreshJob('j1', 60_000, at + 5_000)
+    await settle()
+    expect(b.store.listMovements('j1')).toEqual([])
+    b.store.refreshJob('j1', 60_000, at + 61_000)
+    // Quiet: the screen never reads as loading.
+    expect(b.store.jobLoadState('j1')).toMatchObject({ loaded: true, loading: false, error: null })
+    await settle()
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual(['other'])
+  })
+
+  it('a press that still waits stays on the screen through the read', async () => {
+    signal.online = false
+    const b = await bench()
+    const mine = b.store.addMovement(use(4))
+    await settle()
+    b.store.refreshJob('j1', 0)
+    await settle()
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual([mine.id])
+  })
+
+  it('a read made again that fails leaves the last good read on the screen, with no error', async () => {
+    tables.job_material_movements = [{ id: 'm0', job_id: 'j1', part_id: null, part_name: 'ZZ test elbow', manufacturer: null, quantity: 8, reason: 'delivered', from_container_id: null, to_container_id: 'a1', note: '', source: null, item_id: null, by_user_id: 'u1', by_name: 'Mateo', at: '2026-11-01T14:00:00.000Z' }]
+    const b = await bench()
+    reads.fail = true
+    b.store.refreshJob('j1', 0)
+    await settle()
+    expect(b.store.jobLoadState('j1')).toMatchObject({ loaded: true, loading: false, error: null })
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual(['m0'])
+    // A person's own Retry is not quiet: the same failure is said.
+    await b.store.loadJob('j1', { force: true })
+    expect(b.store.jobLoadState('j1').error).toBeTruthy()
+    reads.fail = false
+  })
+
+  it('a job never read, and one whose read failed, are left to their own screens', async () => {
+    const b = await bench()
+    b.store.refreshJob('never-opened', 0)
+    await settle()
+    expect(b.store.jobLoadState('never-opened')).toMatchObject({ loaded: false, loading: false })
   })
 })

@@ -392,14 +392,37 @@ export interface RoadmapTaskSentenceInput {
 }
 
 /**
+ * A name closed as a sentence, once. A stage named *North fence.* read "It joins the stage North fence.." in the
+ * bar: the name's own full stop and the sentence's. A name that ends in a question or an exclamation keeps its mark
+ * and takes no full stop. Empty when the name is nothing but full stops.
+ */
+function endedOnce(name: string): string {
+  const bare = name.replace(/[.\s]+$/, '')
+  if (!bare) return ''
+  return /[!?]$/.test(bare) ? bare : `${bare}.`
+}
+
+/** Edit task's line under the When row. It is about the days a repeating task still has ahead. */
+export const EDIT_TASK_REPEATS_NOTE = 'Saving reshapes the days still to come. The ones already done keep their notes.'
+
+/**
+ * Whether Edit task shows that line. A one-time task has one day and no days to come, so it showed a line about
+ * nothing. It shows when the task repeats as saved, or is being made to repeat, since either way a save rebuilds
+ * the days ahead.
+ */
+export function editTaskWhenNote(a: { savedRepeats: boolean; repeatsNow: boolean }): string | null {
+  return a.savedRepeats || a.repeatsNow ? EDIT_TASK_REPEATS_NOTE : null
+}
+
+/**
  * What saving a roadmap task will do, for the bar of its window. A roadmap task has no day of its own: it lands on
  * each person's list when its stage unlocks, so the sentence says that in place of a day.
  */
 export function roadmapTaskSentence(input: RoadmapTaskSentenceInput): NewTaskSentence {
   if (!input.title.trim()) return { text: 'Type the task first.', dead: true }
   const parts: string[] = []
-  const stage = input.stageTitle.trim()
-  if (!input.editing) parts.push(stage ? `It joins the stage ${stage}.` : 'It joins this stage.')
+  const stage = endedOnce(input.stageTitle.trim())
+  if (!input.editing) parts.push(stage ? `It joins the stage ${stage}` : 'It joins this stage.')
   const names = input.assigneeNames.map((n) => n.trim()).filter(Boolean)
   if (names.length === 0) parts.push('Nobody has it yet.')
   else if (names.length === 1) parts.push(`${names[0]} gets it when the stage unlocks.`)

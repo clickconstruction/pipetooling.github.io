@@ -39,7 +39,7 @@ const TASK = {
   links: [] as string[],
   created_by_user_id: ME,
   repeat_type: 'once',
-  repeat_days_of_week: null,
+  repeat_days_of_week: null as number[] | null,
   repeat_days_after: null,
   repeat_end_date: null,
   start_date: '2031-03-17',
@@ -123,6 +123,19 @@ describe('ChecklistItemEditModal as Edit task (punch list #331)', () => {
     expect(screen.getByRole('group', { name: 'When' }).textContent).toContain('Mon 17')
     expect(screen.getByRole('status').textContent).toBe('Theo gets it on Mon, Mar 17. It stays until it is done. You hear when it is done.')
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(false)
+    cleanup()
+  })
+
+  it('says saving reshapes the days to come only on a task that repeats (punch list #348)', async () => {
+    const NOTE = 'Saving reshapes the days still to come. The ones already done keep their notes.'
+    await openEdit()
+    expect(screen.queryByText(NOTE)).toBeNull()
+    // Made to repeat in the window: the save will build days ahead, so the line shows.
+    fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+    expect(screen.getByText(NOTE)).toBeTruthy()
+    cleanup()
+    await openEdit({ task: { repeat_type: 'day_of_week', repeat_days_of_week: [1, 3] } })
+    expect(screen.getByText(NOTE)).toBeTruthy()
     cleanup()
   })
 

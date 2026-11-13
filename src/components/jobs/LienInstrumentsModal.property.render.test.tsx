@@ -150,8 +150,8 @@ describe('LienInstrumentsModal · the property kind is the job’s own, read fir
     expect(stepText('affidavit')).toContain('Dec 15')
     expect(stepText('suit')).toContain('Dec 15, 2027')
     expect(document.body.textContent).not.toContain(LIEN_KIND_UNKNOWN_WORDS)
-    // The Mechanic's lien tab reads the same record: its county is there, nothing asks to link one.
-    fireEvent.click(screen.getByRole('button', { name: "Mechanic's lien" }))
+    // The Lien affidavit tab reads the same record: its county is there, nothing asks to link one.
+    fireEvent.click(screen.getByRole('button', { name: 'Lien affidavit' }))
     await waitFor(() => expect(document.body.textContent).toContain('County + legal description — missing legal description'))
     expect(document.body.textContent).not.toContain('link a property record')
   })
@@ -165,7 +165,7 @@ describe('LienInstrumentsModal · the property kind is the job’s own, read fir
   })
 })
 
-describe('LienInstrumentsModal · the Mechanic’s lien tab prints the desk’s affidavit (v2.6809)', () => {
+describe('LienInstrumentsModal · the Lien affidavit tab prints the desk’s affidavit (v2.6809)', () => {
   // The report: a GC job never clocked, no day set by hand. The desk's affidavit read the creation month and the GC's
   // address; one press later this window's paper read *from — through —* and the contractor's name alone.
   it('a job with no clock hours swears its creation month, and the original contractor line carries the GC’s address', async () => {

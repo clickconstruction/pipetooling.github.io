@@ -139,7 +139,7 @@ The agreement reads {{chip:green|✍ Signed}} only when both frames are filled. 
 
 ## Already have their contract? The field on the job
 
-Open the job with **Edit Job** and find **Customer Contract**. While nothing is on file the row has a field. It reads *Already have their contract? Paste the Drive link…*. In Google Drive use **Share → Copy link**, paste it, and press {{button:green|File it}}. The job reads {{chip:green|✍ On file · Google Doc}} everywhere: the Pipeline, the sweep, and Bill Customer. **Open the contract ↗** on that row goes straight to the file from then on. It is filed as signed by the job's customer. Nothing is sent to them. For a different signer or a date, use the sheet below.
+Open the job with **Edit Job** and find **Contract**. While nothing is on file the row has {{button:outline|Paste a link…}}. Press it and a box opens in its place. In Google Drive use **Share → Copy link**, paste it, and press {{button:green|File it}}. The job reads {{chip:green|✍ On file · Google Doc}} everywhere: the Pipeline, the sweep, and Bill Customer. **Open the contract ↗** on that row goes straight to the file from then on. The contract is filed as signed by the job's customer. Nothing is sent to them. For a different signer or a date, use the sheet below.
 
 ## Already signed? File the Google Doc
 
