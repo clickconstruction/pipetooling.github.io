@@ -58,6 +58,19 @@ On a phone a line is its name and its figure, with the rest under it.
 
 The card is a reading of today. The card records nothing and hands nothing to a person. The card changes when the numbers change.
 
+## Hand a line to one person
+
+Every line under a move has a check at its right edge.
+
+- A grey check means nobody has that line. Press it and the Add task window opens, already written for that one thing. The title names who, what and how much. The **Done when** lines say what finished looks like. Pick the person and press {{button:blue|Send}}.
+- A blue check means someone has it. The person's name sits under the line, with how long they have had the task. Press the check to see the task, who has it and since when. Press {{button:blue|Open the to-do}} there to change it.
+- An amber check means the task has waited too long. Too long means past the due day, or three days with no due day.
+- When the task is finished, the check turns grey again. The line names who finished it and when, for 14 days.
+
+A customer's line counts how many of its projects are handed out. A project under a customer whose own task is open reads as with that person.
+
+The page finds a task again by a tag in its first link. Keep that link on the task.
+
 ## The doors
 
 The first screen is the whole page until you open a door. Under the card sit {{button:outline|The flow}}, {{button:outline|Money}} and {{button:outline|People}}. Press one and that part of the page opens under the row. Press it again to close it. One door is open at a time.

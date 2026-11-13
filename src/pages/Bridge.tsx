@@ -37,7 +37,7 @@ import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadV
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
-import { ymdAddDays } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils'
 import { buildStageFlow, withFieldPaces, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
@@ -62,7 +62,13 @@ import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
-import type { DiveFacts, DivePctJob, DiveTarget } from '../lib/bridge/callDive'
+import { moveDive, type DiveFacts, type DivePctJob, type DiveTarget } from '../lib/bridge/callDive'
+import { todoLinkPaths, type CallTodo } from '../lib/bridge/callTodo'
+import { todoStates, type TodoCard, type TodoState } from '../lib/bridge/callTodoState'
+import type { TodoLinesRead } from '../components/bridge/BridgeTodoCheck'
+import { BridgeTodoOpen } from '../components/bridge/BridgeTodoOpen'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { APP_ORIGIN } from '../lib/appOrigin'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
 import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
@@ -136,6 +142,8 @@ const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNum
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 /** The page is a pulse (punch list #334, PR 7): it reads no call, so the model behind the first screen is told there are none. One list, so memos stay still. */
 const NO_CALLS: BridgeCall[] = []
+/** The names the page hands a read that looks people up itself: none, so the read fetches the few it needs. */
+const NO_NAMES: ReadonlyMap<string, string> = new Map()
 /** Where a door on the first screen lands: clear of the app's top bar. */
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
@@ -180,6 +188,8 @@ export default function Bridge() {
   const doorParam = searchParams.get('door')
   /** The pipe stands up (punch list #318). `?pipe=across` draws it lying down, as it was. */
   const pipeAcross = searchParams.get('pipe') === 'across'
+  /** The app's Add task window, which a grey check opens already written (punch list #334, PR 9). */
+  const addTask = useChecklistAddModal()
   // What a press on the card What to do now opened (punch list #334, PR 8): the customer the Collect window opens on,
   // the job whose percent is being set, and the project whose pay date is being written down.
   const [collectFocus, setCollectFocus] = useState<string | null>(null)
@@ -979,6 +989,7 @@ export default function Bridge() {
       // Each customer with the day they named, and their open bills as projects, each with its own promised day.
       payers: (collectDesk?.cut.cut ?? []).map((p) => ({
         key: p.payerId ?? p.payerName,
+        payerId: p.payerId,
         name: p.payerName,
         lateUsd: p.latePileUsd,
         usd: p.usd,
@@ -1023,6 +1034,47 @@ export default function Bridge() {
       dayLabel: md,
     }
   }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit])
+  // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
+  // cards whose links carry one of its own tagged addresses, and reads again after a card is made or changed here.
+  const todoList = useMemo(() => {
+    const out: CallTodo[] = []
+    if (!weekModel || !callDives) return out
+    for (const move of weekModel.card.moves) {
+      for (const item of moveDive(move, callDives)?.items ?? []) {
+        if (item.todo) out.push(item.todo)
+        for (const p of item.projects ?? []) if (p.todo) out.push(p.todo)
+      }
+    }
+    return out
+  }, [weekModel, callDives])
+  const todoLinksKey = useMemo(() => [...new Set(todoList.map((t) => `${APP_ORIGIN}${todoLinkPaths(t)[0]}`))].sort().join('\n'), [todoList])
+  const [todoCards, setTodoCards] = useState<TodoCard[] | null>(null)
+  const [todoTick, setTodoTick] = useState(0)
+  const [todoSeen, setTodoSeen] = useState<Extract<TodoState, { kind: 'open' | 'covered' | 'done' }> | null>(null)
+  useEffect(() => {
+    if (!todoLinksKey) {
+      setTodoCards([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { loadTodoCards } = await import('../lib/bridge/callTodoIo')
+        // A card's days are the company's days, as today is.
+        const cards = await loadTodoCards(supabase, todoLinksKey.split('\n'), calendarYmdInAppTzFromIso, NO_NAMES)
+        if (!cancelled) setTodoCards(cards)
+      } catch {
+        // The checks are an extra reading: a read that fails leaves every check grey, and the list as it was.
+        if (!cancelled) setTodoCards([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [todoLinksKey, todoTick, refreshKey])
+  const todoStatesByKey = useMemo(() => (todoCards && data ? todoStates(todoCards, data.todayYmd) : null), [todoCards, data])
+  const readTodoLines = useCallback<TodoLinesRead>(async (itemId, instanceIds) => (await import('../lib/taskLinesIo')).loadTaskLines({ itemIds: [itemId], taskIds: [], instanceIds }), [])
+
   // The two balances on the first screen (punch list #334, PR 6). The accrual balance is the page's net position:
   // cash, plus what customers owe, less what the company owes, the three figures Money owed walks through.
   // Runway burns payroll and overhead alone, the two figures the cash forecast already spends.
@@ -1443,6 +1495,9 @@ export default function Bridge() {
               stripSide={!pipeAcross}
               money={weekMoney}
               dives={callDives}
+              todoStates={todoStatesByKey}
+              dayLabel={md}
+              onTodoSee={setTodoSeen}
               onDive={(target: DiveTarget) => {
                 if (target.kind === 'desk') {
                   // A named customer opens the Collect window on that customer; the move's own press opens it as it is.
@@ -1451,6 +1506,9 @@ export default function Bridge() {
                 }
                 // The supply bills: the list of bills coming due, behind Money.
                 else if (target.kind === 'money') pressDoor('money', { keepOpen: true, scrollTo: 'bridge-bills-due' })
+                // One thing as a to-do card: the app's own Add task window, written for it. The person is picked there.
+                // Its link is the app's public address, so a card opens for whoever gets it, wherever it was written.
+                else if (target.kind === 'todo') addTask?.openAddModal({ preset: { title: target.todo.title, links: todoLinkPaths(target.todo).map((p) => `${APP_ORIGIN}${p}`), doneWhen: target.todo.doneWhen, asksForPhoto: false }, onSaved: () => setTodoTick((t) => t + 1) })
                 // A job's percent: the app's own percent window, where the reader stands.
                 else if (target.kind === 'pct') setPctFor(target.job)
                 // A project's pay date: the app's own sheet for a customer's word.
@@ -1811,6 +1869,8 @@ export default function Bridge() {
           )}
 
           {/* The desks open over the page from the stage cards and the link's desk. */}
+          {/* A blue check's window, and from it the app's own task window. The checks are read again when a card is saved or closed. */}
+          <BridgeTodoOpen seen={todoSeen} onSeenClose={() => setTodoSeen(null)} todayYmd={data.todayYmd} dayLabel={md} readLines={readTodoLines} role={role} setError={setError} onChanged={() => setTodoTick((t) => t + 1)} />
           {/* From the card What to do now: the app's own percent window and its sheet for a customer's word. */}
           {pctFor && <FieldPctUpdateModal job={pctFor} onClose={() => setPctFor(null)} onSaved={(pct) => savePct(pctFor.id, pct)} />}
           {promiseFor && (
