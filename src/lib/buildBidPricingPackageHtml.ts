@@ -80,6 +80,21 @@ export function formatPackageCurrency(n: number): string {
   })
 }
 
+/** The table's cells are 13px; the cents are 10px. */
+export const PACKAGE_CENTS_FONT_PX = 10
+
+/**
+ * A money figure for the email table with its cents in smaller type, so the dollars read
+ * first and a long column of `.00` stops shouting (v2.7065). The amount is the same to the
+ * cent: only the size of the last three characters changes. Inline style because mail
+ * clients strip <style> blocks, and px because the cell's own size is px.
+ */
+export function packageMoneyHtml(n: number): string {
+  const s = formatPackageCurrency(n)
+  const dot = s.lastIndexOf('.')
+  return `$${s.slice(0, dot)}<span style="font-size:${PACKAGE_CENTS_FONT_PX}px">${s.slice(dot)}</span>`
+}
+
 /** Google Maps search URL for a job address; null when the address is blank. */
 export function bidAddressMapsUrl(address: string | null | undefined): string | null {
   const trimmed = (address ?? '').trim()
@@ -112,8 +127,8 @@ export function buildBidPricingPackageTableHtml(args: {
         '<tr>' +
         td(escapeHtml(r.fixture)) +
         td(String(r.count), 'center') +
-        td(`$${formatPackageCurrency(r.unitPrice)}`, 'right') +
-        td(`$${formatPackageCurrency(r.revenue)}`, 'right') +
+        td(packageMoneyHtml(r.unitPrice), 'right') +
+        td(packageMoneyHtml(r.revenue), 'right') +
         '</tr>'
       )
     })
@@ -127,7 +142,7 @@ export function buildBidPricingPackageTableHtml(args: {
     totalCell('Total') +
     totalCell('', 'center') +
     totalCell('', 'right') +
-    totalCell(`$${formatPackageCurrency(totalRevenue)}`, 'right') +
+    totalCell(packageMoneyHtml(totalRevenue), 'right') +
     '</tr>'
 
   return (

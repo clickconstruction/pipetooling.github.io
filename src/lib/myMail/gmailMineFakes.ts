@@ -244,8 +244,9 @@ export class FakeDb {
           return { data: matched, error: null }
         }
         case 'insert': {
-          // contact_jobs rows carry the database's own created_at, which the seat's untag reads to tell the tag's ties.
-          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...(name === 'contact_jobs' ? { created_at: new Date().toISOString() } : {}), ...v }))
+          // contact_jobs rows carry the database's own created_at, which the seat's untag reads to tell the tag's ties, and
+          // notification_history stamps its own sent_at, as the database's default does.
+          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...(name === 'contact_jobs' ? { created_at: new Date().toISOString() } : {}), ...(name === 'notification_history' ? { sent_at: new Date().toISOString() } : {}), ...v }))
           // contact_jobs holds one row a person and a job: its partial unique indexes, one a job column.
           if (name === 'contact_jobs') {
             for (const m of made) {

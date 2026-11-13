@@ -57,11 +57,12 @@ function gateAct(missing: ReadonlyArray<LienAffidavitGateKey>): LienAct {
   if (only === 'contractor') return act('Add the GC’s address', 'The general contractor has no address on file. The affidavit has to give one.')
   if (only === 'owner') return act('Find the owner', 'The affidavit needs the owner of record with a mailing address.')
   if (only === 'legal') return act('Add the legal description', 'The property record has no county and legal description. The affidavit has to give both.')
-  if (only === 'notice') return LATE_NOTICE
+  if (only === 'notice') return LIEN_LATE_NOTICE_ACT
   return act('Fix the property record', 'The property record is missing facts the affidavit needs.')
 }
 
-const LATE_NOTICE = act('Send the late notice', 'The notice window closed with no notice sent. A late notice can still go while the affidavit can be filed.')
+/** A notice window closed with none sent while the affidavit can still be filed: the late notice (v2.4708's reading). */
+export const LIEN_LATE_NOTICE_ACT: LienAct = act('Send the late notice', 'The notice window closed with no notice sent. A late notice can still go while the affidavit can be filed.')
 
 /** The act for one Do now move on one paper; null when the move is not a step toward a legal day. */
 export function lienActFor(input: LienActInput): LienAct | null {
@@ -74,9 +75,9 @@ export function lienActFor(input: LienActInput): LienAct | null {
     case 'draft':
       return act(`Draft the ${name}`, `${The} is not drafted yet.`)
     case 'draft_late':
-      return act('Draft the late notice', LATE_NOTICE.why)
+      return act('Draft the late notice', LIEN_LATE_NOTICE_ACT.why)
     case 'send_notice':
-      return LATE_NOTICE
+      return LIEN_LATE_NOTICE_ACT
     case 'approve': {
       if (input.yours) return act(`Approve the ${name}`, `${The} is drafted and waits on your approval.`)
       const who = input.waitingOn?.trim() || 'the leader'

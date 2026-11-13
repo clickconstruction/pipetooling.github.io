@@ -222,6 +222,9 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
   const prefix = row.kind === 'retainage' && !move.startsWith('Retainage') ? 'Retainage · ' : row.kind === 'affidavit' && !/affidavit|lien filed/i.test(move) ? 'Affidavit · ' : ''
   const title = door.to === 'desk' ? 'Open it on the Lien desk' : 'Open the job’s Lien window'
   const red = row.severity === 'red'
+  // The move as the next act on the lien path (v2.7043). Since v2.7048 (punch list #325, PR 5) a chip that asks for a
+  // step says it in the act's words, the ones the Pipeline's billed row prints: "Find the owner", "Draft the affidavit".
+  const act = actOf(row, input, fmt)
 
   switch (row.action) {
     case 'note_missed': {
@@ -266,12 +269,14 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
     case 'approve': {
       // The desk's row already names the leader and the day: "Waiting on Robert · since Oct 7". An affidavit's or a
       // retainage notice's row leads with its paper ("Affidavit · waiting on Robert"), and the name is read past it (v2.7042).
-      const who = waitingOnOf(row.sub)
-      const lead = /your approval/i.test(row.sub) ? (row.kind === 'affidavit' ? 'Approve the affidavit' : `${prefix}Approve the notice`) : `${prefix}Waiting on ${who}`
+      const lead = act?.words ?? `Waiting on ${waitingOnOf(row.sub)}`
       return { tone: red ? 'red' : 'amber', state: 'due', paper, words: `${lead}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
     }
-    default:
-      return { tone: red || row.action === 'draft_late' ? 'red' : 'amber', state: 'due', paper, words: `${prefix}${move}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead: `${prefix}${move}`, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+    default: {
+      // A reminder has no act and keeps its own words; an act with no day to race (public property) carries no day.
+      const lead = act ? act.words : `${prefix}${move}`
+      return { tone: red || row.action === 'draft_late' ? 'red' : 'amber', state: 'due', paper, words: act && !act.dated ? lead : `${lead}${dueTail(row.dueOn, row.daysLeft, fmt)}`, lead, sentence: `${paperWords(row, entry)} · ${row.sub}`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+    }
   }
 }
 

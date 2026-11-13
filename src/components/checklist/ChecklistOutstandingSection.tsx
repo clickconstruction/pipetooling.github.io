@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { dueChipLabel } from '../../lib/checklistDueDates'
 import { overdueAgeLabel, type LedgerInstance } from '../../lib/checklistHistoryLedger'
@@ -9,6 +9,8 @@ import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskLinesList } from './TaskLinesList'
 import { TaskPhotoStrip } from './TaskPhotoStrip'
+import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
 
 /**
@@ -44,6 +46,10 @@ export function ChecklistOutstandingSection({
   photosFor,
   onPhotoAdded,
   onPostComment,
+  placeFor,
+  placeNumberFor,
+  placeFarFor,
+  openInstance,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -66,8 +72,21 @@ export function ChecklistOutstandingSection({
   photosFor?: (inst: LedgerInstance) => TaskPhotoView[]
   onPhotoAdded?: (row: TaskPhotoRow) => void
   onPostComment?: (inst: LedgerInstance, body: string) => Promise<boolean>
+  /** The task's place (punch list #328, PR 3): its name on the row and, opened, the map, Directions and How far am I?. */
+  placeFor?: (inst: LedgerInstance) => TaskPlace | null
+  /** The dot's number, once the list has a map over it (PR 4). */
+  placeNumberFor?: (inst: LedgerInstance) => number | null
+  placeFarFor?: (inst: LedgerInstance) => string | null
+  /** Show the task on the map (PR 4): the row with this id opens. `n` changes on every press, so the same row opens twice. */
+  openInstance?: { id: string; n: number } | null
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const openId = openInstance?.id ?? null
+  const openN = openInstance?.n ?? 0
+  useEffect(() => {
+    if (openId && openN && instances.some((i) => i.id === openId)) setExpandedId(openId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, openN])
 
   if (instances.length === 0) return null
 
@@ -129,6 +148,13 @@ export function ChecklistOutstandingSection({
             photos={photosFor?.(inst) ?? []}
             onPhotoAdded={onPhotoAdded}
             onPostComment={onPostComment ? (body) => onPostComment(inst, body) : undefined}
+            place={placeFor?.(inst) ?? null}
+            placeNumber={placeNumberFor?.(inst) ?? null}
+            placeFar={placeFarFor?.(inst) ?? null}
+            placedByName={(() => {
+              const by = placeFor?.(inst)?.setBy
+              return by && nameById?.[by] ? nameById[by]! : null
+            })()}
           />
         ))}
       </ul>
@@ -158,6 +184,10 @@ function OutstandingRow({
   photos,
   onPhotoAdded,
   onPostComment,
+  place,
+  placeNumber,
+  placeFar,
+  placedByName,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -180,6 +210,10 @@ function OutstandingRow({
   photos: TaskPhotoView[]
   onPhotoAdded?: (row: TaskPhotoRow) => void
   onPostComment?: (body: string) => Promise<boolean>
+  place: TaskPlace | null
+  placeNumber: number | null
+  placeFar: string | null
+  placedByName: string | null
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
   const sheets = useTaskCardSheets({
@@ -197,7 +231,7 @@ function OutstandingRow({
     onPhotoAdded,
   })
   return (
-    <li style={{ borderBottom: '1px solid var(--border)' }}>
+    <li data-task-instance={inst.id} style={{ borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
         {ring ? (
           <TaskRing state={sheets.ring} size={36} title={inst.checklist_items?.title ?? ''} onPress={sheets.ringPress} />
@@ -233,6 +267,7 @@ function OutstandingRow({
           }}
         >
           <span style={{ display: 'block', fontSize: '0.9375rem' }}>{title}</span>
+          {place ? <TaskPlaceLine place={place} number={placeNumber} overdue far={placeFar} /> : null}
           {(() => {
             // Due-aware line (v2.2351): red means LATE — a task inside
             // its start→due window is calm, amber on the due day.
@@ -271,6 +306,11 @@ function OutstandingRow({
           {photos.length > 0 ? (
             <div style={{ marginBottom: '0.6rem' }}>
               <TaskPhotoStrip photos={photos} />
+            </div>
+          ) : null}
+          {place ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskPlaceBlock place={place} placedByName={placedByName} />
             </div>
           ) : null}
           <ChecklistItemActivity

@@ -179,6 +179,12 @@ import {
   myMailTagEventRow,
   myMailTagRecord,
   myMailTaggedBy,
+  MAIL_SAVED_BODY,
+  MAIL_SAVED_CHANNEL,
+  MAIL_SAVED_TEMPLATE,
+  mailSavedBatchSince,
+  mailSavedFacts,
+  mailSavedTitle,
   MY_MAIL_TAGGED_PAGE,
   inAskedBoxes,
   taggedNextToken,
@@ -921,6 +927,56 @@ async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId
   }
 }
 
+/**
+ * The owner is told (v2.7068). When the dev seat saves a conversation out of someone else's mailbox onto a job, that
+ * person gets one notice of their own in `notification_history` (`MAIL_SAVED_TEMPLATE`, channel `app`): who saved how
+ * many conversations to which job, read on the Dashboard and under Settings → Activity logs by them alone. In the app
+ * only, by the owner's choice: nothing is pushed and nothing is emailed, so nothing lands in their inbox. One notice a
+ * batch: a notice written in the last `MAIL_SAVED_BATCH_MINUTES` is rewritten with the batch's count (their rows that
+ * someone else tagged onto a job since it began) instead of a second one being added. Never for the dev's own box, a
+ * person's own press, or a save onto an HR file, which is `tagPerson`'s and tells nobody. Best effort: a notice that
+ * will not write is logged and the save stands.
+ */
+async function noteSavedForYou(ctx: Ctx, chip: MyMailJobChip, jobKey: string): Promise<void> {
+  const { admin, me, seat } = ctx
+  if (!seat || seat.id === me.id) return
+  try {
+    const now = nowIso()
+    const since = mailSavedBatchSince(now)
+    const { data: batch, error: batchError } = await admin
+      .from('notification_history')
+      .select('id, sent_at')
+      .eq('recipient_user_id', me.id)
+      .eq('template_type', MAIL_SAVED_TEMPLATE)
+      .gte('sent_at', since)
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (batchError) throw new Error(batchError.message)
+    // The batch's rows: the owner's conversations someone else has tagged since it began, this one among them.
+    const from = (batch as { sent_at?: string } | null)?.sent_at ? new Date(Date.parse((batch as { sent_at: string }).sent_at) - 5 * 60_000).toISOString() : new Date(Date.parse(now) - 60_000).toISOString()
+    const saved = await rows<{ tagged_by: string | null; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; person_id: string | null }>(
+      admin.from('email_tag_threads').select('tagged_by, bid_id, project_id, jobs_ledger_id, person_id').eq('user_id', me.id).is('person_id', null).gte('tagged_at', from),
+      'the conversations saved from their mail',
+    )
+    const ids = unique([seat.id, ...saved.map((r) => r.tagged_by)]).filter((id) => id !== me.id)
+    const people = await rowsIn<{ id: string; name: string | null; email: string | null }>(ids, (c) => admin.from('users').select('id, name, email').in('id', c), 'who saved them')
+    const names = Object.fromEntries(people.map((u) => [u.id, String(u.name ?? '').trim() || String(u.email ?? '').trim()]))
+    let facts = mailSavedFacts(saved, me.id, names, { key: jobKey, words: `${chip.num} ${chip.name}`.trim() })
+    // A second tag onto the same job keeps the first tagger, so the row may not name the dev: the save is still said.
+    if (facts.conversations === 0) facts = { savers: [seat.name || seat.email], conversations: 1, jobs: 1, job: `${chip.num} ${chip.name}`.trim() || null }
+    const notice = { title: mailSavedTitle(facts), body_preview: MAIL_SAVED_BODY }
+    const batchId = (batch as { id?: string } | null)?.id
+    const wrote = batchId
+      ? await admin.from('notification_history').update(notice).eq('id', batchId)
+      : await admin.from('notification_history').insert({ recipient_user_id: me.id, template_type: MAIL_SAVED_TEMPLATE, channel: MAIL_SAVED_CHANNEL, ...notice })
+    if (wrote.error) throw new Error(wrote.error.message)
+    log({ event: 'gmail_mine_owner_told', user: me.id, dev: seat.id, batch: Boolean(batchId), conversations: facts.conversations, jobs: facts.jobs })
+  } catch (e) {
+    console.warn(JSON.stringify({ event: 'gmail_mine_owner_not_told', user: me.id, dev: seat.id, reason: words(e).slice(0, 300) }))
+  }
+}
+
 /** The conversation's state in Follow up, or null when it does not read. */
 async function contactState(admin: Admin, contactId: string): Promise<'waiting' | 'snoozed' | 'done' | null> {
   const { data, error } = await admin.from('contacts').select('state').eq('id', contactId).maybeSingle()
@@ -1028,6 +1084,8 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
 
   const moved = wasOn !== null && wasOn !== plan.jobKey
   const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved, seat: ctx.seat, filed: tagAllFiled(plan.counts) }) : false
+  // The mailbox's owner is told, in the app only, when the dev seat saved their mail (v2.7068).
+  await noteSavedForYou(ctx, chip, plan.jobKey)
   // Where the conversation stands in Follow up now (v2.7032), for the line the tab prints after a tag. Best effort.
   const state = contactId ? await contactState(admin, contactId) : null
   const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender, filed: plan.counts.filed, ...(state ? { state } : {}) }

@@ -5,6 +5,9 @@
  * row's Labels press and its door to the phone screen; an estimator, a primary and a superintendent
  * get their jobs with boxes as doors to the Tally's On site tab, where the presses are, with no
  * money drawn. The rows come from the on-site store's desk load, gated by `on_site_can_touch_job`.
+ * A site's materials on one screen (punch list #330) is `?site=<development id>`: the office reaches
+ * it through the desk's site row, a primary and a superintendent through the site row over their
+ * jobs, with no money; an estimator gets no site row.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -13,6 +16,9 @@ import { useOnSiteDeskJobs, type OnSiteDeskJobRow } from '../../hooks/useOnSiteD
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { boxOnSiteLink } from '../../lib/materials/boxSearch'
 import { onSiteJobHref } from '../../lib/materials/materialsGroups'
+import { groupDeskBySite } from '../../lib/materials/siteRollup'
+import { useOnSiteSites } from '../../hooks/useOnSiteSites'
+import SiteMaterialsView from './SiteMaterialsView'
 import { isMaterialsOfficeRole } from '../../lib/materials/materialsTabs'
 import { countIsDue, lastCountedAt, lastCountWords } from '../../lib/materials/onSite'
 import { findOnSite, findOnSiteWords, type OnSiteFindJob } from '../../lib/materials/onSiteFind'
@@ -49,8 +55,9 @@ function dueBoxes(job: OnSiteFindJob, now: Date): number {
 
 export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels }: Props) {
   const office = isMaterialsOfficeRole(role)
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const jobId = params.get('job')
+  const siteId = params.get('site')
   const jobDetailModal = useJobDetailModal()
   const desk = useOnSiteDeskJobs(active)
   const [query, setQuery] = useState('')
@@ -74,14 +81,27 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
     }
   }, [active, office])
 
+  const withBoxes = desk.jobs.filter((j) => j.containers.some((c) => !c.retiredAt))
+  // A site's screen for the field roles that run a site; an estimator reads no site here.
+  const fieldSites = !office && role !== 'estimator'
+  const sites = useOnSiteSites(withBoxes.map((j) => j.jobId), active && fieldSites && desk.loaded)
+
   if (!active) return null
 
   const now = new Date()
   const found = findOnSite(desk.jobs, query)
   const searching = query.trim() !== ''
-  // The office's job page has its own sections; the search is the desk's, across jobs.
-  const showSearch = !(office && jobId)
-  const withBoxes = desk.jobs.filter((j) => j.containers.some((c) => !c.retiredAt))
+  const siteGroups = fieldSites ? groupDeskBySite(withBoxes.map((j) => j.jobId), sites.siteOfJob, sites.siteNames).filter((g) => g.kind === 'site') : []
+  const fieldSite = fieldSites && siteId ? siteGroups.find((g) => g.kind === 'site' && g.siteId === siteId) : undefined
+  const setSite = (id: string | null) =>
+    setParams((p) => {
+      const next = new URLSearchParams(p)
+      if (id) next.set('site', id)
+      else next.delete('site')
+      return next
+    })
+  // The office's job page and a site's screen have their own search; this one is the desk's, across jobs.
+  const showSearch = !(office && (jobId || siteId)) && !fieldSite
   const deskJobs: MaterialsJob[] = allJobs.length ? allJobs : desk.rows.map((r: OnSiteDeskJobRow) => ({ id: r.id, hcp_number: r.hcp_number, job_name: r.job_name, job_address: r.job_address ?? null, google_drive_link: r.google_drive_link ?? null }))
 
   return (
@@ -130,6 +150,16 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
             </tbody>
           </table>
         </div>
+      ) : fieldSite && fieldSite.kind === 'site' ? (
+        <SiteMaterialsView
+          site={{ id: fieldSite.siteId, name: fieldSite.name }}
+          jobs={fieldSite.jobIds.map((id) => ({ id, label: withBoxes.find((j) => j.jobId === id)?.label ?? `job ${id.slice(0, 8)}` }))}
+          showMoney={false}
+          onBack={() => setSite(null)}
+          backLabel="On site"
+          boxHref={boxOnSiteLink}
+          loading={desk.loading && !desk.loaded}
+        />
       ) : office ? (
         <JobsMaterialsTab
           jobs={deskJobs}
@@ -150,7 +180,21 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
                     ? <span style={muted}>Loading the boxes…</span>
                     : <EmptyState compact main="No job you can open has a cage or a box yet." tail="The crew adds the first on the Tally’s On site tab." />}
                 </td></tr>
-              ) : withBoxes.map((j) => {
+              ) : [
+                ...siteGroups.map((g) => {
+                  if (g.kind !== 'site') return null
+                  const members = withBoxes.filter((j) => g.jobIds.includes(j.jobId))
+                  const due = members.reduce((n, j) => n + dueBoxes(j, now), 0)
+                  return (
+                    <tr key={`site:${g.siteId}`} data-site-row={g.siteId} style={{ background: 'var(--bg-subtle)' }}>
+                      <td style={{ ...td, fontWeight: 800 }}>{g.name} <span style={{ ...muted, fontWeight: 400 }}>· the whole site, {members.length === 1 ? '1 job' : `${members.length} jobs`}</span></td>
+                      <td style={{ ...td, ...num }}>{members.reduce((n, j) => n + j.containers.filter((c) => !c.retiredAt).length, 0)}</td>
+                      <td style={td}>{due > 0 ? <span style={amber}>{due} due a count</span> : <span style={muted}>all counted this fortnight</span>}</td>
+                      <td style={{ ...td, textAlign: 'right' }}><button type="button" style={{ ...door, cursor: 'pointer' }} onClick={() => setSite(g.siteId)}>Open the site</button></td>
+                    </tr>
+                  )
+                }),
+                ...withBoxes.map((j) => {
                 const due = dueBoxes(j, now)
                 return (
                   <tr key={j.jobId}>
@@ -160,7 +204,8 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
                     <td style={{ ...td, textAlign: 'right' }}><Link to={onSiteJobHref(role, j.jobId)} style={door}>Open the boxes</Link></td>
                   </tr>
                 )
-              })}
+              }),
+              ]}
             </tbody>
           </table>
         </div>
