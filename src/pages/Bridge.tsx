@@ -62,6 +62,9 @@ import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
+import type { DiveFacts, DivePctJob, DiveTarget } from '../lib/bridge/callDive'
+import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
+import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { deskStatus, isStageLink, type BridgeCall, type CallLink } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -177,6 +180,11 @@ export default function Bridge() {
   const doorParam = searchParams.get('door')
   /** The pipe stands up (punch list #318). `?pipe=across` draws it lying down, as it was. */
   const pipeAcross = searchParams.get('pipe') === 'across'
+  // What a press on the card What to do now opened (punch list #334, PR 8): the customer the Collect window opens on,
+  // the job whose percent is being set, and the project whose pay date is being written down.
+  const [collectFocus, setCollectFocus] = useState<string | null>(null)
+  const [pctFor, setPctFor] = useState<DivePctJob | null>(null)
+  const [promiseFor, setPromiseFor] = useState<{ jobId: string; jobLabel: string; ymd: string | null; context: string } | null>(null)
   // Where to land after a door opens: the doors row, or a part inside the door.
   const [doorScroll, setDoorScroll] = useState<{ id: string; n: number } | null>(null)
   // Bills and receipts show fourteen days until this is pressed.
@@ -957,6 +965,64 @@ export default function Bridge() {
     }
   }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile, profileName, vectorInputs, nowReading])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
+  // The real things behind each move on the card (punch list #334, PR 8; `callDive.ts`), from what the page has
+  // already read: nothing here is a new count.
+  const supplyDueYmd = weekInput?.supplyDue?.ymd ?? null
+  const callDives = useMemo<DiveFacts | null>(() => {
+    if (!data) return null
+    const jobById = new Map(data.jobs.map((j) => [j.id, j]))
+    const named = (ids: ReadonlyArray<string>) => ids.map((id) => jobById.get(id)).filter((j): j is NonNullable<typeof j> => j != null)
+    const byRevenue = (a: { revenueUsd: number | null }, b: { revenueUsd: number | null }) => (b.revenueUsd ?? 0) - (a.revenueUsd ?? 0)
+    // A bill's own name, the job's number and name, by the AR row's key.
+    const billLabelByKey = new Map([...(fin.data?.ar.items ?? []), ...(fin.data?.arCollections.items ?? [])].map((i) => [i.key, i.label] as const))
+    return {
+      // Each customer with the day they named, and their open bills as projects, each with its own promised day.
+      payers: (collectDesk?.cut.cut ?? []).map((p) => ({
+        key: p.payerId ?? p.payerName,
+        name: p.payerName,
+        lateUsd: p.latePileUsd,
+        usd: p.usd,
+        oldestAgeDays: p.oldestAgeDays,
+        promise: { state: p.promise.state, ymd: p.promise.promise?.promisedYmd ?? null },
+        projects: [...p.bills]
+          .filter((b) => b.usd > 0)
+          .sort((a, b) => b.usd - a.usd)
+          .map((b) => ({ key: b.key, jobId: b.jobId, label: billLabelByKey.get(b.key) ?? 'A bill with no job', usd: b.usd, ageDays: b.ageDays, broken: b.state === 'broken', promisedYmd: b.promise?.promisedYmd ?? null, promisedBy: b.promise?.markedByName ?? null })),
+      })),
+      billJobs: (billPile?.items ?? [])
+        .filter((i) => i.usd > 0 && i.source !== 'guess' && i.source !== 'no-price')
+        .sort((a, b) => b.usd - a.usd)
+        .flatMap((i) => {
+          const j = jobById.get(i.id)
+          return j ? [{ id: j.id, label: j.label, usd: i.usd }] : []
+        }),
+      // Each job as the percent window takes it, so its row can set the percent here: the percent prompt's own row
+      // when it knows the job, else the job named by its label, as the prompt names a job with no number.
+      // A job set on this visit stays listed, and says so.
+      noPctJobs: named(data.earned.assumedHalfJobs)
+        .sort(byRevenue)
+        .map((j) => ({
+          id: j.id,
+          label: j.label,
+          revenueUsd: j.revenueUsd,
+          pctJob: pctPrompt?.rows.find((r) => r.id === j.id)?.modalJob ?? { id: j.id, hcpNumber: j.label, jobName: j.label, label: j.label },
+          setPct: pctSetThisVisit.get(j.id) ?? null,
+        })),
+      noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
+      // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
+      supplyBills: [
+        ...Object.values(fin.data?.apBills ?? {})
+          .filter((b) => b.amount > 0 && supplyDueYmd != null && b.dueDateYmd === supplyDueYmd)
+          .reduce((houses, b) => {
+            const h = houses.get(b.houseName) ?? { houseId: b.houseId ?? null, name: b.houseName, usd: 0, dueYmd: b.dueDateYmd, bills: 0 }
+            houses.set(b.houseName, { ...h, usd: h.usd + b.amount, bills: h.bills + 1 })
+            return houses
+          }, new Map<string, { houseId: string | null; name: string; usd: number; dueYmd: string | null; bills: number }>())
+          .values(),
+      ].sort((a, b) => b.usd - a.usd),
+      dayLabel: md,
+    }
+  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit])
   // The two balances on the first screen (punch list #334, PR 6). The accrual balance is the page's net position:
   // cash, plus what customers owe, less what the company owes, the three figures Money owed walks through.
   // Runway burns payroll and overhead alone, the two figures the cash forecast already spends.
@@ -1376,6 +1442,20 @@ export default function Bridge() {
               strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
               stripSide={!pipeAcross}
               money={weekMoney}
+              dives={callDives}
+              onDive={(target: DiveTarget) => {
+                if (target.kind === 'desk') {
+                  // A named customer opens the Collect window on that customer; the move's own press opens it as it is.
+                  setCollectFocus(target.stage === 'collect' ? (target.payerKey ?? null) : null)
+                  openStageDesk(target.stage)
+                }
+                // The supply bills: the list of bills coming due, behind Money.
+                else if (target.kind === 'money') pressDoor('money', { keepOpen: true, scrollTo: 'bridge-bills-due' })
+                // A job's percent: the app's own percent window, where the reader stands.
+                else if (target.kind === 'pct') setPctFor(target.job)
+                // A project's pay date: the app's own sheet for a customer's word.
+                else if (target.kind === 'promise') setPromiseFor({ jobId: target.jobId, jobLabel: target.jobLabel, ymd: target.ymd, context: target.context })
+              }}
               onAccrual={() => {
                 setOpenCard('owed')
                 pressDoor('money', { keepOpen: true, scrollTo: 'bridge-money-owed' })
@@ -1522,7 +1602,7 @@ export default function Bridge() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
-            <div style={panel}>
+            <div id="bridge-bills-due" style={{ ...panel, scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 3rem)' }}>
               <div style={label}>Bills coming due · next {listsAll ? '8 weeks' : `${MONEY_LIST_DAYS} days`}</div>
               <div style={{ ...det, marginTop: '0.2rem' }}>payroll ≈ {money(data.payrollWeeklyEstUsd)}/week (8-week labor average{data.crew.pendingClosedHours > 0 ? ' — reads low while hours await approval' : ''}) · sub labor owed on a {SUB_LABOR_DEFAULT_DAYS}-day horizon · other spend ≈ {money(data.dailyDrainUsd)}/day (office parts, 90-day rate)</div>
               <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
@@ -1731,6 +1811,22 @@ export default function Bridge() {
           )}
 
           {/* The desks open over the page from the stage cards and the link's desk. */}
+          {/* From the card What to do now: the app's own percent window and its sheet for a customer's word. */}
+          {pctFor && <FieldPctUpdateModal job={pctFor} onClose={() => setPctFor(null)} onSaved={(pct) => savePct(pctFor.id, pct)} />}
+          {promiseFor && (
+            <SetPromisedPayDateModal
+              jobId={promiseFor.jobId}
+              jobLabel={promiseFor.jobLabel}
+              initialYmd={promiseFor.ymd}
+              contextLine={promiseFor.context}
+              onClose={() => setPromiseFor(null)}
+              onSaved={() => {
+                // The same refresh the Collect window's After the call makes: the promises are read again.
+                setCollectReads(null)
+                setRefreshKey((k) => k + 1)
+              }}
+            />
+          )}
           {collectOpen && data && (
             collectDesk ? (
               <BridgeCollectDesk
@@ -1744,7 +1840,11 @@ export default function Bridge() {
                 dayLabel={md}
                 chipsByJob={collectChips.chipsByJob}
                 arDoor={OWED_DOORS.billing}
-                onClose={() => setCollectOpen(false)}
+                focusPayerKey={collectFocus}
+                onClose={() => {
+                  setCollectOpen(false)
+                  setCollectFocus(null)
+                }}
                 sheet={collectPlan?.sheet ?? null}
                 decisions={collectPlan?.decisions ?? null}
                 whatIf={collectPlan?.whatIf ?? null}
@@ -1792,6 +1892,9 @@ export default function Bridge() {
               worth={marketWorth}
               bidWins={bidWins}
               estimateWins={estimateWins}
+              bids={bidsSent}
+              estimates={estimatesSent}
+              todayYmd={data.todayYmd}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setMarketOpen(false)}
             />

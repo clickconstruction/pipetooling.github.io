@@ -697,6 +697,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "add_payment_chase_touch": [{"args":{"p_customer_id":"string","p_job_id":"string","p_note":"string","p_outcome":"string","p_promised_date":"string","p_snooze_days":"number"},"returns":"Json"}],
   "add_quick_reply": [{"args":{"p_for":"string","p_mine?":"boolean","p_step?":"string","p_text":"string"},"returns":"string"}],
   "add_quick_time": [{"args":{"p_ended_at?":"string","p_minutes":"number","p_note":"string"},"returns":"Json"}],
+  "add_task_place_from_the_spot": [{"args":{"p_accuracy_m":"number","p_instance_id":"string","p_lat":"number","p_lng":"number","p_name?":"string"},"returns":"Json"}],
   "add_worker": [{"args":{"p_email?":"string","p_kind":"string","p_name":"string","p_notes?":"string","p_phone?":"string","p_start_date?":"string"},"returns":"Json"}],
   "adopt_bid_as_version": [{"args":{"p_name":"string","p_source_bid_id":"string","p_target_base_name?":"string","p_target_bid_id":"string"},"returns":"string"}],
   "adopt_logs_both_bids": [{"args":{"p_moved":"string","p_new_version_id":"string","p_source_bid_id":"string","p_target_bid_id":"string","p_version_name":"string"},"returns":"number"}],

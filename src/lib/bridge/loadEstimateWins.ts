@@ -27,12 +27,12 @@ export function isZzEstimate(row: { title?: string | null; customerName?: string
   return isZzTestName(row.customerName) || isZzTestName((row.title ?? '').replace(/^\s*estimate\s+for\s+/i, ''))
 }
 
-type Row = { id: string; title: string | null; customers: { name: string | null } | null; sent_at: string | null; status: string; total_cents: number | null; doc_kind: string | null; customer_id: string | null; customer_email: string | null; for_address: string | null; acceptor_consented_at: string | null; updated_at: string | null }
+type Row = { id: string; estimate_number: number | null; title: string | null; customers: { name: string | null } | null; sent_at: string | null; status: string; total_cents: number | null; doc_kind: string | null; customer_id: string | null; customer_email: string | null; for_address: string | null; acceptor_consented_at: string | null; updated_at: string | null }
 
 export async function loadEstimatesSent(db: SupabaseClient<Database>, opts: { leftOut: ReadonlyArray<LeftOutRule>; /** The viewer's ZZ switch, as the bids read it: null keeps the ZZ test estimates. */ zzTestJobIds?: BridgeZzTestJobIds }): Promise<EstimateSent[]> {
   const rows = await fetchAllRows(
     async (from, to) => ({
-      data: (await withSupabaseRetry(async () => db.from('estimates').select('id, title, customers(name), sent_at, status, total_cents, doc_kind, customer_id, customer_email, for_address, acceptor_consented_at, updated_at').not('sent_at', 'is', null).order('id').range(from, to), 'bridge estimates sent')) as Row[] | null,
+      data: (await withSupabaseRetry(async () => db.from('estimates').select('id, estimate_number, title, customers(name), sent_at, status, total_cents, doc_kind, customer_id, customer_email, for_address, acceptor_consented_at, updated_at').not('sent_at', 'is', null).order('id').range(from, to), 'bridge estimates sent')) as Row[] | null,
       error: null,
     }),
     'bridge estimates sent',
@@ -50,7 +50,7 @@ export async function loadEstimatesSent(db: SupabaseClient<Database>, opts: { le
     const customerKey = r.customer_id ?? (r.customer_email ? `email:${r.customer_email.trim().toLowerCase()}` : `estimate:${r.id}`)
     const addressKey = (r.for_address ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
     const answeredIso = r.acceptor_consented_at ?? r.updated_at
-    out.push({ sentYmd, status: r.status, usd: (r.total_cents ?? 0) / 100, customerKey, addressKey, answeredYmd: answeredIso ? calendarYmdInAppTzFromIso(answeredIso) || null : null })
+    out.push({ id: r.id, number: r.estimate_number, name: r.title, sentYmd, status: r.status, usd: (r.total_cents ?? 0) / 100, customerKey, addressKey, answeredYmd: answeredIso ? calendarYmdInAppTzFromIso(answeredIso) || null : null })
   }
   return out
 }
