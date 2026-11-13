@@ -26,6 +26,7 @@ import { BidMoneyLine } from './BidMoneyLine'
 import { JobDraftSheet } from './JobDraftSheet'
 import { draftSentLabel } from '../../lib/bids/jobDraft'
 import { BidSubmittalChip } from './BidSubmittalChip'
+import { BidPayTermsToOffice } from './BidPayTermsToOffice'
 
 type Props = {
   bidId: string
@@ -190,6 +191,8 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
           You won it — the job opens with the customer, address and links filled in, and the bid linked on the job.
         </span>
       ) : null}
+      {/* The GC's pay terms, once the job is open (punch list #323): an estimator sends them to the office; before the job they go with the draft. */}
+      {newest && sendsJobDraft(role) ? <BidPayTermsToOffice bidId={bidId} /> : null}
       {/* Job accounts from the bid (v2.3451): the linked job's accounts per house, through the bid-gated RPC — visible to the estimator too. */}
       {won || newest ? <BidJobAccountsRow bidId={bidId} /> : null}
       {/* The money line (v2.5647, punch list #129): where the job stands on money, for the job's people, with the customer's door and Send the pay page. */}
