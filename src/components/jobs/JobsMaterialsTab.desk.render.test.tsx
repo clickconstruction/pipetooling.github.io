@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
-const data = vi.hoisted(() => ({ failed: {} as Record<string, string>, reread: [] as string[] }))
+const data = vi.hoisted(() => ({ failed: {} as Record<string, string>, reread: [] as string[], raw: null as unknown }))
 const box = (id: string, jobId: string, label: string) => ({ id, jobId, label, kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' })
 const containers: Record<string, unknown[]> = { ja: [box('r12', 'ja', 'R12')], jb: [box('p1', 'jb', 'P1')] }
 
@@ -30,7 +30,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   setOnSiteErrorHandler: () => {},
   subscribe: () => () => {},
   getVersion: () => 0,
-  jobLoadState: (id: string) => ({ loaded: !data.failed[id], loading: false, error: data.failed[id] ?? null, raw: null }),
+  jobLoadState: (id: string) => ({ loaded: !data.failed[id], loading: false, error: data.failed[id] ?? null, raw: data.failed[id] ? data.raw : null }),
   loadJob: (id: string, opts?: { force?: boolean }) => {
     data.reread.push(`${id}${opts?.force ? ' again' : ''}`)
     return Promise.resolve()
@@ -61,6 +61,7 @@ afterEach(() => {
   cleanup()
   data.failed = {}
   data.reread.length = 0
+  data.raw = null
 })
 
 describe('the materials desk, a job whose read failed', () => {
@@ -84,5 +85,14 @@ describe('the materials desk, a job whose read failed', () => {
     expect(data.reread).toEqual(['jb again'])
     // The job that did load keeps its row.
     expect(document.querySelector('[data-job-not-loaded="ja"]')).toBeNull()
+  })
+
+  it('a lost signal reads the read’s own sentence, never that nothing was saved', () => {
+    data.failed = { jb: 'No connection — the app couldn’t reach the server, so nothing was saved.' }
+    data.raw = new TypeError('Failed to fetch')
+    renderWithProviders(<JobsMaterialsTab jobs={jobs} byUserId="u1" byName="Sam" onOpenJobDetail={() => {}} driveBackfill={false} />, { route: '/materials?tab=on-site' })
+    const row = document.querySelector('[data-job-not-loaded="jb"]')!
+    expect(row.textContent).toContain('Did not load. No connection, so this could not load. Nothing was lost. It loads again when the signal is back.')
+    expect(row.textContent).not.toContain('nothing was saved')
   })
 })

@@ -24,7 +24,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import OnSiteJobsNotLoaded from '../materials/OnSiteJobsNotLoaded'
 import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
-import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
 import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
@@ -46,7 +46,7 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
@@ -223,7 +223,11 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
 
   if (!jobId) {
     // A job whose own read failed keeps its reason (v2.7175): its row says so in place of figures, which would read as a job with nothing on site.
-    const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now), failed: jobLoadState(id).error }))
+    const rows = withData.map((id) => {
+      const st = jobLoadState(id)
+      // A lost signal reads the read's own sentence; the store's says *nothing was saved*, which is a write's.
+      return { id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now), failed: st.error ? (errorKindOf(st.raw) === 'network' ? OFFLINE_READ_MESSAGE : st.error) : null }
+    })
     rows.sort((a, b) => Number(Boolean(b.failed)) - Number(Boolean(a.failed)) || b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
     const groups = groupDeskBySite(rows.map((r) => r.id), sites.siteOfJob, sites.siteNames)
     const anySite = groups.some((g) => g.kind === 'site')
