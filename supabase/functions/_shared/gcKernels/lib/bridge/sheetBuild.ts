@@ -3,8 +3,9 @@
 /**
  * The Monday email from the page's reads (v2.5881, redrawn in v2.6888): one pure function from everything the Bridge
  * loads to the mail `bridge-weekly-sheet` builds on Monday morning. Since v2.6888 (punch list #303, PR 5) that mail is
- * the page's first screen: the three tiles, the strip of pipe and the week's call, built by the page's own kernels in
- * the page's order, so the mail and the page read one implementation. `loadMondaySheetReads` (`sheetReads.ts`) makes
+ * the page's first screen: the three tiles, the strip of pipe and the card What to do now, built by the page's own
+ * kernels in the page's order, so the mail and the page read one implementation. Since punch list #334 it reads no
+ * call: the card is today's reading, as on the page. `loadMondaySheetReads` (`sheetReads.ts`) makes
  * the reads with a client passed in. The page builds the same chain in its own memos, where a pressed step or a moved
  * dial changes it, and shares the receipts, the bills and the Collect desk below. Pure: no React, no Supabase.
  */
@@ -18,8 +19,6 @@ import type { MercuryCash } from './mercuryCash.ts'
 import { buildBuildPace, type BuildPaceInput } from './buildPace.ts'
 import { billStageInput, buildBillPile, type BillPileJob } from './billPile.ts'
 import { buildDemand, type DemandInput } from './demandPace.ts'
-import { callForWeek, heldStageFor, type BridgeCall } from './calls.ts'
-import type { MoveMark } from './callPeople.ts'
 import { buildCashAccounts } from './cashAccounts.ts'
 import type { CollectDeskReads } from './collect/loadCollectDesk.ts'
 import { collectBillsFromAr } from './collect/collectBills.ts'
@@ -32,12 +31,12 @@ import { lateWithinDays, type ReceiptBasis } from './cashConfidence.ts'
 import { buildHeadline, type Headline } from './headline.ts'
 import { buildVectorGrid, vectorRangeFor } from './vectorDays.ts'
 import { fieldPaceByHours } from './fieldPace.ts'
-import { buildStageFlow, withFieldPaces, type StageFlowInput, type StageId } from './stageFlow.ts'
+import { buildStageFlow, withFieldPaces, type StageFlowInput } from './stageFlow.ts'
 import { marketPaceIsWorth, todayPace } from './dial.ts'
 import { buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from './bidWins.ts'
 import { buildEstimateWins, type EstimateSent } from './estimateWins.ts'
 import { buildFlowStrip } from './flowStrip.ts'
-import { WEEK_CASH_MAY_LEAD, buildWeekCall, topPerson, topPersonId } from './weekCall.ts'
+import { WEEK_CASH_MAY_LEAD, buildWeekCall } from './weekCall.ts'
 import type { WeekMail } from './weekMail.ts'
 
 /** Everything the mail reads, as the page loads it; a read that failed is null and named in `gaps`. */
@@ -50,7 +49,6 @@ export type MondaySheetReads = {
   buildInputs: BuildPaceInput | null
   billJobs: BillPileJob[] | null
   demandInputs: DemandInput | null
-  calls: BridgeCall[] | null
   collectReads: CollectDeskReads | null
   /** Every bid ever sent, for the bids' won rates (`loadBidWins.ts`, punch list #318); absent or null when not read. */
   bidsSent?: BidSent[] | null
@@ -66,8 +64,6 @@ export type WeekMailOptions = {
   accountsOut?: ReadonlyArray<string>
   /** Each account's name in Mercury, by its id, for the sentence that says what is left out. */
   bankNames?: ReadonlyMap<string, string>
-  /** The Done presses people made on the calls' moves (`parseMoveMarks`). */
-  marks?: ReadonlyArray<MoveMark>
 }
 
 /** "Oct 24", from a company-calendar day. */
@@ -167,8 +163,7 @@ export function buildBills(data: BridgeData, fin: DashboardFinancials | null): A
 }
 
 /**
- * The Bridge's first screen as the weekly email: the page's chain from the reads, with no step pressed and nobody
- * signed in. A move the page would propose for whoever is looking carries no person here.
+ * The Bridge's first screen as the weekly email: the page's chain from the reads, with no step pressed.
  */
 export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOptions = {}): WeekMail {
   const { data, fin, bank, vectorInputs, weeksInputs } = reads
@@ -197,8 +192,6 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
   const estimateWins = reads.estimatesSent ? buildEstimateWins({ todayYmd, windowStart: data.windowStart, estimates: reads.estimatesSent }) : null
   const marketWorth = bidWins && estimateWins ? buildMarketWorth(bidWins, estimateWins) : null
   const thisWeek = payWeekContaining(todayYmd)
-  const calls: ReadonlyArray<BridgeCall> = reads.calls ?? []
-  const thisWeekCall = callForWeek(calls, thisWeek.start)
 
   // The made tile's weeks: the eight-week grid on recorded and approved time; the steps take the field's pace from it.
   const weeksRange = vectorRangeFor('weeks', todayYmd)
@@ -219,7 +212,6 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
   const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
   const late = receipts.filter((r) => r.basis === 'late')
   const lateCount = late.length + doubtful.length
-  const held = thisWeekCall ? heldStageFor(thisWeekCall) : null
   const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
   const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
   const stageInput: StageFlowInput = {
@@ -233,13 +225,14 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
         ? { pileUsd: fin.ar.total, pileCount: fin.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount }
         : null,
     build,
-    heldLinkId: held,
+    // No call holds a step for the week: the red follows today's reading.
+    heldLinkId: null,
     // The mail is built once the reads are in: a demand read that failed is a gap, not a loader in flight.
     demandLoading: false,
   }
   const stageFlow = buildStageFlow(stageInput)
 
-  // Today's numbers behind the moves, which a recorded call reads again.
+  // Today's numbers behind the moves.
   const moveNumbers = {
     bill: billPile ? billPile.knownUsd : null,
     chase: late.reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
@@ -247,15 +240,6 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
     price: data.earned.noRevenueJobs.length,
     pct: data.earned.assumedHalfJobs.length,
   }
-  const nowReading = {
-    stageWeeks: Object.fromEntries(stageFlow.stages.map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>,
-    stagePilesUsd: Object.fromEntries(stageFlow.stages.map((s) => [s.id, s.pile.usd])) as Partial<Record<StageId, number | null>>,
-    keys: moveNumbers,
-  }
-
-  const people = vectorInputs?.people ?? []
-  const sends = vectorInputs?.invoiceSends ?? []
-  const payments = vectorInputs?.payments ?? []
   const model = buildWeekCall({
     todayYmd,
     weekStart: thisWeek.start,
@@ -265,16 +249,9 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
     cashNote: accounts?.note ?? null,
     cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
     flow: stageFlow,
-    picked: null,
     moveNumbers,
     counts: { billJobs: billPile?.knownJobs ?? null, lateInvoices: lateCount },
-    // Nobody is signed in on a mail: the moves the page gives to whoever is looking go out with no person.
-    people: { caller: '', biller: topPerson(sends, people, data.windowStart), collector: topPerson(payments, people, data.windowStart) },
-    peopleIds: { caller: null, biller: topPersonId(sends, data.windowStart), collector: topPersonId(payments, data.windowStart) },
-    marks: opts.marks,
     supplyDue: forecast ? (data.hazards.find((h) => h.ymd > todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
-    calls,
-    now: nowReading,
     dayLabel: md,
   })
   const marketIsWorth = marketPaceIsWorth(stageInput)

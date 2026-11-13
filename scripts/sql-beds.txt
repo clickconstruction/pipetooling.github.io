@@ -103,7 +103,6 @@ permit-skim
 permit-policies
 permit-hint-decks
 theme-review
-bridge-moves
 bid-photos
 bill-lines-sweep
 price-sheets

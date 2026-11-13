@@ -10,7 +10,7 @@ import { todoStates } from '../../lib/bridge/callTodoState'
 
 // Made-up numbers: the model is built by hand so the smoke reads the drawing, not the kernel.
 
-const move = (over: Partial<WeekMove>): WeekMove => ({ key: 'other', kind: 'step', title: '', why: '', door: null, who: '', then: null, done: null, doneText: null, ...over })
+const move = (over: Partial<WeekMove>): WeekMove => ({ key: 'other', kind: 'step', title: '', why: '', door: null, then: null, ...over })
 
 const tiles: WeekCallModel['tiles'] = [
   { id: 'made', label: 'Made last week', value: '$31.0k', sub: '8 settled weeks ran $22.0k to $41.0k.', tone: 'plain', bars: [{ share: 0.8, current: false, waiting: false, label: 'Nov 1' }, { share: 0.2, current: true, waiting: true, label: 'Nov 8' }] },
@@ -24,22 +24,18 @@ const accrual: MoneyLine = { id: 'accrual', label: 'Accrual balance', value: '$6
 const money = { cash, accrual, foot: 'Runway counts payroll and overhead, $1.5k a day.' }
 
 const propose: WeekCallModel = {
-  state: 'propose',
   link: 'bill',
   cashLeads: false,
   tiles,
-  last: null,
   card: {
-    label: 'This week’s call',
+    label: 'What to do now',
     lead: 'Bill is the slowest step.',
     line: '$142k finished, not yet billed. The field finishes $33k a week. The office bills $19k a week.',
     moves: [
-      move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, who: 'Dana', then: 142_000 }),
-      move({ key: 'price', title: 'Price the 4 jobs with no price.', why: 'Their hours earn nothing until then.', door: { to: '/jobs?tab=stages', label: 'Open the jobs' }, who: 'Sam', then: 4 }),
+      move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 }),
+      move({ key: 'price', title: 'Price the 4 jobs with no price.', why: 'Their hours earn nothing until then.', door: { to: '/jobs?tab=stages', label: 'Open the jobs' }, then: 4 }),
       move({ title: 'Take bank sorting off whoever bills, so billing is never idle.' }),
     ],
-    press: 'Make Bill this week’s call',
-    foot: 'Friday asks if it moved.',
     tone: 'lit',
   },
 }
@@ -54,8 +50,6 @@ const cashWeek: WeekCallModel = {
     lead: 'Keep cash above the floor.',
     line: 'Cash is under the $10.0k floor. Bill is still the slowest step.',
     moves: [move({ key: 'chase', kind: 'cash', title: 'Chase the 9 late invoices.', why: '$41.0k is late. The forecast leans on it.', door: { to: '/jobs?tab=billing', label: 'Open Billing' }, then: 41_000 }), move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 })],
-    press: 'Make this the week’s call',
-    foot: 'Friday asks if the day moved.',
   },
 }
 
@@ -81,14 +75,12 @@ describe('BridgeWeek', () => {
     for (const id of ['bridge-week-record', 'bridge-week-pick', 'bridge-week-add-note', 'bridge-week-who', 'bridge-week-who-pick', 'bridge-week-last', 'bridge-week-note']) expect(screen.queryByTestId(id)).toBeNull()
     expect(screen.queryByRole('button', { name: /Take off the call/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'It moved' })).toBeNull()
-    // The kernel still words a press and a Friday foot for the Monday email. The card draws neither, nor a name on a move.
     const card = screen.getByTestId('bridge-week-card').textContent ?? ''
-    expect(card).not.toMatch(/Friday|call|Dana|Sam/)
+    expect(card).not.toMatch(/Friday|call/)
     unmount()
-    // The steps not read yet: the line speaks of the list, not of a call.
-    renderWithProviders(week({ ...propose, link: null, card: { ...propose.card, lead: 'The five steps are not read yet.', line: 'The call opens once they are.', moves: [], press: null, foot: '', tone: 'plain' } }))
+    // The steps not read yet: the card draws the model's own line.
+    renderWithProviders(week({ ...propose, link: null, card: { ...propose.card, lead: 'The five steps are not read yet.', line: 'The list opens once they are.', moves: [], tone: 'plain' } }))
     expect(screen.getByTestId('bridge-week-card').textContent).toContain('The list opens once they are.')
-    expect(screen.getByTestId('bridge-week-card').textContent).not.toContain('The call opens')
     expect(screen.queryAllByTestId('bridge-week-move').length).toBe(0)
   })
 

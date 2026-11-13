@@ -20,7 +20,6 @@ import { loadBillPileJobs } from './loadBillPile'
 import { loadDemandInputs } from './loadDemandPace'
 import { loadBidsSent } from './loadBidWins'
 import { loadEstimatesSent } from './loadEstimateWins'
-import { loadBridgeCalls } from './calls'
 import { loadCollectDeskReads } from './collect/loadCollectDesk'
 import { arRowInvoiceId } from './collect/collectBills'
 import { vectorRangeFor } from './vectorDays'
@@ -51,14 +50,13 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
   }
   const data = await loadBridgeData(db, { zzTestJobIds: opts.zzTestJobIds })
   const weeksRange = vectorRangeFor('weeks', data.todayYmd)
-  const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, bidsSent, estimatesSent] = await Promise.all([
+  const [fin, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, bidsSent, estimatesSent] = await Promise.all([
     soft('the money owed and due', () => loadDashboardFinancials(db, { assistantAggregates: false, zzTestJobIds: opts.zzTestJobIds })),
     soft('the people', () => loadBridgeVectorInputs(db, data, { zzTestJobIds: opts.zzTestJobIds })),
     soft('the eight weeks', () => loadVectorDaysInputs(db, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the build pace', () => loadBuildPaceInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
-    soft('the calls', () => loadBridgeCalls(db)),
     soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: opts.zzTestJobIds, leftOut: [] })),
     soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: [] })),
   ])
@@ -72,5 +70,5 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
         }),
       )
     : null
-  return { data, fin, bank: opts.bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads, bidsSent, estimatesSent, gaps }
+  return { data, fin, bank: opts.bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, collectReads, bidsSent, estimatesSent, gaps }
 }

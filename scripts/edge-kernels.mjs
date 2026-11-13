@@ -251,7 +251,6 @@ export const ENTRIES = {
   'lib/bridge/sheetBuild.ts': { values: [], types: [] },
   'lib/bridge/weekMail.ts': { values: [], types: [] },
   'lib/bridge/cashAccounts.ts': { values: [], types: [] },
-  'lib/bridge/callPeople.ts': { values: [], types: [] },
   'lib/bridge/mercuryCash.ts': { values: [], types: [] },
   'lib/jobs/zzTestJobReads.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
