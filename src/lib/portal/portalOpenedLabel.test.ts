@@ -5,13 +5,13 @@ const now = new Date('2026-09-05T15:00:00') // local time
 
 describe('parseOfficeViewStats', () => {
   it('reads the block off the portal payload', () => {
-    expect(parseOfficeViewStats({ customerName: 'Knight', officeViewStats: { opens: 3, lastOpenedAt: '2026-09-03T12:00:00Z' } })).toEqual({
+    expect(parseOfficeViewStats({ customerName: 'Kestrin', officeViewStats: { opens: 3, lastOpenedAt: '2026-09-03T12:00:00Z' } })).toEqual({
       opens: 3,
       lastOpenedAt: '2026-09-03T12:00:00Z',
     })
   })
   it('is null when the payload has no block (old function build / not staff)', () => {
-    expect(parseOfficeViewStats({ customerName: 'Knight' })).toBeNull()
+    expect(parseOfficeViewStats({ customerName: 'Kestrin' })).toBeNull()
     expect(parseOfficeViewStats(null)).toBeNull()
     expect(parseOfficeViewStats('x')).toBeNull()
   })

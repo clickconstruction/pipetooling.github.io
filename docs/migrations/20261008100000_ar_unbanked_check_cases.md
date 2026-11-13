@@ -25,16 +25,16 @@ Eight payments, every job reading paid:
 
 | Job | Typed in | Amount | Type · check | Payer |
 |---|---|---|---|---|
-| #066 Venancio Diaz — PRE | Aug 19 | $250 | ck · 2662 | Done Right Foundation |
-| #032 Garry Montgomery — PRE | Aug 19 | $250 | Check · 2638 | Done Right Foundation |
+| #066 Venancio Diaz — PRE | Aug 19 | $250 | ck · 2662 | Dead Level Foundation |
+| #032 Garry Montgomery — PRE | Aug 19 | $250 | Check · 2638 | Dead Level Foundation |
 | #025 Chris Vetter — POST | Aug 19 | $250 | Check · 2630 | Chris Vetter |
-| #819 Harrell Carlson — Pretest | Aug 19 | $250 | Check · 3289 | Done Right Foundation |
-| #894 Laura Shearer — Pretest | Aug 20 | $250 | Check | Done Right Foundation |
-| #541 Darla Mcloud — Post | Aug 21 | $250 | Check | Done Right Foundation |
-| #098 Doneright Foundation | Aug 19 | $1,200 | Check · 2745 | Done Right Foundation |
+| #819 Harrell Carlson — Pretest | Aug 19 | $250 | Check · 3289 | Dead Level Foundation |
+| #894 Laura Shellan — Pretest | Aug 20 | $250 | Check | Dead Level Foundation |
+| #541 Darla Mcloud — Post | Aug 21 | $250 | Check | Dead Level Foundation |
+| #098 Deadlevel Foundation | Aug 19 | $1,200 | Check · 2745 | Dead Level Foundation |
 | #903 Big Easy Saloon | Jul 30 | $185 | Check | Big Easy Saloon |
 
-Done Right Foundation's $250 check deposits (Aug 10 ×4, Aug 18, Aug 31 ×6, Sep 8 ×2) are every one applied to other jobs. So the six $250 checks were either never deposited, or deposited together with no link. #819 also carries a second $250 payment the same day with no type: a $250 job reading $500 paid. #903 has a $185 deposit linked Jul 14 and this $185 Check typed in Jul 30 with none.
+Dead Level Foundation's $250 check deposits (Aug 10 ×4, Aug 18, Aug 31 ×6, Sep 8 ×2) are every one applied to other jobs. So the six $250 checks were either never deposited, or deposited together with no link. #819 also carries a second $250 payment the same day with no type: a $250 job reading $500 paid. #903 has a $185 deposit linked Jul 14 and this $185 Check typed in Jul 30 with none.
 
 ## Verified
 

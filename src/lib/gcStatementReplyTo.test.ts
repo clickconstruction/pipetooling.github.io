@@ -6,18 +6,18 @@ const malachi = { id: 'u-malachi', name: 'Malachi', email: 'Malachi@office.test'
 
 describe('resolveStatementReplyTo', () => {
   it('sends replies to the sender when nobody is named', () => {
-    expect(resolveStatementReplyTo({ sender: taunya, toEmail: 'ap@knight.test', ccEmails: ['boss@office.test'] })).toEqual({
+    expect(resolveStatementReplyTo({ sender: taunya, toEmail: 'ap@kestrin.test', ccEmails: ['boss@office.test'] })).toEqual({
       ok: true,
       replyTo: 'taunya@office.test',
       replyToName: 'Taunya',
       cc: ['boss@office.test'],
       onBehalf: false,
     })
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: taunya, toEmail: 'ap@knight.test', ccEmails: [] })).toMatchObject({ replyTo: 'taunya@office.test', cc: [], onBehalf: false })
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: taunya, toEmail: 'ap@kestrin.test', ccEmails: [] })).toMatchObject({ replyTo: 'taunya@office.test', cc: [], onBehalf: false })
   })
 
   it('sends replies to the account man and copies the sender', () => {
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@knight.test', ccEmails: [] })).toEqual({
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@kestrin.test', ccEmails: [] })).toEqual({
       ok: true,
       replyTo: 'Malachi@office.test',
       replyToName: 'Malachi',
@@ -27,20 +27,20 @@ describe('resolveStatementReplyTo', () => {
   })
 
   it('never copies the sender twice, and never past the cap', () => {
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@knight.test', ccEmails: ['Taunya@Office.test'] })).toMatchObject({ cc: ['Taunya@Office.test'] })
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@kestrin.test', ccEmails: ['Taunya@Office.test'] })).toMatchObject({ cc: ['Taunya@Office.test'] })
     expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'taunya@office.test', ccEmails: [] })).toMatchObject({ cc: [] })
     const full = Array.from({ length: 10 }, (_, i) => `cc${i}@x.test`)
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@knight.test', ccEmails: full })).toMatchObject({ cc: full })
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: malachi, toEmail: 'ap@kestrin.test', ccEmails: full })).toMatchObject({ cc: full })
   })
 
   it('refuses a person who cannot take replies, by name', () => {
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: { ...malachi, email: '' }, toEmail: 'ap@knight.test', ccEmails: [] })).toEqual({ ok: false, error: 'Malachi has no email on file to take replies.' })
-    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: { ...malachi, role: 'subcontractor' }, toEmail: 'ap@knight.test', ccEmails: [] }).ok).toBe(false)
-    expect(resolveStatementReplyTo({ sender: taunya, replyToMissing: true, toEmail: 'ap@knight.test', ccEmails: [] })).toEqual({ ok: false, error: 'The person named to take replies was not found.' })
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: { ...malachi, email: '' }, toEmail: 'ap@kestrin.test', ccEmails: [] })).toEqual({ ok: false, error: 'Malachi has no email on file to take replies.' })
+    expect(resolveStatementReplyTo({ sender: taunya, replyToPerson: { ...malachi, role: 'subcontractor' }, toEmail: 'ap@kestrin.test', ccEmails: [] }).ok).toBe(false)
+    expect(resolveStatementReplyTo({ sender: taunya, replyToMissing: true, toEmail: 'ap@kestrin.test', ccEmails: [] })).toEqual({ ok: false, error: 'The person named to take replies was not found.' })
   })
 
   it('a sender with no address still sends, with no reply-to', () => {
-    expect(resolveStatementReplyTo({ sender: { ...taunya, email: null }, toEmail: 'ap@knight.test', ccEmails: [] })).toMatchObject({ ok: true, replyTo: null })
+    expect(resolveStatementReplyTo({ sender: { ...taunya, email: null }, toEmail: 'ap@kestrin.test', ccEmails: [] })).toMatchObject({ ok: true, replyTo: null })
   })
 })
 

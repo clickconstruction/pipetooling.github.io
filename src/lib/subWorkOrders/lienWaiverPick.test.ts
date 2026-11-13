@@ -73,11 +73,11 @@ describe('guessLienWaiver', () => {
 })
 
 describe('lienWaiverSeedValues', () => {
-  const base = { project: ' Mission Pet Health ', jobNo: 'J1042', amount: 17752.65, owner: 'Mission Pet Health', location: '415 Springtown Way, San Marcos, TX 78666' }
+  const base = { project: ' Mission Pet Health ', jobNo: 'J1042', amount: 17752.65, owner: 'Mission Pet Health', location: '415 Stonewick Way, San Marcos, TX 78666' }
 
   it('seeds only boxes the form has, trimmed, with the standard extent sentence', () => {
     const v = lienWaiverSeedValues({ kind: 'conditional_progress', ...base, boxKeys: ['project', 'job_no', 'amount', 'owner', 'location', 'job_description', 'payee'] })
-    expect(v).toEqual({ project: 'Mission Pet Health', job_no: 'J1042', amount: '17752.65', owner: 'Mission Pet Health', location: '415 Springtown Way, San Marcos, TX 78666', job_description: LIEN_WAIVER_STANDARD_EXTENT })
+    expect(v).toEqual({ project: 'Mission Pet Health', job_no: 'J1042', amount: '17752.65', owner: 'Mission Pet Health', location: '415 Stonewick Way, San Marcos, TX 78666', job_description: LIEN_WAIVER_STANDARD_EXTENT })
   })
 
   it('the unconditional-final form has no amount box, so no amount is seeded', () => {

@@ -12,7 +12,7 @@ import { sampleCustomerPortalResponse } from '../../supabase/functions/_shared/c
 
 const payload = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
-  customerName: 'Michael Hageman',
+  customerName: 'Michael Hadwin',
   audience: 'customer',
   bills: [
     { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
@@ -38,7 +38,7 @@ describe('CustomerPortal render smoke', () => {
   it('renders the statement: letterhead, ledger rows, pay link, check chip, total', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(screen.getByText('Account statement')).toBeTruthy()
     // Share this bill (v2.3375): nothing shared → no card, no "billed to someone else" strip.
     expect(document.querySelector('[data-portal-shared-bills]')).toBeNull()
@@ -69,7 +69,7 @@ describe('CustomerPortal render smoke', () => {
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(grouped), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     // One band for the job, not one line per bill.
     expect(screen.getAllByText('612')).toHaveLength(1)
     expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
@@ -109,7 +109,7 @@ describe('CustomerPortal render smoke', () => {
   it('single unpaid bill renders no recap box', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(screen.queryByText('Balance on this job')).toBeNull()
     expect(screen.queryByText(/^Paid /)).toBeNull()
   })
@@ -131,7 +131,7 @@ describe('CustomerPortal render smoke', () => {
   it('Print all (v2.2331): button + per-job print headings + closing page', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(screen.getByLabelText('Print the statement, one job per page')).toBeTruthy()
     // Two jobs → two self-identifying print page headers + the closing page.
     expect(screen.getByText(/Job 1 of 2/)).toBeTruthy()
@@ -146,7 +146,7 @@ describe('CustomerPortal render smoke', () => {
   it('phone layout (J21-F2): ledger has no inline min-width; bills are stacked-card hooks; print still collapses the grid', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     // jsdom has no layout, so this asserts the markup branch the CSS keys on.
     // The old `style={{ minWidth: 560 }}` was what pushed every amount and PAY
     // ONLINE off a 375px screen; the stylesheet owns the width now.
@@ -187,14 +187,14 @@ describe('CustomerPortal render smoke', () => {
   })
 
   it('an owner whose builder owes on the property: no "all paid up", the recorded notice in its own card (v2.3825)', async () => {
-    const notice = { key: 'f1', address: '9703 Lenox Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
+    const notice = { key: 'f1', address: '9703 Lenox Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, bills: [], totalDue: 0, propertyNotices: [notice] }), { status: 200 })))
     const { container } = mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText(/Nothing is billed to you directly/)).toBeTruthy())
     expect(screen.queryByText(/all paid up/)).toBeNull()
     const card = container.querySelector('[data-portal-property-notice]')!
     expect(card.textContent).toContain('Notice on your property · mailed')
-    expect(card.textContent).toContain('RMC- Dudley Mason has not paid us $17,585.00 for work in April and August 2026')
+    expect(card.textContent).toContain('RLC- Dunmere Mallin has not paid us $17,585.00 for work in April and August 2026')
     expect(card.textContent).toContain('You did not hire us, and this is not a lawsuit.')
     expect(card.textContent).toContain('We cannot take a joint check.')
     expect(card.querySelector('[data-portal-property-notice-call]')?.getAttribute('href')).toBe('tel:5123600599')
@@ -265,14 +265,14 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText('No connection')).toBeTruthy())
     expect(screen.getByText('Check your signal and try again.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
   })
 
   it('a lost signal on a slug link stays on the statement page: only a gone link falls through to the other portals (v2.5965)', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError('Load failed'))
     vi.stubGlobal('fetch', fetchMock)
     render(
-      <MemoryRouter initialEntries={['/p/hageman']}>
+      <MemoryRouter initialEntries={['/p/hadwin']}>
         <Routes>
           <Route path="/p/:slug" element={<CustomerPortal />} />
           <Route path="/s/:slug" element={<div>sub portal</div>} />
@@ -397,7 +397,7 @@ describe('CustomerPortal render smoke', () => {
     window.localStorage.clear()
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef&paid=1')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(screen.queryByText('Payment received')).toBeNull()
     window.localStorage.clear()
   })
@@ -407,7 +407,7 @@ describe('CustomerPortal render smoke', () => {
     const fetchMock = vi.fn(async (_url: RequestInfo | URL) => new Response(JSON.stringify(payload), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(fetchMock).toHaveBeenCalledTimes(1)
     // Idle return: nothing was paid from here.
     document.dispatchEvent(new Event('visibilitychange'))
@@ -445,7 +445,7 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     const withReports = { ...payload, testReports: [report(1, '612'), ...[2, 3, 4, 5, 6, 7].map((i) => report(i, `9${i}`))] }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(withReports), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     // One inline line (job 612 matches by number) + five card rows.
     expect(screen.getAllByText('View report').length).toBe(6)
     // One spelling on the inline line and the card (the text shares its element with the report label).
@@ -459,7 +459,7 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
   it('the GC’s shared card (v2.3375): the owner’s name, where, billed date and age, received so far, open amount — no Pay button', async () => {
     const gcView = {
       ...payload,
-      customerName: 'Done Right Foundation',
+      customerName: 'Dead Level Foundation',
       audience: 'all',
       bills: [],
       totalDue: 0,
@@ -470,7 +470,7 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(gcView), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Done Right Foundation')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Dead Level Foundation')).toBeTruthy())
     expect(screen.getByText('You’re all paid up.')).toBeTruthy()
     const card = document.querySelector('[data-portal-shared-bills][data-role="gc"]') as HTMLElement
     expect(card).toBeTruthy()
@@ -496,13 +496,13 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
   it('the owner’s shared card (v2.3375): the builder’s bill, shown for the record', async () => {
     const ownerView = {
       ...payload,
-      sharedBills: [{ jobLabel: 'Pretest · Job 1042', jobNumber: '1042', jobName: 'Pretest', jobAddress: null, amount: 250, billedAmount: 250, totalPaid: 0, billedOn: '2026-07-28', billedTo: 'Done Right Foundation', viewerRole: 'customer' }],
+      sharedBills: [{ jobLabel: 'Pretest · Job 1042', jobNumber: '1042', jobName: 'Pretest', jobAddress: null, amount: 250, billedAmount: 250, totalPaid: 0, billedOn: '2026-07-28', billedTo: 'Dead Level Foundation', viewerRole: 'customer' }],
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ownerView), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     expect(screen.getByText('On your job, billed to your builder')).toBeTruthy()
-    expect(screen.getByText('Done Right Foundation')).toBeTruthy()
+    expect(screen.getByText('Dead Level Foundation')).toBeTruthy()
     expect(screen.getByText('Shown for your records · not yours to pay')).toBeTruthy()
     expect(screen.queryByTestId('portal-share-ask-open')).toBeNull()
     // The balance is the owner's own bills only.
@@ -538,7 +538,7 @@ describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', (
     const withWaivers = {
       ...payload,
       bills: [{ ...payload.bills[0], invoiceId: 'inv-612' }, { ...payload.bills[1], invoiceId: 'inv-655' }],
-      agreements: [{ jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr', status: 'signed', templateName: 'Residential service agreement', amountCents: 145000, signedAt: '2026-08-01T00:00:00Z', signerName: 'Michael Hageman', sentAt: null, signUrl: null }],
+      agreements: [{ jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr', status: 'signed', templateName: 'Residential service agreement', amountCents: 145000, signedAt: '2026-08-01T00:00:00Z', signerName: 'Michael Hadwin', sentAt: null, signUrl: null }],
       waivers: [
         { audience: 'payer', jobId: 'j612', jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', invoiceId: 'inv-612', billLabel: 'Bill', amount: 1450, billedYmd: '2026-08-04', paid: false, final: true, conditional: signedHalf('conditional_final', '2026-08-05', 'https://files.test/c.pdf'), unconditional: none },
         // A function from before v2.4304 may still send a "signing" half: it never shows.
@@ -547,7 +547,7 @@ describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', (
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(withWaivers), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     const notes = document.querySelectorAll('[data-bill-waiver]')
     expect(notes).toHaveLength(1)
     expect(notes[0]!.textContent).toBe('⤓ Lien waiver · conditional final, signed Aug 5')
@@ -577,7 +577,7 @@ describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', (
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ownerView), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Michael Hadwin')).toBeTruthy())
     const shared = document.querySelector('[data-portal-shared-bills][data-role="customer"]') as HTMLElement
     expect(shared.querySelector('[data-bill-waiver]')!.textContent).toBe('⤓ Lien waiver · conditional, signed Sep 29')
     const group = document.querySelector('[data-portal-waivers][data-audience="owner"]') as HTMLElement

@@ -40,7 +40,7 @@ import {
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 type Props = {
-  /** Display label for the header banner (e.g. `JP740 · Mission Hills`). */
+  /** Display label for the header banner (e.g. `JP740 · Mission Flats`). */
   jobLabel: string
   /** Raw stage rows for the selected job's workflow (before resolver chaining). */
   stages: readonly AlignStageInput[]

@@ -9,7 +9,7 @@ import {
 const photo = { href: 'data:image/png;base64,AAAA', w: 400, h: 600, fx: 0.5, fy: 0.4, zoom: 1 }
 /** The longest person the card is promised to hold: a name of 24 letters, a long title, an email of 36, both phones. */
 const long: KitPerson = { name: 'Bartholomew Featherstone', title: 'Master Plumber and Estimator', email: 'bartholomew.featherstone@example.com', mobile: '(512) 555-0177', office: '(512) 555-0100', photo }
-const short: KitPerson = { name: 'Renee Castillo', email: 'renee@example.com', office: '(512) 555-0100', photo }
+const short: KitPerson = { name: 'Renee Castwell', email: 'renee@example.com', office: '(512) 555-0100', photo }
 
 const SAFE = { left: CARD.bleed + CARD.safe, right: CARD.w - CARD.bleed - CARD.safe, top: CARD.bleed + CARD.safe, bottom: CARD.h - CARD.bleed - CARD.safe }
 

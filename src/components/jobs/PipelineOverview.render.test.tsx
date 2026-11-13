@@ -157,10 +157,10 @@ describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
 
   it("the deadline's GCs are a chip of their own (v2.4054), opening the same pile", () => {
     const onOpenLienDesk = vi.fn()
-    render(<PipelineOverview {...props({ lienNotices: { ...lienNotices, deadline: { ...lienNotices.deadline, label: '15 notices by Oct 15 · in 17 days', who: 'Michael Holub +6' } }, onOpenLienDesk })} />)
+    render(<PipelineOverview {...props({ lienNotices: { ...lienNotices, deadline: { ...lienNotices.deadline, label: '15 notices by Oct 15 · in 17 days', who: 'Michael Holmby +6' } }, onOpenLienDesk })} />)
     expect(screen.getByTestId('pipeline-lien-deadline-chip').textContent).toBe('15 notices by Oct 15 · in 17 days')
     const who = screen.getByTestId('pipeline-lien-who-chip')
-    expect(who.textContent).toBe('Michael Holub +6')
+    expect(who.textContent).toBe('Michael Holmby +6')
     fireEvent.click(who)
     expect(onOpenLienDesk).toHaveBeenLastCalledWith('awaiting')
   })
@@ -173,8 +173,8 @@ describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
       marginAtRiskUsd: 23_410,
       assumedCount: 1,
       worst: [
-        { jobId: 'j878', label: 'J878 Take 5 – Seguin', footing: 'bid' as const, glyph: '◆', spentPct: 88, pct: 60, projectedMarginUsd: 1000, atRiskUsd: 12_000 },
-        { jobId: 'j523', label: 'J523 Mission Hills', footing: 'assumed' as const, glyph: '≈', spentPct: 96, pct: 90, projectedMarginUsd: 500, atRiskUsd: 5_019 },
+        { jobId: 'j878', label: 'J878 Tune 5 – Seguin', footing: 'bid' as const, glyph: '◆', spentPct: 88, pct: 60, projectedMarginUsd: 1000, atRiskUsd: 12_000 },
+        { jobId: 'j523', label: 'J523 Mission Flats', footing: 'assumed' as const, glyph: '≈', spentPct: 96, pct: 90, projectedMarginUsd: 500, atRiskUsd: 5_019 },
         { jobId: 'j1031', label: 'J1031 Lot 14', footing: 'typed' as const, glyph: '✎', spentPct: 71, pct: 55, projectedMarginUsd: 200, atRiskUsd: 6_391 },
       ],
     }
@@ -183,11 +183,11 @@ describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
     expect(card.textContent).toContain('4 jobs burning · $23,410 margin at risk')
     expect(card.textContent).not.toContain('Each opens on its Costs tab')
     expect(screen.getAllByTestId('pipeline-burn-job-chip').map((c) => c.textContent)).toEqual([
-      '◆ J878 Take 5 – Seguin · 88% spent at 60% done',
-      '≈ J523 Mission Hills · 96% spent at 90% done',
+      '◆ J878 Tune 5 – Seguin · 88% spent at 60% done',
+      '≈ J523 Mission Flats · 96% spent at 90% done',
       '✎ J1031 Lot 14 · 71% spent at 55% done',
     ])
-    fireEvent.click(screen.getByText(/J523 Mission Hills/))
+    fireEvent.click(screen.getByText(/J523 Mission Flats/))
     expect(onOpenBurnJob).toHaveBeenLastCalledWith('j523')
     fireEvent.click(screen.getByTestId('pipeline-burn-more-chip'))
     expect(onShowBurnList).toHaveBeenCalledOnce()

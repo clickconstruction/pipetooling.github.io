@@ -202,17 +202,17 @@ describe('the reported disappearing-pricing race', () => {
     deriveActivePricingId({ activeVersionId: versionId, bidPricings: pricings, legacyFallbackPricingId: null })
 
   it('a version with no pricing copy resolves to null — the empty state seen on screen', () => {
-    expect(resolveFor('vBURD')).toBeNull()
+    expect(resolveFor('vBRUND')).toBeNull()
     expect(resolveFor('vSPC')).toBe('pSPC')
   })
 
   it('the guard drops the stale write, so the active version keeps its pricing', () => {
-    // user is back on SPC; the BURD switch finishes late
+    // user is back on SPC; the BRUND switch finishes late
     const refNowSPC = { bidId: 'b1', versionId: 'vSPC' }
-    const staleAllowed = versionSwitchStillActive(refNowSPC, 'b1', 'vBURD')
+    const staleAllowed = versionSwitchStillActive(refNowSPC, 'b1', 'vBRUND')
     expect(staleAllowed).toBe(false)
     // what would have been written had it been allowed
-    expect(resolveFor('vBURD')).toBeNull()
+    expect(resolveFor('vBRUND')).toBeNull()
     // what the UI keeps instead
     expect(resolveFor('vSPC')).toBe('pSPC')
   })

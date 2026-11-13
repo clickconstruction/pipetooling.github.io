@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { activeRosterOnly, isActiveRosterExternal, isActiveRosterPerson } from './activeRoster'
 
-const human = { id: 'u-1', name: 'Jessica White', role: 'assistant', archived_at: null, is_digital_twin: false }
+const human = { id: 'u-1', name: 'Jessica Wendle', role: 'assistant', archived_at: null, is_digital_twin: false }
 const twin = { id: 'u-2', name: 'Twin Estimator 1', role: 'estimator', archived_at: null, is_digital_twin: true }
 const archived = { id: 'u-3', name: 'delete', role: 'helpers', archived_at: '2026-05-01T00:00:00Z', is_digital_twin: false }
 const mergeKeep = { id: 'u-4', name: 'Merge Test keep', role: 'helpers', archived_at: '2026-06-01T00:00:00Z', is_digital_twin: false }
@@ -24,7 +24,7 @@ describe('isActiveRosterPerson', () => {
     expect(isActiveRosterPerson(tester)).toBe(false)
     expect(isActiveRosterPerson(tester, { includeDev: true, includeArchived: true })).toBe(false)
     expect(isActiveRosterPerson({ ...human, is_walk_tester: null })).toBe(true)
-    expect(activeRosterOnly([human, tester]).map((r) => r.name)).toEqual(['Jessica White'])
+    expect(activeRosterOnly([human, tester]).map((r) => r.name)).toEqual(['Jessica Wendle'])
   })
 
   it('drops archived accounts unless the surface folds them itself', () => {
@@ -50,16 +50,16 @@ describe('activeRosterOnly', () => {
   const all = [human, twin, archived, mergeKeep, devTest, owner]
 
   it('is the crew-picker roster for a non-dev viewer: humans only', () => {
-    expect(activeRosterOnly(all).map((r) => r.name)).toEqual(['Jessica White'])
+    expect(activeRosterOnly(all).map((r) => r.name)).toEqual(['Jessica Wendle'])
   })
 
   it('is the crew-picker roster for a dev viewer: humans plus dev rows, never twins or archived', () => {
-    expect(activeRosterOnly(all, { includeDev: true }).map((r) => r.name)).toEqual(['Jessica White', 'test', 'Robert'])
+    expect(activeRosterOnly(all, { includeDev: true }).map((r) => r.name)).toEqual(['Jessica Wendle', 'test', 'Robert'])
   })
 
   it('is the Person-rail roster when the rail folds archived rows itself: order preserved, twins still out', () => {
     expect(activeRosterOnly(all, { includeDev: true, includeArchived: true }).map((r) => r.name)).toEqual([
-      'Jessica White',
+      'Jessica Wendle',
       'delete',
       'Merge Test keep',
       'test',

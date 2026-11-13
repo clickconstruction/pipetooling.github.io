@@ -11,12 +11,12 @@ describe('buildLienMonthHistory', () => {
   it('a sent item, a skip with its reason and who, and a closed window — oldest first', () => {
     const items = [
       item({ id: 'a', months: ['2026-04'], sent_at: '2026-05-28T15:00:00Z', approval_mode: 'leader' }),
-      item({ id: 'b', status: 'missed', months: ['2026-05'], created_at: '2026-06-01T00:00:00Z', updated_at: '2026-08-11T14:00:00Z', fields: { notice, gcEmail: '', skipReason: ' TF Harper paid May in full ', skippedBy: { name: 'Taunya', at: '2026-08-11T13:59:00Z' } } as never }),
+      item({ id: 'b', status: 'missed', months: ['2026-05'], created_at: '2026-06-01T00:00:00Z', updated_at: '2026-08-11T14:00:00Z', fields: { notice, gcEmail: '', skipReason: ' TF Halden paid May in full ', skippedBy: { name: 'Taunya', at: '2026-08-11T13:59:00Z' } } as never }),
     ]
     const months = [month('2026-06', { daysLeft: -5, approvedHours: 41 }), month('2026-07')]
     expect(buildLienMonthHistory('j1', items, months)).toEqual([
       { month: '2026-04', outcome: 'sent', at: '2026-05-28T15:00:00Z', reason: '', byName: '', deadline: '', approvedHours: null, approvalMode: 'leader' },
-      { month: '2026-05', outcome: 'skipped', at: '2026-08-11T13:59:00Z', reason: 'TF Harper paid May in full', byName: 'Taunya', deadline: '', approvedHours: null, approvalMode: '' },
+      { month: '2026-05', outcome: 'skipped', at: '2026-08-11T13:59:00Z', reason: 'TF Halden paid May in full', byName: 'Taunya', deadline: '', approvedHours: null, approvalMode: '' },
       { month: '2026-06', outcome: 'missed', at: '', reason: '', byName: '', deadline: '2026-06-15', approvedHours: 41, approvalMode: '' },
     ])
   })

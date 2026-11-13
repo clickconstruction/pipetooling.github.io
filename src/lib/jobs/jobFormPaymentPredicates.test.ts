@@ -58,7 +58,7 @@ describe('stripeBillInvoiceForPaymentRow / canRemovePaymentRowFromForm', () => {
 })
 
 /**
- * v2.3784 — Take 5 – Seguin (JP878): a $13,680 check deposit matched to the
+ * v2.3784 — Tune 5 – Seguin (JP878): a $13,680 check deposit matched to the
  * job's open Stripe bill, returned by the bank two days later. Stripe never
  * recorded it (no credit note, bill still open), so the unlink is allowed.
  */

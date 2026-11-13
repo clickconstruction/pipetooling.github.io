@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { isZzTestProspect, withoutZzProspects } from './zzProspects'
 
 const rows = [
-  { id: 'a', company_name: 'Bexar Fire Protection' },
+  { id: 'a', company_name: 'Baxter Fire Protection' },
   { id: 'z', company_name: 'ZZ Test Cibolo Fire Protection' },
   { id: 'y', company_name: '  zz twin builders' },
   { id: 'n', company_name: null },

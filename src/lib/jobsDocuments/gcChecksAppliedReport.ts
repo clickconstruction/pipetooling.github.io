@@ -11,7 +11,7 @@ import { GC_STATEMENT_COMPANY_NAME } from './gcStatementEmail'
  * `gcChecksAppliedPdf.ts` draws it. The same rows go out as a CSV for the
  * bookkeeper who reconciles in a spreadsheet.
  *
- * Paper rules (from the first print, RMC 2026-09-28): rows never split
+ * Paper rules (from the first print, RLC 2026-09-28): rows never split
  * across a page but sections may, so page 1 is not a heading over white
  * space; a column with nothing in it is not drawn; the job column gets a
  * third of the width; a check's lines group under the job named once; the

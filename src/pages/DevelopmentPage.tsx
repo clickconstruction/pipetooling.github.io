@@ -168,6 +168,11 @@ export default function DevelopmentPage() {
   const [pairMode, setPairMode] = useState(false)
   // The material location report (punch list #268): the site's cages and boxes on one paper, read when the window opens.
   const [reportOpen, setReportOpen] = useState(false)
+  // `?report=materials` (punch list #330): the site's materials screen links here to print, and the window opens by itself for the office door.
+  const reportAsked = searchParams.get('report') === 'materials'
+  useEffect(() => {
+    if (reportAsked && moneyShown) setReportOpen(true)
+  }, [reportAsked, moneyShown])
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
   // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line, the composer's door, and the entries people keep (read with the page, a kept one prepended).
@@ -216,7 +221,7 @@ export default function DevelopmentPage() {
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
-  // The GC contact sheet (the Gun Dog spike, 2026-11-02): the head's contact edited here, onto the site's bids.
+  // The GC contact sheet (the Gray Fox spike, 2026-11-02): the head's contact edited here, onto the site's bids.
   const [gcSheet, setGcSheet] = useState(false)
   const [chipConfirm, setChipConfirm] = useState<{ title: string; rows: ChipConfirmRow[]; preview: React.ReactNode; previewCaption: string; confirmLabel: string; onConfirm: () => void } | null>(null)
   const [nowMs] = useState(() => Date.now())
@@ -247,7 +252,7 @@ export default function DevelopmentPage() {
     return includeAddress ? { bids: [...data.inIt.bids, ...data.atAddress.bids], jobs: [...data.inIt.jobs, ...data.atAddress.jobs] } : data.inIt
   }, [data, includeAddress])
 
-  // The robot estimators' shadow bids (the Gun Dog spike, 2026-11-02): drawn in the table with a chip, left out of the head's people and the counts.
+  // The robot estimators' shadow bids (the Gray Fox spike, 2026-11-02): drawn in the table with a chip, left out of the head's people and the counts.
   const shadows = useMemo(() => (shown && data ? shadowBidIds(shown.bids, data.twinUserIds) : new Set<string>()), [shown, data])
   const counted: Members | null = useMemo(() => (shown && data ? withoutShadowBids(shown, data.twinUserIds) : null), [shown, data])
   const counts = useMemo(() => (counted && data ? headCounts(counted, data.requests, nowMs) : null), [counted, data, nowMs])
@@ -337,7 +342,7 @@ export default function DevelopmentPage() {
         return true
       },
       writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
-      // Many jobs onto one part (the Gun Dog spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
+      // Many jobs onto one part (the Gray Fox spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
       putJobsOnPart: async (partId, jobIds) => {
         const results = await Promise.allSettled(jobIds.map((id) => siteIo.pickPart(id, partId)))
         const failed = results.map((r, i) => (r.status === 'rejected' ? { id: jobIds[i]!, reason: formatErrorMessage(r.reason, 'the write did not take') } : null)).filter((x): x is { id: string; reason: string } => x !== null)
@@ -478,7 +483,7 @@ export default function DevelopmentPage() {
     [shown, data, entries, photoLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
-  // The runs fold (the Gun Dog spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
+  // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
   const feedShown = useMemo(() => {
     const narrowed = narrowLines(feed, histChip, histPiece)
     return feedQuery.trim() ? narrowed : foldSameDayRuns(narrowed, calendarYmdInAppTzFromIso)
@@ -1036,7 +1041,7 @@ export default function DevelopmentPage() {
     )
     setCostPrintNote(openHtmlPrintWindow(html) ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
   }
-  // The fifth tile earns its place (the Gun Dog spike, 2026-11-02): with no bill open it says what is not yet billed.
+  // The fifth tile earns its place (the Gray Fox spike, 2026-11-02): with no bill open it says what is not yet billed.
   const unbilled = moneyShown ? unbilledTileWords(siteMoney, counts.openOnBillsUsd, money) : null
 
   // The strip's six looks: the plain count with its noun, and in amber what in it needs the leader.
@@ -1565,6 +1570,7 @@ export default function DevelopmentPage() {
       ) : null}
       {reportOpen ? (
         <SiteMaterialsReportModal
+          siteId={dev.id}
           site={{ name: dev.name, customer: data.customer?.name ?? null, address: address || null }}
           jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), name: (j.job_name ?? '').trim() }))}
           printedBy={profileName}

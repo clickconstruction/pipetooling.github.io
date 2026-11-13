@@ -17,12 +17,12 @@ function target(over: Partial<BankPaymentTarget> & { key: string }): BankPayment
     invoiceId: null,
     jobId: `job-${over.key}`,
     hcpNumber: '1015',
-    jobName: 'Montolongo Post Test',
+    jobName: 'Montelby Post Test',
     jobAddress: '545 Slippery Rock, Cibolo, TX 78108',
     lineKind: 'merged_billed',
     invoiceSequenceOrder: null,
     stripeHosted: false,
-    customerName: 'Arturo Montolongo',
+    customerName: 'Arturo Montelby',
     gcName: '',
     ...over,
   }
@@ -34,15 +34,15 @@ describe('arBilledLineRowParts', () => {
     expect(p).toEqual({
       dollars: '$250.00',
       number: '1015',
-      title: 'Montolongo Post Test',
-      secondary: 'Arturo Montolongo · 545 Slippery Rock, Cibolo, TX 78108 · Billed line',
+      title: 'Montelby Post Test',
+      secondary: 'Arturo Montelby · 545 Slippery Rock, Cibolo, TX 78108 · Billed line',
       stripe: false,
     })
   })
 
   it('drops a payer the job name already carries and adds the GC', () => {
     const p = arBilledLineRowParts(
-      target({ key: 'b', jobName: 'Giesber Master Bath', customerName: 'Giesber', gcName: 'Hargrove Homes', lineKind: 'invoice', invoiceSequenceOrder: 3, stripeHosted: true }),
+      target({ key: 'b', jobName: 'Gilbrow Master Bath', customerName: 'Gilbrow', gcName: 'Hargrove Homes', lineKind: 'invoice', invoiceSequenceOrder: 3, stripeHosted: true }),
     )
     expect(p.secondary).toBe('Hargrove Homes · 545 Slippery Rock, Cibolo, TX 78108 · Invoice #3')
     expect(p.stripe).toBe(true)
@@ -105,7 +105,7 @@ describe('orderArBilledLineTargets', () => {
 
 describe('trigger and footer words', () => {
   it('the closed trigger says amount · number · name', () => {
-    expect(arBilledLineTriggerText(target({ key: 'a' }))).toBe('$250.00 · 1015 · Montolongo Post Test')
+    expect(arBilledLineTriggerText(target({ key: 'a' }))).toBe('$250.00 · 1015 · Montelby Post Test')
   })
 
   it('the footer counts the bills and sums what is unpaid', () => {

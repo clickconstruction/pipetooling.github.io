@@ -4,7 +4,7 @@
 SELECT set_config('bed.uid', '11111111-1111-1111-1111-111111111111', false);
 INSERT INTO public.users (id, role) VALUES ('11111111-1111-1111-1111-111111111111', 'dev');
 
--- Southern Post (A): lines of $1,000 and 2 x $250, a $200 hazmat fee and a voided $75 one, a $30 returned check
+-- Southern Pine (A): lines of $1,000 and 2 x $250, a $200 hazmat fee and a voided $75 one, a $30 returned check
 -- fee on its first bill. Revenue $1,730 = 1,500 + 200 + 30.
 INSERT INTO public.jobs_ledger (id, status, master_user_id, revenue) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001', 'working', '11111111-1111-1111-1111-111111111111', 1730),

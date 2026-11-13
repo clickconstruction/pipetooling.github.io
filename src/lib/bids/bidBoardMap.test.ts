@@ -25,7 +25,7 @@ const TODAY = new Date('2026-09-08T12:00:00')
 function bid(p: Partial<BidWithBuilder> & { id: string }): BidWithBuilder {
   return {
     bid_number: '385',
-    project_name: 'Galloway Park Concession Stand',
+    project_name: 'Gallenby Park Concession Stand',
     address: '1400 Oak Hollow Rd, Burnet, TX 78611',
     outcome: null,
     bid_date_sent: null,
@@ -68,7 +68,7 @@ describe('bidBoardMapBids', () => {
     const { bids, noAddress } = bidBoardMapBids([bid({ id: 'a' }), bid({ id: 'b', address: '  ' }), bid({ id: 'c', address: null })], {}, TODAY)
     expect(bids.map((b) => b.id)).toEqual(['a'])
     expect(noAddress.map((b) => b.id)).toEqual(['b', 'c'])
-    expect(bids[0]!.label).toMatch(/385 · Galloway Park Concession Stand$/)
+    expect(bids[0]!.label).toMatch(/385 · Gallenby Park Concession Stand$/)
     expect(bids[0]!.addressKey).toBe('1400 oak hollow rd, burnet, tx 78611')
   })
 
@@ -108,13 +108,13 @@ describe('bidBoardMapBids', () => {
           distance_from_office: '1,158.5 mi',
           bid_value: 44420,
         }),
-        bid({ id: 'b', bids_gc_builders: { name: 'Knight Contracting' } as BidWithBuilder['bids_gc_builders'], estimator: { id: 'e2', name: '', email: 'grace@example.com' } }),
+        bid({ id: 'b', bids_gc_builders: { name: 'Kestrin Contracting' } as BidWithBuilder['bids_gc_builders'], estimator: { id: 'e2', name: '', email: 'grace@example.com' } }),
       ],
       {},
       TODAY,
     )
     expect(bids[0]).toMatchObject({ gcName: 'JOERIS - SAN ANTONIO', estimatorName: 'Wendi', distanceMiles: 1158.5, valueLabel: '$44k' })
-    expect(bids[1]).toMatchObject({ gcName: 'Knight Contracting', estimatorName: 'grace@example.com', valueLabel: null })
+    expect(bids[1]).toMatchObject({ gcName: 'Kestrin Contracting', estimatorName: 'grace@example.com', valueLabel: null })
   })
 })
 

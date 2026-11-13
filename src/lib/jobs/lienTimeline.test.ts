@@ -41,7 +41,7 @@ describe('suitDeadlineFor / lienDateWords', () => {
   })
 })
 
-describe('buildLienTimeline — a commercial sub job with two open months (891 Take 5)', () => {
+describe('buildLienTimeline — a commercial sub job with two open months (891 Tune 5)', () => {
   const t = buildLienTimeline(base())
   it('draws the path in order with the dates the desk computes', () => {
     expect(kinds(t)).toEqual(['last_work=done', 'notice:2026-07=due', 'notice:2026-08=due', 'retainage=undated', 'affidavit=later', 'serve=later', 'suit=later'])
@@ -66,7 +66,7 @@ describe('buildLienTimeline — a commercial sub job with two open months (891 T
   })
 })
 
-describe('buildLienTimeline — residential, one month missed and unnoted, the next awaiting approval (273 Dudley)', () => {
+describe('buildLienTimeline — residential, one month missed and unnoted, the next awaiting approval (273 Dunmere)', () => {
   const t = buildLienTimeline(
     base({
       propertyKind: 'residential',
@@ -92,7 +92,7 @@ describe('buildLienTimeline — residential, one month missed and unnoted, the n
   })
 })
 
-describe('buildLienTimeline — every window closed, nothing sent, and the affidavit window closed too (650 ATI Schertz, read Oct 20)', () => {
+describe('buildLienTimeline — every window closed, nothing sent, and the affidavit window closed too (650 AXO Schertz, read Oct 20)', () => {
   const t = buildLienTimeline(
     base({
       todayYmd: '2026-10-20',
@@ -127,7 +127,7 @@ describe('buildLienTimeline — every window closed, nothing sent, and the affid
   })
 })
 
-describe('buildLienTimeline — every window closed unsent while the affidavit window is still open: the late notice (v2.4708, 890 Dudley Mason read Oct 6)', () => {
+describe('buildLienTimeline — every window closed unsent while the affidavit window is still open: the late notice (v2.4708, 890 Dunmere Mallin read Oct 6)', () => {
   // The owner's reading of 2026-10-06, against counsel's 2026-09-22 memo (answer 6): a late § 53.056 notice still carries the affidavit.
   const late = buildLienTimeline(base({ todayYmd: '2026-10-06', propertyKind: 'residential', lastMonth: '2026-07', months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }], noticeState: '' }))
   it('the lien is not gone; the affidavit is due, waiting on the late notice', () => {
@@ -155,7 +155,7 @@ describe('buildLienTimeline — every window closed unsent while the affidavit w
   })
 })
 
-describe('buildLienTimeline — unknown kind, dated from creation, owner missing (864 Michael Palmer)', () => {
+describe('buildLienTimeline — unknown kind, dated from creation, owner missing (864 Michael Palvern)', () => {
   const t = buildLienTimeline(
     base({
       propertyKind: '',

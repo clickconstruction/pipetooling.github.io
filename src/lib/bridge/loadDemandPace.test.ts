@@ -121,7 +121,7 @@ describe('loadDemandInputs: a marked win with no answer day (punch list #318)', 
 
 describe('loadDemandInputs: a ZZ bid is no ask and no bid sent (v2.6823)', () => {
   const bid = (id: string, projectName: string) => ({ id, project_name: projectName, created_at: '2026-10-01T15:00:00+00:00', bid_date_sent: '2026-10-02', bid_value: 8_000, agreed_value: null, outcome: null, outcome_at: null })
-  const rows = { bids: [bid('b1', 'Elm'), bid('b2', 'ZZ Shadow AUTOZONE'), bid('b3', 'ZZ Test')], jobs_ledger: [], estimates: [] }
+  const rows = { bids: [bid('b1', 'Elm'), bid('b2', 'ZZ Shadow TIREBARN'), bid('b3', 'ZZ Test')], jobs_ledger: [], estimates: [] }
   const window = { windowStart: '2026-09-28', todayYmd: '2026-10-26' }
   it('leaves the robots\' and the test bids out of the asks, the sent dollars and the awaiting pile', async () => {
     const { db } = makeProxyFakeSupabase(rows)

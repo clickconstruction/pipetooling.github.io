@@ -54,7 +54,7 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
 
   it('draws a web address in the words as one press with a link mark, the doubled form once, and the sender’s bold as bold (v2.6508)', () => {
     const plans = 'https://maxxbuilders.box.example/s/vzgc9sp8fwsrcni1c7d8j0qh3995pqi3'
-    const m = { ...line('m-greg-email-in'), body: `Wendi,\n\nWe at *Maxx Builders* invite you to bid.\n\n*Link to Plans*:\n**${plans}\n<${plans}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*` }
+    const m = { ...line('m-greg-email-in'), body: `Wendi,\n\nWe at *Marrex Builders* invite you to bid.\n\n*Link to Plans*:\n**${plans}\n<${plans}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*` }
     renderWithProviders(<MessageWindow message={m} contact={greg} tile={undefined} onClose={vi.fn()} />)
     const full = screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-full]') as HTMLElement
     const a = within(full).getByRole('link', { name: plans })
@@ -63,14 +63,14 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     expect(a.getAttribute('rel')).toBe('noopener noreferrer')
     expect(a.querySelector('svg')).toBeTruthy()
     expect(full.querySelectorAll('a[data-body-link]').length).toBe(1)
-    expect([...full.querySelectorAll('strong')].map((b) => b.textContent)).toEqual(['Maxx Builders', 'Link to Plans', plans, 'Monday, November 02, 2026, 3:00 PM'])
+    expect([...full.querySelectorAll('strong')].map((b) => b.textContent)).toEqual(['Marrex Builders', 'Link to Plans', plans, 'Monday, November 02, 2026, 3:00 PM'])
     expect(full.textContent).not.toContain('*')
     expect(full.textContent).not.toContain('<')
     // The print page draws the same: the address a link, the bold in <b>, no star.
     fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
     const html = vi.mocked(openHtmlPrintWindow).mock.calls[0]![0] as string
     expect(html).toContain(`<a href="${plans}" target="_blank" rel="noopener noreferrer">${plans}</a>`)
-    expect(html).toContain('<b>Maxx Builders</b>')
+    expect(html).toContain('<b>Marrex Builders</b>')
     expect(html.split(plans).length - 1).toBe(2)
     expect(html).not.toContain('*')
     // Copy still carries the words as they came, stars and all.
@@ -256,7 +256,7 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
   it('draws the signature’s number, address and street address as presses, the tracking links as links (v2.6513)', () => {
     const m: ThreadMessage = {
       ...line('m-greg-email-in'),
-      body: `Thank you.\nGlenn Geling\n[image: phone] (832) 871-4166 ext. 121\n[image: email] glenn@maxxbuilders.com <https://server.utags.co/gLCOFBOU>\n[image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477\n[image: instagram] <https://server.utags.co/yhmOAqla>`,
+      body: `Thank you.\nGlenn Gelwin\n[image: phone] (832) 871-4166 ext. 121\n[image: email] glenn@marrexbuilders.example <https://server.utags.co/gLCOFBOU>\n[image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477\n[image: instagram] <https://server.utags.co/yhmOAqla>`,
       files: [],
     }
     const acts = { onCall: vi.fn(), onReply: vi.fn(), onMap: vi.fn() }
@@ -272,7 +272,7 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     fireEvent.click(call)
     expect(acts.onCall).toHaveBeenCalledWith(expect.objectContaining({ kind: 'phone', number: '(832) 871-4166', ext: '121' }), 'phone')
     fireEvent.click(within(full).getByTestId('body-email'))
-    expect(acts.onReply).toHaveBeenCalledWith(expect.objectContaining({ kind: 'email', address: 'glenn@maxxbuilders.com' }), 'email')
+    expect(acts.onReply).toHaveBeenCalledWith(expect.objectContaining({ kind: 'email', address: 'glenn@marrexbuilders.example' }), 'email')
     const map = within(full).getByTestId('body-map') as HTMLAnchorElement
     expect(map.getAttribute('href')).toBe('https://www.google.com/maps/search/?api=1&query=4150%20Bluebonnet%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
     expect(map.getAttribute('target')).toBe('_blank')

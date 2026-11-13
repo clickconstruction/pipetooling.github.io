@@ -54,7 +54,7 @@ describe('MyMailListRow', () => {
     cleanup()
     const { presses } = draw('harlan')
     expect(screen.getByText('no guess')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Tag…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save to job…' }))
     expect(presses.onPick).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
   })
@@ -84,7 +84,7 @@ describe('MyMailListRow', () => {
 
   it('waits while its conversation is being tagged', () => {
     draw('dale-new', { busy: true })
-    expect(screen.getByText('Tagging…')).toBeTruthy()
+    expect(screen.getByText('Saving…')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
   })
 

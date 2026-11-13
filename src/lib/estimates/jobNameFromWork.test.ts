@@ -36,8 +36,8 @@ describe('specificWorkFromLines', () => {
 
 describe('jobNameForCustomerAndWork', () => {
   it('joins customer and work with an em dash, or gives the customer alone', () => {
-    expect(jobNameForCustomerAndWork('Kimberly Coe', 'Pretest')).toBe('Kimberly Coe — Pretest')
-    expect(jobNameForCustomerAndWork(' Kimberly  Coe ', null)).toBe('Kimberly Coe')
+    expect(jobNameForCustomerAndWork('Kimberly Corl', 'Pretest')).toBe('Kimberly Corl — Pretest')
+    expect(jobNameForCustomerAndWork(' Kimberly  Corl ', null)).toBe('Kimberly Corl')
     expect(jobNameForCustomerAndWork('', 'Pretest')).toBe('')
   })
 })

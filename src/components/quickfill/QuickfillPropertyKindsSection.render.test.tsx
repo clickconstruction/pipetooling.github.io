@@ -24,9 +24,9 @@ const lienRow: PropertyKindRow = {
   key: 'addr:p1',
   customerAddressId: 'p1',
   customerId: 'c1',
-  customerName: 'Culebra Crossing Partners LLC',
+  customerName: 'Calvera Crossing Partners LLC',
   gcName: 'Ventana Builders',
-  address: '8507 Culebra Road, San Antonio, TX 78251',
+  address: '8507 Calvera Road, San Antonio, TX 78251',
   jobs: [
     { id: 'a', label: '1211 · Suite B rough-in', stage: 'Billed', openBalance: 18420 },
     { id: 'b', label: '1240 · Suite C top-out', stage: 'Billed', openBalance: 9110 },
@@ -64,7 +64,7 @@ describe('QuickfillPropertyKindsSection', () => {
     // the lien-clock row draws first, so its door is the first Maps link on the page
     const maps = screen.getAllByTitle('Open in Google Maps')[0] as HTMLAnchorElement
     expect(maps.href).toContain('google.com/maps/search/')
-    expect(maps.href).toContain(encodeURIComponent('8507 Culebra Road'))
+    expect(maps.href).toContain(encodeURIComponent('8507 Calvera Road'))
     expect(maps.target).toBe('_blank')
     expect(screen.getByText(/a GC on the job/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Commercial · looks right/ })).toBeTruthy()
@@ -81,7 +81,7 @@ describe('QuickfillPropertyKindsSection', () => {
     await waitFor(() => expect(savePropertyKind).toHaveBeenCalledWith('p1', 'non_residential'))
     expect(onKindSaved).toHaveBeenCalledWith('p1', 'non_residential')
     const line = await screen.findByTestId('property-kind-saved')
-    expect(line.textContent).toMatch(/8507 Culebra Road.*marked commercial · 1211 and 1240 follow · the lien window/)
+    expect(line.textContent).toMatch(/8507 Calvera Road.*marked commercial · 1211 and 1240 follow · the lien window/)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(savePropertyKind).toHaveBeenCalledWith('p1', ''))
     expect(onKindSaved).toHaveBeenLastCalledWith('p1', '')

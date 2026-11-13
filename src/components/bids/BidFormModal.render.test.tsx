@@ -25,7 +25,7 @@ vi.mock('../../lib/supabase', async () => {
         let asksForGc = false
         const or = b.or as (...a: unknown[]) => unknown
         b.or = (expr: string) => {
-          asksForGc = expr.includes('and(gc_customer_id.eq.gc-rmc,bill_to_party.eq.gc)')
+          asksForGc = expr.includes('and(gc_customer_id.eq.gc-rlc,bill_to_party.eq.gc)')
           or(expr)
           return b
         }
@@ -267,11 +267,11 @@ describe('BidFormModal footer — Archive from board (v2.4266)', () => {
 })
 
 describe('New Bid · the terms bar reads the GC the job billed (the owner’s call of 2026-10-09)', () => {
-  it('881’s shape: picking RMC- Dudley Mason shows the Deposit required? nudge for the bill it owed', async () => {
+  it('881’s shape: picking RLC- Dunmere Mallin shows the Deposit required? nudge for the bill it owed', async () => {
     const form = makeForm()
     const props = baseProps({
-      form: { ...form, values: { ...values, gcCustomerId: 'gc-rmc' } },
-      customers: [{ id: 'gc-rmc', name: 'RMC- Dudley Mason' } as unknown as BidFormModalProps['customers'][number]],
+      form: { ...form, values: { ...values, gcCustomerId: 'gc-rlc' } },
+      customers: [{ id: 'gc-rlc', name: 'RLC- Dunmere Mallin' } as unknown as BidFormModalProps['customers'][number]],
     })
     renderWithProviders(<BidFormModal {...props} />)
     await settle()

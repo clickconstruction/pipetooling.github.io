@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { NOT_FOUND_DEFAULT, farShortLine, mapPageNotFound, unplacedLine, unplacedName } from './mapPageUnplaced'
 
 const placed = { addressKey: 'a', addressLabel: 'A St', lat: 29.5, lng: -98.4 }
-const missing1 = { addressKey: 'b', addressLabel: 'Holub', lat: null, lng: null }
-const missing2 = { addressKey: 'b', addressLabel: 'Holub', lat: null, lng: null }
+const missing1 = { addressKey: 'b', addressLabel: 'Holmby', lat: null, lng: null }
+const missing2 = { addressKey: 'b', addressLabel: 'Holmby', lat: null, lng: null }
 const pending = { addressKey: 'c', addressLabel: '41 Moonbeam Ct', lat: null, lng: null }
 const noRow = { addressKey: 'd', addressLabel: 'Robert way remodel', lat: null, lng: null }
 
@@ -15,7 +15,7 @@ describe('mapPageNotFound', () => {
     ])
     expect(resolving).toBe(1)
     expect(notFound.map((g) => [g.addressLabel, g.items.length, g.error])).toEqual([
-      ['Holub', 2, 'No match for this address'],
+      ['Holmby', 2, 'No match for this address'],
       ['Robert way remodel', 1, NOT_FOUND_DEFAULT],
     ])
   })
@@ -32,6 +32,6 @@ describe('the words', () => {
     expect(farShortLine(1)).toBe('1 address far from the office')
     expect(farShortLine(0)).toBe('')
     expect(unplacedName({ tableLabel: 'Vasquez pretest', sublabel: 'J1419' })).toBe('J1419 · Vasquez pretest')
-    expect(unplacedName({ tableLabel: 'Holub', sublabel: ' ' })).toBe('Holub')
+    expect(unplacedName({ tableLabel: 'Holmby', sublabel: ' ' })).toBe('Holmby')
   })
 })

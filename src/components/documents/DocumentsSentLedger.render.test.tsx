@@ -31,7 +31,7 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({
 }))
 
 const lastAsk = () => io.asks[io.asks.length - 1]
-const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement for RMC', how: 'email', recipientName: 'RMC- Dudley Mason', recipientEmails: ['ap@rmc.example'], subject: 'Statement', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-10-05T20:30:00Z', sentByName: 'Dana', sourceSnapshot: null, ...over })
+const row = (over: Partial<SentCopy>): SentCopy => ({ id: 's1', kind: 'gc_statement', title: 'Statement for RLC', how: 'email', recipientName: 'RLC- Dunmere Mallin', recipientEmails: ['ap@rlc.example'], subject: 'Statement', sourceTable: '', sourceId: null, copyPath: 's1/copy.html', copyType: 'text/html', copyHash: 'h1', attachments: [], sentAt: '2026-10-05T20:30:00Z', sentByName: 'Dana', sourceSnapshot: null, ...over })
 
 beforeEach(() => {
   io.rows = []
@@ -46,21 +46,21 @@ afterEach(() => {
 
 describe('DocumentsSentLedger', () => {
   it('lists what was sent, newest first, and a line opens its copy', async () => {
-    io.rows = [row({ jobIds: ['11111111-2222-4333-8444-555555555555'], subject: 'Statement for RMC through October' }), row({ id: 's2', kind: 'rfq', title: 'Price request · Ferguson', subject: '', recipientName: 'Ferguson', sentAt: '2026-10-06T15:00:00Z', copyHash: 'h2', copyPath: 's2/copy.html' })]
+    io.rows = [row({ jobIds: ['11111111-2222-4333-8444-555555555555'], subject: 'Statement for RLC through October' }), row({ id: 's2', kind: 'rfq', title: 'Price request · Ferguson', subject: '', recipientName: 'Ferguson', sentAt: '2026-10-06T15:00:00Z', copyHash: 'h2', copyPath: 's2/copy.html' })]
     renderWithProviders(<DocumentsSentLedger />)
     const rows = await screen.findAllByTestId('documents-sent-row')
-    expect(rows.map((r) => r.querySelector('button')?.textContent)).toEqual(['Price request · Ferguson', 'Statement for RMC'])
+    expect(rows.map((r) => r.querySelector('button')?.textContent)).toEqual(['Price request · Ferguson', 'Statement for RLC'])
     // One heading per day, the day alone when it is not today or yesterday; the row's grey words carry the time alone.
     expect(screen.getAllByTestId('documents-sent-day').map((h) => h.textContent)).toEqual(['Tue, Oct 61 copy', 'Mon, Oct 51 copy'])
-    expect(rows[1]?.textContent).toMatch(/Emailed \d{1,2}:\d\d [AP]M · to RMC- Dudley Mason · by Dana/)
+    expect(rows[1]?.textContent).toMatch(/Emailed \d{1,2}:\d\d [AP]M · to RLC- Dunmere Mallin · by Dana/)
     expect(rows[1]?.textContent).not.toContain('2026')
     // The kind of paper before the title, the job it is for as a link, and the subject when it says more than the title.
-    expect(rows[1]?.textContent?.startsWith('GC statementStatement for RMC')).toBe(true)
+    expect(rows[1]?.textContent?.startsWith('GC statementStatement for RLC')).toBe(true)
     await waitFor(() => expect(screen.getByRole('link', { name: 'J1076 · Sneegas Post Test' }).getAttribute('href')).toBe('/jobs?edit=11111111-2222-4333-8444-555555555555'))
-    expect(rows[1]?.textContent).toContain('“Statement for RMC through October”')
+    expect(rows[1]?.textContent).toContain('“Statement for RLC through October”')
     expect(rows[0]?.querySelector('[data-testid="documents-sent-row-about"]')).toBeNull()
     expect(io.asks[0]).toEqual({ group: 'all', typed: '', limit: 100 })
-    fireEvent.click(screen.getByRole('button', { name: 'Statement for RMC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Statement for RLC' }))
     await waitFor(() => expect(io.opened).toEqual(['s1']))
   })
 

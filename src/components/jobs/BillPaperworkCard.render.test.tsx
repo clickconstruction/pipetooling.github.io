@@ -80,8 +80,8 @@ const bill = makeInvoice({ id: 'inv-251', status: 'billed', amount: 4720, sequen
 
 describe('BillPaperworkCard (v2.4299)', () => {
   it('a GC job with no waiver: the row leads, the door opens the window on this bill, Send contract goes plain', async () => {
-    const job = makeJob({ id: 'j251', gc_customer_id: 'gc-palmer', gcCustomer: { id: 'gc-palmer', name: 'Michael Palmer' }, invoices: [bill], payments: [], revenue: 23600 })
-    const { loaded: row } = await renderSettled(<BillPaperworkCard job={job} invoice={bill} billEmail="palmercustomhomes@gmail.com" dueUnix={null} />, {
+    const job = makeJob({ id: 'j251', gc_customer_id: 'gc-palvern', gcCustomer: { id: 'gc-palvern', name: 'Michael Palvern' }, invoices: [bill], payments: [], revenue: 23600 })
+    const { loaded: row } = await renderSettled(<BillPaperworkCard job={job} invoice={bill} billEmail="palverncustomhomes@example.com" dueUnix={null} />, {
       loaded: () => screen.findByTestId('paperwork-waiver-row'),
     })
     expect(row.textContent).toContain('Conditional for $4,720 not sent')
@@ -94,14 +94,14 @@ describe('BillPaperworkCard (v2.4299)', () => {
   })
 
   it('the GC has no waiver email: the bill’s email fills the blank, and only a blank', async () => {
-    const job = makeJob({ id: 'j251', gc_customer_id: 'gc-palmer', gcCustomer: { id: 'gc-palmer', name: 'Michael Palmer' }, invoices: [bill], payments: [] })
-    await renderSettled(<BillPaperworkCard job={job} invoice={bill} billEmail="palmercustomhomes@gmail.com" dueUnix={null} />, {
+    const job = makeJob({ id: 'j251', gc_customer_id: 'gc-palvern', gcCustomer: { id: 'gc-palvern', name: 'Michael Palvern' }, invoices: [bill], payments: [] })
+    await renderSettled(<BillPaperworkCard job={job} invoice={bill} billEmail="palverncustomhomes@example.com" dueUnix={null} />, {
       loaded: () => screen.findByTestId('paperwork-waiver-email-fix'),
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Use palmercustomhomes@gmail.com' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use palverncustomhomes@example.com' }))
     await settle()
     await waitFor(() => expect(screen.queryByTestId('paperwork-waiver-email-fix')).toBeNull())
-    expect(seen.updates).toEqual([{ payload: { billing_email: 'palmercustomhomes@gmail.com' }, filters: ['eq:id=gc-palmer', 'is:billing_email=null'] }])
+    expect(seen.updates).toEqual([{ payload: { billing_email: 'palverncustomhomes@example.com' }, filters: ['eq:id=gc-palvern', 'is:billing_email=null'] }])
   })
 
   it('a homeowner job with no waiver: no waiver row, Send contract stays the filled button', async () => {

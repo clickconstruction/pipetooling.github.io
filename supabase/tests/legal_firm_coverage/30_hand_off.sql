@@ -29,7 +29,7 @@ INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES
   ('00000000-0000-0000-0000-0000000222f1', 'Comal', false);
 -- One account is with Snell.
 INSERT INTO public.legal_matters (id, payer_key, payer_name, firm_id, stage) VALUES
-  ('00000000-0000-0000-0000-0000000222e1', 'c:zz-learning', 'ZZ The Learning Experience', '00000000-0000-0000-0000-0000000222f1', 'referred');
+  ('00000000-0000-0000-0000-0000000222e1', 'c:zz-learning', 'ZZ The Reading Corner', '00000000-0000-0000-0000-0000000222f1', 'referred');
 -- Snell's portal link is live; retiring Snell revokes it and keeps the row.
 INSERT INTO public.legal_portal_links (firm_id, token_hash) VALUES ('00000000-0000-0000-0000-0000000222f1', 'zz-snell-link');
 

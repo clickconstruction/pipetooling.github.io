@@ -56,7 +56,7 @@ export function useCustomerTermsWarning(customerId: string | null | undefined, r
       try {
         // Punch list #94 (v2.4795): bills the office gave up on — the nudge toward Deposit required on the next job.
         // Since v2.5015 (the owner's call of 2026-10-09) a GC the job billed counts them too: the debtor on a
-        // GC-pays job is the GC (J1002 through Heron Construction Group, 881 through RMC- Dudley Mason).
+        // GC-pays job is the GC (J1002 through Hadlow Construction Group, 881 through RLC- Dunmere Mallin).
         const { data } = await supabase
           .from('jobs_ledger')
           .select('revenue, payments_made' as never)

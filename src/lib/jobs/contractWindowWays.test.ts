@@ -10,9 +10,9 @@ describe('contractWindowWays — the plan', () => {
     const none = windowWaysPlan({ emailOk: false, phoneOk: false, gcJob: false })
     expect(none.defaultWay).toBe('paper')
     expect(none.ways.find((w) => w.way === 'link')?.disabledReason).toBe(LINK_NEEDS)
-    const gc = windowWaysPlan({ emailOk: true, phoneOk: false, gcJob: true, gcName: 'Summit GC' })
+    const gc = windowWaysPlan({ emailOk: true, phoneOk: false, gcJob: true, gcName: 'Selwick GC' })
     expect(gc.defaultWay).toBe('file_theirs')
-    expect(gc.ways.map((w) => w.label)).toEqual(["File Summit GC's subcontract"])
+    expect(gc.ways.map((w) => w.label)).toEqual(["File Selwick GC's subcontract"])
     expect(gc.demoted.map((w) => w.way)).toEqual(['link', 'here', 'paper'])
   })
   it('a pick that cannot run falls back to the default, then to any way that can', () => {

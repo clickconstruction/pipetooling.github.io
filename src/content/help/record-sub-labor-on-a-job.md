@@ -23,7 +23,7 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 
 ## Editing an entry
 
-You press {{button:outline|Edit}}. It opens the same form on one page, with no steps. The same **Job** field sits at the top. The sheet's job shows as {{chip:blue|J977 · Hospital-415 Springtown Way}} with its address underneath. **change** opens the same search to move the sheet to a different job. Under the title, one line tells you which sheet you're in. It reads contractor, then total, then what's due.
+You press {{button:outline|Edit}}. It opens the same form on one page, with no steps. The same **Job** field sits at the top. The sheet's job shows as {{chip:blue|J977 · Hospital-415 Stonewick Way}} with its address underneath. **change** opens the same search to move the sheet to a different job. Under the title, one line tells you which sheet you're in. It reads contractor, then total, then what's due.
 
 - Moving a sheet to another job never touches the crew. The crew is already right. Only the job and its address change.
 - Some sheets are from before the picker. They have a typed number that matches no job, or no number at all. They read {{chip:yellow|#H-2291 No job with this number}} and keep their typed **Address** box. Nothing re-links on its own. You tap **link** to attach a job.

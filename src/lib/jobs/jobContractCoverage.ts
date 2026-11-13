@@ -261,7 +261,7 @@ export function jobContractChipTone(cov: JobContractCoverage | null | undefined)
   return cov.kind
 }
 
-/** "Michael Palmer" → "M. Palmer"; single names pass through. */
+/** "Michael Palvern" → "M. Palvern"; single names pass through. */
 export function abbreviateSignerName(name: string | null | undefined): string | null {
   const trimmed = (name ?? '').trim().replace(/\s+/g, ' ')
   if (!trimmed) return null

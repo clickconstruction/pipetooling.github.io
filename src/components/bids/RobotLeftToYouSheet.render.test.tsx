@@ -9,7 +9,7 @@ import { RobotLeftToYouSheet } from './RobotLeftToYouSheet'
 import { ROBOT_LEFT_SHEET_SENTENCES } from '../../lib/bids/robotLeftToYou'
 import type { Bid } from '../../types/bids'
 
-const bid = { id: 'h510', bid_number: '510', project_name: 'AutoZone New Braunfels', robot_opt_out: true } as unknown as Bid
+const bid = { id: 'h510', bid_number: '510', project_name: 'TireBarn New Braunfels', robot_opt_out: true } as unknown as Bid
 
 describe('RobotLeftToYouSheet', () => {
   it('closed with no bid', () => {
@@ -24,7 +24,7 @@ describe('RobotLeftToYouSheet', () => {
     // first paint
     const dialog = screen.getByRole('dialog', { name: 'Left to you' })
     expect(dialog.querySelector('[data-testid="robot-left-mark"]')?.textContent).toBe('you')
-    expect(screen.getByTestId('robot-left-label').textContent).toBe('b510 · AutoZone New Braunfels')
+    expect(screen.getByTestId('robot-left-label').textContent).toBe('b510 · TireBarn New Braunfels')
     const words = screen.getByTestId('robot-left-words').querySelectorAll('p')
     expect([...words].map((p) => p.textContent)).toEqual([...ROBOT_LEFT_SHEET_SENTENCES])
     // The window leaves room for an iPhone's status bar, as the other robot sheets do.

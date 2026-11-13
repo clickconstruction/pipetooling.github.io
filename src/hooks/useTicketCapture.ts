@@ -8,7 +8,7 @@ import { newPhotoId } from '../lib/photos/reportPhotos'
 import { EXIF_HEAD_BYTES, takenAtFromBytes } from '../lib/photos/photoTakenAt'
 import { sendLostSignal } from '../lib/photos/shotTiles'
 import { shrinkReportPhoto } from '../lib/photos/shrink'
-import { TICKET_PAGE_MIMES, type TicketSource, type TicketTakenAtFrom } from '../lib/tickets/ticket'
+import { TICKET_PAGE_MIMES, type TicketPressSource, type TicketTakenAtFrom } from '../lib/tickets/ticket'
 import { announceTickets } from '../lib/tickets/ticketEvents'
 import { TICKET_SEND_ERROR_NAME, sendTicket, type TicketDraft, type TicketPageDraft } from '../lib/tickets/ticketsIo'
 
@@ -41,7 +41,7 @@ export interface TicketShot {
   height: number
   takenAt: string
   takenAtFrom: TicketTakenAtFrom
-  source: TicketSource
+  source: TicketPressSource
 }
 
 export type TicketInputProps = {
@@ -65,7 +65,7 @@ export interface TicketSaveInput {
   takenBy?: string
   takenByName?: string
   /** Where the paper came from: the camera, a file on the phone, or the office's desk. */
-  source?: TicketSource
+  source?: TicketPressSource
   write: { job_id: string | null; also_job_ids: string[]; no_one_job: boolean; po_entry_id: string | null }
   total: number | null
   note: string
@@ -108,7 +108,7 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
   // The object URLs go when the hook does.
   useEffect(() => () => pagesRef.current.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl)), [])
 
-  const take = useCallback(async (files: File[], source: TicketSource) => {
+  const take = useCallback(async (files: File[], source: TicketPressSource) => {
     const now = (ioRef.current.now ?? Date.now)()
     const shrink = ioRef.current.shrink ?? shrinkReportPhoto
     const replacing = replaceRef.current
@@ -169,7 +169,7 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
     }
   }, [])
 
-  const onPick = (source: TicketSource) => (e: ChangeEvent<HTMLInputElement>) => {
+  const onPick = (source: TicketPressSource) => (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length > 0) void take(files, source)
@@ -217,13 +217,15 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
     if (shots.length === 0) throw new Error('Take a photo of the ticket first.')
     const timed = shots.find((p) => p.takenAtFrom === 'press') ?? shots.find((p) => p.takenAtFrom === 'photo') ?? shots[0]!
     const takenBy = input.takenBy ?? input.userId
+    // The press's own door: a ticket that waits on the phone is never a receipt link's.
+    const source: TicketPressSource = input.source ?? shots[0]!.source
     const draft: TicketDraft = {
       id: newPhotoId(),
       takenBy,
       takenByName: input.takenByName ?? input.byName,
       takenAt: timed.takenAt,
       takenAtFrom: input.source === 'office' ? 'none' : timed.takenAtFrom,
-      source: input.source ?? shots[0]!.source,
+      source,
       jobId: input.write.job_id,
       alsoJobIds: input.write.also_job_ids,
       noOneJob: input.write.no_one_job,
@@ -256,7 +258,7 @@ export function useTicketCapture(io: TicketCaptureIo = {}) {
             kind: 'counter-ticket',
             userId: input.userId,
             pressedAt: Date.now(),
-            payload: { ticketId: draft.id, takenAt: draft.takenAt, takenAtFrom: draft.takenAtFrom, source: draft.source, jobId: draft.jobId, alsoJobIds: draft.alsoJobIds, noOneJob: draft.noOneJob, poEntryId: draft.poEntryId, total: draft.total, note: draft.note, byName: input.byName, photos },
+            payload: { ticketId: draft.id, takenAt: draft.takenAt, takenAtFrom: draft.takenAtFrom, source, jobId: draft.jobId, alsoJobIds: draft.alsoJobIds, noOneJob: draft.noOneJob, poEntryId: draft.poEntryId, total: draft.total, note: draft.note, byName: input.byName, photos },
             about: input.about,
             door: TICKET_DOOR,
           },

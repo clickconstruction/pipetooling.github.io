@@ -74,7 +74,7 @@ function inputFor(events: JobChargeEvent[] = chargeEvents, p: Partial<JobCostsPa
   const supplyUsd = events.filter((e) => e.source === 'supply_house').reduce((s, e) => s + e.amount, 0)
   return {
     company: 'Click Plumbing and Electrical',
-    job: { numberLabel: '891 PLUM', name: 'Take 5- Liberty Hill', address: '11730 TX-29, Liberty Hill, TX 78642', customer: 'Burd & Assoc.', gc: null, statusWords: 'Billed', openedYmd: '2026-07-01', lastWorkYmd: '2026-08-11' },
+    job: { numberLabel: '891 PLUM', name: 'Tune 5- Liberty Hill', address: '11730 TX-29, Liberty Hill, TX 78642', customer: 'Brund & Assoc.', gc: null, statusWords: 'Billed', openedYmd: '2026-07-01', lastWorkYmd: '2026-08-11' },
     printedAt: 'Oct 22, 2026, 4:05 PM',
     printedBy: 'Robert',
     todayYmd: TODAY,
@@ -116,9 +116,9 @@ describe('buildJobCostsPacketHtml — four pages from the tab’s own numbers', 
   it('lays out four sheets with the identity block and the printed stamp', () => {
     const html = buildJobCostsPacketHtml(inputFor())
     expect(html.match(/data-testid="packet-page-\d"/g)).toHaveLength(4)
-    expect(html).toContain('<title>891 PLUM · Take 5- Liberty Hill · Job costs</title>')
+    expect(html).toContain('<title>891 PLUM · Tune 5- Liberty Hill · Job costs</title>')
     expect(html).toContain('<span class="chip">891 PLUM</span> 11730 TX-29, Liberty Hill, TX 78642')
-    expect(html).toContain('Burd &amp; Assoc. · Billed · opened Jul 1, 2026 · last field day Aug 11, 2026')
+    expect(html).toContain('Brund &amp; Assoc. · Billed · opened Jul 1, 2026 · last field day Aug 11, 2026')
     expect(html).toContain('Printed Oct 22, 2026, 4:05 PM')
     expect(html).toContain('<div>by Robert</div>')
     expect(html).toContain('<b>$43,249</b> price · <b>30% done · set on the job by Taunya on Oct 7</b>')

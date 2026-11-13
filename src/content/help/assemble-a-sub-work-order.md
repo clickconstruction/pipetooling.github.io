@@ -51,7 +51,7 @@ Three tiles lead. **On a handshake** is open money on sheets with nothing signed
 The groups follow the rail: **Working with no agreement**, **Drafted**, **Sent**, **Signed**. Signed is collapsed. {{button:outline|Show ▾}} opens the record. The filter chips are the same four groups with counts. Search by job number, sub, customer, or WO number. {{button:outline|Sheet ›}} on any row opens the Sub Labor sheet. A signed order's **WO-977-01 ›** opens the record.
 
 :::example A sheet on a job that is not in the Pipeline
-Springtown's $40,000 electrical sheet was written against job 977 before the job had a Pipeline row. It shows {{chip:yellow|Not in Pipeline}} with {{button:outline|Link to a job…}} — pick the job and the sheet's number follows it, so the work order, the bill and the Job Summary land on one job. {{button:outline|New job…}} opens the New Job form; give it number 977 and the sheet links itself.
+Stonewick's $40,000 electrical sheet was written against job 977 before the job had a Pipeline row. It shows {{chip:yellow|Not in Pipeline}} with {{button:outline|Link to a job…}} — pick the job and the sheet's number follows it, so the work order, the bill and the Job Summary land on one job. {{button:outline|New job…}} opens the New Job form; give it number 977 and the sheet links itself.
 :::
 
 While an offer waits, you have three buttons. {{button:outline|Nudge}} resends the notification. {{button:outline|Signed on paper}} records a signature they gave you on a printed copy. {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only. {{button:outline|Print}} gives the paper copy.

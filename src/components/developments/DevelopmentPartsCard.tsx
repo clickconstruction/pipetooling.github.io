@@ -32,7 +32,7 @@ export type SitePlansWrites = {
   removeSet: (setId: string) => Promise<boolean>
   /** What changed from the set before it, written on a set already on the part (v2.6356). */
   writeChanges: (setId: string, changes: string) => Promise<boolean>
-  /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
+  /** Many jobs onto one part in one press (the Gray Fox spike, 2026-11-02); true when any took it. */
   putJobsOnPart: (partId: string, jobIds: string[]) => Promise<boolean>
   /** A paper onto another part of the site (v2.6632): the set it went with stays behind, and the History gets the line. */
   movePaper: (paper: Paper, toPartId: string) => Promise<boolean>
@@ -237,7 +237,7 @@ export function DevelopmentPartsCard({
         />
       ) : (
         (() => {
-          // Each part's pieces, drawn once: a table row on the desk, a card on a phone (the Gun Dog spike, 2026-11-02: the seven-column table ran 584 wide in a 375 screen).
+          // Each part's pieces, drawn once: a table row on the desk, a card on a phone (the Gray Fox spike, 2026-11-02: the seven-column table ran 584 wide in a 375 screen).
           const partBlocks = view.parts.map((row) => {
             const older = olderSetsFor(row)
             const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
@@ -561,7 +561,7 @@ export function DevelopmentPartsCard({
       ) : null}
       {openChip === 'noPart' && view.jobsWithNoPart.length ? (
         canWrite && writes && view.parts.length > 0 ? (
-          // A writer ticks the jobs and names the part; one press puts them all on it (the Gun Dog spike, 2026-11-02: 24 jobs on no part, one at a time before).
+          // A writer ticks the jobs and names the part; one press puts them all on it (the Gray Fox spike, 2026-11-02: 24 jobs on no part, one at a time before).
           <div style={{ fontSize: '0.8rem', display: 'grid', gap: 8 }} data-testid="site-list-no-part">
             {/* One row per job with its name (the owner, 2026-11-02: a person picks the part by the name, not the number), by name so a building's jobs sit together; the row ticks, the number opens. */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 330px), 1fr))', gap: '2px 18px' }}>

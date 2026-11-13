@@ -67,7 +67,7 @@ export async function fetchBidGcRecipientsMap(): Promise<BidGcRecipientsMap> {
  * Heuristic for legacy combined-GC customer names — the pre-recipients
  * workaround ("Multiple GC's", "Banyan Construction / 20 Twenty / Fairbanks").
  * Deliberately conservative: a spaced slash or the word "multiple" before
- * GC/GCs. Plain ampersands ("H & I Construction") are real company names.
+ * GC/GCs. Plain ampersands ("B & D Construction") are real company names.
  */
 export function looksLikeCombinedGcName(name: string | null | undefined): boolean {
   const n = (name ?? '').trim()

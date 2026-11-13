@@ -33,7 +33,7 @@ describe('propertyKindBadge (v2.4160)', () => {
   })
 
   it('the question names the address, or the job when the address is blank', () => {
-    expect(propertyKindQuestion('8507 Culebra Road\nSan Antonio, TX', '1029 · Backflow')).toBe('What kind of property is 8507 Culebra Road?')
+    expect(propertyKindQuestion('8507 Calvera Road\nSan Antonio, TX', '1029 · Backflow')).toBe('What kind of property is 8507 Calvera Road?')
     expect(propertyKindQuestion('200 Test Lane, San Antonio, TX 78209', '1051 · Band Job B')).toBe('What kind of property is 200 Test Lane?')
     expect(propertyKindQuestion('  ', '1029 · Backflow')).toBe('What kind of property is 1029 · Backflow?')
   })

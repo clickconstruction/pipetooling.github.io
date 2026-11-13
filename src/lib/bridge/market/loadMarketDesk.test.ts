@@ -8,7 +8,7 @@ import { loadMarketDeskReads } from './loadMarketDesk'
  */
 const bid = (id: string, projectName: string, customerId: string, createdAt: string) => ({ id, project_name: projectName, created_at: createdAt, bid_date_sent: null, bid_value: 8_000, agreed_value: null, outcome: null, outcome_at: null, customer_id: customerId, gc_builder_id: null })
 const rows = {
-  bids: [bid('zzFirst', 'ZZ Shadow AUTOZONE', 'gc1', '2026-08-01T15:00:00+00:00'), bid('b1', 'Elm Street clinic', 'gc1', '2026-10-01T15:00:00+00:00')],
+  bids: [bid('zzFirst', 'ZZ Shadow TIREBARN', 'gc1', '2026-08-01T15:00:00+00:00'), bid('b1', 'Elm Street clinic', 'gc1', '2026-10-01T15:00:00+00:00')],
   bids_gc_builders: [],
   customers: [{ id: 'gc1', name: 'Acme GC' }],
   estimates: [],

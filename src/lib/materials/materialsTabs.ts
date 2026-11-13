@@ -21,6 +21,7 @@ export const MATERIALS_TABS = [
   'po-generator',
   'supply-houses',
   'job-accounts',
+  'what-we-buy',
   'on-site',
 ] as const
 
@@ -28,8 +29,11 @@ export type MaterialsTab = (typeof MATERIALS_TABS)[number]
 
 export const MATERIALS_DEFAULT_TAB: MaterialsTab = 'parts-book'
 
-/** The three tabs the office keeps to itself: the vendor ledger, the AP desks, the PO ledger. */
-const OFFICE_ONLY_TABS: readonly MaterialsTab[] = ['supply-houses', 'job-accounts', 'po-generator']
+/**
+ * The tabs the office keeps to itself: the vendor ledger, the AP desks, the PO ledger, and What we buy (punch list
+ * #298), which reads every bill's lines under the office's own read policy on `supply_papers`.
+ */
+const OFFICE_ONLY_TABS: readonly MaterialsTab[] = ['supply-houses', 'job-accounts', 'po-generator', 'what-we-buy']
 
 /** Book tabs every Materials reader gets. */
 const READER_TABS: readonly MaterialsTab[] = ['parts-book', 'assembly-book']

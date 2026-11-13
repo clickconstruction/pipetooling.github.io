@@ -9,7 +9,8 @@ import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskLinesList } from './TaskLinesList'
 import { TaskPhotoStrip } from './TaskPhotoStrip'
-import { TaskPlaceBlock, TaskPlaceLine } from './TaskPlaceBlock'
+import { TaskPlaceBlock, TaskPlaceLine, TaskSpotPhotoView } from './TaskPlaceBlock'
+import { TaskPlaceAddHere } from './TaskPlaceAddHere'
 import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { TaskRing } from './TaskRing'
 
@@ -50,6 +51,8 @@ export function ChecklistOutstandingSection({
   placeNumberFor,
   placeFarFor,
   openInstance,
+  spotPhotoUrlFor,
+  onPlaceAdded,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -79,6 +82,10 @@ export function ChecklistOutstandingSection({
   placeFarFor?: (inst: LedgerInstance) => string | null
   /** Show the task on the map (PR 4): the row with this id opens. `n` changes on every press, so the same row opens twice. */
   openInstance?: { id: string; n: number } | null
+  /** The giver's photo of the spot (PR 6), a signed address. */
+  spotPhotoUrlFor?: (inst: LedgerInstance) => string | null
+  /** The person doing a task may add its missing place from where they stand (PR 8). Called once it has landed. */
+  onPlaceAdded?: () => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const openId = openInstance?.id ?? null
@@ -151,6 +158,8 @@ export function ChecklistOutstandingSection({
             place={placeFor?.(inst) ?? null}
             placeNumber={placeNumberFor?.(inst) ?? null}
             placeFar={placeFarFor?.(inst) ?? null}
+            spotPhotoUrl={spotPhotoUrlFor?.(inst) ?? null}
+            onPlaceAdded={onPlaceAdded}
             placedByName={(() => {
               const by = placeFor?.(inst)?.setBy
               return by && nameById?.[by] ? nameById[by]! : null
@@ -188,6 +197,8 @@ function OutstandingRow({
   placeNumber,
   placeFar,
   placedByName,
+  spotPhotoUrl,
+  onPlaceAdded,
 }: {
   inst: LedgerInstance
   events: ChecklistCardEvent[]
@@ -214,6 +225,8 @@ function OutstandingRow({
   placeNumber: number | null
   placeFar: string | null
   placedByName: string | null
+  spotPhotoUrl: string | null
+  onPlaceAdded?: () => void
 }) {
   const notes = events.filter((e) => e.event_type === 'comment').length
   const sheets = useTaskCardSheets({
@@ -310,7 +323,16 @@ function OutstandingRow({
           ) : null}
           {place ? (
             <div style={{ marginBottom: '0.7rem' }}>
-              <TaskPlaceBlock place={place} placedByName={placedByName} />
+              <TaskPlaceBlock place={place} placedByName={placedByName} photoUrl={spotPhotoUrl} />
+            </div>
+          ) : spotPhotoUrl ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskSpotPhotoView url={spotPhotoUrl} />
+            </div>
+          ) : null}
+          {!place && onPlaceAdded ? (
+            <div style={{ marginBottom: '0.7rem' }}>
+              <TaskPlaceAddHere instanceId={inst.id} onAdded={onPlaceAdded} />
             </div>
           ) : null}
           <ChecklistItemActivity

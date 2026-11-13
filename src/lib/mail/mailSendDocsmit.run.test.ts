@@ -57,7 +57,7 @@ function post(body: unknown, bearer = 'Bearer jwt'): Promise<Response> {
   return box.handler!(new Request('http://fn/mail-send-docsmit', { method: 'POST', headers: { Authorization: bearer, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }))
 }
 
-const piece = { kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', recipient: 'owner', name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10', sheets: 4 }
+const piece = { kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', recipient: 'owner', name: '', organization: 'AXO Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10', sheets: 4 }
 
 describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
   it('refuses without a signed-in office user, and says when Docsmit is not set up', async () => {
@@ -108,12 +108,12 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     const out = await res.json()
     expect(out).toMatchObject({ ok: true, piece_id: 'id-1', provider_message_id: 'm-77', price: 9.85, correction: 'ZIP+4: 78154-2011', credit_balance: 120, env: 'tracksmit' })
     const row = db.tables.mail_pieces![0]!
-    expect(row).toMatchObject({ kind: 'lien_notice_53_056', provider: 'docsmit', status: 'prepared', recipient: 'owner', organization: 'ATI Schertz Holdings LLC', pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', created_by: 'u-taunya', provider_message_id: 'm-77', client_msg_id: 'lien_notice_53_056:id-1', price: 9.85 })
+    expect(row).toMatchObject({ kind: 'lien_notice_53_056', provider: 'docsmit', status: 'prepared', recipient: 'owner', organization: 'AXO Schertz Holdings LLC', pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', created_by: 'u-taunya', provider_message_id: 'm-77', client_msg_id: 'lien_notice_53_056:id-1', price: 9.85 })
     expect((row.events as Array<{ kind: string }>).map((e) => e.kind)).toEqual(['prepared', 'message_made'])
     const made = docsmit.calls.find((c) => c.path === '/messages/new')!.body as Record<string, unknown>
     // billTo = the job number (6b, the cost line), so Docsmit's own invoices group by job.
-    expect(made).toMatchObject({ title: 'Job 650 · lien notice 53 056 · owner · ATI Schertz Holdings LLC · id-1', clientMsgID: 'lien_notice_53_056:id-1', billTo: '650' })
-    expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'ATI Schertz Holdings LLC', postalCode: '78154', sendType: 'Certified, Electronic Return Receipt', envelope: '#10' })
+    expect(made).toMatchObject({ title: 'Job 650 · lien notice 53 056 · owner · AXO Schertz Holdings LLC · id-1', clientMsgID: 'lien_notice_53_056:id-1', billTo: '650' })
+    expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'AXO Schertz Holdings LLC', postalCode: '78154', sendType: 'Certified, Electronic Return Receipt', envelope: '#10' })
     expect(docsmit.calls.find((c) => c.path === '/messages/m-77/upload')!.body).toEqual({ file: 'id-1.pdf' })
   })
 
@@ -204,7 +204,7 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(docsmit.calls.filter((c) => c.path.includes('m-9'))).toEqual([])
   })
 
-  const returned = { id: 'p-old', kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', provider: 'docsmit', recipient: 'owner', short_code: 'ABCD2345', name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10', sheets: 4, provider_message_id: 'm-1', client_msg_id: 'lien_notice_53_056:p-old', price: 9.85, status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', delivery_as_of: null, events: [], opened_at: null, pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', certification_path: null, problem: null, resend_of: null, resolved_at: null, resolved_note: null }
+  const returned = { id: 'p-old', kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', provider: 'docsmit', recipient: 'owner', short_code: 'ABCD2345', name: '', organization: 'AXO Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10', sheets: 4, provider_message_id: 'm-1', client_msg_id: 'lien_notice_53_056:p-old', price: 9.85, status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', delivery_as_of: null, events: [], opened_at: null, pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', certification_path: null, problem: null, resend_of: null, resolved_at: null, resolved_note: null }
 
   it('resend, plain (6b-3): the same PDF goes First Class to the same address as a new piece in one call, the old piece is marked answered, and the filing keeps its certified number', async () => {
     storage.files['lien-release-documents/mail/env-1.pdf'] = new TextEncoder().encode('%PDF-1.4 fake')
@@ -221,7 +221,7 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(await res.json()).toMatchObject({ ok: true, piece_id: 'id-1', status: 'sent', price: 1.12, resolved_note: 'a plain First Class copy sent' })
     const made = docsmit.calls.find((c) => c.path === '/messages/new')!.body as Record<string, unknown>
     expect(made).toMatchObject({ clientMsgID: 'lien_notice_53_056:id-1', billTo: '650' })
-    expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', sendType: 'First Class', envelope: '#10' })
+    expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'AXO Schertz Holdings LLC', address1: '17300 IH 35 N', sendType: 'First Class', envelope: '#10' })
     expect(docsmit.calls.find((c) => c.path === '/messages/m-2/upload')!.body).toEqual({ file: 'id-1.pdf' })
     const [old, copy] = db.tables.mail_pieces as Array<Record<string, unknown>>
     expect(copy).toMatchObject({ id: 'id-1', status: 'sent', send_type: 'First Class', resend_of: 'p-old', short_code: null, pdf_path: 'mail/env-1.pdf', provider_message_id: 'm-2', price: 1.12 })
@@ -251,7 +251,7 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ ok: true, piece_id: 'id-1', status: 'mailed', usps_tracking: '9407 2222', price: null, resolved_note: 'mailed again to 9993 IH 10 W, San Antonio' })
     const copy = db.tables.mail_pieces![1] as Record<string, unknown>
-    expect(copy).toMatchObject({ status: 'mailed', send_type: 'Certified, Electronic Return Receipt', address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230', organization: 'ATI Schertz Holdings LLC', resend_of: 'p-old', usps_tracking: '9407 2222' })
+    expect(copy).toMatchObject({ status: 'mailed', send_type: 'Certified, Electronic Return Receipt', address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230', organization: 'AXO Schertz Holdings LLC', resend_of: 'p-old', usps_tracking: '9407 2222' })
     expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toMatchObject({ recipient: 'owner', piece_id: 'id-1', tracking: '9407 2222', sent_on: '2026-10-14', via: 'docsmit' })
   })
 

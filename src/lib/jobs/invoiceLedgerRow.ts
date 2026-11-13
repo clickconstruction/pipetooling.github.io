@@ -3,7 +3,7 @@
  *
  * Every bill reads the same three lines:
  *   1. chip · amount · actions          (the component)
- *   2. whoLine   — "sent Sep 4 to RMC-Dudley Mason" / "not sent · bills Maria"
+ *   2. whoLine   — "sent Sep 4 to RLC-Dunmere Mallin" / "not sent · bills Maria"
  *   3. moneyLead · moneyDetail · promise — "$9,800 open · 21 d past expected · They said Sep 19"
  *
  * A bill is paid or it isn't (customers don't part-pay), so the state is the
@@ -15,6 +15,7 @@
  * list and the tiles above it always agree.
  */
 import { daysBetweenYmd, formatYmdMonthDay, type ExpectedPayModel } from './billedExpectedPay'
+import type { BilledPayModel } from './billedDuePay'
 
 export type InvoiceLedgerState = 'draft' | 'open' | 'paid'
 
@@ -33,8 +34,8 @@ export type InvoiceLedgerRowInput = {
   drawLabel: string | null
   /** The auto-maintained remainder draft. */
   isAutoRemainder: boolean
-  /** The job's expected-pay model for this bill (Stages-card math), when the viewer may see it. */
-  expected: ExpectedPayModel | null
+  /** The job's expected-pay model for this bill (Stages-card math), when the viewer may see it. A payer on a Pay calendar hands in the model with its due day (punch list #323). */
+  expected: ExpectedPayModel | BilledPayModel | null
 }
 
 export type InvoiceLedgerRow = {
@@ -137,6 +138,12 @@ export function invoiceLedgerRow(input: InvoiceLedgerRowInput): InvoiceLedgerRow
   const m = input.expected
   if (m?.source === 'promised') {
     promise = m.state === 'late' ? `They said ${formatYmdMonthDay(m.expectedYmd)} · ${m.daysLate} d past` : `They said ${formatYmdMonthDay(m.expectedYmd)}`
+  } else if (m && m.source === 'terms' && 'dueYmd' in m && m.dueYmd) {
+    // A payer on a Pay calendar: the day the contract makes the bill due, as on the Pipeline row. Past it the line
+    // reads late; once the money is later than even this payer usually is, it says that first.
+    const due = `due ${formatYmdMonthDay(m.dueYmd)}`
+    moneyDetail = m.state === 'late' ? `${m.daysLate} d past expected · ${due}` : m.daysPastDue > 0 ? `${due} · ${m.daysPastDue} d past` : due
+    moneyTone = m.state === 'late' || m.daysPastDue > 0 ? 'late' : 'muted'
   } else if (m) {
     moneyDetail = m.state === 'late' ? `${m.daysLate} d past expected` : `expect ~${formatYmdMonthDay(m.expectedYmd)}`
     moneyTone = m.state === 'late' ? 'late' : 'muted'

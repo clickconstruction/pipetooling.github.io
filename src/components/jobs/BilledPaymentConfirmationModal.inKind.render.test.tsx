@@ -34,7 +34,7 @@ function stripeInvoice(over: Partial<InvoiceWithJobLike> = {}): InvoiceWithJobLi
     external_send_channel: 'stripe',
     hosted_invoice_url: 'https://invoice.stripe.com/i/x',
     sent_to_customer_at: '2026-09-21T12:00:00Z',
-    job: { id: 'job1022', hcp_number: '', click_number: '1022', job_name: 'Aguirre Well', revenue: 1500, payments_made: 0 },
+    job: { id: 'job1022', hcp_number: '', click_number: '1022', job_name: 'Agrell Well', revenue: 1500, payments_made: 0 },
     ...over,
   } as unknown as InvoiceWithJobLike
 }

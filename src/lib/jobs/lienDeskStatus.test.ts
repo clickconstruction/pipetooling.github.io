@@ -21,32 +21,32 @@ function job(number: string, name: string, gc: string, owed: number, months: str
   seq += 1
   return { jobId: `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`, number, name, gc, owed, months, where, byYmd, sinceYmd }
 }
-const RMC = 'RMC- Dudley Mason'
-const KNIGHT = 'Knight Contracting'
+const RLC = 'RLC- Dunmere Mallin'
+const KESTRIN = 'Kestrin Contracting'
 const JOBS: LienStatusJob[] = [
-  job('927', 'Mike Holub- Candelria', 'Michael Holub', 7429, ['2026-07', '2026-08', '2026-09'], 'owner'),
-  job('1002', 'Terrell- Sewer line repair', 'Heron Construction Group', 4050, ['2026-08'], 'owner'),
-  job('804', 'Summit GC- Auto Zone', 'Summit General Contractors', 3553, ['2026-07', '2026-08', '2026-09'], 'owner'),
-  job('891', 'Take 5- Liberty Hill', 'Burd & Assoc.', 27199, ['2026-07', '2026-08'], 'draft'),
-  job('258', 'Dudley Mason', RMC, 9800, ['2026-07', '2026-08'], 'draft'),
-  job('858', 'Service Visit, 9703 Lenox Hl', RMC, 7902, ['2026-08'], 'draft'),
-  job('843', 'Michael Palmer- Jacob Roberts', 'Michael Palmer', 7152, ['2026-08', '2026-09'], 'draft'),
-  job('898', 'Reliant Health', KNIGHT, 4800, ['2026-07'], 'draft'),
-  job('813', 'Reliant Health- Electrical', KNIGHT, 4421, ['2026-07'], 'draft'),
-  job('866', 'Omar Khan- Lennox', RMC, 3500, ['2026-08'], 'draft'),
-  job('883', 'TF Harper- Mission Hills Drains', 'TF Harper', 2918, ['2026-07'], 'draft'),
-  job('915', 'Reliant Health', KNIGHT, 2712, ['2026-07'], 'draft'),
-  job('868', 'Service Visit, 1875 Co Rd 777', RMC, 2650, ['2026-08'], 'draft'),
-  job('789', 'Knight Contracting- Reliant Health', KNIGHT, 2245, ['2026-07', '2026-08'], 'draft'),
-  job('867', 'Service Visit, 628 Terrell Rd', RMC, 1710, ['2026-08'], 'draft'),
-  job('800', 'Service Visit, 233 Palomino Trail', RMC, 1600, ['2026-08'], 'draft'),
-  job('880', 'Reliant Health- HVAC', KNIGHT, 1380, ['2026-07'], 'draft'),
-  job('863', 'Service Visit, 628 Terrell Rd', RMC, 1049, ['2026-08'], 'draft'),
-  job('853', 'Service Visit, 628 Terrell Rd', RMC, 595, ['2026-08'], 'draft'),
-  job('922', 'Michael Palmer (Ivan Kopecky)', 'Michael Palmer', 5000, ['2026-09'], 'draft', NOV),
-  job('650', 'ATI Schertz', 'Loberg Contracting', 15722, ['2026-07'], 'draft'),
-  job('878', 'Take 5- Seguin', 'Southern Post Construction', 38625, ['2026-07', '2026-08', '2026-09'], 'approval', OCT, '2026-09-24'),
-  job('273', 'Dudley (Lennox)', RMC, 17585, ['2026-07', '2026-08'], 'approval', OCT, '2026-09-22'),
+  job('927', 'Mike Holmby- Candelria', 'Michael Holmby', 7429, ['2026-07', '2026-08', '2026-09'], 'owner'),
+  job('1002', 'Tarrow- Sewer line repair', 'Hadlow Construction Group', 4050, ['2026-08'], 'owner'),
+  job('804', 'Selwick GC- Tire Barn', 'Selwick General Contractors', 3553, ['2026-07', '2026-08', '2026-09'], 'owner'),
+  job('891', 'Tune 5- Liberty Hill', 'Brund & Assoc.', 27199, ['2026-07', '2026-08'], 'draft'),
+  job('258', 'Dunmere Mallin', RLC, 9800, ['2026-07', '2026-08'], 'draft'),
+  job('858', 'Service Visit, 9703 Linmor Hl', RLC, 7902, ['2026-08'], 'draft'),
+  job('843', 'Michael Palvern- Jared Robson', 'Michael Palvern', 7152, ['2026-08', '2026-09'], 'draft'),
+  job('898', 'Relwyn Health', KESTRIN, 4800, ['2026-07'], 'draft'),
+  job('813', 'Relwyn Health- Electrical', KESTRIN, 4421, ['2026-07'], 'draft'),
+  job('866', 'Oran Karrow- Linmoor', RLC, 3500, ['2026-08'], 'draft'),
+  job('883', 'TF Halden- Mission Flats Drains', 'TF Halden', 2918, ['2026-07'], 'draft'),
+  job('915', 'Relwyn Health', KESTRIN, 2712, ['2026-07'], 'draft'),
+  job('868', 'Service Visit, 1875 Co Rd 777', RLC, 2650, ['2026-08'], 'draft'),
+  job('789', 'Kestrin Contracting- Relwyn Health', KESTRIN, 2245, ['2026-07', '2026-08'], 'draft'),
+  job('867', 'Service Visit, 628 Tarrow Rd', RLC, 1710, ['2026-08'], 'draft'),
+  job('800', 'Service Visit, 233 Palomino Trail', RLC, 1600, ['2026-08'], 'draft'),
+  job('880', 'Relwyn Health- HVAC', KESTRIN, 1380, ['2026-07'], 'draft'),
+  job('863', 'Service Visit, 628 Tarrow Rd', RLC, 1049, ['2026-08'], 'draft'),
+  job('853', 'Service Visit, 628 Tarrow Rd', RLC, 595, ['2026-08'], 'draft'),
+  job('922', 'Michael Palvern (Ivan Koplin)', 'Michael Palvern', 5000, ['2026-09'], 'draft', NOV),
+  job('650', 'AXO Schertz', 'Lowbeck Contracting', 15722, ['2026-07'], 'draft'),
+  job('878', 'Tune 5- Seguin', 'Southern Pine Construction', 38625, ['2026-07', '2026-08', '2026-09'], 'approval', OCT, '2026-09-24'),
+  job('273', 'Dunmere (Linmoor)', RLC, 17585, ['2026-07', '2026-08'], 'approval', OCT, '2026-09-22'),
 ]
 const OCT1: LienStatusPayload = {
   v: 1,
@@ -55,16 +55,16 @@ const OCT1: LienStatusPayload = {
   gc: null,
   jobs: JOBS,
   liens: [
-    { number: '881', name: 'Dudley Mason', gc: RMC, owed: 1050, byYmd: OCT, needs: ['notice'] },
+    { number: '881', name: 'Dunmere Mallin', gc: RLC, owed: 1050, byYmd: OCT, needs: ['notice'] },
     { number: '838', name: 'Bruce Hall', gc: '', owed: 350, byYmd: OCT, needs: ['owner', 'legal'] },
-    { number: '890', name: 'Dudley Mason', gc: RMC, owed: 285, byYmd: OCT, needs: ['notice'] },
+    { number: '890', name: 'Dunmere Mallin', gc: RLC, owed: 285, byYmd: OCT, needs: ['notice'] },
   ],
   kindsUnset: 6,
   trackingOwed: 0,
   pastWindow: { jobs: 18, owed: 43022 },
   retainage: { jobs: 0, held: 0, firstYmd: '' },
 }
-const knight = (): LienStatusPayload => ({ ...OCT1, gc: KNIGHT, jobs: JOBS.filter((j) => j.gc === KNIGHT), liens: [], kindsUnset: 3, pastWindow: { jobs: 0, owed: 0 } })
+const kestrin = (): LienStatusPayload => ({ ...OCT1, gc: KESTRIN, jobs: JOBS.filter((j) => j.gc === KESTRIN), liens: [], kindsUnset: 3, pastWindow: { jobs: 0, owed: 0 } })
 
 describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
   it('the whole desk on Oct 1 reads as drawn: count, money, first date, approvals, GCs, what is left', () => {
@@ -77,16 +77,16 @@ describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
         'The first must be mailed by Oct 15, in 14 days.',
         '',
         'Waiting for approval:',
-        '• Take 5- Seguin, Southern Post Construction, $38,625',
-        '• Dudley (Lennox), RMC- Dudley Mason, $17,585',
+        '• Tune 5- Seguin, Southern Pine Construction, $38,625',
+        '• Dunmere (Linmoor), RLC- Dunmere Mallin, $17,585',
         '',
         'By GC:',
-        '• RMC- Dudley Mason, 9 jobs, $46,391',
-        '• Southern Post Construction, 1 job, $38,625',
-        '• Burd & Assoc., 1 job, $27,199',
-        '• Loberg Contracting, 1 job, $15,722',
-        '• Knight Contracting, 5 jobs, $15,558',
-        '• Michael Palmer, 2 jobs, $12,152',
+        '• RLC- Dunmere Mallin, 9 jobs, $46,391',
+        '• Southern Pine Construction, 1 job, $38,625',
+        '• Brund & Assoc., 1 job, $27,199',
+        '• Lowbeck Contracting, 1 job, $15,722',
+        '• Kestrin Contracting, 5 jobs, $15,558',
+        '• Michael Palvern, 2 jobs, $12,152',
         '• 4 more GCs, 4 jobs, $17,950',
         '',
         'Still to do: draft 18 notices. Find 3 owners of record. Set the property kind on 6 jobs.',
@@ -98,21 +98,21 @@ describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
   })
 
   it('one GC lists its jobs, says when all of them are due, and warns about kinds not set', () => {
-    expect(lienStatusText(knight())).toBe(
+    expect(lienStatusText(kestrin())).toBe(
       [
-        'Knight Contracting liens, Thu Oct 1, 2:14 PM',
+        'Kestrin Contracting liens, Thu Oct 1, 2:14 PM',
         '',
-        'We are about to send lien notices on 5 Knight Contracting jobs.',
+        'We are about to send lien notices on 5 Kestrin Contracting jobs.',
         '$15,558 is owed on them.',
         'All 5 must be mailed by Oct 15, in 14 days.',
         '',
-        '• 898 Reliant Health, Jul, $4,800, to draft',
-        '• 813 Reliant Health- Electrical, Jul, $4,421, to draft',
-        '• 915 Reliant Health, Jul, $2,712, to draft',
-        '• 789 Knight Contracting- Reliant Health, Jul and Aug, $2,245, to draft',
-        '• 880 Reliant Health- HVAC, Jul, $1,380, to draft',
+        '• 898 Relwyn Health, Jul, $4,800, to draft',
+        '• 813 Relwyn Health- Electrical, Jul, $4,421, to draft',
+        '• 915 Relwyn Health, Jul, $2,712, to draft',
+        '• 789 Kestrin Contracting- Relwyn Health, Jul and Aug, $2,245, to draft',
+        '• 880 Relwyn Health- HVAC, Jul, $1,380, to draft',
         '',
-        '3 Knight Contracting jobs have no property kind set. If any is a home, its dates come a month sooner.',
+        '3 Kestrin Contracting jobs have no property kind set. If any is a home, its dates come a month sooner.',
         '',
         'Open the Lien desk on job 898:',
       ].join('\n'),
@@ -120,28 +120,28 @@ describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
   })
 
   it('a GC whose jobs fall on two dates names the later one on its line', () => {
-    const palmer = { ...OCT1, gc: 'Michael Palmer', jobs: JOBS.filter((j) => j.gc === 'Michael Palmer'), liens: [], kindsUnset: 0, pastWindow: { jobs: 0, owed: 0 } }
-    const text = lienStatusText(palmer)
+    const palvern = { ...OCT1, gc: 'Michael Palvern', jobs: JOBS.filter((j) => j.gc === 'Michael Palvern'), liens: [], kindsUnset: 0, pastWindow: { jobs: 0, owed: 0 } }
+    const text = lienStatusText(palvern)
     expect(text).toContain('The first must be mailed by Oct 15, in 14 days.')
-    expect(text).toContain('• 922 Michael Palmer (Ivan Kopecky), Sep, $5,000, to draft, mail by Nov 16')
+    expect(text).toContain('• 922 Michael Palvern (Ivan Koplin), Sep, $5,000, to draft, mail by Nov 16')
   })
 
   it('one job, a date tomorrow, held and approved notices, a lost window', () => {
     const one: LienStatusPayload = {
       ...OCT1,
-      gc: RMC,
+      gc: RLC,
       todayYmd: '2026-10-14',
-      jobs: [job('273', 'Dudley (Lennox)', RMC, 17585, ['2026-08'], 'ready')],
+      jobs: [job('273', 'Dunmere (Linmoor)', RLC, 17585, ['2026-08'], 'ready')],
       liens: [],
       kindsUnset: 1,
       pastWindow: { jobs: 2, owed: 1335 },
     }
     const text = lienStatusText(one)
-    expect(text).toContain('We are about to send a lien notice on 1 RMC- Dudley Mason job.')
+    expect(text).toContain('We are about to send a lien notice on 1 RLC- Dunmere Mallin job.')
     expect(text).toContain('$17,585 is owed on it.')
     expect(text).toContain('It must be mailed tomorrow, Oct 15.')
-    expect(text).toContain('• 273 Dudley (Lennox), Aug, $17,585, approved for the next run')
-    expect(text).toContain('1 RMC- Dudley Mason job has no property kind set. If it is a home, its dates come a month sooner.')
+    expect(text).toContain('• 273 Dunmere (Linmoor), Aug, $17,585, approved for the next run')
+    expect(text).toContain('1 RLC- Dunmere Mallin job has no property kind set. If it is a home, its dates come a month sooner.')
     expect(text).toContain('2 more jobs passed their lien window. $1,335 is still owed there, with no lien.')
 
     const desk = { ...OCT1, jobs: [job('1', 'A', 'G', 100, ['2026-09'], 'ready'), job('2', 'B', 'G', 50, ['2026-09'], 'held')], liens: [], kindsUnset: 0 }
@@ -172,29 +172,29 @@ describe('lienStatusText — the share sheet’s message (v2.4311)', () => {
 describe('the subject, the link and the groups', () => {
   it('leads with the count, the money and the first date', () => {
     expect(lienStatusSubject(OCT1)).toBe('Liens, Oct 1: 23 notices due, $173,597, first by Oct 15')
-    expect(lienStatusSubject(knight())).toBe('Knight Contracting liens, Oct 1: 5 notices due, $15,558, first by Oct 15')
+    expect(lienStatusSubject(kestrin())).toBe('Kestrin Contracting liens, Oct 1: 5 notices due, $15,558, first by Oct 15')
   })
 
   it('opens the desk, or the desk on a GC’s first job', () => {
     expect(lienStatusDeskPath(OCT1)).toBe('/lien-desk')
-    const k = knight()
+    const k = kestrin()
     expect(lienStatusDeskPath(k)).toBe(`/lien-desk?tab=notices&job=${k.jobs.find((j) => j.number === '898')!.jobId}`)
   })
 
   it('groups by GC, most money first, each GC soonest first then biggest', () => {
     const groups = lienStatusGroups(JOBS)
-    expect(groups.map((g) => g.name).slice(0, 3)).toEqual([RMC, 'Southern Post Construction', 'Burd & Assoc.'])
+    expect(groups.map((g) => g.name).slice(0, 3)).toEqual([RLC, 'Southern Pine Construction', 'Brund & Assoc.'])
     expect(groups[0]!.jobs[0]!.number).toBe('273')
-    expect(groups.find((g) => g.name === 'Michael Palmer')!.jobs.map((j) => j.number)).toEqual(['843', '922'])
+    expect(groups.find((g) => g.name === 'Michael Palvern')!.jobs.map((j) => j.number)).toEqual(['843', '922'])
   })
 })
 
 describe('the team email', () => {
-  const o = { appUrl: 'https://clicktooling.com/', senderName: 'Grace', note: 'Seguin and Lennox wait on you. Both must be mailed by Oct 15.', readerIsLeader: true }
+  const o = { appUrl: 'https://clicktooling.com/', senderName: 'Grace', note: 'Seguin and Linmoor wait on you. Both must be mailed by Oct 15.', readerIsLeader: true }
 
   it('puts the note on top, speaks to the leader, links the desk and signs with the sender', () => {
     const html = lienStatusEmailHtml(OCT1, o)
-    expect(html).toContain('<b>Grace wrote:</b> Seguin and Lennox wait on you.')
+    expect(html).toContain('<b>Grace wrote:</b> Seguin and Linmoor wait on you.')
     expect(html).toContain('We are about to send lien notices on 23 jobs.')
     expect(html).toContain('Waiting for your approval')
     expect(html).toContain('since Sep 24')
@@ -206,11 +206,11 @@ describe('the team email', () => {
   })
 
   it('one GC’s email says the kind point once, under Still to do, and shows no empty approvals tile', () => {
-    const text = lienStatusEmailText(knight(), { ...o, note: '' })
+    const text = lienStatusEmailText(kestrin(), { ...o, note: '' })
     expect(text).toContain('• Set the property kind on 3 jobs. If any is a home, its dates come a month sooner.')
-    expect(text).not.toContain('Knight Contracting jobs have no property kind set')
+    expect(text).not.toContain('Kestrin Contracting jobs have no property kind set')
     expect(text.match(/property kind/g)).toHaveLength(1)
-    const html = lienStatusEmailHtml(knight(), { ...o, note: '' })
+    const html = lienStatusEmailHtml(kestrin(), { ...o, note: '' })
     expect(html.match(/property kind/g)).toHaveLength(1)
     expect(html).toContain('>None</div>')
     expect(html).toContain('waiting for approval')
@@ -228,11 +228,11 @@ describe('the team email', () => {
 
   it('has a plain twin with every job under its GC and the link spelled out', () => {
     const text = lienStatusEmailText(OCT1, o)
-    expect(text.startsWith('Grace wrote: Seguin and Lennox wait on you.')).toBe(true)
+    expect(text.startsWith('Grace wrote: Seguin and Linmoor wait on you.')).toBe(true)
     expect(text).toContain('Waiting for your approval:')
-    expect(text).toContain('• 878 Take 5- Seguin, Southern Post Construction, Jul, Aug and Sep, $38,625, since Sep 24')
-    expect(text).toContain('RMC- Dudley Mason, 9 jobs, $46,391, first by Oct 15')
-    expect(text).toContain('  • 853 Service Visit, 628 Terrell Rd, Aug, $595, to draft')
+    expect(text).toContain('• 878 Tune 5- Seguin, Southern Pine Construction, Jul, Aug and Sep, $38,625, since Sep 24')
+    expect(text).toContain('RLC- Dunmere Mallin, 9 jobs, $46,391, first by Oct 15')
+    expect(text).toContain('  • 853 Service Visit, 628 Tarrow Rd, Aug, $595, to draft')
     expect(text).toContain('• 838 Bruce Hall, $350. We contracted with the owner. It needs the owner of record and the legal description.')
     expect(text).toContain('Open the Lien desk: https://clicktooling.com/lien-desk')
   })
@@ -267,10 +267,10 @@ describe('parseLienStatusPayload — what the server accepts', () => {
 
 describe('the houses list — lien jobs where a supply house is also owed (v2.4407)', () => {
   const HOUSES: LienStatusHouseJob[] = [
-    { number: '891', name: 'Take 5- Liberty Hill', gc: 'Burd & Assoc.', owed: 27199, housesOwed: 6258, houses: 1, house: 'Reece', byYmd: OCT, jobAccount: false },
-    { number: '650', name: 'ATI Schertz', gc: 'Loberg Contracting', owed: 15722, housesOwed: 15007, houses: 3, house: 'Reece', byYmd: OCT, jobAccount: false },
-    { number: '251', name: 'Michael Palmer', gc: 'Michael Palmer', owed: 4720, housesOwed: 4958, houses: 3, house: 'Reece', byYmd: NOV, jobAccount: true },
-    { number: '881', name: 'Dudley Mason', gc: '', owed: 1050, housesOwed: 61, houses: 1, house: 'Moore Supply', byYmd: '', jobAccount: false },
+    { number: '891', name: 'Tune 5- Liberty Hill', gc: 'Brund & Assoc.', owed: 27199, housesOwed: 6258, houses: 1, house: 'Reece', byYmd: OCT, jobAccount: false },
+    { number: '650', name: 'AXO Schertz', gc: 'Lowbeck Contracting', owed: 15722, housesOwed: 15007, houses: 3, house: 'Reece', byYmd: OCT, jobAccount: false },
+    { number: '251', name: 'Michael Palvern', gc: 'Michael Palvern', owed: 4720, housesOwed: 4958, houses: 3, house: 'Reece', byYmd: NOV, jobAccount: true },
+    { number: '881', name: 'Dunmere Mallin', gc: '', owed: 1050, housesOwed: 61, houses: 1, house: 'Moore Supply', byYmd: '', jobAccount: false },
   ]
   const P: LienStatusPayload = { v: 1, asOf: '2026-10-01T19:14:00.000Z', todayYmd: '2026-10-01', gc: null, jobs: [], liens: [], kindsUnset: 0, trackingOwed: 0, pastWindow: { jobs: 0, owed: 0 }, retainage: { jobs: 0, held: 0, firstYmd: '' }, houses: HOUSES }
 
@@ -283,13 +283,13 @@ describe('the houses list — lien jobs where a supply house is also owed (v2.44
         '$48,691 is owed to us on them.',
         '$26,284 is owed to the houses.',
         '',
-        '• 650 ATI Schertz, Loberg Contracting. Us $15,722. 3 houses $15,007. Reece’s notice by Oct 15.',
+        '• 650 AXO Schertz, Lowbeck Contracting. Us $15,722. 3 houses $15,007. Reece’s notice by Oct 15.',
         // A GC's own full stop is not doubled.
-        '• 891 Take 5- Liberty Hill, Burd & Assoc. Us $27,199. Reece $6,258. Its notice by Oct 15.',
+        '• 891 Tune 5- Liberty Hill, Brund & Assoc. Us $27,199. Reece $6,258. Its notice by Oct 15.',
         // A job named for its GC says the name once.
-        '• 251 Michael Palmer. Us $4,720. 3 houses $4,958 on a job account. Reece’s notice by Nov 16.',
+        '• 251 Michael Palvern. Us $4,720. 3 houses $4,958 on a job account. Reece’s notice by Nov 16.',
         // No open window: the money only.
-        '• 881 Dudley Mason. Us $1,050. Moore Supply $61.',
+        '• 881 Dunmere Mallin. Us $1,050. Moore Supply $61.',
         '',
         'A supply house can send its own notice on the same property. Each date is our estimate.',
         '',
@@ -318,7 +318,7 @@ describe('the houses list — lien jobs where a supply house is also owed (v2.44
     expect(html).toContain('4 lien jobs still owe a supply house.')
     expect(html).toContain('owed to supply houses')
     expect(html).toContain('first house notice, in 14 days')
-    expect(html).toContain('<b>650 ATI Schertz</b>')
+    expect(html).toContain('<b>650 AXO Schertz</b>')
     expect(html).toContain('TO HOUSES')
     expect(html).not.toContain('By GC')
     expect(html).not.toContain('A notice keeps our right')

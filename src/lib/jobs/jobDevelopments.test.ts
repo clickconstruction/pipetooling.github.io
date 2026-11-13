@@ -19,29 +19,29 @@ function dev(id: string, name: string, master = MASTER, archived_at: string | nu
 
 describe('resolveDevelopmentIdForJobPayload', () => {
   it('keeps a pick owned by the job master', () => {
-    expect(resolveDevelopmentIdForJobPayload('d1', MASTER, [dev('d1', 'Sagebrush')])).toBe('d1')
+    expect(resolveDevelopmentIdForJobPayload('d1', MASTER, [dev('d1', 'Sagemoor')])).toBe('d1')
   })
 
   it('drops a cross-master pick to null (DB backstop would reject it)', () => {
-    expect(resolveDevelopmentIdForJobPayload('d1', MASTER, [dev('d1', 'Sagebrush', OTHER)])).toBeNull()
+    expect(resolveDevelopmentIdForJobPayload('d1', MASTER, [dev('d1', 'Sagemoor', OTHER)])).toBeNull()
   })
 
   it('trusts a pick not present in the supplied list', () => {
-    expect(resolveDevelopmentIdForJobPayload('unknown', MASTER, [dev('d1', 'Sagebrush')])).toBe('unknown')
+    expect(resolveDevelopmentIdForJobPayload('unknown', MASTER, [dev('d1', 'Sagemoor')])).toBe('unknown')
   })
 
   it('null pick stays null', () => {
-    expect(resolveDevelopmentIdForJobPayload(null, MASTER, [dev('d1', 'Sagebrush')])).toBeNull()
+    expect(resolveDevelopmentIdForJobPayload(null, MASTER, [dev('d1', 'Sagemoor')])).toBeNull()
   })
 })
 
 describe('developmentPickerOptions', () => {
   it('name-sorts active developments and drops archived ones', () => {
     const opts = developmentPickerOptions(
-      [dev('d2', 'Wildflower'), dev('d1', 'Sagebrush Phase 2'), dev('d3', 'Old Town', MASTER, '2026-07-01')],
+      [dev('d2', 'Wildflower'), dev('d1', 'Sagemoor Phase 2'), dev('d3', 'Old Town', MASTER, '2026-07-01')],
       null,
     )
-    expect(opts.map((o) => o.name)).toEqual(['Sagebrush Phase 2', 'Wildflower'])
+    expect(opts.map((o) => o.name)).toEqual(['Sagemoor Phase 2', 'Wildflower'])
   })
 
   it('keeps the currently linked development even when archived', () => {
@@ -56,7 +56,7 @@ describe('developmentPickerOptions', () => {
 
 describe('validateNewDevelopmentName', () => {
   it('trims and accepts a fresh name', () => {
-    expect(validateNewDevelopmentName('  Sagebrush Phase 2 ', [])).toEqual({ ok: true, name: 'Sagebrush Phase 2' })
+    expect(validateNewDevelopmentName('  Sagemoor Phase 2 ', [])).toEqual({ ok: true, name: 'Sagemoor Phase 2' })
   })
 
   it('rejects empty input', () => {
@@ -65,7 +65,7 @@ describe('validateNewDevelopmentName', () => {
   })
 
   it('rejects a case-insensitive clash with an ACTIVE development', () => {
-    const r = validateNewDevelopmentName('sagebrush', [dev('d1', 'Sagebrush')])
+    const r = validateNewDevelopmentName('sagemoor', [dev('d1', 'Sagemoor')])
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error).toContain('already exists')
   })
@@ -79,14 +79,14 @@ describe('validateNewDevelopmentName', () => {
 })
 
 describe('validateRenameDevelopment', () => {
-  const devs = [dev('d1', 'Sagebrush'), dev('d2', 'Wildflower'), dev('d3', 'Old Town', MASTER, '2026-07-01')]
+  const devs = [dev('d1', 'Sagemoor'), dev('d2', 'Wildflower'), dev('d3', 'Old Town', MASTER, '2026-07-01')]
 
   it('accepts a fresh name and trims it', () => {
-    expect(validateRenameDevelopment('d1', '  Sagebrush Phase 2 ', devs)).toEqual({ ok: true, name: 'Sagebrush Phase 2' })
+    expect(validateRenameDevelopment('d1', '  Sagemoor Phase 2 ', devs)).toEqual({ ok: true, name: 'Sagemoor Phase 2' })
   })
 
   it('excludes the renamed row itself (casing-only rename allowed)', () => {
-    expect(validateRenameDevelopment('d1', 'SAGEBRUSH', devs)).toEqual({ ok: true, name: 'SAGEBRUSH' })
+    expect(validateRenameDevelopment('d1', 'SAGEMOOR', devs)).toEqual({ ok: true, name: 'SAGEMOOR' })
   })
 
   it('rejects a clash with another ACTIVE development', () => {
@@ -102,8 +102,8 @@ describe('validateRenameDevelopment', () => {
 
 describe('developmentUnarchiveClash', () => {
   it('finds the active row blocking an unarchive, else null', () => {
-    const archived = dev('d3', 'Sagebrush', MASTER, '2026-07-01')
-    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'sagebrush')])?.id).toBe('d1')
+    const archived = dev('d3', 'Sagemoor', MASTER, '2026-07-01')
+    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'sagemoor')])?.id).toBe('d1')
     expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'Wildflower')])).toBeNull()
   })
 })
@@ -112,7 +112,7 @@ describe('sortDevelopmentsForSettings', () => {
   it('splits active/archived, each name-sorted case-insensitively', () => {
     const { active, archived } = sortDevelopmentsForSettings([
       dev('d2', 'wildflower'),
-      dev('d1', 'Sagebrush'),
+      dev('d1', 'Sagemoor'),
       dev('d4', 'zz old', MASTER, '2026-07-01'),
       dev('d3', 'Aged Oaks', MASTER, '2026-07-01'),
     ])

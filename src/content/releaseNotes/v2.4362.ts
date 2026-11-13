@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'A bill the GC pays now teaches the GC’s pay speed, not the homeowner’s.',
-    'Jobs billed only to a GC count again. RMC- Dudley Mason now has his own pace of about 35 days.',
+    'Jobs billed only to a GC count again. RLC- Dunmere Mallin now has his own pace of about 35 days.',
     'Same-day card payments count toward pay speed, as the Data health list already showed.',
     'The payment forecast email uses the same pay speeds as the app.',
   ],
