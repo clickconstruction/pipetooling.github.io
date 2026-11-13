@@ -7,7 +7,7 @@ import { paySpeedPayer } from './billToParty'
 import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import { daysBetweenYmd, formatYmdMonthDay, type CustomerSegment, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayModel } from './billedDuePay'
-import { calendarFor, type PayCalendarIndex } from './payCalendar'
+import { calendarSourceFor, type PayCalendarIndex } from './payCalendar'
 
 /**
  * Billed Awaiting Payment — payment forecast (pure kernel).
@@ -158,7 +158,7 @@ export function buildBilledPaymentForecast(
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
-      calendarFor(payCalendars, { payerId, jobId: job.id }),
+      calendarSourceFor(payCalendars, { payerId, jobId: job.id }),
     )
     // A promise is bucketed by when the money usually lands after the date
     // this customer gives, not by the date itself (Their Word PR 3).

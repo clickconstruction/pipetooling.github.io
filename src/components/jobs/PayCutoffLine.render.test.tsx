@@ -49,6 +49,16 @@ describe('PayCutoffLine', () => {
   })
 })
 
+describe('PayCutoffLine on a job’s own calendar (punch list #341)', () => {
+  it('says the calendar is this job’s own, in the line and in its hover', () => {
+    renderWithProviders(<PayCutoffLine line={payCutoffLine('2026-11-12', PAY_CALENDAR_DEFAULT)!} payerName="Larkfield Construction" own />)
+    const line = screen.getByTestId('pay-cutoff-line')
+    expect(line.textContent).toBe('Send by Nov 30 to be due Dec 10. After that, Jan 10. This job’s own calendar.')
+    expect(line.getAttribute('data-own')).toBe('true')
+    expect(line.getAttribute('title')).toBe('This job’s own calendar: A bill in by the last day of the month is paid the 10th of the next month. The cutoff is in 18 days.')
+  })
+})
+
 describe('BillCustomerPayCutoffLine', () => {
   it("reads the payer's calendar and says what sending today makes the bill", async () => {
     renderWithProviders(<BillCustomerPayCutoffLine payerCustomerId="payer-1" jobId="job-1" />)

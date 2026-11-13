@@ -114,6 +114,10 @@ You can start from **Jobs → Pipeline** too. Press the calendar's words under t
 
 A row with no calendar reads *Pays in* there. Press it. Then press the pay calendar line in the window that opens.
 
+On the Pipeline a job on its own calendar says so. Its row reads *This job's own* before the calendar's words. A job that was switched off reads *No pay calendar on this job*. Press either one to open the window on that job.
+
+The customer's own window lists the jobs that do not follow it. Press a job there to open its calendar.
+
 A job in a development offers one more tick, like *Also set on the other 12 jobs in Larkfield Commons*. Tick it to set them all at once. The button then names the count, like {{button:blue|Save for 13 jobs}}. A job that fails is named with its reason, and the rest are still saved.
 
 To undo it, open the same window on the job and press {{button:outline|Follow Larkfield Construction again}}. The button carries the customer's own name.

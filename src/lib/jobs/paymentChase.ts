@@ -26,7 +26,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { batchOutcomeWords, type BatchOutcome } from '../batchWords'
 import { billedReferenceYmd, daysBetweenYmd, type CustomerSegment, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayModel } from './billedDuePay'
-import { calendarFor, type PayCalendarIndex } from './payCalendar'
+import { calendarSourceFor, type PayCalendarIndex } from './payCalendar'
 
 /** Default can't-reach snooze when the caller doesn't pick one. */
 export const DEFAULT_SNOOZE_DAYS = 7
@@ -159,7 +159,7 @@ export function buildPaymentChaseQueue(
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId: pace_.id, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
-      calendarFor(payCalendars, { payerId: pace_.id, jobId: job.id }),
+      calendarSourceFor(payCalendars, { payerId: pace_.id, jobId: job.id }),
     )
     if (!model) continue // no clock to be late against — the forecast's 'unknown' bucket
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
