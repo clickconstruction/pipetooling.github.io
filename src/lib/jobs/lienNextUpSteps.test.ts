@@ -3,7 +3,7 @@ import type { LienNextUpRow } from './lienNextUp'
 import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepBrief, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
-  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
+  key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · AXO Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
   ...over,
 })
 
@@ -73,11 +73,11 @@ describe('lienStepCard', () => {
     expect(c.items[2]!.detail).toBe('Approved Oct 30 with a 10% offer, by Nov 15.')
   })
   it("writes a notice's ladder out: done rungs carry the facts, the current rung says who is waiting, the foot counts", () => {
-    const c = lienStepCard(row({ action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }), { ownerName: 'Take 5 Properties LLC', draftedOn: '2026-10-03T14:00:00Z', coverNote: true, readyToSend: 11, viewerIsLeader: true })
+    const c = lienStepCard(row({ action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }), { ownerName: 'Tune 5 Properties LLC', draftedOn: '2026-10-03T14:00:00Z', coverNote: true, readyToSend: 11, viewerIsLeader: true })
     expect(c.kindWords).toBe('Notice')
     expect(c.deadline).toBe('In the mail by Oct 15 · 10 days left')
     expect(c.items.map((i) => i.state)).toEqual(['done', 'done', 'now', 'todo'])
-    expect(c.items[0]).toEqual({ state: 'done', title: 'Owner found', detail: 'Take 5 Properties LLC, from the property record.' })
+    expect(c.items[0]).toEqual({ state: 'done', title: 'Owner found', detail: 'Tune 5 Properties LLC, from the property record.' })
     expect(c.items[1]!.detail).toBe('Drafted Oct 3, with a cover note.')
     expect(c.items[2]!.detail).toBe('Waiting on you. One press, or hold it.')
     expect(c.items[3]!.detail).toContain('with the 11 that are ready')

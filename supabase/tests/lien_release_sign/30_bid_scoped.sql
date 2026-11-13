@@ -30,14 +30,14 @@ INSERT INTO public.users (id, email, name, notes, role, read_only, is_digital_tw
 INSERT INTO public.user_sign_codes (user_id, code_hash, code_salt) VALUES
   ('00000000-0000-0000-0000-0000000f6a01', encode(sha256(convert_to('bed-salt' || '2468', 'UTF8')), 'hex'), 'bed-salt');
 
--- Take 5 Seguin as a bid (Wendi's), and as job 878 with a conditional final waiver of its own; one more waiver on the bid,
+-- Tune 5 Seguin as a bid (Wendi's), and as job 878 with a conditional final waiver of its own; one more waiver on the bid,
 -- made by the office, waits for a code.
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000f6b01', 'Bid waiver Plumbing');
-INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000f6c01', '00000000-0000-0000-0000-0000000f6a01', 'Southern Post');
+INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000f6c01', '00000000-0000-0000-0000-0000000f6a01', 'Southern Pine');
 INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_name, customer_id) VALUES
-  ('00000000-0000-0000-0000-0000000f6d01', '00000000-0000-0000-0000-0000000f6a03', '00000000-0000-0000-0000-0000000f6a02', '00000000-0000-0000-0000-0000000f6b01', 'Take 5 Seguin', '00000000-0000-0000-0000-0000000f6c01');
+  ('00000000-0000-0000-0000-0000000f6d01', '00000000-0000-0000-0000-0000000f6a03', '00000000-0000-0000-0000-0000000f6a02', '00000000-0000-0000-0000-0000000f6b01', 'Tune 5 Seguin', '00000000-0000-0000-0000-0000000f6c01');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000f6e01', '00000000-0000-0000-0000-0000000f6a01', '00000000-0000-0000-0000-0000000f6b01', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
+  ('00000000-0000-0000-0000-0000000f6e01', '00000000-0000-0000-0000-0000000f6a01', '00000000-0000-0000-0000-0000000f6b01', '878', 'Tune 5- Seguin', 'Southern Pine', 'gc', 38625, 34825, 'billed');
 INSERT INTO public.job_lien_releases (id, job_id, form_type, amount, status, created_by) VALUES
   ('00000000-0000-0000-0000-0000000f6f01', '00000000-0000-0000-0000-0000000f6e01', 'conditional_final', 3800, 'issued', '00000000-0000-0000-0000-0000000f6a03');
 INSERT INTO public.job_lien_releases (id, bid_id, form_type, amount, status, created_by) VALUES

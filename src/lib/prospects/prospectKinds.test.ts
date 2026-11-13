@@ -80,10 +80,10 @@ describe('prospectKinds: trades text', () => {
 
 describe('prospectKinds: landing on the bench', () => {
   const sub = {
-    company_name: ' Bexar Fire Protection ',
+    company_name: ' Baxter Fire Protection ',
     contact_name: 'Tomás Reyna',
     phone_number: '(210) 555-0188',
-    email: 'bids@bexarfire.example',
+    email: 'bids@baxterfire.example',
     address: '1800 Cibolo Trail, Boerne',
     trades: ['Fire sprinkler', 'HVAC'],
     max_miles: 40,
@@ -92,11 +92,11 @@ describe('prospectKinds: landing on the bench', () => {
 
   it("fills the bench's draft from the sub, new to us", () => {
     expect(benchDraftFromProspect(sub)).toEqual({
-      name: 'Bexar Fire Protection',
+      name: 'Baxter Fire Protection',
       trades: ['Fire sprinkler', 'HVAC'],
       contactName: 'Tomás Reyna',
       phone: '(210) 555-0188',
-      email: 'bids@bexarfire.example',
+      email: 'bids@baxterfire.example',
       address: '1800 Cibolo Trail, Boerne',
       maxMiles: 40,
       known: false,
@@ -113,9 +113,9 @@ describe('prospectKinds: landing on the bench', () => {
   })
 
   it('records the landing in the comment and the toast', () => {
-    expect(prospectBenchCommentText('Bexar Fire Protection')).toBe('Added to the bench: Bexar Fire Protection (/gc?view=partners)')
+    expect(prospectBenchCommentText('Baxter Fire Protection')).toBe('Added to the bench: Baxter Fire Protection (/gc?view=partners)')
     expect(prospectBenchCommentText('  ')).toBe('Added to the bench: the company (/gc?view=partners)')
-    expect(prospectLandedToast('sub', 'Bexar Fire Protection', '')).toBe('Bexar Fire Protection is on the bench')
+    expect(prospectLandedToast('sub', 'Baxter Fire Protection', '')).toBe('Baxter Fire Protection is on the bench')
     expect(prospectLandedToast('gc_lead', 'Hill Country Developers', 'Hill Country Developers')).toBe(
       'Hill Country Developers asked us → Hill Country Developers',
     )
@@ -141,7 +141,7 @@ describe('prospectKinds: the facts under the name', () => {
 
 describe('benchDraftFromProspect carries the person and the profile (v2.5603)', () => {
   it('dials the cell first and rides the license and the Maps link', () => {
-    const draft = benchDraftFromProspect({ company_name: 'Bexar Fire Protection', contact_name: 'Tomás Reyna', phone_number: '(210) 555-0188', contact_phone: '(210) 555-0122', email: null, address: null, trades: ['Fire sprinkler'], max_miles: 40, lang: 'es', license: ' TX SCR-1884 ', maps_url: 'https://maps.app.goo.gl/x7Qz' })
+    const draft = benchDraftFromProspect({ company_name: 'Baxter Fire Protection', contact_name: 'Tomás Reyna', phone_number: '(210) 555-0188', contact_phone: '(210) 555-0122', email: null, address: null, trades: ['Fire sprinkler'], max_miles: 40, lang: 'es', license: ' TX SCR-1884 ', maps_url: 'https://maps.app.goo.gl/x7Qz' })
     expect(draft.phone).toBe('(210) 555-0122')
     expect(draft.license).toBe('TX SCR-1884')
     expect(draft.mapsUrl).toBe('https://maps.app.goo.gl/x7Qz')

@@ -3,7 +3,7 @@ import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills 
 import type { DriveContractMatch } from './driveContractMatch'
 
 const match = (over: { jobId: string | null; confidence: DriveContractMatch['confidence']; name?: string; modified?: string | null; link?: string | null }): DriveContractMatch => ({
-  file: { id: over.name ?? 'f', name: over.name ?? 'Contract.pdf', mimeType: 'application/pdf', modifiedTime: over.modified === undefined ? '2026-08-14T15:00:00Z' : over.modified, webViewLink: over.link === undefined ? `https://drive.google.com/file/d/${over.name ?? 'f'}/view` : over.link, size: 1, folderId: 'fo', folderName: 'J523 Mission Hills' },
+  file: { id: over.name ?? 'f', name: over.name ?? 'Contract.pdf', mimeType: 'application/pdf', modifiedTime: over.modified === undefined ? '2026-08-14T15:00:00Z' : over.modified, webViewLink: over.link === undefined ? `https://drive.google.com/file/d/${over.name ?? 'f'}/view` : over.link, size: 1, folderId: 'fo', folderName: 'J523 Mission Flats' },
   jobId: over.jobId,
   confidence: over.confidence,
   reason: 'folder names the street · signed subcontract',
@@ -19,7 +19,7 @@ describe('contractSweepDrive — one best find per job', () => {
 
   it('between equals takes the newest, and dates the find from the file', () => {
     const finds = bestDriveFindByJob([match({ jobId: 'j1', confidence: 'confident', name: 'a', modified: '2026-03-01T00:00:00Z' }), match({ jobId: 'j1', confidence: 'confident', name: 'b', modified: '2026-08-14T15:00:00Z' })])
-    expect(finds.get('j1')).toMatchObject({ fileName: 'b', signedOn: '2026-08-14', folderName: 'J523 Mission Hills', link: 'https://drive.google.com/file/d/b/view' })
+    expect(finds.get('j1')).toMatchObject({ fileName: 'b', signedOn: '2026-08-14', folderName: 'J523 Mission Flats', link: 'https://drive.google.com/file/d/b/view' })
   })
 
   it('is nobody’s find without a job, a link, or a real match', () => {

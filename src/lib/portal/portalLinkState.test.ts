@@ -115,7 +115,7 @@ describe('buildPortalTimeline', () => {
         { audience: 'all', created_at: '2026-08-21T10:00:05Z', revoked_at: null, created_by: 'u1' },
       ],
       [
-        { event: 'created', slug: 'knight-contracting', created_at: '2026-08-21T11:00:00Z', created_by: 'u1' },
+        { event: 'created', slug: 'kestrin-contracting', created_at: '2026-08-21T11:00:00Z', created_by: 'u1' },
         { event: 'bogus', slug: null, created_at: '2026-08-21T11:30:00Z', created_by: null },
       ],
     )

@@ -54,7 +54,7 @@ function makeProps(over: Partial<CellProps> = {}): CellProps {
     onStartCardPlacement: vi.fn(),
     onCardPlacementCellPick: vi.fn(),
     groupMemberCountByGroupId: new Map(),
-    getJobDisplayTitle: (id) => (id === 'job-1' ? 'J927 · Berg AirBnb' : 'Bid visit · B375 · Tower West'),
+    getJobDisplayTitle: (id) => (id === 'job-1' ? 'J927 · Birkby AirBnb' : 'Bid visit · B375 · Tower West'),
     getJobAddress: () => '',
     onOpenJob: vi.fn(),
     onOpenHubJobDetail: vi.fn(),
@@ -132,7 +132,7 @@ describe('HubPeopleDayCell — a cell with blocks', () => {
     const { cell } = await renderCell({
       cellBlocks: [block(), block({ id: 'blk-2', job_id: null, bid_id: 'bid-9', time_start: '13:00:00', time_end: '15:00:00' })],
     })
-    expect(text(cell)).toContain('J927 · Berg AirBnb')
+    expect(text(cell)).toContain('J927 · Birkby AirBnb')
     expect(text(cell)).toContain('Bid visit · B375 · Tower West')
     expect(screen.getAllByRole('button', { name: 'Remove block' })).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: 'Edit job instructions' })).toHaveLength(2)

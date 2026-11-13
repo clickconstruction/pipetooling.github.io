@@ -29,7 +29,7 @@ describe('get_matter_document (a matter\'s text document a piece at a time, v2.6
     expect(matterDocReadInput({ matter_id: MATTER.toUpperCase(), doc_id: DOC, section: 3 })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: '3' })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC, section: ' Held with counsel ' })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: 'Held with counsel' })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC })).toEqual({ ok: true, matterId: MATTER, docId: DOC, section: null })
-    expect(matterDocReadInput({ matter_id: 'burd', doc_id: DOC })).toMatchObject({ ok: false, refused: expect.stringContaining('matter_id') })
+    expect(matterDocReadInput({ matter_id: 'brund', doc_id: DOC })).toMatchObject({ ok: false, refused: expect.stringContaining('matter_id') })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: 'memo' })).toMatchObject({ ok: false, refused: expect.stringContaining('doc_id') })
     expect(matterDocReadInput({ matter_id: MATTER, doc_id: DOC, section: 'x'.repeat(201) })).toMatchObject({ ok: false })
   })
@@ -62,7 +62,7 @@ describe('get_matter_document (a matter\'s text document a piece at a time, v2.6
   it('the server, the README and the migration carry the verb; the function refuses a file alone and a counsel-only paper to the seat, and the slice is one grammar', () => {
     expect(SERVER).toContain("name: 'get_matter_document'")
     expect(SERVER).toContain("case 'get_matter_document': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.80.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
     expect(README).toContain('`get_matter_document(matter_id, doc_id, section?)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain("CREATE OR REPLACE FUNCTION public.hr_doc_slice(p_text text, p_section text DEFAULT NULL, p_who text DEFAULT 'the document')")

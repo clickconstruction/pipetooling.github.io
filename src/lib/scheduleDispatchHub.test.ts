@@ -63,13 +63,13 @@ describe('sortJobPickerRowsFinishedLast', () => {
 describe('findDuplicateJobAddress', () => {
   it('finds the largest group sharing a normalized address', () => {
     const rows = [
-      { job_address: '109 Tuscarora Trail Shavano Park, TX 78231' },
-      { job_address: '109  tuscarora trail shavano park, tx 78231' },
+      { job_address: '109 Tamberline Trail Shavano Park, TX 78231' },
+      { job_address: '109  tamberline trail shavano park, tx 78231' },
       { job_address: '717 Trinity St Lockhart, TX' },
     ]
     const dup = findDuplicateJobAddress(rows)
     expect(dup?.count).toBe(2)
-    expect(dup?.address).toBe('109 Tuscarora Trail Shavano Park, TX 78231')
+    expect(dup?.address).toBe('109 Tamberline Trail Shavano Park, TX 78231')
   })
 
   it('returns null when addresses are unique or blank', () => {
@@ -244,14 +244,14 @@ describe('aggregateWeekSummariesByJob', () => {
 
 describe('formatScheduleDispatchHubJobTitle', () => {
   it('reads "J<number> · <job name>"', () => {
-    expect(formatScheduleDispatchHubJobTitle('927', 'Berg AirBnb')).toBe('J927 · Berg AirBnb')
-    expect(formatScheduleDispatchHubJobTitle(' 927 ', ' Berg AirBnb ')).toBe('J927 · Berg AirBnb')
+    expect(formatScheduleDispatchHubJobTitle('927', 'Birkby AirBnb')).toBe('J927 · Birkby AirBnb')
+    expect(formatScheduleDispatchHubJobTitle(' 927 ', ' Birkby AirBnb ')).toBe('J927 · Birkby AirBnb')
   })
 
   it('falls back to the Click number only when it is handed one', () => {
-    expect(formatScheduleDispatchHubJobTitle(null, 'Berg AirBnb', '4102')).toBe('J4102 · Berg AirBnb')
-    expect(formatScheduleDispatchHubJobTitle('927', 'Berg AirBnb', '4102')).toBe('J927 · Berg AirBnb')
-    expect(formatScheduleDispatchHubJobTitle(null, 'Berg AirBnb')).toBe('— · Berg AirBnb')
+    expect(formatScheduleDispatchHubJobTitle(null, 'Birkby AirBnb', '4102')).toBe('J4102 · Birkby AirBnb')
+    expect(formatScheduleDispatchHubJobTitle('927', 'Birkby AirBnb', '4102')).toBe('J927 · Birkby AirBnb')
+    expect(formatScheduleDispatchHubJobTitle(null, 'Birkby AirBnb')).toBe('— · Birkby AirBnb')
   })
 
   it('says "— · Job" when there is nothing to say', () => {
@@ -286,18 +286,18 @@ describe('buildHubMergedRows', () => {
 
   it('gives every job its week: the total, the count per day and the identity line', () => {
     const rows = buildHubMergedRows(
-      [job('a', '927', { job_name: 'Berg AirBnb', status: 'working', job_address: '12 Elm' })],
+      [job('a', '927', { job_name: 'Birkby AirBnb', status: 'working', job_address: '12 Elm' })],
       blocks('a', '2026-09-28', '2026-09-28', '2026-09-30'),
     )
     expect(rows).toEqual([
       {
         id: 'a',
         hcp_number: '927',
-        job_name: 'Berg AirBnb',
+        job_name: 'Birkby AirBnb',
         project_id: null,
         status: 'working',
         job_address: '12 Elm',
-        displayTitle: 'J927 · Berg AirBnb',
+        displayTitle: 'J927 · Birkby AirBnb',
         totalBlocks: 3,
         byDay: { '2026-09-28': 2, '2026-09-30': 1 },
       },
@@ -369,7 +369,7 @@ describe('the hub lookups by anchor id', () => {
   const hubJob = (id: string, over: Record<string, unknown> = {}) => ({
     id,
     hcp_number: '927',
-    job_name: 'Berg AirBnb',
+    job_name: 'Birkby AirBnb',
     project_id: null,
     ...over,
   })
@@ -388,14 +388,14 @@ describe('the hub lookups by anchor id', () => {
     it('names a job by its id and a bid by its bid: anchor', () => {
       const m = buildHubJobTitleById([hubJob('j1')], [hubBid('b1')], new Map())
       expect([...m]).toEqual([
-        ['j1', 'J927 · Berg AirBnb'],
+        ['j1', 'J927 · Birkby AirBnb'],
         ['bid:b1', 'Bid visit · B375 · Tower West'],
       ])
     })
 
     it('names a job with no HCP number by its Click number', () => {
       const m = buildHubJobTitleById([hubJob('j1', { hcp_number: null, click_number: '4102' })], [], new Map())
-      expect(m.get('j1')).toBe('J4102 · Berg AirBnb')
+      expect(m.get('j1')).toBe('J4102 · Birkby AirBnb')
     })
 
     it('names a bid that is scheduled but not on the list from the title it was handed', () => {
@@ -416,7 +416,7 @@ describe('the hub lookups by anchor id', () => {
 
     it('keeps a job and a bid with the same uuid apart', () => {
       const m = buildHubJobTitleById([hubJob('same')], [hubBid('same')], new Map())
-      expect(m.get('same')).toBe('J927 · Berg AirBnb')
+      expect(m.get('same')).toBe('J927 · Birkby AirBnb')
       expect(m.get('bid:same')).toBe('Bid visit · B375 · Tower West')
     })
 

@@ -41,7 +41,7 @@ again, as designed. Nothing was deleted. Screenshots `259-1` to `259-4` in the w
 
 ## The ask
 
-Grace, 2026-11-04, on Glenn Geling's invitation to bid in the message window: "when looking at an
+Grace, 2026-11-04, on Glenn Gelwin's invitation to bid in the message window: "when looking at an
 email, I would like the option to see it as rich text or in the current format". The plain view's
 half of the ask shipped as v2.6508: a web address in the words is one press with a link mark, the
 doubled `url <url>` reads once, the sender's `*bold*` reads bold.

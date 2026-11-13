@@ -73,7 +73,7 @@ describe('weights', () => {
   })
 })
 
-describe("Wendi's SpaceX page (9/18/26)", () => {
+describe("Wendi's SkyLab page (9/18/26)", () => {
   // The printed Rough Takeoff with her pen marks: 2, 2, 3, 2, 2, 2, 2, ½, ½.
   const rows = [
     { id: 'wha300', fixture: 'WHA-300', count: 1 },
@@ -237,7 +237,7 @@ describe('computeMaterialsByStage', () => {
 })
 
 describe('rules and the fill plan', () => {
-  it('places the Palmer Winery names', () => {
+  it('places the Palvern Winery names', () => {
     const mark = (n: string) => stageNumbersText(defaultSplitForFixture(n)?.weights ?? null)
     expect(mark('FCO')).toBe('1')
     expect(mark('WCO')).toBe('1')

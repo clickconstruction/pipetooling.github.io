@@ -3,14 +3,14 @@ import { buildAddressStatementPreview, suggestAddressComma } from './addressComm
 
 describe('buildAddressStatementPreview', () => {
   it('splits at the first comma like the portal statement', () => {
-    expect(buildAddressStatementPreview('1200 Kenney Fort Blvd, Round Rock, TX 78665')).toEqual({
-      street: '1200 Kenney Fort Blvd',
+    expect(buildAddressStatementPreview('1200 Kelby Fort Blvd, Round Rock, TX 78665')).toEqual({
+      street: '1200 Kelby Fort Blvd',
       quiet: 'Round Rock, TX 78665',
     })
   })
   it('keeps a comma-less address whole', () => {
-    expect(buildAddressStatementPreview('1200 Kenney Fort Blvd Round Rock, TX 78665')).toEqual({
-      street: '1200 Kenney Fort Blvd Round Rock',
+    expect(buildAddressStatementPreview('1200 Kelby Fort Blvd Round Rock, TX 78665')).toEqual({
+      street: '1200 Kelby Fort Blvd Round Rock',
       quiet: 'TX 78665',
     })
     expect(buildAddressStatementPreview('TBD — new build off CR 110')).toEqual({
@@ -26,8 +26,8 @@ describe('buildAddressStatementPreview', () => {
 
 describe('suggestAddressComma', () => {
   it('inserts the comma before a one-word city', () => {
-    expect(suggestAddressComma('1200 Kenney Fort Blvd Round Rock, TX 78665')).toEqual({
-      fixed: '1200 Kenney Fort Blvd, Round Rock, TX 78665',
+    expect(suggestAddressComma('1200 Kelby Fort Blvd Round Rock, TX 78665')).toEqual({
+      fixed: '1200 Kelby Fort Blvd, Round Rock, TX 78665',
       city: 'Round Rock',
     })
     expect(suggestAddressComma('4110 N Main St Taylor, TX 76574')).toEqual({
@@ -36,8 +36,8 @@ describe('suggestAddressComma', () => {
     })
   })
   it('handles multi-word cities, longest match first', () => {
-    expect(suggestAddressComma('150 E Sonterra Blvd 200B San Antonio, TX 78258')).toEqual({
-      fixed: '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+    expect(suggestAddressComma('150 E Sonmere Blvd 200B San Antonio, TX 78258')).toEqual({
+      fixed: '150 E Sonmere Blvd 200B, San Antonio, TX 78258',
       city: 'San Antonio',
     })
     expect(suggestAddressComma('13100 W State Hwy 29 Liberty Hill, TX 78642')).toEqual({
@@ -58,8 +58,8 @@ describe('suggestAddressComma', () => {
     })
   })
   it('stays quiet when the split already works or nothing matches', () => {
-    expect(suggestAddressComma('1200 Kenney Fort Blvd, Round Rock, TX 78665')).toBeNull()
-    expect(suggestAddressComma('415 Springtown Way, San Marcos, TX 78666')).toBeNull()
+    expect(suggestAddressComma('1200 Kelby Fort Blvd, Round Rock, TX 78665')).toBeNull()
+    expect(suggestAddressComma('415 Stonewick Way, San Marcos, TX 78666')).toBeNull()
     expect(suggestAddressComma('TBD — new build off CR 110')).toBeNull()
     expect(suggestAddressComma('')).toBeNull()
   })

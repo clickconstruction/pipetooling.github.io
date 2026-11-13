@@ -183,9 +183,9 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
             {
               id: 'job-1',
               hcp_number: '927',
-              job_name: 'Berg AirBnb',
+              job_name: 'Birkby AirBnb',
               project_id: null,
-              displayTitle: 'J927 · Berg AirBnb',
+              displayTitle: 'J927 · Birkby AirBnb',
               totalBlocks: 2,
               byDay: { '2026-07-27': 2 },
             },
@@ -195,7 +195,7 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     )
     await settle()
     expect(screen.getByLabelText('Only jobs with blocks this week')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'J927 · Berg AirBnb' }))
+    fireEvent.click(screen.getByRole('button', { name: 'J927 · Birkby AirBnb' }))
     expect(onOpenJob).toHaveBeenCalledWith('job-1')
   })
 

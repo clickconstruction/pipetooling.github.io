@@ -3,8 +3,8 @@ import { WINDOW_ZONE_MM, isMailShortCode, mailOpenCodeFrom, mailOpenDisplay, mai
 
 describe('the window envelope (the Docsmit train, PR 4)', () => {
   it('the window lines: the company or the person, the street, a suite, City, ST ZIP; blanks fall out', () => {
-    expect(windowAddressLines({ name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postalCode: '78154' })).toEqual(['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'])
-    expect(windowAddressLines({ name: 'John A. Backham', organization: '', address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'tx', postalCode: '78230-1234' })).toEqual(['John A. Backham', '9993 IH 10 West', 'Suite 102', 'San Antonio, TX 78230-1234'])
+    expect(windowAddressLines({ name: '', organization: 'AXO Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postalCode: '78154' })).toEqual(['AXO Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'])
+    expect(windowAddressLines({ name: 'John A. Brackley', organization: '', address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'tx', postalCode: '78230-1234' })).toEqual(['John A. Brackley', '9993 IH 10 West', 'Suite 102', 'San Antonio, TX 78230-1234'])
     expect(windowAddressLines({ name: '', organization: '', address1: '', address2: '', city: '', state: '', postalCode: '' })).toEqual([])
     expect(WINDOW_ZONE_MM.top + WINDOW_ZONE_MM.height).toBeLessThan(100)
   })

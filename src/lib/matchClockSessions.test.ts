@@ -67,7 +67,7 @@ describe('extractCandidateJobNumbersFromNote', () => {
 describe('buildSessionMatchSuggestions', () => {
   const jobs = new Map([
     ['j878', job('j878', '878', 'Lyndsey Lane- Remodel')],
-    ['j961', job('j961', '961', 'Cop Properties')],
+    ['j961', job('j961', '961', 'Crayle Properties')],
   ])
   const byNumber = new Map([
     ['878', jobs.get('j878')!],

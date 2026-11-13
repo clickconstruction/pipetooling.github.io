@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { alreadySplitRows, buildSplitInserts, defaultChoices, draftProblems, splitLegacyAsk, splitMissionTag, splitRetirementAnswer, topicSlug } from './legacyAskMemo'
 
 const SLATE =
-  'Slate doctrine asks from the 2026-08-31/09-01 backtest slate (b424 ours b237/b425 ours b166 — full detail in each bid\'s STG-6 stamp). Three decisions for Wendi/Stephen: (1) SMALL-TI RESIDUAL — all four fresh small/small-mid runs came in LIGHT by a consistent margin (Take 5 pair −21%/−29%, Church cafe −17%). Approve either a footage residual (~$6-8k on sub-$50k jobs) or ~30% higher per-fixture all-ins? (2) TAKE 5 PROTO PACKAGE — b237/b166 pair-implies building base ≈ $37.4k + ~$51/mi travel; approve minting a \'Take 5 proto package\' book entry so the next proto scores inside ±5%? Also confirm: CA piping IS plumber scope on Take 5s (you counted ~70 ft galv both protos despite the by-others note)? (3) HUNTER RD BAND — all three campus buildings lost to a winner under HALF your number. Confirm we bank this as a market-band flag (spec-campus builds ≈ 0.35-0.5× book) rather than recalibrating the book down.'
+  'Slate doctrine asks from the 2026-08-31/09-01 backtest slate (b424 ours b237/b425 ours b166 — full detail in each bid\'s STG-6 stamp). Three decisions for Wendi/Stephen: (1) SMALL-TI RESIDUAL — all four fresh small/small-mid runs came in LIGHT by a consistent margin (Tune 5 pair −21%/−29%, Church cafe −17%). Approve either a footage residual (~$6-8k on sub-$50k jobs) or ~30% higher per-fixture all-ins? (2) TUNE 5 PROTO PACKAGE — b237/b166 pair-implies building base ≈ $37.4k + ~$51/mi travel; approve minting a \'Tune 5 proto package\' book entry so the next proto scores inside ±5%? Also confirm: CA piping IS plumber scope on Tune 5s (you counted ~70 ft galv both protos despite the by-others note)? (3) HUNTER RD BAND — all three campus buildings lost to a winner under HALF your number. Confirm we bank this as a market-band flag (spec-campus builds ≈ 0.35-0.5× book) rather than recalibrating the book down.'
 
 describe('splitLegacyAsk', () => {
   it('splits numbered parts into decisions, keeps the preamble, and makes an "Also confirm" its own decision', () => {
     const split = splitLegacyAsk(SLATE)
     expect(split.preamble).toMatch(/^Slate doctrine asks/)
-    expect(split.decisions.map((d) => d.heading)).toEqual(['Small-ti residual', 'Take 5 proto package', 'Take 5 proto package · also', 'Hunter rd band'])
+    expect(split.decisions.map((d) => d.heading)).toEqual(['Small-ti residual', 'Tune 5 proto package', 'Tune 5 proto package · also', 'Hunter rd band'])
     expect(split.decisions[0]?.question).toMatch(/^all four fresh/)
     expect(split.decisions[2]?.question).toMatch(/^CA piping IS plumber scope/)
-    expect(split.decisions.map((d) => d.topic)).toEqual(['small-ti-residual', 'take-5-proto-package', 'take-5-proto-package-also', 'hunter-rd-band'])
+    expect(split.decisions.map((d) => d.topic)).toEqual(['small-ti-residual', 'tune-5-proto-package', 'tune-5-proto-package-also', 'hunter-rd-band'])
   })
 
   it('an "either A or B?" question becomes two taps; anything else defaults to Yes / No', () => {

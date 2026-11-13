@@ -58,8 +58,8 @@ const week = (items: OfficeWeekItem[]): OfficeWeekPayload => ({
 
 const opts = { dateLabel: 'Sun, Sep 27', roundUrl: 'https://app.test/jobs?tab=stages&round=1', recipientName: 'Taunya Smith', recipientUserId: 'u-taunya', timeZone: APP_CALENDAR_TZ }
 
-const late = item('Knight <& Sons>', 26000, 'ready', { expected_pay_by: '2026-09-20', promise_late: true, days_late: 7, last_word: { note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z', action: 'contacted', temperature: 'warm' } })
-const sample = week([late, item('Structura', 98000, 'needs_word'), item('Loberg', 22000, 'needs_certify', { owner_user_id: null, owner_name: null }), item('Harper', 30000, 'done', { owner_user_id: 'u-taunya', owner_name: 'Taunya Smith' }), item('Skipped', 12000, 'skipped')])
+const late = item('Kestrin <& Sons>', 26000, 'ready', { expected_pay_by: '2026-09-20', promise_late: true, days_late: 7, last_word: { note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z', action: 'contacted', temperature: 'warm' } })
+const sample = week([late, item('Structura', 98000, 'needs_word'), item('Lowbeck', 22000, 'needs_certify', { owner_user_id: null, owner_name: null }), item('Halden', 30000, 'done', { owner_user_id: 'u-taunya', owner_name: 'Taunya Smith' }), item('Skipped', 12000, 'skipped')])
 
 describe('the office week payload', () => {
   it('is told apart from the per-sender round', () => {
@@ -77,9 +77,9 @@ describe('groupOfficeWeek', () => {
   it('puts the reader’s own accounts first, then the largest book, the unassigned last', () => {
     const groups = groupOfficeWeek(sample, 'u-taunya')
     expect(groups.map((g) => [groupTitle(g), g.items.map((i) => i.gc_name), g.total, g.toDo, g.late])).toEqual([
-      ['Your accounts', ['Harper'], 30000, 0, 0],
-      ['Call Malachi', ['Knight <& Sons>', 'Structura'], 124000, 2, 1],
-      ['No account man yet', ['Loberg'], 22000, 1, 0],
+      ['Your accounts', ['Halden'], 30000, 0, 0],
+      ['Call Malachi', ['Kestrin <& Sons>', 'Structura'], 124000, 2, 1],
+      ['No account man yet', ['Lowbeck'], 22000, 1, 0],
     ])
   })
 
@@ -95,7 +95,7 @@ describe('groupOfficeWeek', () => {
 describe('the wording', () => {
   it('the subject says what is left, and who broke a promise', () => {
     expect(officeWeekSubject(sample, 'Taunya Smith')).toBe('Taunya, 1 GC statement to send · 1 to check · 3 words to get — 1 broke a promise')
-    expect(officeWeekSubject(week([item('Harper', 30000, 'done')]), 'Taunya')).toBe('Taunya, the week’s GC statements are done')
+    expect(officeWeekSubject(week([item('Halden', 30000, 'done')]), 'Taunya')).toBe('Taunya, the week’s GC statements are done')
     expect(officeWeekSubject(week([]), null)).toBe('there, no GC owes over $10,000 this week')
   })
 
@@ -111,14 +111,14 @@ describe('the wording', () => {
     expect(text).toContain('PROMISED SEP 20 — 7 DAYS LATE')
     expect(text).toContain('Next: Send the statement')
     expect(text).toContain('Last word: Sep 18 · warm · "Check run is the 20th." — Malachi')
-    expect(text).toContain('Open the call sheet: https://app.test/jobs?tab=stages&round=1&gc=gc-Knight%20%3C%26%20Sons%3E')
+    expect(text).toContain('Open the call sheet: https://app.test/jobs?tab=stages&round=1&gc=gc-Kestrin%20%3C%26%20Sons%3E')
     expect(text).not.toContain('yours to fix')
   })
 
   it('the HTML escapes names and links each group to its call sheet', () => {
     const html = renderOfficeWeekHtml(sample, opts)
-    expect(html).toContain('Knight &lt;&amp; Sons&gt;')
-    expect(html).not.toContain('Knight <& Sons>')
+    expect(html).toContain('Kestrin &lt;&amp; Sons&gt;')
+    expect(html).not.toContain('Kestrin <& Sons>')
     expect(html).toContain('Open Malachi’s call sheet')
     expect(html).toContain('Open your call sheet')
     expect(html).toContain('1 GC broke a promise — start there.')
@@ -128,11 +128,11 @@ describe('the wording', () => {
 
 describe('statementWeekNudgeFromPayload', () => {
   it('counts the statements checked and waiting, office-wide', () => {
-    expect(statementWeekNudgeFromPayload(sample)).toEqual({ count: 1, total: 26000, gcNames: ['Knight <& Sons>'], late: 1, toCheck: 1, wordsDue: 3 })
+    expect(statementWeekNudgeFromPayload(sample)).toEqual({ count: 1, total: 26000, gcNames: ['Kestrin <& Sons>'], late: 1, toCheck: 1, wordsDue: 3 })
   })
 
   it('is quiet when nothing is ready to send', () => {
-    expect(statementWeekNudgeFromPayload(week([item('Loberg', 22000, 'needs_certify')]))).toBeNull()
+    expect(statementWeekNudgeFromPayload(week([item('Lowbeck', 22000, 'needs_certify')]))).toBeNull()
     expect(statementWeekNudgeFromPayload(null)).toBeNull()
   })
 })

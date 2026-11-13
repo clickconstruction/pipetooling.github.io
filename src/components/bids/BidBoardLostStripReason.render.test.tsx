@@ -16,7 +16,7 @@ const pk = (name: string, outcome: string | null, versions: Array<{ loss_categor
 const BP391 = [
   pk('Structura, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
   pk('PlanHub - Subcontractor Prime Opportunity', 'lost', [{ loss_category: 'price', outcome_note: NOTE }]),
-  pk('Workman Commercial', null, [], true),
+  pk('Wrenman Commercial', null, [], true),
 ]
 
 describe('BidBoardLostStripReason', () => {
@@ -38,7 +38,7 @@ describe('BidBoardLostStripReason', () => {
 
   it('no reason anywhere: the nudge and the six chips, and a chip tap hands back its key', () => {
     const onSelect = vi.fn()
-    renderWithProviders(<BidBoardLostStripReason bid={{ id: 'b2', loss_category: null, loss_reason: '' }} packets={[pk('Knight', 'lost', [{ loss_category: null }])]} saving={false} onSelect={onSelect} />)
+    renderWithProviders(<BidBoardLostStripReason bid={{ id: 'b2', loss_category: null, loss_reason: '' }} packets={[pk('Kestrin', 'lost', [{ loss_category: null }])]} saving={false} onSelect={onSelect} />)
     expect(screen.getByText(/Add why: an uncategorized loss/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'GC lost the project' }))
     expect(onSelect).toHaveBeenCalledWith('gc_lost')
@@ -48,13 +48,13 @@ describe('BidBoardLostStripReason', () => {
     renderWithProviders(
       <BidBoardLostStripReason
         bid={{ id: 'b3', loss_category: null, loss_reason: null }}
-        packets={[pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Burd & Assoc.', 'lost', [{ loss_category: null }])]}
+        packets={[pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Brund & Assoc.', 'lost', [{ loss_category: null }])]}
         saving={false}
         onSelect={() => {}}
       />,
     )
     expect(screen.getByTestId('lost-strip-gc-lines').textContent).toContain('Structura GC lost the project')
-    expect(screen.getByText(/Still no reason from Burd & Assoc\./)).toBeTruthy()
+    expect(screen.getByText(/Still no reason from Brund & Assoc\./)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Price too high' })).toBeTruthy()
   })
 })

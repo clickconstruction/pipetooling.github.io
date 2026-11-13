@@ -20,11 +20,11 @@ describe('parseCashAppMoney', () => {
 describe('parseCashAppCsv', () => {
   const csv = [
     HEADER,
-    line('2026-09-11 11:50:56 CDT', '#D-3V3MVPKVP', 'P2P', '-$300.00', 'COMPLETE', 'Week', 'Darren Phelps'),
+    line('2026-09-11 11:50:56 CDT', '#D-3V3MVPKVP', 'P2P', '-$300.00', 'COMPLETE', 'Week', 'Darren Phelby'),
     line('2026-09-10 09:35:32 CDT', '#D-JZVLG7QJX', 'P2P', '-$60.00', 'COMPLETE', 'Gas', 'Emily Furlong'),
     line('2026-09-09 08:00:00 CDT', '#D-DEPOSIT01', 'Deposits', '$2,000.00', 'COMPLETE', '', ''),
-    line('2026-09-08 08:00:00 CDT', '#D-FAILED001', 'P2P', '-$50.00', 'FAILED', 'Week', 'Kyle Willmann'),
-    line('2026-09-08 08:00:00 CDT', '#D-3V3MVPKVP', 'P2P', '-$300.00', 'COMPLETE', 'Week', 'Darren Phelps'),
+    line('2026-09-08 08:00:00 CDT', '#D-FAILED001', 'P2P', '-$50.00', 'FAILED', 'Week', 'Kyle Wilmore'),
+    line('2026-09-08 08:00:00 CDT', '#D-3V3MVPKVP', 'P2P', '-$300.00', 'COMPLETE', 'Week', 'Darren Phelby'),
     line('bad date', '#D-BAD', 'P2P', '-$1.00', 'COMPLETE', '', 'X'),
   ].join('\n')
 
@@ -34,7 +34,7 @@ describe('parseCashAppCsv', () => {
     expect(out.skipped).toBe(2)
     expect(out.warnings[0]).toMatch(/2 rows skipped/)
     const first = out.rows[0]!
-    expect(first).toMatchObject({ occurredDate: '2026-09-11', txType: 'P2P', status: 'COMPLETE', amount: -300, netAmount: -300, note: 'Week', counterparty: 'Darren Phelps', account: 'Mastercard debit 0744' })
+    expect(first).toMatchObject({ occurredDate: '2026-09-11', txType: 'P2P', status: 'COMPLETE', amount: -300, netAmount: -300, note: 'Week', counterparty: 'Darren Phelby', account: 'Mastercard debit 0744' })
     expect(out.rows.filter(isStaffOutflow).map((r) => r.id)).toEqual(['#D-3V3MVPKVP', '#D-JZVLG7QJX'])
   })
 
@@ -65,22 +65,22 @@ describe('aliases', () => {
     expect(resolveCashAppPerson({ counterparty: 'Taunya Villarreal', note: 'Week' }, aliases)).toEqual({ kind: 'person', personName: 'Taunya', viaProxy: false })
     expect(resolveCashAppPerson({ counterparty: 'Jessica Whites', note: 'Advance' }, aliases)).toEqual({ kind: 'person', personName: 'Malachi', viaProxy: false })
     expect(resolveCashAppPerson({ counterparty: 'Plumbing Supply Co', note: '' }, aliases)).toEqual({ kind: 'not_staff' })
-    expect(resolveCashAppPerson({ counterparty: 'Cale Yarbrough', note: 'Week' }, aliases)).toEqual({ kind: 'unknown' })
+    expect(resolveCashAppPerson({ counterparty: 'Cale Yarwick', note: 'Week' }, aliases)).toEqual({ kind: 'unknown' })
   })
 
   it('lists unresolved counterparties biggest first with sample notes', () => {
     const out = unresolvedCounterparties(
       [
-        { counterparty: 'Cale Yarbrough', note: 'Week', amount: -2000 },
-        { counterparty: 'cale yarbrough', note: 'Week 2', amount: -908.97 },
-        { counterparty: 'Kyle Willmann', note: 'Hours', amount: -300 },
+        { counterparty: 'Cale Yarwick', note: 'Week', amount: -2000 },
+        { counterparty: 'cale yarwick', note: 'Week 2', amount: -908.97 },
+        { counterparty: 'Kyle Wilmore', note: 'Hours', amount: -300 },
         { counterparty: 'Abe Whites', note: 'Week', amount: -1200 },
       ],
       aliases,
     )
     expect(out.map((u) => [u.counterparty, u.count, u.total])).toEqual([
-      ['Cale Yarbrough', 2, 2908.97],
-      ['Kyle Willmann', 1, 300],
+      ['Cale Yarwick', 2, 2908.97],
+      ['Kyle Wilmore', 1, 300],
     ])
     expect(out[0]?.notes).toEqual(['Week', 'Week 2'])
   })

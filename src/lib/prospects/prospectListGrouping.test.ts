@@ -29,7 +29,7 @@ function prospect(overrides: Partial<ListGroupableProspect> & { id: string }): L
 
 describe('filterProspectsForList', () => {
   const rows = [
-    prospect({ id: 'a', company_name: 'Drymalla Construction', contact_name: 'Sarah', phone_number: '979-732-5731', email: 'sarah@drymalla.com' }),
+    prospect({ id: 'a', company_name: 'Drymoor Construction', contact_name: 'Sarah', phone_number: '979-732-5731', email: 'sarah@drymoor.com' }),
     prospect({ id: 'b', company_name: 'Capco', contact_name: null, phone_number: '(210) 493-9992', email: null }),
   ]
 

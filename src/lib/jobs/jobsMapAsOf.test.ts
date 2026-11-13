@@ -36,7 +36,7 @@ function hjob(p: Partial<JobsMapHistoryJob> & { id: string }): JobsMapHistoryJob
 const history: JobsMapHistory = {
   jobs: [
     hjob({ id: 'j1001', status: 'billed' }),
-    hjob({ id: 'j1019', hcp_number: '1019', created_ymd: '2026-09-11', status: 'working', gc_customer_id: 'g1', gc_name: 'Done Right Foundation', bill_to_party: 'gc' }),
+    hjob({ id: 'j1019', hcp_number: '1019', created_ymd: '2026-09-11', status: 'working', gc_customer_id: 'g1', gc_name: 'Dead Level Foundation', bill_to_party: 'gc' }),
     hjob({ id: 'jquiet', hcp_number: '900', status: 'waiting', created_ymd: '2026-01-05' }),
     hjob({ id: 'jcoll', hcp_number: '950', status: 'billed', collections_ymd: '2026-08-20' }),
     hjob({ id: 'jnoaddr', hcp_number: '960', job_address: '' }),
@@ -111,7 +111,7 @@ describe('jobsMapJobsAsOf', () => {
   it('today: J1019 exists, is working, and names its GC as the payer', () => {
     const { jobs } = jobsMapJobsAsOf(history, idx, '2026-09-14')
     const j = jobs.find((x) => x.id === 'j1019')
-    expect(j).toMatchObject({ section: 'working', payerName: 'Done Right Foundation', label: '1019 · Test job' })
+    expect(j).toMatchObject({ section: 'working', payerName: 'Dead Level Foundation', label: '1019 · Test job' })
   })
 })
 

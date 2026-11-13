@@ -8,6 +8,8 @@ type Props = {
   /** The task's place as the giver has it now, or null for a task with no place. */
   value: TaskPlaceDraft | null
   onChange: (next: TaskPlaceDraft | null) => void
+  /** The layer of the Where is it? sheet, for a window that sits above Add a task. */
+  sheetZIndex?: number
 }
 
 const chipBase = {
@@ -41,7 +43,7 @@ function sameChip(value: TaskPlaceDraft | null, place: TaskPlace): boolean {
  * to keep, and a place is offered because a task has it. A place set in this window and not yet
  * saved shows as its own chip, lit.
  */
-export function TaskPlaceRow({ value, onChange }: Props) {
+export function TaskPlaceRow({ value, onChange, sheetZIndex }: Props) {
   const [offered, setOffered] = useState<TaskPlace[]>([])
   const [sheetOpen, setSheetOpen] = useState(false)
   // Read with the row, not with the sheet: one cached settings read, there before ＋ New place is pressed.
@@ -112,6 +114,7 @@ export function TaskPlaceRow({ value, onChange }: Props) {
         <TaskPlaceSheet
           start={start}
           initial={value && !onAChip ? value : null}
+          {...(sheetZIndex != null ? { zIndex: sheetZIndex } : {})}
           onClose={() => setSheetOpen(false)}
           onUse={(place) => {
             onChange(place)

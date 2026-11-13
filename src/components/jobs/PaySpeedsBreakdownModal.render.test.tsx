@@ -44,22 +44,22 @@ beforeAll(() => {
 const speeds: PaySpeedData = {
   company: { medianDays: 11, samples: 5 },
   customers: {
-    knight: { medianDays: 18, samples: 4 },
-    ingram: { medianDays: 7, samples: 1 },
+    kestrin: { medianDays: 18, samples: 4 },
+    inglow: { medianDays: 7, samples: 1 },
   },
   segments: {
     residential: { medianDays: 7, samples: 1 },
     commercial: { medianDays: 18, samples: 4 },
   },
-  customerTypes: { knight: 'commercial', ingram: 'residential', rmc: 'commercial' },
+  customerTypes: { kestrin: 'commercial', inglow: 'residential', rlc: 'commercial' },
   receipts: {
-    knight: [
+    kestrin: [
       { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: null, jobName: null, address: null },
       { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
       { billedYmd: '2026-07-22', paidYmd: '2026-08-11', gapDays: 20, jobId: null, jobName: null, address: null },
       { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31, jobId: null, jobName: null, address: null },
     ],
-    ingram: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
+    inglow: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
   },
   quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70, excluded: 0 },
 }
@@ -79,11 +79,11 @@ function invRow(customerId: string, name: string, amount: number): StageRow {
   } as unknown as StageRow
 }
 
-const rows = [invRow('knight', 'Knight Contracting', 75585), invRow('ingram', 'Johnny Ingram', 786), invRow('rmc', 'RMC- Dudley Mason', 49171)]
+const rows = [invRow('kestrin', 'Kestrin Contracting', 75585), invRow('inglow', 'Johnny Inglow', 786), invRow('rlc', 'RLC- Dunmere Mallin', 49171)]
 
 describe('PaySpeedsBreakdownModal render smoke', () => {
   describe('opened on one payer, from a Pipeline row’s Pays in line (v2.7013)', () => {
-    const payer = { id: 'knight', name: 'Made Up Builders' }
+    const payer = { id: 'kestrin', name: 'Made Up Builders' }
 
     it('names the payer, leads with their range in the row’s words and shows every payment behind it with no click', async () => {
       render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={payer} />)
@@ -126,7 +126,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
       const onOpenJobDetail = vi.fn()
       const withJob: PaySpeedData = {
         ...speeds,
-        receipts: { ...speeds.receipts, knight: [{ billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: 'job-9', jobName: 'Made-up panel swap', address: '1 Example St' }, ...speeds.receipts.knight!.slice(1)] },
+        receipts: { ...speeds.receipts, kestrin: [{ billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: 'job-9', jobName: 'Made-up panel swap', address: '1 Example St' }, ...speeds.receipts.kestrin!.slice(1)] },
       }
       render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={onOpenJobDetail} focusPayer={payer} />)
       await settle()
@@ -135,7 +135,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     })
 
     it('a payer with nothing measured says so, and what the forecast uses instead', async () => {
-      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={{ id: 'rmc', name: 'Made Up Mechanical' }} />)
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} focusPayer={{ id: 'rlc', name: 'Made Up Mechanical' }} />)
       await settle()
       const card = within(screen.getByTestId('pay-speeds-payer'))
       expect(card.getByTestId('pay-speeds-payer-range').textContent).toBe('No pay speed of their own yet')
@@ -184,9 +184,9 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
       ...speeds,
       receipts: {
         ...speeds.receipts,
-        knight: [
+        kestrin: [
           { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: 'job-9', jobName: 'Panel swap', address: '1207 Kingsbury Ln' },
-          ...speeds.receipts.knight!.slice(1),
+          ...speeds.receipts.kestrin!.slice(1),
         ],
       },
     }
@@ -206,18 +206,18 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     await settle()
     const ranked = screen.getAllByTitle('Show the payments behind this median')
-    expect(ranked).toHaveLength(2) // Knight (4 pmts), then Ingram (1 pmt)
+    expect(ranked).toHaveLength(2) // Kestrin (4 pmts), then Inglow (1 pmt)
     fireEvent.click(ranked[1]!)
     expect(screen.getByText('04/28–05/05')).toBeTruthy()
     const thinRows = screen.getAllByTitle('Show this customer’s payments')
-    expect(thinRows).toHaveLength(1) // RMC (0 pmts)
+    expect(thinRows).toHaveLength(1) // RLC (0 pmts)
     fireEvent.click(thinRows[0]!)
     expect(screen.getByText(/nothing measurable yet/)).toBeTruthy()
   })
 
   it('a ranked customer on a pre-receipts payload shows the reload hint instead of chips', async () => {
     const v2speeds: PaySpeedData = { ...speeds, receipts: {} }
-    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[invRow('knight', 'Knight Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[invRow('kestrin', 'Kestrin Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
     await settle()
     fireEvent.click(screen.getAllByTitle('Show the payments behind this median')[0]!)
     expect(screen.getByText(/Payment dates aren’t available yet/)).toBeTruthy()
@@ -229,7 +229,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     await settle()
     fireEvent.click(screen.getAllByTitle('Show the payments behind this median')[0]!)
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
-    expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
+    expect(onOpen).toHaveBeenCalledWith('Kestrin Contracting')
   })
 
   it('the Data health strip is a button — clicking it opens the transactions drill-down (v2.2290)', async () => {
@@ -256,15 +256,15 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
   it('Money waiting: a late bill an in kind deal pays makes no row, and one line counts it (punch list #301)', async () => {
     // The same 86-day bill as the next test, on a deal: nobody is off pace over it.
     const onDeal: StageRow = (() => {
-      const base = invRow('knight', 'Knight Contracting', 75585)
+      const base = invRow('kestrin', 'Kestrin Contracting', 75585)
       if (base.kind === 'job') throw new Error('fixture')
       return {
         ...base,
-        job: { ...base.job, job_name: 'Knight Ph 1', in_kind_arrangement_id: 'deal-a' },
+        job: { ...base.job, job_name: 'Kestrin Ph 1', in_kind_arrangement_id: 'deal-a' },
         inv: { ...base.inv, billed_at: '2026-06-01T12:00:00Z' },
       } as StageRow
     })()
-    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[onDeal, invRow('ingram', 'Johnny Ingram', 786)]} paySpeeds={speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[onDeal, invRow('inglow', 'Johnny Inglow', 786)]} paySpeeds={speeds} onClose={vi.fn()} />)
     await settle()
     expect(screen.queryByText('86d waiting')).toBeNull()
     expect(screen.getByTestId('money-waiting-in-kind').textContent).toBe('$75,585 on 1 bill is scheduled in kind, not money waiting')
@@ -272,20 +272,20 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
   })
 
   it('Money waiting: a dated bill past the baseline makes a row, and expanding lists each job owed', async () => {
-    // knight (median 18): bill billed 2026-06-01 → waited 86d vs baseline 18 → off pace, late tone.
+    // kestrin (median 18): bill billed 2026-06-01 → waited 86d vs baseline 18 → off pace, late tone.
     const dated: StageRow = (() => {
-      const base = invRow('knight', 'Knight Contracting', 75585)
+      const base = invRow('kestrin', 'Kestrin Contracting', 75585)
       if (base.kind === 'job') throw new Error('fixture')
       return {
         ...base,
-        job: { ...base.job, job_name: 'Knight Ph 1', job_address: '900 Broadway' },
+        job: { ...base.job, job_name: 'Kestrin Ph 1', job_address: '900 Broadway' },
         inv: { ...base.inv, billed_at: '2026-06-01T12:00:00Z' },
       } as StageRow
     })()
     render(
       <PaySpeedsBreakdownModal
         todayYmd="2026-08-26"
-        rows={[dated, invRow('ingram', 'Johnny Ingram', 786), invRow('rmc', 'RMC- Dudley Mason', 49171)]}
+        rows={[dated, invRow('inglow', 'Johnny Inglow', 786), invRow('rlc', 'RLC- Dunmere Mallin', 49171)]}
         paySpeeds={speeds}
         onClose={vi.fn()}
       />,
@@ -296,8 +296,8 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByText(/usually ~18d/)).toBeTruthy()
     expect(screen.getByText(/2 more customers are on their usual pace/)).toBeTruthy()
     // Expand the row → the per-job bill list.
-    fireEvent.click(screen.getByTitle(/Knight Contracting — oldest open bill has waited 86d/))
-    expect(screen.getByText('Knight Ph 1')).toBeTruthy()
+    fireEvent.click(screen.getByTitle(/Kestrin Contracting — oldest open bill has waited 86d/))
+    expect(screen.getByText('Kestrin Ph 1')).toBeTruthy()
     expect(screen.getByText(/billed 0?6\/0?1/)).toBeTruthy()
     expect(screen.getByText('86d')).toBeTruthy()
   })

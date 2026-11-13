@@ -21,7 +21,7 @@ Last 5 scored runs, newest first: {{chip:red|+44.2%}} {{chip:green|−7.9%}} {{c
 
 The strip under the rule is written for whoever is looking at it. Every line has a door:
 
-- **Sealed numbers on your bids** means the robot locked its price before yours existed. *b385 Galloway Park scores the day you send it. b391 RBFCU Potranco scores once it has a bid value.* {{button:outline-blue|Open b385}}
+- **Sealed numbers on your bids** means the robot locked its price before yours existed. *b385 Gallenby Park scores the day you send it. b391 RBFCU Potranco scores once it has a bid value.* {{button:outline-blue|Open b385}}
 - **Your bids that are queued** means the robot picks them up in the next weekday batch.
 - **Live bids the robots can't see** is usually *no plans link*. The *The robot needs* sheet on that row of the Bid Board says exactly what to attach. {{button:outline-blue|Fix b483}}
 - **Audits and questions waiting on anyone** shows the audits. Audits are what hold the robots back most. {{button:blue|Open Audits}}

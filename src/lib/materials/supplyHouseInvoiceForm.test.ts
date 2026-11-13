@@ -37,7 +37,7 @@ describe('poCodeHint', () => {
     expect(poCodeHint('   ', ledger)).toEqual({ kind: 'empty' })
   })
   it('a hand PO has no five-digit code', () => {
-    expect(poCodeHint('SpaceX', ledger)).toEqual({ kind: 'hand' })
+    expect(poCodeHint('SkyLab', ledger)).toEqual({ kind: 'hand' })
     expect(poCodeHint('PO-1234', ledger)).toEqual({ kind: 'hand' })
   })
   it('a code on the ledger for this house', () => {
@@ -306,7 +306,7 @@ describe('what the paper is (v2.3503)', () => {
 describe('poLedgerJobMatches (v2.3724)', () => {
   const base: PoLedgerEntry = {
     code: 0,
-    jobLabel: 'J473 · Mike Holub',
+    jobLabel: 'J473 · Mike Holmby',
     jobLedgerId: 'job-473',
     personName: 'Abraham',
     createdAt: '2026-08-19T17:12:28.000Z',
@@ -316,7 +316,7 @@ describe('poLedgerJobMatches (v2.3724)', () => {
   const entries = new Map<number, PoLedgerEntry>([
     [46632, { ...base, code: 46632 }], // Aug 19, same day
     [95545, { ...base, code: 95545, createdAt: '2026-08-25T17:00:19.000Z', personName: 'Paige' }], // 6 days after
-    [51468, { ...base, code: 51468, jobLabel: 'J883 · Mission Hills Drains', jobLedgerId: 'job-883', createdAt: '2026-08-21T14:42:56.000Z', personName: 'Malachi', statedNeed: 'trim' }],
+    [51468, { ...base, code: 51468, jobLabel: 'J883 · Mission Flats Drains', jobLedgerId: 'job-883', createdAt: '2026-08-21T14:42:56.000Z', personName: 'Malachi', statedNeed: 'trim' }],
     [10892, { ...base, code: 10892, createdAt: '2026-08-01T19:06:56.000Z' }], // 18 days before — out
     [99999, { ...base, code: 99999, jobLedgerId: null }],
   ])
@@ -367,11 +367,11 @@ describe('poLedgerJobMatches (v2.3724)', () => {
 })
 
 describe('poLedgerEntryJobMismatch (v2.3724)', () => {
-  const entry: PoLedgerEntry = { code: 46632, jobLabel: 'J473 · Mike Holub', jobLedgerId: 'job-473', personName: 'Abraham', createdAt: null, createdBy: null, statedNeed: null }
+  const entry: PoLedgerEntry = { code: 46632, jobLabel: 'J473 · Mike Holmby', jobLedgerId: 'job-473', personName: 'Abraham', createdAt: null, createdBy: null, statedNeed: null }
   const entries = new Map<number, PoLedgerEntry>([[46632, entry], [1, { ...entry, code: 1, jobLedgerId: null }]])
   const on = { kind: 'on_ledger' as const, code: 46632 }
   it('the code on the paper was minted for a job the invoice is not on', () => {
-    expect(poLedgerEntryJobMismatch(on, entries, ['job-804'])).toBe('PO 46632 was minted for J473 · Mike Holub — this invoice is on a different job. One of the two is wrong.')
+    expect(poLedgerEntryJobMismatch(on, entries, ['job-804'])).toBe('PO 46632 was minted for J473 · Mike Holmby — this invoice is on a different job. One of the two is wrong.')
   })
   it('quiet when the jobs agree, when no job is picked yet, when the row has no job, and when there is no exact card', () => {
     expect(poLedgerEntryJobMismatch(on, entries, ['job-473'])).toBeNull()
