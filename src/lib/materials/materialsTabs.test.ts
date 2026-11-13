@@ -24,6 +24,9 @@ describe('materialsTabsFor', () => {
     expect(canOpenMaterialsTab('estimator', 'supply-houses')).toBe(true)
     expect(canOpenMaterialsTab('estimator', 'job-accounts')).toBe(false)
     expect(canOpenMaterialsTab('estimator', 'po-generator')).toBe(false)
+    // What we buy reads every bill's lines, which the database opens to the office alone (punch list #298).
+    expect(canOpenMaterialsTab('estimator', 'what-we-buy')).toBe(false)
+    expect(canOpenMaterialsTab('controller', 'what-we-buy')).toBe(true)
   })
 
   it('gives primaries and superintendents the two books and On site', () => {
@@ -32,7 +35,7 @@ describe('materialsTabsFor', () => {
   })
 
   it('keeps the strip order: Plan, then Purchase, then On site last (punch list #304)', () => {
-    expect([...MATERIALS_TABS]).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'po-generator', 'supply-houses', 'job-accounts', 'on-site'])
+    expect([...MATERIALS_TABS]).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'po-generator', 'supply-houses', 'job-accounts', 'what-we-buy', 'on-site'])
     expect(resolveMaterialsTab('primary', 'on-site')).toEqual({ tab: 'on-site', redirect: false })
     expect(resolveMaterialsTab('helpers', 'on-site')).toEqual({ tab: 'parts-book', redirect: true })
   })
@@ -52,8 +55,8 @@ describe('materialsTabsFor', () => {
 })
 
 describe('isOfficeMaterialsTab', () => {
-  it('names the three office lanes', () => {
-    expect(MATERIALS_TABS.filter(isOfficeMaterialsTab)).toEqual(['po-generator', 'supply-houses', 'job-accounts'])
+  it('names the office lanes', () => {
+    expect(MATERIALS_TABS.filter(isOfficeMaterialsTab)).toEqual(['po-generator', 'supply-houses', 'job-accounts', 'what-we-buy'])
   })
 })
 
