@@ -120,7 +120,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const narrow = useMatchMedia('(max-width: 359px)')
   const jobId = selectedJobId
   const load = useOnSiteJob(jobId)
-  useEffect(() => { setOnSiteErrorHandler((m) => showToast(m, 'error')) }, [showToast])
+  useEffect(() => { setOnSiteErrorHandler((m, tone) => showToast(m, tone)) }, [showToast])
   const job = jobs.find((j) => j.id === jobId) ?? null
   const containers = jobId ? listContainers(jobId).filter((c) => !c.retiredAt) : []
   const movements = jobId ? listMovements(jobId) : []

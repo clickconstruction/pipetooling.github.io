@@ -64,6 +64,16 @@ On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put a
 
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
+## With no signal
+
+A press made with no signal is kept on the phone. The box shows the new number at once. A message reads *No signal. What you press is kept on this phone and sends by itself.*
+
+The line at the top of the screen counts what waits. Each press goes out when the signal is back, in the order you made it. You can close the app. The presses are still there when you open it again.
+
+The office sees a press only after it lands. If the office refuses one, the line turns red and gives the reason. The box then shows the number the office holds.
+
+Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line and its list.
+
 ## Find a box on the site
 
 Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** and stand where it is. Tap **Move box** when it moves to another place.
