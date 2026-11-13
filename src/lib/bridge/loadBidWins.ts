@@ -39,7 +39,7 @@ export async function loadBidsSent(db: SupabaseClient<Database>, opts: { zzTestJ
   for (const b of bids) {
     const sentYmd = b.bid_date_sent ? b.bid_date_sent.slice(0, 10) : ''
     if (!sentYmd) continue
-    out.push({ sentYmd, outcome: b.outcome, usd: Number(b.agreed_value ?? b.bid_value ?? 0), hasJob: jobUsdByBid.has(b.id), jobUsd: jobUsdByBid.get(b.id) ?? null, leftOut: isLeftOut({ developmentId: b.development_id, customerId: b.customer_id, address: b.address }, opts.leftOut) })
+    out.push({ id: b.id, name: b.project_name, sentYmd, outcome: b.outcome, usd: Number(b.agreed_value ?? b.bid_value ?? 0), hasJob: jobUsdByBid.has(b.id), jobUsd: jobUsdByBid.get(b.id) ?? null, leftOut: isLeftOut({ developmentId: b.development_id, customerId: b.customer_id, address: b.address }, opts.leftOut) })
   }
   return out
 }

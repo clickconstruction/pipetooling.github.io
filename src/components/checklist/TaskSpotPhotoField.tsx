@@ -18,6 +18,12 @@ type Props = {
   onChange: (next: TaskSpotPhotoDraft | null) => void
   /** True while the owner is sending a picture: the presses wait. */
   busy?: boolean
+  /**
+   * `press` is the New task window's one button at the end of its Where row (punch list #331):
+   * **Photo** opens the camera or the picker, and once a picture is in, the button shows it and a
+   * press takes it off. The parent is a grid, so a failure spans the row under the button.
+   */
+  variant?: 'field' | 'press'
 }
 
 /**
@@ -29,7 +35,7 @@ type Props = {
  * The field only holds the picture. The window that owns it sends it when the task is saved, since a
  * new task has no id to file a picture under until then.
  */
-export function TaskSpotPhotoField({ value, onChange, busy = false }: Props) {
+export function TaskSpotPhotoField({ value, onChange, busy = false, variant = 'field' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { shot, shrinking, error, pick } = useTaskShot()
   const handed = useRef<string | null>(null)
@@ -43,6 +49,60 @@ export function TaskSpotPhotoField({ value, onChange, busy = false }: Props) {
 
   const open = () => inputRef.current?.click()
   const waiting = busy || shrinking
+
+  if (variant === 'press') {
+    return (
+      <>
+        <span data-task-spot-photo-field style={{ display: 'inline-flex' }}>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            capture={handHeld() ? 'environment' : undefined}
+            aria-label="Photo of the spot"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) void pick(file)
+            }}
+          />
+          <button
+            type="button"
+            aria-pressed={Boolean(value)}
+            aria-label={value ? 'Remove the photo of the spot' : 'Add a photo of the spot'}
+            title={value ? 'The person sees this photo on the task. Press to take it off.' : 'What the spot looks like. The person sees it on the task.'}
+            disabled={waiting}
+            onClick={() => (value ? onChange(null) : open())}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              font: 'inherit',
+              fontSize: 13,
+              fontWeight: 600,
+              minHeight: 40,
+              padding: value ? '0 10px 0 4px' : '0 10px',
+              borderRadius: 10,
+              border: value ? '1.5px solid #2563eb' : '1px dashed var(--border-strong)',
+              background: value ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: value ? 'var(--text-blue-800)' : 'var(--text-700)',
+              cursor: waiting ? 'wait' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {value?.previewUrl ? <img src={value.previewUrl} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 6, display: 'block' }} /> : <span aria-hidden>📷</span>}
+            {shrinking ? 'Reading…' : value ? 'Photo ✕' : 'Photo'}
+          </button>
+        </span>
+        {error ? (
+          <p role="alert" style={{ gridColumn: '1 / -1', margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+            {error}
+          </p>
+        ) : null}
+      </>
+    )
+  }
 
   return (
     <div data-task-spot-photo-field style={{ marginTop: '0.6rem' }}>

@@ -31,6 +31,8 @@ type Props = {
   countMode?: 'members' | 'toAdd'
   /** Shown first in the create/edit member picker. */
   currentUserId?: string | null
+  /** The crews as loaded, after each load. The New task window draws them as faces from this (punch list #331). */
+  onCrewsLoaded?: (crews: CrewView[]) => void
 }
 
 /**
@@ -47,6 +49,7 @@ export function ChecklistCrewTagsRow({
   manage = true,
   countMode = 'members',
   currentUserId = null,
+  onCrewsLoaded,
 }: Props) {
   const [crews, setCrews] = useState<CrewView[]>([])
   const [crewsUnavailable, setCrewsUnavailable] = useState(false)
@@ -58,6 +61,10 @@ export function ChecklistCrewTagsRow({
   const [error, setError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const longPressRef = useRef<{ timer: number; fired: boolean } | null>(null)
+
+  // Held in a ref so a parent's fresh callback each render does not re-run the load.
+  const onCrewsLoadedRef = useRef(onCrewsLoaded)
+  onCrewsLoadedRef.current = onCrewsLoaded
 
   const loadCrews = useCallback(async () => {
     try {
@@ -71,7 +78,9 @@ export function ChecklistCrewTagsRow({
           'load crew members',
         ),
       ])
-      setCrews(buildCrewViews((teams ?? []) as CrewTeamRow[], (members ?? []) as CrewMemberRow[], users))
+      const views = buildCrewViews((teams ?? []) as CrewTeamRow[], (members ?? []) as CrewMemberRow[], users)
+      setCrews(views)
+      onCrewsLoadedRef.current?.(views)
       setCrewsUnavailable(false)
     } catch {
       // RLS or load failure: the row simply doesn't render — selection still works.
