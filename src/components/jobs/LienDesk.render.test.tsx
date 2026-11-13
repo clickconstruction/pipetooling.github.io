@@ -101,9 +101,11 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
 const signMock = vi.fn()
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
+// An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
+const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
+  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -1229,6 +1231,100 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     const failed = document.querySelector('[data-lien-affidavit-send-all-failed]') as HTMLElement
     expect(failed.textContent).toContain('1 affidavit did not send. It stays here with the reason.')
     expect(failed.textContent).toContain('The affidavit could not be sent for approval.')
+  })
+
+  // The same three jobs with no standing rule: every paper goes to the leader.
+  const threeAsked = (items: LienDeskItemRow[]) => {
+    const d = three(items)
+    d.gcsById = { lowbeck: { ...d.gcsById.lowbeck!, policy: 'ask' } }
+    return d
+  }
+  const draftedAff = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id, status: 'drafted', approval_mode: null }) as LienDeskItemRow
+
+  it('a batch sent for approval tells the leader once, with every paper that waits for him and its day to file (punch list #305, v2.7180)', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    expect(await screen.findByText('2 go to the leader for approval.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval' }))
+    // One call for the two papers, never one each.
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0].map((p) => [p.itemId, p.dueYmd])).toEqual([['aff1', '2026-11-16'], ['aff2', '2026-11-16']])
+    expect(await screen.findByText("Sent 2 affidavits. Malachi's phone has the 2 that wait for approval in one message.")).toBeTruthy()
+  })
+
+  it('a batch a standing rule approves tells nobody: nothing waits for the leader', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    expect(await screen.findByText('Sent 2 affidavits.')).toBeTruthy()
+    expect(tellAffMock).not.toHaveBeenCalled()
+  })
+
+  it('a tell that fails never blocks the send: the papers are sent, and the toast says he was not told and why', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    // The function as it was before it learned the affidavit refuses the request until it is redeployed.
+    tellAffMock.mockImplementationOnce(async () => ({ ok: false, reason: 'Missing item_id' }))
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} onChanged={onChanged} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    expect(await screen.findByText('Sent 2 affidavits. The leader was not told of the 2 that wait for approval. The part of the app that tells the leader is waiting for its update. The Dashboard shows them.')).toBeTruthy()
+    expect(submitManyMock).toHaveBeenCalledTimes(1)
+    expect(onChanged).toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-affidavit-send-all-failed]')).toBeNull()
+  })
+
+  it('a paper whose send failed is not in the tell', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    submitManyMock.mockImplementationOnce(async () => ({ done: ['j651'], failed: [{ jobId: 'j650', reason: 'The affidavit could not be sent for approval.' }] }))
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0].map((p) => p.itemId)).toEqual(['aff2'])
+    expect(await screen.findByText("Sent 1 affidavit. 1 did not send. Malachi's phone has the 1 that waits for approval.")).toBeTruthy()
+  })
+
+  it('the pane’s own Send for approval tells the leader of that one paper, as a notice does', async () => {
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect((submitMock.mock.calls[0] as unknown as [string, { status: string }])[1].status).toBe('awaiting_approval')
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0]).toEqual([{ itemId: 'it-new', dueYmd: '2026-11-16' }])
+    expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
+  })
+
+  it('the pane’s send that a standing rule approves tells nobody', async () => {
+    submitMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    expect(await screen.findByText('Approved by the standing rule — ready to file.')).toBeTruthy()
+    expect(tellAffMock).not.toHaveBeenCalled()
+  })
+
+  it('the address names the affidavit to open on: the leader’s push for one paper lands on it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={threeAsked([])} initialKind="affidavit" initialJobId="j651" />)
+    await settle()
+    const current = Array.from(document.querySelectorAll('button[aria-current="true"]')).map((b) => b.textContent ?? '')
+    expect(current.some((t) => t.includes('651'))).toBe(true)
+    expect(current.some((t) => t.includes('650'))).toBe(false)
   })
 
   it('the list prints every ready short-form affidavit in one press: one window, each paper on its own sheet, and each job files its own copy (v2.6918)', async () => {

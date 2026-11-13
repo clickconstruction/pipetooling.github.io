@@ -163,7 +163,7 @@ Shipped with the card: **PR #7974**, the counting rule. Client only.
 2. **The band and the form** (S). The band's words, *Whose is it…* for a name the roster does not know and for one sub, the Crew step's line when a second sub is picked, the same-line check on save, the teammate chip. No migration.
 3. **Acts in place** (S). Pay… and Back-charge… on a sheet in the open row mount the Pay view's own modals. *Open in the pay run ›*. The pay run's sub name gains *What we owe ›*. No migration.
 4. **From a job** (S). *Subs on this job* in the job's window, from the same kernel grouped by job. No migration.
-5. **Reach** (S). The tiles, the Owed chip, the search, the sort, the export, and one sub's statement to print, filed as a sent copy. No migration.
+5. **Reach** (S). The tiles, the Owed chip, the search, the sort, the export, and one sub's statement to print, filed as a sent copy. No migration. The statement as a paper to hand a sub is card #350 (`to-dos/sub-papers-statement-of-account/`), with a work statement per sheet and a payment record per sending: this PR links its **Statement of account…** press and builds no second one.
 6. **The sub's own screens** (M, the owner's yes). The sub portal, *Your money* and the hours statement show a sheet's dollars to its sub alone. A teammate sees the sheet with no figure. Edge deploy of `sub-portal`. No migration.
 7. **Split a shared sheet** (M, after question 1). *Each sub did part of it* turns one sheet into one per sub, lines and payments placed by hand, sums checked. One definer RPC, migration `…_split_sub_sheet.sql`. Built only if the owner picks the split.
 

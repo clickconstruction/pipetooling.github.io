@@ -50,9 +50,11 @@ export function checklistOutstandingEmptyWords(range: BoardRange): EmptyStateWor
 
 /**
  * Manage: no task at all (for everyone, or for the person the assignee filter picked), or a search
- * hiding every task. ＋ New task opens on the picked person. Null when the list has rows.
+ * hiding every task. ＋ New task opens on the picked person. Null when the list has rows, and when it failed to load.
  */
-export function checklistManageEmptyWords(s: { total: number; shown: number; query: string; forPerson: boolean; newTask: Press; clearSearch: Press }): EmptyStateWords | null {
+export function checklistManageEmptyWords(s: { total: number; shown: number; query: string; forPerson: boolean; loadFailed?: boolean; newTask: Press; clearSearch: Press }): EmptyStateWords | null {
+  // A list that did not load is not an empty list: the error is on the page, and *No tasks yet.* beside it was false.
+  if (s.loadFailed) return null
   if (s.total === 0) {
     if (s.forPerson) return { main: 'No tasks for this person yet.', next: { label: NEW_TASK_CONTROL, onPress: s.newTask }, tail: 'adds the first.' }
     return emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'tasks', control: NEW_TASK_CONTROL }), { onPress: s.newTask })

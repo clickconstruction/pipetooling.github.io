@@ -68,6 +68,16 @@ On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put a
 
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
+## With no signal
+
+A press made with no signal is kept on the phone. The box shows the new number at once. A message reads *No signal. What you press is kept on this phone and sends by itself.*
+
+The line at the top of the screen counts what waits. Each press goes out when the signal is back, in the order you made it. You can close the app. The presses are still there when you open it again.
+
+The office sees a press only after it lands. If the office refuses one, the line turns red and gives the reason. The box then shows the number the office holds.
+
+Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line and its list.
+
 ## Find a box on the site
 
 Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** and stand where it is. Tap **Move box** when it moves to another place.
@@ -115,6 +125,20 @@ To record a part used, moved or counted, press **Sign in to record a use or a co
 A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
+
+## Change a box's name or kind
+
+A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. The office page has the same **Edit** press on each box.
+
+- **Its name** takes a new name. A name another box on the job carries is refused.
+- **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
+- **Where exactly** says where it stands, such as on a pallet by the north door.
+
+The press says what it will do, such as **Rename to G70** or **Save G70**.
+
+A label printed with the old name still opens the box, because its code never changes. Only the large words are old. Print the label again to show the new name.
+
+Rename a box only when the same things are inside. For different things, retire the box and add a new one. Last week's count then still means what it meant.
 
 ## Retire a box
 

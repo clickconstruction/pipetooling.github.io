@@ -7,7 +7,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, withOperationTimeout } from '../../utils/errorHandling'
+import { bytesAlreadyThere } from '../photos/shotTiles'
 import { putPhotoBlob } from './photoBlobs'
 
 const db = supabase as unknown as SupabaseClient
@@ -21,12 +22,49 @@ export function boxPhotoPath(jobId: string, photoId: string): string {
   return `${jobId}/${photoId}.jpg`
 }
 
-/** Keeps the bytes on the phone, then sends them. Throws when the phone has no signal or the bucket refuses; the bytes stay kept. */
+/** How long one send of a shot may take before the phone stops waiting: the shot is kept, and **Send now** tries again. */
+export const BOX_PHOTO_SEND_TIMEOUT_MS = 30_000
+
+/**
+ * The shot did not send and the phone could not keep it either (its own store is full or shut, as in a private
+ * window). Said apart from an ordinary failed send, whose shot waits on the phone for **Send now**: this one is gone,
+ * and the person takes it again.
+ */
+export class BoxPhotoNotKeptError extends Error {
+  constructor(why: string) {
+    super(why)
+    this.name = 'BoxPhotoNotKeptError'
+  }
+}
+
+/**
+ * Keeps the bytes on the phone, then sends them. Throws when the phone has no signal, the send runs out of time or
+ * the bucket refuses; the bytes stay kept, and a later send of the same shot is safe.
+ *
+ * A send whose answer was lost has still put its file in the bucket. The next send of that shot meets it, and the
+ * bucket answers *already exists* (v2.7178, punch list #344 PR 2, the fault of #338 in its 409 form): the path
+ * carries the shot's own id, minted on the phone, so what is there is this shot, and the send is a landing. Before
+ * this the answer was a refusal on every later try, so the shot never reached the job's folder.
+ */
 export async function sendBoxPhoto(input: SendBoxPhotoInput): Promise<{ storagePath: string }> {
-  await putPhotoBlob(input.id, input.blob)
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('The phone has no signal.')
+  const kept = await putPhotoBlob(input.id, input.blob).then(
+    () => true,
+    () => false,
+  )
+  const failed = (why: string): Error => (kept ? new Error(why) : new BoxPhotoNotKeptError(why))
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw failed('The phone has no signal.')
   const storagePath = boxPhotoPath(input.jobId, input.id)
-  const { error } = await db.storage.from(BOX_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
-  if (error) throw new Error(formatErrorMessage(error, 'The photo did not send.'))
+  let error: unknown
+  try {
+    const res = await withOperationTimeout(
+      db.storage.from(BOX_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false }),
+      BOX_PHOTO_SEND_TIMEOUT_MS,
+      'Send the photo',
+    )
+    error = res.error
+  } catch (e) {
+    throw failed(formatErrorMessage(e, 'The photo did not send.'))
+  }
+  if (error && !bytesAlreadyThere(error)) throw failed(formatErrorMessage(error, 'The photo did not send.'))
   return { storagePath }
 }

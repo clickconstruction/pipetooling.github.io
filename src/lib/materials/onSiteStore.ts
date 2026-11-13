@@ -14,9 +14,13 @@ import { supabase } from '../supabase'
 import type { ServerSummary } from './onSiteServerSummary'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
+import { outbox } from '../offline/outboxState'
+import { applyOnSiteWrites, parseOnSiteWrites, type OnSiteRows, type OnSiteWrite } from './onSiteWrites'
+import { isPendingOnSitePress, onSiteSender, pendingOnSitePresses } from './onSiteSend'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
+import type { BoxPatch } from './editBox'
 import { codeLookup, stickerFactsOf, type CodeLookup, type StickerFacts } from './stickers'
 import type { PhotoNote, PhotoStatus } from './photo'
 import { loadPartPriceRows } from './partPrices'
@@ -153,15 +157,17 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       // Chunked over the box ids as well: a few hundred ids in one address is past what a request line carries.
       const moves = await fetchAllRowsChunkedIn<MoveRow, string>(ids, (chunk, from, to) => db.from('job_container_moves').select(MOVE_COLS).in('container_id', chunk).order('at', { ascending: true }).order('id').range(from, to), 'read where the boxes moved', { parallel: 4 })
       moves.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
-      c.places = places.map(placeOf)
-      c.containers = containerRows.map(containerOf)
       const movementRows = movementRowsNewestFirst.map(movementOf).reverse()
-      c.movements = movementRows
+      // What was pressed here and has not landed yet is drawn over the read (v2.7173), so a read never takes a kept press off the screen.
+      const read = withPending(jobId, { places: places.map(placeOf), containers: containerRows.map(containerOf), moves: moves.map((r) => moveOf(r, jobId)), movements: movementRows, photos: photos.map(photoOf) })
+      c.places = read.places
+      c.containers = read.containers
+      c.movements = read.movements
       c.capped = movementRows.length >= MOVEMENTS_LIMIT
       // Past the cap the device's sums would read a part of the ledger, so the database sums it whole (on_site_job_summary, v2.6743).
       c.summary = c.capped ? await loadServerSummary(jobId) : null
-      c.photos = photos.map(photoOf)
-      c.moves = moves.map((r) => moveOf(r, jobId))
+      c.photos = read.photos
+      c.moves = read.moves
       c.loadedAt = Date.now()
       void loadBookPrices(bookPartIds(c.movements))
       void loadSitePricing([jobId])
@@ -345,25 +351,74 @@ export async function fetchContainerByCode(code: string): Promise<Container | nu
 // Writes: the cache first, the table behind it; a refusal is read back and said.
 // ---------------------------------------------------------------------------
 
-let onError: (message: string) => void = () => {}
-/** The screen that is up hears a refused write in its own words (a toast); the job is read again either way. */
-export function setOnSiteErrorHandler(cb: (message: string) => void): void {
+let onError: (message: string, tone: 'error' | 'info') => void = () => {}
+/**
+ * The screen that is up hears a refused write in its own words (a toast); the job is read again either way. Since
+ * v2.7173 it also hears, once, that a press is kept for want of signal: `tone` is `info` then, and `error` for a no.
+ */
+export function setOnSiteErrorHandler(cb: (message: string, tone: 'error' | 'info') => void): void {
   onError = cb
 }
 
-function afterWrite(jobId: string, what: string, p: PromiseLike<{ error: unknown }>): void {
-  void Promise.resolve(p).then(
-    ({ error }) => {
-      if (!error) return
-      onError(`${what} did not save: ${formatErrorMessage(error)}`)
+/**
+ * A press, from here on (v2.7173, punch list #344 PR 1): its rows are drawn on the job at once (`applyOnSiteWrites`,
+ * the one place a write becomes what the screen shows) and handed to the sender, which keeps them on the phone and
+ * sends them in order (`onSiteSend.ts`). With no signal the press waits in the outbox and is drawn again over every
+ * fresh read of the job until it lands. Only a refusal, the office answering no, takes it back off the screen: the
+ * reason is said and the job is read again.
+ */
+function commit(jobId: string, what: string, writes: OnSiteWrite[]): void {
+  const c = cacheOf(jobId)
+  const pressedAt = Date.now()
+  Object.assign(c, applyOnSiteWrites(c, writes, jobId, new Date(pressedAt).toISOString()))
+  bump()
+  void onSiteSender()
+    .send({ jobId, what, writes, pressedAt })
+    .then((outcome) => {
+      if (outcome.kind === 'landed') return
+      if (outcome.kind === 'queued') {
+        // Said once, when the first press starts to wait; the bar on the strip counts the rest.
+        if (outcome.first) onError(ON_SITE_KEPT_WORDS, 'info')
+        return
+      }
+      onError(`${what} did not save: ${outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error)}`, 'error')
       void loadJob(jobId, { force: true })
-    },
-    (e: unknown) => {
-      onError(`${what} did not save: ${formatErrorMessage(e)}`)
-      void loadJob(jobId, { force: true })
-    },
-  )
+    })
 }
+
+/** What the phone says when a press starts to wait for signal. */
+export const ON_SITE_KEPT_WORDS = 'No signal. What you press is kept on this phone and sends by itself.'
+
+/** The presses still on their way for a job, drawn over what a read brought back, in the order they were pressed. */
+function withPending(jobId: string, rows: OnSiteRows): OnSiteRows {
+  let out = rows
+  for (const p of pendingOnSitePresses(jobId, onSiteSender(), outbox)) {
+    const writes = parseOnSiteWrites(p.payload.writes)
+    if (writes) out = applyOnSiteWrites(out, writes, jobId, new Date(p.pressedAt).toISOString())
+  }
+  return out
+}
+
+/**
+ * A press the outbox gave up on: the office refused it on a later try, or the person dropped it from the list. Its
+ * rows are still drawn, so the job is read again and the screen shows what the office holds. A press that landed
+ * needs no read: its rows are the office's now.
+ */
+const waitingByPress = new Map<string, string>()
+outbox.subscribe(() => {
+  const now = new Map<string, string>()
+  const landed = new Set<string>()
+  for (const p of outbox.presses()) {
+    if (p.kind !== 'on-site-press') continue
+    if (p.state === 'sent') landed.add(p.id)
+    else if (isPendingOnSitePress(p)) now.set(p.id, p.payload.jobId)
+  }
+  const reread = new Set<string>()
+  for (const [id, jobId] of waitingByPress) if (!now.has(id) && !landed.has(id)) reread.add(jobId)
+  waitingByPress.clear()
+  for (const [id, jobId] of now) waitingByPress.set(id, jobId)
+  for (const jobId of reread) if (jobs.get(jobId)?.loadedAt) void loadJob(jobId, { force: true })
+})
 
 /** A place by name, made when missing; the same name twice is one place. */
 export function addPlace(input: { jobId: string; name: string; byUserId?: string | null }): Place {
@@ -371,20 +426,17 @@ export function addPlace(input: { jobId: string; name: string; byUserId?: string
   const c = cacheOf(input.jobId)
   const have = c.places.find((p) => p.name.toLowerCase() === name.toLowerCase())
   if (have) return have
-  const p: Place = { id: newId(), jobId: input.jobId, name, createdAt: new Date().toISOString() }
-  c.places = [...c.places, p]
-  bump()
-  afterWrite(input.jobId, `The place ${name}`, db.from('job_places').insert({ id: p.id, job_id: p.jobId, name, created_by: input.byUserId ?? null }))
-  return p
+  const id = newId()
+  commit(input.jobId, `The place ${name}`, [{ table: 'job_places', op: 'insert', id, row: { id, job_id: input.jobId, name, created_by: input.byUserId ?? null } }])
+  return c.places.find((p) => p.id === id)!
 }
 
 export function addContainer(input: { jobId: string; label: string; kind: ContainerKind; where: string; locationId?: string | null; byUserId?: string | null }): Container {
   const c = cacheOf(input.jobId)
-  const box: Container = { id: newId(), jobId: input.jobId, label: input.label.trim(), kind: input.kind, where: input.where.trim(), locationId: input.locationId ?? null, lat: null, lng: null, retiredAt: null, createdAt: new Date().toISOString() }
-  c.containers = [...c.containers, box]
-  bump()
-  afterWrite(input.jobId, `The ${box.kind} ${box.label}`, db.from('job_containers').insert({ id: box.id, job_id: box.jobId, label: box.label, kind: box.kind, where_note: box.where, place_id: box.locationId, created_by: input.byUserId ?? null }))
-  return box
+  const id = newId()
+  const label = input.label.trim()
+  commit(input.jobId, `The ${input.kind} ${label}`, [{ table: 'job_containers', op: 'insert', id, row: { id, job_id: input.jobId, label, kind: input.kind, where_note: input.where.trim(), place_id: input.locationId ?? null, created_by: input.byUserId ?? null } }])
+  return c.containers.find((x) => x.id === id)!
 }
 
 /** The box itself moves to another place: its row changes and a move is kept, apart from its parts. */
@@ -393,12 +445,12 @@ export function moveContainer(containerId: string, toLocationId: string | null, 
     const box = c.containers.find((x) => x.id === containerId)
     if (!box) continue
     if (box.locationId === toLocationId) return
-    const mv: ContainerMove = { id: newId(), jobId, containerId, fromLocationId: box.locationId, toLocationId, byName, at: new Date().toISOString() }
-    c.containers = c.containers.map((x) => (x.id === containerId ? { ...x, locationId: toLocationId } : x))
-    c.moves = [...c.moves, mv]
-    bump()
-    afterWrite(jobId, `Moving ${box.label}`, db.from('job_containers').update({ place_id: toLocationId }).eq('id', containerId))
-    afterWrite(jobId, `The move of ${box.label}`, db.from('job_container_moves').insert({ id: mv.id, container_id: containerId, from_place_id: mv.fromLocationId, to_place_id: toLocationId, by_user_id: byUserId, by_name: byName }))
+    const id = newId()
+    // One press, two rows, in this order: the box's place, then the move that records it, stamped when pressed.
+    commit(jobId, `Moving ${box.label}`, [
+      { table: 'job_containers', op: 'update', id: containerId, row: { place_id: toLocationId } },
+      { table: 'job_container_moves', op: 'insert', id, row: { id, container_id: containerId, from_place_id: box.locationId, to_place_id: toLocationId, by_user_id: byUserId, by_name: byName, at: new Date().toISOString() } },
+    ])
     return
   }
 }
@@ -408,9 +460,26 @@ export function pinContainer(containerId: string, pin: { lat: number; lng: numbe
   for (const [jobId, c] of jobs) {
     const box = c.containers.find((x) => x.id === containerId)
     if (!box) continue
-    c.containers = c.containers.map((x) => (x.id === containerId ? { ...x, lat: pin?.lat ?? null, lng: pin?.lng ?? null } : x))
-    bump()
-    afterWrite(jobId, `The pin on ${box.label}`, db.from('job_containers').update({ lat: pin?.lat ?? null, lng: pin?.lng ?? null }).eq('id', containerId))
+    commit(jobId, `The pin on ${box.label}`, [{ table: 'job_containers', op: 'update', id: containerId, row: { lat: pin?.lat ?? null, lng: pin?.lng ?? null } }])
+    return
+  }
+}
+
+/**
+ * Edit a box (v2.7179): its name, its kind, its where line, only what changed. Callers run `editBoxVerdict`
+ * first and pass its patch. The code on the printed label is cut from the id, so a rename leaves it working,
+ * and the database keeps the old name by itself (`job_container_names`).
+ */
+export function editContainer(containerId: string, patch: BoxPatch): void {
+  for (const [jobId, c] of jobs) {
+    const box = c.containers.find((x) => x.id === containerId)
+    if (!box) continue
+    const row: Record<string, unknown> = {}
+    if (patch.label !== undefined) row.label = patch.label
+    if (patch.kind !== undefined) row.kind = patch.kind
+    if (patch.where !== undefined) row.where_note = patch.where
+    if (Object.keys(row).length === 0) return
+    commit(jobId, patch.label !== undefined ? `Renaming ${box.label}` : `The change to ${box.label}`, [{ table: 'job_containers', op: 'update', id: containerId, row }])
     return
   }
 }
@@ -426,10 +495,7 @@ export function retireContainer(id: string): void {
   for (const [jobId, c] of jobs) {
     const box = c.containers.find((x) => x.id === id)
     if (!box) continue
-    const at = new Date().toISOString()
-    c.containers = c.containers.map((x) => (x.id === id ? { ...x, retiredAt: at } : x))
-    bump()
-    afterWrite(jobId, `Retiring ${box.label}`, db.from('job_containers').update({ retired_at: at }).eq('id', id))
+    commit(jobId, `Retiring ${box.label}`, [{ table: 'job_containers', op: 'update', id, row: { retired_at: new Date().toISOString() } }])
     return
   }
 }
@@ -439,9 +505,7 @@ export function unretireContainer(id: string): void {
   for (const [jobId, c] of jobs) {
     const box = c.containers.find((x) => x.id === id)
     if (!box) continue
-    c.containers = c.containers.map((x) => (x.id === id ? { ...x, retiredAt: null } : x))
-    bump()
-    afterWrite(jobId, `Bringing back ${box.label}`, db.from('job_containers').update({ retired_at: null }).eq('id', id))
+    commit(jobId, `Bringing back ${box.label}`, [{ table: 'job_containers', op: 'update', id, row: { retired_at: null } }])
     return
   }
 }
@@ -464,49 +528,35 @@ export type AddMovementInput = {
 
 export function addMovement(input: AddMovementInput): Movement {
   const c = cacheOf(input.jobId)
-  const m: Movement = {
-    id: newId(),
-    jobId: input.jobId,
-    partId: input.partId,
-    partName: input.partName.trim(),
-    manufacturer: input.manufacturer,
-    quantity: Math.max(0, Math.round(input.quantity)),
-    reason: input.reason,
-    fromContainerId: input.fromContainerId,
-    toContainerId: input.toContainerId,
-    note: input.note ?? '',
-    byUserId: input.byUserId,
-    byName: input.byName,
-    at: input.at ?? new Date().toISOString(),
-    source: input.source ?? null,
-    itemId: null,
-  }
-  c.movements = [...c.movements, m]
-  bump()
-  if (m.partId) void loadBookPrices([m.partId])
-  afterWrite(input.jobId, `${m.quantity} ${m.partName}`, db.from('job_material_movements').insert({ id: m.id, job_id: m.jobId, part_id: m.partId, part_name: m.partName, manufacturer: m.manufacturer, quantity: m.quantity, reason: m.reason, from_container_id: m.fromContainerId, to_container_id: m.toContainerId, note: m.note, source: m.source, by_user_id: m.byUserId, by_name: m.byName, at: m.at }))
-  return m
+  const id = newId()
+  const partName = input.partName.trim()
+  const quantity = Math.max(0, Math.round(input.quantity))
+  commit(input.jobId, `${quantity} ${partName}`, [
+    {
+      table: 'job_material_movements',
+      op: 'insert',
+      id,
+      row: { id, job_id: input.jobId, part_id: input.partId, part_name: partName, manufacturer: input.manufacturer, quantity, reason: input.reason, from_container_id: input.fromContainerId, to_container_id: input.toContainerId, note: input.note ?? '', source: input.source ?? null, by_user_id: input.byUserId, by_name: input.byName, at: input.at ?? new Date().toISOString() },
+    },
+  ])
+  if (input.partId) void loadBookPrices([input.partId])
+  return c.movements.find((m) => m.id === id)!
 }
 
 /** A photo's note: the picture went to the bucket (or stayed on the phone); the sweep files it and writes the rest. */
 export function addPhoto(p: PhotoNote): PhotoNote {
-  const c = cacheOf(p.jobId)
-  c.photos = [...c.photos, p]
-  bump()
-  afterWrite(p.jobId, 'The photo', db.from('job_box_photos').insert({ id: p.id, job_id: p.jobId, container_id: p.containerId, by_user_id: p.byUserId, by_name: p.byName, words: p.words ?? '', file_name: p.fileName, taken_at: p.at, bytes: p.bytes, width: p.width, height: p.height, status: p.status, storage_path: p.storagePath }))
-  return p
+  commit(p.jobId, 'The photo', [{ table: 'job_box_photos', op: 'insert', id: p.id, row: { id: p.id, job_id: p.jobId, container_id: p.containerId, by_user_id: p.byUserId, by_name: p.byName, words: p.words ?? '', file_name: p.fileName, taken_at: p.at, bytes: p.bytes, width: p.width, height: p.height, status: p.status, storage_path: p.storagePath } }])
+  return cacheOf(p.jobId).photos.find((x) => x.id === p.id) ?? p
 }
 
 export function updatePhoto(id: string, patch: Partial<Pick<PhotoNote, 'status' | 'storagePath' | 'driveFileId'>>): void {
   for (const [jobId, c] of jobs) {
     if (!c.photos.some((p) => p.id === id)) continue
-    c.photos = c.photos.map((p) => (p.id === id ? { ...p, ...patch } : p))
-    bump()
     const row: Record<string, unknown> = {}
     if (patch.status !== undefined) row.status = patch.status
     if (patch.storagePath !== undefined) row.storage_path = patch.storagePath
     if (patch.driveFileId !== undefined) row.drive_file_id = patch.driveFileId
-    afterWrite(jobId, 'The photo', db.from('job_box_photos').update(row).eq('id', id))
+    commit(jobId, 'The photo', [{ table: 'job_box_photos', op: 'update', id, row }])
     return
   }
 }
