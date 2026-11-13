@@ -749,7 +749,7 @@ WHERE proname IN (
 
 #### `public.checklist_items` (key fields)
 - **Purpose**: Recurring checklist task definitions. See `checklist_item_assignees` for assignees.
-- **Key Fields**: `title`, `links` (text[], URLs for placeholders [1], [2], etc. in title; links[0]=[1], links[1]=[2]); since v2.6592 (punch list #273) `asks_for_photo` (a photo required at the card's finish; `checklist_tech_tree_group_tasks` carries the same), and on `checklist_instances` `percent_complete` (0 to 100, kept in step with `completed_at` by `a_task_percent_keeps_done` and recounted from the ticks by `task_criteria_checks_recount_aiud`; mirrored onto the roadmap task by `sync_roadmap_task_from_instance`)
+- **Key Fields**: `title`, `links` (text[], URLs for placeholders [1], [2], etc. in title; links[0]=[1], links[1]=[2]); since v2.6592 (punch list #273) `asks_for_photo` (a photo required at the card's finish; `checklist_tech_tree_group_tasks` carries the same), and on `checklist_instances` `percent_complete` (0 to 100, kept in step with `completed_at` by `a_task_percent_keeps_done` and recounted from the ticks by `task_criteria_checks_recount_aiud`; mirrored onto the roadmap task by `sync_roadmap_task_from_instance`) Since v2.7058 (punch list #328) an optional place, a named point: `place_name`, `place_lat`, `place_lng`, `place_accuracy_m` (the phone's margin, null when the map was dragged), `place_set_by`, `place_set_at`; whole or absent by the table's checks, rules in `src/lib/tasks/taskPlace.ts`.
 
 #### `public.checklist_item_assignees`
 - **Purpose**: Junction table for checklist item assignees (many-to-many). Replaces legacy single `assigned_to_user_id` on checklist_items.

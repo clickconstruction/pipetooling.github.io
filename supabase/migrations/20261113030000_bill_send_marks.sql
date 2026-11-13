@@ -17,7 +17,7 @@ SET lock_timeout = '3s';
 -- The caller must read sent_documents (is_office_staff(), its SELECT policy). Anyone else reads no rows. A copy with
 -- nothing to say still comes back, with nulls.
 --
--- No table, so no house calls. See docs/migrations/20261112210000_bill_send_marks.md.
+-- No table, so no house calls. See docs/migrations/20261113030000_bill_send_marks.md.
 
 CREATE OR REPLACE FUNCTION public.bill_send_marks(p_ids uuid[])
 RETURNS TABLE (

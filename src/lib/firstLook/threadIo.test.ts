@@ -41,7 +41,21 @@ describe('the thread’s reads of a First look (punch list #319)', () => {
     })
     const got = await supabaseFirstLookThreadIo(db).looks('dana')
     expect(got.looks).toEqual([{ id: 'L1' }])
-    expect(db.asked.map((a) => /drive_/.test(a.columns))).toEqual([true, false, true, false])
+    // The looks step down twice (PR 7's columns, then PR 2's), the files once.
+    expect(db.asked.map((a) => /drive_/.test(a.columns))).toEqual([true, true, false, true, false])
+  })
+
+  it('a database with the Drive columns and not the tech’s still reads the Drive folder', async () => {
+    const db = fakeDb((table, columns) => {
+      if (/tech_read/.test(columns)) return { data: null, error: { code: '42703', message: `column ${table}.tech_read does not exist` } }
+      return table === 'first_looks' ? { data: [{ id: 'L1', drive_folder_id: 'FOLDER' }], error: null } : { data: [], error: null }
+    })
+    const got = await supabaseFirstLookThreadIo(db).looks('dana')
+    expect(got.looks).toEqual([{ id: 'L1', drive_folder_id: 'FOLDER' }])
+    expect(db.asked.filter((a) => a.table === 'first_looks').map((a) => [/tech_read/.test(a.columns), /drive_folder_id/.test(a.columns)])).toEqual([
+      [true, true],
+      [false, true],
+    ])
   })
 
   it('no look means no second read', async () => {

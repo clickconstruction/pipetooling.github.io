@@ -36,6 +36,8 @@ const G = (stepId: string): SurfacePlace => ({ journeyId: 'gc', stepId })
 const S = (stepId: string): SurfacePlace => ({ journeyId: 'sub', stepId })
 const HS = (stepId: string): SurfacePlace => ({ journeyId: 'house', stepId })
 const F = (stepId: string): SurfacePlace => ({ journeyId: 'firm', stepId })
+/** The lien letters (punch list #326): what the owner of a property and their builder get on an unpaid job. */
+const L = (stepId: string): SurfacePlace => ({ journeyId: 'lien', stepId })
 
 export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // ---- public routes (App.tsx, outside ProtectedRoute) ----
@@ -82,7 +84,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-stripe-invoice', audience: 'homeowner', steps: [H('bill-email')] },
   { kind: 'sender', ref: 'send-physical-invoice-email', audience: 'homeowner', steps: [H('bill-by-email')] },
   { kind: 'sender', ref: 'send-hazmat-notice-email', audience: 'homeowner', steps: [H('hazmat-notice')] },
-  { kind: 'sender', ref: 'send-lien-filing-email', audience: 'owner', steps: [H('demand-letter'), G('owner-notice')] },
+  { kind: 'sender', ref: 'send-lien-filing-email', audience: 'owner', steps: [H('demand-letter'), L('lien-cover-letter'), L('owner-notice'), L('lien-courtesy-email-owner'), L('lien-courtesy-email-gc'), L('lien-letter-paid-out'), L('lien-letter-quiet'), L('lien-affidavit'), L('lien-release-of-record'), L('lien-demand-letter'), L('lien-retainage')] },
   { kind: 'sender', ref: 'send-lien-release-email', audience: 'homeowner', steps: [H('lien-release')] },
   { kind: 'sender', ref: 'send-bid-room-link', audience: 'gc', steps: [G('bid-room-email'), G('bid-room-revised-email')] },
   // Stage 5a (v2.3528): the office's answer to a question asked on the review room — lands in the reviewer's inbox with their own room link.
@@ -113,7 +115,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.
   { kind: 'sender', ref: 'messages-email', audience: 'owner', steps: [G('gc-reply-email'), S('sub-reply-email')] },
   // Messages cut 5: a text from the company number, through Quo. The reply box's text and the webhook's answer to HELP.
-  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('booked-text'), H('estimate-text'), H('rating-text')] },
+  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('booked-text'), H('estimate-text'), H('rating-text'), L('lien-courtesy-text-owner'), L('lien-courtesy-text-gc')] },
   { kind: 'sender', ref: 'quo-webhook', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
   // owner turns a step on. The same text, opt-out line and thread as the office's own.

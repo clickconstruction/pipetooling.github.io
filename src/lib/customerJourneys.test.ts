@@ -1,13 +1,14 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { customerJourneys, findStep, firstRenderableStep, SAMPLE_EMAIL_IDS, SAMPLE_TEXT_IDS } from './customerJourneys'
+import { customerJourneys, findStep, firstRenderableStep, LIEN_STAGES, SAMPLE_EMAIL_IDS, SAMPLE_TEXT_IDS } from './customerJourneys'
+import { plainWordsFailures } from './plainWords'
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_LOW, SAMPLE_TOKEN_OWNER } from './customerSample'
 
 describe('customerJourneys (What customers see)', () => {
   const journeys = customerJourneys()
-  it('five audiences, steps in the order they are met, ids unique', () => {
-    expect(journeys.map((j) => j.id)).toEqual(['homeowner', 'gc', 'sub', 'house', 'firm'])
+  it('five audiences and the lien letters, steps in the order they are met, ids unique', () => {
+    expect(journeys.map((j) => j.id)).toEqual(['homeowner', 'gc', 'lien', 'sub', 'house', 'firm'])
     const ids = journeys.flatMap((j) => j.steps.map((s) => s.id))
     expect(new Set(ids).size).toBe(ids.length)
     // Punch list #319: the First look comes before the estimate, as a caller meets it.
@@ -33,7 +34,7 @@ describe('customerJourneys (What customers see)', () => {
     expect(findStep(journeys, 'sub', 'sub-contract')?.render).toEqual({ kind: 'page', path: `/contract/accept?t=${SAMPLE_TOKEN}` })
     // v2.3509: the paper steps render from the sample by the app's own builders; the terms page is the live page.
     expect(findStep(journeys, 'homeowner', 'bill-by-email')?.render).toEqual({ kind: 'paper', paper: 'bill-by-email' })
-    expect(findStep(journeys, 'gc', 'owner-notice')?.render).toEqual({ kind: 'paper', paper: 'owner-notice' })
+    expect(findStep(journeys, 'lien', 'owner-notice')?.render).toEqual({ kind: 'paper', paper: 'owner-notice' })
     expect(findStep(journeys, 'homeowner', 'estimate-terms')?.render).toEqual({ kind: 'page', path: `/estimate/terms?t=${SAMPLE_TOKEN}` })
     // The contract email comes right before the page it links to (v2.2777).
     const subIds = journeys.find((j) => j.id === 'sub')!.steps.map((s) => s.id)
@@ -51,8 +52,42 @@ describe('customerJourneys (What customers see)', () => {
     expect(homeIds.indexOf('job-contract-page')).toBeLessThan(homeIds.indexOf('bill-email'))
     // Collections paper ends the journey it belongs to.
     expect(homeIds[homeIds.length - 2]).toBe('demand-letter')
+    // Punch list #326: the notice to the owner left the GC's journey for the lien letters, where it is step 1.
     const gcIds = journeys.find((j) => j.id === 'gc')!.steps.map((s) => s.id)
-    expect(gcIds[gcIds.length - 1]).toBe('owner-notice')
+    expect(gcIds).not.toContain('owner-notice')
+  })
+  it('the lien letters: every letter on an unpaid job, in the order it goes, then the two beside the order (punch list #326)', () => {
+    const lien = journeys.find((j) => j.id === 'lien')!
+    expect(lien.steps.map((s) => s.id)).toEqual([
+      'lien-cover-letter',
+      'owner-notice',
+      'lien-courtesy-email-owner',
+      'lien-courtesy-text-owner',
+      'lien-courtesy-email-gc',
+      'lien-courtesy-text-gc',
+      'lien-letter-paid-out',
+      'lien-letter-quiet',
+      'lien-affidavit',
+      'lien-release-of-record',
+      'lien-demand-letter',
+      'lien-retainage',
+    ])
+    // Each step says where it stands: a numbered step of the ladder, or beside it. The numbers never go back.
+    const stages = lien.steps.map((s) => s.when.split(' · ')[0])
+    expect(stages).toEqual(['Step 1', 'Step 1', 'Step 2', 'Step 2', 'Step 2', 'Step 2', 'Step 3', 'Step 3', 'Step 4', 'Step 5', 'Beside the order', 'Beside the order'])
+    // The order is said once over the cards, in plain words, and every numbered stage has a step that opens with its number.
+    expect(lien.stages).toEqual([...LIEN_STAGES])
+    expect(LIEN_STAGES.map((st) => st.n)).toEqual(['1', '2', '3', '4', '5', '', ''])
+    for (const st of LIEN_STAGES) {
+      expect(plainWordsFailures(st.when), st.name).toEqual([])
+      if (st.n) expect(stages).toContain(`Step ${st.n}`)
+    }
+    expect(journeys.filter((j) => j.stages).map((j) => j.id)).toEqual(['lien'])
+    // Nothing waits on a release: every one draws, as a paper, an email or a text.
+    expect(lien.steps.map((s) => s.render.kind)).toEqual(['paper', 'paper', 'email', 'text', 'email', 'text', 'paper', 'paper', 'paper', 'paper', 'paper', 'paper'])
+    // The demand letter is the homeowner's own paper, shown here too; the homeowner's journey keeps its step for A person.
+    expect(findStep(journeys, 'lien', 'lien-demand-letter')?.render).toEqual({ kind: 'paper', paper: 'demand-letter' })
+    expect(findStep(journeys, 'homeowner', 'demand-letter')?.render).toEqual({ kind: 'paper', paper: 'demand-letter' })
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {

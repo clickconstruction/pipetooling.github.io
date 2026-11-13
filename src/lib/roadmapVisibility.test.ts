@@ -18,13 +18,13 @@ describe('canOpenRoadmap — the Roadmap nav entry (journey-map Tier-2 #41)', ()
     }
   })
 
-  it('Farm Mode hides the door for every role, the owner included', () => {
+  it('Task Mode hides the door for every role, the owner included', () => {
     for (const r of ALL_ROLES) expect(canOpenRoadmap(r, true)).toBe(false)
   })
 })
 
 describe('canSeeRoadmapNeedsYou — the Needs-You card is the office’s (punch list #188 row 37)', () => {
-  it('dev, the owner, assistant and controller, and never under Farm Mode', () => {
+  it('dev, the owner, assistant and controller, and never under Task Mode', () => {
     expect(ALL_ROLES.filter((r) => canSeeRoadmapNeedsYou(r, false))).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
     expect(canSeeRoadmapNeedsYou('dev', true)).toBe(false)
     expect(canSeeRoadmapNeedsYou('master_technician', true)).toBe(false)
@@ -65,12 +65,12 @@ describe('the Roadmap door is the gear menu row above Partnerships (v2.6258)', (
     expect(gear.slice(roadmap, partnerships).match(/<NavLink/g) ?? []).toHaveLength(1)
   })
 
-  it('the row keeps the roadmap gate (canOpenRoadmap, never under Farm Mode) and the neighbours\' look', () => {
+  it('the row keeps the roadmap gate (canOpenRoadmap, never under Task Mode) and the neighbours\' look', () => {
     const row = gear.slice(gear.lastIndexOf('{', gear.indexOf('to="/roadmap"')) - 40, gear.indexOf('to="/partnerships"'))
     expect(row).toMatch(/\{canShowRoadmapNav && \(/)
     expect(row).toMatch(/\{roadmapIcon\}\s*Roadmap/)
     expect(row).toMatch(/onClick=\{\(\) => setGearOpen\(false\)\}/)
-    expect(layout).toMatch(/const canShowRoadmapNav = canOpenRoadmap\(role, farmModeActive\)/)
+    expect(layout).toMatch(/const canShowRoadmapNav = canOpenRoadmap\(role, taskModeActive\)/)
   })
 
   it('the header and the phone drawer (renderNavLinks) no longer carry the link', () => {

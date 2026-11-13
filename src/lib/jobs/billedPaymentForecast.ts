@@ -5,21 +5,16 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { slipAdjustedYmd } from './paymentReliability'
 import { paySpeedPayer } from './billToParty'
 import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
-import {
-  billedExpectedPayModel,
-  daysBetweenYmd,
-  formatYmdMonthDay,
-  type CustomerSegment,
-  type ExpectedPayModel,
-  type PaySpeedData,
-  type PromisedPayDate,
-} from './billedExpectedPay'
+import { daysBetweenYmd, formatYmdMonthDay, type CustomerSegment, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedPayModel, type BilledPayModel } from './billedDuePay'
+import { calendarFor, type PayCalendarIndex } from './payCalendar'
 
 /**
  * Billed Awaiting Payment — payment forecast (pure kernel).
  *
  * Buckets every open billed row by its expected payment date (bill date +
- * customer pay speed, the expected-pay chips' model) into a when-does-cash-
+ * customer pay speed, the expected-pay chips' model; for a payer on a Pay
+ * calendar, its due day plus its usual lateness) into a when-does-cash-
  * arrive view: past expected / this week / next week / the following two
  * weeks / later / no pay history. Company weeks start Sunday (the
  * dateUtils convention). Rows with no open money are skipped and counted so
@@ -38,7 +33,7 @@ export type ForecastRow = {
   /** Open dollars on the row (the header chips' sum rule). */
   open: number
   /** Null only in the 'unknown' bucket (no reference date or no pay-speed data). */
-  model: ExpectedPayModel | null
+  model: BilledPayModel | null
   /**
    * Their Word PR 3: a promised row bucketed by the promise moved by the
    * customer's usual slip — the day the money usually lands after the date
@@ -116,6 +111,10 @@ export function buildBilledPaymentForecast(
   slipByCustomer?: Record<string, number> | null,
   /** The GC facts and the GC pace here (v2.6034, `paceContextFor`); without them every payer reads as one that is not a GC. */
   pace?: PaceContext | null,
+  /** The stored Pay calendars (punch list #323): a payer on one buckets by its due day plus its usual lateness, and the row carries the due day. */
+  payCalendars?: PayCalendarIndex | null,
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null,
 ): PaymentForecast {
   const byKey: Record<ForecastBucketKey, ForecastRow[]> = {
     past: [],
@@ -147,17 +146,19 @@ export function buildBilledPaymentForecast(
     // since v2.4365 whose pace the estimate reads (the GC on a GC-billed bill).
     const payer = paySpeedPayer(job, r.inv)
     const payerId = payer.id
-    const model = billedExpectedPayModel(
+    const model = billedPayModel(
       {
         billedAtIso: r.inv.billed_at,
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
         customerId: payerId,
         payerName: payer.name,
+        acceptedYmd: acceptedByInvoice?.get(r.inv.id) ?? null,
       },
       paySpeeds,
       todayYmd,
       promises?.[job.id] ?? null,
       paceInputFor(pace ?? null, { payerId, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
+      calendarFor(payCalendars, { payerId, jobId: job.id }),
     )
     // A promise is bucketed by when the money usually lands after the date
     // this customer gives, not by the date itself (Their Word PR 3).

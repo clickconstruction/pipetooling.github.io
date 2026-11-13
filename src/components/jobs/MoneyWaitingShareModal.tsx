@@ -19,6 +19,7 @@ import {
 } from '../../lib/moneyWaitingEmailClient'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * "Email…" on the Money waiting report modal header (v2.2226): email the report
@@ -222,14 +223,7 @@ export default function MoneyWaitingShareModal({ onClose }: { onClose: () => voi
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Email money waiting report</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-          >
-            ×
-          </button>
+          <WindowCloseButton onClose={onClose} />
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Emails the report — expected-payment buckets with every open bill, past-expected follow-ups first, linked

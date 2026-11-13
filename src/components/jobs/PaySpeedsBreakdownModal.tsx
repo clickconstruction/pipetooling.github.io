@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { Mail } from 'lucide-react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PayReceipt, PaySpeedData, PaySpeedStat } from '../../lib/jobs/billedExpectedPay'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -12,9 +13,11 @@ import { buildMoneyWaiting, moneyWaitingInKindLine, openBillsForCustomers, billW
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { buildPaySpeedsPayerFocus, type PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
+import PayCalendarLine from '../customers/PayCalendarLine'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import MoneyWaitingShareModal from './MoneyWaitingShareModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import WindowCloseButton from '../shared/WindowCloseButton'
 
 /**
  * The pay-speeds drill-down (owner-approved mockup, v2.2022): opened from
@@ -320,7 +323,7 @@ export default function PaySpeedsBreakdownModal({
   canExcludePayments?: boolean
   /** Devs only: the drill-down's ⚙ No Count Date setting (v2.2303). */
   canSetNoCountDate?: boolean
-  /** Staff senders (forecast-email gate): shows "✉ Email this weekly…" on Money waiting (v2.2565). */
+  /** Staff senders (forecast-email gate): shows "Email this weekly…" on Money waiting (v2.2565). */
   canEmailMoneyWaiting?: boolean
   /** Open a drill-down row's job STACKED above the modals, with a refresh-on-save callback (v2.2311). */
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
@@ -383,16 +386,9 @@ export default function PaySpeedsBreakdownModal({
           padding: isMobile ? '0.9rem 0.8rem 1rem' : '1.1rem 1.25rem 1.25rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Pay speeds</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close pay speeds breakdown"
-            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
-          >
-            ✕
-          </button>
+          <WindowCloseButton onClose={onClose} label="Close pay speeds breakdown" style={{ marginLeft: 'auto' }} />
         </div>
         {focus ? (
           <>
@@ -424,6 +420,10 @@ export default function PaySpeedsBreakdownModal({
                 {focus.sentence}
                 {focus.paysIn ? ' Counted over the last 12 months.' : ''}
               </p>
+              {/* Punch list #323: this payer's Pay calendar in a few words, or the press that sets one; both open its window. */}
+              <div style={{ margin: '-0.25rem 0 0.5rem' }}>
+                <PayCalendarLine payerId={focus.customerId} payerName={focus.name} />
+              </div>
               {receiptsPanel(
                 { customerId: focus.customerId, name: focus.name, segment: focus.segment, medianDays: focus.medianDays, samples: focus.samples, open: focus.open, receipts: focus.receipts },
                 companyMedian,
@@ -607,7 +607,9 @@ export default function PaySpeedsBreakdownModal({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  ✉ Email this weekly…
+                  {/* The icon hangs from the words' baseline, so the press lines up with the caption when they share a row. */}
+                  <Mail size={16} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: '-3px', marginRight: 6 }} />
+                  Email this weekly…
                 </button>
               )}
             </div>

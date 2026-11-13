@@ -13,7 +13,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import {
   FIRST_LOOK_COMPANY,
-  FIRST_LOOK_WORDS as W,
+  firstLookLangOf,
+  firstLookPlaceKept,
+  firstLookWords,
   firstLookAskedWords,
   firstLookBytesWords,
   firstLookCode,
@@ -23,6 +25,7 @@ import {
   firstLookSendLabel,
   firstLookSignRefusal,
   type FirstLookKind,
+  type FirstLookLang,
   type FirstLookPagePayload,
   type FirstLookPageView,
   type FirstLookThanks,
@@ -120,6 +123,12 @@ function Stop({ head, body, phone }: { head: string; body: string; phone?: strin
  */
 export default function ShowUs({ code: given, io = showUsIo }: { code: string | null | undefined; io?: ShowUsIo }) {
   const code = useMemo(() => firstLookCode(given), [given])
+  // PR 4b: the page reads in the phone's own language, English or Spanish, with a press to change it.
+  const [lang, setLang] = useState<FirstLookLang>(() => firstLookLangOf(typeof navigator === 'undefined' ? null : navigator.language))
+  const W = firstLookWords(lang)
+  // The doors read the language at the moment they are used, so a change of language never restarts an upload.
+  const langRef = useRef(lang)
+  langRef.current = lang
   const [view, setView] = useState<View>(code ? { kind: 'loading' } : { kind: 'not_found' })
   const [reloadKey, setReloadKey] = useState(0)
   const [items, setItems] = useState<Item[]>([])
@@ -187,7 +196,8 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
 
   useEffect(() => {
     document.title = `${W.heading} · ${FIRST_LOOK_COMPANY}`
-  }, [])
+    document.documentElement.lang = lang
+  }, [W.heading, lang])
 
   // One file at a time, oldest first. A lost signal stops the run; the page tries again by itself.
   const pump = useCallback(async () => {
@@ -203,7 +213,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
         if (!next) return
         patchItem(next.id, { state: 'sending' })
         const outcome = await sendKeptFile(next, {
-          sign: (file) => io.sign(code, file),
+          sign: (file) => io.sign(code, file, langRef.current),
           done: (input) => io.done(code, input),
           putWhole: io.putWhole,
           pieces: io.pieces,
@@ -279,7 +289,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
         let mime = firstLookMimeOf(file)
         const kind = firstLookKindOfMime(mime)
         if (!kind) {
-          setNote(`${file.name || 'That file'} is not a photo or a video, so it was left out.`)
+          setNote(W.notPhoto(file.name))
           continue
         }
         let blob: Blob = file
@@ -292,7 +302,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
             /* it goes as it came */
           }
         }
-        const refusal = firstLookSignRefusal({ mime, bytes: blob.size }, { photos, videos, photoSigns: 0, videoSigns: 0 })
+        const refusal = firstLookSignRefusal({ mime, bytes: blob.size }, { photos, videos, photoSigns: 0, videoSigns: 0 }, lang)
         if (refusal) {
           setNote(refusal.words)
           continue
@@ -312,14 +322,15 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
       }
       void pump()
     },
-    [code, payload, counts, pump],
+    [code, payload, counts, pump, W, lang],
   )
 
   const sendAll = useCallback(async () => {
     if (!code || sending) return
     setSending(true)
     setNote(null)
-    const answer = await io.send(code, { place, words: words.trim() || null })
+    // The office is sent the place's English name, whatever language the page drew it in.
+    const answer = await io.send(code, { place: firstLookPlaceKept(langRef.current, place), words: words.trim() || null, lang: langRef.current })
     setSending(false)
     if (answer.ok) {
       setThanks(answer.thanks)
@@ -327,8 +338,8 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
       window.scrollTo(0, 0)
       return
     }
-    setNote(answer.why === 'signal' ? `${W.noSignal} Press it again in a moment.` : answer.words)
-  }, [code, io, place, words, sending])
+    setNote(answer.why === 'signal' ? `${W.noSignal} ${W.pressAgain}` : answer.words)
+  }, [code, io, place, words, sending, W.noSignal, W.pressAgain])
 
   if (view.kind === 'loading') {
     return (
@@ -352,10 +363,10 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
         <div style={column}>
           <Brand phone="" />
           <div style={card} role="alert">
-            <h1 style={{ margin: 0, fontSize: 22, lineHeight: 1.2 }}>{view.kind === 'signal' ? 'This phone has no signal right now' : 'The page did not open'}</h1>
-            <p style={{ margin: '8px 0 12px', color: MUTED }}>{view.kind === 'signal' ? 'The link needs a signal once, to open. Try again when you have one.' : 'Something went wrong on our side. Try again, or call the office.'}</p>
+            <h1 style={{ margin: 0, fontSize: 22, lineHeight: 1.2 }}>{view.kind === 'signal' ? W.noSignalHead : W.notOpenedHead}</h1>
+            <p style={{ margin: '8px 0 12px', color: MUTED }}>{view.kind === 'signal' ? W.noSignalBody : W.notOpenedBody}</p>
             <button type="button" style={{ ...press, ...portalPressFill(true) }} onClick={() => { setView({ kind: 'loading' }); setReloadKey((k) => k + 1) }}>
-              Try again
+              {W.tryAgain}
             </button>
           </div>
         </div>
@@ -375,9 +386,9 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
     sending: pending.length,
     percent,
     waitingForSignal: waiting && pending.length > 0,
-  })
-  const keptWords = firstLookCountWords(pending.filter((it) => it.kind === 'photo').length, pending.filter((it) => it.kind === 'video').length)
-  const before = firstLookCountWords(payload.look.photos, payload.look.videos)
+  }, lang)
+  const keptWords = firstLookCountWords(pending.filter((it) => it.kind === 'photo').length, pending.filter((it) => it.kind === 'video').length, lang)
+  const before = firstLookCountWords(payload.look.photos, payload.look.videos, lang)
   /** Files that went up on an earlier visit whose Send was never pressed: the page offers the press again. */
   const unsentBefore = payload.look.sentCount === 0 && before !== '' && active.length === 0
 
@@ -404,7 +415,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
             {thanks.got}
           </p>
           <div style={card}>
-            <div style={eyebrow}>What happens next</div>
+            <div style={eyebrow}>{W.happensNext}</div>
             <ol style={{ margin: '6px 0 0', paddingLeft: 20 }}>
               {thanks.steps.map((s) => (
                 <li key={s} style={{ marginBottom: 4 }}>
@@ -429,16 +440,33 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
     <div data-theme="light" style={page}>
       <div style={column}>
         <Brand phone={phone} />
-        <h1 style={{ margin: '14px 0 4px', fontSize: 26, lineHeight: 1.15 }}>{W.heading}</h1>
-        <p style={{ margin: 0, color: MUTED }}>{firstLookAskedWords(payload.look.askedBy)}</p>
-        {before && active.length === 0 && !unsentBefore ? <p style={{ margin: '8px 0 0', fontSize: 14, color: FAINT }}>This link already has {before} from you. Add more below.</p> : null}
+        <div style={{ textAlign: 'right', marginTop: 6 }}>
+          <button
+            type="button"
+            lang={lang === 'es' ? 'en' : 'es'}
+            data-testid="show-us-lang"
+            onClick={() => {
+              const next: FirstLookLang = lang === 'es' ? 'en' : 'es'
+              // The place picked keeps its place in the list, so it stays picked in the other language.
+              const at = place ? W.places.indexOf(place) : -1
+              setPlace(at < 0 ? place : (firstLookWords(next).places[at] ?? null))
+              setLang(next)
+            }}
+            style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontSize: 14, color: COPPER, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+          >
+            {W.switchTo}
+          </button>
+        </div>
+        <h1 style={{ margin: '8px 0 4px', fontSize: 26, lineHeight: 1.15 }}>{W.heading}</h1>
+        <p style={{ margin: 0, color: MUTED }}>{firstLookAskedWords(payload.look.askedBy, lang)}</p>
+        {before && active.length === 0 && !unsentBefore ? <p style={{ margin: '8px 0 0', fontSize: 14, color: FAINT }}>{W.alreadyHas(before)}</p> : null}
         {unsentBefore ? (
           <div style={card}>
             <p style={{ margin: 0 }}>
-              Your {before} {payload.look.photos + payload.look.videos === 1 ? 'is' : 'are'} in, and not sent to us yet.
+              {W.inNotSent(before, payload.look.photos + payload.look.videos)}
             </p>
             <button type="button" disabled={sending} onClick={() => void sendAll()} style={{ ...press, ...portalPressFill(!sending), marginTop: 10 }}>
-              {sending ? 'Sending…' : `Send ${before}`}
+              {sending ? W.sendingNow : W.send(before)}
             </button>
           </div>
         ) : null}
@@ -479,33 +507,33 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
           <div style={card}>
             <div style={eyebrow}>
               {[
-                sentNow.length ? `${firstLookCountWords(sentNow.filter((i) => i.kind === 'photo').length, sentNow.filter((i) => i.kind === 'video').length)} in` : '',
-                pending.length ? `${keptWords} ${waiting ? 'kept' : 'sending'}` : '',
+                sentNow.length ? W.inCount(firstLookCountWords(sentNow.filter((i) => i.kind === 'photo').length, sentNow.filter((i) => i.kind === 'video').length, lang)) : '',
+                pending.length ? W.keptCount(keptWords, waiting) : '',
               ]
                 .filter(Boolean)
-                .join(' · ') || 'Nothing in yet'}
+                .join(' · ') || W.nothingYet}
             </div>
             <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0, display: 'grid', gap: 8 }}>
               {active.map((it) => {
                 const pct = it.bytes > 0 ? Math.min(100, Math.floor((it.sent / it.bytes) * 100)) : 0
                 const line =
                   it.state === 'sent'
-                    ? 'In'
+                    ? W.fileIn
                     : it.state === 'refused'
-                      ? it.words ?? 'Left out'
+                      ? it.words ?? W.leftOut
                       : it.state === 'sending'
-                        ? `Sending · ${firstLookBytesWords(it.sent) || '0 KB'} of ${firstLookBytesWords(it.bytes)}`
+                        ? W.fileSending(firstLookBytesWords(it.sent) || '0 KB', firstLookBytesWords(it.bytes))
                         : waiting
-                          ? 'Kept on this phone'
-                          : 'Next to go'
+                          ? W.keptOnPhone
+                          : W.nextToGo
                 return (
                   <li key={it.id} style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ width: 52, height: 52, borderRadius: 8, border: `1px solid ${HAIR}`, background: NOTE_BAND, overflow: 'hidden', display: 'grid', placeItems: 'center', fontSize: 12, color: MUTED, fontWeight: 700 }}>
-                      {it.thumb ? <img src={it.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : it.kind === 'video' ? '▶' : 'Photo'}
+                      {it.thumb ? <img src={it.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : it.kind === 'video' ? '▶' : W.photo}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>
-                        {it.kind === 'video' ? `Video${it.seconds ? ` · ${Math.round(it.seconds)} s` : ''}` : 'Photo'} <span style={{ fontWeight: 400, color: FAINT }}>· {firstLookBytesWords(it.bytes)}</span>
+                        {it.kind === 'video' ? `${W.video}${it.seconds ? ` · ${Math.round(it.seconds)} s` : ''}` : W.photo} <span style={{ fontWeight: 400, color: FAINT }}>· {firstLookBytesWords(it.bytes)}</span>
                       </div>
                       <div style={{ fontSize: 13, color: it.state === 'sent' ? PAPER_GREEN : it.state === 'refused' ? PAPER_RED : MUTED }}>{line}</div>
                       {it.state === 'sending' ? (
@@ -518,7 +546,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
                 )
               })}
             </ul>
-            <p style={{ margin: '10px 0 0', fontSize: 13, color: FAINT }}>{waiting && pending.length > 0 ? (lasting ? W.keptLater : 'Keep this page open. This browser holds them only while the page is open.') : pending.length > 0 ? W.keepOpen : ''}</p>
+            <p style={{ margin: '10px 0 0', fontSize: 13, color: FAINT }}>{waiting && pending.length > 0 ? (lasting ? W.keptLater : W.holdsWhileOpen) : pending.length > 0 ? W.keepOpen : ''}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
               <button type="button" style={small} onClick={() => takePhotoRef.current?.click()}>
                 + {W.takePhoto}
@@ -563,7 +591,7 @@ export default function ShowUs({ code: given, io = showUsIo }: { code: string | 
         {active.length > 0 ? (
           <div style={{ marginTop: 12 }}>
             <button type="button" disabled={!label.ready || sending} onClick={() => void sendAll()} style={{ ...press, ...portalPressFill(label.ready && !sending), cursor: label.ready && !sending ? 'pointer' : 'default' }}>
-              {sending ? 'Sending…' : label.label}
+              {sending ? W.sendingNow : label.label}
             </button>
           </div>
         ) : null}
