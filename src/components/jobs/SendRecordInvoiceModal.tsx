@@ -3697,7 +3697,7 @@ export default function SendRecordInvoiceModal({
                               border:
                                 activeStripeFooterPreset === 'plumbing'
                                   ? '2px solid #2563eb'
-                                  : '1px solid #d1d5db',
+                                  : '1px solid var(--border-strong)',
                               borderRadius: 4,
                               background: activeStripeFooterPreset === 'plumbing' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                               color: 'var(--text-700)',
@@ -3726,7 +3726,7 @@ export default function SendRecordInvoiceModal({
                               border:
                                 activeStripeFooterPreset === 'electrical'
                                   ? '2px solid #2563eb'
-                                  : '1px solid #d1d5db',
+                                  : '1px solid var(--border-strong)',
                               borderRadius: 4,
                               background: activeStripeFooterPreset === 'electrical' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                               color: 'var(--text-700)',

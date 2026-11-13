@@ -28,10 +28,10 @@ const facts: DiveFacts = {
 }
 const jobsDoor = { to: '/jobs?tab=stages', label: 'Price the jobs' }
 
-// An item without its cells, which the tests of the cells read by themselves.
-const bareOne = <T extends object>(x: T): Omit<T, 'row'> => {
-  const { row: _row, ...rest } = x as T & { row?: unknown }
-  return rest as Omit<T, 'row'>
+// An item without its to-do card, which `callTodo.test.ts` reads by itself, and without its cells.
+const bareOne = <T extends object>(x: T): Omit<T, 'todo' | 'row'> => {
+  const { todo: _todo, row: _row, ...rest } = x as T & { todo?: unknown; row?: unknown }
+  return rest as Omit<T, 'todo' | 'row'>
 }
 const bare = <T extends { projects?: ReadonlyArray<object> }>(items: ReadonlyArray<T> | undefined) =>
   items?.map((i) => {
@@ -181,6 +181,17 @@ describe('moveDive', () => {
     expect(supply?.columns).toEqual({ name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' })
     expect(supply?.items[0]?.row).toEqual({ a: { text: '$7.2k', phone: '$7.2k due' }, b: { text: '4', phone: '4 bills', muted: true }, text: { text: 'd04' } })
     expect(supply?.items[1]?.row).toEqual({ a: { text: '$1.1k', phone: '$1.1k due' }, b: { text: '1', phone: '1 bill', muted: true } })
+  })
+
+  it('hands every named thing a to-do card of its own', () => {
+    const chase = moveDive({ key: 'chase', title: 'Chase the 9 late invoices.', door: null }, facts)
+    expect(chase?.items[0]?.todo?.title).toBe('Call Alder Builders about $40.0k late. Get a pay date for each bill.')
+    expect(moveDive({ key: 'bill', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Bill 201 · Maple Lofts. $18.0k is finished and not billed.')
+    expect(moveDive({ key: 'pct', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Set the percent done on 301 · Pine Row. It is a $30.0k contract.')
+    expect(moveDive({ key: 'price', title: '', door: null }, facts)?.items[0]?.todo?.title).toBe('Put a price on 401 · Willow Walk. Its hours earn nothing until then.')
+    expect(moveDive({ key: 'other', title: 'Ask the supply houses for more days.', door: null }, facts)?.items[0]?.todo).toMatchObject({ title: 'Ask Northside Supply for more days on $7.2k due d04, on 4 bills.', paths: ['/materials?tab=supply-houses&house=h-north&due=2026-03-04'] })
+    // A job whose percent was set on this visit needs no card.
+    expect(moveDive({ key: 'pct', title: '', door: null }, { ...facts, noPctJobs: [{ id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, setPct: 60 }] })?.items[0]?.todo).toBeUndefined()
   })
 
   it('leaves a move alone when there is nothing to name and nowhere to send', () => {

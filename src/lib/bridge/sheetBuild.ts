@@ -34,6 +34,7 @@ import { buildStageFlow, withFieldPaces, type StageFlowInput, type StageId } fro
 import { marketPaceIsWorth, todayPace } from './dial'
 import { buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from './bidWins'
 import { buildEstimateWins, type EstimateSent } from './estimateWins'
+import { leftOutWords, type LeftOutRule } from './leftOut'
 import { buildFlowStrip } from './flowStrip'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall, topPerson, topPersonId } from './weekCall'
 import type { WeekMail } from './weekMail'
@@ -54,6 +55,8 @@ export type MondaySheetReads = {
   bidsSent?: BidSent[] | null
   /** Every estimate ever sent, for the estimates' won rate (`loadEstimateWins.ts`); absent or null when not read. */
   estimatesSent?: EstimateSent[] | null
+  /** What the Bridge leaves out, as the reads took it (`leftOut.ts`, punch list #334); absent or empty when nothing is. */
+  leftOut?: ReadonlyArray<LeftOutRule>
   /** What could not be read, in plain words for the mail's last line; empty when everything came back. */
   gaps: string[]
 }
@@ -277,5 +280,5 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
   })
   const marketIsWorth = marketPaceIsWorth(stageInput)
   const strip = buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth })
-  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], gaps: reads.gaps }
+  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], leftOut: reads.leftOut?.length ? leftOutWords(reads.leftOut) : '', gaps: reads.gaps }
 }

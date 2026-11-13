@@ -245,6 +245,12 @@ export default function ChecklistAddModal({
       setRowsKey((k) => k + 1)
       setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
+      // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
+      const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
+      setLinesText(presetLines.join('\n'))
+      // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
+      if (presetLines.length > 0) setRowsOpen('lines')
+      setAsksForPhotoPick(preset?.asksForPhoto ?? null)
     }
   }, [
     modalContext?.isOpen,

@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: gated
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · nothing built · waits on his pick of an option and seven more short calls
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 and PR 3 wait on calls 2 to 5
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,10 +11,11 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: The owner opens the mock-up, picks A, B or C and answers the calls. PR 1 can be built before he picks, since every option needs it.
+next: The owner answers calls 2 to 5: who may edit, the four ways, the chip, the cap. Then PR 2, the list's own table, with its one migration.
 size: M as a train of three (S · M · M), then up to three small ones for the form's own fixes (S each)
-blocker: The owner's pick. PR 2 carries one migration, so it merges when someone is at hand to push it.
-opinion: build Option B — one press picks a way, a new way is typed where the person stands, and nothing covers the next field
+blocker: Calls 2 to 5, since call 2 sets the table's policy. PR 2 carries one migration, so it merges when someone is at hand to push it.
+opinion: Option B is picked — take calls 2 to 5 as suggested and build PR 2 and PR 3
+ver: v2.7145
 ---
 
 # Bills sent: the list under *How the bill went* (#340)
@@ -31,8 +32,8 @@ The owner, 2026-11-13, with a screenshot of **Say how it went…** open on a bil
 
 - **Who opens the page: the office only. He has it right.** Four roles: dev, master, assistant, controller.
 - **The list can be made the office's own** with one small table and no change to any record already made.
-- **I suggest Option B, the chips.** One press picks a way, a new way is typed in the form, and nothing covers the next field.
-- **One step is worth building whatever he picks.** Today a record keeps a code for its way and the screen looks the words up. A record should keep its words.
+- **He picked Option B, the chips,** on 2026-11-13, as suggested. One press picks a way, a new way is typed in the form, and nothing covers the next field.
+- **A record keeps its words** since v2.7145 (PR 1). Before it, a record kept a code for its way and the screen looked the words up.
 
 ## How it works today
 
@@ -47,7 +48,7 @@ Read from the code on 2026-11-13.
 | What the database fixes | `20261005173119_sent_documents.sql` | `kind` must look like a code name. The column `how` must be one of `print, email, hand, mail, link, download`. `source_snapshot` must be an object. **Nothing checks the code inside the snapshot.** |
 | The words on a line | `billsSentLines` → `byHandHowOf` | Looked up from the code each time the list draws. A code the list does not know reads *Recorded by hand*. |
 
-So **the words are not on the record**, except inside its title. Rename a choice in code today and every older record changes its words with it.
+So **the words were not on the record**, except inside its title: a choice renamed in code would have changed every older record's words with it. PR 1 closed that (v2.7145): a record keeps its words in `source_snapshot.how_label` and `byHandWordsOf` reads them first.
 
 Every reader of the choice takes the same looked-up words (`routeWords`):
 
@@ -75,10 +76,10 @@ The narrower choice is the master and the dev only. Then an assistant who needs 
 
 ## What an editable list has to get right
 
-1. **A record keeps its words.** Each new record writes the words it was made with into `source_snapshot.how_label`, beside the code. A line reads the record's own words first, then the list, then the four in code, then *Recorded by hand*. A rename changes the form from that moment and no record before it.
+1. **A record keeps its words.** Built in v2.7145. Each new record writes the words it was made with into `source_snapshot.how_label`, beside the code. A line reads the record's own words first, then the list, then the four in code, then *Recorded by hand*. A rename changes the form from that moment and no record before it.
 2. **Take off, never delete.** A way gets `retired_at` and `retired_by`. It leaves the form, stays in the window under *Taken off* with who and when, and **Bring back** returns it. The office has no delete.
 3. **Every way counts under Recorded by hand.** The chips sort a line by who says the bill went: the app, or a person. *Email* means the app sent it and the mail server answered. A typed way under *Email* would sit beside *Delivered 9:28 AM* and look like the same proof. So a new way adds no chip and moves no count. The tiles count its bill on the day it went. Print and the CSV say its words.
-4. **The column `how` for a typed way.** A new way files `how = 'other'`, which the table's check does not allow today. The migration adds that one value. `parseSentCopy` drops a row whose `how` it does not know, so the client that knows `other` ships first, in PR 1. The office is never asked for this.
+4. **The column `how` for a typed way.** A new way files `how = 'other'`, which the table's check does not allow today. The migration adds that one value. `parseSentCopy` drops a row whose `how` it does not know, so the client learns `other` in PR 2, a release before PR 3's editor can make the first such row. The office is never asked for this.
 5. **Where the list lives:** a small table, `bill_hand_ways`. A single settings row would be less code, but two people saving at once would overwrite each other and no way would carry its own who and when.
    - Columns: `id`, `key` (a stable code, never made from the words: the four keep theirs, a new one is `w_` and eight random characters), `label` (1 to 60 characters), `sent_how` (`hand`, `mail`, `email`, `other`), `sort_order`, `retired_at`, `retired_by`, `created_by`, `created_at`, `updated_by`, `updated_at`.
    - One live label at a time: a unique index on the lower-cased label where `retired_at` is null.
@@ -101,7 +102,7 @@ All three are in the mock-up at a desk and on a phone.
 
 Options A and B share one small window: rename, move up or down, take off, bring back, add. Each change saves when pressed. It refuses a name already on the list, a 13th way and the last way's removal, and says why.
 
-**The recommendation: B.** The office has 24 bills to clear in that box, and each one is a pick from this list. Chips make that pick one press, and they fix the covered field at no extra cost.
+**The recommendation was B, and the owner picked it.** The office has 24 bills to clear in that box, and each one is a pick from this list. Chips make that pick one press, and they fix the covered field at no extra cost.
 
 ## The form itself, separate from the list
 
@@ -115,9 +116,9 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 
 | PR | What | Size | Migration |
 |---|---|---|---|
-| 1 | **A record keeps its words.** `byHandFiling` writes `how_label`. `billsSentLines` reads it first. `SENT_HOWS` learns `other`. Kernel tests. Right whatever the owner picks, and safe to build before he does | S | none |
-| 2 | **The list in the database.** `<stamp>_bill_hand_ways.sql`: the table, its policies and trigger, the four first rows, `other` added to `sent_documents_how_known`, the four fences. `readHandWays` with the fall-back to the four in code. The form reads the live list. `docs/migrations/`, `docs/ACCESS_CONTROL.md` | M | one |
-| 3 | **The editor**, as the owner picked: the chips or the line, the window, the kernel that words each refusal, a render smoke, the guide's new section, the glossary line | M | none |
+| 1 | **A record keeps its words.** `byHandFiling` writes `how_label`. `billsSentLines` reads it first (`byHandWordsOf`). Kernel tests. **Built, v2.7145** | S | none |
+| 2 | **The list in the database.** `<stamp>_bill_hand_ways.sql`: the table, its policies and trigger, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readHandWays` with the fall-back to the four in code. The form reads the live list. `docs/migrations/`, `docs/ACCESS_CONTROL.md` | M | one |
+| 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, a render smoke, the guide's new section, the glossary line | M | none |
 | 4 to 6 | R1, R2, R3, each alone, in the order he wants them | S each | none |
 
 PR 2's client reads a table only the migration creates, so it is pushed right after the merge and merges when the person who pushes is at hand.
@@ -134,7 +135,7 @@ PR 2's client reads a table only the migration creates, so it is pushed right af
 
 The owner's, a word each:
 
-1. **Which option?** A, B or C. I suggest B.
+1. **Which option?** **B, the chips.** Picked 2026-11-13.
 2. **Who may edit the list?** The four roles that open the page, or the master and the dev only. I suggest the four.
 3. **May the four ways there today be renamed and taken off?** I suggest yes.
 4. **Does every way count under Recorded by hand?** Or may a way name the chip it counts under. I suggest every way.

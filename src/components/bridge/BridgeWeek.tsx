@@ -4,6 +4,8 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { accrualPressLabel, type MoneyLine } from '../../lib/bridge/moneyCard'
 import { moveDive, type DiveFacts, type DiveTarget } from '../../lib/bridge/callDive'
 import { BridgeMoveTable } from './BridgeMoveTable'
+import { TODO_FOOT } from '../../lib/bridge/callTodo'
+import type { TodoState } from '../../lib/bridge/callTodoState'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
 import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
 
@@ -18,6 +20,9 @@ import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
  *
  * Each move names its things (punch list #334, PR 8; `callDive.ts`): a heading line with the move's one press, then
  * its lines as a table (`BridgeMoveTable.tsx`). The card is framed by a rule down its left side, not a box.
+ *
+ * Every line carries a check (punch list #334, PR 9; `callTodoState.ts`): grey makes a to-do card for that one thing,
+ * blue is with someone and shows the card.
  */
 
 const label: CSSProperties = { fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.25 }
@@ -120,6 +125,9 @@ export function BridgeWeek({
   onAccrual,
   dives = null,
   onDive,
+  todoStates = null,
+  dayLabel,
+  onTodoSee,
 }: {
   model: WeekCallModel
   /** Opens Money at the bank's accounts, from the sentence that names what is left out. */
@@ -136,12 +144,21 @@ export function BridgeWeek({
   dives?: DiveFacts | null
   /** A press that opens a window or a sheet on the page. A page of the app is a link and needs no handler. */
   onDive?: (target: DiveTarget) => void
+  /** Where each line stands as a to-do (`callTodoState.ts`), by the to-do's key. Null while not read: every check is grey. */
+  todoStates?: ReadonlyMap<string, TodoState> | null
+  /** How the words beside a check say a day. */
+  dayLabel: (ymd: string) => string
+  /** A blue check was pressed: show the card it stands for. */
+  onTodoSee?: (state: Extract<TodoState, { kind: 'open' | 'covered' | 'done' }>) => void
 }) {
   const narrow = useIsNarrowScreen()
   const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
   // The card shows the first moves; the step's desk behind The flow lists every one.
   const shown = model.card.moves.slice(0, cap)
   const border = model.card.tone === 'lit' ? '#dc2626' : 'var(--border-strong)'
+
+  // The foot says how a line reaches a person, once some line on the card carries a check.
+  const hasChecks = shown.some((m) => (moveDive(m, dives)?.items ?? []).some((item) => item.todo))
 
   const moveRow = (m: WeekMove, i: number) => {
     // The real things behind the move, and the one press that opens the place to act on them.
@@ -180,7 +197,7 @@ export function BridgeWeek({
             )
           ) : null}
         </div>
-        {dive && dive.items.length > 0 && <BridgeMoveTable dive={dive} narrow={narrow} onDive={onDive} />}
+        {dive && dive.items.length > 0 && <BridgeMoveTable dive={dive} narrow={narrow} todoStates={todoStates} dayLabel={dayLabel} onDive={onDive} onTodoSee={onTodoSee} />}
       </li>
     )
   }
@@ -218,6 +235,11 @@ export function BridgeWeek({
               </div>
             )}
             {shown.length > 0 && <ol style={{ listStyle: 'none', margin: '7px 0 0', padding: 0 }}>{shown.map(moveRow)}</ol>}
+            {hasChecks && (
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 7 }} data-testid="bridge-week-foot">
+                {TODO_FOOT}
+              </div>
+            )}
           </div>
         </div>
       </div>

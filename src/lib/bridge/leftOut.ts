@@ -13,8 +13,8 @@
  *
  * The list is one `app_settings` row, `bridge_left_out_v1`. Until someone saves it the list is empty and nothing is
  * left out. A job that matches a rule leaves through the same set of ids every Bridge read already takes for the ZZ
- * test jobs, so it is left out exactly where a test job is. The bank's cash and the overhead pool are not a job's
- * and stay whole.
+ * test jobs (`withLeftOutJobIds`), so it is left out exactly where a test job is. The bank's cash and the overhead
+ * pool are not a job's and stay whole. The Monday email reads the same list (`loadLeftOutScope`, `leftOutIo.ts`).
  *
  * Pure: `leftOutIo.ts` reads and saves the row and finds the jobs.
  */
@@ -108,6 +108,16 @@ export function isLeftOut(facts: LeftOutFacts, rules: ReadonlyArray<LeftOutRule>
     if (r.kind === 'customer') return (facts.customerId != null && facts.customerId === r.key) || (facts.gcCustomerId != null && facts.gcCustomerId === r.key)
     return address !== '' && address.includes(r.key)
   })
+}
+
+/**
+ * The ids every job-keyed Bridge read takes: the ZZ test jobs the reader leaves out, and the jobs the list names.
+ * Null keeps every job. With nothing left out it is the ZZ set itself, so a read under an empty list is the read
+ * there was before the list. The page and the Monday email (`sheetReads.ts`) both make their set here.
+ */
+export function withLeftOutJobIds(zzTestJobIds: ReadonlySet<string> | null, leftOutJobIds: ReadonlySet<string> | null | undefined): ReadonlySet<string> | null {
+  if (!leftOutJobIds || leftOutJobIds.size === 0) return zzTestJobIds
+  return zzTestJobIds ? new Set([...zzTestJobIds, ...leftOutJobIds]) : leftOutJobIds
 }
 
 /** A short key for the list, so a read made under one list is not reused under another. */
