@@ -420,6 +420,9 @@ describe('ChecklistAddModal, a card written for one thing (punch list #334)', ()
     const lines = screen.getByDisplayValue(/201 · Maple Lofts: pay date written down\s+202 · Oak Court: pay date written down/) as HTMLTextAreaElement
     expect(lines.value).toBe('201 · Maple Lofts: pay date written down\n202 · Oak Court: pay date written down')
     expect((screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement).checked).toBe(false)
+    // Settle before Send: the person is ticked by an effect that runs after the list of people lands. A press before
+    // it is refused for having nobody on the card, which a loaded runner made happen (the first CI run of this case).
+    await screen.findByRole('checkbox', { name: 'Robert', checked: true }, { timeout: 4000 })
     fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
     await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
     const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
