@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: gated
-status: asked 2026-11-13 · the card and the mock-up the same day · nothing built · waits on the owner's calls
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked what sending it further could look like, added the same day · nothing built · waits on the owner's calls
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,8 +14,8 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: The owner reads the mock-up and answers the eight calls. A yes to call 3 starts the one-day try on his own phones.
-size: L as a train of six after a one-day try (S · S · M · M · M · S · S)
+next: The owner reads the mock-up and answers the eleven calls. A yes to call 3 starts the one-day try on his own phones.
+size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: The owner's calls, first of all whether walking with the screen on is good enough to build.
 opinion: build the one-day try, then PRs 1 to 4, then count. Strong for the way in and what is where, weak for measuring.
 mockup: to-dos/paint-a-map/mockup.html
@@ -290,6 +290,86 @@ that shows a map to someone who is not signed in.
 - **A gate code never goes on a painted map.** A link carries whatever is on the map to anyone who
   holds it. The place sheet says so.
 
+## Sending it beyond the app
+
+The owner, 2026-11-13, after the first look: *I like the basics of this. Can you help me come up
+with what the export options could look like? Someone makes a map and then they want to share it
+with others beyond just saving it in the app.*
+
+Drawn in the mock-up's section 9. One rule sorts every option:
+
+> **A link can be ended and stays current. A copy cannot be taken back and goes stale.**
+
+So the link is always first, and every copy carries a code back to the link and the day it was
+made. One sheet, **Share this map**, holds every way out, in two groups.
+
+### A link, which stays current and can be ended
+
+- **Text it…** and **Copy the link.** As drawn before.
+- **Send it another way…** The phone's own share sheet. One press hands the link to mail, a group
+  chat or a phone nearby, whatever the person has. The app already does this for a job
+  (`ShareJobButton`) and for the lien desk (`LienDeskShare`), with a fallback to copy where a
+  browser has no such sheet.
+- **Show a code to scan.** A large code on the screen for the driver at the gate or a sub standing
+  beside you. Their camera opens the map. The code drawer is already in the app (`qrcode.react`,
+  used for a bill, a box label and a machine label).
+
+### A copy, which cannot be taken back
+
+- **A picture.** The map as an image: the line, the numbered places, a key under it, the day, the
+  company's name. It shows in a text thread without a press, for the people who will not open a
+  link. Sent through the phone's share sheet, with the link under it. The app already sends a photo
+  this way (`src/lib/materials/photoShare.ts`).
+- **A page to print.** One Letter page: the letterhead, the map, the places with their photos and
+  words, and the code to scan for the map as it is today. **Print**, **Save as a PDF**, and **File
+  it on the job**, which puts the PDF in the job's Drive folder. For a gate guard, a delivery
+  ticket, the binder in the truck, a general contractor's site packet.
+- **A file for another map.** A `.kml` file for Google Earth and Google My Maps, and a `.gpx` file
+  for a hiking app or a handheld. The lines and the places with their words, and no photos. For
+  the few who keep a map of their own: an engineer, a surveyor, a general contractor.
+
+### What I checked, and what it rules out
+
+- **Google Maps cannot show our line from a link.** Its link format carries points, not a line: a
+  start, an end and up to three stops on a phone, routed along its own roads. So **Directions to
+  the start** is the honest Google Maps press. The line itself reaches Google's maps only as a file
+  the other person brings in, which is a desk job for them.
+- **Google My Maps takes `.kml` and `.gpx`** up to 5 MB. **Google Earth** takes `.kml`, on the web
+  and on a phone.
+- **The phone's share sheet sends pictures and PDFs.** Map files are not on the list of kinds it
+  usually takes, so a file is saved to the phone or the desk and sent from there.
+- **A picture of the map can be made in the browser.** Both free map sources answer with the header
+  that lets a page draw their tiles into an image (checked 2026-11-13). Their terms for a saved
+  picture are a separate matter, to read before that PR. If they say no, the picture is drawn on
+  the Streets map, or on plain ground with only the line and the places.
+- **Every copy shows the same things as the link** and nothing more: no painter, no job, no
+  customer, no price. A file and a link both carry exact points. That is the point of a map.
+
+### Who gets what
+
+| For | Send |
+|---|---|
+| A customer | The link by text |
+| A delivery driver | The link by text, or the picture |
+| A supply house's desk | The page, on the delivery ticket |
+| Someone standing beside you | The code to scan |
+| A sub or a group chat | Send it another way, or the picture |
+| A general contractor | The link, and the page for the site packet |
+| An engineer or a surveyor | The file |
+| The next tech, next year | Nothing to send: it is on the job |
+
+### My pick
+
+Build the link's two new presses with the link itself, since both pieces are already in the app.
+Then the picture and the page, which are what a field company's people will use. The files last:
+cheap, and wanted by few.
+
+**Inside the app, later:** the map on a task, on a sub's work order, and on the customer's and the
+general contractor's portal pages. Each is a place the link already wants to be.
+
+**Not proposed:** a public page that lists a company's maps, an embed for someone else's website,
+and a map that anyone with the link can add to. Each opens a door the link does not need.
+
 ## Privacy and trust
 
 This is the first thing in the app that follows a phone. Said plainly:
@@ -387,9 +467,11 @@ Each ships alone with its tests, its guide, a release note and a fragment.
 | 1 | The painted map itself, no screen | one migration: the three tables. The kernels and the types. | S |
 | 2 | Draw it by hand. The *Painted maps* block on a job and a development. Places with a photo. Typed lengths. | none | M |
 | 3 | Walk or drive it. The red bar, the screen held on, pause and restart, the faint part, *Look it over*, trim and redraw, kept on the phone with no signal. | none (one new outbox kind) | M |
-| 4 | The link. *Share a link*, the page at `/way/<code>`, *Show where I am*, *Directions to the start*, *End this link now*, *Text it…*. | one migration: `painted_map_links`. One public door: the `painted-map-link` function. | M |
+| 4 | The link. *Share this map*, the page at `/way/<code>`, *Show where I am*, *Directions to the start*, *End this link now*, *Text it…*, *Send it another way…*, *Show a code to scan*. | one migration: `painted_map_links`. One public door: the `painted-map-link` function. | M |
+| 4b | The copies. *A picture*, and *A page to print* with its code, *Save as a PDF* and *File it on the job*. | none | M |
 | | **Stop. Count the maps painted and the links opened for two weeks.** | | |
 | 5 | A task's place carries the painted map that leads to it | one small migration | S |
+| 5b | *A file for another map*: `.kml` and `.gpx`, each a pure kernel that writes text | none | S |
 | 6 | Painted maps as a layer on the Map page and on Materials on site's map | none | S |
 
 Drawing by hand is before walking on purpose. It needs no location, it proves the object, the
@@ -408,7 +490,6 @@ block and the places, and it is the half that works on every phone.
 - **A screen lock for a pocket.** A dark, touch-proof screen that stays on. Worth trying only if
   the try in step 0 shows people want it.
 - **Map pictures kept on the phone** for sites with no signal.
-- **Print** as a page with the map and the places list.
 
 ## How to verify
 
@@ -440,6 +521,12 @@ block and the places, and it is the half that works on every phone.
 7. **The stop.** Five minutes standing still pauses it and an hour ends it. Or other numbers.
 8. **The map under it.** The free maps the app draws today (my pick), or Google's, which bills
    past a monthly count.
+9. **Which copies first.** The picture and the page with the link (my pick), and the files after
+   the count. Or the files sooner, if a general contractor or an engineer is asking today.
+10. **Who may send a copy.** A copy cannot be taken back. My pick: the same people who may share
+    the link, with those words on the sheet.
+11. **Filing the page.** *File it on the job* on a press (my pick), or by itself the first time a
+    map is shared.
 
 ## Sources
 
@@ -458,6 +545,14 @@ Read 2026-11-13.
 - Ranacher and others, *Why GPS makes distances bigger than they are* (2016).
   https://arxiv.org/abs/1504.04504
 - Google Maps Platform, pricing overview and FAQ: the free monthly count per product since March 2025. https://developers.google.com/maps/billing-and-pricing/overview
+- Google, *Maps URLs*: a directions link takes points, up to three stops on a mobile browser, and
+  no drawn line. https://developers.google.com/maps/documentation/urls/get-started
+- Google My Maps help, *Import map features from a file*: KML and GPX, up to 5 MB.
+  https://support.google.com/mymaps/answer/3024836
+- Google Earth, *Import data*: KML on the web and on a phone.
+  https://developers.google.com/maps/documentation/earth/import-data
+- MDN, *Navigator.share()*: a link, words and files, on a press, and which kinds of file.
+  https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share
 - Not found in any official document, and so left to step 0: Apple's and Google's own statement of
   what a web page gets with the screen locked, and how the margin reads with Precise Location off.
   The developer reports agree with the standard, and a real phone settles it.

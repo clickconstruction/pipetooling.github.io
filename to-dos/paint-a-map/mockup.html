@@ -141,6 +141,40 @@
   .lh .logo { width: 34px; height: 34px; border-radius: 8px; background: #1e3a8a; color: #fff; display: grid; place-items: center; font-weight: 800; }
   .lh small { display: block; color: #6b7280; font-size: 12px; }
 
+  /* sending it further */
+  .cap2 { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+  .cap2:first-child { margin-top: 0; }
+  .srow { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: center; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); margin-top: 6px; }
+  .srow b { color: var(--text-strong); font-size: 13.5px; }
+  .srow span { grid-column: 1; font-size: 12px; color: var(--text-muted); }
+  .srow::after { content: "›"; grid-column: 2; grid-row: 1 / 3; color: var(--text-muted); font-size: 20px; line-height: 1; }
+  .os { background: #e5e7eb; color: #111827; padding: 10px 10px 14px; border-radius: 14px 14px 0 0; }
+  .os .prev { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: #374151; }
+  .os .prev b { display: block; color: #111827; font-size: 13.5px; }
+  .os .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; text-align: center; font-size: 11px; color: #374151; }
+  .os .apps i { display: block; width: 46px; height: 46px; border-radius: 12px; margin: 0 auto 4px; background: #9ca3af; }
+  .os .acts { margin-top: 12px; background: #fff; border-radius: 10px; font-size: 13.5px; }
+  .os .acts div { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+  .os .acts div:last-child { border-bottom: 0; }
+  .dim { background: rgba(17,24,39,.45); padding-top: 90px; }
+  .thread { background: #fff; color: #111827; padding: 12px; display: grid; gap: 8px; }
+  .thread .them { justify-self: start; max-width: 78%; background: #e5e7eb; border-radius: 16px 16px 16px 4px; padding: 8px 11px; font-size: 13.5px; }
+  .thread .us { justify-self: end; max-width: 86%; background: #2563eb; color: #fff; border-radius: 16px 16px 4px 16px; padding: 8px 11px; font-size: 13.5px; }
+  .thread .pic { justify-self: end; width: 86%; border-radius: 14px; overflow: hidden; border: 1px solid #cfd4db; background: #fff; line-height: 0; }
+  .thread .pic .key { line-height: 1.35; font-size: 11px; color: #374151; padding: 6px 9px 7px; }
+  .thread .pic .key b { color: #111827; font-size: 12.5px; }
+  .thread small { justify-self: end; font-size: 10.5px; color: #6b7280; }
+  .paper { background: #fff; color: #111827; margin: 12px; padding: 16px 16px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.25); font-size: 10.5px; line-height: 1.35; }
+  .paper .ph { display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #1e3a8a; padding-bottom: 7px; }
+  .paper .ph .logo { width: 24px; height: 24px; border-radius: 6px; background: #1e3a8a; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 10px; }
+  .paper h5 { margin: 9px 0 1px; font-size: 15px; }
+  .paper .two { display: grid; grid-template-columns: 1fr 76px; gap: 10px; align-items: start; margin-top: 8px; }
+  .paper .prow { font-size: 10.5px; gap: 7px; }
+  .paper .prow svg { width: 44px; height: 33px; border-radius: 4px; }
+  .paper .num { width: 17px; height: 17px; font-size: 9.5px; border-width: 1.5px; }
+  .paper .foot { margin-top: 10px; border-top: 1px solid #cfd4db; padding-top: 5px; color: #6b7280; font-size: 9.5px; display: flex; justify-content: space-between; gap: 8px; }
+  table.who td:nth-child(2) { font-weight: 600; color: var(--text-strong); }
+
   /* the honest ruler */
   .ruler { display: grid; gap: 14px; margin-top: 14px; max-width: 980px; }
   .rrow { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
@@ -222,6 +256,8 @@
     </symbol>
     <!-- the way in, as one path every frame strokes its own way -->
     <path id="way" d="M120 392 L123 352 L126 300 L200 266 L300 250 L400 240 L452 232 L466 198" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- a drawn code to scan: a pattern, not a real code -->
+    <symbol id="code" viewBox="-1 -1 27 27"><rect x="-1" y="-1" width="27" height="27" fill="#fff"/><path d="M9 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM9 3h1v1h-1zM16 3h1v1h-1zM12 4h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM8 7h1v1h-1zM12 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM11 8h1v1h-1zM14 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM19 8h1v1h-1zM21 8h1v1h-1zM24 8h1v1h-1zM0 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM20 9h1v1h-1zM22 9h1v1h-1zM24 9h1v1h-1zM0 10h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM5 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM13 10h1v1h-1zM17 10h1v1h-1zM1 11h1v1h-1zM2 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM9 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM14 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM1 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM14 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM23 14h1v1h-1zM1 15h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM18 15h1v1h-1zM20 15h1v1h-1zM24 15h1v1h-1zM1 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM23 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM11 17h1v1h-1zM13 17h1v1h-1zM19 17h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM14 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM23 18h1v1h-1zM11 19h1v1h-1zM15 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM11 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM8 21h1v1h-1zM9 21h1v1h-1zM10 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM18 21h1v1h-1zM21 21h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM8 23h1v1h-1zM9 23h1v1h-1zM10 23h1v1h-1zM13 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM8 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM15 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1z" fill="#111827"/><rect x="0" y="0" width="7" height="7" fill="#111827"/><rect x="1" y="1" width="5" height="5" fill="#fff"/><rect x="2" y="2" width="3" height="3" fill="#111827"/><rect x="18" y="0" width="7" height="7" fill="#111827"/><rect x="19" y="1" width="5" height="5" fill="#fff"/><rect x="20" y="2" width="3" height="3" fill="#111827"/><rect x="0" y="18" width="7" height="7" fill="#111827"/><rect x="1" y="19" width="5" height="5" fill="#fff"/><rect x="2" y="20" width="3" height="3" fill="#111827"/></symbol>
     <!-- drawn photos -->
     <symbol id="ph-gate" viewBox="0 0 96 72"><rect width="96" height="72" fill="#9fc3e0"/><rect y="44" width="96" height="28" fill="#a8946a"/><rect x="6" y="26" width="5" height="30" fill="#4b4436"/><rect x="85" y="26" width="5" height="30" fill="#4b4436"/><g stroke="#d9d2c0" stroke-width="2.5"><path d="M11 30 H85 M11 38 H85 M11 46 H85 M11 30 L85 46"/></g><rect x="40" y="33" width="16" height="10" fill="#f4d03f"/></symbol>
     <symbol id="ph-yard" viewBox="0 0 96 72"><rect width="96" height="72" fill="#9fc3e0"/><rect y="40" width="96" height="32" fill="#94845f"/><rect x="10" y="28" width="34" height="24" fill="#3e6a8a"/><rect x="50" y="34" width="34" height="18" fill="#b45f3c"/><path d="M10 40 H44" stroke="#2c4d66"/></symbol>
@@ -252,7 +288,8 @@
   <a href="#measure">6 Measuring, honestly</a>
   <a href="#saved">7 On the job</a>
   <a href="#share">8 The shared page</a>
-  <a href="#desk">9 At a desk</a>
+  <a href="#send">9 Sending it further</a>
+  <a href="#desk">10 At a desk</a>
   <a href="#plan">The train and the calls</a>
 </nav>
 
@@ -645,7 +682,7 @@
             <b>The way in for deliveries</b><br>
             About 830 ft · 3 places · walked, the end drawn by hand<br>
             <span class="muted">Painted by Dana Whitlock on Nov 13</span>
-            <div class="btnrow"><span class="btn blue">Share a link</span><span class="btn">Directions to the start</span><span class="btn">Add to it</span></div>
+            <div class="btnrow"><span class="btn blue">Share</span><span class="btn">Directions to the start</span><span class="btn">Add to it</span></div>
           </div>
         </div>
         <div class="btnrow"><span class="btn">Paint another map</span></div>
@@ -654,22 +691,27 @@
     <p class="say"><b>Add to it</b> is the restart on another day: a new stroke or a new place on the same map, by anyone who may open the job.</p>
   </div>
   <div class="col">
-    <div class="cap">Share a link</div>
+    <div class="cap">Share: one sheet for every way out</div>
     <div class="frame">
       <div class="hdr"><b>Share this map</b><span class="x">✕</span></div>
       <div class="pad" style="background:var(--surface)">
-        <p class="say">Anyone who has the link can open the map. No sign-in.</p>
-        <div class="link" style="margin-top:8px">clicktooling.com/way/q7m2kd4x9p</div>
+        <div class="cap2">A link · stays current · can be ended</div>
+        <div class="link">clicktooling.com/way/q7m2kd4x9p</div>
         <div class="btnrow"><span class="btn blue big">Text it…</span><span class="btn big">Copy the link</span></div>
+        <div class="srow"><b>Send it another way…</b><span>Mail, a group chat, a phone nearby</span></div>
+        <div class="srow"><b>Show a code to scan</b><span>For someone standing beside you</span></div>
+        <div class="cap2">A copy · cannot be taken back</div>
+        <div class="srow"><b>A picture</b><span>Shows in a text thread without a press</span></div>
+        <div class="srow"><b>A page to print</b><span>The map, the places and a code back to the link</span></div>
+        <div class="srow"><b>A file for another map</b><span>Google Earth, a hiking app, an engineer</span></div>
         <div class="box grey">
-          <b>They see</b> the name, the line, the places with their words and photos, and Directions to the start.<br>
+          <b>They see</b> the name, the line, the places with their words and photos.<br>
           <b>They do not see</b> who painted it, when, or anything else about the job.
         </div>
-        <p class="muted" style="margin:10px 0 0">The link ends by itself on Feb 11.</p>
-        <div class="btnrow"><span class="btn">End this link now</span></div>
+        <p class="muted" style="margin:10px 0 0">The link ends by itself on Feb 11. <u>End this link now</u></p>
       </div>
     </div>
-    <p class="say"><b>Text it…</b> opens the Messages composer on the job's customer, from the company's number, with the link in the words.</p>
+    <p class="say">The link is first because it is the only one that can be ended and the only one that shows a place added next week. Each row is drawn in <a href="#send" style="color:var(--text-link)">section 9</a>.</p>
   </div>
   <div class="col">
     <div class="cap">On a task: where the work is, as a way</div>
@@ -766,7 +808,125 @@
 </div>
 
 <!-- ============ 9 ============ -->
-<h2 id="desk">9 · At a desk <small>the office draws, reads and sends</small></h2>
+<h2 id="send">9 · Sending it further <small>beyond the link in a text</small></h2>
+<p class="lede">Asked 2026-11-13, after the first look. One rule sorts every option: <b>a link can be ended and stays current, and a copy cannot be taken back and goes stale.</b> So the link is always first, and every copy carries a code back to it and the day it was made.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Send it another way…</div>
+    <div class="frame">
+      <div class="dim">
+        <div class="os">
+          <div class="prev"><svg viewBox="70 150 440 290" style="width:44px;height:44px;border-radius:8px" preserveAspectRatio="xMidYMid slice"><use href="#land" width="720" height="440"/><use href="#way" stroke="#ff5a1f" stroke-width="14"/></svg><div><b>The way in for deliveries</b>clicktooling.com</div></div>
+          <div class="apps"><div><i></i>Messages</div><div><i></i>Mail</div><div><i></i>A chat app</div><div><i></i>A phone nearby</div></div>
+          <div class="acts"><div>Copy</div><div>Add to notes</div><div>Print</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">This is the phone's own sheet, not ours. One press hands the link to any app the person has. The app already does this for a job and for the lien desk.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Show a code to scan</div>
+    <div class="frame">
+      <div class="hdr"><b>The way in for deliveries</b><span class="x">✕</span></div>
+      <div class="pad" style="background:#fff;text-align:center;color:#111827">
+        <svg viewBox="-1 -1 27 27" style="width:230px;height:230px;margin:8px auto 4px;display:block"><use href="#code"/></svg>
+        <div style="font-size:15px;font-weight:700">Point a phone's camera here</div>
+        <div style="font-size:12.5px;color:#6b7280;margin-top:2px">It opens the map. No app, no sign-in.</div>
+      </div>
+    </div>
+    <p class="say">For the driver at the gate or a sub on site. The screen goes bright while the code shows. The same code is printed on the page.</p>
+  </div>
+  <div class="col">
+    <div class="cap">A picture, as it lands in a text</div>
+    <div class="frame public">
+      <div class="thread">
+        <div class="them">Which gate do your guys want the pipe at?</div>
+        <div class="pic">
+          <svg viewBox="70 150 440 270" style="display:block;width:100%" aria-label="The map as a picture with the line and three places">
+            <use href="#land" width="720" height="440"/>
+            <use href="#way" stroke="#111827" stroke-width="9"/>
+            <use href="#way" stroke="#ff5a1f" stroke-width="5.5"/>
+            <g font-family="sans-serif" font-size="12" font-weight="800" text-anchor="middle" fill="#111827">
+              <circle cx="123" cy="372" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+              <circle cx="250" cy="296" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+              <circle cx="482" cy="186" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+            </g>
+          </svg>
+          <div class="key"><b>The way in for deliveries</b><br>1 Truck gate · 2 Laydown yard · 3 Water stub, Lot 14<br>About 830 ft · Your company's name · Nov 13</div>
+        </div>
+        <div class="us">Truck gate on County Road 218, not the sales entrance. Live map: clicktooling.com/way/q7m2kd4x9p</div>
+        <small>Delivered</small>
+      </div>
+    </div>
+    <p class="say">A picture is seen without a press, by people who will not open a link. It carries the places as a key, the day, and the map makers' credit line. Sent with the link under it.</p>
+  </div>
+</div>
+<div class="three">
+  <div class="col">
+    <div class="cap">A page to print</div>
+    <div class="frame public" style="background:#9ca3af">
+      <div class="paper">
+        <div class="ph"><div class="logo">YC</div><b style="font-size:12px">Your company's name</b><span style="margin-left:auto;color:#6b7280">Juniper Ridge</span></div>
+        <h5>The way in for deliveries</h5>
+        <div>Start at the truck gate on County Road 218, not the sales entrance. About 830 ft from the gate to Lot 14.</div>
+        <svg viewBox="40 120 640 320" style="display:block;width:100%;margin-top:8px;border:1px solid #cfd4db" aria-label="The printed map">
+          <use href="#land" width="720" height="440"/>
+          <use href="#way" stroke="#111827" stroke-width="8"/>
+          <use href="#way" stroke="#ff5a1f" stroke-width="5"/>
+          <g font-family="sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#111827">
+              <circle cx="123" cy="372" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="123" y="376">1</text>
+              <circle cx="250" cy="296" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="250" y="300">2</text>
+              <circle cx="482" cy="186" r="10" fill="#fff" stroke="#111827" stroke-width="2"/><text x="482" y="190">3</text>
+            </g>
+        </svg>
+        <div class="two">
+          <div class="plist" style="margin-top:0;gap:6px">
+            <div class="prow"><span class="num">1</span><div><b>Truck gate</b><br>Chain is looped, not locked. Close it behind you.</div><svg viewBox="0 0 96 72"><use href="#ph-gate"/></svg></div>
+            <div class="prow"><span class="num">2</span><div><b>Laydown yard</b><br>Drop pipe by the blue box.</div><svg viewBox="0 0 96 72"><use href="#ph-yard"/></svg></div>
+            <div class="prow"><span class="num">3</span><div><b>Water stub, Lot 14</b><br>Blue riser at the back of the slab.</div><svg viewBox="0 0 96 72"><use href="#ph-stub"/></svg></div>
+          </div>
+          <div style="text-align:center;color:#6b7280;font-size:9px"><svg viewBox="-1 -1 27 27" style="width:76px;height:76px;display:block"><use href="#code"/></svg>Scan for the map as it is today</div>
+        </div>
+        <div class="foot"><span>Printed Nov 13. The map may have changed since.</span><span>Page 1 of 1</span></div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 12px"><span class="btn blue" style="flex:1">Print</span><span class="btn" style="flex:1">Save as a PDF</span><span class="btn" style="flex:1">File it on the job</span></div>
+    </div>
+    <p class="say">One Letter page. For a gate guard, a delivery ticket, the binder in the truck, a general contractor's site packet. <b>File it on the job</b> puts the PDF in the job's Drive folder.</p>
+  </div>
+  <div class="col">
+    <div class="cap">A file for another map</div>
+    <div class="frame">
+      <div class="hdr"><b>A file for another map</b><span class="x">✕</span></div>
+      <div class="pad" style="background:var(--surface)">
+        <div class="srow"><b>For Google Earth or Google My Maps</b><span>A .kml file: the lines and the places with their words</span></div>
+        <div class="srow"><b>For a hiking app or a handheld</b><span>A .gpx file: the lines as tracks, the places as waypoints</span></div>
+        <div class="box grey"><b>Google Maps itself cannot show a drawn line from a link.</b> A link to it carries points, not a line, and it routes along its own roads. So Directions go to the start, and the line travels as a file the other person opens in their own map.</div>
+        <div class="box">A file cannot be taken back, and it carries no photos.</div>
+      </div>
+    </div>
+    <p class="say">For the few who keep a map of their own: an engineer, a surveyor, a general contractor with the site in Google Earth. Cheap to build, and the last thing most people will press.</p>
+  </div>
+  <div class="col">
+    <div class="cap">Who gets what</div>
+    <div class="scroll">
+    <table class="plan who" style="margin-top:0">
+      <tr><th>For</th><th>Send</th></tr>
+      <tr><td>A customer</td><td>The link by text</td></tr>
+      <tr><td>A delivery driver</td><td>The link by text, or the picture</td></tr>
+      <tr><td>A supply house's desk</td><td>The page, on the delivery ticket</td></tr>
+      <tr><td>Someone beside you</td><td>The code to scan</td></tr>
+      <tr><td>A sub or a group chat</td><td>Send it another way, or the picture</td></tr>
+      <tr><td>A general contractor</td><td>The link, and the page for the packet</td></tr>
+      <tr><td>An engineer or a surveyor</td><td>The file</td></tr>
+      <tr><td>The next tech, next year</td><td>Nothing to send: it is on the job</td></tr>
+    </table>
+    </div>
+    <p class="say">Later, inside the app: on a task, on a sub's work order, and on the customer's and the general contractor's portal pages.</p>
+  </div>
+</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="desk">10 · At a desk <small>the office draws, reads and sends</small></h2>
 <p class="lede">The same map, wide. The office draws a route by hand with a mouse, moves a place that landed a few feet off, types a measured length, and sends the link.</p>
 <div class="frame wide" style="margin-top:14px">
   <div class="hdr"><b>Juniper Ridge · Lot 14</b> <span class="muted">› Painted maps › The way in for deliveries</span><span class="x">✕</span></div>
@@ -797,7 +957,7 @@
       <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">3</span><b>Water stub, Lot 14</b><span>photo · moved by hand</span></div>
       <div class="lrow" style="grid-template-columns:auto 1fr"><span class="num" style="grid-row:1/3">4</span><b>Lift station</b><span>no photo yet · placed by hand</span></div>
       <h4>Do</h4>
-      <div class="btnrow" style="margin-top:0"><span class="btn">Draw a line</span><span class="btn">＋ Place</span><span class="btn blue">Share a link</span><span class="btn">Print</span></div>
+      <div class="btnrow" style="margin-top:0"><span class="btn">Draw a line</span><span class="btn">＋ Place</span><span class="btn blue">Share</span><span class="btn">Print</span></div>
       <p class="muted" style="margin:10px 0 0">Shared since Nov 13 · opened 3 times · ends Feb 11 · <u>End this link now</u></p>
     </div>
   </div>
@@ -813,9 +973,11 @@
   <tr><td>1</td><td>The painted map itself, no screen: the table, the kernels for length, cleaning and the words.</td><td>one migration: <code>painted_maps</code>, <code>painted_map_lines</code>, <code>painted_map_places</code></td><td>S</td></tr>
   <tr><td>2</td><td>Draw it by hand, the Painted maps block on a job and a development, places with a photo.</td><td>none</td><td>M</td></tr>
   <tr><td>3</td><td>Walk or drive it: the red bar, the screen held on, pause and restart, the faint part, look and fix, kept on the phone with no signal.</td><td>none</td><td>M</td></tr>
-  <tr><td>4</td><td>The link: Share a link, the page at <code>/way/&lt;code&gt;</code>, Show where I am, Directions to the start, End this link, Text it.</td><td>one migration, <code>painted_map_links</code>, and the one door for a signed-out reader, the <code>painted-map-link</code> function</td><td>M</td></tr>
+  <tr><td>4</td><td>The link: Share, the page at <code>/way/&lt;code&gt;</code>, Show where I am, Directions to the start, End this link, Text it, Send it another way, Show a code to scan.</td><td>one migration, <code>painted_map_links</code>, and the one door for a signed-out reader, the <code>painted-map-link</code> function</td><td>M</td></tr>
+  <tr><td>4b</td><td>The copies: a picture, and a page to print with its code, Save as a PDF and File it on the job.</td><td>none</td><td>M</td></tr>
   <tr class="stop"><td colspan="4">Stop. Count the maps painted and the links opened for two weeks.</td></tr>
   <tr><td>5</td><td>A task's place carries the painted map that leads to it.</td><td>one small migration</td><td>S</td></tr>
+  <tr><td>5b</td><td>A file for another map: .kml and .gpx.</td><td>none</td><td>S</td></tr>
   <tr><td>6</td><td>Painted maps as a layer on the Map page and on Materials on site's map.</td><td>none</td><td>S</td></tr>
 </table>
 </div>
@@ -831,10 +993,13 @@
   <li><b>The painter's name on the shared page.</b> My pick: no. The company's name only.</li>
   <li><b>The stop.</b> Five minutes standing still pauses it, an hour ends it. Or other numbers.</li>
   <li><b>The map under it.</b> The free maps the app draws today, or Google's, which bills past a monthly count. My pick: the free ones, with Directions opening Google Maps.</li>
+  <li><b>Which copies first.</b> The picture and the page with the link (my pick), the files after the count. Or the files sooner, if a general contractor or an engineer is asking today.</li>
+  <li><b>Who may send a copy.</b> A copy cannot be taken back. My pick: the same people who may share the link, with those words on the sheet.</li>
+  <li><b>Filing the page.</b> On a press (my pick), or by itself the first time a map is shared.</li>
 </ol>
 
 <footer>
-  Punch list #345 · drawn 2026-11-13 · the card is <code>to-dos/paint-a-map/README.md</code>. The land, the people, the company and the photos are drawings and made-up names. The lengths and the give or take on this page are reckoned, not measured: step 0 measures them.
+  Punch list #345 · drawn 2026-11-13 · the card is <code>to-dos/paint-a-map/README.md</code>. The land, the people, the company and the photos are drawings and made-up names, and the code to scan is a drawn pattern that opens nothing. The lengths and the give or take on this page are reckoned, not measured: step 0 measures them.
 </footer>
 
 </div>
