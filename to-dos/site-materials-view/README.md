@@ -2,7 +2,7 @@
 name: "A site's materials on one screen: every part across the site's jobs, with the boxes that hold it"
 number: 330
 group: close
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PR 2 names at the source v2.7075 · PRs 3 to 5 stacked behind them
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PR 2 names at the source v2.7075 · PR 3 Same part? v2.7076 (migration 20261113040000, to push right after its merge) · PRs 4 and 5 stacked behind them
 mockup: to-dos/site-materials-view/mockup.html
 summary: >
   A company manager cannot see all the material on a site on a screen. The desk is one row per job
@@ -19,7 +19,7 @@ next: PRs 2 to 5 merge in order behind PR 1; PR 3's migration is pushed right af
 size: L as a train of five (M · S · M · M · S); PR 1 is the whole screen, then a stop to look at it on the site
 blocker: none. The stack merges one PR at a time.
 opinion: build — Grace said build the entire train; look at the screen on the real site once PR 1 is live
-ver: v2.7074 · 7075
+ver: v2.7074 · 7075 · 7076
 ---
 
 # A site's materials on one screen (#330)
@@ -297,7 +297,7 @@ the client reads what it makes. PR 4 writes the same table and needs none.
 | 1 · the screen, **v2.7074** | The kernel `src/lib/materials/siteRollup.ts` (lines into part rows, the same-words fold after the sums, the glance, the search's total) with tests; the screen as `?site=` on both mounts, desk and phone; the desk grouped by site; the field roles' site row; the Development page's door; the guide, the release note, the docs. No migration. | M |
 | | **Stop here and look at it on the real site.** | |
 | 2 · names at the source, **v2.7075** | Add a part and the delivery lines offer the names the job already has first, then the parts book's (`onSiteNames.ts`). As built it is this job's names, not the whole site's: the phone holds one job's ledger. No migration. Lands before the stickers walk adds its hundred boxes. | S |
-| 3 · Same part? | The migration; **Same part?** with **Same part** and **Different**; *Names joined here* with **Undo**; the search and the paper read the ties. | M |
+| 3 · Same part?, **v2.7076** | The migration `20261113040000_on_site_part_ties.sql`; **Same part?** with **Same part** and **Different**; the chip that lists the names to check; *Names joined here* with **Undo**; the search reads the ties. The paper reads them in PR 5, with By part. | M |
 | 4 · the parts book and the worth | **This is a parts-book part** from a row; the worth with its cover and the list of lines with no price. | M |
 | 5 · the paper and the job | **By part** as a third reading of the material location report, and on one job's page; the print press on the site's screen; the Go anywhere row. | S |
 

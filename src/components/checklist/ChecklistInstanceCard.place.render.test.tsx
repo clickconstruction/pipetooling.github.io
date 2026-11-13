@@ -10,6 +10,7 @@ import type { TaskPlace } from '../../lib/tasks/taskPlace'
 
 vi.mock('../materials/OnSiteMap', () => ({ default: () => <div data-testid="still-map" /> }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyFix: () => {} }))
+vi.mock('../../lib/tasks/taskPlaceIo', () => ({ addTaskPlaceFromTheSpot: () => Promise.resolve(null) }))
 
 import { ChecklistInstanceCard } from './ChecklistInstanceCard'
 
@@ -81,5 +82,30 @@ describe('ChecklistInstanceCard place', () => {
     fireEvent.click(screen.getByText(/Add a note/))
     const block = document.querySelector('[data-task-place-block]') as HTMLElement
     expect(block.querySelector('[data-task-spot-photo]')).toBeTruthy()
+  })
+
+  it('an open card with no place offers one quiet line to add it, and a closed card shows nothing of it', async () => {
+    renderCard({ onPlaceAdded: () => {} })
+    await settle()
+    expect(document.querySelector('[data-task-place-add]')).toBeNull()
+    fireEvent.click(screen.getByText(/Add a note/))
+    expect(screen.getByRole('button', { name: 'Standing at this task? Add its place' })).toBeTruthy()
+  })
+
+  it('a card that has a place, a finished card, and a card whose list did not ask never offer it', async () => {
+    const r = renderCard({ onPlaceAdded: () => {}, place: PLACE })
+    await settle()
+    fireEvent.click(screen.getByText(/Add a note/))
+    expect(document.querySelector('[data-task-place-add]')).toBeNull()
+    r.unmount()
+    const done = renderCard({ onPlaceAdded: () => {}, instance: { id: 'inst-1', completed_at: '2026-11-12T15:00:00Z', reviewed_at: null } })
+    await settle()
+    fireEvent.click(screen.getByText(/Add a note/))
+    expect(document.querySelector('[data-task-place-add]')).toBeNull()
+    done.unmount()
+    renderCard()
+    await settle()
+    fireEvent.click(screen.getByText(/Add a note/))
+    expect(document.querySelector('[data-task-place-add]')).toBeNull()
   })
 })

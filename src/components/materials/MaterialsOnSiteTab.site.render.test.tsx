@@ -45,6 +45,8 @@ vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
     retry: () => {},
   }),
 }))
+// The answers table (PR 3): a field role reads the joins and is asked nothing.
+vi.mock('../../lib/materials/partTiesIo', () => ({ fetchPartTies: async () => [], insertPartTie: vi.fn(), deletePartTie: vi.fn() }))
 vi.mock('../../hooks/useOnSiteSites', () => ({
   useOnSiteSites: () => ({ siteOfJob: new Map([['ja', 'dev1'], ['jb', 'dev1'], ['jc', null]]), siteNames: new Map([['dev1', 'Juniper Ridge']]), loaded: true }),
 }))
