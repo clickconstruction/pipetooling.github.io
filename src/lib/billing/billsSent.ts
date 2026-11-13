@@ -10,6 +10,11 @@
  * - A day's total counts a bill once, on the day it first went. A resend and a statement are listed and not added.
  * - A copy that went to an address on the copy list folds into its send, as *copy to*.
  * - The line never guesses. A print says the app cannot know who was handed it.
+ *
+ * PR 2 adds the sends that kept no copy, each saying what it lacks: an email of a Stripe bill before the copies began
+ * (`jobs_ledger_invoice_stripe_email_sends`: the time, no address), a bill entered from Housecall Pro (the invoice's
+ * own stamp: the day only) and a text that carried the pay link (`messages`). It also adds the gaps: a bill that was
+ * made and has no send of any kind on record (`billsSentGaps`), shown above the days so a missing send is seen.
  */
 import { companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { formatCurrency } from '../format'
@@ -61,6 +66,43 @@ export interface BillsSentEarlier {
   atIso: string
 }
 
+/** One email of a Stripe bill as the send log has it (`jobs_ledger_invoice_stripe_email_sends`): the time and the copy list, never the main address. */
+export interface BillsSentStripeRow {
+  id: string
+  billId: string
+  atIso: string
+  copyEmails: string[]
+}
+
+/** A bill whose only record of going out is the stamp on the bill itself: entered from Housecall Pro, or a PDF emailed before the copies began. The day, at noon. */
+export interface BillsSentStamp {
+  billId: string
+  atIso: string
+  channel: 'housecallpro' | 'physical'
+}
+
+/** A text that carried a pay link (`messages`). The bill is the one its link opens, when the link still names one. */
+export interface BillsSentText {
+  id: string
+  atIso: string
+  billId: string | null
+  jobId: string | null
+  number: string
+  toName: string
+  by: string
+  /** Quo's answer: delivered, undelivered, failed, or null before it answers. */
+  delivery: string | null
+}
+
+/** A bill the app made that carries no send stamp: billed or paid, a Stripe bill, never emailed from the app. */
+export interface BillsSentUnsent {
+  billId: string
+  jobId: string | null
+  amount: number | null
+  status: string
+  billedAtIso: string
+}
+
 export interface BillsSentInput {
   copies: ReadonlyArray<BillsSentCopy>
   bills: ReadonlyMap<string, BillsSentBill>
@@ -68,22 +110,38 @@ export interface BillsSentInput {
   statements: ReadonlyMap<string, BillsSentStatement>
   /** Every send on record of the bills on the page, the page's own included. */
   earlier: ReadonlyArray<BillsSentEarlier>
+  stripeRows?: ReadonlyArray<BillsSentStripeRow>
+  stamps?: ReadonlyArray<BillsSentStamp>
+  texts?: ReadonlyArray<BillsSentText>
+  unsent?: ReadonlyArray<BillsSentUnsent>
 }
 
 /** How it left, as the chips sort it. */
-export type BillsSentRoute = 'email' | 'printed' | 'statement' | 'other'
+export type BillsSentRoute = 'email' | 'text' | 'printed' | 'statement' | 'housecall_pro' | 'other'
 
-export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentRoute | 'all'; label: string }> = [
+/** The name the tile, the chip and the strip give a bill that has no send of any kind on record. */
+export const BILLS_SENT_GAP_LABEL = 'No send on record'
+
+/** The chips: every route, then the bills with no send on record (`gap`), which are not lines. */
+export const BILLS_SENT_ROUTE_CHIPS: ReadonlyArray<{ key: BillsSentRoute | 'all' | 'gap'; label: string }> = [
   { key: 'all', label: 'All' },
   { key: 'email', label: 'Email' },
+  { key: 'text', label: 'Text' },
   { key: 'printed', label: 'Printed' },
   { key: 'statement', label: 'Statement' },
+  { key: 'housecall_pro', label: 'Housecall Pro' },
+  { key: 'gap', label: BILLS_SENT_GAP_LABEL },
 ]
 
+/** The day the app began keeping a copy of each send. A send before it has a time and no address. */
+export const BILLS_SENT_COPIES_BEGAN_YMD = '2026-10-05'
+
 export interface BillsSentLine {
-  /** The sent copy's id. */
+  /** The sent copy's id, or the id of the record a line with no copy came from (`row:…`, `stamp:…`, `text:…`). */
   id: string
   atIso: string
+  /** True when the record holds the day and no time: the line reads *Day only*. */
+  dayOnly: boolean
   route: BillsSentRoute
   /** The chip on the line: *Email*, *Email, sent again*, *Printed*, *Statement*, *Saved as a file*. */
   routeWords: string
@@ -111,8 +169,10 @@ export interface BillsSentLine {
   firstAtIso: string | null
   /** What the app cannot know or wants said: under a print, under a statement. '' otherwise. */
   note: string
-  /** The copy the line opens. */
-  copy: BillsSentCopy
+  /** A text's answer in words: *Delivered*, *Not delivered*. '' on every other line and before Quo answers. */
+  delivery: string
+  /** The copy the line opens; null on a send that kept none, whose note says so. */
+  copy: BillsSentCopy | null
   /** The copies to the copy list that went with this send, to open beside it. */
   copies: BillsSentCopy[]
   /** What the search box matches, lower case. */
@@ -210,7 +270,37 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     const billId = billIdOf(c)
     if (billId) note(billId, ms(c.sentAt))
   }
+
+  // An email row of the send log is the same send as the copy filed with it: the copy is the line, the row is not
+  // drawn twice. A row with no copy near it (a send before the copies began, or one Stripe made for us) is its own line.
+  const covered = new Set<string>()
+  for (const c of sends) {
+    const billId = billIdOf(c)
+    if (!billId || c.how !== 'email') continue
+    let best: BillsSentStripeRow | null = null
+    for (const r of input.stripeRows ?? []) {
+      if (r.billId !== billId || covered.has(r.id)) continue
+      const gap = Math.abs(ms(r.atIso) - ms(c.sentAt))
+      if (gap <= COPY_FOLD_MS && (!best || gap < Math.abs(ms(best.atIso) - ms(c.sentAt)))) best = r
+    }
+    if (best) covered.add(best.id)
+  }
+  const bareRows = (input.stripeRows ?? []).filter((r) => !covered.has(r.id))
+  // A stamp stands for a bill that has no other record of going out.
+  const stamps = (input.stamps ?? []).filter((st) => !sends.some((c) => billIdOf(c) === st.billId))
+  const texts = input.texts ?? []
+  for (const r of bareRows) note(r.billId, ms(r.atIso))
+  for (const st of stamps) note(st.billId, ms(st.atIso))
+  for (const t of texts) if (t.billId) note(t.billId, ms(t.atIso))
   for (const list of timesByBill.values()) list.sort((a, b) => a - b)
+
+  // The number a bill carries, from any copy of it on the page, for a line that has no copy of its own.
+  const numberByBill = new Map<string, string>()
+  for (const c of wanted) {
+    const billId = billIdOf(c)
+    const number = billId ? billNumberFromTitle(c.title) : ''
+    if (billId && number && !numberByBill.has(billId)) numberByBill.set(billId, number)
+  }
 
   // A copy to the copy list rides with the nearest send of its bill; one with no send near it stands as its own line.
   const ridersBySend = new Map<string, BillsSentCopy[]>()
@@ -252,6 +342,8 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     return {
       id: copy.id,
       atIso: copy.sentAt,
+      dayOnly: false,
+      delivery: '',
       route,
       routeWords: routeWordsOf(copy, route, nth),
       what,
@@ -278,7 +370,165 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     }
   }
 
-  return [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, []))].sort((a, b) => ms(b.atIso) - ms(a.atIso))
+  /** A line for a send that kept no copy: what the record holds, and a note that says what it lacks. */
+  const bareLine = (o: {
+    id: string
+    atIso: string
+    billId: string | null
+    jobId?: string | null
+    route: BillsSentRoute
+    routeWords: (nth: number) => string
+    dayOnly?: boolean
+    toName?: string
+    toAddresses?: string[]
+    copyTo?: string[]
+    by?: string
+    delivery?: string
+    note: string
+  }): BillsSentLine => {
+    const bill = o.billId ? input.bills.get(o.billId) : undefined
+    const times = o.billId ? (timesByBill.get(o.billId) ?? []) : []
+    const nth = o.billId ? Math.max(1, times.indexOf(ms(o.atIso)) + 1) : 1
+    const firstAt = nth > 1 && times.length ? times[0]! : null
+    const jobId = o.jobId ?? bill?.jobId ?? null
+    const job = jobId ? input.jobs.get(jobId) : undefined
+    const jobWords = jobId ? sentCopyJobLabel(jobId, job) : ''
+    const payer = (job?.customer_name ?? '').trim()
+    const number = o.billId ? (numberByBill.get(o.billId) ?? '') : ''
+    const what = number ? `Bill ${number}` : 'Bill'
+    const amount = bill?.amount ?? null
+    const toName = (o.toName ?? '').trim()
+    const toAddresses = o.toAddresses ?? []
+    const copyTo = o.copyTo ?? []
+    const by = (o.by ?? '').trim()
+    return {
+      id: o.id,
+      atIso: o.atIso,
+      dayOnly: o.dayOnly ?? false,
+      delivery: o.delivery ?? '',
+      route: o.route,
+      routeWords: o.routeWords(nth),
+      what,
+      billId: o.billId,
+      jobWords,
+      jobTo: jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null,
+      payer,
+      amount,
+      counts: !!o.billId && nth === 1 && amount != null,
+      paid: bill?.status === 'paid',
+      toName,
+      toAddresses,
+      copyTo,
+      by,
+      nth,
+      firstAtIso: firstAt != null ? new Date(firstAt).toISOString() : null,
+      note: o.note,
+      copy: null,
+      copies: [],
+      haystack: [what, jobWords, payer, toName, ...toAddresses, ...copyTo, (job?.job_address ?? '').trim(), by, o.routeWords(nth)].filter(Boolean).join(' ').toLowerCase(),
+    }
+  }
+
+  const rowLines = bareRows.map((r) =>
+    bareLine({
+      id: `row:${r.id}`,
+      atIso: r.atIso,
+      billId: r.billId,
+      route: 'email',
+      routeWords: (nth) => (nth > 1 ? 'Email, sent again' : 'Email'),
+      copyTo: r.copyEmails,
+      note:
+        calendarYmdInAppTzFromIso(r.atIso) < BILLS_SENT_COPIES_BEGAN_YMD
+          ? 'The address was not kept. The app kept no copy of a send before Oct 5, 2026.'
+          : 'No copy of this send was kept, so the address is not on record.',
+    }),
+  )
+  const stampLines = stamps.map((st) =>
+    bareLine({
+      id: `stamp:${st.billId}`,
+      atIso: st.atIso,
+      billId: st.billId,
+      dayOnly: true,
+      route: st.channel === 'housecallpro' ? 'housecall_pro' : 'email',
+      routeWords: () => (st.channel === 'housecallpro' ? 'Housecall Pro' : 'Email'),
+      note:
+        st.channel === 'housecallpro'
+          ? 'Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy.'
+          : 'Emailed as a PDF. The app has the day only, and kept no copy.',
+    }),
+  )
+  const textLines = texts.map((t) =>
+    bareLine({
+      id: `text:${t.id}`,
+      atIso: t.atIso,
+      billId: t.billId,
+      jobId: t.jobId,
+      route: 'text',
+      routeWords: () => 'Text with pay link',
+      toName: t.toName,
+      toAddresses: t.number ? [t.number] : [],
+      by: t.by,
+      delivery: t.delivery === 'delivered' ? 'Delivered' : t.delivery === 'undelivered' || t.delivery === 'failed' ? 'Not delivered' : '',
+      note: t.billId ? '' : 'The pay link in this text no longer names a bill.',
+    }),
+  )
+
+  return [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
+}
+
+/** A bill with no send on record, as the strip above the days draws it. */
+export interface BillsSentGap {
+  billId: string
+  jobWords: string
+  jobTo: string | null
+  payer: string
+  amount: number | null
+  paid: boolean
+  /** *Billed Mon, Nov 9 at 3:26 PM.* */
+  billedWords: string
+  haystack: string
+}
+
+/**
+ * The bills that were made and have no send of any kind on record: no email, no text, no print. The open ones are
+ * the ones to look at; the paid ones are told apart, since a bill paid at the door needed no send. A bill with a
+ * line on the list is never a gap, whatever its stamp says.
+ */
+export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): { open: BillsSentGap[]; paid: BillsSentGap[] } {
+  const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
+  const gaps = (input.unsent ?? [])
+    .filter((u) => !sent.has(u.billId))
+    .slice()
+    .sort((a, b) => (a.billedAtIso < b.billedAtIso ? 1 : a.billedAtIso > b.billedAtIso ? -1 : 0))
+    .map((u): BillsSentGap => {
+      const job = u.jobId ? input.jobs.get(u.jobId) : undefined
+      const jobWords = u.jobId ? sentCopyJobLabel(u.jobId, job) : ''
+      const payer = (job?.customer_name ?? '').trim()
+      const ymd = Number.isFinite(Date.parse(u.billedAtIso)) ? calendarYmdInAppTzFromIso(u.billedAtIso) : ''
+      const billedWords = ymd ? `Billed ${formatWorkDateYmdWeekdayShortFriendly(ymd)} at ${billsSentTime(u.billedAtIso)}.` : 'Billed.'
+      return {
+        billId: u.billId,
+        jobWords,
+        jobTo: u.jobId ? `/jobs?edit=${encodeURIComponent(u.jobId)}` : null,
+        payer,
+        amount: u.amount,
+        paid: u.status === 'paid',
+        billedWords,
+        haystack: [jobWords, payer, (job?.job_address ?? '').trim()].filter(Boolean).join(' ').toLowerCase(),
+      }
+    })
+  return { open: gaps.filter((g) => !g.paid), paid: gaps.filter((g) => g.paid) }
+}
+
+/** The gaps the search box leaves. */
+export function billsSentGapFilter(gaps: ReadonlyArray<BillsSentGap>, typed: string): BillsSentGap[] {
+  const words = typed.toLowerCase().split(/\s+/).filter(Boolean)
+  return gaps.filter((g) => words.every((w) => g.haystack.includes(w)))
+}
+
+/** The strip's heading: *3 bills are billed with no send on record*. */
+export function billsSentGapHeading(n: number): string {
+  return n === 1 ? '1 bill is billed with no send on record' : `${n} bills are billed with no send on record`
 }
 
 /** `1 bill`, `2 bills`. */
@@ -386,7 +636,8 @@ export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: st
 }
 
 /** The lines a route chip and the search box leave. Every typed word must be found. */
-export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: BillsSentRoute | 'all', typed: string): BillsSentLine[] {
+export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: BillsSentRoute | 'all' | 'gap', typed: string): BillsSentLine[] {
+  if (route === 'gap') return []
   const words = typed.toLowerCase().split(/\s+/).filter(Boolean)
   return lines.filter((l) => (route === 'all' || l.route === route) && words.every((w) => l.haystack.includes(w)))
 }
