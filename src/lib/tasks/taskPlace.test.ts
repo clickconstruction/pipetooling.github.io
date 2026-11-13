@@ -19,12 +19,16 @@ import {
   taskPlaceSheetAccuracy,
   taskPlaceSheetStart,
   taskPlaceDistanceWords,
+  taskPlaceDotGroups,
   taskPlaceDots,
+  taskPlaceFarShort,
   taskPlaceFixWords,
   taskPlaceFromRow,
   taskPlaceHowFarWords,
   taskPlaceNoFixWords,
   taskPlacedByWords,
+  taskPlacesCountWords,
+  taskPlacesDefaultLayer,
   tasksWithoutPlaceWords,
   type TaskPlace,
 } from './taskPlace'
@@ -270,6 +274,43 @@ describe('the doer\'s words (PR 3)', () => {
     expect(taskPlaceNoFixWords('refused')).toBe('Location is off for this app. The map and Directions still work. To see how far you are, allow location in the phone’s settings.')
     expect(taskPlaceNoFixWords('none')).toBe('This device gives no location. The map and Directions still work.')
     expect(taskPlaceNoFixWords('failed')).toBe('Could not find you. Try again in the open, or use Directions.')
+  })
+})
+
+describe('the map of my tasks (PR 4)', () => {
+  const place = (name: string, lat: number, lng = -98.3): TaskPlace => ({ name, lat, lng, accuracyM: null, setBy: null, setAt: null })
+
+  it('tasks at one place share one dot, which wears the first number and a plus and lists them all', () => {
+    const { dots } = taskPlaceDots([
+      { id: 'gate', place: place('North gate', 29.56), overdue: false },
+      { id: 'grease', place: place('Pump house', 29.55) },
+      { id: 'clamps', place: null },
+      { id: 'valve', place: place('Pump house', 29.55), overdue: true },
+      { id: 'paint', place: place('Pump house', 29.55001) },
+    ])
+    const groups = taskPlaceDotGroups(dots)
+    expect(groups.map((g) => [g.id, g.label, g.numbers, g.taskIds, g.overdue])).toEqual([
+      ['gate', '1', [1], ['gate'], false],
+      ['grease', '2+', [2, 3, 4], ['grease', 'valve', 'paint'], true],
+    ])
+  })
+
+  it('opens from above while the dots sit on one property, and on streets once they spread across town', () => {
+    expect(taskPlacesDefaultLayer([place('a', 29.55), place('b', 29.556)])).toBe('satellite')
+    expect(taskPlacesDefaultLayer([place('a', 29.55), place('b', 29.75)])).toBe('streets')
+    expect(taskPlacesDefaultLayer([place('a', 29.55)])).toBe('satellite')
+    expect(taskPlacesDefaultLayer([])).toBe('streets')
+  })
+
+  it('counts the places for the folded line', () => {
+    expect(taskPlacesCountWords(1)).toBe('1 place')
+    expect(taskPlacesCountWords(3)).toBe('3 places')
+  })
+
+  it('puts the distance on a task\'s line once the person asked where they are', () => {
+    const p = { lat: HERE.lat + 54 / 111195, lng: HERE.lng + 54 / (111195 * Math.cos((HERE.lat * Math.PI) / 180)) }
+    expect(taskPlaceFarShort(HERE, p)).toBe('250 ft north-east')
+    expect(taskPlaceFarShort(HERE, HERE)).toBe('here')
   })
 })
 

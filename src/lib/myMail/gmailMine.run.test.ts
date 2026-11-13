@@ -432,7 +432,7 @@ describe('gmail-mine: list', () => {
   })
 
   it('reads Tagged from the app’s own record: each tagged conversation whole, the newest first, a page at a time', async () => {
-    // Twenty tagged conversations of one mail each, the newest mail the highest number, and none carrying any label of ours.
+    // Twenty saved conversations of one mail each, the newest mail the highest number, and none carrying any label of ours.
     const n = MY_MAIL_TAGGED_PAGE + 5
     const at = (i: number) => `2026-10-${String(i + 1).padStart(2, '0')}T12:00:00.000Z`
     google.boxes[MARISOL]!.mails = Array.from({ length: n }, (_, i) => mail(`g-t${i}`, `t-t${i}`, at(i), { From: DALE, Subject: `Note ${i}`, 'Message-ID': `<t${i}@ridgeway.example>` }, 'Words.', i === 3 ? { labelIds: [] } : {}))
@@ -712,7 +712,7 @@ describe('gmail-mine: tag and untag', () => {
       const written = lines().filter((l) => l.mailbox === 'mine')
       expect(written.length).toBe(2)
       expect(written.every((l) => l.history === true)).toBe(true)
-      expect(events().map((e) => e.body)).toEqual(['Marisol Vega tagged this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.'])
+      expect(events().map((e) => e.body)).toEqual(['Marisol Vega saved this conversation from their mail. This is old mail, filed for the record. Nothing went on Follow up. Later mail in it lands here by itself.'])
     } finally {
       vi.setSystemTime(new Date(RUN_NOW))
     }
@@ -732,7 +732,7 @@ describe('gmail-mine: tag and untag', () => {
         channel: 'event',
         direction: 'team',
         who_text: 'The app',
-        body: 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.',
+        body: 'Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.',
         quo_id: `mytag:${row!.id}`,
         jobs_ledger_id: ELM,
         bid_id: null,
@@ -813,7 +813,7 @@ describe('gmail-mine: tag and untag', () => {
     const from = db.calls.length
     const stopped = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
     expect(stopped).toMatchObject({ status: 500, body: { ok: false, error: 'google' } })
-    expect(stopped.body.words).toContain('The untag stopped before the tag came off.')
+    expect(stopped.body.words).toContain('Taking it off the job stopped before the save came off.')
     const calls = db.calls.slice(from)
     expect(calls.indexOf('admin update email_tag_threads')).toBeGreaterThanOrEqual(0)
     expect(calls.indexOf('admin update email_tag_threads')).toBeLessThan(calls.indexOf('admin delete messages'))
@@ -1408,8 +1408,8 @@ describe('gmail-mine: the old Gmail label comes out of every mailbox, once (v2.7
 describe('gmail-mine: a tag onto a job through the dev seat names the dev, never the person', () => {
   const seatTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL }
   const ownTag = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }
-  const SEAT_WORDS = "Robert tagged this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself."
-  const OWN_WORDS = 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.'
+  const SEAT_WORDS = "Robert saved this conversation from Marisol Vega's mail, through the dev seat. Later mail in it lands here by itself."
+  const OWN_WORDS = 'Marisol Vega saved this conversation from their mail. Later mail in it lands here by itself.'
   const events = () => lines().filter((l) => l.channel === 'event')
   const tagRows = () => db.rows('email_tag_threads')
   const boxLine = () => lines().find((l) => l.id === 'm-box-1')

@@ -300,6 +300,62 @@ export function taskPlaceDots<T extends { id: string; place: TaskPlace | null; o
   return { dots, numberById, withoutPlace }
 }
 
+/** One mark on the map: a place, and every task on the list that is at it. */
+export type TaskPlaceDotGroup = TaskPlacePoint & {
+  /** The first task's id: the mark's own id on the canvas. */
+  id: string
+  name: string
+  taskIds: string[]
+  numbers: number[]
+  /** What the disc reads: the task's number, or the first with a plus when several tasks share the place. */
+  label: string
+  /** Red when any task at the place is overdue. */
+  overdue: boolean
+}
+
+/**
+ * Tasks at one place share one dot. Places repeat by design, since a place used before is one press
+ * away, so three tasks at the pump house are the usual case and three discs on one point would hide
+ * two of them. The dot wears the first task's number and a plus, and a press lists them all.
+ */
+export function taskPlaceDotGroups(dots: ReadonlyArray<TaskPlaceDot>): TaskPlaceDotGroup[] {
+  const groups: TaskPlaceDotGroup[] = []
+  for (const d of dots) {
+    const home = groups.find((g) => haversineMeters(g, d) <= TASK_PLACE_HERE_METERS)
+    if (home) {
+      home.taskIds.push(d.id)
+      home.numbers.push(d.number)
+      home.overdue = home.overdue || d.overdue
+      home.label = `${home.numbers[0]}+`
+      continue
+    }
+    groups.push({ id: d.id, lat: d.lat, lng: d.lng, name: d.name, taskIds: [d.id], numbers: [d.number], label: String(d.number), overdue: d.overdue })
+  }
+  return groups
+}
+
+/** Past this spread the dots are across town, and streets say more than a view from above: one mile. */
+export const TASK_PLACES_SATELLITE_METERS = 1609
+
+/** The view the map opens in: from above while every dot sits on one property, streets once they spread. */
+export function taskPlacesDefaultLayer(dots: ReadonlyArray<TaskPlacePoint>): 'satellite' | 'streets' {
+  const first = dots[0]
+  if (!first) return 'streets'
+  return dots.every((d) => haversineMeters(first, d) <= TASK_PLACES_SATELLITE_METERS) ? 'satellite' : 'streets'
+}
+
+/** The folded map's line: how many places it is hiding. */
+export function taskPlacesCountWords(places: number): string {
+  return places === 1 ? '1 place' : `${places.toLocaleString('en-US')} places`
+}
+
+/** The distance on a task's line once the person asked where they are: `250 ft north-east`, or `here`. */
+export function taskPlaceFarShort(from: TaskPlacePoint, place: TaskPlacePoint): string {
+  const meters = haversineMeters(from, place)
+  if (meters <= TASK_PLACE_HERE_METERS) return 'here'
+  return `${taskPlaceDistanceWords(meters)} ${taskPlaceDirection(from, place)}`
+}
+
 /** The line under the map for the tasks it cannot show, or null when every task is on it. */
 export function tasksWithoutPlaceWords(withoutPlace: number, withPlace: number): string | null {
   if (withoutPlace <= 0) return null

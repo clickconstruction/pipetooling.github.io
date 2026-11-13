@@ -55,19 +55,35 @@ export function lienDemandLettersFromRows(rows: ReadonlyArray<JobDemandLetterRow
 
 const GATE_SHORT: Record<string, string> = { owner: 'owner of record', public_owner: 'a private owner', legal: 'legal description', contractor: "the general contractor's address", notice: 'the notice', homestead: 'homestead', homestead_answer: 'the homestead answer' }
 
-function noticeStateOf(entry: LienDeskEntry | null): LienTimelineNoticeState {
+function noticeStateOf(entry: Pick<LienDeskEntry, 'pile'> | null): LienTimelineNoticeState {
   if (!entry) return ''
   switch (entry.pile) {
     case 'needs_owner':
     case 'to_draft':
     case 'awaiting':
     case 'ready':
+    case 'printed':
     case 'held':
     case 'sent':
       return entry.pile
     default:
       return ''
   }
+}
+
+/** Where a job's notice stands on the desk, as the Lien window's opener hands it over (v2.7077). */
+export type LienWindowDeskNotice = { state: LienTimelineNoticeState; holdUntil: string | null }
+
+/**
+ * The desk's word on a job's notice for the Lien window (v2.7077, punch list #325, PR 6). The window
+ * builds its path from the job's filings and cannot see a notice that is drafted, approved or printed,
+ * so its header read *Draft the Sep notice* over a row that read *Find the owner* or *Record the
+ * mailing*. An opener that holds the desk's queue hands this over; null when the job has no entry.
+ */
+export function lienWindowDeskNotice(entry: Pick<LienDeskEntry, 'pile' | 'item'> | null | undefined): LienWindowDeskNotice | null {
+  if (!entry) return null
+  const state = noticeStateOf(entry)
+  return state ? { state, holdUntil: entry.item?.hold_until ?? null } : null
 }
 
 export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string, propertyKind = ''): LienTimelineMonth[] {
@@ -198,7 +214,9 @@ export function lienWindowLastMonth(src: {
  * job row and the property kind. Sent months come from the notice filings'
  * `months_covered`; a closed month with none reads *window closed* and
  * nothing about noting, because the window cannot see the desk's record. A
- * job with no sessions is dated from its creation month (v2.3747).
+ * job with no sessions is dated from its creation month (v2.3747). An opener
+ * that holds the desk's queue hands over where the notice stands (`deskNotice`,
+ * v2.7077), so the header names the step the desk names.
  */
 export function buildLienTimelineFromWindow(src: {
   workMonths: JobWorkMonths | null
@@ -212,6 +230,8 @@ export function buildLienTimelineFromWindow(src: {
   demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
   /** The courtesy notices sent on the job (punch list #231), from its sent notice's record; absent when the caller has not loaded them. */
   courtesy?: ReadonlyArray<LienTimelineCourtesy> | null
+  /** Where the job's notice stands on the desk (v2.7077), when the opener holds the desk's queue; absent, the open months read *to draft*. */
+  deskNotice?: LienWindowDeskNotice | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
@@ -243,7 +263,8 @@ export function buildLienTimelineFromWindow(src: {
     lastMonthFromCreation,
     lastMonthByHand,
     months,
-    noticeState: '',
+    noticeState: src.deskNotice?.state ?? '',
+    holdUntil: src.deskNotice?.holdUntil ?? null,
     retainage: src.job.lien_contract_ended_on ? { contractEndedOn: src.job.lien_contract_ended_on, deadline: lienThirtyDayClock(src.job.lien_contract_ended_on), noticed: false } : null,
     affidavit: affidavitFiling
       ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
