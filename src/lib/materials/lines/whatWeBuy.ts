@@ -26,6 +26,8 @@ export interface PurchaseLine {
   datedOn: string | null
   lineKind: 'part' | 'charge'
   houseCode: string
+  /** The manufacturer's number, when the paper prints one apart from the house's code. */
+  mfrNumber?: string
   description: string
   unit: string
   pricingUnit: PricingUnit

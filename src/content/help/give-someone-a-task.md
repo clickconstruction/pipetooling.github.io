@@ -70,7 +70,7 @@ The row called **Add** holds what most tasks do not need. Each one is a button w
 - **Due by** sets the day after which the task is late.
 - **Just for the day** makes the task leave the list when its day ends.
 
-The bell beside Send is **Tell me**. It is lit, so you hear when the task is done. Tap the bell to turn that off. To see or edit everything you've handed out, open **Checklist → Manage**.
+The bell beside Send is **Tell me**. It is lit, so you hear when the task is done. Tap the bell to turn that off. To see everything you've handed out, open **Checklist → Manage**. Press **⋮** on a task, then **Edit**, to change it in the same rows.
 
 ## Say what done looks like
 
@@ -88,7 +88,7 @@ Put the plumbing tools in a neat home
 {{chip:gray|Done when…}} The cart is clear and the floor swept
 :::
 
-You can change the lines later. Open **Checklist → Manage**, then **Edit** on the task. A line you take off keeps the ticks already on it. The Roadmap's **Add task** takes the same lines. Every card the roadmap makes from that task carries them.
+You can change the lines later. Open **Checklist → Manage**, press **⋮** on the task, then **Edit**. The **Edit task** window has the same rows as New task. A line you take off keeps the ticks already on it. The Roadmap's **Add task** takes the same lines. Every card the roadmap makes from that task carries them.
 
 ## Send a job as a task
 
