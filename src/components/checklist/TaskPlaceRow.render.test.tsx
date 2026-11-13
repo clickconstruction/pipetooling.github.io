@@ -39,6 +39,7 @@ vi.mock('../materials/OnSiteMap', () => ({
 }))
 
 import { TaskPlaceRow } from './TaskPlaceRow'
+import { ADD_TASK_PICKER_Z, ROADMAP_TASK_PICKER_Z, ROADMAP_TASK_WINDOW_Z } from '../../lib/windowLayers'
 
 const place = (name: string, lat: number): TaskPlace => ({ name, lat, lng: -98.29, accuracyM: null, setBy: 'u1', setAt: '2026-11-10T15:00:00Z' })
 
@@ -150,6 +151,17 @@ describe('TaskPlaceRow', () => {
     await waitFor(() => expect((screen.getByRole('button', { name: 'Use this place' }) as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Use this place' }))
     expect(onChange).toHaveBeenCalledWith({ lat: 39.501, lng: -98.35, name: '', accuracyM: null })
+  })
+
+  it('the sheet opens over Add a task, and over a window that sits higher when the row is told its layer', async () => {
+    const first = render(<TaskPlaceRow value={null} onChange={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    expect(Number(document.querySelector<HTMLElement>('[data-task-place-sheet]')!.style.zIndex)).toBe(ADD_TASK_PICKER_Z)
+    first.unmount()
+    // A roadmap task's windows sit far above Add a task. Their sheet has to sit above them, or it opens where nobody sees it.
+    render(<TaskPlaceRow value={null} onChange={() => {}} sheetZIndex={ROADMAP_TASK_PICKER_Z} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ New place' }))
+    expect(Number(document.querySelector<HTMLElement>('[data-task-place-sheet]')!.style.zIndex)).toBeGreaterThan(ROADMAP_TASK_WINDOW_Z)
   })
 
   it('a press on the sheet\'s backdrop closes the sheet alone, never the window behind it', async () => {

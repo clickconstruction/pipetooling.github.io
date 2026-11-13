@@ -12,6 +12,7 @@ import { TaskFormRows } from './newTask/TaskFormRows'
 import { TaskSendBar } from './newTask/TaskSendBar'
 import { TaskWindowClose, TaskWindowShell } from './newTask/TaskWindowShell'
 import { TASK_WORDS_BOX_STYLE, restingTaskFormValue } from './newTask/taskWindowBits'
+import { ROADMAP_TASK_PICKER_Z, ROADMAP_TASK_WINDOW_Z } from '../../lib/windowLayers'
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -137,7 +138,7 @@ export function ChecklistTechTreeAddTaskModal({
       title={isEditMode ? 'Edit task' : 'Add task'}
       subtitle={`Stage: ${groupTitle || '—'}`}
       phone={phone}
-      zIndex={10050}
+      zIndex={ROADMAP_TASK_WINDOW_Z}
       overlayBackground="rgba(0,0,0,0.4)"
       onBackdrop={() => {
         if (!saving) onClose()
@@ -211,6 +212,8 @@ export function ChecklistTechTreeAddTaskModal({
         todayStr={todayYmdInAppTz()}
         searchId="tech-tree-add-task-assign-search"
         onLinkToken={() => {}}
+        // The roadmap's windows sit far above Add a task, so the place sheet is told to open above this one.
+        pickerZIndex={ROADMAP_TASK_PICKER_Z}
       />
     </TaskWindowShell>,
     target,
