@@ -11,9 +11,14 @@
  * entry here (the drift cost is one line).
  *
  * Role safety comes free: callers pass the role-filtered jump-group ids and
- * `searchSettings` only returns entries whose tab the viewer can see.
+ * `searchSettings` only returns entries whose tab the viewer can see. A card
+ * drawn for fewer roles than its tab carries `seenBy` (v2.7139), and the
+ * callers search `settingsSearchIndexFor(role)`, so a row never lands a
+ * person on a tab where the card is not drawn.
  */
 
+import type { UserRole } from '../hooks/useAuth'
+import { approvesCardLooks, makesOwnCard } from './brandKit/access'
 import { announceSettingsTarget } from './settingsTarget'
 import { HELP_GUIDE_URL_PARAM } from './helpGuideUrlParam'
 
@@ -28,6 +33,13 @@ export type SettingsSearchEntry = {
   anchorId?: string
   /** Help-guide slug (v2.2902): the pick opens this guide on the Guides tab via the `g` URL param. */
   guideSlug?: string
+  /** Who the card is drawn for, when that is fewer roles than see its tab (v2.7139). Absent: everyone who sees the tab. */
+  seenBy?: (role: UserRole | null | undefined) => boolean
+}
+
+/** The entries a role may be offered: every entry with no `seenBy`, and each one whose `seenBy` admits the role. */
+export function settingsSearchIndexFor(role: UserRole | null | undefined, index: readonly SettingsSearchEntry[] = SETTINGS_SEARCH_INDEX): readonly SettingsSearchEntry[] {
+  return index.filter((e) => !e.seenBy || e.seenBy(role))
 }
 
 export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
@@ -55,6 +67,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Push me', keywords: ['push hours', 'quiet hours', 'notification hours', 'when you are pushed', 'do not disturb', 'push notifications'], tabId: 'settings-account', anchorId: 'settings-push-hours' },
   // Punch list #230 PR 3: the switch for Messages → My email, and the Gmail labels it leaves out.
   { label: 'My email in Messages', keywords: ['my email', 'my mail', 'gmail', 'show my mail', 'my email tab', 'tag an email', 'leave a label out', 'personal label'], tabId: 'settings-account', anchorId: 'settings-my-mail' },
+  // Punch list #313: a person's own email footer and business card. Every role but a subcontractor.
+  { label: 'Your card and footer', keywords: ['business card', 'email footer', 'email signature picture', 'my card', 'my footer', 'my photo', 'headshot', 'photo on my email', 'print file', 'sheet of ten', 'card look', 'card size'], tabId: 'settings-account', anchorId: 'settings-card-and-footer', seenBy: makesOwnCard },
   { label: 'Salaried workday', keywords: ['salary', 'auto clock', 'work schedule'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Personal time off', keywords: ['pto', 'vacation', 'time off', 'holiday'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Back up my data', keywords: ['backup', 'export', 'download my data'], tabId: 'settings-account' },
@@ -74,6 +88,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Merge users', keywords: ['combine users', 'duplicate accounts'], tabId: 'settings-people' },
   { label: 'Superintendent bonus', keywords: ['superintendent bonus', 'labor kept', 'hours saved', 'scoreboard share', 'bonus share'], tabId: 'settings-people', anchorId: 'settings-people-superintendent-bonus' },
   { label: 'Active accounts', keywords: ['who is active', 'logins'], tabId: 'settings-people' },
+  // Punch list #313: which looks and sizes of the card and the footer the team is offered. The owner's card and a dev's.
+  { label: 'Card and footer looks', keywords: ['looks', 'card looks', 'footer looks', 'card sizes', 'offer a look', 'approve a look', 'default look', 'navy and orange', 'navy and yellow', 'larger photo', 'larger text', 'business card colours'], tabId: 'settings-people', anchorId: 'settings-card-looks', seenBy: approvesCardLooks },
   { label: 'Report-enabled users', keywords: ['who can report'], tabId: 'settings-people' },
   // Email & notifications (the owner or a dev since v2.6753, punch list #188 row 5)
   { label: 'Email streams', keywords: ['scheduled emails', 'email subscriptions', 'weekly emails'], tabId: 'settings-emails' },

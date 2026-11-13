@@ -89,6 +89,8 @@ import { GripVertical } from 'lucide-react'
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeMoveTaskModal, type PendingTaskMove } from './ChecklistTechTreeMoveTaskModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
+import type { TaskSpotPhotoDraft } from './TaskSpotPhotoField'
+import { putTaskSpotPhoto } from '../../lib/tasks/taskSpotPhotoIo'
 import { averageEstimatedDays } from '../../lib/roadmapEffort'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
@@ -1010,7 +1012,7 @@ export function ChecklistTechTreeTab({
   }, [treeEdges, groups, linksSearchQuery])
 
   const addTaskToGroup = useCallback(
-    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false, place: TaskPlaceDraft | null = null): Promise<boolean> => {
+    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false, place: TaskPlaceDraft | null = null, spotPhoto: TaskSpotPhotoDraft | null = null): Promise<boolean> => {
       if (!canEditStructure || !authUserId || !title.trim()) return false
       try {
         setError(null)
@@ -1045,6 +1047,11 @@ export function ChecklistTechTreeTab({
         if (lines.length > 0) {
           const lineErr = await writeTaskLines(row.id, lines, authUserId)
           if (lineErr) setError(`The task was added, but its Done when… lines did not save: ${lineErr}`)
+        }
+        // The giver's photo of the spot (#331, PR 4) is filed under the task's id, so it goes now. The task stands either way.
+        if (spotPhoto?.kind === 'new') {
+          const put = await putTaskSpotPhoto({ kind: 'roadmap', id: row.id }, spotPhoto.id, spotPhoto.blob)
+          if ('error' in put) setError(`The task was added, but its photo did not save: ${put.error} Add it from the task's card.`)
         }
         await load()
         return true
@@ -2305,9 +2312,9 @@ export function ChecklistTechTreeTab({
         users={users}
         currentUserId={authUserId}
         onClose={() => setAddTaskModalGroupId(null)}
-        onSave={async (title, assigneeUserIds, lines, asksForPhoto, place) => {
+        onSave={async (title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto) => {
           if (addTaskModalGroupId) {
-            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto, place)
+            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto, place, spotPhoto)
           }
           return false
         }}
