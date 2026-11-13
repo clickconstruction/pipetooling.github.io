@@ -23,7 +23,7 @@ export type LienStatusJob = {
   /** "878": the ledger number as the desk prints it. */
   number: string
   name: string
-  /** The GC's name. Every job on the notice desk has one. */
+  /** The GC's name; '' when no GC is set on the job, which the message says in words (`lienStatusGcWords`). */
   gc: string
   /** The months the notice names, 'YYYY-MM'. */
   months: string[]
@@ -184,6 +184,17 @@ function byYmdOrder(a: { byYmd: string; owed: number }, b: { byYmd: string; owed
   return b.owed - a.owed
 }
 
+/**
+ * A notice job's GC as the message says it. The payload carries '' for a job with no GC set, and until v2.7171 every
+ * rendering printed that as it was: *• , 1 job, $3,553* under By GC and *Summit GC- Auto Zone, , $3,553* on the waiting
+ * line. The words are the notice gate's own (`lienDeskGates.ts`: *No GC on the job*), since a notice goes to the owner
+ * and the GC and the desk holds it until one is set. `mid` is the same words inside a line.
+ */
+export const LIEN_STATUS_NO_GC = 'No GC on the job'
+export function lienStatusGcWords(gc: string, mid = false): string {
+  return gc.trim() || (mid ? `${LIEN_STATUS_NO_GC.charAt(0).toLowerCase()}${LIEN_STATUS_NO_GC.slice(1)}` : LIEN_STATUS_NO_GC)
+}
+
 export type LienStatusGcGroup = { name: string; jobs: LienStatusJob[]; owed: number; firstYmd: string }
 
 /** The notices by GC, most money first; each GC's jobs soonest first, then biggest. */
@@ -198,7 +209,7 @@ export function lienStatusGroups(jobs: ReadonlyArray<LienStatusJob>): LienStatus
     .map(([name, list]) => {
       const sorted = [...list].sort(byYmdOrder)
       return {
-        name,
+        name: lienStatusGcWords(name),
         jobs: sorted,
         owed: sorted.reduce((s, j) => s + j.owed, 0),
         firstYmd: sorted.find((j) => j.byYmd)?.byYmd ?? '',
@@ -424,7 +435,7 @@ export function lienStatusText(p: LienStatusPayload): string {
   } else {
     if (f.waiting.length) {
       L.push('', 'Waiting for approval:')
-      for (const j of f.waiting) L.push(`• ${j.name}, ${j.gc}, ${money(j.owed)}`)
+      for (const j of f.waiting) L.push(`• ${j.name}, ${lienStatusGcWords(j.gc, true)}, ${money(j.owed)}`)
     }
     const ready = p.jobs.filter((j) => j.where === 'ready')
     const held = p.jobs.filter((j) => j.where === 'held')
@@ -487,7 +498,7 @@ export function lienStatusEmailText(p: LienStatusPayload, o: LienStatusEmailOpti
   L.push(`${p.gc ?? 'Lien desk'}, as of ${lienStatusAsOfWords(p.asOf)}`, '', ...headline(p))
   if (f.waiting.length) {
     L.push('', o.readerIsLeader ? 'Waiting for your approval:' : 'Waiting for approval:')
-    for (const j of f.waiting) L.push(`• ${j.number} ${j.name}, ${j.gc}, ${lienStatusMonthsWords(j.months)}, ${money(j.owed)}${j.sinceYmd ? `, since ${lienStatusMonthDay(j.sinceYmd)}` : ''}`)
+    for (const j of f.waiting) L.push(`• ${j.number} ${j.name}, ${lienStatusGcWords(j.gc, true)}, ${lienStatusMonthsWords(j.months)}, ${money(j.owed)}${j.sinceYmd ? `, since ${lienStatusMonthDay(j.sinceYmd)}` : ''}`)
   }
   const groups = lienStatusGroups(p.jobs)
   if (groups.length) {
@@ -547,7 +558,7 @@ ${f.waiting.length ? tile(`${f.waiting.length} · ${money(f.waiting.reduce((s, j
         ${f.waiting
           .map(
             (j) => `<tr>
-          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;color:${INK};"><b>${esc(j.number)} ${esc(j.name)}</b><div style="font-size:12px;color:${MUTED};">${esc(j.gc)}${j.months.length ? ` &middot; ${esc(lienStatusMonthsWords(j.months))} work` : ''}</div></td>
+          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;color:${INK};"><b>${esc(j.number)} ${esc(j.name)}</b><div style="font-size:12px;color:${MUTED};">${esc(lienStatusGcWords(j.gc))}${j.months.length ? ` &middot; ${esc(lienStatusMonthsWords(j.months))} work` : ''}</div></td>
           <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;text-align:right;font-weight:bold;white-space:nowrap;color:${INK};">${money(j.owed)}</td>
           <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:12px;color:${MUTED};white-space:nowrap;">${j.sinceYmd ? `since ${esc(lienStatusMonthDay(j.sinceYmd))}` : ''}</td>
         </tr>`,
