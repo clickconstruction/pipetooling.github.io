@@ -34,6 +34,7 @@ const data: PurchaseData = {
   houseNames: new Map([['h1', 'Ridgeway Supply'], ['h2', 'Pecan Supply Co']]),
   shares: [{ invoiceId: 'b1', jobId: 'j1', pct: 100 }],
   jobNames: new Map([['j1', 'JP1042 Oak Hollow C']]),
+  counterBills: new Set(),
 }
 
 function mount(io: PurchaseLinesIo = { load: vi.fn(async () => data), bookPrices: vi.fn(async () => []) }, heldIo?: HeldBillsIo) {
@@ -156,6 +157,30 @@ describe('WhatWeBuyTab', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'Clear the search' }))
     await settle()
     expect(within(picker).getAllByRole('button')).toHaveLength(2)
+  })
+
+  it('What to stock ranks by trips, says where and how it reads, and a name opens its prices', async () => {
+    // Wax rings on four separate days, two or three at a time, on small bills; the tube twice, so it is not listed.
+    const wax = (id: string, day: string, qty: number) => line({ id, invoiceId: `w-${id}`, houseCode: 'RS-90021', description: 'WAX RING W/HORN', quantity: qty, unitPrice: 3.1, extendedCents: Math.round(qty * 310), datedOn: day })
+    const stock: PurchaseData = { ...data, lines: [...data.lines, wax('w1', '2026-11-03', 2), wax('w2', '2026-10-27', 3), wax('w3', '2026-10-05', 2), wax('w4', '2026-09-30', 2)], shares: [...data.shares, { invoiceId: 'w-w1', jobId: 'j1', pct: 100 }] }
+    mount({ load: vi.fn(async () => stock), bookPrices: vi.fn(async () => []) })
+    const page = await screen.findByTestId('what-we-buy')
+    fireEvent.click(within(page).getByRole('tab', { name: 'What to stock' }))
+    const view = await screen.findByTestId('what-to-stock')
+    const rows = within(view).getAllByTestId('what-to-stock-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.textContent).toMatch(/WAX RING W\/HORN.*no part yet · Ridgeway Supply RS-90021/)
+    expect(rows[0]!.textContent).toMatch(/4.*2 to 3 EA.*1.*\$28.*the counter, Ridgeway Supply.*a trip every 23 days for a \$3\.10 part/)
+    expect(within(view).getByTestId('what-to-stock-limit-purchases').textContent).toMatch(/cannot answer how many the jobs used/)
+    expect(within(view).getByTestId('what-to-stock-limit-big-box').textContent).toMatch(/Big-box card purchases are not here/)
+    // A shorter window with nothing in it offers the longest one.
+    fireEvent.change(within(view).getByLabelText('Window'), { target: { value: '30' } })
+    await settle()
+    expect(view.textContent).toMatch(/Nothing was bought on 3 separate days in the last 30 days\./)
+    fireEvent.click(within(view).getByRole('button', { name: 'Look at 180 days' }))
+    await settle()
+    fireEvent.click(within(view).getByRole('button', { name: 'WAX RING W/HORN' }))
+    expect(within(await screen.findByTestId('price-over-time')).getByRole('heading', { name: 'WAX RING W/HORN' })).toBeTruthy()
   })
 
   it('no line on file points at Supply houses, and a failed read says its reason', async () => {

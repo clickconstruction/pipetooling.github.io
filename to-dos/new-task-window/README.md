@@ -2,7 +2,7 @@
 name: "The window that gives a task: redraw Add checklist item as New task, so the common task fits one phone screen and every row has its own shape"
 number: 331
 group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same night, as drawn · PR 1 (the words and the order) in v2.7082 · PR 2 (the window) in v2.7085, stacked on the place train · a walk on a real phone next
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same night, as drawn · PR 1 (the words and the order) in v2.7082 · PR 2 (the window) in v2.7085, stacked on the place train · Grace's "Build them now" for the other two · PR 3 (Edit task) in v2.7092 · PR 4 (the roadmap's Add task) next
 summary: >
   The Add checklist item window works, but it shows every choice at once and at the same weight.
   On a phone it is 1,267 px tall, one and a half screens, and the day sits 711 px down. Of the 137
@@ -11,9 +11,9 @@ summary: >
   where. People become a row of faces, the day one joined bar, places a shelf, and the rare things
   quiet presses in a row called Add. A bar at the bottom says in words what will happen, and its
   button names who gets the task. The drawn window is about 570 px tall. No database change.
-next: a walk on a real phone once PR 2 is live, to see the bar hold above the keyboard. Then PR 3 (Change a task) and PR 4 (the roadmap's Add task).
+next: PR 4, the roadmap's Add task. A walk on a real phone is still owed once PR 2 is live, to see the bar hold above the keyboard.
 size: M as a train of four (S · M · M · S)
-blocker: PR 2 lands after the place train (#328). PRs 3 and 4 wait for the phone walk.
+blocker: none to build. PRs 2 to 4 land after the place train (#328), in order.
 opinion: build PRs 1 and 2, then walk it on a real phone before the other two windows follow — the bar above the keyboard is the one thing a drawing cannot prove
 ---
 
