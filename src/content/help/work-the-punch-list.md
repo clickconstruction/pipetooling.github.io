@@ -2,12 +2,28 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
 
 Nobody has to read markdown to see what is waiting. You open it from Settings. **Punch list** is a chip under the search box at the top of the list, on every tab. The page itself is `/punch-list`.
+
+## Read the burndown
+
+The page opens with the **Burndown**. The Burndown shows how many cards were open at each hour, and when the list could clear.
+
+- **Look at** picks the stretch the pace is read from. You can pick a day, three days, a week, two weeks or all of it.
+- **Cards** counts each card as one. **Points by size** weighs a card by the size it has left.
+- The solid line is the open work. The dashed line is where it heads **With no new cards**. The dotted line is where it heads **At this pace**.
+- **New and closed, in waves** shows what came in above the line and what closed below it.
+- **Where the open work sits** lists each group, how many cards left it, and how long it takes to empty.
+
+A card is open while its file is in the folder. A card closes when it leaves the board, shipped or dropped. The numbers come from the folder's own history, so nobody keeps them by hand. The numbers update with each deploy.
+
+Cards in **Needs an owner decision** and **Waiting on time or usage** do not close by building. The sentence over the chart counts them for that reason.
+
+**Hide the burndown** folds it to one line. This device remembers the choice.
 
 ## What a row tells you
 

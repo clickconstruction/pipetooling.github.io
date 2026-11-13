@@ -8,7 +8,7 @@
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PayReceipt, type PaySpeedData } from './billedExpectedPay'
-import { openBillsForCustomers, type OpenBill } from './moneyWaiting'
+import { openBillsForCustomers, type MoneyWaitingCalendars, type OpenBill } from './moneyWaiting'
 import { formatPaysIn, paySpeedSpread, type PaySpeedSpread } from './paymentReliability'
 
 export type PaySpeedsPayer = { id: string; name: string | null }
@@ -45,11 +45,11 @@ export function payerRangeSentence(spread: PaySpeedSpread | null): string {
  * The payer's card. `rows` are the bills to look for theirs in: the window passes the still-open billed rows, with
  * the Collections rows too when the press came from one, so a chased payer's card still says what they owe.
  */
-export function buildPaySpeedsPayerFocus(payer: PaySpeedsPayer, rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string): PaySpeedsPayerFocus {
+export function buildPaySpeedsPayerFocus(payer: PaySpeedsPayer, rows: StageRow[], paySpeeds: PaySpeedData | null, todayYmd: string, calendars?: MoneyWaitingCalendars | null): PaySpeedsPayerFocus {
   const receipts = paySpeeds?.receipts[payer.id] ?? []
   const spread = paySpeedSpread(receipts)
   const own = paySpeeds?.customers[payer.id]
-  const bills = openBillsForCustomers(rows, paySpeeds, todayYmd).get(payer.id) ?? []
+  const bills = openBillsForCustomers(rows, paySpeeds, todayYmd, calendars).get(payer.id) ?? []
   return {
     customerId: payer.id,
     name: (payer.name ?? '').trim() || 'This customer',

@@ -23,7 +23,7 @@ export type SubLaborPickerJobSlice = {
   job_address: string | null
 }
 
-/** `J925 · Keith Stadtmueller` — trigger/display identity for a picked job. */
+/** `J925 · Keith Stadlow` — trigger/display identity for a picked job. */
 export function subLaborJobDisplayLabel(job: SubLaborPickerJobSlice): string {
   const num = effectiveJobLedgerNumber(job.hcp_number, job.click_number ?? null)
   const name = (job.job_name ?? '').trim() || (job.customer_name ?? '').trim() || 'Job'

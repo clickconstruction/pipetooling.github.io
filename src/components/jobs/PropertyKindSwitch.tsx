@@ -16,7 +16,7 @@ type Props = {
   size?: 'row' | 'field'
   disabled?: boolean
   allowClear?: boolean
-  /** What the switch is about, for a screen reader — "Property kind for 273 · Dudley". */
+  /** What the switch is about, for a screen reader — "Property kind for 273 · Dunmere". */
   label: string
   /** What the app leans toward (v2.4727, Quickfill → Property kinds): that half is outlined and reads "looks right"; nothing is picked until the tap. */
   hint?: Exclude<PropertyKind, ''> | null
