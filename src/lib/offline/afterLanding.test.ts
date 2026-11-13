@@ -137,6 +137,43 @@ describe('afterLanding, the photos', () => {
   })
 
   // Punch list #273, v2.6628: a landed task photo drops its bytes and tells the card's strip; nothing on a job's thread.
+  // Punch list #306, PR 8: a bid photo writes no thread line; the board hears the landing itself.
+  it('a landed bid photos press drops the sent shots’ bytes and does nothing else', async () => {
+    const calls: string[] = []
+    const run: AfterLandingIo = {
+      invokeFunction: async () => {
+        calls.push('fn')
+      },
+      stampMovedLines: async () => {
+        calls.push('stamp')
+      },
+      propagateReportPct: async () => {
+        calls.push('pct')
+      },
+      dropKeptPhotos: async (ids) => {
+        calls.push(`drop:${ids.join(',')}`)
+      },
+      postThreadLine: async () => {
+        calls.push('thread')
+        return true
+      },
+      announceTaskPhotos: () => {
+        calls.push('announce-task')
+      },
+      announceTickets: () => {
+        calls.push('announce-ticket')
+      },
+    }
+    const shot = (id: string, sent: boolean) => ({ id, sent, name: 'Meter bank', takenAt: '2026-11-12T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Dana Whitfield' })
+    const press = newPress({ id: 'bp', seq: 1, kind: 'bid-photos', userId: 'u', pressedAt: T, payload: { bidId: 'b1', photos: [shot('a', true), shot('b', true)] } })
+    await afterLanding(press, { bid_id: 'b1', added: 2 }, run)
+    expect(calls).toEqual(['drop:a,b'])
+    const nothingSent = newPress({ id: 'bp2', seq: 2, kind: 'bid-photos', userId: 'u', pressedAt: T, payload: { bidId: 'b1', photos: [] } })
+    calls.length = 0
+    await afterLanding(nothingSent, { bid_id: 'b1' }, run)
+    expect(calls).toEqual([])
+  })
+
   it('a landed task photo press drops the sent shot’s bytes and announces it to the card', async () => {
     const calls: string[] = []
     const run: AfterLandingIo = {

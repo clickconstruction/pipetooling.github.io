@@ -10,6 +10,7 @@ import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import { settle } from '../test/renderSmokeMocks'
 import { useBidBoardScope } from './useBidBoardScope'
+import { OUTBOX_LANDED_EVENT } from './useOutboxReplay'
 
 const db = vi.hoisted(() => ({
   jobs: [] as Array<{ id: string; hcp_number: string | null; bid_id: string | null; created_at: string | null }>,
@@ -20,6 +21,7 @@ const db = vi.hoisted(() => ({
   confirmCalls: [] as Array<{ message: string; confirmLabel?: string }>,
   budgetChipArgs: [] as Array<{ ids: string[]; enabled: boolean }>,
   stripArgs: [] as Array<{ ids: string[]; enabled: boolean }>,
+  photoCountGens: [] as number[],
 }))
 
 vi.mock('../lib/supabase', () => ({
@@ -55,7 +57,12 @@ vi.mock('./useBidCountSourcesByBid', () => ({ useBidCountSourcesByBid: () => new
 // v2.6169: the plan sets behind the board's bids are their own read too.
 vi.mock('./useBidPlanSetsByBid', () => ({ useBidPlanSetsByBid: () => new Map() }))
 // The board's photo counts (punch list #306) are their own hook, with their own read of the page's bids.
-vi.mock('./useBidPhotoCountsByBid', () => ({ useBidPhotoCountsByBid: () => new Map() }))
+vi.mock('./useBidPhotoCountsByBid', () => ({
+  useBidPhotoCountsByBid: (_ids: unknown, _enabled: boolean, gen = 0) => {
+    db.photoCountGens.push(gen)
+    return new Map()
+  },
+}))
 // The money strips (v2.5651) are the page's other one read; the lens's own smokes cover them.
 vi.mock('./useBidBoardMoneyStrips', () => ({
   useBidBoardMoneyStrips: () => ({ byBid: new Map(), lines: [], loaded: true, reload: () => {} }),
@@ -176,6 +183,17 @@ describe('useBidBoardScope', () => {
     act(() => { window.dispatchEvent(new CustomEvent(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId: 'open-1', jobId: 'job-new' } })) })
     await waitFor(() => expect(result.current.jobsByBidId.get('open-1')?.jobId).toBe('job-new'))
     expect(db.jobReads).toHaveLength(2)
+  })
+
+  // Punch list #306, PR 8: an Add press kept with no signal lands from the phone's queue while the board is open.
+  it('a bid’s photos landing from the phone’s queue reads the photo counts again, and no other landing does', async () => {
+    await setup({ role: 'estimator' })
+    const gen = () => db.photoCountGens[db.photoCountGens.length - 1]
+    const before = gen() ?? 0
+    act(() => { window.dispatchEvent(new CustomEvent(OUTBOX_LANDED_EVENT, { detail: { pressId: 'p1', kind: 'job-note', result: { id: 'n1' } } })) })
+    expect(gen()).toBe(before)
+    act(() => { window.dispatchEvent(new CustomEvent(OUTBOX_LANDED_EVENT, { detail: { pressId: 'p2', kind: 'bid-photos', result: { bid_id: 'open-1', added: 2 } } })) })
+    await waitFor(() => expect(gen()).toBe(before + 1))
   })
 
   it('linking a job: confirm, the RPC, the toast, the event', async () => {
