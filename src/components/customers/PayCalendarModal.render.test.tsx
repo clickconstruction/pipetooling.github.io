@@ -17,6 +17,7 @@ const { io, auth } = vi.hoisted(() => ({
     loadPayerReceipts: vi.fn(),
     loadDevelopmentJobIds: vi.fn(),
     savePayCalendar: vi.fn(),
+    dispatchPayCalendarChanged: vi.fn(),
   },
   auth: { role: 'assistant' as string },
 }))
@@ -71,6 +72,7 @@ beforeEach(() => {
   io.loadPayerReceipts.mockReset().mockResolvedValue(RECEIPTS)
   io.savePayCalendar.mockReset().mockResolvedValue(undefined)
   io.loadDevelopmentJobIds.mockReset().mockResolvedValue([])
+  io.dispatchPayCalendarChanged.mockReset()
 })
 
 describe('PayCalendarModal', () => {
@@ -114,6 +116,8 @@ describe('PayCalendarModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save pay calendar' }))
     expect(await screen.findByText(/Not allowed to set a pay calendar/)).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
+    // Nothing was saved, so no screen is told to read again.
+    expect(io.dispatchPayCalendarChanged).not.toHaveBeenCalled()
   })
 
   it('fills the form from a stored calendar and removes it behind a confirm that names the act', async () => {
@@ -245,6 +249,8 @@ describe('PayCalendarModal', () => {
       // The window stays open on a partial save, and the board is told to read again.
       expect(onClose).not.toHaveBeenCalled()
       expect(onSaved).toHaveBeenCalledTimes(1)
+      // Punch list #341: every other screen is told once, however many jobs were written.
+      expect(io.dispatchPayCalendarChanged).toHaveBeenCalledTimes(1)
     })
 
     it('offers no neighbours for a job in no development', async () => {

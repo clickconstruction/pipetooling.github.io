@@ -9484,6 +9484,85 @@ export type Database = {
           },
         ]
       }
+      dev_seat_kept_plans: {
+        Row: {
+          args: Json
+          author_label: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decided_label: string | null
+          decided_why: string | null
+          id: string
+          kept_at: string
+          kept_by: string | null
+          person_id: string
+          plan_hash: string
+          reply: Json
+          session_label: string | null
+          state: string
+          verb: string
+          words: string
+        }
+        Insert: {
+          args: Json
+          author_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_label?: string | null
+          decided_why?: string | null
+          id?: string
+          kept_at?: string
+          kept_by?: string | null
+          person_id: string
+          plan_hash: string
+          reply?: Json
+          session_label?: string | null
+          state?: string
+          verb: string
+          words: string
+        }
+        Update: {
+          args?: Json
+          author_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_label?: string | null
+          decided_why?: string | null
+          id?: string
+          kept_at?: string
+          kept_by?: string | null
+          person_id?: string
+          plan_hash?: string
+          reply?: Json
+          session_label?: string | null
+          state?: string
+          verb?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_seat_kept_plans_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_seat_kept_plans_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_seat_kept_plans_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       development_history_entries: {
         Row: {
           agent_label: string | null
@@ -30866,6 +30945,92 @@ export type Database = {
           },
         ]
       }
+      person_engagements: {
+        Row: {
+          author_label: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          ended_on: string | null
+          id: string
+          kind: string
+          note: string
+          person_id: string
+          source: string
+          source_ref: string
+          started_on: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_why: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ended_on?: string | null
+          id?: string
+          kind: string
+          note?: string
+          person_id: string
+          source: string
+          source_ref?: string
+          started_on: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_why?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ended_on?: string | null
+          id?: string
+          kind?: string
+          note?: string
+          person_id?: string
+          source?: string
+          source_ref?: string
+          started_on?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_engagements_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_engagements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_engagements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_engagements_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_amendments: {
         Row: {
           author_label: string | null
@@ -42175,6 +42340,10 @@ export type Database = {
         }
         Returns: Json
       }
+      dev_engagement_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_evidence_number_backfill: {
         Args: {
           p_dry_run?: boolean
@@ -42209,6 +42378,12 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_kept_plan_decide: {
+        Args: { p_id: string; p_state: string; p_why?: string }
+        Returns: Json
+      }
+      dev_kept_plan_keep: { Args: { p: Json }; Returns: Json }
+      dev_kept_plan_verbs: { Args: never; Returns: string[] }
       dev_legal_document_write: {
         Args: { p: Json; p_dry_run?: boolean; p_file?: Json }
         Returns: Json

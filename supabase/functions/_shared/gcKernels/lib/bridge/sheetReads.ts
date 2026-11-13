@@ -8,8 +8,12 @@
  * through `loadMercuryCash`, the function through Mercury's API) and passed in.
  *
  * Since punch list #318 (PR 5) it also reads every bid and every estimate ever sent, as the page does for the Market
- * amount (`loadBidWins.ts`, `loadEstimateWins.ts`). The list of what the Bridge leaves out is not shipped, so both
- * take an empty one, as on the page.
+ * amount (`loadBidWins.ts`, `loadEstimateWins.ts`).
+ *
+ * It leaves out what the page leaves out. The list the owner sets on the page (`bridge_left_out_v1`, `leftOut.ts`)
+ * is read first, through the page's own parser. The jobs it names join the ZZ test jobs in every read that takes
+ * them, and the bids and the estimates sent take the rules themselves with the ZZ jobs alone, each as on the page.
+ * No row is an empty list and nothing changes. A list that cannot be read leaves nothing out and is named in `gaps`.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { Database } from '../../../../../../src/types/database.ts'
@@ -28,6 +32,8 @@ import { arRowInvoiceId } from './collect/collectBills.ts'
 import { vectorRangeFor } from './vectorDays.ts'
 import type { MercuryCash } from './mercuryCash.ts'
 import type { MondaySheetReads } from './sheetBuild.ts'
+import { withLeftOutJobIds, type LeftOutRule } from './leftOut.ts'
+import { loadLeftOutScope } from './leftOutIo.ts'
 
 export type MondaySheetReadOptions = {
   /** Cash on hand from the bank, read by the caller; null falls back to the typed figure. */
@@ -40,7 +46,22 @@ export type MondaySheetReadOptions = {
   onProblem?: (what: string, error: unknown) => void
 }
 
+/** The mail's word for the list when it could not be read. */
+export const LEFT_OUT_GAP = 'the list of what the Bridge leaves out'
+
+/** What the bids and the estimates sent take: the ZZ test jobs alone, and the list's rules. */
+type SentScope = { zzTestJobIds: ReadonlySet<string> | null; leftOut: ReadonlyArray<LeftOutRule> }
+
 export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: MondaySheetReadOptions): Promise<MondaySheetReads> {
+  const scope = await loadLeftOutScope(db)
+  if (scope.error != null) opts.onProblem?.(LEFT_OUT_GAP, scope.error)
+  const reads = await readMondaySheet(db, { ...opts, zzTestJobIds: withLeftOutJobIds(opts.zzTestJobIds, scope.jobIds) }, { zzTestJobIds: opts.zzTestJobIds, leftOut: scope.rules })
+  if (scope.error != null) reads.gaps.unshift(LEFT_OUT_GAP)
+  return { ...reads, leftOut: scope.rules }
+}
+
+/** The reads themselves. Here `opts.zzTestJobIds` is every job to leave out: the ZZ test jobs and the jobs the list names. */
+async function readMondaySheet(db: SupabaseClient<Database>, opts: MondaySheetReadOptions, sent: SentScope): Promise<MondaySheetReads> {
   const gaps: string[] = []
   const soft = async <T>(what: string, read: () => Promise<T>): Promise<T | null> => {
     try {
@@ -61,8 +82,8 @@ export async function loadMondaySheetReads(db: SupabaseClient<Database>, opts: M
     soft('the bill pile', () => loadBillPileJobs(db, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds: opts.zzTestJobIds })),
     soft('the asks and the bids', () => loadDemandInputs(db, { windowStart: data.windowStart, todayYmd: data.todayYmd, zzTestJobIds: opts.zzTestJobIds })),
     soft('the calls', () => loadBridgeCalls(db)),
-    soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: opts.zzTestJobIds, leftOut: [] })),
-    soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: [], zzTestJobIds: opts.zzTestJobIds })),
+    soft('the bids sent', () => loadBidsSent(db, { zzTestJobIds: sent.zzTestJobIds, leftOut: sent.leftOut })),
+    soft('the estimates sent', () => loadEstimatesSent(db, { leftOut: sent.leftOut, zzTestJobIds: sent.zzTestJobIds })),
   ])
   const items = fin ? [...fin.ar.items, ...fin.arCollections.items] : []
   const collectReads = fin

@@ -1978,7 +1978,7 @@ export function SupplyHousesTab({
                         style={{
                           borderBottom: '1px solid var(--border)',
                           cursor: 'pointer',
-                          background: isExpanded ? '#f0f9ff' : undefined,
+                          background: isExpanded ? 'var(--bg-sky-tint)' : undefined,
                           scrollMarginTop: 'calc(var(--app-top-chrome, 0px) + 1rem)',
                         }}
                       >

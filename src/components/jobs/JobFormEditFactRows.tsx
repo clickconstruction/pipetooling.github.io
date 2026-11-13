@@ -34,6 +34,7 @@ import { savePropertyHomestead, savePropertyKind } from '../../lib/jobs/property
 import PropertyKindSwitch from './PropertyKindSwitch'
 import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
+import JobPayCalendarRow from './JobPayCalendarRow'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
 import JobFormPropertyAddSheet from './JobFormPropertyAddSheet'
 import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
@@ -800,6 +801,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           </label>
         </JobFormFactRow>
       ) : null}
+      {/* Punch list #341: whose Pay calendar this job reads, and the door into its own. The office alone. */}
+      {props.contractJob ? <JobPayCalendarRow job={props.contractJob} labelIcon={CUSTOMER_SUBROW_INDENT} /> : null}
       {props.contractJob ? (
         <JobFormFactRow label="Customer Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
       ) : null}

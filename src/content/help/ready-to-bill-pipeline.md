@@ -91,12 +91,12 @@ The Dashboard's **Billing Pipeline** card has a round **i** button next to its t
 
 ## Section tools in one dropdown
 
-The stage headers down the board carry their own buttons. Working has Capable of Being Billed. Ready to Bill has Ready to Bill notifications. Billed Awaiting Payment has GC Review, Accounts Receivable, Share / Print and Paid notifications. GC means the general contractor. Paid in Full has Paid in Full notifications. The **hamburger menu icon just left of Waiting** sits in the stage strip. It collects all of them in one dropdown, grouped by section. So you can open any of these without scrolling the board.
+The stage headers down the board carry their own buttons. Working has Capable of Being Billed. Ready to Bill has Ready to Bill notifications. Billed Awaiting Payment has GC Review, Accounts Receivable, Share / Print, Paid notifications and Bills sent. GC means the general contractor. Paid in Full has Paid in Full notifications. The **hamburger menu icon just left of Waiting** sits in the stage strip. It collects all of them in one dropdown, grouped by section. So you can open any of these without scrolling the board.
 
 :::example Section tools
 **Working** &nbsp; Capable of Being Billed: $48,450
 **Ready to Bill** &nbsp; Ready to Bill notifications
-**Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications
+**Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications &nbsp;·&nbsp; Bills sent
 **Paid in Full** &nbsp; Paid in Full notifications
 :::
 

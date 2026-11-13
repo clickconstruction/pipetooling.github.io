@@ -6,6 +6,7 @@ import { BridgeWeek } from './BridgeWeek'
 import type { WeekCallModel, WeekMove } from '../../lib/bridge/weekCall'
 import type { MoneyLine } from '../../lib/bridge/moneyCard'
 import type { DiveFacts } from '../../lib/bridge/callDive'
+import { todoStates } from '../../lib/bridge/callTodoState'
 
 // Made-up numbers: the model is built by hand so the smoke reads the drawing, not the kernel.
 
@@ -58,7 +59,7 @@ const cashWeek: WeekCallModel = {
   },
 }
 
-const week = (model: WeekCallModel, over: Partial<Parameters<typeof BridgeWeek>[0]> = {}) => <BridgeWeek money={money} onAccrual={() => {}} model={model} onCashNote={() => {}} {...over} />
+const week = (model: WeekCallModel, over: Partial<Parameters<typeof BridgeWeek>[0]> = {}) => <BridgeWeek money={money} onAccrual={() => {}} model={model} onCashNote={() => {}} dayLabel={(ymd) => ymd} {...over} />
 
 describe('BridgeWeek', () => {
   it('draws the tiles and the card What to do now with its moves, each a door', () => {
@@ -135,9 +136,31 @@ describe('BridgeWeek', () => {
     expect(within(moves[1]!).getByRole('link', { name: '401 · Willow Walk' }).getAttribute('href')).toBe('/jobs?tab=stages&edit=j401')
     // A move the page names nothing for is its heading alone.
     expect(within(moves[2]!).queryByTestId('bridge-week-dive')).toBeNull()
+    // Every named line has a grey check that makes its to-do card, and the foot says what the checks are.
+    fireEvent.click(within(moves[0]!).getByTestId('bridge-week-dive-todo'))
+    expect(onDive).toHaveBeenLastCalledWith({ kind: 'todo', todo: expect.objectContaining({ key: 'bill.j201' }) })
+    expect(screen.getByTestId('bridge-week-foot').textContent).toBe('Press a grey check to hand that line to one person. A blue check is with someone.')
     // The card is framed by a rule down its left side, not a box.
     const card = screen.getByTestId('bridge-week-card')
     expect(card.style.borderLeft).toBe('4px solid rgb(220, 38, 38)')
+  })
+
+  it('shows a line that is with someone as a blue check, and opens its card on a press (#334, PR 9)', () => {
+    const dives: DiveFacts = { payers: [], billJobs: [{ id: 'j201', label: '201 · Maple Lofts', usd: 18_000 }], noPctJobs: [], noPriceJobs: [], supplyBills: [], dayLabel: (ymd) => ymd }
+    const states = todoStates([{ itemId: 'i1', title: 'Bill 201 · Maple Lofts.', links: ['https://app.example/jobs?jobDetail=j201&todo=bill.j201'], madeYmd: '2026-03-10', dueYmd: null, who: ['Dana Reyes'], instances: [{ id: 'n1', doneYmd: null, doneBy: null }] }], '2026-03-11')
+    const onTodoSee = vi.fn()
+    const onDive = vi.fn()
+    renderWithProviders(week(propose, { dives, todoStates: states, onTodoSee, onDive }))
+    expect(screen.getByTestId('bridge-week-dive-todo-state').getAttribute('data-todo-state')).toBe('open')
+    expect(screen.getByTestId('bridge-week-dive-under').textContent).toBe('Dana, 1 day')
+    fireEvent.click(screen.getByTestId('bridge-week-dive-todo'))
+    expect(onTodoSee).toHaveBeenCalledWith(expect.objectContaining({ kind: 'open', who: 'Dana', days: 1, late: false }))
+    expect(onDive).not.toHaveBeenCalled()
+  })
+
+  it('says nothing of checks while no line on the card carries one', () => {
+    renderWithProviders(week(propose))
+    expect(screen.queryByTestId('bridge-week-foot')).toBeNull()
   })
 
   it('says under the cash balance which account is left out, and the sentence opens the list', () => {

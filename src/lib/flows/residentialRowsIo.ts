@@ -6,11 +6,13 @@
  * columns `residentialRows.ts`'s `PIPELINE_SELECTS` names, for one
  * homeowner (the step card) or every homeowner at once (Follow up's nudges, as the morning run reads them); each person's
  * are cut out by `residentialRowsOf`. The two pay-day RPCs read soft: a role the gate refuses reads no pace, and the
- * bill's due day stays unset. A table the reader may not read fails with its reason, except `job_contracts`, read soft:
+ * bill's due day stays unset. The Pay calendars and the accepted days (punch list #323, v2.7140) read soft beside
+ * them, through `payCalendarIo.ts`: with neither, a bill's due day is the pace's, as before. A table the reader may not read fails with its reason, except `job_contracts`, read soft:
  * a role that cannot read it (a tech on Job Mode) reads no Warranty rounds rather than a card that fails.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { loadInvoiceAcceptances, loadPayCalendars } from '../jobs/payCalendarIo'
 import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from './residentialRows'
 
 type Answer<T> = { data: T | null; error: unknown }
@@ -45,7 +47,7 @@ export async function readPipelineRows(who: PipelineWho): Promise<PipelineRows> 
   const customerIds = [...new Set(who.customerIds.filter((id): id is string => Boolean(id)))]
   const contactIds = [...new Set(who.contactIds)]
   if (!customerIds.length && !contactIds.length) return NO_PIPELINE_ROWS
-  const [jobsA, tiesA, textsA, paySpeeds, promisedPay] = await Promise.all([
+  const [jobsA, tiesA, textsA, paySpeeds, promisedPay, payCalendars, acceptedDays] = await Promise.all([
     (customerIds.length ? table('jobs_ledger').select(PIPELINE_SELECTS.jobs).in('customer_id', customerIds) : NONE) as unknown as Promise<Answer<PipelineRows['jobs'][number][]>>,
     (contactIds.length ? table('contact_jobs').select(PIPELINE_SELECTS.contactJobs).in('contact_id', contactIds).not('jobs_ledger_id', 'is', null) : NONE) as unknown as Promise<
       Answer<PipelineRows['contactJobs'][number][]>
@@ -55,6 +57,8 @@ export async function readPipelineRows(who: PipelineWho): Promise<PipelineRows> 
     >,
     softCall('get_billed_customer_pay_speeds'),
     softCall('list_job_promised_pay_dates'),
+    loadPayCalendars(supabase).catch(() => null),
+    loadInvoiceAcceptances(supabase).then((byInvoice) => Object.fromEntries(byInvoice), () => null),
   ])
   const own = check(jobsA, 'Their jobs') ?? []
   const contactJobs = check(tiesA, 'Their jobs') ?? []
@@ -77,5 +81,5 @@ export async function readPipelineRows(who: PipelineWho): Promise<PipelineRows> 
     // The warranty in place of a contract (2026-11-02): the Warranty step's rounds, from the Contract Desk's rows.
     soft<NonNullable<PipelineRows['agreements']>[number]>('job_contracts', PIPELINE_SELECTS.agreements, 'job_id'),
   ])
-  return { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay }
+  return { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay, payCalendars, acceptedDays }
 }

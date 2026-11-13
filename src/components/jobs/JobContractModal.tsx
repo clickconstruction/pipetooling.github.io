@@ -85,6 +85,7 @@ import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFram
 import { isTheirPaperRow, theirPaperFromRow, theirPaperLine, theirPaperWords, type TheirPaperRecord } from '../../lib/jobs/theirPaper'
 import TheirPaperSheet from './TheirPaperSheet'
 import { theirPaperPayer } from '../../lib/jobs/theirPaperPayer'
+import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
 import { DEFAULT_JOB_WARRANTY_TERMS_PLAIN, DEFAULT_WARRANTY_INITIAL_LINES, JOB_AGREEMENT_KINDS, JOB_AGREEMENT_WORDS, jobAgreementHeading, jobAgreementKindOf, parseInitials, type JobAgreementKind } from '../../lib/jobs/jobAgreementKind'
 
 type TemplateRow = Pick<
@@ -1169,7 +1170,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               <button type="button" onClick={() => setTheirOpen(true)} style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
                 Edit the record
               </button>
-              <TheirPaperSheet open={theirOpen} onClose={() => setTheirOpen(false)} onDone={() => { void loadRows(); onChanged?.() }} job={{ id: job?.id ?? '', num: jobNumber, partyName: (job?.customer_name ?? '').trim() || (job?.gcCustomer?.name ?? '').trim() }} payer={job ? theirPaperPayer(job) : null} existing={theirPaper} overlayZIndex={1400} />
+              <TheirPaperSheet open={theirOpen} onClose={() => setTheirOpen(false)} onDone={() => { void loadRows(); onChanged?.() }} job={{ id: job?.id ?? '', num: jobNumber, partyName: (job?.customer_name ?? '').trim() || (job?.gcCustomer?.name ?? '').trim() }} payer={job ? theirPaperPayer(job) : null} payCalendarJob={job ? payCalendarJobOf(job) : null} existing={theirPaper} overlayZIndex={1400} />
             </div>
           ) : null}
           {signedOnFile ? (

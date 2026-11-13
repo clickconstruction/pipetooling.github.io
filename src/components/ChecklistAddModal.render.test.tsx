@@ -191,13 +191,13 @@ describe('ChecklistAddModal Send (v2.7085)', () => {
     cleanup()
   })
 
-  it('keeps a second Send at the top of a phone once a title is typed', async () => {
+  it('has one Send on a phone, the bar\'s: the second Send at the top is gone (v2.7155)', async () => {
     phoneViewport = true
     try {
       const title = await renderOpenModal()
       expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
       fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
-      expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
       expect(sendPress().disabled).toBe(false)
     } finally {
       phoneViewport = false

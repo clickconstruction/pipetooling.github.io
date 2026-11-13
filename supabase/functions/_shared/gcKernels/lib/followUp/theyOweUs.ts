@@ -4,9 +4,9 @@
  * Messages, residential R8 · 6: They owe us on Follow up, the bills a customer has open, one row per person, beside We
  * owe them. The after state is card 6 of `to-dos/gc-mode/messages/customer-messages-integrations-mockups.html` (branch
  * spike/gc-mode, v0.2); the plan is `RESIDENTIAL_BUILD_PLAN.md` → R8. Nothing here writes a rule of its own about
- * money: a bill is open by the bill-truth kernel the AR page totals with (`computeBillTruth`), late by the expected-pay
- * chip the AR page and the Stages board show (`billedExpectedPayModel`, the payer's own pace or their promise), and
- * filed under the payer the AR lists use (`listPayer`). A bill on a GC project's billing job (`billing_only`) is Owner
+ * money: a bill is open by the bill-truth kernel the AR page totals with (`computeBillTruth`), late by the pay model
+ * the Stages board shows (`billedPayModel`: the payer's own pace or their promise, and since v2.7140 the due day of a
+ * payer on a Pay calendar, punch list #323), and filed under the payer the AR lists use (`listPayer`). A bill on a GC project's billing job (`billing_only`) is Owner
  * Billing's, which reminds it on its own (`gc/ownerBillingRemind.ts`), so it is never a row here.
  *
  * The last reminder is read from the bill's sends (`jobs_ledger_invoice_stripe_email_sends`, the rows the Lien desk's
@@ -19,8 +19,10 @@ import { computeBillTruth, type BillTruthOpenRow } from '../billing/billTruth.ts
 import { isPayLinkId, payLinkUrl } from '../billing/payLink.ts'
 import { firstName, type Contact } from '../contacts/kernel.ts'
 import { shortDate } from '../gc/words.ts'
-import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, type ExpectedPayModel, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay.ts'
+import { billedReferenceYmd, daysBetweenYmd, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay.ts'
+import { billHeldDay, billedPayModel, type BilledPayModel } from '../jobs/billedDuePay.ts'
 import { listPayer, paySpeedPayer } from '../jobs/billToParty.ts'
+import { calendarFor, type PayCalendar, type PayCalendarIndex } from '../jobs/payCalendar.ts'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes.ts'
 import type { QuickReply } from '../quickReplies/kernel.ts'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils.ts'
@@ -85,6 +87,10 @@ export interface TheyOweUsBills {
   paySpeeds: PaySpeedData | null
   /** The customer's promised pay day by job id (`parsePromisedPayDatesRpc`). */
   promises?: Readonly<Record<string, PromisedPayDate>> | null
+  /** The stored Pay calendars (`indexPayCalendars`); null or absent and every bill reads the payer's pace. */
+  payCalendars?: PayCalendarIndex | null
+  /** The day a payer accepted each bill that has one, by the bill's id; the calendar counts from it. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
 /** A person as They owe us reads them: the spine's contact, by the customer it is or is at. */
@@ -92,11 +98,16 @@ export type TheyOweContact = Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | '
 
 // ---------- the day a bill is due ----------
 
+/** What a bill's payer's Pay calendar adds to `billDueDay`: the calendar itself (`calendarFor`) and the day they accepted the bill. */
+export type BillDueCalendar = { calendar?: PayCalendar | null; acceptedYmd?: string | null }
+
 /**
- * The day we expect a bill paid, and whether it is late: the AR page's expected-pay chip for this bill. The pace read
+ * The day we expect a bill paid, and whether it is late: the Stages board's pay model for this bill. The pace read
  * is the bill's payer's, the GC on a GC-billed bill (`paySpeedPayer`), so it agrees with the Stages board. A promise
- * on the job wins over the pace. Null when there is no clock: no pay speeds, or a bill with no billed day. The flow's
- * loader stamps a Paid round's due day from the same function.
+ * on the job wins over the pace. With the payer's Pay calendar handed in, the model carries the day the contract
+ * makes the bill due, and `billHeldDay` reads that day in place of the guess. Null when there is no clock: no pay
+ * speeds, or a bill with no billed day. The flow's loader (`residentialLoad.ts`) makes the same call for a Paid
+ * round's due day.
  */
 export function billDueDay(
   job: Pick<BillJobRow, 'customer_id' | 'gc_customer_id' | 'bill_to_party' | 'customer_name'>,
@@ -104,13 +115,16 @@ export function billDueDay(
   paySpeeds: PaySpeedData | null,
   promise: PromisedPayDate | null,
   todayYmd: string,
-): ExpectedPayModel | null {
+  onCalendar?: BillDueCalendar | null,
+): BilledPayModel | null {
   const payer = paySpeedPayer(job, inv)
-  return billedExpectedPayModel(
-    { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name },
+  return billedPayModel(
+    { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name, acceptedYmd: onCalendar?.acceptedYmd ?? null },
     paySpeeds,
     todayYmd,
     promise,
+    null,
+    onCalendar?.calendar ?? null,
   )
 }
 
@@ -138,9 +152,9 @@ export interface TheyOweRow {
   daysBilled: number | null
   /** The day of the last reminder, a send after the first; null when none went. */
   lastReminderYmd: string | null
-  /** The day we expect it paid, the morning run's day to send; null when there is no clock. */
+  /** The day the bill is held to, the morning run's day to send: their Pay calendar's due day, else the day we expect it paid; null when there is no clock. */
   dueYmd: string | null
-  /** Past the payer's pace or past their promise. */
+  /** Past their promise, past their Pay calendar's due day, or with neither past the payer's pace. */
   late: boolean
   /** Days past the due day; 0 while it is not late. */
   daysLate: number
@@ -239,7 +253,15 @@ export function theyOweUs(bills: TheyOweUsBills, contacts: ReadonlyArray<TheyOwe
     const billedYmd = billedReferenceYmd({ billedAtIso: inv?.billed_at ?? null, estBillYmd: inv ? inv.estimated_bill_date : job.last_bill_date })
     const days = billedYmd ? daysBetweenYmd(billedYmd, todayYmd) : null
     // A job balance has no bill to read a pace from, as on the Stages board.
-    const due = inv ? billDueDay(job, inv, bills.paySpeeds, bills.promises?.[job.id] ?? null, todayYmd) : null
+    // The calendar is the pace payer's, the job's own when it has one, as the Stages board picks it.
+    const due = inv
+      ? billHeldDay(
+          billDueDay(job, inv, bills.paySpeeds, bills.promises?.[job.id] ?? null, todayYmd, {
+            calendar: calendarFor(bills.payCalendars, { payerId: paySpeedPayer(job, inv).id, jobId: job.id }),
+            acceptedYmd: bills.acceptedByInvoice?.get(inv.id) ?? null,
+          }),
+        )
+      : null
     const bill: OpenBill = {
       contactId: contact.id,
       first: firstName(contact),
@@ -253,8 +275,8 @@ export function theyOweUs(bills: TheyOweUsBills, contacts: ReadonlyArray<TheyOwe
       billedYmd,
       daysBilled: days !== null && days >= 0 ? days : null,
       lastReminderYmd: inv ? reminded.get(inv.id) ?? null : null,
-      dueYmd: due?.expectedYmd ?? null,
-      late: due?.state === 'late',
+      dueYmd: due?.ymd ?? null,
+      late: due?.late === true,
       daysLate: due?.daysLate ?? 0,
       payUrl: inv && (inv.stripe_invoice_id ?? '').trim() && isPayLinkId(inv.id) ? payLinkUrl(inv.id) : null,
     }
