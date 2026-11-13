@@ -45,6 +45,8 @@ Each zone reads its counts. The zone today is in says how many are left and how 
 
 Press a zone and the list under the bar shows only that zone's rows. The bar says how many it is showing. Press the zone again or {{button:outline|Show all}} to see every row. The bar never sends, files or moves anything. A window closing with work unsent is a red count in Catch-up, and that is the whole nudge. The days sit in {{button:outline|§ Rules}} under **The lien month**.
 
+On a phone the zones stand one over the other as cards. The cards, the find box and the rows scroll as one page. Press a card and its rows come to the top of the screen. Scroll up to see the cards again.
+
 ## The three views
 
 The top of the desk has three tabs.

@@ -70,6 +70,7 @@ export default function LienDeskNextUp({
   reminders,
   onOpenReminder,
   timelineFor,
+  scrolls = true,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -104,6 +105,8 @@ export default function LienDeskNextUp({
   onOpenReminder?: (row: LienReminderRow) => void
   /** One sent notice's dated timeline for the step brief (PR 2 of #274); null when the desk has no clock for it. */
   timelineFor?: (jobId: string) => ReadonlyArray<LienTimelineRow> | null
+  /** Whether the list is its own scroller. A phone's desk scrolls the month, the find box and the list as one page, so there it is not (punch list #352, PR 0; `lienDoNowFrame`). */
+  scrolls?: boolean
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
@@ -266,7 +269,7 @@ export default function LienDeskNextUp({
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   return (
-    <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
+    <div ref={card.hostRef} data-lien-next-up="list" data-scrolls={scrolls ? 'yes' : 'no'} style={{ position: 'relative', overflowY: scrolls ? 'auto' : 'visible', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} reminderScheduled={reminders?.scheduled} />
       {/* The step brief (v2.6574; every rail since v2.6577): what the step is, why a row is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
       {on ? (
