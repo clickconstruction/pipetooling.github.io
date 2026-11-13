@@ -47,6 +47,7 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
     savePaintedLineMeasure: async (lineId: string, measured: { feet: number; how: string } | null) => { io.calls.push({ fn: 'savePaintedLineMeasure', args: [lineId, measured] }); return landed({ ...(io.whole as PaintedMapWhole).lines.find((l) => l.id === lineId)!, measuredFt: measured?.feet ?? null, measuredHow: measured?.how ?? null }) },
     deletePaintedLine: async (lineId: string) => { io.calls.push({ fn: 'deletePaintedLine', args: [lineId] }); return landed(true) },
     deletePaintedMap: async (mapId: string) => { io.calls.push({ fn: 'deletePaintedMap', args: [mapId] }); return landed(true) },
+    putPaintedMapOnJob: async (mapId: string, jobId: string) => { io.calls.push({ fn: 'putPaintedMapOnJob', args: [mapId, jobId] }); return landed({ ...(io.whole as PaintedMapWhole).map, jobId, developmentId: null }) },
     savePaintedMapWords: async (mapId: string, input: { name: string; words: string }) => { io.calls.push({ fn: 'savePaintedMapWords', args: [mapId, input] }); return landed({ ...(io.whole as PaintedMapWhole).map, ...input }) },
     paintedPlacePhotoUrls: async (paths: Array<string | null>) => new Map(paths.filter((p): p is string => !!p).map((p) => [p, `https://signed.test/${p}`])),
     uploadPaintedPlacePhoto: async (mapId: string, photoId: string) => { io.calls.push({ fn: 'uploadPaintedPlacePhoto', args: [mapId, photoId] }); return io.refuseUpload ? { ok: false as const, error: io.refuseUpload } : { ok: true as const, value: `${mapId}/${photoId}.jpg` } },
@@ -80,6 +81,16 @@ vi.mock('./PaintedMapCanvas', async () => {
     },
   }
 })
+
+/** The job search, stood in for: one press picks a made-up job. */
+vi.mock('../costBatches/CostBatchJobPicker', () => ({
+  CostBatchJobPicker: (props: { title: string; onPick: (job: { id: string }) => void }) => (
+    <div data-testid="job-picker">
+      {props.title}
+      <button type="button" onClick={() => props.onPick({ id: 'j9' })}>pick J900</button>
+    </div>
+  ),
+}))
 
 /** The share sheet, stood in for: it says which map it was opened for. */
 vi.mock('./PaintedMapShareSheet', () => ({
@@ -303,6 +314,37 @@ describe('a saved map', () => {
     io.whole = null
     render(<PaintedMapWindow ask={{ mapId: 'gone' }} onClose={() => {}} />)
     expect(await screen.findByText('This painted map is gone, or it is not yours to open.')).toBeTruthy()
+  })
+})
+
+describe('a map on no job', () => {
+  const LOOSE = { ...MAP, jobId: null, createdBy: 'me' }
+
+  it('says who can open it, and is put on a job by whoever painted it', async () => {
+    io.whole = { map: LOOSE, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    expect(await screen.findByText('This map is on no job. Only you and the office can open it.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Put it on a job…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    await waitFor(() => expect(io.calls.find((c) => c.fn === 'putPaintedMapOnJob')?.args).toEqual(['m1', 'j9']))
+    await waitFor(() => expect(document.querySelector('[data-painted-no-home]')).toBeNull())
+  })
+
+  it('says why it was not put on the job, and stays on none', async () => {
+    io.whole = { map: LOOSE, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Put it on a job…' }))
+    io.refuse = 'The map was not put on the job.'
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    expect(await screen.findByText('The map was not put on the job.')).toBeTruthy()
+    expect(document.querySelector('[data-painted-no-home]')).not.toBeNull()
+  })
+
+  it('has no such press on a map that is on a job', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(document.querySelector('[data-painted-no-home]')).toBeNull()
   })
 })
 
