@@ -100,7 +100,7 @@ Press a card to read it. The pressed card has the red border.
 
 A line under the page's name says what the Bridge leaves out. It reads *Leaves out Oak Hollow.* or *Nothing is left out.*
 
-The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole.
+The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole. [The weekly email](#the-weekly-email) leaves the same things out.
 
 To change the list, press **Change ›** beside the line.
 
