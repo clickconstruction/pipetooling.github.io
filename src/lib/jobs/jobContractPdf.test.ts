@@ -10,8 +10,8 @@ const input = {
   heading: 'Service agreement for 138 W Pat Dolan',
   jobNumber: '922',
   jobAddress: '138 W Pat Dolan, Blanco TX 78606',
-  customerName: 'Michael Palmer',
-  recipientName: 'Michael Palmer',
+  customerName: 'Michael Palvern',
+  recipientName: 'Michael Palvern',
   dateLabel: 'Sep 3, 2026',
   revision: 2,
   templateName: 'Built-in service agreement terms',
@@ -23,7 +23,7 @@ const input = {
   dates: 'Start: 2026-09-04  ·  Estimated completion: 2026-09-12',
   termsText: Array.from({ length: 12 }, (_, i) => `${i + 1}. Clause ${i + 1}. ` + 'Words words words words words words words words words words words words words words words words words words words words words words words words words words words words. '.repeat(3)).join('\n\n'),
   issuer: { companyName: 'Click Plumbing and Electrical', addressText: '12925 FM 20, Kingsbury, TX 78638', phone: '512-360-0599', email: '', tagline: 'Reliable service today, innovative solutions for tomorrow.', licenseLine: 'Malachi Whites RMP M-41130' },
-  signature: { printedName: 'Michael Palmer', auditLine: 'Signed electronically by Michael Palmer (typed) · Sep 3, 2026, 7:14 PM CT · consent recorded', png: null },
+  signature: { printedName: 'Michael Palvern', auditLine: 'Signed electronically by Michael Palvern (typed) · Sep 3, 2026, 7:14 PM CT · consent recorded', png: null },
 }
 
 describe('statutory runs (v2.4150)', () => {
@@ -107,8 +107,8 @@ describe('the warranty in place of a contract (2026-11-02)', () => {
       heading: 'Warranty for 138 W Pat Blanco',
       jobNumber: '1312',
       jobAddress: '138 W Pat Blanco',
-      customerName: 'Michael Palmer',
-      recipientName: 'Michael Palmer',
+      customerName: 'Michael Palvern',
+      recipientName: 'Michael Palvern',
       dateLabel: 'Nov 2, 2026',
       revision: 1,
       templateName: 'Built-in warranty terms',
@@ -128,7 +128,7 @@ describe('the warranty in place of a contract (2026-11-02)', () => {
     }
     const unsigned = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...base, signature: null })
     expect(unsigned.byteLength).toBeGreaterThan(1000)
-    const signed = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...base, signature: { printedName: 'Michael Palmer', auditLine: 'Consent recorded · typed · Nov 2, 2026, 5:00 PM CT', recordId: 'J1312-ABCDEF', whenLabel: 'Nov 2, 2026, 5:00 PM CT' } })
+    const signed = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...base, signature: { printedName: 'Michael Palvern', auditLine: 'Consent recorded · typed · Nov 2, 2026, 5:00 PM CT', recordId: 'J1312-ABCDEF', whenLabel: 'Nov 2, 2026, 5:00 PM CT' } })
     expect(signed.byteLength).toBeGreaterThan(1000)
   })
 })

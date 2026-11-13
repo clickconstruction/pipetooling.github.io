@@ -8,7 +8,7 @@ import {
 
 const job = {
   jobNumber: '857',
-  jobName: 'TJ Brace',
+  jobName: 'TJ Brill',
   jobAddress: '123 Main St, Austin TX',
   customerName: 'Acme GC',
 }
@@ -33,7 +33,7 @@ describe('buildHazmatFeeNoticePdfModel', () => {
     const headings = blocks.filter((b) => b.kind === 'heading').map((b) => b.text)
     expect(headings).toEqual(['Incident', 'Photographic evidence', 'Technician statements', 'Contractual basis'])
     expect(blocks.some((b) => b.kind === 'fee' && b.text === 'Fee: $500.00')).toBe(true)
-    expect(blocks.some((b) => b.kind === 'meta' && b.text === 'Job 857 — TJ Brace')).toBe(true)
+    expect(blocks.some((b) => b.kind === 'meta' && b.text === 'Job 857 — TJ Brill')).toBe(true)
     expect(blocks.some((b) => b.kind === 'meta' && b.text.includes('Stage: Top Out'))).toBe(true)
     expect(blocks.some((b) => b.kind === 'meta' && b.text === 'Personnel exposed: Abraham')).toBe(true)
   })

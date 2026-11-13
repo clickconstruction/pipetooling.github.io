@@ -25,7 +25,7 @@ export const BY_HAND_METHODS: ReadonlyArray<{ key: ByHandMethod; label: string }
 /** A job the paper covered — the one the door opened on first, then the ticked others at the property. */
 export type ByHandJob = {
   jobId: string
-  /** "273 · Dudley (Lennox)" */
+  /** "273 · Dunmere (Linmoor)" */
   label: string
   /** The job's own share — its open balance (or the claim set by hand). */
   amount: number

@@ -56,7 +56,7 @@ export type AuditQueueSections = {
   digested: AuditQueueItem[]
 }
 
-/** 'ZZ Twin MPH CASA LINDA (backtest R2)' → 'MPH CASA LINDA'; 'ZZ Shadow Galloway Park' → 'Galloway Park'. */
+/** 'ZZ Twin MPH CASA LINDA (backtest R2)' → 'MPH CASA LINDA'; 'ZZ Shadow Gallenby Park' → 'Gallenby Park'. */
 export function jobNameFromShell(shellName: string | null | undefined): string {
   const name = (shellName ?? '').trim()
   if (!name) return 'Unknown project'

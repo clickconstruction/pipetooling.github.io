@@ -2,7 +2,7 @@
  * Messages: the web addresses and the sender's bold marks in a line's plain-text words (v2.6508). The bids@ reader
  * keeps an email's words as text (`readGmailMessage` in the edge `emailIn/gmailMessage.ts`: the plain part, else the
  * HTML part read as text) and its links as `message_attachments` rows; the HTML part itself is kept nowhere, so the
- * words are the only place a link's place in the sentence and the sender's emphasis survive. Glenn Geling's invitation
+ * words are the only place a link's place in the sentence and the sender's emphasis survive. Glenn Gelwin's invitation
  * of 2026-10-22 read `*Link to Plans*:` and then the address twice, `**https://…box.com/s/… <https://…box.com/s/…>*`,
  * the way Outlook writes a linked address into the plain part, and none of it was pressable.
  *

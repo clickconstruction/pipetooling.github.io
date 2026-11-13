@@ -49,7 +49,7 @@ export function procurementLogTsv(rows: ReadonlyArray<ProcurementRow>): string {
   return lines.join('\n')
 }
 
-/** "procurement-log_B375-SPACEX-BA-02N_2026-09-29.csv" */
+/** "procurement-log_B375-SKYLAB-BA-02N_2026-09-29.csv" */
 export function procurementLogFileName(bidLabel: string, onDate: string): string {
   const part = bidLabel.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'bid'
   return `procurement-log_${part}_${onDate}.csv`

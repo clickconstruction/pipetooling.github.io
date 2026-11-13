@@ -11,7 +11,7 @@ import EstimateCustomerDocument from './EstimateCustomerDocument'
 import { EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS } from '../../lib/estimateChangeOrder'
 
 const baseProps = {
-  forLine: '415 Springtown Way, San Marcos, TX 78666',
+  forLine: '415 Stonewick Way, San Marcos, TX 78666',
   validUntil: null,
   lineItemsSnapshot: [
     { line_item: 'Deep cleaning of AC units', description: '', quantity: 1, unit_price_cents: 198000, amount_cents: 198000 },
@@ -29,16 +29,16 @@ describe('EstimateCustomerDocument heading vs doc kind', () => {
     render(
       <EstimateCustomerDocument
         {...baseProps}
-        title="Estimate for Knight Contracting"
+        title="Estimate for Kestrin Contracting"
         changeOrder={EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS}
       />,
     )
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Change Order for Knight Contracting')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Change Order for Kestrin Contracting')
   })
 
   it('keeps the title verbatim on a standard estimate', () => {
-    render(<EstimateCustomerDocument {...baseProps} title="Estimate for Knight Contracting" />)
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Estimate for Knight Contracting')
+    render(<EstimateCustomerDocument {...baseProps} title="Estimate for Kestrin Contracting" />)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Estimate for Kestrin Contracting')
   })
 
   it('keeps a hand-written change-order title', () => {

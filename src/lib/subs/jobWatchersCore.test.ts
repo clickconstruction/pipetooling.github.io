@@ -26,9 +26,9 @@ describe('jobWatchersCore', () => {
   })
 
   it('builds one template for the three kinds', () => {
-    const e = buildWatchEmail({ kind: 'progress', jobLabel: '#1004 · Summit General', jobAddress: '2210 Goforth Rd', subName: 'Behar Kraja', line: 'Behar Kraja · 50% along on their part', detail: '“Cleanout is behind the water heater”', appOrigin: 'https://clicktooling.com/', jobNumber: '1004' })
+    const e = buildWatchEmail({ kind: 'progress', jobLabel: '#1004 · Selwick General', jobAddress: '2210 Goforth Rd', subName: 'Behar Kraja', line: 'Behar Kraja · 50% along on their part', detail: '“Cleanout is behind the water heater”', appOrigin: 'https://clicktooling.com/', jobNumber: '1004' })
     expect(e.subject).toBe('#1004 · Behar Kraja · 50% along on their part')
-    expect(e.text).toContain('Sub progress — #1004 · Summit General')
+    expect(e.text).toContain('Sub progress — #1004 · Selwick General')
     expect(e.text).toContain('https://clicktooling.com/jobs?tab=subs')
     expect(e.html).toContain('Open Jobs → Subs')
     expect(e.html).toContain('Cleanout')

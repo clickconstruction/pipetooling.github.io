@@ -9,12 +9,12 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', () => {
   const SESSIONS = [
-    { id: 's1', user_id: 'u-isiah', work_date: '2026-09-03', clocked_in_at: '2026-09-03T13:10:00Z', clocked_out_at: '2026-09-03T20:09:00Z', approved_at: '2026-09-03T22:00:00Z', job_ledger_id: 'j878', bid_id: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '878', job_name: 'Take 5- Seguin', job_address: '380 TX-123', service_type_id: null, click_number: null }, bids: null },
+    { id: 's1', user_id: 'u-isiah', work_date: '2026-09-03', clocked_in_at: '2026-09-03T13:10:00Z', clocked_out_at: '2026-09-03T20:09:00Z', approved_at: '2026-09-03T22:00:00Z', job_ledger_id: 'j878', bid_id: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '878', job_name: 'Tune 5- Seguin', job_address: '410 TX-123', service_type_id: null, click_number: null }, bids: null },
     { id: 's2', user_id: 'u-isiah', work_date: '2026-09-05', clocked_in_at: '2026-09-05T13:33:00Z', clocked_out_at: '2026-09-05T14:16:00Z', approved_at: '2026-09-05T20:00:00Z', job_ledger_id: null, bid_id: null, users: { name: 'Isiah' }, jobs_ledger: null, bids: null },
   ]
   const BLOCKS = [
-    { id: 'b1', assignee_user_id: 'u-isiah', work_date: '2026-09-03', time_start: '08:00:00', time_end: '12:00:00', job_id: 'j878', bid_id: null, note: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '878', job_name: 'Take 5- Seguin', job_address: '380 TX-123', service_type_id: null, click_number: null }, bids: null },
-    { id: 'b2', assignee_user_id: 'u-isiah', work_date: '2026-09-05', time_start: '08:00:00', time_end: '16:00:00', job_id: 'j650', bid_id: null, note: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '650', job_name: 'ATI Schertz', job_address: '5498 Cibolo Valley Dr', service_type_id: null, click_number: null }, bids: null },
+    { id: 'b1', assignee_user_id: 'u-isiah', work_date: '2026-09-03', time_start: '08:00:00', time_end: '12:00:00', job_id: 'j878', bid_id: null, note: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '878', job_name: 'Tune 5- Seguin', job_address: '410 TX-123', service_type_id: null, click_number: null }, bids: null },
+    { id: 'b2', assignee_user_id: 'u-isiah', work_date: '2026-09-05', time_start: '08:00:00', time_end: '16:00:00', job_id: 'j650', bid_id: null, note: null, users: { name: 'Isiah' }, jobs_ledger: { hcp_number: '650', job_name: 'AXO Schertz', job_address: '5498 Cinder Valley Dr', service_type_id: null, click_number: null }, bids: null },
   ]
   const TABLES: Record<string, unknown[]> = { clock_sessions: SESSIONS, job_schedule_blocks: BLOCKS, people_labor_jobs: [], app_settings: [] }
   const RPCS: Record<string, unknown[]> = { list_people_pay_flags: [{ person_name: 'Isiah', person_id: null, is_salary: false, record_hours_but_salary: false, show_in_hours: true }] }
@@ -63,9 +63,9 @@ describe('JobsTeamTab', () => {
     const thu = document.querySelector('[data-team-cell="job:j878|2026-09-03|Isiah"]') as HTMLElement
     expect(thu.getAttribute('title')).toMatch(/ran long/)
     expect(thu.textContent).toMatch(/6\.98 h/)
-    // Sat: unlinked 0.72 h with the dispatch suggestion; ATI Schertz planned, no clock
+    // Sat: unlinked 0.72 h with the dispatch suggestion; AXO Schertz planned, no clock
     const sat = document.querySelector('[data-team-cell="none|2026-09-05|Isiah"]') as HTMLElement
-    expect(sat.textContent).toMatch(/dispatch: .*ATI Schertz 8a–4p/)
+    expect(sat.textContent).toMatch(/dispatch: .*AXO Schertz 8a–4p/)
     const miss = document.querySelector('[data-team-cell="job:j650|2026-09-05|Isiah"]') as HTMLElement
     expect(miss.textContent).toMatch(/plan 8\.0 h/)
     // summary + exceptions
@@ -86,7 +86,7 @@ describe('JobsTeamTab', () => {
     expect(rows).toEqual(['Isiah'])
     // person lens: the chip names the job
     const thu = document.querySelector('[data-team-cell="job:j878|2026-09-03|Isiah"]') as HTMLElement
-    expect(thu.textContent).toMatch(/Take 5- Seguin/)
+    expect(thu.textContent).toMatch(/Tune 5- Seguin/)
   })
 })
 

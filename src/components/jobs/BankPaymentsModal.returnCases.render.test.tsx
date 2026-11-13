@@ -35,9 +35,9 @@ const deposit = (id: string, name: string, amount: number, postedAt: string) => 
 })
 
 const DEPOSITS = [
-  deposit('mtx-drf', 'DRF', 250, '2026-09-29T15:00:00Z'),
-  // The new check from Southern Post, after theirs came back.
-  deposit('mtx-sp-new', 'SOUTHERN POST CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
+  deposit('mtx-dlf', 'DLF', 250, '2026-09-29T15:00:00Z'),
+  // The new check from Southern Pine, after theirs came back.
+  deposit('mtx-sp-new', 'SOUTHERN PINE CONSTRUCTION', 13680, '2026-09-30T15:00:00Z'),
 ]
 
 const caseRow = (over: Record<string, unknown>) => ({
@@ -59,13 +59,13 @@ const caseRow = (over: Record<string, unknown>) => ({
 const CASES = [
   caseRow({
     mercury_transaction_id: 'mtx-sp',
-    counterparty_name: 'Southern Post',
+    counterparty_name: 'Southern Pine',
     amount: 13680,
     posted_at: '2026-09-18T22:00:58Z',
     failed_at: '2026-09-23T15:00:00Z',
     opened_at: '2026-09-23T15:00:00Z',
     bank_reason: 'Insufficient funds',
-    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
+    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 0 },
   }),
   caseRow({
     mercury_transaction_id: 'mtx-kcg',
@@ -76,14 +76,14 @@ const CASES = [
     opened_at: '2026-09-29T15:00:00Z',
     bank_reason: 'Stop payment',
     live_payments: [
-      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
-      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Springtown', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
+      { payment_id: 'p1', job_id: 'job-963', job_number: '963', job_name: 'Kestrin Stonewick Vet', amount: 2090, invoice_id: 'i1', invoice_sequence_order: 0, invoice_status: 'billed' },
+      { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Stonewick', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
     ],
   }),
   // v2.4902: a check typed in by hand that was never deposited; the case's own id stands in for the deposit.
   caseRow({
     mercury_transaction_id: 'case-unb',
-    counterparty_name: 'Done Right Foundation',
+    counterparty_name: 'Dead Level Foundation',
     amount: 250,
     kind: 'Check',
     posted_at: null,
@@ -102,7 +102,7 @@ const TRAILS = [
     live: false,
     job_id: 'job-878',
     job_number: '878',
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     invoice_id: 'inv-878',
     amount: 13680,
     applied_at: '2026-09-21T16:00:00Z',
@@ -140,7 +140,7 @@ vi.mock('../../lib/supabase', async () => {
         data: [{
           case_id: 'mtx-sp', fee_amount: feeState.added ? 30 : null, fee_invoice_id: feeState.added ? 'inv-878' : null,
           fee_added_at: feeState.added ? '2026-10-09T15:00:00Z' : null, fee_added_by: feeState.added ? 'Taunya' : null,
-          bills: [{ invoice_id: 'inv-878', job_id: 'job-878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Take 5- Seguin' }],
+          bills: [{ invoice_id: 'inv-878', job_id: 'job-878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Tune 5- Seguin' }],
         }],
         error: null,
       })
@@ -173,9 +173,9 @@ function job878(): JobWithDetails {
     status: 'billed',
     hcp_number: '878',
     click_number: null,
-    job_name: 'Take 5- Seguin',
+    job_name: 'Tune 5- Seguin',
     job_address: '1 Main St, Seguin, TX',
-    customer_name: 'Southern Post',
+    customer_name: 'Southern Pine',
     revenue: 38625,
     payments_made: 0,
     materials: [],
@@ -204,15 +204,15 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     await open()
     expect(screen.getByTestId('ar-came-back-group').textContent).toContain('Came back · 3')
     expect(screen.getByTestId('ar-summary').textContent).toContain('3 came back')
-    expect(caseRowFor(/Southern Post/).textContent).toContain('off #878 since 9/24')
+    expect(caseRowFor(/Southern Pine/).textContent).toContain('off #878 since 9/24')
   })
 
   it('a case off its job: the story, the stake, the new check offered, and no Apply', async () => {
     await open()
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
     expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('The bank sent it back. Insufficient funds.')
-    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('Taunya applied it to #878 Take 5- Seguin.')
+    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('Taunya applied it to #878 Tune 5- Seguin.')
     expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('#878 owes the $13,680 again.')
     expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('It owes $38,625 in all.')
     expect(within(pane).getByTestId('ar-return-case-replacement').textContent).toContain('This looks like the new check.')
@@ -223,7 +223,7 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     calls.rpc.length = 0
     const onClose = vi.fn()
     await open(onClose)
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
     fireEvent.click(within(pane).getByRole('button', { name: 'Use it as the new check' }))
     await waitFor(() => expect(screen.queryByTestId('ar-return-case-pane')).toBeNull())
@@ -237,7 +237,7 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
 
   it('the new check, selected on its own, offers to fill the bills the returned check paid', async () => {
     await open()
-    fireEvent.click(screen.getByRole('button', { name: /13,680\.00 from SOUTHERN POST CONSTRUCTION/ }))
+    fireEvent.click(screen.getByRole('button', { name: /13,680\.00 from SOUTHERN PINE CONSTRUCTION/ }))
     const note = await screen.findByTestId('ar-replacement-note')
     expect(note.textContent).toContain('This looks like the new check for the $13,680 that came back on Sep 23.')
   })
@@ -250,7 +250,7 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('2 jobs still count it as paid.')
     fireEvent.click(within(pane).getByTestId('ar-return-case-takeoff'))
     const readback = within(pane).getByTestId('ar-return-case-readback')
-    expect(readback.textContent).toContain('#963 Knight Springtown Vet')
+    expect(readback.textContent).toContain('#963 Kestrin Stonewick Vet')
     expect(readback.textContent).toContain('$1,482 comes off bill 2. Bill 2 goes back to Billed.')
     expect(calls.rpc).toEqual([])
     fireEvent.click(within(pane).getByTestId('ar-return-case-takeoff-confirm'))
@@ -260,7 +260,7 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
   it('More → Not coming… closes the case with the note', async () => {
     calls.rpc.length = 0
     await open()
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
     fireEvent.click(within(pane).getByRole('button', { name: /More/ }))
     fireEvent.click(within(pane).getByRole('menuitem', { name: 'Not coming…' }))
@@ -274,14 +274,14 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
   it('a check typed in by hand that was never deposited: its own words, no new check offered, and More closes its own case (v2.4902)', async () => {
     calls.rpc.length = 0
     await open()
-    const row = caseRowFor(/Done Right/)
+    const row = caseRowFor(/Dead Level/)
     expect(row.textContent).toContain('never deposited')
     fireEvent.click(row)
     const pane = await screen.findByTestId('ar-return-case-pane')
     expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('$250 was recorded as paid on #066 Venancio Diaz PRE. No deposit is linked to it.')
     expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('10 days on, no deposit had come in for it.')
     expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('#066 reads paid in full. The money is not in the bank.')
-    // DRF's $250 deposit in To match is not a new check for it: the payment is linked to its deposit instead.
+    // DLF's $250 deposit in To match is not a new check for it: the payment is linked to its deposit instead.
     expect(within(pane).queryByTestId('ar-return-case-replacement')).toBeNull()
     expect(within(pane).getByRole('button', { name: 'Take the $250 off #066' })).toBeTruthy()
     expect(pane.textContent).toContain('The case closes when the payment is linked to its deposit')
@@ -299,15 +299,15 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     await open()
     fireEvent.click(screen.getByRole('button', { name: 'More Accounts Receivable options' }))
     fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Mark returned deposits/ }))
-    fireEvent.click(await screen.findByLabelText('Returned: DRF'))
+    fireEvent.click(await screen.findByLabelText('Returned: DLF'))
     const ask = await screen.findByTestId('ar-mark-ask')
-    expect(ask.textContent).toContain('Did the bank send DRF’s $250 check back?')
+    expect(ask.textContent).toContain('Did the bank send DLF’s $250 check back?')
     fireEvent.click(within(ask).getByRole('button', { name: /not a customer/ }))
     await waitFor(() => expect(screen.queryByTestId('ar-mark-ask')).toBeNull())
     expect(calls.rpc).toEqual([])
-    fireEvent.click(screen.getByLabelText('Returned: DRF'))
+    fireEvent.click(screen.getByLabelText('Returned: DLF'))
     fireEvent.click(within(await screen.findByTestId('ar-mark-ask')).getByRole('button', { name: 'Yes, it bounced' }))
-    await waitFor(() => expect(calls.rpc).toEqual([{ fn: 'set_mercury_transaction_ar_returned', args: { p_mercury_transaction_id: 'mtx-drf', p_returned: true } }]))
+    await waitFor(() => expect(calls.rpc).toEqual([{ fn: 'set_mercury_transaction_ar_returned', args: { p_mercury_transaction_id: 'mtx-dlf', p_returned: true } }]))
   })
 })
 
@@ -316,7 +316,7 @@ describe('BankPaymentsModal · the returned-check fee (v2.5033)', () => {
     calls.rpc.length = 0
     feeState.added = false
     await open()
-    fireEvent.click(caseRowFor(/Southern Post/))
+    fireEvent.click(caseRowFor(/Southern Pine/))
     const pane = await screen.findByTestId('ar-return-case-pane')
     const press = await within(pane).findByRole('button', { name: 'Add the $30 fee to bill 1' })
     expect(within(pane).getByTestId('ar-return-case-fee-line').textContent).toBe('$30 — the most Texas allows, Bus. & Com. Code § 3.506')

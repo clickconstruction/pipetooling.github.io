@@ -23,6 +23,20 @@ vi.mock('../../lib/tasks/taskPlaceIo', () => ({
   },
 }))
 vi.mock('../../hooks/useOfficeAnchor', () => ({ useOfficeAnchor: () => null }))
+const photoIo = vi.hoisted(() => ({ path: null as string | null, puts: [] as string[], cleared: 0, refusal: null as string | null }))
+vi.mock('../../lib/tasks/taskSpotPhotoIo', () => ({
+  loadTaskSpotPhotoPath: () => Promise.resolve(photoIo.path),
+  taskSpotPhotoUrls: (paths: string[]) => Promise.resolve(new Map(paths.map((p) => [p, `signed:${p}`]))),
+  putTaskSpotPhoto: (owner: { kind: string; id: string }, id: string) => {
+    photoIo.puts.push(`${owner.kind}/${owner.id}/${id}`)
+    return Promise.resolve(photoIo.refusal ? { error: photoIo.refusal } : { path: `${owner.kind}/${owner.id}/${id}.jpg` })
+  },
+  saveTaskSpotPhotoPath: () => {
+    photoIo.cleared += 1
+    return Promise.resolve(photoIo.refusal)
+  },
+  removeTaskSpotPhotoFile: () => Promise.resolve(),
+}))
 vi.mock('../materials/OnSiteMap', () => ({ default: () => <div data-testid="still-map" /> }))
 vi.mock('../../lib/materials/myLocation', () => ({ requestMyFix: () => {}, requestMyLocation: () => {} }))
 
@@ -38,6 +52,10 @@ afterEach(() => {
   io.offered = []
   io.saves = []
   io.refusal = null
+  photoIo.path = null
+  photoIo.puts = []
+  photoIo.cleared = 0
+  photoIo.refusal = null
 })
 
 describe('RoadmapTaskPlaceSection', () => {
@@ -85,5 +103,33 @@ describe('RoadmapTaskPlaceSection', () => {
     render(<RoadmapTaskPlaceSection taskId="t1" canEdit={false} userId="u2" nameOf={nameOf} />)
     await new Promise((r) => setTimeout(r, 20))
     expect(document.querySelector('[data-roadmap-task-place]')).toBeNull()
+  })
+
+  it('a planner sees the task\'s photo, and Remove the photo takes it off at once', async () => {
+    photoIo.path = 'roadmap/10000000-0000-0000-0000-000000000001/p1.jpg'
+    render(<RoadmapTaskPlaceSection taskId="t1" canEdit userId="u9" nameOf={nameOf} />)
+    const img = (await screen.findByAltText('The photo of the spot')) as HTMLImageElement
+    expect(img.getAttribute('src')).toBe('signed:roadmap/10000000-0000-0000-0000-000000000001/p1.jpg')
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the photo' }))
+    await waitFor(() => expect(photoIo.cleared).toBe(1))
+    expect(screen.queryByAltText('The photo of the spot')).toBeNull()
+    expect(screen.getByRole('button', { name: '＋ Add a photo' })).toBeTruthy()
+  })
+
+  it('taking the photo off that fails says why and puts it back', async () => {
+    photoIo.path = 'roadmap/10000000-0000-0000-0000-000000000001/p1.jpg'
+    photoIo.refusal = 'You may not plan this roadmap.'
+    render(<RoadmapTaskPlaceSection taskId="t1" canEdit userId="u9" nameOf={nameOf} />)
+    await screen.findByAltText('The photo of the spot')
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the photo' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('You may not plan this roadmap.')
+    expect(screen.getByAltText('The photo of the spot')).toBeTruthy()
+  })
+
+  it('someone who cannot plan, on a task with a photo and no place, sees the photo alone', async () => {
+    photoIo.path = 'roadmap/10000000-0000-0000-0000-000000000001/p1.jpg'
+    render(<RoadmapTaskPlaceSection taskId="t1" canEdit={false} userId="u2" nameOf={nameOf} />)
+    expect(await screen.findByRole('button', { name: 'Open the photo of the spot' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '＋ Add a photo' })).toBeNull()
   })
 })

@@ -432,12 +432,12 @@ describe('Send both (v2.3685): one package, two labeled prices, ★ first', () =
     const text = buildBidPricingPackagePlainText({
       externalRows: star.externalRows,
       totalRevenue: star.totalRevenue,
-      bidLabel: 'BP385 Galloway Park',
+      bidLabel: 'BP385 Gallenby Park',
       plansLink: null,
       sections: [star, other],
     })
     const lines = text.split('\n')
-    expect(lines[0]).toBe('Bid: BP385 Galloway Park')
+    expect(lines[0]).toBe('Bid: BP385 Gallenby Park')
     expect(lines).toContain('★ Value Engineered — customer\'s price')
     expect(lines).toContain('Written to Plan — second price')
     expect(lines.filter((l) => l.startsWith('Total')).length).toBe(2)

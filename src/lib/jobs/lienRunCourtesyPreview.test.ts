@@ -17,18 +17,18 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
     itemId: 'it1',
     jobId: 'j650',
     kind: 'notice_53_056',
-    label: '650 · ATI Schertz',
+    label: '650 · AXO Schertz',
     jobNumber: '650',
     months: ['2026-06', '2026-07'],
     amount: 33_500,
-    fields: { noticeDate: '2026-10-09', projectDescription: 'ATI Schertz — 1204 Elbel Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
+    fields: { noticeDate: '2026-10-09', projectDescription: 'AXO Schertz — 1204 Elwick Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
     extras: { refItems: ['Job #650'] },
     coverLetter: null,
     coverNote: null,
     ownerUnconfirmed: false,
     recipients: [
-      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '4 Example Way, Schertz, TX', email: 'owner@elbel.test', method: 'certified_mail', tracking: '' },
-      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '', courtesy: true },
+      { key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '4 Example Way, Schertz, TX', email: 'owner@elwick.test', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking: '', courtesy: true },
     ],
     ...partial,
   }
@@ -44,8 +44,8 @@ describe('runCourtesyEmails · what an envelope’s tick sends', () => {
     const [mail, ...rest] = runCourtesyEmails(gc!)
     expect(rest).toEqual([])
     expect(mail).toMatchObject({
-      to: 'office@loberg.test',
-      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
+      to: 'office@lowbeck.test',
+      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · AXO Schertz',
       text: TEXT,
       html: `<p>${TEXT}</p>`,
       filename: 'notice-53-056-650.pdf',
@@ -64,7 +64,7 @@ describe('runCourtesyEmails · what an envelope’s tick sends', () => {
     const second = notice({ itemId: 'it2', jobId: 'j702', label: '702 · Quarry Bend', jobNumber: '702' })
     const gc = runEnvelopes([notice(), second]).find((e) => e.label === 'Original contractor')!
     expect(runCourtesyEmails(gc).map((m) => [m.subject, m.filename])).toEqual([
-      ['Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz', 'notice-53-056-650.pdf'],
+      ['Courtesy copy: notice of claim for unpaid labor or materials — 650 · AXO Schertz', 'notice-53-056-650.pdf'],
       ['Courtesy copy: notice of claim for unpaid labor or materials — 702 · Quarry Bend', 'notice-53-056-702.pdf'],
     ])
   })
@@ -92,10 +92,10 @@ describe('runCourtesyPreviewHtml · the tab', () => {
 
   it('shows the email as it arrives: who it is from, to, the subject, the body as sent, and the PDF in the page', () => {
     const html = runCourtesyPreviewHtml(emails, { from: COMPANY_EMAIL_FROM_LABEL, ticked: true, attachments: [{ url: 'blob:https://app.test/pdf-1', bytes: 421_888 }] })
-    expect(html).toContain('<title>Email preview — Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz</title>')
-    expect(html).toContain('Preview — nothing has been sent. This email goes to office@loberg.test when you record the run, while Courtesy PDF stays ticked.')
+    expect(html).toContain('<title>Email preview — Courtesy copy: notice of claim for unpaid labor or materials — 650 · AXO Schertz</title>')
+    expect(html).toContain('Preview — nothing has been sent. This email goes to office@lowbeck.test when you record the run, while Courtesy PDF stays ticked.')
     expect(html).toContain('<dt>From</dt><dd>Click Plumbing and Electrical &lt;team@noreply.clicktooling.com&gt;</dd>')
-    expect(html).toContain('<dt>To</dt><dd>office@loberg.test</dd><dt>Replies to</dt><dd>office@clickplumbing.com</dd>')
+    expect(html).toContain('<dt>To</dt><dd>office@lowbeck.test</dd><dt>Replies to</dt><dd>office@clickplumbing.com</dd>')
     expect(html).toContain(`<div class="body" data-courtesy-preview-body><p>${TEXT}</p></div>`)
     expect(html).toContain('<span class="att-name">notice-53-056-650.pdf</span><span class="att-size">412 KB</span>')
     expect(html).toContain('<iframe class="pdf" src="blob:https://app.test/pdf-1" title="notice-53-056-650.pdf"></iframe>')
@@ -104,12 +104,12 @@ describe('runCourtesyPreviewHtml · the tab', () => {
   })
 
   it('escapes every value it writes, so a job’s name cannot become markup', () => {
-    const odd = runCourtesyEmails(runEnvelopes([notice({ label: '650 · <b>Burd</b> & "Assoc"' })]).find((e) => e.label === 'Original contractor')!)
+    const odd = runCourtesyEmails(runEnvelopes([notice({ label: '650 · <b>Brund</b> & "Assoc"' })]).find((e) => e.label === 'Original contractor')!)
     const html = runCourtesyPreviewHtml(odd, { from: 'Click <team@x.test>', ticked: true, attachments: [{ url: 'blob:x"y', bytes: 10 }] })
-    expect(html).toContain('— 650 · &lt;b&gt;Burd&lt;/b&gt; &amp; &quot;Assoc&quot;</h1>')
+    expect(html).toContain('— 650 · &lt;b&gt;Brund&lt;/b&gt; &amp; &quot;Assoc&quot;</h1>')
     expect(html).toContain('<dd>Click &lt;team@x.test&gt;</dd>')
     expect(html).toContain('src="blob:x&quot;y"')
-    expect(html).not.toContain('<b>Burd</b>')
+    expect(html).not.toContain('<b>Brund</b>')
   })
 
   it('numbers the emails when the envelope sends several, and says so above them', () => {
@@ -117,7 +117,7 @@ describe('runCourtesyPreviewHtml · the tab', () => {
     const two = runCourtesyEmails(runEnvelopes([notice(), second]).find((e) => e.label === 'Original contractor')!)
     const html = runCourtesyPreviewHtml(two, { from: COMPANY_EMAIL_FROM_LABEL, ticked: true, attachments: [{ url: 'blob:1', bytes: 2048 }, { url: 'blob:2', bytes: 3_145_728 }] })
     expect(html).toContain('<title>Email preview — 2 courtesy emails</title>')
-    expect(html).toContain('These 2 emails go to office@loberg.test when you record the run, one per notice, while Courtesy PDF stays ticked.')
+    expect(html).toContain('These 2 emails go to office@lowbeck.test when you record the run, one per notice, while Courtesy PDF stays ticked.')
     expect(html.indexOf('Email 1 of 2')).toBeLessThan(html.indexOf('Email 2 of 2'))
     expect(html.indexOf('notice-53-056-650.pdf')).toBeLessThan(html.indexOf('notice-53-056-702.pdf'))
     expect(html).toContain('<span class="att-size">3.0 MB</span>')

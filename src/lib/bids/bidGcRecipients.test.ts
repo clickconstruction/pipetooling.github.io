@@ -5,14 +5,14 @@ import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipient
 const structura: BidGcRecipient = { customerId: 'gc-structura', name: 'Structura', phone: '512-555-0100' }
 const joeris: BidGcRecipient = { customerId: 'gc-joeris', name: 'Joeris', phone: null }
 
-const entry = { builderKey: 'gc-knight', builderName: 'Knight Contracting', id: 'bid-1' }
+const entry = { builderKey: 'gc-kestrin', builderName: 'Kestrin Contracting', id: 'bid-1' }
 
 describe('expandLensBidByRecipients', () => {
   it('no recipients → just the primary entry', () => {
     const out = expandLensBidByRecipients(entry, undefined)
     expect(out).toHaveLength(1)
     expect(out[0]!.viaRecipient).toBeNull()
-    expect(out[0]!.builderKey).toBe('gc-knight')
+    expect(out[0]!.builderKey).toBe('gc-kestrin')
   })
 
   it('emits one copy per recipient with the recipient as the builder', () => {
@@ -24,9 +24,9 @@ describe('expandLensBidByRecipients', () => {
   })
 
   it('skips a recipient that matches the primary builder key', () => {
-    const out = expandLensBidByRecipients(entry, [{ customerId: 'gc-knight', name: 'Knight', phone: null }, joeris])
+    const out = expandLensBidByRecipients(entry, [{ customerId: 'gc-kestrin', name: 'Kestrin', phone: null }, joeris])
     expect(out).toHaveLength(2)
-    expect(out.map((e) => e.builderKey)).toEqual(['gc-knight', 'gc-joeris'])
+    expect(out.map((e) => e.builderKey)).toEqual(['gc-kestrin', 'gc-joeris'])
   })
 
   it('copies keep every other field of the source entry', () => {
@@ -44,8 +44,8 @@ describe('looksLikeCombinedGcName', () => {
   })
 
   it('leaves real company names alone', () => {
-    expect(looksLikeCombinedGcName('H & I Construction')).toBe(false)
-    expect(looksLikeCombinedGcName('RMC- Dudley Mason')).toBe(false)
+    expect(looksLikeCombinedGcName('B & D Construction')).toBe(false)
+    expect(looksLikeCombinedGcName('RLC- Dunmere Mallin')).toBe(false)
     expect(looksLikeCombinedGcName('H&I Construction')).toBe(false)
     expect(looksLikeCombinedGcName('')).toBe(false)
     expect(looksLikeCombinedGcName(null)).toBe(false)

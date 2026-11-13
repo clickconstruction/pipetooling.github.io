@@ -3,7 +3,7 @@ import { foldPortalTestReports, formatPortalDate, formatPortalUsd, parsePortalCh
 
 const good = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
-  customerName: 'Michael Hageman',
+  customerName: 'Michael Hadwin',
   audience: 'customer',
   bills: [
     { jobLabel: 'Water heater · Job 612', jobNumber: '612', jobAddress: '3827 Sage Ridge Dr', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
@@ -22,7 +22,7 @@ describe('parsePortalPayload', () => {
         { jobLabel: 'Sewer line repair · Job 1017', jobNumber: '1017', jobName: 'Sewer line repair', serviceTag: 'plum', jobAddress: '4410 Cedar Hollow, Kyle', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' },
         { jobLabel: 'x', jobNumber: '1', amount: 100, billedTo: '', viewerRole: 'gc' },
         { jobLabel: 'x', jobNumber: '2', amount: 0, billedTo: 'Nobody', viewerRole: 'customer' },
-        { jobLabel: 'Pretest · Job 1042', jobNumber: '1042', amount: 250, billedTo: 'Done Right Foundation', viewerRole: 'bogus' },
+        { jobLabel: 'Pretest · Job 1042', jobNumber: '1042', amount: 250, billedTo: 'Dead Level Foundation', viewerRole: 'bogus' },
       ],
     })!
     expect(p.sharedBills).toHaveLength(2)
@@ -33,7 +33,7 @@ describe('parsePortalPayload', () => {
 
   it('parses a full payload', () => {
     const p = parsePortalPayload(good)!
-    expect(p.customerName).toBe('Michael Hageman')
+    expect(p.customerName).toBe('Michael Hadwin')
     expect(p.audience).toBe('customer')
     expect(p.bills).toHaveLength(2)
     expect(p.bills[0]!.payUrl).toBe('https://invoice.stripe.com/x')
@@ -96,7 +96,7 @@ describe('parsePortalPayload', () => {
     const p = parsePortalPayload({
       ...good,
       requestableProperties: [
-        { jobId: 'j1', street: ' 415 Springtown Way ', city: 'San Marcos' },
+        { jobId: 'j1', street: ' 415 Stonewick Way ', city: 'San Marcos' },
         { jobId: 'j2', street: '10 Elm St', city: '   ' },
         { jobId: 'j3', street: '   ' }, // blank street → dropped
         { street: 'no id' },
@@ -104,7 +104,7 @@ describe('parsePortalPayload', () => {
       ],
     })!
     expect(p.requestableProperties).toEqual([
-      { jobId: 'j1', street: '415 Springtown Way', city: 'San Marcos' },
+      { jobId: 'j1', street: '415 Stonewick Way', city: 'San Marcos' },
       { jobId: 'j2', street: '10 Elm St', city: null },
     ])
   })
@@ -112,7 +112,7 @@ describe('parsePortalPayload', () => {
   it('parses the short-address slug for the footer QR, null when absent or blank', () => {
     expect(parsePortalPayload(good)!.slug).toBeNull()
     expect(parsePortalPayload({ ...good, slug: '   ' })!.slug).toBeNull()
-    expect(parsePortalPayload({ ...good, slug: 'knight-contracting' })!.slug).toBe('knight-contracting')
+    expect(parsePortalPayload({ ...good, slug: 'kestrin-contracting' })!.slug).toBe('kestrin-contracting')
   })
 })
 
@@ -129,15 +129,15 @@ describe('formatters', () => {
   })
 
   it('splits addresses street-first for the trade-first job line', () => {
-    expect(splitPortalAddress('415 Springtown Way, San Marcos, TX 78666')).toEqual({
-      street: '415 Springtown Way',
+    expect(splitPortalAddress('415 Stonewick Way, San Marcos, TX 78666')).toEqual({
+      street: '415 Stonewick Way',
       rest: 'San Marcos, TX 78666',
     })
-    expect(splitPortalAddress('1200 Kenney Fort Blvd Round Rock, TX 78665')).toEqual({
-      street: '1200 Kenney Fort Blvd Round Rock',
+    expect(splitPortalAddress('1200 Kelby Fort Blvd Round Rock, TX 78665')).toEqual({
+      street: '1200 Kelby Fort Blvd Round Rock',
       rest: 'TX 78665',
     })
-    expect(splitPortalAddress('415 Springtown Way')).toEqual({ street: '415 Springtown Way', rest: null })
+    expect(splitPortalAddress('415 Stonewick Way')).toEqual({ street: '415 Stonewick Way', rest: null })
     expect(splitPortalAddress('   ')).toBeNull()
     expect(splitPortalAddress(null)).toBeNull()
   })
@@ -155,16 +155,16 @@ describe('formatters', () => {
 describe('agreements (Contract Desk PR 5)', () => {
   it('parses signed and sent agreements, drops unknown statuses and non-http links', () => {
     const p = parsePortalPayload({
-      customerName: 'Michael Palmer',
+      customerName: 'Michael Palvern',
       bills: [],
       agreements: [
-        { jobLabel: 'J922', jobAddress: '138 W Pat Dolan', status: 'signed', templateName: 'Terms', amountCents: 500000, signedAt: '2026-09-03T00:14:00Z', signerName: 'Michael Palmer', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=abc' },
+        { jobLabel: 'J922', jobAddress: '138 W Pat Dolan', status: 'signed', templateName: 'Terms', amountCents: 500000, signedAt: '2026-09-03T00:14:00Z', signerName: 'Michael Palvern', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=abc' },
         { jobLabel: 'J923', status: 'sent', signUrl: 'javascript:alert(1)' },
         { jobLabel: 'J924', status: 'draft' },
       ],
     })
     expect(p?.agreements).toHaveLength(2)
-    expect(p?.agreements[0]).toMatchObject({ status: 'signed', amountCents: 500000, signerName: 'Michael Palmer' })
+    expect(p?.agreements[0]).toMatchObject({ status: 'signed', amountCents: 500000, signerName: 'Michael Palvern' })
     expect(p?.agreements[1]).toMatchObject({ status: 'sent', signUrl: null, amountCents: null })
   })
 
@@ -234,10 +234,10 @@ describe('stages (Stage Plan PR 5)', () => {
 describe('test reports (v2.3304)', () => {
   it('parses sent reports, drops rows without an id, label or civil date, and degrades the rest to null', () => {
     const p = parsePortalPayload({
-      customerName: 'Done Right Foundation Repair',
+      customerName: 'Dead Level Foundation Repair',
       bills: [],
       testReports: [
-        { id: 'r1', jobId: 'j1', jobNumber: '1014', jobLabel: 'Johnson Pretest · Job 1014', jobAddress: '112 Seidel St, Marion, TX 78124', reportLabel: 'Sewer Pre-Test Hydrostatic', title: 'Sewer Pre-Test Hydrostatic Test Report', result: 'pass', testDateYmd: '2026-09-10', certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: '2026-09-11T14:00:00Z' },
+        { id: 'r1', jobId: 'j1', jobNumber: '1014', jobLabel: 'Jarrow Pretest · Job 1014', jobAddress: '112 Sedlow St, Marion, TX 78124', reportLabel: 'Sewer Pre-Test Hydrostatic', title: 'Sewer Pre-Test Hydrostatic Test Report', result: 'pass', testDateYmd: '2026-09-10', certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: '2026-09-11T14:00:00Z' },
         { id: 'r2', jobLabel: 'Gas', reportLabel: 'Gas Test', result: 'maybe', testDateYmd: '2026-09-10', certifierName: '', jobAddress: '' },
         { id: '', reportLabel: 'Gas Test', testDateYmd: '2026-09-10' },
         { id: 'r4', reportLabel: 'Gas Test', testDateYmd: 'yesterday' },
@@ -300,12 +300,12 @@ describe('parsePortalChecks (Your payments, v2.4053)', () => {
 
 describe('ownerRecords (punch list #86)', () => {
   it('reads the request offered on this portal, signed or not; an older function sends none', () => {
-    const base = { customerName: 'Umar Khan', company: {}, bills: [] }
+    const base = { customerName: 'Ulric Karrow', company: {}, bills: [] }
     expect(parsePortalPayload(base)!.ownerRecords).toBeNull()
-    const open = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null } })!.ownerRecords
-    expect(open).toEqual({ id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null, sent: null })
-    const signed = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'UMAR KHAN' } } })!.ownerRecords
-    expect(signed?.signed).toEqual({ on: '2026-10-07', name: 'UMAR KHAN' })
+    const open = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Linmor Hill', ownerName: 'Ulric Karrow', offeredOn: '2026-10-06', signed: null } })!.ownerRecords
+    expect(open).toEqual({ id: 'r1', address: '9703 Linmor Hill', ownerName: 'Ulric Karrow', offeredOn: '2026-10-06', signed: null, sent: null })
+    const signed = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Linmor Hill', ownerName: 'Ulric Karrow', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'ULRIC KARROW' } } })!.ownerRecords
+    expect(signed?.signed).toEqual({ on: '2026-10-07', name: 'ULRIC KARROW' })
     expect(parsePortalPayload({ ...base, ownerRecords: { id: '', offeredOn: '2026-10-06' } })!.ownerRecords).toBeNull()
     // Sent on the portal (PR 4): the day and the PDF's signed URL; a bad URL reads as none.
     const sent = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: 'a', ownerName: 'U', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'U' }, sent: { on: '2026-10-08', downloadUrl: 'https://x.supabase.co/storage/v1/object/sign/sent-documents/r1/p.pdf?token=t' } } })!.ownerRecords

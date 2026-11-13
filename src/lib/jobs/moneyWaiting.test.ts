@@ -10,12 +10,12 @@ function speeds(overrides?: Partial<PaySpeedData>): PaySpeedData {
   return {
     company: { medianDays: 6, samples: 153 },
     customers: {
-      rmc: { medianDays: 35, samples: 5 },
-      ingram: { medianDays: 8, samples: 4 },
-      holub: { medianDays: 30, samples: 1 }, // one payment — their own pace since v2.4376 (the floor was 3)
+      rlc: { medianDays: 35, samples: 5 },
+      inglow: { medianDays: 8, samples: 4 },
+      holmby: { medianDays: 30, samples: 1 }, // one payment — their own pace since v2.4376 (the floor was 3)
     },
     segments: { residential: null, commercial: null },
-    customerTypes: { rmc: 'commercial', ingram: 'residential' },
+    customerTypes: { rlc: 'commercial', inglow: 'residential' },
     receipts: {},
     quality: null,
     ...overrides,
@@ -60,37 +60,37 @@ describe('buildMoneyWaiting', () => {
   it('groups a customer’s open bills, longest wait first, and sorts customers slowest first', () => {
     const m = buildMoneyWaiting(
       [
-        // RMC: baseline 35 — bills waited 164d (3/15), 41d (7/16)
-        invRow('rmc', 'RMC- Dudley Mason', 13700, '2026-03-15', 'Ph 2 rough'),
-        invRow('rmc', 'RMC- Dudley Mason', 2750, '2026-07-16', 'Trim set'),
-        // Ingram: baseline 8 — one bill waited 83d
-        invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe'),
+        // RLC: baseline 35 — bills waited 164d (3/15), 41d (7/16)
+        invRow('rlc', 'RLC- Dunmere Mallin', 13700, '2026-03-15', 'Ph 2 rough'),
+        invRow('rlc', 'RLC- Dunmere Mallin', 2750, '2026-07-16', 'Trim set'),
+        // Inglow: baseline 8 — one bill waited 83d
+        invRow('inglow', 'Johnny Inglow', 4120, '2026-06-04', 'Repipe'),
       ],
       speeds(),
       TODAY,
     )
     expect(m).not.toBeNull()
-    expect(m!.rows.map((r) => r.customerId)).toEqual(['rmc', 'ingram'])
-    const rmc = m!.rows[0]!
-    expect(rmc.oldestWaitDays).toBe(164)
-    expect(rmc.baselineDays).toBe(35)
-    expect(rmc.open).toBe(16450)
-    expect(rmc.bills.map((b) => [b.jobName, b.waitDays, b.tone])).toEqual([
+    expect(m!.rows.map((r) => r.customerId)).toEqual(['rlc', 'inglow'])
+    const rlc = m!.rows[0]!
+    expect(rlc.oldestWaitDays).toBe(164)
+    expect(rlc.baselineDays).toBe(35)
+    expect(rlc.open).toBe(16450)
+    expect(rlc.bills.map((b) => [b.jobName, b.waitDays, b.tone])).toEqual([
       ['Ph 2 rough', 164, 'late'],
       ['Trim set', 41, 'warn'],
     ])
   })
 
   it('a customer whose oldest bill is at/under baseline collapses into the on-pace line', () => {
-    const m = buildMoneyWaiting([invRow('rmc', 'RMC', 5000, '2026-08-01')], speeds(), TODAY)
+    const m = buildMoneyWaiting([invRow('rlc', 'RLC', 5000, '2026-08-01')], speeds(), TODAY)
     expect(m!.rows).toEqual([])
     expect(m!.onPaceCount).toBe(1)
     expect(m!.onPaceOpen).toBe(5000)
   })
 
   it('one payment is a customer’s own pace (v2.4376); no history baselines on the company median', () => {
-    const one = buildMoneyWaiting([invRow('holub', 'Holub', 900, '2026-08-10')], speeds(), TODAY)!
-    expect(one.rows).toEqual([]) // 16d wait, under Holub's own ~30d
+    const one = buildMoneyWaiting([invRow('holmby', 'Holmby', 900, '2026-08-10')], speeds(), TODAY)!
+    expect(one.rows).toEqual([]) // 16d wait, under Holmby's own ~30d
     expect(one.onPaceCount).toBe(1)
     const none = buildMoneyWaiting([invRow('newco', 'New Co', 900, '2026-08-10')], speeds(), TODAY)!
     const row = none.rows[0]!
@@ -102,7 +102,7 @@ describe('buildMoneyWaiting', () => {
 
   it('undated bills never set the pace but still list (last, toned undated)', () => {
     const m = buildMoneyWaiting(
-      [invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe'), invRow('ingram', 'Johnny Ingram', 800, null, 'Old import')],
+      [invRow('inglow', 'Johnny Inglow', 4120, '2026-06-04', 'Repipe'), invRow('inglow', 'Johnny Inglow', 800, null, 'Old import')],
       speeds(),
       TODAY,
     )
@@ -116,23 +116,23 @@ describe('buildMoneyWaiting', () => {
   })
 
   it('a customer with only undated bills is on-pace (nothing measurable to chase)', () => {
-    const m = buildMoneyWaiting([invRow('rmc', 'RMC', 5000, null)], speeds(), TODAY)
+    const m = buildMoneyWaiting([invRow('rlc', 'RLC', 5000, null)], speeds(), TODAY)
     expect(m!.rows).toEqual([])
     expect(m!.onPaceCount).toBe(1)
   })
 
   it('returns null without pay-speed data', () => {
-    expect(buildMoneyWaiting([invRow('rmc', 'RMC', 5000, '2026-03-15')], null, TODAY)).toBeNull()
+    expect(buildMoneyWaiting([invRow('rlc', 'RLC', 5000, '2026-03-15')], null, TODAY)).toBeNull()
   })
 
   it('a bill an in kind deal pays is under no customer, late or on pace, and is counted apart (punch list #301)', () => {
     const onDeal = (r: StageRow): StageRow => ({ ...r, job: { ...r.job, in_kind_arrangement_id: 'deal-a' } }) as StageRow
     const m = buildMoneyWaiting(
       [
-        // RMC pays in kind: one bill 164 days old on the deal, one young bill paid with money.
-        onDeal(invRow('rmc', 'RMC- Dudley Mason', 13700, '2026-03-15', 'Ph 2 rough')),
-        invRow('rmc', 'RMC- Dudley Mason', 2750, '2026-08-01', 'Trim set'),
-        onDeal(invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe')),
+        // RLC pays in kind: one bill 164 days old on the deal, one young bill paid with money.
+        onDeal(invRow('rlc', 'RLC- Dunmere Mallin', 13700, '2026-03-15', 'Ph 2 rough')),
+        invRow('rlc', 'RLC- Dunmere Mallin', 2750, '2026-08-01', 'Trim set'),
+        onDeal(invRow('inglow', 'Johnny Inglow', 4120, '2026-06-04', 'Repipe')),
       ],
       speeds(),
       TODAY,
@@ -144,13 +144,13 @@ describe('buildMoneyWaiting', () => {
     expect(moneyWaitingInKindLine(m.inKind)).toBe('$17,820 on 2 bills is scheduled in kind, not money waiting')
     expect(moneyWaitingInKindLine({ count: 1, dollars: 726.5 })).toBe('$727 on 1 bill is scheduled in kind, not money waiting')
     expect(moneyWaitingInKindLine({ count: 0, dollars: 0 })).toBeNull()
-    // The same bills with no deal: RMC and Ingram are both off pace.
+    // The same bills with no deal: RLC and Inglow are both off pace.
     const money = buildMoneyWaiting(
-      [invRow('rmc', 'RMC- Dudley Mason', 13700, '2026-03-15', 'Ph 2 rough'), invRow('ingram', 'Johnny Ingram', 4120, '2026-06-04', 'Repipe')],
+      [invRow('rlc', 'RLC- Dunmere Mallin', 13700, '2026-03-15', 'Ph 2 rough'), invRow('inglow', 'Johnny Inglow', 4120, '2026-06-04', 'Repipe')],
       speeds(),
       TODAY,
     )!
-    expect(money.rows.map((r) => r.customerId)).toEqual(['rmc', 'ingram'])
+    expect(money.rows.map((r) => r.customerId)).toEqual(['rlc', 'inglow'])
     expect(money.inKind).toEqual({ count: 0, dollars: 0 })
   })
 })
@@ -159,18 +159,18 @@ describe('openBillsForCustomers', () => {
   it('lists bills for every customer with open money, tones vs their own baseline', () => {
     const map = openBillsForCustomers(
       [
-        invRow('rmc', 'RMC', 13700, '2026-03-15', 'Ph 2 rough'),
-        invRow('rmc', 'RMC', 2750, '2026-08-20', 'Fresh bill'),
-        invRow('ingram', 'Johnny Ingram', 4120, '2026-08-24', 'Repipe'),
+        invRow('rlc', 'RLC', 13700, '2026-03-15', 'Ph 2 rough'),
+        invRow('rlc', 'RLC', 2750, '2026-08-20', 'Fresh bill'),
+        invRow('inglow', 'Johnny Inglow', 4120, '2026-08-24', 'Repipe'),
       ],
       speeds(),
       TODAY,
     )
-    expect(map.get('rmc')!.map((b) => [b.jobName, b.tone])).toEqual([
+    expect(map.get('rlc')!.map((b) => [b.jobName, b.tone])).toEqual([
       ['Ph 2 rough', 'late'],
       ['Fresh bill', 'ok'],
     ])
-    // Ingram's 2-day-old bill is under his 8d baseline — listed, toned ok.
-    expect(map.get('ingram')!.map((b) => [b.jobName, b.waitDays, b.tone])).toEqual([['Repipe', 2, 'ok']])
+    // Inglow's 2-day-old bill is under his 8d baseline — listed, toned ok.
+    expect(map.get('inglow')!.map((b) => [b.jobName, b.waitDays, b.tone])).toEqual([['Repipe', 2, 'ok']])
   })
 })

@@ -6,7 +6,7 @@ import {
 } from '../../../supabase/functions/_shared/stripeInvoiceFooterPortalLink'
 import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from '../../../supabase/functions/_shared/stripeInvoiceFooter'
 
-const URL = 'https://my.clickplumbing.com/knight-contracting?paid=1'
+const URL = 'https://my.clickplumbing.com/kestrin-contracting?paid=1'
 const LINE = `See your updated statement any time at ${URL}`
 
 describe('stripeInvoiceFooter (Stripe receipt → portal return line)', () => {

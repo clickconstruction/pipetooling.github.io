@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  BILLS_SENT_BY_HAND_HOWS,
   BILLS_SENT_GAP_LABEL,
   BILLS_SENT_PATH,
   BILLS_SENT_ROUTE_CHIPS,
@@ -21,12 +22,17 @@ import {
   billsSentListHtml,
   billsSentMoney,
   billsSentPaidWords,
+  billsSentPhoneWords,
   billsSentRecord,
   billsSentRecordHtml,
   billsSentRecordPath,
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  byHandFiling,
+  byHandProblem,
+  type BillsSentByHandDraft,
+  type BillsSentByHandHow,
   type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
@@ -35,7 +41,8 @@ import {
   type BillsSentRoute,
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
-import { readBillsSent } from '../../lib/billing/billsSentIo'
+import { readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
@@ -44,6 +51,7 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -63,6 +71,13 @@ import { EmptyState } from '../EmptyState'
  * address is the link to keep or paste. **Print this record** prints it as one page.
  *
  * PR 5: **Print** and **Download CSV** take what the list shows out of the app, in the screen's order and words.
+ *
+ * PR 6: a row of the strip offers **Say how it went…**: how the bill went, to whom and on what day, saved as a
+ * record made by hand. The bill then leaves the strip and reads as a line on that day.
+ *
+ * On a phone (v2.7130): the list comes first. The tiles sit in one row, the chips in one row that slides, the strip
+ * folds to one line that opens it, and Print and Download CSV move under the list. A line is three rows and the
+ * whole line is the press that opens the bill's record, where the copies and the print have room for a thumb.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -103,11 +118,16 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   statement: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   text: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
   housecall_pro: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
+  by_hand: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
-function chipStyle(pressed: boolean): CSSProperties {
+/** A press a thumb can hit: the least height a phone's own controls take. */
+const THUMB = 44
+
+function chipStyle(pressed: boolean, phone = false): CSSProperties {
   return {
+    ...(phone ? { minHeight: 38, flex: '0 0 auto', whiteSpace: 'nowrap' as const } : {}),
     font: 'inherit',
     padding: '0.2rem 0.7rem',
     fontSize: '0.8125rem',
@@ -120,14 +140,14 @@ function chipStyle(pressed: boolean): CSSProperties {
   }
 }
 
-function Tile({ label, sum, testId }: { label: string; sum: BillsSentSum; testId: string }) {
+function Tile({ label, sum, testId, stacked = false }: { label: string; sum: BillsSentSum; testId: string; stacked?: boolean }) {
   return (
     <div style={tile} data-testid={testId}>
       <span style={tileSmall}>{label}</span>
       <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
         {sum.bills} {sum.bills === 1 ? 'bill' : 'bills'}
       </b>{' '}
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>{billsSentMoney(sum.total)}</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(stacked ? { display: 'block' } : {}) }}>{billsSentMoney(sum.total)}</span>
     </div>
   )
 }
@@ -201,13 +221,144 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
   )
 }
 
+const phoneCard: CSSProperties = { display: 'block', padding: '0.6rem 0.7rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: '0.875rem', minWidth: 0, marginTop: '0.3rem', color: 'var(--text-base)', textDecoration: 'none' }
+const phoneButton: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 700, minHeight: THUMB, padding: '0 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
+
+/**
+ * A line on a phone: the time, how it went and the amount, then the work, then where it went and whether it
+ * arrived. A bill's line is one press, the whole of it, that opens the bill's record. A line that is no bill's
+ * (a statement) keeps its own press for the copy.
+ */
+function PhoneLine({ line, onOpen }: { line: BillsSentLine; onOpen: (line: BillsSentLine) => void }) {
+  const colors = ROUTE_COLORS[line.route]
+  const words = billsSentPhoneWords(line)
+  const by = billsSentByWords(line)
+  const paid = billsSentPaidWords(line)
+  const toneColor = line.deliveryTone === 'ok' ? 'var(--text-green-700)' : line.deliveryTone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)'
+  const card: CSSProperties = line.stillMissed ? { ...phoneCard, borderColor: 'var(--text-red-700)' } : phoneCard
+  const body = (
+    <>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.15rem 0.45rem' }}>
+        <b style={{ ...strong, fontVariantNumeric: 'tabular-nums' }}>{line.dayOnly ? 'Day only' : billsSentTime(line.atIso)}</b>
+        <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
+        {by ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{by}</span> : null}
+        <span style={{ ...(line.counts ? money : { ...money, color: 'var(--text-muted)' }), marginLeft: 'auto' }}>{line.amount != null ? billsSentMoney(line.amount) : ''}</span>
+      </div>
+      <div style={{ ...strong, fontWeight: 600, overflowWrap: 'anywhere', marginTop: '0.15rem' }}>{words.main}</div>
+      {words.to ? <div style={{ color: 'var(--text-700)', fontSize: '0.8125rem', overflowWrap: 'anywhere', marginTop: '0.1rem' }}>{words.to}</div> : null}
+      {line.delivery || words.again || paid ? (
+        <div style={{ color: 'var(--text-700)', fontSize: '0.8125rem', marginTop: '0.05rem' }} data-testid="bills-sent-line-facts">
+          {line.delivery ? <span style={{ color: toneColor, fontWeight: line.deliveryTone === 'quiet' ? 500 : 600 }}>{line.delivery}</span> : null}
+          {words.again ? `${line.delivery ? ' · ' : ''}${words.again}` : ''}
+          {paid ? (
+            <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
+              {line.delivery || words.again ? ' · ' : ''}
+              {paid}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {line.note ? <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.1rem' }}>{line.note}</div> : null}
+    </>
+  )
+  if (line.billId) {
+    return (
+      <Link to={billsSentRecordPath(line.billId)} data-testid="bills-sent-line" style={card}>
+        {body}
+      </Link>
+    )
+  }
+  return (
+    <div data-testid="bills-sent-line" style={card}>
+      {body}
+      {line.copy?.copyPath ? (
+        <button type="button" style={{ ...phoneButton, marginTop: '0.4rem' }} onClick={() => onOpen(line)}>
+          {line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 /** How many open gaps the strip shows before *Show all*. */
 const GAPS_SHOWN = 5
 
 const gapBox: CSSProperties = { border: '1px solid var(--border-amber, var(--border-strong))', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.55rem 0.7rem', fontSize: '0.8125rem', minWidth: 0 }
 const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.6rem', paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }
 
-function GapRow({ gap }: { gap: BillsSentGap }) {
+const fieldLabel: CSSProperties = { display: 'grid', gap: '0.15rem', fontSize: '0.75rem', color: 'var(--text-700)', minWidth: 0 }
+const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0, boxSizing: 'border-box', width: '100%' }
+
+/**
+ * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
+ * made by hand; the list reads again and the bill moves from the strip to its day.
+ */
+function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () => void; onClose: () => void }) {
+  const phone = useIsMobile()
+  const { showToast } = useToastContext()
+  const today = todayYmdInAppTz()
+  const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
+  const [saving, setSaving] = useState(false)
+  const problem = byHandProblem(draft, today)
+  const save = async () => {
+    if (problem || saving) return
+    setSaving(true)
+    try {
+      await recordBillByHand(byHandFiling(gap, draft))
+      showToast('Recorded. The bill is on the list on the day it went.', 'success')
+      onSaved()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The record was not saved.'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <label style={fieldLabel}>
+        How the bill went
+        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value as BillsSentByHandHow | '' }))} style={field}>
+          <option value="">Pick one</option>
+          {BILLS_SENT_BY_HAND_HOWS.map((h) => (
+            <option key={h.key} value={h.key}>
+              {h.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={fieldLabel}>
+        Who it went to
+        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
+      </label>
+      <label style={fieldLabel}>
+        The day it went
+        <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+      </label>
+      <label style={fieldLabel}>
+        A note, if you want one
+        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
+      </label>
+      <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!!problem || saving}
+          style={{ font: 'inherit', fontSize: phone ? '0.875rem' : '0.8125rem', fontWeight: 700, padding: phone ? '0 0.9rem' : '0.35rem 0.8rem', minHeight: phone ? THUMB : undefined, borderRadius: phone ? 8 : 6, border: '1px solid transparent', cursor: problem || saving ? 'default' : 'pointer', background: problem || saving ? DEAD_PRESS_FILL : '#2563eb', color: problem || saving ? DEAD_PRESS_TEXT : '#fff' }}
+        >
+          {saving ? 'Saving…' : 'Record how it went'}
+        </button>
+        <button type="button" onClick={onClose} style={phone ? phoneButton : press}>
+          Cancel
+        </button>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{problem || 'The record says it is your word, with your name. It cannot be changed once saved.'}</span>
+      </div>
+    </div>
+  )
+}
+
+function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
+  const phone = useIsMobile()
+  const [saying, setSaying] = useState(false)
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
@@ -230,8 +381,14 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
       </div>
       <div style={money}>{gap.amount != null ? billsSentMoney(gap.amount) : ''}</div>
       <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
-        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}
+        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}{' '}
+        {saying ? null : (
+          <button type="button" style={phone ? { ...phoneButton, display: 'block', marginTop: '0.4rem' } : press} onClick={() => setSaying(true)}>
+            Say how it went…
+          </button>
+        )}
       </div>
+      {saying ? <ByHandForm gap={gap} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -240,7 +397,7 @@ function GapRow({ gap }: { gap: BillsSentGap }) {
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean }) {
+function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   if (open.length === 0 && paid.length === 0) return null
@@ -250,7 +407,7 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
       {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} />
+        <GapRow key={g.billId} gap={g} onSaved={onSaved} />
       ))}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
@@ -267,13 +424,14 @@ function GapStrip({ open, paid, expanded }: { open: BillsSentGap[]; paid: BillsS
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} />) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} onSaved={onSaved} />) : null}
     </div>
   )
 }
 
 /** One bill's record: every send of it, newest first, with the copy of each and a print of the whole. */
 function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void }) {
+  const phone = useIsMobile()
   return (
     <div data-testid="bills-sent-record" style={{ ...lineBox, display: 'block', padding: '0.7rem 0.8rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.6rem', alignItems: 'baseline' }}>
@@ -308,7 +466,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
             <div style={{ color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
               {e.detail}{' '}
               {e.line.copy?.copyPath ? (
-                <button type="button" style={press} onClick={() => onOpen(e.line)}>
+                <button type="button" style={phone ? { ...phoneButton, display: 'block', marginTop: '0.35rem' } : press} onClick={() => onOpen(e.line)}>
                   {e.line.route === 'printed' ? 'Copy as printed' : 'Copy as sent'}
                 </button>
               ) : null}
@@ -318,7 +476,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
       )}
       {record.madeWords ? <p style={{ margin: '0.4rem 0 0', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>{record.madeWords}</p> : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.6rem' }}>
-        <button type="button" onClick={onPrint} style={{ ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }}>
+        <button type="button" onClick={onPrint} style={phone ? phoneButton : { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }}>
           Print this record
         </button>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Delivered means their mail server took it. It does not mean someone read it.</span>
@@ -394,7 +552,7 @@ export function BillsSentLedger() {
     return (
       <section aria-label="One bill's record" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div>
-          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
+          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', ...(phone ? { display: 'inline-flex', alignItems: 'center', minHeight: THUMB } : {}) }}>
             ← All bills sent
           </Link>
         </div>
@@ -421,46 +579,62 @@ export function BillsSentLedger() {
     saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today))
   }
   const nothingShown = shown.length === 0 && outGaps.length === 0
-  const outPress: CSSProperties = { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }
+  const outPress: CSSProperties = phone ? phoneButton : { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }
+  // Print and the file: above the list at a desk, under it on a phone, where the list comes first.
+  const outRow =
+    data != null && !nothingShown ? (
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: phone ? 'flex-start' : 'flex-end' }} data-testid="bills-sent-out">
+        <button type="button" onClick={printList} style={outPress}>
+          Print
+        </button>
+        <button type="button" onClick={saveCsv} style={outPress}>
+          Download CSV
+        </button>
+      </div>
+    ) : null
+  // A tile that counts something to look at is the press that shows it.
+  const tilePress: CSSProperties = { ...tile, font: 'inherit', textAlign: 'left', cursor: 'pointer' }
+  // On a phone the strip is one line until it is asked for, so the list is on the first screen.
+  const stripFolded = phone && route === 'all'
 
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-      {data != null && !nothingShown ? (
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button type="button" onClick={printList} style={outPress}>
-            Print
-          </button>
-          <button type="button" onClick={saveCsv} style={outPress}>
-            Download CSV
-          </button>
-        </div>
-      ) : null}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
-        <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" />
-        <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" />
+      {phone ? null : outRow}
+      <div style={{ display: 'grid', gridTemplateColumns: phone ? 'repeat(auto-fit, minmax(5.2rem, 1fr))' : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
+        <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} />
+        <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" stacked={phone} />
         {missed > 0 ? (
-          <div style={{ ...tile, background: 'var(--bg-red-tint)', borderColor: 'var(--text-red-700)' }} data-testid="bills-sent-tile-missed">
+          <button type="button" onClick={() => setRoute('missed')} style={{ ...tilePress, background: 'var(--bg-red-tint)', borderColor: 'var(--text-red-700)' }} data-testid="bills-sent-tile-missed">
             <span style={{ ...tileSmall, color: 'var(--text-red-700)' }}>Did not arrive</span>
             <b style={{ color: 'var(--text-red-700)', fontSize: '0.9375rem' }}>{missed}</b>
-          </div>
+          </button>
         ) : null}
         {gaps.open.length > 0 ? (
-          <div style={{ ...tile, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
+          <button type="button" onClick={() => setRoute('gap')} style={{ ...tilePress, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
             <span style={{ ...tileSmall, color: 'var(--text-amber-800)' }}>{BILLS_SENT_GAP_LABEL}</span>
             <b style={{ color: 'var(--text-amber-800)', fontSize: '0.9375rem' }}>{gaps.open.length}</b>
-          </div>
+          </button>
         ) : null}
       </div>
-      <input type="search" value={typed} onChange={(ev) => setTyped(ev.target.value)} placeholder="Find a bill: a job, a customer, an address, a bill number" aria-label="Find a bill" style={input} />
-      <div role="group" aria-label="How it went" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+      <input type="search" value={typed} onChange={(ev) => setTyped(ev.target.value)} placeholder={phone ? 'Find a bill' : 'Find a bill: a job, a customer, an address, a bill number'} aria-label="Find a bill" style={phone ? { ...input, fontSize: '1rem', minHeight: THUMB } : input} />
+      <div role="group" aria-label="How it went" style={phone ? { display: 'flex', gap: '0.35rem', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '0.15rem', WebkitOverflowScrolling: 'touch' } : { display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
         {BILLS_SENT_ROUTE_CHIPS.map((c) => (
-          <button key={c.key} type="button" aria-pressed={route === c.key} onClick={() => setRoute(c.key)} style={chipStyle(route === c.key)}>
+          <button key={c.key} type="button" aria-pressed={route === c.key} onClick={() => setRoute(c.key)} style={chipStyle(route === c.key, phone)}>
             {c.label}
           </button>
         ))}
       </div>
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
-      {stripVisible ? <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} /> : null}
+      {stripVisible && stripFolded ? (
+        gapsShown.open.length > 0 ? (
+          <button type="button" onClick={() => setRoute('gap')} data-testid="bills-sent-gaps-fold" style={{ ...gapBox, font: 'inherit', fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer', minHeight: THUMB, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <b style={{ color: 'var(--text-amber-800)', flex: '1 1 auto' }}>{billsSentGapHeading(gapsShown.open.length)}</b>
+            <span style={{ color: 'var(--text-amber-800)', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Show</span>
+          </button>
+        ) : null
+      ) : stripVisible ? (
+        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} onSaved={retry} />
+      ) : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
@@ -482,9 +656,9 @@ export function BillsSentLedger() {
                   <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{billsSentSumWords(day.sum)}</span>
                   {extras ? <span style={small}>{extras}</span> : null}
                 </h2>
-                {day.lines.map((line) => (
-                  <Line key={line.id} line={line} phone={phone} onOpen={(l) => void open(l)} />
-                ))}
+                {day.lines.map((line) =>
+                  phone ? <PhoneLine key={line.id} line={line} onOpen={(l) => void open(l)} /> : <Line key={line.id} line={line} phone={false} onOpen={(l) => void open(l)} />,
+                )}
               </div>
             )
           })}
@@ -492,11 +666,12 @@ export function BillsSentLedger() {
       )}
       {data != null && [data.copies.length, data.stripeRows?.length ?? 0, data.stamps?.length ?? 0].some((n) => n >= limit) ? (
         <div>
-          <button type="button" onClick={() => setLimit((n) => n + STEP)} disabled={reading} style={{ ...chipStyle(false), borderRadius: 6 }}>
+          <button type="button" onClick={() => setLimit((n) => n + STEP)} disabled={reading} style={phone ? phoneButton : { ...chipStyle(false), borderRadius: 6 }}>
             {reading ? 'Reading…' : 'Show older sends'}
           </button>
         </div>
       ) : null}
+      {phone ? outRow : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
           All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.

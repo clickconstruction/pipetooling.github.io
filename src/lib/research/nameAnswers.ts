@@ -99,7 +99,7 @@ export type NameGrade = 'likely' | 'possible'
 
 /**
  * The grade of a name on a permit against a GC's name. Word for word, as `nameLikeness` reads
- * "begins", so Burd does not begin Burdette; two names a legal word apart (LP, Limited) count too.
+ * "begins", so Brund does not begin Burdette; two names a legal word apart (LP, Limited) count too.
  * The exact same key is not graded here: it is joined without a person.
  */
 export function nameGrade(name: string, customerName: string): NameGrade {
@@ -169,7 +169,7 @@ export const SOMEONE_ELSE_KINDS: ReadonlyArray<{ kind: 'owner' | 'architect' | '
   { kind: null, words: 'Not sure who' },
 ]
 
-/** A name that ends a sentence. "Burd & Assoc." brings its own full stop, so the sentence adds none. */
+/** A name that ends a sentence. "Brund & Assoc." brings its own full stop, so the sentence adds none. */
 const ending = (name: string): string => (/\.$/.test(name.trim()) ? name.trim() : `${name.trim()}.`)
 
 /**

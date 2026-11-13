@@ -5,8 +5,8 @@ import type { JobWorkOrderCoverage } from './workOrderCoverage'
 
 const TODAY = '2026-09-05'
 const none: JobWorkOrderCoverage = { kind: 'none' }
-const signed: JobWorkOrderCoverage = { kind: 'signed', id: 'o', subName: 'Cale Yarbrough', amount: 1208.97, signedOn: '2026-08-30', laborJobId: 's', recordId: 'WO-804-01' }
-const sent: JobWorkOrderCoverage = { kind: 'sent', id: 'o', subName: 'Cale Yarbrough', amount: 1208.97, sentAt: '2026-08-29', expiresOn: '2026-09-05', expired: false }
+const signed: JobWorkOrderCoverage = { kind: 'signed', id: 'o', subName: 'Cale Yarwick', amount: 1208.97, signedOn: '2026-08-30', laborJobId: 's', recordId: 'WO-804-01' }
+const sent: JobWorkOrderCoverage = { kind: 'sent', id: 'o', subName: 'Cale Yarwick', amount: 1208.97, sentAt: '2026-08-29', expiresOn: '2026-09-05', expired: false }
 
 function input(over: Partial<SheetStoryInput> & { coverage?: JobWorkOrderCoverage; stage?: string; agreed?: number; open?: number; paid?: number }): SheetStoryInput {
   const coverage = over.coverage ?? none
@@ -17,7 +17,7 @@ function input(over: Partial<SheetStoryInput> & { coverage?: JobWorkOrderCoverag
   const stage = over.stage ?? 'working'
   const rail = buildSheetRail({ coverage, sheetStage: stage as 'working', agreed, open, unpriced, crewPay: over.crewPay ?? false, payableAfter: over.sheet?.payable_after ?? null })
   return {
-    sheet: { assigned_to_name: 'Texas R & A Electrical LLC', job_number: '977', address: 'Hospital-415 Springtown Way', job_date: '2026-08-20', created_at: '2026-08-20T15:00:00Z', stage, items: [{ fixture: 'Electrical', is_fixed: true, direct_labor_amount: agreed }], payments: [], ...(over.sheet ?? {}) },
+    sheet: { assigned_to_name: 'Texas Q & E Electrical LLC', job_number: '977', address: 'Hospital-415 Stonewick Way', job_date: '2026-08-20', created_at: '2026-08-20T15:00:00Z', stage, items: [{ fixture: 'Electrical', is_fixed: true, direct_labor_amount: agreed }], payments: [], ...(over.sheet ?? {}) },
     money: { agreed, paid, open, unpriced },
     coverage,
     rail,
@@ -50,7 +50,7 @@ describe('buildSheetStory — the sheet with nothing signed (977)', () => {
 })
 
 describe('buildSheetStory — a signed sheet at the walk-through (804)', () => {
-  const order = { status: 'accepted', amount: 1208.97, created_at: '2026-08-28T19:10:00Z', createdByName: 'Taunya', offered_at: '2026-08-29T13:02:00Z', offer_expires_at: '2026-09-05', signed_at: '2026-08-30T23:41:00Z', accepted_at: '2026-08-30T23:41:00Z', declined_at: null, decline_reason: null, record_id: 'WO-804-01', signer_printed_name: 'Cale Yarbrough', signer_signature_mode: 'type' }
+  const order = { status: 'accepted', amount: 1208.97, created_at: '2026-08-28T19:10:00Z', createdByName: 'Taunya', offered_at: '2026-08-29T13:02:00Z', offer_expires_at: '2026-09-05', signed_at: '2026-08-30T23:41:00Z', accepted_at: '2026-08-30T23:41:00Z', declined_at: null, decline_reason: null, record_id: 'WO-804-01', signer_printed_name: 'Cale Yarwick', signer_signature_mode: 'type' }
   const rows = buildSheetStory(
     input({
       coverage: signed,
@@ -59,23 +59,23 @@ describe('buildSheetStory — a signed sheet at the walk-through (804)', () => {
       agreed: 1208.97,
       paid: 600,
       open: 608.97,
-      sheet: { assigned_to_name: 'Cale Yarbrough', job_number: '804', address: '3915 N Loop 1604 E', job_date: '2026-08-28', created_at: '2026-08-28T19:00:00Z', stage: 'walkthrough', items: [{ fixture: 'Rough-in', is_fixed: true, direct_labor_amount: 1208.97 }], payments: [{ amount: 600, memo: 'first half', payment_date: '2026-09-01' }] },
-      job: { hcp_number: '804', customer_name: 'Summit General', status: 'working', revenue: 9400, billsOut: 0, billsPaid: 0 },
+      sheet: { assigned_to_name: 'Cale Yarwick', job_number: '804', address: '3915 N Loop 1604 E', job_date: '2026-08-28', created_at: '2026-08-28T19:00:00Z', stage: 'walkthrough', items: [{ fixture: 'Rough-in', is_fixed: true, direct_labor_amount: 1208.97 }], payments: [{ amount: 600, memo: 'first half', payment_date: '2026-09-01' }] },
+      job: { hcp_number: '804', customer_name: 'Selwick General', status: 'working', revenue: 9400, billsOut: 0, billsPaid: 0 },
       events: [{ occurred_at: '2026-09-04T22:12:00Z', from: 'working', to: 'walkthrough', source: 'portal', note: 'Cleanout is behind the water heater — gate code 4471', actorName: null }],
       paperwork: { msaSignedOn: '2026-07-02', gcStanding: 'current', coiExpiresOn: '2026-12-31' },
     }),
   )
   it('the office rows carry who, when and the record', () => {
     expect(rows[0]!.facts[0]!.text).toContain('drafted by Taunya')
-    expect(rows[1]!.facts[0]!.text).toContain("to Cale Yarbrough's portal · good through 2026-09-05")
+    expect(rows[1]!.facts[0]!.text).toContain("to Cale Yarwick's portal · good through 2026-09-05")
     expect(rows[2]).toMatchObject({ state: 'done', chip: { label: 'WO-804-01', tone: 'green' }, actions: ['view_record'] })
-    expect(rows[2]!.facts[0]!.text).toContain('typed signature “Cale Yarbrough”')
+    expect(rows[2]!.facts[0]!.text).toContain('typed signature “Cale Yarwick”')
     expect(rows[2]!.facts[1]).toEqual({ k: 'Binds under', text: 'MSA signed 2026-07-02 · General Conditions current · COI through 2026-12-31', link: 'paperwork' })
   })
   it('the walk-through row reads the portal event with the note, and offers the two moves', () => {
     const w = rows[4]!
     expect(w.state).toBe('now')
-    expect(w.facts[0]!.text).toBe('Cale Yarbrough tapped My work here is done on the portal')
+    expect(w.facts[0]!.text).toBe('Cale Yarwick tapped My work here is done on the portal')
     expect(w.facts[1]).toEqual({ text: '“Cleanout is behind the water heater — gate code 4471”', quote: true })
     expect(w.actions).toEqual(['to_customer_pays', 'back_to_work'])
     expect(w.chip!.label).toBe('current · 1 day')
@@ -121,7 +121,7 @@ describe('buildSheetStory — an evening stamp keeps its day (v2.4469)', () => {
     expect(buildSheetStory(input({ coverage: sent, order, agreed: 1208.97 }))[1]!.chip).toEqual({ label: 'waiting 7 days', tone: 'amber' })
   })
   it('starts an undated sheet on the Central day it was made', () => {
-    const rows = buildSheetStory(input({ sheet: { assigned_to_name: 'Texas R & A Electrical LLC', job_number: '977', address: 'Hospital-415 Springtown Way', job_date: null, created_at: '2026-08-21T00:30:00Z', stage: 'working', items: [], payments: [] } }))
+    const rows = buildSheetStory(input({ sheet: { assigned_to_name: 'Texas Q & E Electrical LLC', job_number: '977', address: 'Hospital-415 Stonewick Way', job_date: null, created_at: '2026-08-21T00:30:00Z', stage: 'working', items: [], payments: [] } }))
     expect(rows[3]!.chip!.label).toBe('current · 16 days')
   })
   it('counts the walk-through from the Central day the sub tapped Done', () => {

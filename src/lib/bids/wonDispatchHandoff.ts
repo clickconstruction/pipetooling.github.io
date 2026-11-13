@@ -31,7 +31,7 @@ export function bidHandoffLabel(b: BidHandoffIdentity): string {
   return [num ? `B${num}` : null, name || null].filter(Boolean).join(' · ') || 'this bid'
 }
 
-/** The inbox title IS the to-do: "Open the job for B398 · ZZ Test — won with Southern Post". */
+/** The inbox title IS the to-do: "Open the job for B398 · ZZ Test — won with Southern Pine". */
 export function wonHandoffTitle(b: BidHandoffIdentity & { gcName: string | null | undefined }): string {
   const gc = (b.gcName ?? '').trim()
   return `Open the job for ${bidHandoffLabel(b)} — ${gc ? `won with ${gc}` : 'marked Won'}`

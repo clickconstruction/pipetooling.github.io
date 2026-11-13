@@ -11,9 +11,9 @@ Open a job and press the **Bill** tab. Each bill lists the payments that paid it
 A bill is one row. It shows the amount, who it went to, and what is still open. A thin green bar under it shows how much of the bill is in. Each payment is one line under the bar.
 
 :::example a bill with two checks
-*$26,800.00 · sent Jul 15 to Loberg Contracting · $9,022.49 open*
-*$11,700.00 · Sep 14 · check from Loberg Contracting · 61 d*
-*$6,077.51 · Sep 28 · check from Loberg Contracting · 75 d*
+*$26,800.00 · sent Jul 15 to Lowbeck Contracting · $9,022.49 open*
+*$11,700.00 · Sep 14 · check from Lowbeck Contracting · 61 d*
+*$6,077.51 · Sep 28 · check from Lowbeck Contracting · 75 d*
 :::
 
 A line reads the amount first. Then the day the money came. Then where it came from. A bank deposit names the payer the way the bank saw it. A card payment reads *card through Stripe*. A payment you typed reads *check · typed by hand*. The last number is how many days after the bill went out the money came.

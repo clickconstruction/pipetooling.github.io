@@ -21,8 +21,8 @@ import { OfferSheetForm, OfferStageForm, ResendForm } from './rowForms'
 
 const TODAY = '2026-09-07'
 const rail: SheetRail = { steps: [], current: 'work', gap: true, group: 'no_agreement', position: 0, label: '', sublabel: null, tone: 'now', crewPay: false }
-const row: WorkOrderBoardRow = { key: 'sheet:1', sheetId: 's1', commitmentId: null, recordId: null, jobId: 'job-880', jobNumber: '880', primary: '#880 · Knight', secondary: null, notInPipeline: false, subNames: ['Airfordable HVAC'], subName: 'Airfordable HVAC', personId: 'p-air', agreed: 4200, paid: 0, open: 4200, unpriced: false, sheetDate: '2026-08-06', coverage: { kind: 'none' }, rail, next: { label: '', hint: null, button: 'draft', buttonLabel: null }, group: 'no_agreement' }
-const jobs = [{ id: 'job-880', hcp_number: '880', customer_name: 'Knight Contracting', job_address: '150 E Sonterra Blvd', fixtures: [] } as unknown as JobWithDetails]
+const row: WorkOrderBoardRow = { key: 'sheet:1', sheetId: 's1', commitmentId: null, recordId: null, jobId: 'job-880', jobNumber: '880', primary: '#880 · Kestrin', secondary: null, notInPipeline: false, subNames: ['Airlowe HVAC'], subName: 'Airlowe HVAC', personId: 'p-air', agreed: 4200, paid: 0, open: 4200, unpriced: false, sheetDate: '2026-08-06', coverage: { kind: 'none' }, rail, next: { label: '', hint: null, button: 'draft', buttonLabel: null }, group: 'no_agreement' }
+const jobs = [{ id: 'job-880', hcp_number: '880', customer_name: 'Kestrin Contracting', job_address: '150 E Sonmere Blvd', fixtures: [] } as unknown as JobWithDetails]
 const actions = { linkSheetToJobQuiet: vi.fn(async () => true), newJobForSheet: vi.fn(), openAssembler: vi.fn(), changed: vi.fn(), saveWindow: vi.fn(async () => true) }
 
 describe('row forms', () => {

@@ -8,13 +8,13 @@ import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 
 const data: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
-  customers: { drf: { medianDays: 11, samples: 8 } },
+  customers: { dlf: { medianDays: 11, samples: 8 } },
   segments: { residential: null, commercial: null },
   customerTypes: {},
   receipts: {},
   quality: null,
 }
-const row = { billedAtIso: '2026-09-23T15:00:00Z', estBillYmd: null, customerId: 'drf' }
+const row = { billedAtIso: '2026-09-23T15:00:00Z', estBillYmd: null, customerId: 'dlf' }
 const today = '2026-10-05'
 const runway = buildLienPayRunway({ todayYmd: today, openBalance: 15406, lastWorkYmd: '2026-08-14', propertyKind: 'residential', expectedPayYmd: '2026-10-04', filedYmd: null, releasedYmd: null, isSub: true })
 const ledger = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false })

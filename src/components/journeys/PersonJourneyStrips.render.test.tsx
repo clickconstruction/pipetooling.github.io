@@ -10,7 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { PersonJourney } from '../../lib/journeys/personJourney'
 
 const journey: PersonJourney = {
-  subject: { kind: 'customer', id: 'c1', name: 'Michael Palmer' },
+  subject: { kind: 'customer', id: 'c1', name: 'Michael Palvern' },
   journeys: ['homeowner'],
   summary: 'customer · 1 job · portal never visited',
   steps: {

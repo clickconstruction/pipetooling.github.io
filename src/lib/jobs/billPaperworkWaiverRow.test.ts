@@ -29,9 +29,9 @@ function input(releases: JobLienReleaseRow[], over: Partial<BillPaperworkWaiverI
     pick: PICK,
     amount: 4720,
     isGc: true,
-    recipientName: 'Michael Palmer',
-    recipientEmail: 'ap@palmer.test',
-    billEmail: 'palmercustomhomes@gmail.com',
+    recipientName: 'Michael Palvern',
+    recipientEmail: 'ap@palvern.test',
+    billEmail: 'palverncustomhomes@example.com',
     daysPastDue: null,
     paidYmd: null,
     ...over,
@@ -59,7 +59,7 @@ describe('billPaperworkWaiverRow (v2.4299)', () => {
       sub: 'This bill is 35 days past due. A GC often waits for this waiver before it pays.',
       subTone: 'amber',
       action: { kind: 'add', label: 'Add waiver', primary: true },
-      emailFix: { email: 'palmercustomhomes@gmail.com' },
+      emailFix: { email: 'palverncustomhomes@example.com' },
     })
     expect(row.steps).toEqual([
       { text: 'Conditional, with this bill', state: 'due' },
@@ -81,7 +81,7 @@ describe('billPaperworkWaiverRow (v2.4299)', () => {
     expect(awaiting).toMatchObject({ headline: 'Waiting for Malachi to sign', sub: 'Asked Oct 1. It waits on the Dashboard under Waivers to sign.', action: { kind: 'sign', label: 'Sign it' } })
     expect(awaiting.steps[0]).toEqual({ text: 'Conditional, signing', state: 'due' })
     const signed = billPaperworkWaiverRow(input([rel({ id: 's', form_type: 'conditional_progress', status: 'signed', signed_at: '2026-10-01T17:00:00Z' })]))
-    expect(signed).toMatchObject({ headline: 'Signed by Malachi. Not sent yet.', sub: 'It goes to ap@palmer.test.', action: { kind: 'send', label: 'Send to Michael Palmer', primary: true } })
+    expect(signed).toMatchObject({ headline: 'Signed by Malachi. Not sent yet.', sub: 'It goes to ap@palvern.test.', action: { kind: 'send', label: 'Send to Michael Palvern', primary: true } })
   })
 
   it('the signer is who drew it, not an older snapshot of the signed-in user (job 650)', () => {

@@ -177,7 +177,7 @@ describe('JobFormInvoiceList marked paid · no payment on record (v2.4839, under
   it('a paid row with no payment behind it offers Remove bill; a paid row with a payment does not', async () => {
     renderList(
       makeJob({
-        customer_name: 'Dudley Mason',
+        customer_name: 'Dunmere Mallin',
         revenue: 17800,
         invoices: [
           makeInvoice({ id: 'inv-paid', status: 'paid', amount: 8000, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-05-13T15:00:00Z', billed_at: '2026-05-13T15:00:00Z' }),
@@ -270,7 +270,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
         customer_id: 'cust-1',
         customer_name: 'Maria Delgado',
         gc_customer_id: 'gc-1',
-        gcCustomer: { id: 'gc-1', name: 'Done Right Foundation' },
+        gcCustomer: { id: 'gc-1', name: 'Dead Level Foundation' },
         bill_to_party: 'customer',
         invoices: [
           makeInvoice({ id: 'inv-shared', status: 'billed', amount: 6420, is_primary_rtb_bundle: true, shown_to_party: 'gc' }),
@@ -280,11 +280,11 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     )
     await settle()
     const chips = screen.getAllByTestId('invoice-shown-to-chip')
-    expect(chips.map((c) => c.textContent)).toEqual([' · 👁 shown to Done Right Foundation'])
+    expect(chips.map((c) => c.textContent)).toEqual([' · 👁 shown to Dead Level Foundation'])
     const shared = screen.getAllByTestId('invoice-row').find((r) => within(r).queryByText('$6,420.00'))!
     const menu = openMenu(shared)
     await settle()
-    expect(within(menu).getByText('✓ Shown on Done Right Foundation’s statement')).toBeTruthy()
+    expect(within(menu).getByText('✓ Shown on Dead Level Foundation’s statement')).toBeTruthy()
     expect(within(menu).getByText('Only the payer')).toBeTruthy()
     // A customer-pays job never offers the customer as the "other" party.
     expect(within(menu).queryByText(/Maria Delgado/)).toBeNull()
@@ -296,8 +296,8 @@ describe('JobFormInvoiceList — the lien-waiver cell on a GC job (v2.4275)', ()
     renderList(
       makeJob({
         customer_name: 'Hospital',
-        gc_customer_id: 'gc-knight',
-        gcCustomer: { id: 'gc-knight', name: 'Knight Contracting' },
+        gc_customer_id: 'gc-kestrin',
+        gcCustomer: { id: 'gc-kestrin', name: 'Kestrin Contracting' },
         revenue: 36000,
         invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 15406, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-30T15:00:00Z', billed_at: '2026-09-30T15:00:00Z' })],
       }),
@@ -344,7 +344,7 @@ describe('JobFormInvoiceList — Record payment at the end of the status words (
 describe('JobFormInvoiceList — the money that paid each bill (v2.4293)', () => {
   it('with the line doors given, a bill draws a paid bar and one line per payment; without them, nothing', async () => {
     const jobRow = makeJob({
-      customer_name: 'Loberg Contracting',
+      customer_name: 'Lowbeck Contracting',
       invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 26800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-07-15T15:00:00Z', billed_at: '2026-07-15T15:00:00Z' })],
     })
     const paid = [payment('inv-open', 11700, '2026-09-14'), payment('inv-open', 6077.51, '2026-09-28')]
@@ -396,7 +396,7 @@ describe('JobFormInvoiceList — the money that paid each bill (v2.4293)', () =>
 describe('JobFormInvoiceList — By date (v2.4294)', () => {
   it('lists the bills and the payments on one date line, oldest first, each payment naming its bill, and ends on what is still open', async () => {
     const jobRow = makeJob({
-      customer_name: 'Loberg Contracting',
+      customer_name: 'Lowbeck Contracting',
       invoices: [
         makeInvoice({ id: 'inv-big', status: 'billed', amount: 26800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-07-15T15:00:00Z', billed_at: '2026-07-15T15:00:00Z' }),
         makeInvoice({ id: 'inv-small', status: 'billed', amount: 6700, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-10T15:00:00Z', billed_at: '2026-09-10T15:00:00Z' }),

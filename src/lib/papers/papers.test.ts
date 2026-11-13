@@ -88,6 +88,6 @@ describe('papers among the sets', () => {
     ]
     expect(partsToMoveTo(parts, 'p2').map((p) => p.name)).toEqual(['Lodge', 'Site'])
     expect(partsToMoveTo(parts.slice(1, 2), 'p2')).toEqual([])
-    expect(moveLineForPaper({ kind: 'change_order', name: 'gun dog change order 3' }, 'Bunker', 'Lodge')).toBe('Moved change order gun dog change order 3 from Bunker to Lodge; it goes on Lodge itself now.')
+    expect(moveLineForPaper({ kind: 'change_order', name: 'gray fox change order 3' }, 'Bunker', 'Lodge')).toBe('Moved change order gray fox change order 3 from Bunker to Lodge; it goes on Lodge itself now.')
   })
 })

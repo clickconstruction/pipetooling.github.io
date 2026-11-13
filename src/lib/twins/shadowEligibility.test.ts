@@ -49,7 +49,7 @@ const ctx = (runs: Record<string, ShadowRunStatus> = {}, over: Partial<ShadowRul
 })
 
 describe('shadowHold · the four Ready bids of 2026-10-23 are claimable by the one rule', () => {
-  it('b515 Dalmoros, b521 O’Reilly, b516 Take 5 (no due date, no GC) and b510 after its shell was voided', () => {
+  it('b515 Dalmoros, b521 O’Reilly, b516 Tune 5 (no due date, no GC) and b510 after its shell was voided', () => {
     const runs: Record<string, ShadowRunStatus> = { b510: 'void' }
     expect(shadowHold(bid({ id: 'b515' }), ctx(runs))).toBeNull()
     expect(shadowHold(bid({ id: 'b521', created_at: '2026-10-22T20:00:00Z', bid_due_date: '2026-11-04' }), ctx(runs))).toBeNull()
@@ -162,7 +162,7 @@ describe('shellHold · what the server tells a round about its own shells', () =
     expect(shellHold({ status: null, referenceSent: false, parked: false, lastWordAt: null }, NOW)).toBeNull()
     expect(shellHold({ status: null, namedShadow: true, referenceSent: false, parked: true, lastWordAt: at(1) }, NOW)).toBe('closed')
     expect(isShadowShellName('ZZ Shadow SECOND RODEO BREWING')).toBe(true)
-    expect(isShadowShellName('ZZ Twin PALMER WINERY (backtest)')).toBe(false)
+    expect(isShadowShellName('ZZ Twin PALVERN WINERY (backtest)')).toBe(false)
   })
   it('a parked shell stays parked though its own round just spoke on it, so it never reads as in hand', () => {
     expect(shellHold({ status: 'open', referenceSent: false, parked: true, lastWordAt: at(1) }, NOW)).toBe('parked')

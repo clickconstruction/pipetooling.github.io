@@ -16,6 +16,8 @@ import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
 import { paperSaveFromBillRead, rowLinesWords, type PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
+import { BillLinesHeld } from './materials/BillLinesHeld'
+import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
 import { linkTicketToInvoice, listAccountTicketsForHouse, type TicketPoFacts } from '../lib/tickets/ticketMatchIo'
 import { ticketPageUrl, type TicketWithPages } from '../lib/tickets/ticketsIo'
 import { ticketStartChipWords } from '../lib/tickets/ticketRowWords'
@@ -325,15 +327,28 @@ export function SupplyHousesTab({
     const who = [...new Set([...papers.values()].map((p) => p.acceptedBy).filter((v): v is string => !!v))]
     if (who.length > 0) setPaperNames(await paperIo.namesOf(who))
   }
+  /**
+   * The bills that need a person (punch list #298 PR 3, v2.7110): the one line under Accounts payable and its window.
+   * The line reads again after a bill is saved or a paper is fixed (`linesRefresh`). *Open the bill* opens the bill's
+   * house and its own Edit window, where the link, the number and the amount are.
+   */
+  const heldIo = useMemo<HeldBillsIo>(() => supabaseHeldBillsIo(), [])
+  const [linesRefresh, setLinesRefresh] = useState(0)
+  async function openBillFromLines(bill: { invoiceId: string; houseId: string | null }) {
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === bill.houseId)
+    if (!sh) return
+    const invoices = selectedSupplyHouseForDetail?.id === sh.id ? supplyHouseInvoices : await loadSupplyHouseDetail(sh)
+    const inv = invoices.find((i) => i.id === bill.invoiceId)
+    if (inv) openEditInvoice(inv)
+  }
+  async function paperBytesOf(filePath: string): Promise<ArrayBuffer | null> {
+    const url = await billsIo.fileUrl(filePath).catch(() => null)
+    return url ? fetch(url).then((r) => r.arrayBuffer()).catch(() => null) : null
+  }
   async function openPaperLook(inv: SupplyHouseInvoice) {
     const paper = papersByInvoice.get(inv.id)
     if (!paper) return
-    let bytes: ArrayBuffer | null = null
-    if (paper.filePath) {
-      const url = await billsIo.fileUrl(paper.filePath).catch(() => null)
-      if (url) bytes = await fetch(url).then((r) => r.arrayBuffer()).catch(() => null)
-    }
-    setPaperLook({ paper, invoice: inv, bytes })
+    setPaperLook({ paper, invoice: inv, bytes: paper.filePath ? await paperBytesOf(paper.filePath) : null })
   }
   const [billCandidates, setBillCandidates] = useState<BillCandidate[]>([])
   const billCounts = useMemo(() => billCountsByHouse(billCandidates), [billCandidates])
@@ -1473,6 +1488,7 @@ export function SupplyHousesTab({
       void reloadBillCandidates()
     }
     await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+    setLinesRefresh((k) => k + 1)
     await loadSupplyHouseSummary()
     closeInvoiceForm()
     if (agingCellModal) setAgingCellJobsRefresh((n) => n + 1)
@@ -1668,6 +1684,7 @@ export function SupplyHousesTab({
         ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>invoices, aging and balances — office only</span>
       </div>
+      <BillLinesHeld io={heldIo} paperIo={paperIo} onOpenBill={(bill) => void openBillFromLines(bill)} loadPaperBytes={paperBytesOf} refreshKey={linesRefresh} />
       <section style={{ marginBottom: '2rem' }}>
         {supplyHouseSummaryLoading ? (
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -3448,7 +3465,10 @@ export function SupplyHousesTab({
           fileBytes={paperLook.bytes}
           acceptedByName={paperLook.paper.acceptedBy ? paperNames.get(paperLook.paper.acceptedBy) : null}
           onClose={() => setPaperLook(null)}
-          onChanged={() => void loadPapersFor(supplyHouseInvoices)}
+          onChanged={() => {
+            void loadPapersFor(supplyHouseInvoices)
+            setLinesRefresh((k) => k + 1)
+          }}
         />
       ) : null}
     </div>

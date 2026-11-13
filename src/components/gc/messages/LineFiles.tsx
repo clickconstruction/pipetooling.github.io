@@ -15,7 +15,7 @@ import { LinkMark } from './LinkMark'
  * Messages, cut 6's screens (email in): the files and links on a line, as the mock-up `email-in-mockups.html` draws them
  * (screens 1 to 3, on branch spike/gc-mode). The chips under a line's words, the line a filed paper leaves, and the
  * message window's Attachments with Open. A picture shows its badge, not a thumbnail: a thumbnail would fetch the whole
- * picture for each chip. Since v2.6508 (Grace, on Glenn Geling's invitation to bid) a link's mark is the same chain
+ * picture for each chip. Since v2.6508 (Grace, on Glenn Gelwin's invitation to bid) a link's mark is the same chain
  * link the words draw beside a web address (`LinkMark`), with its meaning in its title, in place of a blue ↗ square
  * nobody could read, and a row's presses sit right after its words instead of pinned to the window's far edge, wrapping
  * under the words on a phone.
