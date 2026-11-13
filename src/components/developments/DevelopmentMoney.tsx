@@ -95,7 +95,15 @@ function Dates({ row, stacked }: { row: MoneyRow; stacked: boolean }) {
         </span>
         <strong style={{ color: 'var(--text-strong)', textAlign: stacked ? 'right' : undefined }}>{d.billedAgoDays != null ? `${d.billedAgoDays}d ago` : ''}</strong>
       </div>
-      {exp ? (
+      {exp && d.due ? (
+        // A payer on a Pay calendar (punch list #323): the day the contract makes the bill due, in place of the guess.
+        <div style={line} data-money-due={d.due.daysPast > 0 ? 'past' : 'ahead'}>
+          <span style={{ color: d.due.daysPast > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }} title={exp.title}>
+            {dot(d.due.daysPast > 0 ? '#dc2626' : 'var(--text-faint)')} Due {shortDay(d.due.ymd)}
+          </span>
+          <strong style={{ color: d.due.daysPast > 0 ? 'var(--text-red-700)' : 'var(--text-strong)', textAlign: stacked ? 'right' : undefined }}>{d.due.daysPast > 0 ? `${d.due.daysPast}d past` : `in ${d.due.daysTo}d`}</strong>
+        </div>
+      ) : exp ? (
         <div style={line}>
           <span style={{ color: exp.state === 'late' ? 'var(--text-red-700)' : 'var(--text-muted)' }} title={exp.title}>
             {dot(exp.state === 'late' ? '#dc2626' : 'var(--text-faint)')} Expected {shortDay(exp.expectedYmd)}
@@ -108,7 +116,7 @@ function Dates({ row, stacked }: { row: MoneyRow; stacked: boolean }) {
           <span />
         </div>
       )}
-      {exp ? <div style={{ gridColumn: stacked ? '1 / -1' : undefined, color: 'var(--text-muted)', fontSize: '0.7rem', paddingLeft: 13 }}>{exp.source === 'customer' ? `pays in ~${exp.medianDays}d` : exp.source === 'company' ? `company pace, ~${exp.medianDays}d` : 'promised'}</div> : null}
+      {exp ? <div style={{ gridColumn: stacked ? '1 / -1' : undefined, color: 'var(--text-muted)', fontSize: '0.7rem', paddingLeft: 13 }}>{d.due ? d.due.basis : exp.source === 'customer' ? `pays in ~${exp.medianDays}d` : exp.source === 'company' ? `company pace, ~${exp.medianDays}d` : 'promised'}</div> : null}
       {d.lien ? (
         <div style={line}>
           <span style={{ color: 'var(--text-muted)' }} title={d.lien.kindAssumed ? 'The property kind is not set, so the earlier (residential) date is shown.' : undefined}>

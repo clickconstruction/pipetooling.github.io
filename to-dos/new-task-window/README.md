@@ -1,8 +1,8 @@
 ---
 name: "The window that gives a task: redraw Add checklist item as New task, so the common task fits one phone screen and every row has its own shape"
 number: 331
-group: ready
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same night, as drawn · PR 1 (the words and the order) in v2.7082 · PR 2 (the window) in v2.7085, stacked on the place train · Grace's "Build them now" for the other two · PR 3 (Edit task) in v2.7092 · PR 4 (the roadmap's Add task) next
+group: close
+status: asked 2026-11-12 · the card and the mock-up the same day · built 2026-11-13 on Grace's "Yes, build it" and "Build them now" · all four PRs live and walked on clicktooling.com by 17:00 UTC · open for the notes below
 summary: >
   The Add checklist item window works, but it shows every choice at once and at the same weight.
   On a phone it is 1,267 px tall, one and a half screens, and the day sits 711 px down. Of the 137
@@ -11,10 +11,11 @@ summary: >
   where. People become a row of faces, the day one joined bar, places a shelf, and the rare things
   quiet presses in a row called Add. A bar at the bottom says in words what will happen, and its
   button names who gets the task. The drawn window is about 570 px tall. No database change.
-next: PR 4, the roadmap's Add task. A walk on a real phone is still owed once PR 2 is live, to see the bar hold above the keyboard.
-size: M as a train of four (S · M · M · S)
-blocker: none to build. PRs 2 to 4 land after the place train (#328), in order.
+next: Grace opens New task on a phone and types a task, to see Send sit just above the keyboard; if it does, the second Send at the top of a phone comes off. The notes under What should change next wait for her word.
+size: M as a train of four (S · M · M · S), built; left: the phone walk and notes
+blocker: Nothing built is left. The phone walk needs a real phone, which a headless walk cannot be.
 opinion: build PRs 1 and 2, then walk it on a real phone before the other two windows follow — the bar above the keyboard is the one thing a drawing cannot prove
+ver: v2.7082 · v2.7085 · v2.7092 · v2.7093
 ---
 
 # The window that gives a task (#331)
@@ -131,6 +132,31 @@ No migration, no edge function, no change to what is saved.
 | 4 | The roadmap's Add task takes the same rows and gains the photo of the spot it lacks. | S |
 
 Wait for #328 to land first: its photo PR (#7836) still changes `ChecklistAddModal.tsx`.
+
+## Where it stands
+
+All four PRs are on main and live, 2026-11-13. No migration and no edge function.
+
+| PR | Version | What | Live |
+|---|---|---|---|
+| #7862 | v2.7082 | the words and the order, a kernel with no screen | merged 05:47 UTC |
+| #7866 | v2.7085 | the New task window | about 14:00 UTC |
+| #7873 | v2.7092 | Edit task draws the same rows | 15:53 UTC |
+| #7876 | v2.7093 | the roadmap's Add task draws the same rows, with the photo of the spot | 16:55 UTC |
+
+**Walked live** on clicktooling.com, signed in, every write refused, phone and desk, light and dark. Send, Save and Add task were never pressed.
+
+- **New task:** 581 px on a 390 by 844 phone, no scroll, the bar at 568 of 844 and still on screen with Remind open. The sentence, *Add to my list*, a face makes *Send to …*, the bell, Tomorrow, the place shelf, the Photo press, Remind's value on its press, Someone else, Repeats, the ×.
+- **Edit task:** Manage → ⋮ → Edit opens on the task's own words, its person lit, its saved reminder lit on the Add row, Save live, the bar on screen.
+- **The roadmap's Add task:** the stage named under the title, no When row, nobody picked, the sentence naming the stage and who gets it when the stage unlocks, the place, the Photo press, Done when… turning the photo on, and *Where is it?* opening on top.
+
+**Not proven:** the bar above a real phone's keyboard. A headless walk shrank the visible height and the bar held, but only a real phone can show it.
+
+## What should change next (notes, not built)
+
+- **The second Send at the top of a phone** stays until the phone walk shows the bar holds. Then it comes off: a small GUI change.
+- **An old task's sentence in Edit task** reads like *Theo gets it on Tue, Feb 17.* for a day long past. Accurate, but *has had it since Tue, Feb 17.* may read better. Wording only.
+- **The faces do not hold everyone.** Replayed on the record, Me and the last four people covered 87 of 137 tasks; the rest press Someone else first. Count it again in two weeks before changing anything.
 
 ## How it was checked
 

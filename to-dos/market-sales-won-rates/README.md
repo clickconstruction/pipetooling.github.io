@@ -8,9 +8,9 @@ summary: >
   The Bridge read Market as every dollar asked in a week and judged it at one win share for everything. The owner set new rules in one sitting: estimates and bids each run through their own won
   rate by dollars, a bid counts only when it is marked, an unmarked bid ages into a loss, and each bid is read
   at the rate for bids its size. Market then reads as one amount on the same scale as the other four steps.
-  The pipe, the Market and Sales windows and a chart on the Bid Board already read this way on a spike
-  branch. The page's own Market and Sales cards, the slowest-step reading, the weekly email and the guide do
-  not yet. This card holds every rule and what is left, so a session on another computer can finish it.
+  The pipe, the Market and Sales windows and a chart on the Bid Board read this way since PRs 1 to 3
+  (v2.6973, v2.6975, v2.6977). The page's own Market and Sales cards, the slowest-step reading, the weekly email
+  and the guide followed with PRs 4 to 6 (v2.6979, v2.6983, v2.6988). This card holds every rule and what is left, which is the owner's calls.
 next: the owner's calls under Where it stands; the email's first send is Monday 2026-11-16 and carries the Market amount
 size: L as a train of six (M · S · M · M · M · S); left: the owner's calls
 blocker: None. The spike branch is on GitHub.
@@ -247,9 +247,10 @@ Left out on purpose, each its own change:
 
 - **What the Bridge leaves out** (the list, its picker and the migration for the owner's role), **the header's
   *reads the last 8 weeks* line**, and **the Build, Bill and Collect windows on the shared frame**. All three were
-  walked on the spike and are on `spike/bridge-scaling`. None is on this card's plan.
-- **Names in other test files.** `collect/collectScorecard.test.ts` and fixtures elsewhere still carry company
-  names. This card named two files.
+  walked on the spike and shipped under #334 (`to-dos/bridge-pulse/`): the windows and the header's line as
+  v2.7089, the list as v2.7095. None was on this card's plan.
+- **Names in other test files.** v2.7087 swapped the names in the test fixtures across the repo for made-up ones, and
+  `collect/collectScorecard.test.ts` left with the week's call in v2.7105. This card named two files.
 - **The Pulse's weeks on the Bid Board** read a bid's send day, a date, as an instant. The new chart reads it as
   written. Whether a bid sent on a Sunday lands in the week before is worth a look.
 
@@ -264,4 +265,4 @@ Two things PR 1 turned up, for the owner:
   across. The standing pipe prints a row for each step, which puts the test's usual week at 161 words and 27
   numbers. Either the budget moves or the rows are trimmed. Nothing was changed to hide it.
 - **What the Bridge leaves out** is not on this card's plan. The spike built the list and its picker, and they need
-  a migration for the owner's role. Until they ship, nothing is left out of the won rates.
+  a migration for the owner's role. They shipped as v2.7095 (punch list #334) with that migration, `20261113050000_bridge_left_out_key_owner.sql`, and the won rates leave out what the list names.

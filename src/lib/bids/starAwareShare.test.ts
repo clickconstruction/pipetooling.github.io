@@ -7,6 +7,7 @@ import {
   pricingPrintContextFor,
   scenarioPackageFromInputs,
   shareOverrideForStar,
+  sharePackageRows,
   starActionReadsViewed,
   starChooserConfirmLabel,
   starChooserNeeded,
@@ -14,6 +15,7 @@ import {
   teamLaborCostForBid,
   type PricingShareInputs,
 } from './starAwareShare'
+import { scenarioPackageRows, scenarioPricingRows } from './scenarioPricingRows'
 
 const versions = [
   { id: 'pA', name: 'Base' },
@@ -139,7 +141,7 @@ describe('scenarioPackageFromInputs', () => {
       scenario({ customPrices: [{ id: 'cp1', bid_id: 'b1', count_row_id: 'c1', price_book_version_id: 'pA', unit_price: 250 }] as never }),
       inputs(),
     )
-    expect(pkg.rows).toEqual([{ fixture: 'WC-1', count: 4, unitPrice: 250, revenue: 1000, omitFromSubmissionDocuments: false }])
+    expect(pkg.rows).toEqual([{ fixture: 'WC-1', count: 4, unitPrice: 250, revenue: 1000, isFixedPrice: false, omitFromSubmissionDocuments: false }])
     expect(pkg.totalRevenue).toBe(1000)
   })
 
@@ -162,6 +164,39 @@ describe('scenarioPackageFromInputs', () => {
       inputs(),
     )
     expect(pkg.rows.map((r) => [r.fixture, r.revenue])).toEqual([['LAV-1', 150]])
+  })
+})
+
+describe('sharePackageRows (v2.7136)', () => {
+  it('lays each row’s fixed-price flag on its own package row, the rest as the projection draws it', () => {
+    const result = scenarioPricingRows({
+      scenarioId: 'pA',
+      countRows: [row('c1', 'WC-1', 4), row('c2', 'Mobilize', 3), row('c3', 'LAV-1', 2)],
+      entries: [],
+      assignments: [{ price_book_version_id: 'pA', count_row_id: 'c2', price_book_entry_id: 'e-x', is_fixed_price: true, unit_price_override: 5000 }],
+      customPrices: [
+        { price_book_version_id: 'pA', count_row_id: 'c1', unit_price: 250 },
+        { price_book_version_id: 'pA', count_row_id: 'c3', unit_price: 75 },
+      ],
+    })
+    const pkg = sharePackageRows(result)
+    expect(pkg.rows.map((r) => [r.fixture, r.count, r.revenue, r.isFixedPrice])).toEqual([
+      ['WC-1', 4, 1000, false],
+      ['Mobilize', 3, 5000, true],
+      ['LAV-1', 2, 150, false],
+    ])
+    expect(pkg.rows.map(({ isFixedPrice: _f, ...r }) => r)).toEqual(scenarioPackageRows(result).rows)
+    expect(pkg.totalRevenue).toBe(6150)
+  })
+
+  it('the ★’s package carries a fixed-price assignment too', () => {
+    const pkg = scenarioPackageFromInputs(
+      'pA',
+      scenario({ assignments: [{ id: 'a1', bid_id: 'b1', count_row_id: 'c1', price_book_entry_id: 'e-x', price_book_version_id: 'pA', is_fixed_price: true, unit_price_override: 900 }] as never }),
+      inputs(),
+    )
+    expect(pkg.rows.map((r) => [r.fixture, r.count, r.revenue, r.isFixedPrice])).toEqual([['WC-1', 4, 900, true]])
+    expect(pkg.totalRevenue).toBe(900)
   })
 })
 

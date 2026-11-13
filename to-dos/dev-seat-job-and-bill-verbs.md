@@ -2,7 +2,7 @@
 name: "The dev seat sets up a job, updates it and sends the bill: the first step of MCP doing everything a user can"
 number: 293
 group: close
-status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap is fix PR #7520 (plan_bill refuses a job with no number to bill under), armed · left: #7520's merge and deploy, the owner's look
+status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap was fixed by #7520 (plan_bill refuses a job with no number to bill under), merged 2026-11-10 as v2.6826 and in every deploy of the seat since · left: the owner's look
 summary: >
   The dev seat read everything and wrote fifty-one named things, but no verb made a job or sent a
   bill, so the short bill link's walk (#290) had to be driven through the app in Chrome. Three
@@ -11,7 +11,7 @@ summary: >
   row do. Every write goes through what the app itself calls, so a verb can do nothing the
   signed-in dev could not do on the screen. The card also carries the road: what a user can do
   against what the seat can do, pair by pair.
-next: the owner's look at the ZZ TEST job (the Pipeline, its Bills tab, the text in the test contact's thread); deploy dev-mcp after #7520 merges (download and hash-compare first); then retire the card. The road's next pairs are in The road below.
+next: the owner's look at the ZZ TEST job (the Pipeline, its Bills tab, the text in the test contact's thread); then retire the card. The road's next pairs are in The road below.
 size: M as a train of four (S · S · M · S) and one fix (XS)
 blocker: none; the owner's test contact and customer exist
 opinion: build in the card's order — each pair stands alone, and the bill needs the status move
@@ -92,10 +92,10 @@ Read: the seat reads it (`read_rows`, the composites). Write: a plan → apply p
 | Make a job, edit it, move it along the Pipeline | `find_job`, `get_job` | **#293** (PR 1 make; PR 2 update and status) |
 | Flag a Billed job for Collections; record the contract's end on the Lien desk | `get_job` | **#293** (PR 4) |
 | Bill a customer with Stripe, text or email the link | `get_job` | **#293** (PR 3) |
-| Record an outside or physical bill; split or partial bill; void; write down; apply or move a payment | read | — |
+| Record an outside or physical bill; split or partial bill; void; write down; apply or move a payment | read | `plan_job_payment` (a payment removed, recorded or tied to its bank row, v2.6940); the rest — |
 | Make a customer; edit contacts, addresses, bill-to, portal | `find_customer`, `get_customer` | — |
 | Text, email, call-log, note a customer | read | mail tags; a bill's text and email (#293); a free text or email — |
-| Make a bid; file its plans; price, send, decide | `find_bid`, `get_bid` | `plan_bid`, `plan_file_plans`; send and decide — |
+| Make a bid; file its plans; price, send, decide | `find_bid`, `get_bid` | `plan_bid`, `plan_file_plans`; since the bid train (#317) `plan_bid_update` (the sent date of a plain bid, the outcome), `plan_bid_counts`, `plan_bid_takeoff`, `plan_bid_labor`, `plan_bid_pricing`; per-GC sends and the letter — |
 | Plan sets and papers on a job's plan part | read | `plan_plan_set`, `plan_paper` |
 | Materials on site | `read_on_site` | four pairs |
 | Job cost moves | read | `plan_cost_batch` (+ revert) |
@@ -112,7 +112,7 @@ Read: the seat reads it (`read_rows`, the composites). Write: a plan → apply p
 | Payroll, pay reports, deductions | read | — |
 | Settings | read | — |
 
-Next after this train, in the order the call log asks: a free text or email to a customer's thread, the customer pair, a payment recorded, a visit scheduled, an estimate. Each is a pair over the screen's own RPC or rows, the way this train is.
+Next after this train, in the order the call log asks: a free text or email to a customer's thread, the customer pair, a visit scheduled, an estimate (a payment recorded shipped as `plan_job_payment`, v2.6940). Each is a pair over the screen's own RPC or rows, the way this train is.
 
 ## Where it stands
 

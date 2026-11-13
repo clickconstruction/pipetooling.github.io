@@ -11,3 +11,5 @@ No delete policy: the card upserts the row and saves an emptied list as `{ "name
 **Tables**: none created, so no fence call is owed. **Idempotent**: each policy is `DROP POLICY IF EXISTS` then `CREATE`. The dev's standing policy (`Devs can manage app settings`) is untouched. **Lock**: `CREATE POLICY` takes a brief `ACCESS EXCLUSIVE` lock on `app_settings`, a small table; with `lock_timeout = '3s'` a busy moment fails fast and the push is retried.
 
 **Apply**: `supabase db push` from a checkout of `main` after the PR merges. Order is free: the client calls nothing this creates. Before the push a dev saves the list as before, and the owner's save comes back as a refusal in words.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659).

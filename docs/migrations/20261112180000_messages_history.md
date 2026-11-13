@@ -35,3 +35,5 @@ The bed `messages-follow-up` (`supabase/tests/messages_follow_up/20_scenario.sql
 ## Undo
 
 `update messages set history = false where history` puts every line back as it read. The four threads would not reopen by themselves: press **Reopen** on each.
+
+**Applied** to prod by 2026-11-13: the dev seat's `check_migration_ledger` read 1274 applied, this version among them, against 1274 files in `supabase/migrations/` (read in the docs pass after #7659); types regenerated in #7805.

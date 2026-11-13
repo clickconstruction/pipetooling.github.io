@@ -3,7 +3,8 @@
  * Render smoke for Share with a teammate carrying both prices (v2.3685 "Send both"): the
  * caption names the pair, the preview shows one labeled table per price (★ first), and
  * Copy for text puts both headings and both totals on the clipboard. The text reads in
- * whole dollars (v2.7045); the preview table and the email keep their cents.
+ * whole dollars (v2.7045); the preview table and the email keep their cents. A fixed-price
+ * row in either price reaches the text as one price for its line (v2.7136).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -29,8 +30,14 @@ const bid = {
   service_type_id: null,
 } as unknown as BidWithBuilder
 
-const starRows = [{ fixture: 'Toilet', count: 2, unitPrice: 100, revenue: 200, omitFromSubmissionDocuments: false }]
-const otherRows = [{ fixture: 'Sink', count: 1, unitPrice: 50, revenue: 50, omitFromSubmissionDocuments: false }]
+const starRows = [
+  { fixture: 'Toilet', count: 2, unitPrice: 100, revenue: 200, omitFromSubmissionDocuments: false },
+  { fixture: 'Mobilize', count: 3, unitPrice: 1500, revenue: 1500, isFixedPrice: true, omitFromSubmissionDocuments: false },
+]
+const otherRows = [
+  { fixture: 'Sink', count: 1, unitPrice: 50, revenue: 50, omitFromSubmissionDocuments: false },
+  { fixture: 'Permit', count: 2, unitPrice: 300, revenue: 300, isFixedPrice: true, omitFromSubmissionDocuments: false },
+]
 
 function renderBoth() {
   return render(
@@ -41,8 +48,8 @@ function renderBoth() {
       priceBookVersionId="v-star"
       priceBookVersionName="Value Engineered"
       pricingRows={starRows}
-      totalRevenue={200}
-      alsoPrice={{ priceBookVersionId: 'v-viewed', name: 'Written to Plan', rows: otherRows, totalRevenue: 50 }}
+      totalRevenue={1700}
+      alsoPrice={{ priceBookVersionId: 'v-viewed', name: 'Written to Plan', rows: otherRows, totalRevenue: 350 }}
       estimatorUsers={[]}
       prefixMap={new Map() as unknown as LedgerPrefixMap}
       currentUserName="Grace"
@@ -64,7 +71,7 @@ describe('PackageAndSendBidPricingModal — Send both', () => {
     expect(preview.indexOf('Written to Plan — second price')).toBeGreaterThan(preview.indexOf('★ Value Engineered'))
   })
 
-  it('Copy for text copies both headings and both totals', async () => {
+  it('Copy for text copies both headings, both totals and each fixed price as one price', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
     renderBoth()
@@ -75,6 +82,8 @@ describe('PackageAndSendBidPricingModal — Send both', () => {
     expect(text).toContain("★ Value Engineered — customer's price")
     expect(text).toContain('Written to Plan — second price')
     expect(text).toContain('Toilet \u2014 2 \u00d7 $100 = $200')
-    expect(text.split('\n').filter((l) => l.startsWith('Total:'))).toEqual(['Total: $200', 'Total: $50'])
+    expect(text).toContain('Mobilize \u2014 3, fixed price $1,500')
+    expect(text).toContain('Permit \u2014 2, fixed price $300')
+    expect(text.split('\n').filter((l) => l.startsWith('Total:'))).toEqual(['Total: $1,700', 'Total: $350'])
   })
 })

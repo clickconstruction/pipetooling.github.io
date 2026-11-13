@@ -10,6 +10,10 @@
  * (omitFromSubmissionDocuments) are dropped; revenue total in the footer still reflects all
  * rows so it matches the Bids Pricing tab footer.
  *
+ * One field is this copy's alone: `isFixedPrice` rides the rows for the share text
+ * (`buildBidPricingPackageSmsText`, v2.7136), and nothing here draws it. The Edge copy has no
+ * use for it, since the email marks no fixed row, so the two copies still draw the same email.
+ *
  * Pure functions only — no DOM, no Supabase, no React.
  */
 
@@ -18,6 +22,8 @@ export type PackageRowInput = {
   count: number
   unitPrice: number
   revenue: number
+  /** One price for the whole line, whatever the count (`bid_pricing_assignments.is_fixed_price`). */
+  isFixedPrice?: boolean
   omitFromSubmissionDocuments: boolean
 }
 
@@ -26,6 +32,8 @@ export type PackageExternalRow = {
   count: number
   unitPrice: number
   revenue: number
+  /** Read by the share text alone (v2.7136); the email and its plain text ignore it. */
+  isFixedPrice?: boolean
 }
 
 /**
@@ -58,6 +66,7 @@ export function buildBidPricingPackageExternalRows(
       count: r.count,
       unitPrice: r.unitPrice,
       revenue: r.revenue,
+      isFixedPrice: r.isFixedPrice === true,
     })
   }
   return out
