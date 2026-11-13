@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · PR 1, the dates on the Pay rows (PR #7985), and PR 2, the Ledger by date (PR #7987), built and armed the same day · the owner then asked for the sub's payment window to match the pay stubs' Record payment, built as PR 2b with How paid and its migration moved up from PR 4 · that migration is not pushed
+status: asked 2026-11-13 · the card and the mock-up the same day · PR 1 the dates on the Pay rows, PR 2 the Ledger by date and PR 2b the sub's Record payment window all merged the same day, and migration 20261113180000 is pushed · the owner answered call 6 the same day: an overpayment to a sub becomes a credit
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: push migration 20261113180000 once PR 2b merges, then regenerate the types; the owner's answers to calls 1, 2 and 6; PR 3 (by sub, People → Subs) needs no answer
+next: PR 3 (by sub, People → Subs), which needs no answer; then the credit, drawn with card #350's sending; the owner's answers to calls 1 and 2
 size: M as a train of six (XS · S · S · S · S · M)
-blocker: PR 2b waits on its migration's push; none for PR 3; PR 4 is a migration and wants call 1 settled; PR 5 waits on call 2
-opinion: push PR 2b's migration and merge it, since the window is what the office presses every pay day; PR 3 next, it reads rows already in memory; stop before PR 5 until he says where sub money leaves from
+blocker: none for PR 3; the credit is a migration and is built with one sending across several sheets; PR 4 is a migration and wants call 1 settled; PR 5 waits on call 2
+opinion: PR 3 next, it reads rows already in memory; then the credit together with the sending, since both change how one payment lands on more than one place; stop before PR 5 until he says where sub money leaves from
 ---
 
 # Sub payments as a ledger (#347)
@@ -120,7 +120,7 @@ Built with this card's edit, between PR 2 and PR 3:
 3. **Crew pay sheets in the ledger?** My pick: yes, with a *crew* chip and a filter, and out of every *We owe*.
 4. **Who sees it?** My pick: the roles who open the Pay view today.
 5. **Order.** My pick: newest first by date, oldest first on one sub's statement.
-6. **An overpayment to a sub.** The new window refuses an amount past what remains. A pay report sends its excess to an employee credit, and a sub has no such place. What should it become: a credit against their next sheet, a back-charge, or nothing? No pick from me: it is how you want to be owed money back.
+6. **An overpayment to a sub. Answered 2026-11-13: a credit.** The owner: "overpayment -> credit". An amount past what remains is still refused today. What the answer asks for: the window records what remains on the sheet and keeps the rest as a credit for that sub; the credit shows on the sub's row, on their statement and in the ledger; and the next payment to that sub offers the credit first. Nothing holds a credit today: a sheet that is paid past its total reads *Over* and never counts against another sheet. So it needs a place to live, which is a migration, and it is the same shape as card #350's ask for one sending recorded across several sheets: one amount sent, landing in more than one place. Build the two together.
 
 ## How to verify
 
