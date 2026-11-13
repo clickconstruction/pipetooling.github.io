@@ -41145,6 +41145,16 @@ export type Database = {
         Args: { p_ended_at?: string; p_minutes: number; p_note: string }
         Returns: Json
       }
+      add_task_place_from_the_spot: {
+        Args: {
+          p_accuracy_m: number
+          p_instance_id: string
+          p_lat: number
+          p_lng: number
+          p_name?: string
+        }
+        Returns: Json
+      }
       add_worker: {
         Args: {
           p_email?: string

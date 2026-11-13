@@ -2,7 +2,7 @@
 name: "A site's materials on one screen: every part across the site's jobs, with the boxes that hold it"
 number: 330
 group: close
-status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PR 2 names at the source v2.7075 · PR 3 Same part? v2.7076 (migration 20261113040000, to push right after its merge) · PR 4 the parts book and the worth v2.7078 · PR 5 the paper and the job v2.7079 · all five built 2026-11-12, merging as a stack · left: PR 3's migration push right after its merge, the types PR, Grace's look on the real site
+status: asked 2026-11-12 · the card and the mock-up the same day · Grace's go the same day (build the entire train, the card's picks on calls 1 to 5) · PR 1 the screen v2.7074 · PR 2 names at the source v2.7075 · PR 3 Same part? v2.7076 · PR 4 the parts book and the worth v2.7078 · PR 5 the paper and the job v2.7079 · all five LIVE 2026-11-13 and walked on clicktooling.com, read only · migration 20261113040000 pushed, types regenerated, dev-mcp redeployed · left: Grace's look on the real site and the office's first Same part? answers
 mockup: to-dos/site-materials-view/mockup.html
 summary: >
   A company manager cannot see all the material on a site on a screen. The desk is one row per job
@@ -15,10 +15,10 @@ summary: >
   hold it. Two spellings of the same words are one row by themselves. Two names that are nearly
   the same ask a person once, Same part or Different, and a name never folds by closeness alone.
   The first PR needs no migration.
-next: The stack merges one PR at a time; push `20261113040000_on_site_part_ties.sql` right after PR 3's merge, then a types PR. Then Grace's look at the screen on the real site, and delete the folder.
-size: L, built as a train of five (M · S · M · M · S); left: the push, the types PR and the look (XS)
-blocker: none. The stack merges one PR at a time.
-opinion: build — Grace said build the entire train; look at the screen on the real site once PR 1 is live
+next: Grace's look at the site's screen (Materials → On site → the site's name). Then the office answers the Same part? asks on the real site, and the folder is deleted.
+size: L, shipped as a train of five (M · S · M · M · S); left: Grace's look and the first answers (XS)
+blocker: none. Grace's look.
+opinion: your call — the whole train is live; look at the site's screen and answer its Same part? asks
 ver: v2.7074 · 7075 · 7076 · 7078 · 7079
 ---
 
@@ -358,6 +358,32 @@ Each is one spot on the mock-up, today beside the suggestion.
 | 4 · the worth | What is known, with its cover beside it | Hidden until half the lines have a price |
 | 5 · places | A place per job, folded by name on the screen | A site-wide place, with its migration |
 | 6 · the order | PR 1, look on the site, then PR 2 before the stickers walk | The whole train at once |
+
+## Where it stands
+
+All five PRs were on main and live by 2026-11-13. Each was walked on clicktooling.com as the dev,
+read only: the session was carried from a local sign-in to the live site and every write to the
+database was refused.
+
+- **PR 1**: the desk's site row on both mounts, the screen's figures matching the paper's counts
+  line, the search's total, the filters, By place, 375 wide with no sideways scroll, and the
+  Development page's door.
+- **PR 2**: **Add a part** offers the job's own names as you type, with each one's count and box.
+  A delivery line's Part box offers the same names. Nothing was added.
+- **PR 3**: the answers table reads on prod, and the screen offers the asks the replay predicted,
+  each with both presses and its reason. No answer was saved.
+- **PR 4**: **Worth** with its cover, the list of rows with no price, and the parts-book picker.
+  The picker was cancelled, so nothing was tied.
+- **PR 5**: **By part** on the paper, the screen's print press, a job's **By part** with
+  **Open the whole site**, and the site's row in Go anywhere.
+
+What no walk did, because each is a write and prod is the only database: a part added from a
+name, a **Same part** or **Different** answer and its **Undo**, and a tie to the parts book. Render
+tests hold each of them. The first real answers are the office's to make on the real site.
+
+The migration went in out of order, behind a later stamp another session had pushed. It was
+tried on prod inside a transaction that was rolled back, then pushed. The types and the dev-mcp
+catalog were regenerated from prod (#7927), and dev-mcp was redeployed with the new catalog.
 
 ## How to verify
 
