@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   billNumberFromTitle,
+  billsSentGapFilter,
+  billsSentGapHeading,
+  billsSentGaps,
   billsSentAgainWords,
   billsSentDayExtras,
   billsSentDays,
@@ -200,5 +203,99 @@ describe('billsSent — days, tiles and the search', () => {
     expect(ids('', 'statement')).toEqual(['s1'])
     expect(ids('', 'email')).toEqual(['a2', 'a1', 'b1'])
     expect(ids('', 'printed')).toEqual([])
+  })
+})
+
+describe('billsSent — sends that kept no copy (PR 2)', () => {
+  it('does not draw a send-log row twice when its copy is on the page', () => {
+    const lines = billsSentLines(input([copy({})], { stripeRows: [{ id: 'r1', billId: BILL_A, atIso: '2026-11-12T15:28:01.000Z', copyEmails: [] }] }))
+    expect(lines.map((l) => l.id)).toEqual(['c1'])
+    expect(lines[0]).toMatchObject({ nth: 1, counts: true })
+  })
+
+  it('draws an email from before the copies began with its time and says the address was not kept', () => {
+    const lines = billsSentLines(
+      input([copy({ sentAt: '2026-11-12T15:28:00.000Z' })], {
+        stripeRows: [
+          { id: 'r0', billId: BILL_A, atIso: '2026-09-02T14:05:00.000Z', copyEmails: ['pm@sableridge.example'] },
+          { id: 'r1', billId: BILL_A, atIso: '2026-11-12T15:28:02.000Z', copyEmails: [] },
+        ],
+      }),
+    )
+    expect(lines.map((l) => [l.id, l.nth, l.routeWords, l.counts])).toEqual([
+      ['c1', 2, 'Email, sent again', false],
+      ['row:r0', 1, 'Email', true],
+    ])
+    expect(lines[1]).toMatchObject({ what: 'Bill 1412-0002', copy: null, toAddresses: [], copyTo: ['pm@sableridge.example'], amount: 4860, jobWords: 'J1412 · Sable Ridge Lot 14', payer: 'Sable Ridge Builders', dayOnly: false })
+    expect(lines[1]!.note).toBe('The address was not kept. The app kept no copy of a send before Oct 5, 2026.')
+  })
+
+  it('says a later send with no copy has no address on record', () => {
+    const [line] = billsSentLines(input([], { stripeRows: [{ id: 'r9', billId: BILL_B, atIso: '2026-11-02T19:28:00.000Z', copyEmails: [] }] }))
+    expect(line).toMatchObject({ id: 'row:r9', what: 'Bill', route: 'email', paid: true, amount: 9750 })
+    expect(line!.note).toBe('No copy of this send was kept, so the address is not on record.')
+  })
+
+  it('draws a Housecall Pro bill on its day with no time, and leaves the stamp out when a copy is the record', () => {
+    const lines = billsSentLines(
+      input([copy({})], {
+        stamps: [
+          { billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' },
+          { billId: BILL_A, atIso: '2026-11-12T18:00:00.000Z', channel: 'physical' },
+        ],
+      }),
+    )
+    expect(lines.map((l) => l.id)).toEqual(['c1', `stamp:${BILL_B}`])
+    expect(lines[1]).toMatchObject({ route: 'housecall_pro', routeWords: 'Housecall Pro', dayOnly: true, by: '', toAddresses: [], amount: 9750, counts: true, copy: null })
+    expect(lines[1]!.note).toBe('Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy.')
+  })
+
+  it('draws a text with the pay link as a send of its bill, with the number and Quo\u2019s answer', () => {
+    const lines = billsSentLines(
+      input([copy({ sentAt: '2026-11-10T21:40:00.000Z' })], {
+        texts: [
+          { id: 't1', atIso: '2026-11-12T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: 'Hal Jensen', by: 'Priya', delivery: 'delivered' },
+          { id: 't2', atIso: '2026-11-12T20:20:00.000Z', billId: null, jobId: null, number: '(512) 555-0199', toName: '', by: 'Priya', delivery: 'failed' },
+        ],
+      }),
+    )
+    expect(lines.map((l) => [l.id, l.route, l.nth, l.counts, l.delivery])).toEqual([
+      ['text:t2', 'text', 1, false, 'Not delivered'],
+      ['text:t1', 'text', 2, false, 'Delivered'],
+      ['c1', 'email', 1, true, ''],
+    ])
+    expect(lines[1]).toMatchObject({ routeWords: 'Text with pay link', toName: 'Hal Jensen', toAddresses: ['(512) 555-0142'], by: 'Priya', what: 'Bill 1412-0002', note: '' })
+    expect(billsSentAgainWords(lines[1]!)).toBe('2nd send. First sent Tue, Nov 10.')
+    expect(lines[0]!.note).toBe('The pay link in this text no longer names a bill.')
+    expect(billsSentFilter(lines, 'text', '').map((l) => l.id)).toEqual(['text:t2', 'text:t1'])
+    expect(billsSentFilter(lines, 'gap', '')).toEqual([])
+  })
+})
+
+describe('billsSentGaps (PR 2)', () => {
+  const unsent = [
+    { billId: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' },
+    { billId: BILL_B, jobId: JOB_B, amount: 9750, status: 'paid', billedAtIso: '2026-11-10T16:00:00.000Z' },
+  ]
+  it('lists a bill with no send on record, open apart from paid', () => {
+    const data = input([], { unsent })
+    const gaps = billsSentGaps(data, billsSentLines(data))
+    expect(gaps.open).toHaveLength(1)
+    expect(gaps.open[0]).toMatchObject({ billId: BILL_A, jobWords: 'J1412 · Sable Ridge Lot 14', jobTo: `/jobs?edit=${JOB_A}`, payer: 'Sable Ridge Builders', amount: 4860, paid: false, billedWords: 'Billed Mon, Nov 9 at 3:26 PM.' })
+    expect(gaps.paid.map((g) => g.billId)).toEqual([BILL_B])
+    expect(billsSentGapHeading(1)).toBe('1 bill is billed with no send on record')
+    expect(billsSentGapHeading(3)).toBe('3 bills are billed with no send on record')
+  })
+  it('never calls a bill a gap when a line on the list is a send of it', () => {
+    const data = input([], { unsent, texts: [{ id: 't1', atIso: '2026-11-12T20:14:00.000Z', billId: BILL_A, jobId: JOB_A, number: '(512) 555-0142', toName: '', by: 'Priya', delivery: null }] })
+    const gaps = billsSentGaps(data, billsSentLines(data))
+    expect(gaps.open).toEqual([])
+    expect(gaps.paid.map((g) => g.billId)).toEqual([BILL_B])
+  })
+  it('narrows with the search box', () => {
+    const data = input([], { unsent })
+    const { open } = billsSentGaps(data, [])
+    expect(billsSentGapFilter(open, 'juniper').map((g) => g.billId)).toEqual([BILL_A])
+    expect(billsSentGapFilter(open, 'larkfield')).toEqual([])
   })
 })

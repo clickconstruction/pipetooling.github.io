@@ -113,6 +113,8 @@ export function buildBilledPaymentForecast(
   pace?: PaceContext | null,
   /** The stored Pay calendars (punch list #323): a payer on one buckets by its due day plus its usual lateness, and the row carries the due day. */
   payCalendars?: PayCalendarIndex | null,
+  /** The day a payer accepted each bill that has one (PR 4), by the bill's id. */
+  acceptedByInvoice?: ReadonlyMap<string, string> | null,
 ): PaymentForecast {
   const byKey: Record<ForecastBucketKey, ForecastRow[]> = {
     past: [],
@@ -150,6 +152,7 @@ export function buildBilledPaymentForecast(
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
         customerId: payerId,
         payerName: payer.name,
+        acceptedYmd: acceptedByInvoice?.get(r.inv.id) ?? null,
       },
       paySpeeds,
       todayYmd,
