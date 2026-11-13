@@ -63,7 +63,7 @@ describe('the line on the Needs you card', () => {
   it('is news with nothing to do: blue, in the notice’s own words, with a door to the person’s own record', () => {
     const item = line({ mailSaved: need })!
     expect(item).toMatchObject({ key: 'mail-saved', severity: 'blue', kicker: MAIL_SAVED_WORDS.kicker, title: need.title, detail: need.detail, figure: '2', actionLabel: MAIL_SAVED_WORDS.action })
-    expect(needsYouDoor(item, {}, 'dashboard')).toEqual({ kind: 'href', href: MAIL_SAVED_DOOR })
+    expect(needsYouDoor(item, { role: 'helpers' }, 'dashboard')).toEqual({ kind: 'href', href: MAIL_SAVED_DOOR })
     expect(MAIL_SAVED_DOOR).toBe('/settings?tab=settings-recent-push#settings-recent-push')
   })
 
@@ -75,7 +75,7 @@ describe('the line on the Needs you card', () => {
 
   it('is on for every role, the field roles too, on the Dashboard and on Quickfill, and for nobody signed out', () => {
     expect(NEEDS_YOU_SOURCES).toContain('mailSaved')
-    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helper'] as const) {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
       expect(needsYouSourceEnabled('mailSaved', role, 'dashboard'), role).toBe(true)
     }
     expect(needsYouSourceEnabled('mailSaved', null, 'dashboard')).toBe(false)

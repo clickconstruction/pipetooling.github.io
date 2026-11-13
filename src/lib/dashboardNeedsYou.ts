@@ -117,6 +117,7 @@ export type NeedsYouItem = {
     | 'customer-messages'
     | 'todays-sends'
     | 'while-off'
+    | 'mail-saved'
     | 'bridge-moves'
     | 'rating-low'
     | 'gc-review-weekly'
@@ -236,6 +237,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'todays-sends': 40,
   // The same tier: the pushes the viewer's own Push me hours held while they were off (v2.6060, punch list #141 PR 4).
   'while-off': 40,
+  // The owner is told (v2.7068): news with nothing to do, so it sits below everything that asks for a press.
+  'mail-saved': 90,
   // The week's one decision, handed to this person (punch list #303 PR 4): beside the hard weekly deadline.
   'bridge-moves': 20,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
