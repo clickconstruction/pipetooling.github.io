@@ -45,17 +45,31 @@ export type Landed<T> = { ok: true; value: T } | { ok: false; error: string }
 const fail = <T>(e: unknown, fallback: string): Landed<T> => ({ ok: false, error: formatErrorMessage(e, fallback) })
 
 /** The lines and places of some maps, sorted onto them. A line or a place that cannot be read is left off, never guessed at. */
+const FILL_PAGE = 1000
+const FILL_IDS = 100
+
 async function fillMaps(maps: PaintedMap[]): Promise<PaintedMapWhole[]> {
   if (maps.length === 0) return []
   const ids = maps.map((m) => m.id)
-  const [lineRes, placeRes] = (await Promise.all([
-    supabase.from(LINES).select(PAINTED_MAP_LINE_SELECT as '*').in('map_id' as never, ids).order('made_at' as never, { ascending: true }),
-    supabase.from(PLACES).select(PAINTED_MAP_PLACE_SELECT as '*').in('map_id' as never, ids).order('set_at' as never, { ascending: true }),
-  ])) as unknown as [Rows<PaintedMapLineRow>, Rows<PaintedMapPlaceRow>]
-  if (lineRes.error) throw lineRes.error
-  if (placeRes.error) throw placeRes.error
-  const lines = (lineRes.data ?? []).map(paintedLineFromRow).filter((l): l is PaintedLine => l !== null)
-  const places = (placeRes.data ?? []).map(paintedPlaceFromRow).filter((p): p is PaintedPlace => p !== null)
+  // One read stops at 1,000 rows, and many maps hold more lines and places than that between them: read every page.
+  // The ids go a hundred at a time too: four hundred of them in one address is longer than an address may be.
+  const pages = async <R,>(table: never, select: string, order: string): Promise<R[]> => {
+    const out: R[] = []
+    for (let at = 0; at < ids.length; at += FILL_IDS) {
+      const some = ids.slice(at, at + FILL_IDS)
+      for (let from = 0; ; from += FILL_PAGE) {
+        const res = (await supabase.from(table).select(select as '*').in('map_id' as never, some).order(order as never, { ascending: true }).order('id' as never, { ascending: true }).range(from, from + FILL_PAGE - 1)) as unknown as Rows<R>
+        if (res.error) throw res.error
+        const rows = res.data ?? []
+        out.push(...rows)
+        if (rows.length < FILL_PAGE) break
+      }
+    }
+    return out
+  }
+  const [lineRows, placeRows] = await Promise.all([pages<PaintedMapLineRow>(LINES, PAINTED_MAP_LINE_SELECT, 'made_at'), pages<PaintedMapPlaceRow>(PLACES, PAINTED_MAP_PLACE_SELECT, 'set_at')])
+  const lines = lineRows.map(paintedLineFromRow).filter((l): l is PaintedLine => l !== null)
+  const places = placeRows.map(paintedPlaceFromRow).filter((p): p is PaintedPlace => p !== null)
   return maps.map((map) => ({ map, lines: lines.filter((l) => l.mapId === map.id), places: places.filter((p) => p.mapId === map.id) }))
 }
 
@@ -77,6 +91,24 @@ export async function loadPaintedMapsFor(home: { jobId?: string | null; developm
       .select(PAINTED_MAP_SELECT as '*')
       .or(filters.join(','))
       .order('created_at' as never, { ascending: false })) as unknown as Rows<PaintedMapRow>
+    if (res.error) return fail(res.error, 'The painted maps did not load.')
+    return { ok: true, value: await fillMaps((res.data ?? []).map(paintedMapFromRow)) }
+  } catch (e) {
+    return fail(e, 'The painted maps did not load.')
+  }
+}
+
+/** The most painted maps a layer on another map draws: the newest, as the search holds. */
+export const PAINTED_MAP_LAYER_MAX = 400
+
+/** Every painted map the caller can read, with its lines and places, for the layer on the Map page. */
+export async function loadPaintedMapsEvery(): Promise<Landed<PaintedMapWhole[]>> {
+  try {
+    const res = (await supabase
+      .from(MAPS)
+      .select(PAINTED_MAP_SELECT as '*')
+      .order('created_at' as never, { ascending: false })
+      .limit(PAINTED_MAP_LAYER_MAX)) as unknown as Rows<PaintedMapRow>
     if (res.error) return fail(res.error, 'The painted maps did not load.')
     return { ok: true, value: await fillMaps((res.data ?? []).map(paintedMapFromRow)) }
   } catch (e) {

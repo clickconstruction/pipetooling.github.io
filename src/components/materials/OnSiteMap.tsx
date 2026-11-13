@@ -9,6 +9,8 @@
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
+import { PaintedMapsLayer } from '../paintedMap/PaintedMapsLayer'
 import type { LatLng } from '../../lib/materials/myLocation'
 
 /** `me` is where the person stands, when they asked (a task's place, punch list #328). */
@@ -35,6 +37,9 @@ type Props = {
   still?: boolean
   /** No tile came and one failed: the caller says so in words (a weak signal in the field). Called once. */
   onTilesFailed?: () => void
+  /** The job's painted maps (#345), drawn under the pins: the way in beside what is where. A press opens the map. */
+  painted?: ReadonlyArray<PaintedLayerMap>
+  onPaintedTap?: (mapId: string) => void
 }
 
 const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }
@@ -74,12 +79,14 @@ function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
   return null
 }
 
-export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom, still, onTilesFailed }: Props) {
+export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom, still, onTilesFailed, painted, onPaintedTap }: Props) {
   const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
   const tilesSeen = useRef({ loaded: false, told: false })
   const focus = pins.find((p) => p.id === focusId) ?? null
   const first = focus ?? pins[0] ?? null
-  const start = first ? { lat: first.lat, lng: first.lng } : (center ?? flyTo ?? null)
+  // With no pin and no address on the map, a painted line still says where the job is.
+  const paintedStart = painted?.[0]?.lines[0]?.points[0] ?? painted?.[0]?.places[0] ?? null
+  const start = first ? { lat: first.lat, lng: first.lng } : (center ?? flyTo ?? (paintedStart ? { lat: paintedStart.lat, lng: paintedStart.lng } : null))
   const tiles = layer === 'satellite' ? SATELLITE : STREETS
   if (!start) {
     return (
@@ -109,6 +116,7 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
         <SizeFix />
         <FlyTo to={flyTo} zoom={19} />
         {placing && onCenterChange ? <CenterTracker onMove={onCenterChange} /> : null}
+        {painted && painted.length > 0 ? <PaintedMapsLayer maps={painted} onOpen={still ? undefined : onPaintedTap} quiet /> : null}
         {pins.map((p) => (
           <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={9} pathOptions={{ color: '#ffffff', weight: 2, fillColor: TONE[p.tone ?? 'ok'], fillOpacity: 0.95 }} eventHandlers={onPinTap ? { click: () => onPinTap(p.id) } : undefined}>
             <Tooltip permanent direction="top" offset={[0, -8]} className="on-site-pin-label">{p.label}</Tooltip>

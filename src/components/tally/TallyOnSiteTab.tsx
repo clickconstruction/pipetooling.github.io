@@ -20,6 +20,8 @@ import type { OnSiteMapPin } from '../materials/OnSiteMap'
 import { requestMyLocation, type LatLng } from '../../lib/materials/myLocation'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
+import { usePaintedMapsLayer } from '../../hooks/usePaintedMapsLayer'
+import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { useOnSiteDeskJobs } from '../../hooks/useOnSiteDeskJobs'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
@@ -155,6 +157,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const geocodeAsk = useMemo(() => (addr ? [{ key: normalizeAddressForGeocodeKey(addr), display: addr }] : []), [addr])
   const { coords: jobCoords } = useAddressGeocodeCoords(geocodeAsk, addr.length > 0, 'on-site map')
   const jobCenter = addr ? (jobCoords.get(normalizeAddressForGeocodeKey(addr)) ?? null) : null
+  // The job's painted maps (#345), under the boxes on the site map: read only while that map is open.
+  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, sheet?.kind === 'map')
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null && !c.retiredAt).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: countIsDue(lastCountedAt(movements, c.id), new Date()) && c.kind !== 'unsorted' ? 'amber' : 'ok' }))
   const pinnedCount = mapPins.length
   const boxCount = containers.filter((c) => c.kind !== 'unsorted' && !c.retiredAt).length
@@ -439,7 +443,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           >
             <div style={{ flex: '1 1 auto', minHeight: 0 }}>
               <Suspense fallback={<p style={muted}>Loading the map…</p>}>
-                <OnSiteMapLazy center={jobCenter} pins={mapPins} height="100%" focusId={sheet.focusId} flyTo={mapFly} onPinTap={(id) => { closeSheet(); setView({ kind: 'container', id }) }} />
+                <OnSiteMapLazy center={jobCenter} pins={mapPins} height="100%" focusId={sheet.focusId} flyTo={mapFly} onPinTap={(id) => { closeSheet(); setView({ kind: 'container', id }) }} painted={painted.maps} onPaintedTap={(id) => openPaintedMap(id)} />
               </Suspense>
             </div>
           </Sheet>
