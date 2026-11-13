@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub papers · statement of account</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e5e7eb; color: #1a1a1a; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.45; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  h2 { margin: 44px 0 6px; font-size: 17px; }
+  p.lead { margin: 0 0 14px; color: #374151; max-width: 960px; }
+  .pair { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #6b7280; }
+  .label.now { color: #b91c1c; }
+  .label.next { color: #15803d; }
+  .label.other { color: #6d28d9; }
+  .small { font-size: 12px; color: #6b7280; }
+  .muted { color: #6b7280; }
+  .ok { color: #15803d; font-weight: 700; }
+  /* a printed page */
+  .paper { background: #ffffff; width: 600px; max-width: 100%; box-sizing: border-box; padding: 34px 38px 26px; box-shadow: 0 2px 14px rgba(15, 23, 42, 0.22); font-size: 12.5px; color: #111827; font-family: Georgia, 'Times New Roman', serif; }
+  .paper .lh { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111827; padding-bottom: 10px; margin-bottom: 14px; font-family: -apple-system, system-ui, sans-serif; }
+  .paper .lh .co { font-weight: 800; font-size: 16px; letter-spacing: 0.01em; }
+  .paper .lh .ad { font-size: 11px; color: #4b5563; }
+  .paper .lh .doc { text-align: right; }
+  .paper .lh .doc b { display: block; font-size: 17px; letter-spacing: 0.03em; text-transform: uppercase; }
+  .paper .lh .doc span { font-size: 11.5px; color: #374151; display: block; }
+  .paper .who { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px; font-family: -apple-system, system-ui, sans-serif; font-size: 12px; }
+  .paper .who i { font-style: normal; display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
+  .paper table { width: 100%; border-collapse: collapse; font-family: -apple-system, system-ui, sans-serif; font-size: 12px; }
+  .paper th { text-align: left; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #9ca3af; padding: 4px 6px; white-space: nowrap; }
+  .paper td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .paper td.n, .paper th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .paper tr.t td { border-top: 1.5px solid #111827; border-bottom: none; font-weight: 700; }
+  .paper tr.g td { background: #f3f4f6; font-weight: 700; }
+  .paper .red { color: #b91c1c; }
+  .paper .grn { color: #166534; }
+  .paper .big { display: flex; justify-content: space-between; align-items: baseline; border: 1.5px solid #111827; padding: 8px 12px; margin: 12px 0; font-family: -apple-system, system-ui, sans-serif; }
+  .paper .big b { font-size: 19px; font-variant-numeric: tabular-nums; }
+  .paper .box { border: 1px solid #9ca3af; padding: 8px 10px; margin-top: 10px; font-family: -apple-system, system-ui, sans-serif; font-size: 12px; }
+  .paper .box h4 { margin: 0 0 4px; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: #374151; }
+  .paper .fine { font-size: 11px; color: #374151; margin-top: 10px; }
+  .paper .foot { display: flex; justify-content: space-between; border-top: 1px solid #9ca3af; margin-top: 14px; padding-top: 6px; font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; color: #6b7280; }
+  .c { background: #f3e8ff; border-bottom: 1.5px dashed #7c3aed; padding: 0 2px; }
+  .cm { display: inline-flex; width: 15px; height: 15px; border-radius: 999px; background: #7c3aed; color: #ffffff; font-size: 9.5px; font-weight: 700; align-items: center; justify-content: center; margin-left: 3px; vertical-align: middle; font-family: -apple-system, system-ui, sans-serif; }
+  .tie { display: inline-flex; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: #15803d; color: #ffffff; font-size: 10px; font-weight: 700; align-items: center; justify-content: center; margin-left: 4px; vertical-align: middle; font-family: -apple-system, system-ui, sans-serif; box-sizing: border-box; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: #374151; margin: 0 0 12px; }
+  ol.notes { margin: 8px 0 0 20px; padding: 0; max-width: 960px; color: #374151; font-size: 13px; }
+  ol.notes li { margin-bottom: 3px; }
+  /* screens */
+  .page { background: #ffffff; border-radius: 10px; padding: 16px; box-sizing: border-box; width: 760px; max-width: 100%; }
+  .win { background: #ffffff; border-radius: 10px; padding: 16px; box-sizing: border-box; width: 470px; max-width: 100%; box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18); }
+  .win h3 { margin: 0 0 4px; font-size: 16px; }
+  .phone { background: #64748b; border-radius: 22px; padding: 12px; width: 390px; max-width: 100%; box-sizing: border-box; }
+  .phone .page { width: 100%; padding: 12px; border-radius: 12px; }
+  .btn { border: 1px solid #cbd5e1; background: #ffffff; border-radius: 6px; padding: 3px 9px; font-size: 12.5px; white-space: nowrap; display: inline-block; }
+  .btn.p { background: #2563eb; color: #ffffff; border-color: #2563eb; font-weight: 600; }
+  .btn.lg { padding: 7px 13px; font-size: 13.5px; }
+  .chip { font-size: 11px; font-weight: 650; border-radius: 999px; padding: 1px 8px; white-space: nowrap; display: inline-block; }
+  .chip.green { background: #dcfce7; color: #15803d; }
+  .chip.amber { background: #fef3c7; color: #92400e; }
+  .chip.grey { background: #f3f4f6; color: #6b7280; }
+  .chip.blue { background: #dbeafe; color: #1d4ed8; }
+  .chip.red { background: #fee2e2; color: #b91c1c; }
+  .num { font-family: ui-monospace, monospace; font-size: 11.5px; font-weight: 700; background: #eef2ff; color: #3730a3; border-radius: 5px; padding: 1px 5px; white-space: nowrap; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 13.5px; }
+  .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .menu { border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16); background: #ffffff; padding: 4px; width: 220px; font-size: 13px; }
+  .menu div { padding: 5px 9px; border-radius: 5px; }
+  .menu div.new { background: #f0fdf4; color: #14532d; font-weight: 600; }
+  .menu div.sep { border-top: 1px solid #e5e7eb; padding: 0; margin: 3px 0; }
+  .field { margin-top: 9px; }
+  .field .k { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; }
+  .input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 9px; font-size: 13px; margin-top: 3px; background: #ffffff; }
+  .seg { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin-top: 3px; }
+  .seg span { padding: 5px 11px; font-size: 13px; border-right: 1px solid #cbd5e1; }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on { background: #1e3a8a; color: #ffffff; font-weight: 600; }
+  .msg { border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 8px; padding: 9px 11px; font-size: 13px; margin-top: 4px; }
+  .attach { display: inline-flex; gap: 6px; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-size: 12px; margin: 4px 4px 0 0; background: #ffffff; }
+  .when { border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 8px; padding: 9px 11px; margin-top: 10px; font-size: 13px; color: #14532d; }
+  .apply { display: grid; grid-template-columns: 1fr 86px 96px 86px; gap: 4px 8px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .apply .h { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #9ca3af; }
+  .apply .r { text-align: right; }
+  .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .card .row1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin: 8px 0 10px; }
+  .tabs span { padding: 5px 10px; font-size: 13px; color: #6b7280; }
+  .tabs span.on { color: #1d4ed8; font-weight: 700; border-bottom: 2px solid #2563eb; }
+  .eq { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-variant-numeric: tabular-nums; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+  .eq > span b { display: block; font-size: 15px; color: #111827; }
+  .eq > span { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+  .eq i { font-style: normal; font-size: 15px; color: #9ca3af; align-self: flex-end; }
+  .eq .tot b { color: #15803d; }
+  table.plain { background: #ffffff; border-radius: 10px; border-collapse: collapse; max-width: 960px; width: 100%; }
+  table.plain th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
+  table.plain td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; vertical-align: top; }
+  .asis { border: 1px dashed #b91c1c; border-radius: 8px; padding: 10px 12px; background: #ffffff; max-width: 960px; font-size: 13px; color: #374151; }
+  @media (max-width: 720px) { body { padding: 12px; } .paper { padding: 22px 18px; } .apply { grid-template-columns: 1fr 70px 84px 70px; } }
+</style>
+</head>
+<body>
+<h1>Sub papers: a work statement, a payment record and a statement of account</h1>
+<p class="lead">Punch list #350. Every company, sub, job, street, number and amount here is made up. The three papers are one set that adds up, drawn as the PDF pages a sub would be handed. Then the presses that make them, the send window, a payment over several papers, the sub's portal, and the names.</p>
+<div class="legend">
+  <span><span class="tie">A</span> the same figure on two papers</span>
+  <span><span class="c">purple, dashed</span><span class="cm">§</span> a sentence that waits on counsel's words</span>
+  <span class="muted">The names on the papers are the picks. The owner's words for them are in section 7.</span>
+</div>
+
+<div class="asis"><b style="color:#b91c1c">As it is today.</b> The only paper for a sub is the printed sub sheet: the job, the lines and a total. It has no number, no payments and no balance. A payment has no paper at all, and no number. One sending that pays several sheets is saved as one row per sheet, with the method typed into the memo. The sub's portal lists their open sheets and the last 90 days of payments, and its Print press prints that page. No paper covers a period, shows a sheet that is paid, or carries a number the office and the sub can both quote.</div>
+
+<h2>1. The three papers</h2>
+<div class="pair">
+  <div class="col">
+    <div class="label next">A · Work statement, one per sub sheet</div>
+    <div class="paper">
+      <div class="lh">
+        <div><div class="co">Your Company Name</div><div class="ad">Letterhead from Settings · 100 Example Way, Suite 4 · (555) 010-0100</div></div>
+        <div class="doc"><b>Work statement</b><span>No. WS-2041-1</span><span>Issued Nov 13, 2026</span></div>
+      </div>
+      <div class="who">
+        <div><i>Work done by</i><b>Harlan Mechanical</b><br>22 Foundry Row</div>
+        <div><i>Job</i><b>#2041 Cedar Hollow Clinic</b><br>418 Larkspur Ln · work dated Oct 28, 2026</div>
+      </div>
+      <table>
+        <tr><th>Work</th><th class="n">Amount</th></tr>
+        <tr><td>Rough-in</td><td class="n">$2,400.00</td></tr>
+        <tr><td>Top-out</td><td class="n">$1,800.00</td></tr>
+        <tr class="t"><td>Agreed for this work</td><td class="n">$4,200.00</td></tr>
+        <tr><td class="red">Back-charge, Nov 10, 2026 · cleanup after top-out</td><td class="n red">−$100.00</td></tr>
+        <tr class="t"><td>This statement comes to</td><td class="n">$4,100.00</td></tr>
+      </table>
+      <table style="margin-top:10px">
+        <tr><th>Paid on this statement</th><th>How</th><th>Payment record</th><th class="n">Amount</th></tr>
+        <tr><td>Oct 31, 2026 · part payment</td><td>Check 1182</td><td>PR-0226</td><td class="n grn">$1,500.00</td></tr>
+        <tr><td>Nov 12, 2026 · part payment</td><td>Zelle</td><td>PR-0231</td><td class="n grn">$1,000.00 <span class="tie">B</span></td></tr>
+        <tr class="t"><td colspan="3">Paid so far</td><td class="n">$2,500.00</td></tr>
+      </table>
+      <div class="big"><span>Still open on this statement</span><b>$1,600.00 <span class="tie">A</span></b></div>
+      <div class="fine"><span class="c">Your Company Name prepared this statement from its own records. It is not an invoice from Harlan Mechanical.</span><span class="cm">§</span></div>
+      <div class="box"><h4>Confirmed by the sub</h4>Harlan Mechanical confirmed revision 1 of this statement, at $4,200.00, on Nov 7, 2026 at 3:12 pm, from their portal. The back-charge of Nov 10 came after, and this revision has not been confirmed. <span class="c">By confirming, Harlan Mechanical agrees that the statement is its bill to Your Company Name for this work.</span><span class="cm">§</span></div>
+      <div class="fine"><span class="c">Payment follows the terms of the work order for this job.</span><span class="cm">§</span> Something wrong? Reply to the message this came with, or call the office.</div>
+      <div class="foot"><span>WS-2041-1 · revision 2 · replaces the copy of Oct 29</span><span>Page 1 of 1</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="label next">B · Payment record, one per sending</div>
+    <div class="paper">
+      <div class="lh">
+        <div><div class="co">Your Company Name</div><div class="ad">Letterhead from Settings · 100 Example Way, Suite 4 · (555) 010-0100</div></div>
+        <div class="doc"><b>Payment record</b><span>No. PR-0231</span><span>Sent Nov 12, 2026</span></div>
+      </div>
+      <div class="who">
+        <div><i>Paid to</i><b>Harlan Mechanical</b><br>22 Foundry Row</div>
+        <div><i>How it was sent</i><b>Zelle</b><br>Reference 8841 · recorded by the office Nov 12, 2026</div>
+      </div>
+      <div class="big"><span>Amount sent</span><b>$2,200.00</b></div>
+      <table>
+        <tr><th>Applied to</th><th class="n">Open before</th><th class="n">This payment</th><th class="n">Open after</th></tr>
+        <tr><td><b>WS-2041-2</b> · #2041 Cedar Hollow Clinic · Trim, work dated Nov 6<br><span style="color:#166534">Paid in full</span></td><td class="n">$1,200.00</td><td class="n grn">$1,200.00</td><td class="n">$0.00</td></tr>
+        <tr><td><b>WS-2041-1</b> · #2041 Cedar Hollow Clinic · Rough-in and top-out, work dated Oct 28<br><span style="color:#92400e">Part payment</span></td><td class="n">$2,600.00</td><td class="n grn">$1,000.00 <span class="tie">B</span></td><td class="n">$1,600.00 <span class="tie">A</span></td></tr>
+        <tr class="t"><td>Applied</td><td class="n"></td><td class="n">$2,200.00</td><td class="n"></td></tr>
+      </table>
+      <div class="box"><h4>After this payment</h4>
+        <table>
+          <tr><td>WS-2041-1 · Cedar Hollow Clinic</td><td class="n">$1,600.00</td></tr>
+          <tr><td>WS-2057-1 · Ridgeway Builders, Lot 12</td><td class="n">$2,500.00</td></tr>
+          <tr class="t"><td>Still open across 2 statements</td><td class="n">$4,100.00 <span class="tie">C</span></td></tr>
+        </table>
+      </div>
+      <div class="fine">Note from the office: Trim is paid in full. The rest of the rough-in goes out when the clinic's draw lands.</div>
+      <div class="fine"><span class="c">This record shows a payment Your Company Name sent. It is not a release or a waiver of any lien right. A waiver is a separate paper.</span><span class="cm">§</span></div>
+      <div class="box"><h4>Received</h4><span class="muted">Not marked yet. Harlan Mechanical can press Got it on their portal.</span></div>
+      <div class="foot"><span>PR-0231</span><span>Page 1 of 1</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="label next">C · Statement of account, one sub, a period</div>
+    <div class="paper">
+      <div class="lh">
+        <div><div class="co">Your Company Name</div><div class="ad">Letterhead from Settings · 100 Example Way, Suite 4 · (555) 010-0100</div></div>
+        <div class="doc"><b>Statement of account</b><span>No. SA-0058</span><span>Oct 1 to Nov 13, 2026</span></div>
+      </div>
+      <div class="who">
+        <div><i>Account of</i><b>Harlan Mechanical</b><br>22 Foundry Row</div>
+        <div><i>Prepared</i><b>Nov 13, 2026</b><br>All dates are Central time</div>
+      </div>
+      <div class="big"><span>Still open on Nov 13, 2026</span><b>$4,100.00 <span class="tie">C</span></b></div>
+      <table>
+        <tr><th>Statement · job</th><th class="n">Comes to</th><th class="n">Paid</th><th class="n">Open</th></tr>
+        <tr class="g"><td colspan="4">Brought forward from before Oct 1</td></tr>
+        <tr><td><b>WS-2033-1</b> · #2033 Alder Court Remodel<br><span class="muted">Paid in full Oct 3</span></td><td class="n">$1,800.00</td><td class="n">$1,800.00</td><td class="n">$0.00</td></tr>
+        <tr class="g"><td colspan="4">Work in this period</td></tr>
+        <tr><td><b>WS-2041-1</b> · #2041 Cedar Hollow Clinic<br><span class="muted">$4,200.00 agreed, less a $100.00 back-charge · 2 part payments</span></td><td class="n">$4,100.00</td><td class="n">$2,500.00</td><td class="n"><b>$1,600.00</b> <span class="tie">A</span></td></tr>
+        <tr><td><b>WS-2057-1</b> · #2057 Ridgeway Builders, Lot 12<br><span class="muted">Nothing paid yet</span></td><td class="n">$2,500.00</td><td class="n">—</td><td class="n"><b>$2,500.00</b></td></tr>
+        <tr><td><b>WS-2041-2</b> · #2041 Cedar Hollow Clinic<br><span class="muted">Paid in full Nov 12</span></td><td class="n">$1,200.00</td><td class="n">$1,200.00</td><td class="n">$0.00</td></tr>
+        <tr class="t"><td>Totals</td><td class="n">$9,600.00</td><td class="n">$5,500.00</td><td class="n">$4,100.00</td></tr>
+      </table>
+      <div class="box"><h4>Last payments</h4>
+        <table>
+          <tr><td>Nov 12, 2026</td><td>Zelle · ref 8841</td><td>PR-0231</td><td class="n grn">$2,200.00</td></tr>
+          <tr><td>Oct 31, 2026</td><td>Check 1182</td><td>PR-0226</td><td class="n grn">$1,500.00</td></tr>
+          <tr><td>Oct 3, 2026</td><td>Check 1167</td><td>PR-0212</td><td class="n grn">$1,800.00</td></tr>
+          <tr class="t"><td colspan="3">Paid in this period</td><td class="n">$5,500.00</td></tr>
+        </table>
+      </div>
+      <div class="box"><h4>How it adds up</h4>
+        Open on Oct 1 $1,800.00 + new work $7,900.00 − back-charges $100.00 − payments $5,500.00 = <b>$4,100.00</b>
+      </div>
+      <div class="fine">Paid to Harlan Mechanical in 2026 so far: $18,450.00. <span class="c">This figure is for your records. It is not a tax form.</span><span class="cm">§</span></div>
+      <div class="fine"><span class="c">Open amounts are paid under the terms of each job's work order.</span><span class="cm">§</span></div>
+      <div class="foot"><span>SA-0058 · 4 statements · 3 payments</span><span>Page 1 of 1</span></div>
+    </div>
+  </div>
+</div>
+<ol class="notes">
+  <li><span class="tie">A</span> $1,600.00 is what stays open on WS-2041-1. The work statement, the payment record and the statement of account all carry it.</li>
+  <li><span class="tie">B</span> The $1,000.00 part payment reads as a line on the work statement and as a row on the payment record.</li>
+  <li><span class="tie">C</span> $4,100.00 is what stays open in all. The payment record's foot and the statement of account's head agree.</li>
+  <li>A part payment says so in words, with the open amount before it and after it. A back-charge is a red line with its day and its reason, and it lowers what the statement comes to.</li>
+  <li>A changed sheet does not get a new number. WS-2041-1 becomes revision 2, and the old copy stays in the sent copies.</li>
+</ol>
+
+<h2>2. Where each paper is made</h2>
+<p class="lead">No new page. Each paper is a press where its row already is: a sheet, a payment, a sub. Jobs → Subs → Pay, the Ledger of card #347 and the open row of card #346 all get the same three presses.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label next">Jobs → Subs → Pay · a sheet's ⋯ menu and its payments</div>
+    <div class="page">
+      <div class="row"><b>Harlan Mechanical</b><span class="muted">3 sheets · with Dana Whitlock</span><span class="right"><b>owed $4,100.00</b><span class="btn">Statement of account…</span><span class="btn p">Record payment…</span></span></div>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:260px">
+          <div><span class="num">WS-2041-1</span> <b>#2041 Cedar Hollow Clinic</b> <span class="chip green">Confirmed Nov 7 · rev 1</span></div>
+          <div class="small">Agreed $4,200.00 · paid $2,500.00 · back-charged $100.00 · <b style="color:#111827">$1,600.00 due</b></div>
+          <div class="small" style="margin-top:6px">Payments</div>
+          <div class="row" style="padding:4px 0"><span>Oct 31</span><span class="muted">Check 1182</span><span class="num">PR-0226</span><span class="right"><b>$1,500.00</b><span class="btn">Payment record…</span></span></div>
+          <div class="row" style="padding:4px 0;border:none"><span>Nov 12</span><span class="muted">Zelle</span><span class="num">PR-0231</span><span class="chip grey">sent Nov 12</span><span class="right"><b>$1,000.00</b><span class="btn">Payment record…</span></span></div>
+        </div>
+        <div class="menu">
+          <div>Edit sheet</div>
+          <div class="new">Work statement…</div>
+          <div>Payment…</div>
+          <div>Back-charge…</div>
+          <div>Story…</div>
+          <div>Lien waiver…</div>
+          <div class="sep"></div>
+          <div class="muted" style="font-size:12px">Work statement… takes the place of Print.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">People → Subs · the open row of card #346</div>
+    <div class="page" style="width:520px">
+      <div class="row" style="border:none;padding-top:0"><b>What makes up $4,100.00</b><span class="muted">Harlan Mechanical</span><span class="right"><span class="btn">By date ›</span><span class="btn p">Statement of account…</span></span></div>
+      <div class="eq"><span>Comes to<b>$6,600.00</b></span><i>−</i><span>Paid<b>$2,500.00</b></span><i>=</i><span class="tot">Still open<b>$4,100.00</b></span></div>
+      <div class="row"><span class="num">WS-2041-1</span><span>Sheet of Oct 28</span><span class="right"><b>$1,600.00</b><span class="btn">Work statement…</span></span></div>
+      <div class="row" style="border:none"><span class="num">WS-2057-1</span><span>Sheet of Nov 3</span><span class="chip amber">Not sent to the sub</span><span class="right"><b>$2,500.00</b><span class="btn">Work statement…</span></span></div>
+      <div class="small">Statement of account… takes the place of card #346's Print statement. By date › is card #347's ledger for this sub.</div>
+    </div>
+  </div>
+</div>
+
+<h2>3. The window a press opens, and the send</h2>
+<div class="pair">
+  <div class="col">
+    <div class="label next">Statement of account… on a sub</div>
+    <div class="win" style="width:520px">
+      <h3>Statement of account · Harlan Mechanical</h3>
+      <div class="field"><div class="k">Period</div><div class="seg"><span class="on">Since the last statement</span><span>This month</span><span>This year</span><span>To date</span><span>Pick dates</span></div><div class="small" style="margin-top:3px">Oct 1 to Nov 13, 2026. The last statement, SA-0051, ended Sep 30.</div></div>
+      <div class="field"><div class="k">What it will show</div><div class="msg">4 work statements · 3 payments · 1 back-charge · <b>$4,100.00 still open</b><br><span class="small">1 sheet has no work statement yet (#2057, Nov 3). It gets WS-2057-1 when this is made.</span></div></div>
+      <div class="field"><div class="k">Attach</div><span class="attach">☑ Each open work statement (2)</span><span class="attach">☐ Payment records in the period (3)</span></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap"><span class="btn lg">Preview the PDF</span><span class="btn lg">Download</span><span class="btn lg p">Send to Harlan Mechanical…</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">Send to Harlan Mechanical…</div>
+    <div class="win">
+      <h3>Send the statement of account</h3>
+      <div class="field"><div class="k">To</div><div class="input">Harlan Mechanical · office@harlan-mechanical.example · (555) 010-0142</div></div>
+      <div class="field"><div class="k">By</div><div class="seg"><span class="on">Email</span><span>Text a link</span><span>Copy the link</span><span>Download</span></div><div class="small" style="margin-top:3px">Email carries the PDFs. A text carries a link to the same papers on the sub's page.</div></div>
+      <div class="field"><div class="k">They will get</div>
+        <div class="msg"><b>Your statement of account from Your Company Name</b><br>Hi Harlan Mechanical. Here is your statement for Oct 1 to Nov 13. We still have $4,100.00 open with you. Our last payment was $2,200.00 on Nov 12. The same papers are on your page: <u>open my page</u>.
+          <div><span class="attach">📎 SA-0058 Statement of account.pdf</span><span class="attach">📎 WS-2041-1.pdf</span><span class="attach">📎 WS-2057-1.pdf</span></div>
+        </div>
+      </div>
+      <div class="when"><b>When you press Send</b><br>1. The PDFs are made and numbered.<br>2. The email goes to Harlan Mechanical with the three files.<br>3. A copy is filed under Sent copies, on the sub and on each job.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><span class="btn lg">Cancel</span><span class="btn lg p">Send 3 papers by email</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">After Record payment</div>
+    <div class="win" style="width:360px">
+      <h3>Payment recorded · PR-0231</h3>
+      <div class="small">$2,200.00 by Zelle to Harlan Mechanical, on 2 statements.</div>
+      <div class="msg" style="margin-top:8px">The sub has not been sent a payment record. Their portal shows the payment now.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap"><span class="btn lg">Done</span><span class="btn lg p">Send the payment record…</span></div>
+      <div class="small" style="margin-top:8px">Sending is a press. Whether it should go by itself is the owner's call 4.</div>
+    </div>
+  </div>
+</div>
+
+<h2>4. One payment over several papers</h2>
+<p class="lead">This window belongs to card #347, whose PR #7992 rebuilds Record payment on the pay stubs' model. It is drawn here to say what the papers need from it: one sending, one number, and how much went to each sheet. Today one sending is saved as a row per sheet with nothing tying the rows together.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label other">Card #347's window, with what the papers need</div>
+    <div class="win" style="width:560px">
+      <h3>Record payment · Harlan Mechanical</h3>
+      <div class="small">3 open statements · $6,300.00 open</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div class="field"><div class="k">Amount sent</div><div class="input" style="width:110px"><b>$2,200.00</b></div></div>
+        <div class="field"><div class="k">Date sent</div><div class="input" style="width:110px">Nov 12, 2026</div></div>
+        <div class="field"><div class="k">How it was sent</div><div class="seg"><span>Check</span><span class="on">Zelle</span><span>Mercury</span><span>Cash</span></div></div>
+      </div>
+      <div class="field"><div class="k">Applied to</div>
+        <div class="seg" style="margin-bottom:6px"><span>Oldest first</span><span class="on">By hand</span></div>
+        <div class="apply">
+          <span class="h">Statement</span><span class="h r">Open</span><span class="h r">This payment</span><span class="h r">Stays open</span>
+          <span><span class="num">WS-2041-1</span> Cedar Hollow · Oct 28</span><span class="r">$2,600.00</span><span class="r"><span class="input" style="display:inline-block;margin:0;padding:3px 7px">$1,000.00</span></span><span class="r">$1,600.00</span>
+          <span><span class="num">WS-2057-1</span> Ridgeway Lot 12 · Nov 3</span><span class="r">$2,500.00</span><span class="r"><span class="input" style="display:inline-block;margin:0;padding:3px 7px;color:#9ca3af">$0.00</span></span><span class="r">$2,500.00</span>
+          <span><span class="num">WS-2041-2</span> Cedar Hollow · Nov 6</span><span class="r">$1,200.00</span><span class="r"><span class="input" style="display:inline-block;margin:0;padding:3px 7px">$1,200.00</span></span><span class="r">$0.00</span>
+        </div>
+        <div class="small" style="margin-top:6px"><span class="ok">$2,200.00 of $2,200.00 placed ✓</span> · part payment on WS-2041-1 · WS-2041-2 paid in full</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><span class="btn lg">Cancel</span><span class="btn lg p">Record $2,200.00 on 2 statements</span></div>
+    </div>
+  </div>
+  <div class="col" style="max-width:380px">
+    <div class="label">What this card asks of card #347</div>
+    <ol class="notes" style="margin-top:0">
+      <li>The method and its reference on a payment. PR #7992 adds both.</li>
+      <li>One sending recorded once, with a row per sheet tied to it.</li>
+      <li>A number per sending that is never reused. The payment record prints it.</li>
+      <li>A Date sent on every payment and a day on a back-charge.</li>
+      <li>The office note kept apart from the memo the sub reads.</li>
+    </ol>
+  </div>
+</div>
+
+<h2>5. The sub's portal</h2>
+<p class="lead">The sub sees their own papers and nobody else's. The portal is the live form of the statement of account. A memo the office hid from the sub stays off their papers, as it stays off the portal today. The amounts always show, so every paper adds up for them.</p>
+<div class="pair">
+  <div class="col">
+    <div class="label now">As it is</div>
+    <div class="page" style="width:420px">
+      <b style="font-size:15px">Harlan Mechanical</b>
+      <div class="tabs"><span class="on">Pay</span><span>Work</span><span>Papers to sign</span></div>
+      <div class="eq"><span>Earned<b>$27,950</b></span><span>Paid<b>$23,850</b></span><span class="tot">Open<b>$4,100</b></span></div>
+      <div class="card"><div class="row1"><b>#2041 · 418 Larkspur Ln</b><b>$1,600.00</b></div><div class="small">Paid $1,500.00 Oct 31 · $1,000.00 Nov 12</div></div>
+      <div class="card"><div class="row1"><b>#2057 · 77 Quarry Rd</b><b>$2,500.00</b></div><div class="small">Nothing paid yet</div></div>
+      <div style="margin-top:6px"><span class="btn">Print</span></div><div class="small" style="margin-top:6px">Open sheets only, and payments from the last 90 days. Print prints this page. No period, no paid sheets, no numbers, and nothing to confirm about an amount.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">Recommended · desktop</div>
+    <div class="page" style="width:560px">
+      <b style="font-size:15px">Harlan Mechanical</b>
+      <div class="tabs"><span>Pay</span><span>Work</span><span class="on">Statements</span><span>Papers to sign</span></div>
+      <div class="row" style="padding-top:0"><div><b>Statement of account</b><div class="small">To date, live. Still open: <b style="color:#111827">$4,100.00</b> · last payment $2,200.00 on Nov 12</div></div><span class="right"><span class="btn">Pick dates</span><span class="btn p">Save as PDF</span></span></div>
+      <div class="row"><span class="num">WS-2057-1</span><div><b>#2057 Ridgeway Builders, Lot 12</b><div class="small">Slab sleeves · comes to $2,500.00 · nothing paid</div></div><span class="right"><span class="btn">PDF</span><span class="btn p">Confirm $2,500.00</span><span class="btn">Something is wrong</span></span></div>
+      <div class="row"><span class="num">WS-2041-1</span><div><b>#2041 Cedar Hollow Clinic</b><div class="small">Comes to $4,100.00 · paid $2,500.00 · <b style="color:#111827">$1,600.00 open</b></div></div><span class="right"><span class="chip amber">Changed since you confirmed</span><span class="btn p">Confirm $4,100.00</span><span class="btn">PDF</span></span></div>
+      <div class="row"><span class="num">WS-2041-2</span><div><b>#2041 Cedar Hollow Clinic</b><div class="small">Trim · $1,200.00 · paid in full Nov 12</div></div><span class="right"><span class="chip grey">Paid</span><span class="btn">PDF</span></span></div>
+      <div style="font-weight:700;margin:12px 0 2px">Payments</div>
+      <div class="row"><span class="num">PR-0231</span><span>Nov 12 · Zelle</span><span class="muted">on WS-2041-2 and WS-2041-1</span><span class="right"><b>$2,200.00</b><span class="btn">PDF</span><span class="btn">Got it</span></span></div>
+      <div class="row" style="border:none"><span class="num">PR-0226</span><span>Oct 31 · Check 1182</span><span class="muted">on WS-2041-1</span><span class="right"><b>$1,500.00</b><span class="chip green">Received</span><span class="btn">PDF</span></span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label next">Recommended · phone</div>
+    <div class="phone"><div class="page">
+      <b style="font-size:15px">Harlan Mechanical</b>
+      <div class="tabs"><span>Pay</span><span>Work</span><span class="on">Statements</span></div>
+      <div class="card"><div class="row1"><b>Still open</b><b style="font-size:17px">$4,100.00</b></div><div class="small">Last payment $2,200.00 on Nov 12</div><div style="margin-top:6px"><span class="btn p">Statement of account PDF</span></div></div>
+      <div class="card"><div class="row1"><span><span class="num">WS-2057-1</span> Ridgeway Lot 12</span><b>$2,500.00</b></div><div class="small">Slab sleeves · nothing paid</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="btn p">Confirm $2,500.00</span><span class="btn">Something is wrong</span><span class="btn">PDF</span></div></div>
+      <div class="card"><div class="row1"><span><span class="num">WS-2041-1</span> Cedar Hollow</span><b>$1,600.00</b></div><div class="small">Comes to $4,100.00 · paid $2,500.00</div><div style="margin-top:6px"><span class="chip amber">Changed since you confirmed</span> <span class="btn p">Confirm $4,100.00</span> <span class="btn">PDF</span></div></div>
+      <div class="card"><div class="row1"><span><span class="num">PR-0231</span> Nov 12 · Zelle</span><b>$2,200.00</b></div><div class="small">$1,200.00 on WS-2041-2 · $1,000.00 on WS-2041-1</div><div style="margin-top:6px"><span class="btn">Got it</span> <span class="btn">PDF</span></div></div>
+    </div></div>
+  </div>
+</div>
+
+<h2>6. The office sees what the sub was given</h2>
+<div class="pair">
+  <div class="col">
+    <div class="label next">Sent copies, on the sub and on the job</div>
+    <div class="page" style="width:680px">
+      <div class="row" style="padding-top:0"><span class="num">SA-0058</span><b>Statement of account</b><span class="muted">Oct 1 to Nov 13 · $4,100.00 open</span><span class="right"><span class="chip blue">Emailed Nov 13, 2:40 pm</span><span class="btn">Open the copy</span></span></div>
+      <div class="row"><span class="num">PR-0231</span><b>Payment record</b><span class="muted">$2,200.00 · Zelle</span><span class="right"><span class="chip blue">Link texted Nov 12, 4:05 pm</span><span class="chip grey">Not marked received</span><span class="btn">Open the copy</span></span></div>
+      <div class="row"><span class="num">WS-2041-1</span><b>Work statement</b><span class="muted">revision 2 · $4,100.00</span><span class="right"><span class="chip blue">Emailed Nov 13, 2:40 pm</span><span class="chip green">Confirmed Nov 7 (rev 1)</span><span class="btn">Open the copy</span></span></div>
+      <div class="row" style="border:none"><span class="num">WS-2041-1</span><b>Work statement</b><span class="muted">revision 1 · $4,200.00</span><span class="right"><span class="chip grey">Replaced Nov 13</span><span class="btn">Open the copy</span></span></div>
+      <div class="small">A copy is the PDF as it left, never redrawn. A back-charge after the sub confirmed makes a new revision, and the chip says which one they confirmed.</div>
+    </div>
+  </div>
+</div>
+
+<h2>7. The names</h2>
+<table class="plain">
+  <tr><th>The owner's word</th><th>The name on the paper (the pick)</th><th>Why</th><th>When it becomes the owner's word</th></tr>
+  <tr><td>Reverse invoice</td><td><b>Work statement</b></td><td>We wrote it from our records. An invoice is the seller's paper. Calling ours their invoice puts words in the sub's mouth.</td><td>Once the sub confirms it, if counsel agrees that makes it their bill.</td></tr>
+  <tr><td>Payment receipt</td><td><b>Payment record</b></td><td>A receipt is the word of the one who received. We can say we sent money. Only the sub can say they got it.</td><td>Once the sub presses Got it, the paper reads Received, with the day.</td></tr>
+  <tr><td>Statement of account, pay due report</td><td><b>Statement of account</b></td><td>It is the usual name, and it claims nothing but our own books.</td><td>As it is.</td></tr>
+  <tr><td>What we still owe them</td><td><b>Still open</b></td><td>Owed can read as due today. Much of it waits on a customer's payment or an inspection.</td><td>Counsel's word for it.</td></tr>
+</table>
+</body>
+</html>
