@@ -153,18 +153,25 @@ const mbWords = (bytes: number): string => `${Math.round(bytes / MB)} MB`
  * Whether a link hands out an upload address for this file. `counts` is what the link already holds: the photos and
  * videos that arrived, and the addresses it was ever handed for each kind. Null means yes.
  */
-export function firstLookSignRefusal(file: { mime: string | null | undefined; bytes: number }, counts: FirstLookCounts): FirstLookRefusal | null {
+export function firstLookSignRefusal(file: { mime: string | null | undefined; bytes: number }, counts: FirstLookCounts, lang: FirstLookLang = 'en'): FirstLookRefusal | null {
+  const es = lang === 'es'
   const kind = firstLookKindOfMime(file.mime)
-  if (!kind) return { code: 'kind', words: 'Only photos and videos can be sent here.' }
-  if (!Number.isFinite(file.bytes) || file.bytes <= 0) return { code: 'empty', words: 'That file is empty. Pick it again.' }
-  const full: FirstLookRefusal = { code: 'signs-full', words: 'This link has taken all it can. Call the office and we will send a new one.' }
+  if (!kind) return { code: 'kind', words: es ? 'Aquí solo se pueden enviar fotos y videos.' : 'Only photos and videos can be sent here.' }
+  if (!Number.isFinite(file.bytes) || file.bytes <= 0) return { code: 'empty', words: es ? 'Ese archivo está vacío. Elíjalo otra vez.' : 'That file is empty. Pick it again.' }
+  const full: FirstLookRefusal = { code: 'signs-full', words: es ? 'Este enlace ya recibió todo lo que puede. Llame a la oficina y le enviamos uno nuevo.' : 'This link has taken all it can. Call the office and we will send a new one.' }
   if (kind === 'photo') {
-    if (file.bytes > FIRST_LOOK_CAPS.photoBytes) return { code: 'photo-big', words: `That photo is too big to send. The most is ${mbWords(FIRST_LOOK_CAPS.photoBytes)}.` }
-    if (counts.photos >= FIRST_LOOK_CAPS.photos) return { code: 'photos-full', words: `This link takes ${FIRST_LOOK_CAPS.photos} photos, and it has them.` }
+    if (file.bytes > FIRST_LOOK_CAPS.photoBytes) {
+      const most = mbWords(FIRST_LOOK_CAPS.photoBytes)
+      return { code: 'photo-big', words: es ? `Esa foto es muy grande para enviar. Lo más es ${most}.` : `That photo is too big to send. The most is ${most}.` }
+    }
+    if (counts.photos >= FIRST_LOOK_CAPS.photos) return { code: 'photos-full', words: es ? `Este enlace recibe ${FIRST_LOOK_CAPS.photos} fotos, y ya las tiene.` : `This link takes ${FIRST_LOOK_CAPS.photos} photos, and it has them.` }
     return counts.photoSigns >= FIRST_LOOK_CAPS.photoSigns ? full : null
   }
-  if (file.bytes > FIRST_LOOK_CAPS.videoBytes) return { code: 'video-big', words: `That video is too big to send. The most is ${mbWords(FIRST_LOOK_CAPS.videoBytes)}, about 20 to 40 seconds. Take a shorter one.` }
-  if (counts.videos >= FIRST_LOOK_CAPS.videos) return { code: 'videos-full', words: `This link takes ${FIRST_LOOK_CAPS.videos} videos, and it has them.` }
+  if (file.bytes > FIRST_LOOK_CAPS.videoBytes) {
+    const most = mbWords(FIRST_LOOK_CAPS.videoBytes)
+    return { code: 'video-big', words: es ? `Ese video es muy grande para enviar. Lo más es ${most}, unos 20 a 40 segundos. Tome uno más corto.` : `That video is too big to send. The most is ${most}, about 20 to 40 seconds. Take a shorter one.` }
+  }
+  if (counts.videos >= FIRST_LOOK_CAPS.videos) return { code: 'videos-full', words: es ? `Este enlace recibe ${FIRST_LOOK_CAPS.videos} videos, y ya los tiene.` : `This link takes ${FIRST_LOOK_CAPS.videos} videos, and it has them.` }
   return counts.videoSigns >= FIRST_LOOK_CAPS.videoSigns ? full : null
 }
 
@@ -214,21 +221,31 @@ export function firstLookExpiry(nowIso: string): string {
 
 export const FIRST_LOOK_COMPANY = 'Click Plumbing'
 
+/** The page reads in English or in Spanish (punch list #319 PR 4b). */
+export type FirstLookLang = 'en' | 'es'
+
+/** The page's language from the phone's own: Spanish for a phone set to Spanish, English for every other. */
+export function firstLookLangOf(tag: string | null | undefined): FirstLookLang {
+  return /^es(?:[-_]|$)/i.test((tag ?? '').trim()) ? 'es' : 'en'
+}
+
 /** The first word of a name, for *Rosa asked for a look*. Empty when there is no name. */
 export function firstNameOf(name: string | null | undefined): string {
   return (name ?? '').trim().split(/\s+/)[0] ?? ''
 }
 
 /** *3 photos and 1 video*, *1 photo*, *2 videos*, or empty for nothing. */
-export function firstLookCountWords(photos: number, videos: number): string {
-  const p = photos > 0 ? `${photos} ${photos === 1 ? 'photo' : 'photos'}` : ''
+export function firstLookCountWords(photos: number, videos: number, lang: FirstLookLang = 'en'): string {
+  const es = lang === 'es'
+  const p = photos > 0 ? `${photos} ${photos === 1 ? (es ? 'foto' : 'photo') : es ? 'fotos' : 'photos'}` : ''
   const v = videos > 0 ? `${videos} ${videos === 1 ? 'video' : 'videos'}` : ''
-  return p && v ? `${p} and ${v}` : p || v
+  return p && v ? `${p} ${es ? 'y' : 'and'} ${v}` : p || v
 }
 
 /** The page's opening line under its heading. */
-export function firstLookAskedWords(askedBy: string): string {
+export function firstLookAskedWords(askedBy: string, lang: FirstLookLang = 'en'): string {
   const who = firstNameOf(askedBy)
+  if (lang === 'es') return `${who ? `${who} pidió verlo.` : 'Pedimos verlo.'} Agregue unas fotos o un video corto. Le damos el precio antes de ir.`
   return `${who ? `${who} asked for a look.` : 'We asked for a look.'} Add a few photos or a short video. We price it before we come out.`
 }
 
@@ -271,17 +288,123 @@ export const FIRST_LOOK_WORDS = {
   notFoundBody: 'Check that the whole link came through in the text, or call the office.',
   lockedHead: 'Too many tries',
   lockedBody: 'This phone has tried too many links that open nothing. Wait an hour, or call the office.',
+  noSignalHead: 'This phone has no signal right now',
+  noSignalBody: 'The link needs a signal once, to open. Try again when you have one.',
+  notOpenedHead: 'The page did not open',
+  notOpenedBody: 'Something went wrong on our side. Try again, or call the office.',
+  tryAgain: 'Try again',
+  happensNext: 'What happens next',
+  alreadyHas: (count: string) => `This link already has ${count} from you. Add more below.`,
+  inNotSent: (count: string, files: number) => `Your ${count} ${files === 1 ? 'is' : 'are'} in, and not sent to us yet.`,
+  sendingNow: 'Sending…',
+  send: (count: string) => `Send ${count}`,
+  inCount: (count: string) => `${count} in`,
+  keptCount: (count: string, waiting: boolean) => `${count} ${waiting ? 'kept' : 'sending'}`,
+  nothingYet: 'Nothing in yet',
+  fileIn: 'In',
+  leftOut: 'Left out',
+  fileSending: (sent: string, of: string) => `Sending · ${sent} of ${of}`,
+  keptOnPhone: 'Kept on this phone',
+  nextToGo: 'Next to go',
+  photo: 'Photo',
+  video: 'Video',
+  holdsWhileOpen: 'Keep this page open. This browser holds them only while the page is open.',
+  notPhoto: (name: string) => `${name || 'That file'} is not a photo or a video, so it was left out.`,
+  pressAgain: 'Press it again in a moment.',
+  /** The press that changes the page's language reads in the other one. */
+  switchTo: 'Español',
 } as const
 
+type Widen<T> = T extends string ? string : T extends readonly string[] ? readonly string[] : T extends (...a: infer A) => string ? (...a: A) => string : never
+
+/** The page's words in one language: every key of the English table, its literal types widened. */
+export type FirstLookWordsTable = { readonly [K in keyof typeof FIRST_LOOK_WORDS]: Widen<(typeof FIRST_LOOK_WORDS)[K]> }
+
+/**
+ * The page in Spanish (punch list #319 PR 4b), in the formal voice a company uses with a customer. The owner's own
+ * line is translated whole. A place keeps its order, so the office is sent the English name of the one picked.
+ */
+export const FIRST_LOOK_WORDS_ES: FirstLookWordsTable = {
+  heading: 'Muéstrenos el problema',
+  takePhoto: 'Tomar una foto',
+  takeVideo: 'Tomar un video',
+  choose: 'Elegir de su teléfono',
+  tipsHead: 'Lo que más nos ayuda',
+  tips: ['Todo el lugar, desde un paso atrás.', 'Un acercamiento de la fuga o de la pieza rota.', 'La etiqueta del calentador de agua o del aparato.', 'Un video de 10 a 20 segundos si gotea, corre o hace ruido.'],
+  why: 'Entre más información nos dé, y mejor sea la calidad de las fotos y los videos, más exactos podemos ser. Así le damos el mejor servicio, y menos viajes significan un mejor precio.',
+  only: 'Solo Click Plumbing ve lo que usted envía.',
+  emergency: '¿Hay agua corriendo ahora? Cierre la llave principal y llame al',
+  placeHead: '¿Dónde está?',
+  places: ['Cocina', 'Baño', 'Calentador de agua', 'Afuera', 'Otro lugar'],
+  wordsHead: '¿Qué está pasando?',
+  wordsHint: 'si quiere',
+  keepOpen: 'Deje esta página abierta. Si se va la señal, sigue donde se quedó.',
+  kept: 'Guardado en este teléfono.',
+  noSignal: 'No hay señal ahora. Se envía cuando vuelva la señal.',
+  keptLater: 'Deje esta página abierta si puede. Si se cierra, abra el enlace otra vez y siguen aquí por 7 días.',
+  tryNow: 'Intentar ahora',
+  waitsForSignal: 'Se envía cuando vuelva la señal',
+  wayRound: '¿No funciona esta página?',
+  wayRoundRest: 'Responda a nuestro mensaje con las fotos. Nos llegan igual.',
+  more: 'Agregar más fotos o video',
+  closeTab: 'Puede cerrar esta página.',
+  closedHead: 'Este enlace está cerrado',
+  closedBody: 'Ya no recibe fotos. Llame a la oficina y le enviamos uno nuevo.',
+  expiredHead: 'Este enlace ya venció',
+  expiredBody: 'Un enlace recibe fotos por 7 días. Llame a la oficina y le enviamos uno nuevo.',
+  notFoundHead: 'Este enlace no abre nada',
+  notFoundBody: 'Revise que el enlace completo llegó en el mensaje, o llame a la oficina.',
+  lockedHead: 'Demasiados intentos',
+  lockedBody: 'Este teléfono probó demasiados enlaces que no abren nada. Espere una hora, o llame a la oficina.',
+  noSignalHead: 'Este teléfono no tiene señal ahora',
+  noSignalBody: 'El enlace necesita señal una vez, para abrir. Intente otra vez cuando tenga.',
+  notOpenedHead: 'La página no abrió',
+  notOpenedBody: 'Algo falló de nuestro lado. Intente otra vez, o llame a la oficina.',
+  tryAgain: 'Intentar otra vez',
+  happensNext: 'Qué sigue',
+  alreadyHas: (count) => `Este enlace ya tiene ${count} de usted. Agregue más abajo.`,
+  inNotSent: (count, files) => `Ya tenemos ${count} aquí, y aún no se ${files === 1 ? 'ha' : 'han'} enviado.`,
+  sendingNow: 'Enviando…',
+  send: (count) => `Enviar ${count}`,
+  inCount: (count) => `${count} aquí`,
+  keptCount: (count, waiting) => `${count} ${waiting ? 'en el teléfono' : 'enviándose'}`,
+  nothingYet: 'Nada todavía',
+  fileIn: 'Recibido',
+  leftOut: 'No se incluyó',
+  fileSending: (sent, of) => `Enviando · ${sent} de ${of}`,
+  keptOnPhone: 'Guardado en este teléfono',
+  nextToGo: 'Sigue en la fila',
+  photo: 'Foto',
+  video: 'Video',
+  holdsWhileOpen: 'Deje esta página abierta. Este navegador las guarda solo mientras la página está abierta.',
+  notPhoto: (name) => `${name || 'Ese archivo'} no es una foto ni un video, así que no se incluyó.`,
+  pressAgain: 'Presione otra vez en un momento.',
+  switchTo: 'English',
+}
+
+/** The page's words in a language. */
+export function firstLookWords(lang: FirstLookLang): FirstLookWordsTable {
+  return lang === 'es' ? FIRST_LOOK_WORDS_ES : FIRST_LOOK_WORDS
+}
+
+/** A place as the office keeps it: the English name of the one picked, whatever language the page drew it in. */
+export function firstLookPlaceKept(lang: FirstLookLang, shown: string | null | undefined): string | null {
+  const at = firstLookWords(lang).places.indexOf(shown ?? '')
+  return at < 0 ? (shown?.trim() || null) : (FIRST_LOOK_WORDS.places[at] ?? null)
+}
+
 /** The send press: *Send 3 photos and 1 video*, or why it waits. */
-export function firstLookSendLabel(input: { photos: number; videos: number; sending: number; percent: number | null; waitingForSignal: boolean }): { label: string; ready: boolean } {
-  if (input.waitingForSignal) return { label: FIRST_LOOK_WORDS.waitsForSignal, ready: false }
+export function firstLookSendLabel(input: { photos: number; videos: number; sending: number; percent: number | null; waitingForSignal: boolean }, lang: FirstLookLang = 'en'): { label: string; ready: boolean } {
+  const es = lang === 'es'
+  const W = firstLookWords(lang)
+  if (input.waitingForSignal) return { label: W.waitsForSignal, ready: false }
   if (input.sending > 0) {
-    const what = input.sending === 1 ? 'one file' : `${input.sending} files`
-    return { label: input.percent == null ? `Waiting for ${what}` : `Waiting for ${what}, ${input.percent}%`, ready: false }
+    const what = input.sending === 1 ? (es ? 'un archivo' : 'one file') : `${input.sending} ${es ? 'archivos' : 'files'}`
+    const waiting = es ? `Esperando ${what}` : `Waiting for ${what}`
+    return { label: input.percent == null ? waiting : `${waiting}, ${input.percent}%`, ready: false }
   }
-  const count = firstLookCountWords(input.photos, input.videos)
-  return count ? { label: `Send ${count}`, ready: true } : { label: 'Add a photo or a video first', ready: false }
+  const count = firstLookCountWords(input.photos, input.videos, lang)
+  return count ? { label: W.send(count), ready: true } : { label: es ? 'Agregue primero una foto o un video' : 'Add a photo or a video first', ready: false }
 }
 
 export type FirstLookThanks = { got: string; steps: string[] }
@@ -290,8 +413,20 @@ export type FirstLookThanks = { got: string; steps: string[] }
  * The thank-you: what arrived, and a promise that is only the office's own hours. `closesWords` is the day's closing
  * time (*5 PM*) while the office is open; `opensWords` is when it next opens (*tomorrow at 7:30 AM*) while it is not.
  */
-export function firstLookThanks(input: { askedBy: string; photos: number; videos: number; officeOpen: boolean; closesWords: string | null; opensWords: string | null }): FirstLookThanks {
+export function firstLookThanks(input: { askedBy: string; photos: number; videos: number; officeOpen: boolean; closesWords: string | null; opensWords: string | null; lang?: FirstLookLang }): FirstLookThanks {
   const who = firstNameOf(input.askedBy)
+  if (input.lang === 'es') {
+    // The office's hours are kept as English words (*5 PM*, *tomorrow at 7:30 AM*), so the Spanish promise names no clock.
+    const count = firstLookCountWords(input.photos, input.videos, 'es')
+    return {
+      got: who ? `Recibido. ${who} tiene ${count}.` : `Recibido. Tenemos ${count}.`,
+      steps: [
+        input.officeOpen ? `${who || 'La oficina'} las revisa hoy.` : 'Las revisamos en cuanto abra la oficina.',
+        'Le escribimos a este número con un precio o una hora para ir.',
+        'El técnico confirma el precio en su casa antes de empezar cualquier trabajo.',
+      ],
+    }
+  }
   const count = firstLookCountWords(input.photos, input.videos)
   const got = who ? `Got it. ${who} has your ${count}.` : `Got it. We have your ${count}.`
   const looks = input.officeOpen

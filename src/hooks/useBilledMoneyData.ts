@@ -12,6 +12,8 @@ import { openClaimByJob, type PaidClaim } from '../lib/jobs/paidClaims'
 import { loadPaidClaims } from '../lib/jobs/paidClaimsIo'
 import type { PaceFacts } from '../lib/jobs/payPace'
 import { loadPaceFacts } from '../lib/jobs/payPaceIo'
+import { indexPayCalendars, type PayCalendarIndex } from '../lib/jobs/payCalendar'
+import { loadPayCalendars } from '../lib/jobs/payCalendarIo'
 import {
   buildCustomerPromiseRecords,
   classifyPromises,
@@ -41,6 +43,9 @@ export type BilledMoneyData = {
   loadChaseTouches: () => Promise<void>
   /** Decision 1's facts (v2.6034): the customers that are GCs by record and the jobs with a live pay application; null until read. */
   paceFacts: PaceFacts | null
+  /** The stored Pay calendars (punch list #323), keyed for `calendarFor`; null until read. A payer on one reads Due on its billed rows. */
+  payCalendars: PayCalendarIndex | null
+  loadPayCalendars: () => Promise<void>
 }
 
 /**
@@ -48,7 +53,8 @@ export type BilledMoneyData = {
  * (moved out of JobsStagesTab, punch list #46 row 2): customer pay speeds,
  * promised pay dates (and, since v2.6695, the open paid claims beside them),
  * the per-customer promise record, the chase call log
- * and, since v2.6034, the GC facts the pace rule reads (`loadPaceFacts`).
+ * and, since v2.6034, the GC facts the pace rule reads (`loadPaceFacts`),
+ * and the stored Pay calendars (`loadPayCalendars`, punch list #323).
  * Each loads at mount when its gate allows and exposes its reloader for the
  * windows that change it. All fail-soft — a glanceable extra never blocks
  * the page: an RPC error (including a not-yet-deployed function) leaves the
@@ -149,6 +155,21 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     }
   }, [canSeeBilledExpectedPay])
 
+  // The Pay calendars (punch list #323): a payer who pays on a set day of the month reads Due on its rows. Fail-soft:
+  // a read that fails, or a table not pushed yet, leaves every row on the pace guess.
+  const [payCalendars, setPayCalendars] = useState<PayCalendarIndex | null>(null)
+  const reloadPayCalendars = useCallback(async () => {
+    if (!canSeeBilledExpectedPay) return
+    try {
+      setPayCalendars(indexPayCalendars(await loadPayCalendars(supabase)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canSeeBilledExpectedPay])
+  useEffect(() => {
+    void reloadPayCalendars()
+  }, [reloadPayCalendars])
+
   return {
     billedPaySpeeds,
     refreshBilledPaySpeeds,
@@ -161,5 +182,7 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     chaseTouches,
     loadChaseTouches,
     paceFacts,
+    payCalendars,
+    loadPayCalendars: reloadPayCalendars,
   }
 }

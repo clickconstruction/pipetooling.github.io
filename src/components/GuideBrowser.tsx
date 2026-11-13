@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { HELP_GUIDES } from '../lib/helpGuideRegistry'
 import { HELP_GUIDE_URL_PARAM as GUIDE_PARAM } from '../lib/helpGuideUrlParam'
+import { currentHelpGuideSlug } from '../lib/helpGuideFormerSlugs'
 import {
   groupGuidesByCategory,
   guideIsRelevantForRole,
@@ -75,7 +76,9 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   const [lensRole, setLensRole] = useState<UserRole | null>(null)
   const lensRoles = guideLensRolesFor(role)
 
-  const selectedSlug = searchParams.get(GUIDE_PARAM)
+  // A renamed guide's old address still opens it (v2.7050): the slug read here is the one that answers today.
+  const askedSlug = searchParams.get(GUIDE_PARAM)
+  const selectedSlug = askedSlug ? currentHelpGuideSlug(askedSlug) : null
   const selectedGuide = selectedSlug
     ? HELP_GUIDES.find((g) => g.slug === selectedSlug) ?? null
     : null
@@ -83,7 +86,8 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   // One row per open (punch list #187 PR 1, v2.5897): `guide_opened` with the door the address names
   // (`?via=`), or `guide_missing` for a slug no guide answers. The slug is the key, so a re-render and
   // React's double effect never write twice, and the door is then taken off the address: a copied
-  // address carries the guide, not the press that opened it for someone else.
+  // address carries the guide, not the press that opened it for someone else. An old slug leaves the
+  // address the same way (v2.7050), so the address a person copies carries the name that lasts.
   const recordedOpen = useRef<string | null>(null)
   useEffect(() => {
     if (!selectedSlug) {
@@ -94,12 +98,14 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
     recordedOpen.current = selectedSlug
     const ev = guideOpenEvent(selectedSlug, selectedGuide !== null, searchParams.get(GUIDE_DOOR_PARAM))
     recordNavClick(user?.id, role, ev.control, ev.target)
-    if (searchParams.has(GUIDE_DOOR_PARAM)) {
+    const renamed = askedSlug !== selectedSlug
+    if (searchParams.has(GUIDE_DOOR_PARAM) || renamed) {
       const next = new URLSearchParams(searchParams)
       next.delete(GUIDE_DOOR_PARAM)
+      if (renamed) next.set(GUIDE_PARAM, selectedSlug)
       setSearchParams(next, { replace: true })
     }
-  }, [selectedSlug, selectedGuide, searchParams, setSearchParams, user?.id, role])
+  }, [askedSlug, selectedSlug, selectedGuide, searchParams, setSearchParams, user?.id, role])
 
   // Office roles already see everything; the toggle only matters for scoped roles.
   const seesAllByDefault =

@@ -1,7 +1,8 @@
 /**
  * The paper a customer receives, built from the sample fixture by the app's own builders
  * (v2.3509, PRs 3+5 of the What-customers-see train): the bill by email, the hazmat notice, the
- * final demand letter, the § 53.056 notice to the owner of record, and the lien release. Each
+ * final demand letter, the § 53.056 notice to the owner of record, the lien release, and the rest of the lien
+ * letters (`lienLetterSamples.ts`). Each
  * sample gives an HTML preview the tab can frame at once and a `pdf()` that builds the same
  * document the customer would open — the PDF builders load lazily so Settings stays light.
  *
@@ -9,17 +10,20 @@
  * and say so in the memo lines.
  */
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
-import { SAMPLE_GC, SAMPLE_HOMEOWNER, ymdPlusDays } from '../customerSample'
+import { SAMPLE_HOMEOWNER, ymdPlusDays } from '../customerSample'
 import { buildPhysicalInvoiceDocument, buildPhysicalInvoiceEmailBodies, physicalInvoiceEmailSubject, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildHazmatFeeNoticeHtml, type HazmatNoticeJobInfo } from '../jobsDocuments/hazmatFeeNotice'
 import type { HazmatIncidentDraft } from '../hazmatFee'
 import { buildDemandLetterPrintHtml, type DemandLetterFields } from '../jobsDocuments/demandLetter'
-import { buildLienNoticeBlocks, filingDocPrintHtml, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import { sampleLetterTwo, sampleLienAffidavit, sampleLienCoverLetter, sampleOwnerNotice, sampleReleaseOfRecord, sampleRetainageNotice } from './lienLetterSamples'
 import { buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverFootLines, lienWaiverTitle, type LienWaiverFields, type LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
 
-export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release'
+/** The lien group's own papers (punch list #326) are built in `lienLetterSamples.ts`, on one made-up unpaid job. */
+export { SAMPLE_OWNER, sampleOwnerNotice, sampleOwnerNoticeInputs } from './lienLetterSamples'
 
-export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release']
+export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release' | 'lien-cover-letter' | 'lien-letter-paid-out' | 'lien-letter-quiet' | 'lien-affidavit' | 'lien-release-of-record' | 'lien-retainage'
+
+export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release', 'lien-cover-letter', 'lien-letter-paid-out', 'lien-letter-quiet', 'lien-affidavit', 'lien-release-of-record', 'lien-retainage']
 
 export type PaperSample = {
   /** The document's name, as the office knows it. */
@@ -149,40 +153,6 @@ export function sampleDemandLetter(todayYmd: string): PaperSample {
   }
 }
 
-export const SAMPLE_OWNER = { name: 'Sample Owner LLC', project: 'Cedar Bend Apartments, 4400 Sample Pkwy, Kyle, TX 78640' } as const
-
-export function sampleOwnerNoticeInputs(todayYmd: string): { fields: LienNoticeFields; extras: FilingDocExtras } {
-  return {
-    fields: {
-      noticeDate: todayYmd,
-      projectDescription: SAMPLE_OWNER.project,
-      claimantName: PORTAL_COMPANY.name,
-      laborMaterialsType: 'Plumbing labor and materials',
-      originalContractorName: SAMPLE_GC.company,
-      contractedWithIfDifferent: '',
-      claimAmount: '12,400.00',
-      contactPerson: `The office · ${PORTAL_COMPANY.phone}`,
-      claimantAddress: `${PORTAL_COMPANY.name}, Kyle, TX`,
-    },
-    extras: {
-      letterhead: { company: PORTAL_COMPANY.name, licenseLine: PORTAL_COMPANY.licenseLine, contactLines: [PORTAL_COMPANY.phone] },
-      refItems: [`Re: ${SAMPLE_OWNER.project}`, `Original contractor: ${SAMPLE_GC.company}`, `Unpaid: ${ymdPlusDays(todayYmd, -60).slice(0, 7)}`],
-    },
-  }
-}
-
-export function sampleOwnerNotice(todayYmd: string): PaperSample {
-  const { fields, extras } = sampleOwnerNoticeInputs(todayYmd)
-  const blocks = buildLienNoticeBlocks(fields, extras)
-  return {
-    title: 'Notice of Claim for Unpaid Labor or Materials (§ 53.056)',
-    subject: `Notice of claim — ${SAMPLE_OWNER.project}`,
-    html: filingDocPrintHtml(blocks, 'Notice of Claim for Unpaid Labor or Materials'),
-    filename: 'Notice-53-056-sample.pdf',
-    pdf: async () => (await import('../jobsDocuments/lienFilingDocuments')).filingDocPdfBlob(blocks),
-  }
-}
-
 export function sampleLienReleaseInputs(todayYmd: string): { formType: LienWaiverFormType; fields: LienWaiverFields } {
   return {
     formType: 'unconditional_final',
@@ -226,5 +196,17 @@ export function paperSample(id: PaperId, todayYmd: string): PaperSample {
       return sampleOwnerNotice(todayYmd)
     case 'lien-release':
       return sampleLienRelease(todayYmd)
+    case 'lien-cover-letter':
+      return sampleLienCoverLetter(todayYmd)
+    case 'lien-letter-paid-out':
+      return sampleLetterTwo('paid_out', todayYmd)
+    case 'lien-letter-quiet':
+      return sampleLetterTwo('unresponsive', todayYmd)
+    case 'lien-affidavit':
+      return sampleLienAffidavit(todayYmd)
+    case 'lien-release-of-record':
+      return sampleReleaseOfRecord(todayYmd)
+    case 'lien-retainage':
+      return sampleRetainageNotice(todayYmd)
   }
 }

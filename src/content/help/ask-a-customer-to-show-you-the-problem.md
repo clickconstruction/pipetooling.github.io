@@ -14,7 +14,7 @@ The record is called a First look. It sits above the person's messages until you
 
 1. Open the person's thread in [Messages](/messages).
 2. Press into the reply box and choose **Text**.
-3. Press {{button:outline|Ask for photos}} over the box. The line goes in with your name and a link made for this person.
+3. Press {{button:outline|Ask for photos}} at the right of the Text row. The line goes in with your name and a link made for this person.
 4. Read the line. Change any words you like.
 5. Press {{button:blue|Send text}}.
 
@@ -24,9 +24,9 @@ You can type it too. `/show`, `/photo` and `/video` open the same ask.
 
 ## The three presses over the box
 
-On a text to a customer, a lead or a new number, three presses sit over the reply box.
+Three presses sit at the right of the Text, Email, Note and Call row. They show on a text to a customer, a lead or a new number.
 
-:::example Over the reply box
+:::example At the right of the Text row
 
 Send Dana {{button:outline|Ask for photos}} {{button:outline|An estimate}} {{button:outline|A bill}}
 
@@ -47,6 +47,8 @@ The link opens a page named *Show us the problem*. It needs no sign-in.
 The page has **Take a photo**, **Take a video** and **Choose from your phone**. It says what helps most, and then they press **Send**.
 
 They can also reply to your text with the photos. Those show on the same card.
+
+A phone set to Spanish reads the page in Spanish. A press at the top changes it to English and back. A Spanish reader's ask goes out in Spanish too.
 
 ## Read what came in
 
@@ -96,6 +98,26 @@ Press {{button:outline|Book a visit}} to open Add Job with their name and their 
 A lead becomes a customer on either press. The thread comes with them.
 
 A number nobody has named has neither press. Name them first, as [Name a number nobody knows](/help/find-every-message-with-a-person-in-one-place#name-a-number-nobody-knows) shows.
+
+## Ask a tech before it is booked
+
+A tech can look at the photos before there is a job.
+
+1. Press {{button:outline|Ask a tech…}} on the First look card. Add a task opens with the look on it.
+2. Pick the tech. Change the words if you like.
+3. Send the task.
+
+The tech gets the task on their Checklist. The task's link opens that one look and nothing else of the thread.
+
+The tech answers **I can price it from this** or **Needs a visit to price**, with a note. The answer shows on the card and lands on the thread as a team note.
+
+## The look goes with the job
+
+When a job is made from a look, the look goes with it. That happens when the customer accepts the estimate, when you press Create job, and when you press {{button:outline|Book a visit}}.
+
+The tech sees it on the job's Job Mode card before the visit. The card shows **What the customer sent** with the photos, the video and their words.
+
+In Drive the look's folder moves under the job. It sits in the job's own **Customer supplied photos** folder, and every link to it still opens.
 
 ## Ask again or close the look
 

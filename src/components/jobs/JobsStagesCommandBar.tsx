@@ -57,11 +57,17 @@ export type JobsStagesCommandBarProps = {
   toolsMenu: ReactNode
 }
 
+/**
+ * An applied filter's chip in the search box. It shrinks to its words' ellipsis when the box is narrower than its
+ * chips, which happens only on a phone (v2.7033): there the dev's *5 ZZ test jobs hidden* ran 57 px past a 375 px
+ * screen. Its title keeps the whole words.
+ */
 const stagesActiveFilterChipStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: '0.3rem',
-  flexShrink: 0,
+  flexShrink: 1,
+  minWidth: '2.75rem',
   maxWidth: 'clamp(6rem, 30vw, 12rem)',
   padding: '0.2rem 0.6rem',
   border: 'none',
