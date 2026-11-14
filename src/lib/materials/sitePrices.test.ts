@@ -57,6 +57,11 @@ describe('a site’s own price in the one rule', () => {
     expect(old).toMatchObject({ price: 3.12, stale: true, ageDays: 282 })
     expect(priceWords(old!, TODAY)).toBe('Pecan Supply’s bill · Feb 4, 282 days ago')
   })
+  it('a price of zero or the book’s stand-in is no price at all, as v2.7249 holds the book to', () => {
+    expect(sitePick(answer('words:x y', { unitPrice: 0 }), TODAY)).toBeNull()
+    expect(sitePick(answer('words:x y', { unitPrice: 999999 }), TODAY)).toBeNull()
+    expect(lookup({ site: [answer('words:x y', { unitPrice: 0 })], invoice: { 'text:x y': 2.5 } })('text:x y')).toMatchObject({ price: 2.5, from: 'invoice' })
+  })
   it('the newest answer of a row is the one read, and a row left out has no price', () => {
     const key = 'words:fitting odd of tote'
     const first = answer(key, { unitPrice: 1 })

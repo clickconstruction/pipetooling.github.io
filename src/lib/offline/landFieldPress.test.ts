@@ -203,4 +203,17 @@ describe('landOnSitePress', () => {
     const refused = await landOnSitePress(press, { land: async () => Promise.reject(new DatabaseError('Failed to save the press: new row violates row-level security policy', '42501', undefined, { kind: 'server', status: 403, serverMessage: 'new row violates row-level security policy' })) })
     expect(refused).toEqual({ kind: 'refused', refusal: { message: 'new row violates row-level security policy', code: '42501' } })
   })
+
+  it('rows that stand alone are answered row by row: a refused row makes a refusal that names what landed (v2.7267)', async () => {
+    const alone = newPress({ id: 'p2', seq: 2, kind: 'on-site-press', userId: 'u', pressedAt: T, payload: { jobId: 'j1', what: '3 lines from INV-ZZ1', writes: [write], rowsStandAlone: true } })
+    const asked: unknown[] = []
+    const out = await landOnSitePress(alone, { land: async (_w, opts) => { asked.push(opts); return { rows: 3, landed: ['m1', 'm3'], refused: [{ id: 'm2', message: 'new row violates check constraint "job_material_movements_quantity_check"', code: '23514' }] } } })
+    expect(asked).toEqual([{ rowsStandAlone: true }])
+    expect(out).toEqual({ kind: 'refused', refusal: { message: '2 of 3 landed. 1 was refused: new row violates check constraint "job_material_movements_quantity_check"', code: '23514', rows: { landed: ['m1', 'm3'], refused: [{ id: 'm2', message: 'new row violates check constraint "job_material_movements_quantity_check"', code: '23514' }] } } })
+    // Every row landed: a landing like any other.
+    expect(await landOnSitePress(alone, { land: async () => ({ rows: 1, landed: ['m1'], refused: [] }) })).toEqual({ kind: 'landed', result: { job_id: 'j1', row_ids: ['m1'] } })
+    // A press whose rows build on one another is asked for as before.
+    await landOnSitePress(press, { land: async (_w, opts) => void asked.push(opts) })
+    expect(asked[1]).toEqual({ rowsStandAlone: false })
+  })
 })

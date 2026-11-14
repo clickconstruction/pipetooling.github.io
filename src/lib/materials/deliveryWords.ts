@@ -1,7 +1,9 @@
 /**
  * Materials on site, the Deliveries panel's words (v2.7250, punch list #344 PR 8): what the panel says after a
  * delivery's one press is answered, what it asks before the same invoice lands twice, and the heads over the lines
- * the reader could not read and the lines that print one figure. Pure, so the sentences are held by tests.
+ * the reader could not read and the lines that print one figure. Since v2.7267 also what it says when the office
+ * answered line by line: what landed, what did not and why, and what the next press sends. Pure, so the sentences
+ * are held by tests.
  */
 import { countedLabel, pluralNoun } from '../batchWords'
 
@@ -40,4 +42,24 @@ export function deliveryAgainWords(source: string, landed: number, n: number): {
     message: `${note} Adding ${n === 1 ? 'this line' : `these ${n} lines`} again adds to what the job is said to hold. A count would then read the extra as walked away.`,
     confirmLabel: `${countedLabel('Add', n, LINES)} again`,
   }
+}
+
+/**
+ * After the office answered line by line and not every line landed (v2.7267). The lines that landed are landed and
+ * leave the table; each refused line stays on it with its reason and keeps its id, so the next press sends those
+ * alone and a line that landed is never added twice. `ready` is what the button counts now.
+ */
+export function deliveryPartWords(source: string, landed: number, refused: number, ready: number): { head: string; next: string } {
+  const didNot = `${refused} ${pluralNoun(LINES, refused)} did not save.`
+  const head = landed > 0 ? `${landed} ${pluralNoun(LINES, landed)} from ${source} landed in Unsorted as a delivery. ${didNot}` : `No line from ${source} landed. ${didNot}`
+  const stay = refused === 1 ? 'It stays below with its reason.' : 'They stay below, each with its reason.'
+  const press = `Press ${countedLabel('Add', ready, LINES)} to Unsorted as a delivery to send ${ready === 1 ? 'it' : 'them'} again.`
+  const once = landed > 0 ? ` ${landed === 1 ? 'The line that landed is' : 'The lines that landed are'} not sent again.` : ''
+  return { head, next: `${stay} ${press}${once}` }
+}
+
+/** Under a refused line on the table: the office's reason, as the row-level rule or the check said it. */
+export function refusedLineWords(message: string): string {
+  const reason = message.trim()
+  return reason ? `Did not save: ${reason}` : 'Did not save.'
 }

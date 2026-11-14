@@ -416,14 +416,20 @@ function commit(jobId: string, what: string, writes: OnSiteWrite[]): void {
   void commitAnswered(jobId, what, writes)
 }
 
-/** `commit` with its answer handed back, for a press whose screen says what became of it (a delivery's lines, v2.7250). */
-function commitAnswered(jobId: string, what: string, writes: OnSiteWrite[]): Promise<OnSiteSendOutcome> {
+/**
+ * `commit` with its answer handed back, for a press whose screen says what became of it (a delivery's lines, v2.7250).
+ * With `rowsStandAlone` (v2.7267) the office answers row by row: a refusal then carries `rows`, the ids that landed and
+ * each refused row's reason, and the screen that pressed says it, since it alone has the rows' names; the store says
+ * only a press refused whole. The job is read again either way, so the landed rows come back from the office and the
+ * refused ones leave the screen.
+ */
+function commitAnswered(jobId: string, what: string, writes: OnSiteWrite[], opts: { rowsStandAlone?: boolean } = {}): Promise<OnSiteSendOutcome> {
   const c = cacheOf(jobId)
   const pressedAt = Date.now()
   Object.assign(c, applyOnSiteWrites(c, writes, jobId, new Date(pressedAt).toISOString()))
   bump()
   return onSiteSender()
-    .send({ jobId, what, writes, pressedAt })
+    .send({ jobId, what, writes, pressedAt, ...(opts.rowsStandAlone ? { rowsStandAlone: true } : {}) })
     .then((outcome) => {
       if (outcome.kind === 'landed') return outcome
       if (outcome.kind === 'queued') {
@@ -431,7 +437,7 @@ function commitAnswered(jobId: string, what: string, writes: OnSiteWrite[]): Pro
         if (outcome.first) onError(ON_SITE_KEPT_WORDS, 'info')
         return outcome
       }
-      onError(`${what} did not save: ${outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error)}`, 'error')
+      if (!(outcome.kind === 'refused' && outcome.rows)) onError(`${what} did not save: ${outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error)}`, 'error')
       void loadJob(jobId, { force: true })
       return outcome
     })
@@ -581,7 +587,8 @@ export function addMovement(input: AddMovementInput): Movement {
   const c = cacheOf(input.jobId)
   const id = newId()
   const partName = input.partName.trim()
-  const quantity = Math.max(0, Math.round(input.quantity))
+  // A count may be zero; every other reason moves at least one, as the table's CHECK says, so a press of none never leaves the phone.
+  const quantity = Math.max(input.reason === 'counted' ? 0 : 1, Math.round(input.quantity))
   commit(input.jobId, `${quantity} ${partName}`, [
     {
       table: 'job_material_movements',
@@ -596,17 +603,22 @@ export function addMovement(input: AddMovementInput): Movement {
 
 /**
  * A delivery off an invoice (v2.7250, punch list #344 PR 8): every line a Delivered row into one box, as **one
- * press**. The lines land, wait or are refused together and the caller hears which, so the panel says one sentence
- * after the answer where it said *landed* before any and then one failure a line. The rows are drawn at once, like
- * any press.
+ * press**. The lines land or wait together and the caller hears which, so the panel says one sentence after the
+ * answer where it said *landed* before any and then one failure a line. The rows are drawn at once, like any press.
+ *
+ * The lines stand alone (v2.7267): a line the office refuses is answered with its reason and the lines after it
+ * still land, so a refusal carries `rows`, what landed and what did not. A line may bring its own `id`, the one the
+ * panel minted when it read the invoice, so the same line sent again carries the same id and a line that landed
+ * counts once (`insertAlreadyLanded`). Before this the first lines of a delivery refused part way were landed and
+ * the second press, under fresh ids, landed them again.
  */
-export function addDelivery(input: { jobId: string; toContainerId: string; source: string; byUserId: string | null; byName: string; lines: ReadonlyArray<{ partName: string; quantity: number; note?: string }> }): Promise<OnSiteSendOutcome> {
+export function addDelivery(input: { jobId: string; toContainerId: string; source: string; byUserId: string | null; byName: string; lines: ReadonlyArray<{ id?: string; partName: string; quantity: number; note?: string }> }): Promise<OnSiteSendOutcome> {
   const at = new Date().toISOString()
   const writes: OnSiteWrite[] = input.lines.map((l) => {
-    const id = newId()
+    const id = l.id ?? newId()
     return { table: 'job_material_movements', op: 'insert', id, row: { id, job_id: input.jobId, part_id: null, part_name: l.partName.trim(), manufacturer: null, quantity: Math.max(0, Math.round(l.quantity)), reason: 'delivered', from_container_id: null, to_container_id: input.toContainerId, note: l.note ?? '', source: input.source, by_user_id: input.byUserId, by_name: input.byName, at } }
   })
-  return commitAnswered(input.jobId, `${writes.length} ${writes.length === 1 ? 'line' : 'lines'} from ${input.source}`, writes)
+  return commitAnswered(input.jobId, `${writes.length} ${writes.length === 1 ? 'line' : 'lines'} from ${input.source}`, writes, { rowsStandAlone: true })
 }
 
 /** A photo's note: the picture went to the bucket (or stayed on the phone); the sweep files it and writes the rest. */

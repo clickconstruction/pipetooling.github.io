@@ -1534,6 +1534,42 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(document.querySelector('[data-lien-affidavit-print-all]')).toBeNull()
   })
 
+  it('a find narrows both presses to the rows it shows, and each says what it hides (punch list #353, part 1)', async () => {
+    submitManyMock.mockClear()
+    const drafted = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id, status: 'drafted', approval_mode: null }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([drafted('aff1', 'j650'), drafted('aff2', 'j651'), drafted('aff3', 'j652')])} initialKind="affidavit" />)
+    await settle()
+    const bar = () => document.querySelector('[data-lien-affidavit-send-all]') as HTMLElement
+    expect(within(bar()).getByRole('button', { name: 'Send 3 for approval…' })).toBeTruthy()
+    expect(bar().querySelector('[data-lien-affidavit-send-all-hidden]')).toBeNull()
+    fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: '651' } })
+    await settle()
+    expect(within(bar()).getByRole('button', { name: 'Send 1 shown for approval…' })).toBeTruthy()
+    expect(bar().querySelector('[data-lien-affidavit-send-all-hidden]')?.textContent).toBe('2 more drafted papers are not shown. Clear the find to send them too.')
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Send 1 shown for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 1 shown for approval' }))
+    await waitFor(() => expect(submitManyMock).toHaveBeenCalledTimes(1))
+    expect(submitManyMock.mock.calls[0]![0].map((p) => p.jobId)).toEqual(['j651'])
+  })
+
+  it('a find narrows the print to the rows it shows, and the help sheet lists no hidden paper as held (punch list #353, part 1)', async () => {
+    openPrintMock.mockClear()
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])} initialKind="affidavit" />)
+    await settle()
+    const bar = () => document.querySelector('[data-lien-affidavit-print-all]') as HTMLElement
+    expect(within(bar()).getByRole('button', { name: 'Print 3 for notarization' })).toBeTruthy()
+    fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: '651' } })
+    await settle()
+    expect(bar().querySelector('[data-lien-affidavit-print-ready]')?.textContent).toBe('1 ready to print')
+    expect(bar().querySelector('[data-lien-affidavit-print-all-hidden]')?.textContent).toBe('2 more ready papers are not shown. Clear the find to print them too.')
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Print 1 shown for notarization' }))
+    expect(openPrintMock).toHaveBeenCalledTimes(1)
+    const html = openPrintMock.mock.calls[0]![0]
+    expect(html.match(/SWORN TO AND SUBSCRIBED BEFORE ME/g)).toHaveLength(1)
+    expect(html).not.toContain('not in this print')
+  })
+
   it('a paper that was not sent stays listed under the press with its reason', async () => {
     submitManyMock.mockClear()
     submitManyMock.mockImplementationOnce(async () => ({ done: [], failed: [{ jobId: 'j650', reason: 'The affidavit could not be sent for approval.' }] }))

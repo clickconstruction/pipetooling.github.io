@@ -1,10 +1,9 @@
 /**
  * The site map for Materials on site (punch list #209): every pinned box as a labelled dot over
- * satellite imagery, and a placing mode that drops a box's pin where the map's ring is. Leaflet, as
- * the app's maps fall back to when no Google browser key is set; the Google canvas
- * (`PinsMapGoogleCanvas`) takes the same pins when the key exists, so the build wires the provider
- * switch the Dashboard map uses. The buttons live with the caller (a sheet's footer), so they stay
- * on screen whatever the map does with a drag or a wheel.
+ * satellite imagery, and a placing mode that drops a box's pin where the map's ring is. Leaflet
+ * alone, with no Google canvas: the pins are few and the imagery is the same. The buttons live
+ * with the caller (a sheet's footer), so they stay on screen whatever the map does with a drag or
+ * a wheel.
  */
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'

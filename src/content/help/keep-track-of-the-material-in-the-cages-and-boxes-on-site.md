@@ -64,7 +64,7 @@ Type the part's name. **Already on this job** lists the names the job has, with 
 
 ## Take a photo
 
-On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put away the button is blue. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
+On a box, tap {{button:outline|Photo}}. For ten minutes after a count, an added part or a put away the button is blue. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
@@ -80,17 +80,17 @@ Read [keep working when the signal drops](/help/keep-working-when-the-signal-dro
 
 ## Find a box on the site
 
-Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** and stand where it is. Tap **Move box** when it moves to another place.
+Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map**. Stand where the box is and tap **Use my location**, or drag the map until the ring sits on it. Then tap **Put A1 here**. Tap **Move box** when it moves to another place.
 
 ## Scan a label
 
-A printed label carries a code. Point your camera at it and the box opens. Each label prints on its own sheet.
+A printed label carries a code. Point your camera at it and the box opens. A label prints on a sheet of paper or on a strip of tape.
 
 A label printed before November 11, 2026 can open a web search on an iPhone. Print that label again and the new one opens the box. Until then, type its code with **Scan a label**.
 
 A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job.
 
-To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. The office can print a whole job's labels from Materials, with **Print labels** at the right end of the tabs.
+To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 

@@ -17,13 +17,24 @@ import { isImpersonationSessionActive } from '../impersonationSession'
 import { mintPressId } from '../offline/pressThroughOutbox'
 import { onSitePressAbout, type OnSiteWrite } from './onSiteWrites'
 
-export type OnSitePressArgs = { jobId: string; what: string; writes: ReadonlyArray<OnSiteWrite>; pressedAt: number }
+export type OnSitePressArgs = {
+  jobId: string
+  what: string
+  writes: ReadonlyArray<OnSiteWrite>
+  pressedAt: number
+  /** True when no row builds on another (a delivery's lines, v2.7267): the office answers row by row, and a refusal names what landed. */
+  rowsStandAlone?: boolean
+}
+
+/** How a press whose rows stand alone was answered when not every row landed: the ids that landed, and each refused row's reason. */
+export type OnSiteRefusedRows = { landed: string[]; refused: Array<{ id: string; message: string; code: string | null }> }
 
 export type OnSiteSendOutcome =
   | { kind: 'landed' }
   /** Kept on the phone; the replay sends it. `first` is true when nothing on site was waiting before it. */
   | { kind: 'queued'; first: boolean }
-  | { kind: 'refused'; message: string }
+  /** The office said no. `rows` is there for a press whose rows stand alone: some may have landed, and each refusal has its reason. */
+  | { kind: 'refused'; message: string; rows?: OnSiteRefusedRows }
   /** The queue is off for this session (a twin, a view as someone, no sign-in) and the send failed. */
   | { kind: 'failed'; error: unknown }
 
@@ -71,7 +82,7 @@ export function createOnSiteSender(io: OnSiteSendIo): OnSiteSender {
       }
       if (outcome.kind === 'refused') {
         if (queueable) void io.unkeep(press.id)
-        return { kind: 'refused', message: outcome.refusal.message }
+        return { kind: 'refused', message: outcome.refusal.message, ...(outcome.refusal.rows ? { rows: outcome.refusal.rows } : {}) }
       }
       if (!queueable) return { kind: 'failed', error: outcome.error }
       const waitingAhead = store.presses().some(isPendingOnSitePress)
@@ -94,7 +105,7 @@ export function createOnSiteSender(io: OnSiteSendIo): OnSiteSender {
         kind: 'on-site-press',
         userId: userId ?? 'none',
         pressedAt: args.pressedAt,
-        payload: { jobId: args.jobId, what: args.what, writes: args.writes },
+        payload: { jobId: args.jobId, what: args.what, writes: args.writes, ...(args.rowsStandAlone ? { rowsStandAlone: true } : {}) },
         about: onSitePressAbout(args.what),
         door: `/tally?tab=on-site&job=${args.jobId}`,
       })

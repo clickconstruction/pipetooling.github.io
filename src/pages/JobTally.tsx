@@ -732,7 +732,8 @@ export default function JobTally() {
 
   const searchPartsForOnSite = useCallback(
     async (term: string): Promise<OnSitePart[]> => {
-      const q = term.trim().toLowerCase()
+      // A comma or a bracket is PostgREST's own grammar inside `or`, so the typed words lose them.
+      const q = term.trim().toLowerCase().replace(/[,()]/g, ' ').replace(/\s+/g, ' ').trim()
       if (!q) return []
       let qb = supabase.from('material_parts').select('id, name, manufacturer').or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%`).limit(20).order('name')
       if (selectedServiceTypeId) qb = qb.eq('service_type_id', selectedServiceTypeId)

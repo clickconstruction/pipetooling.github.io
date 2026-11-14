@@ -27,13 +27,13 @@ import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, S
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, landableLines, landedFromInvoice, linePrice, manifestComparison, readInvoiceText, SAMPLE_INVOICE_TEXT, type LoneFigureIs, type ParsedLine } from '../../lib/materials/manifest'
-import { deliveryAgainWords, deliveryOutcomeWords, notReadHead, LONE_FIGURE_WORDS } from '../../lib/materials/deliveryWords'
+import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHead, refusedLineWords, LONE_FIGURE_WORDS } from '../../lib/materials/deliveryWords'
 import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
@@ -53,7 +53,7 @@ import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import { BoxWindow } from '../materials/BoxTabs'
-import { editBoxTitle } from '../../lib/materials/editBox'
+import { boxKindWords, editBoxTitle } from '../../lib/materials/editBox'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -75,6 +75,8 @@ const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
+/** A delivery line on the table with the id its Delivered row lands under (v2.7267). */
+type DeliveryLine = ParsedLine & { id: string }
 const sec: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, overflowX: 'auto', overflowY: 'hidden', minWidth: 0 }
 const secH: CSSProperties = { margin: 0, padding: '0.6rem 0.9rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }
 const th: CSSProperties = { textAlign: 'left', padding: '0.4rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
@@ -443,7 +445,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   // The manifest: an invoice's text pasted, read into lines, looked over once, landed as a delivery into Unsorted.
   const [invoiceText, setInvoiceText] = useState('')
   const [invoiceNo, setInvoiceNo] = useState('')
-  const [parsed, setParsed] = useState<ParsedLine[] | null>(null)
+  /** Each line carries the id its row lands under (v2.7267), minted when read, so a line sent again is the same row and counts once. */
+  const [parsed, setParsed] = useState<DeliveryLine[] | null>(null)
+  /** The office's line-by-line answer when not every line landed (v2.7267): what landed, and each refused line's reason by its id. */
+  const [answered, setAnswered] = useState<{ source: string; landedIds: string[]; refused: Map<string, string> } | null>(null)
   /** The pasted lines that hold a number and a word and did not read: listed, never dropped in silence. */
   const [notRead, setNotRead] = useState<string[]>([])
   /** What the one figure on a line is, for this paste: the office says, the reader does not guess. */
@@ -491,10 +496,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
     return [...by.values()].sort((a, b) => (a.at < b.at ? 1 : -1))
   })()
   const walkedMoney = comparison.reduce((s, r) => s + (r.money ?? 0), 0)
-  const readLines = () => { const read = readInvoiceText(invoiceText); setParsed(read.lines); setNotRead(read.notRead); setLoneIs(null); const no = invoiceNumber(invoiceText); if (no && !invoiceNo.trim()) setInvoiceNo(no) }
+  const readLines = () => { const read = readInvoiceText(invoiceText); setParsed(read.lines.map((l) => ({ ...l, id: newId() }))); setNotRead(read.notRead); setLoneIs(null); setAnswered(null); const no = invoiceNumber(invoiceText); if (no && !invoiceNo.trim()) setInvoiceNo(no) }
   /** What the press sends: the lines its button counts, no others (a line at 0 or with no name went too, before v2.7250). */
   const ready = parsed ? landableLines(parsed) : []
-  const landedBefore = landedFromInvoice(movements, invoiceNo)
+  // The rows this panel's own press landed are not a landing "before": the office is finishing the same delivery.
+  const landedBefore = landedFromInvoice(answered ? movements.filter((m) => !answered.landedIds.includes(m.id)) : movements, invoiceNo)
+  const part = answered ? deliveryPartWords(answered.source, answered.landedIds.length, answered.refused.size, ready.length) : null
   const landLines = async () => {
     if (ready.length === 0 || landing) return
     const source = invoiceNo.trim() || 'invoice'
@@ -503,15 +510,27 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
     if (again && !(await confirmDialog({ message: again.message, confirmLabel: again.confirmLabel }))) return
     setLanding(true)
     const un = unsortedContainer(jobId)
-    const outcome = await addDelivery({ jobId, toContainerId: un.id, source, byUserId, byName, lines: ready.map((l) => ({ partName: l.name, quantity: l.quantity, note: l.unit ? `${l.unit.toLowerCase()}` : '' })) })
+    const outcome = await addDelivery({ jobId, toContainerId: un.id, source, byUserId, byName, lines: ready.map((l) => ({ id: l.id, partName: l.name, quantity: l.quantity, note: l.unit ? `${l.unit.toLowerCase()}` : '' })) })
     setLanding(false)
-    // A refusal is said by the store with its reason, and the lines stay here to send again.
-    const words = deliveryOutcomeWords(outcome.kind, ready.length, source)
-    if (!words) return
-    for (const l of ready) {
+    const keepPrice = (l: DeliveryLine) => {
       const price = linePrice(l, loneIs)
       if (price != null) rememberPrice(partKey(null, l.name), price)
     }
+    if (outcome.kind === 'refused' && outcome.rows) {
+      // Answered line by line (v2.7267): the lines that landed leave the table, each refused line stays with its reason
+      // and keeps its id, so the next press sends those alone and a landed line is never added twice.
+      const rows = outcome.rows
+      const landedIds = new Set(rows.landed)
+      for (const l of ready) if (landedIds.has(l.id)) keepPrice(l)
+      setAnswered((prev) => ({ source, landedIds: [...(prev?.landedIds ?? []), ...rows.landed], refused: new Map(rows.refused.map((r) => [r.id, r.message])) }))
+      setParsed((parsed ?? []).filter((l) => !landedIds.has(l.id)))
+      return
+    }
+    // A refusal with no line-by-line answer is said by the store with its reason, and the lines stay here to send again.
+    const words = deliveryOutcomeWords(outcome.kind, ready.length, source)
+    if (!words) return
+    for (const l of ready) keepPrice(l)
+    setAnswered(null)
     showToast(words.line, words.tone)
     // A line with no count or no name did not go: it stays, with the invoice's number, for the office to finish.
     const left = (parsed ?? []).filter((l) => !(l.quantity > 0 && l.name.trim()))
@@ -531,7 +550,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now) ? 'amber' : 'ok' }))
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
-  const [window, setWindow] = useState<7 | 30>(7)
+  const [sinceDays, setSinceDays] = useState<7 | 30>(7)
   /** The labels window: every box, or one (`only`) from a panel's Label button or the phone's link (`?label=<id>`). */
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
@@ -548,6 +567,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   }, [labelParams, setLabelParams])
   const [adding, setAdding] = useState(false)
   const [newLabel, setNewLabel] = useState('')
+  /** A stencil a live box on the job already carries: the press is dead and the line under it says why. */
+  const stencilTaken = containers.some((c) => !c.retiredAt && c.label.toLowerCase() === newLabel.trim().toLowerCase())
   const [newWhere, setNewWhere] = useState('')
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
@@ -555,10 +576,9 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const people = [...new Set(movements.map((m) => m.byName))].sort()
-  const since = new Date(now.getTime() - window * 86_400_000).toISOString()
+  const since = new Date(now.getTime() - sinceDays * 86_400_000).toISOString()
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
-  const weekMoney = sum.missingMoneyWeek
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -617,8 +637,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Which place<select value={newPlaceId} onChange={(e) => { setNewPlaceId(e.target.value); setNewPlaceName('') }} aria-label="Which place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: 220 }}><option value="">No place yet</option>{places.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
-          <button type="button" style={btnPrimary} disabled={!newLabel.trim() || containers.some((c) => c.label.toLowerCase() === newLabel.trim().toLowerCase())} onClick={() => { const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; addContainer({ jobId, label: newLabel.trim().toUpperCase(), kind: 'cage', where: newWhere, locationId: loc }); setNewLabel(''); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${newLabel.trim().toUpperCase()} added.`, 'success') }}>Add {newLabel.trim().toUpperCase() || 'it'}</button>
-          <span style={muted}>A cage, unless the crew says otherwise on their phone.</span>
+          <button type="button" style={btnPrimary} disabled={!newLabel.trim() || stencilTaken} onClick={() => { const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; addContainer({ jobId, label: newLabel.trim().toUpperCase(), kind: 'cage', where: newWhere, locationId: loc }); setNewLabel(''); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${newLabel.trim().toUpperCase()} added.`, 'success') }}>Add {newLabel.trim().toUpperCase() || 'it'}</button>
+          <span style={muted}>{stencilTaken ? `${newLabel.trim().toUpperCase()} is already a box on this job. Pick another stencil.` : 'A cage, unless the crew says otherwise on their phone.'}</span>
         </div>
       ) : null}
           {(
@@ -638,7 +658,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -712,11 +732,11 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <p style={{ ...muted, margin: 0, padding: '0.5rem 0.9rem 0.75rem' }}>Walked away is bought plus added, minus used, returned, taken and left. It is only as true as the Used presses and the last count: a box nobody counted can hide a gap, and an honest count shows it.</p>
           </div>
         <div style={sec}>
-          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(window === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setWindow(d)}>{d} days</button>)}</span></h3>
+          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>Part</th><th style={th}>Container</th><th style={{ ...th, ...num }}>Expected</th><th style={{ ...th, ...num }}>Counted</th><th style={{ ...th, ...num }}>Missing</th><th style={{ ...th, ...num }}>Money</th><th style={th}>Who, when</th></tr></thead>
             <tbody>
-              {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${window} days.`} /></td></tr> : null}
+              {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${sinceDays} days.`} /></td></tr> : null}
               {missingRows.map((d) => {
                 const price = unitPrice(jobId, d)
                 const m = missingMoney(d.diff, price)
@@ -748,7 +768,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
             </tbody>
           </table>
         </div>
@@ -783,11 +803,11 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   {madeWords.hold ? <span style={{ display: 'block', color: 'var(--text-amber-800)', fontWeight: 600 }}>{madeWords.hold}</span> : null}
                 </p>
               ) : null}
-              {pasteOpen ? <textarea value={invoiceText} onChange={(e) => { setInvoiceText(e.target.value); setParsed(null); setNotRead([]) }} rows={7} placeholder={'25  EA  3/4" copper 90   4.70   117.50\n4   EA  3/4" ball valve  18.60   74.40'} aria-label="The invoice’s text" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0.5rem 0.7rem', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }} /> : null}
+              {pasteOpen ? <textarea value={invoiceText} onChange={(e) => { setInvoiceText(e.target.value); setParsed(null); setNotRead([]); setAnswered(null) }} rows={7} placeholder={'25  EA  3/4" copper 90   4.70   117.50\n4   EA  3/4" ball valve  18.60   74.40'} aria-label="The invoice’s text" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0.5rem 0.7rem', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }} /> : null}
               {pasteOpen ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button type="button" style={{ ...btnPrimary, ...(invoiceText.trim() ? {} : { opacity: 0.45 }) }} disabled={!invoiceText.trim()} onClick={readLines}>Read the lines</button>
-                  <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => { setInvoiceText(SAMPLE_INVOICE_TEXT); setParsed(null); setNotRead([]) }}>Try a sample invoice</button>
+                  <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => { setInvoiceText(SAMPLE_INVOICE_TEXT); setParsed(null); setNotRead([]); setAnswered(null) }}>Try a sample invoice</button>
                 </div>
               ) : null}
               {parsed && notRead.length > 0 ? (
@@ -797,7 +817,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     {notRead.map((l, i) => (
                       <li key={i}>
                         {l}{' '}
-                        <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontFamily: 'inherit', cursor: 'pointer' }} onClick={() => { setParsed([...(parsed ?? []), { quantity: 0, name: l, unit: null, unitPrice: null, raw: l }]); setNotRead(notRead.filter((_, j) => j !== i)) }}>Add it as a line</button>
+                        <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontFamily: 'inherit', cursor: 'pointer' }} onClick={() => { setParsed([...(parsed ?? []), { id: newId(), quantity: 0, name: l, unit: null, unitPrice: null, raw: l }]); setNotRead(notRead.filter((_, j) => j !== i)) }}>Add it as a line</button>
                       </li>
                     ))}
                   </ul>
@@ -815,10 +835,13 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                       <thead><tr><th style={{ ...th, ...num }}>Qty</th><th style={th}>Unit</th><th style={th}>Part, as the invoice names it</th><th style={{ ...th, ...num }}>Price</th><th style={th}></th></tr></thead>
                       <tbody>
                         {parsed.map((l, i) => (
-                          <tr key={i}>
+                          <tr key={l.id}>
                             <td style={{ ...td, ...num }}><input type="number" value={l.quantity} aria-label="Quantity" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, quantity: Math.max(0, Math.round(Number(e.target.value))) } : x)))} style={{ width: 64, minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...muted }}>{l.unit ?? ''}</td>
-                            <td style={td}><input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
+                            <td style={td}>
+                              <input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                              {answered?.refused.has(l.id) ? <div data-testid="delivery-line-refused" style={{ marginTop: '0.2rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-700)' }}>{refusedLineWords(answered.refused.get(l.id) ?? '')}</div> : null}
+                            </td>
                             <td style={{ ...td, ...num }}>{linePrice(l, loneIs) != null ? money(linePrice(l, loneIs)!) : l.loneFigure != null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }} title={LONE_FIGURE_WORDS.title}>{money(l.loneFigure)}?</span> : <span style={muted}>—</span>}</td>
                             <td style={{ ...td, ...num }}><button type="button" aria-label="Leave this line out" title="Leave this line out" style={{ ...btn, minHeight: 30, minWidth: 30, padding: 0, fontWeight: 500 }} onClick={() => setParsed(parsed.filter((_, j) => j !== i))}>×</button></td>
                           </tr>
@@ -832,6 +855,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                           <button key={k} type="button" aria-pressed={loneIs === k} style={{ ...btn, minHeight: 32, fontWeight: loneIs === k ? 700 : 500, ...(loneIs === k ? { borderColor: 'var(--text-link)', color: 'var(--text-link)' } : {}) }} onClick={() => setLoneIs(loneIs === k ? null : k)}>{LONE_FIGURE_WORDS[k]}</button>
                         ))}
                         {loneIs == null ? <span style={muted}>{LONE_FIGURE_WORDS.unsaid}</span> : null}
+                      </div>
+                    ) : null}
+                    {part ? (
+                      <div data-testid="delivery-part" role="status" style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-red-100)', borderRadius: 8, padding: '0.5rem 0.7rem' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-red-800)' }}>{part.head}</div>
+                        <div style={{ ...muted, marginTop: '0.2rem' }}>{part.next}</div>
                       </div>
                     ) : null}
                     {landedBefore ? <p data-testid="delivery-landed-before" style={{ margin: 0, color: 'var(--text-amber-800)', fontWeight: 600 }}>{deliveryAgainWords(invoiceNo.trim(), landedBefore.lines, ready.length).note}</p> : null}
@@ -849,7 +878,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={th}>Source</th><th style={th}>When</th><th style={th}>By</th><th style={{ ...th, ...num }}>Lines</th><th style={{ ...th, ...num }}>Pieces</th></tr></thead>
               <tbody>
-                {deliveries.length === 0 ? <tr><td style={td} colSpan={5}><span style={muted}>No delivery has landed yet. Paste an invoice above, or mark lines delivered on the bid's Procure step.</span></td></tr> : null}
+                {deliveries.length === 0 ? <tr><td style={td} colSpan={5}><span style={muted}>No delivery has landed yet. Paste an invoice above, or add a part on the phone from the box it went in.</span></td></tr> : null}
                 {deliveries.map((d) => (
                   <tr key={d.source}><td style={{ ...td, fontWeight: 700 }}>{d.source}</td><td style={td}>{when(d.at)}</td><td style={td}>{d.by}</td><td style={{ ...td, ...num }}>{d.lines}</td><td style={{ ...td, ...num }}>{d.qty}</td></tr>
                 ))}
