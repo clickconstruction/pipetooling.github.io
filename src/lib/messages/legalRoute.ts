@@ -8,7 +8,7 @@
  * `sends`: who it went to, how and on what day), `job_lien_desk_items` (a sent item marked `letterTwo` names the filing
  * that was the second letter) and `job_demand_letters`.
  */
-import type { Tables } from '../../types/database'
+import type { Database } from '../../types/database'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs } from '../../utils/dateUtils'
 import type { ContactFollowUpRow } from '../followUp/followUpTypes'
 import { jobKey } from './jobKeys'
@@ -85,9 +85,13 @@ const FILING_PAPERS: Readonly<Record<string, LegalPaper>> = {
   release_of_record: 'release',
 }
 
-type FilingRow = Pick<Tables<'job_lien_filings'>, 'id' | 'job_id' | 'kind' | 'created_at' | 'filed_at' | 'served_at' | 'voided_at' | 'sends'>
-type DeskItemRow = Pick<Tables<'job_lien_desk_items'>, 'sent_filing_id' | 'fields' | 'voided_at'>
-type DemandLetterRow = Pick<Tables<'job_demand_letters'>, 'id' | 'job_id' | 'created_at' | 'sent_at' | 'sent_method' | 'voided_at'>
+// Each row as one alias (punch list #359, v2.7294): the edge copy inlines an alias written this way and holds no table list for it.
+type LienFilingRow = Database['public']['Tables']['job_lien_filings']['Row']
+type LienDeskItemRow = Database['public']['Tables']['job_lien_desk_items']['Row']
+type DemandLetterTableRow = Database['public']['Tables']['job_demand_letters']['Row']
+type FilingRow = Pick<LienFilingRow, 'id' | 'job_id' | 'kind' | 'created_at' | 'filed_at' | 'served_at' | 'voided_at' | 'sends'>
+type DeskItemRow = Pick<LienDeskItemRow, 'sent_filing_id' | 'fields' | 'voided_at'>
+type DemandLetterRow = Pick<DemandLetterTableRow, 'id' | 'job_id' | 'created_at' | 'sent_at' | 'sent_method' | 'voided_at'>
 
 /** One entry of a filing's `sends`: who it went to, how, and the day. */
 interface FilingSend {
@@ -160,7 +164,7 @@ export function legalSendsFromDemandLetters(letters: readonly DemandLetterRow[])
   return out
 }
 
-type CourtesyItemRow = Pick<Tables<'job_lien_desk_items'>, 'job_id' | 'kind' | 'status' | 'fields' | 'voided_at'>
+type CourtesyItemRow = Pick<LienDeskItemRow, 'job_id' | 'kind' | 'status' | 'fields' | 'voided_at'>
 
 /**
  * The courtesy notices that reached one person (punch list #231): each record on a sent notice's

@@ -15,7 +15,9 @@ import type { ChangeOrder, ChangeOrderReason, GcState } from './types'
  * Every column is nullable, as a view's are. Its keys are the view's fourteen, never cost, price or pct_done (the test
  * holds it).
  */
-export type ChangeOrderOfficeRow = Database['public']['Views']['gc_change_orders_office']['Row'] & {
+/** The view's row as the generated types write it, one alias on its own (punch list #359, v2.7294), so the edge copy inlines it. */
+type ChangeOrderOfficeViewRow = Database['public']['Views']['gc_change_orders_office']['Row']
+export type ChangeOrderOfficeRow = ChangeOrderOfficeViewRow & {
   signer_contact_id?: string | null
   source_message_id?: string | null
 }
