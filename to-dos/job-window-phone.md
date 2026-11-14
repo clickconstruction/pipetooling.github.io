@@ -172,6 +172,16 @@ them · A price for the trim change · marked Nov 11*. PR B renames `SUMMARY_WOR
 and the two empty sentences in `threadSummary.ts`, on every screen, since the desk's card reads the
 same lines.
 
+Also on pass 2: "If we're going to offer that, I need to also offer a way for the user to hit a
+button to update it." So each promise row carries its press, under its words, 44 px, the same door
+Messages already has for it. **They promised** · *Write down their day*: opens the customer's thread at
+their newest message with the day writer (the *A day was heard … say what it is* press of Follow up),
+or, with no message to pin it to, the Log a call box, since a day said on the phone is written on the
+call. Filled, the press reads *Change their day*. **We owe them** · *We owe them…*: opens the thread at
+the reply box with the owed marker (*Mark it*), as the guide *keep track of what we owe someone*
+shows; filled, the row's press reads *Change what we owe* and a second, *Mark it done*, which opens
+the team-note box. Nothing new is written anywhere; the rows are doors to the writers Messages has.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -253,7 +263,8 @@ moves; the bar is as today.
 Street View banner first, then the address with a Directions press, the painted map), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
-plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the newest two
+plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the two promise rows
+each with the press that writes it, the newest two
 messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
