@@ -52,7 +52,8 @@ describe('BridgeMoveTable at a desk', () => {
     // Nothing late yet: the amount says it is open, so the heading does not call it late.
     expect(texts(rows[1]!)).toEqual(['Birch and Sons', '$9.0k open', '12 days', 'Said Mar 20', '', ''])
     expect(screen.queryByTestId('bridge-week-dive-project')).toBeNull()
-    // The rest are one press away, here, and one press back.
+    // The rest are one press away, here, and one press back. The press sits under the middle of the table, not under the names.
+    expect(screen.getByRole('button', { name: 'Show all 4' }).parentElement!.style.justifyContent).toBe('center')
     fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
     expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
     fireEvent.click(screen.getByRole('button', { name: 'Show the first 3' }))
@@ -82,7 +83,7 @@ describe('BridgeMoveTable at a desk', () => {
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Hours', 'Contract', 'Worked by'])
     const rows = screen.getAllByTestId('bridge-week-dive-item')
     expect(texts(rows[0]!)).toEqual(['301 · Pine Row', '24', '$30.0k', 'Dana and Sam', 'Set the percent', ''])
-    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '0', '', 'Set to 60% just now', 'Change the percent', ''])
+    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '0', 'No price', 'Set to 60% just now', 'Change the percent', ''])
     // The hours are a press of their own: who worked them and when.
     fireEvent.click(screen.getByRole('button', { name: 'See the hours on 301 · Pine Row: 24 hours by Dana and Sam' }))
     expect(onDive).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'hours', jobId: 'j301', jobLabel: '301 · Pine Row' }))
@@ -127,12 +128,19 @@ describe('BridgeMoveTable at a desk', () => {
 })
 
 describe('BridgeMoveTable on a phone', () => {
+  it('centres Show all under the lines too', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow />)
+    expect(screen.getByTestId('bridge-week-dive-all-row').style.justifyContent).toBe('center')
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
+    expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
+  })
+
   it('draws a line as its name and figure, then the rest with its press, with no headings', () => {
     renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow />)
     expect(screen.queryByRole('columnheader')).toBeNull()
     const rows = screen.getAllByTestId('bridge-week-dive-item')
     expect(rows[0]!.textContent).toBe('301 · Pine Row24 hours$30.0k contract · Dana and SamSet the percent')
-    expect(rows[1]!.textContent).toBe('302 · Spruce HallNo hours yetSet to 60% just nowChange the percent')
+    expect(rows[1]!.textContent).toBe('302 · Spruce HallNo hours yetNo price yet · Set to 60% just nowChange the percent')
     // A word press is tall enough for a thumb, and so are the check and the name that opens the line's own thing.
     expect((within(rows[0]!).getByRole('button', { name: 'Set the percent' }) as HTMLButtonElement).style.minHeight).toBe('44px')
     expect(within(rows[0]!).getByTestId('bridge-week-dive-todo').style.height).toBe('44px')

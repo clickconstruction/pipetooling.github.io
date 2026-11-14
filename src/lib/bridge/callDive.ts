@@ -1,6 +1,7 @@
 import { shortK } from './headline'
 import type { WeekMove } from './weekCall'
 import { billTodo, payerTodo, pctTodo, priceTodo, projectTodo, supplyTodo, type CallTodo } from './callTodo'
+import { chargeCell } from './pctFacts'
 
 /**
  * What is behind a move on the card *What to do now* (punch list #334, PR 8). The owner, of the card: "I can't easily
@@ -30,6 +31,9 @@ import { billTodo, payerTodo, pctTodo, priceTodo, projectTodo, supplyTodo, type 
  *
  * A job with no percent says its hours and who worked them (punch list #334, PR 10; `jobHours.ts`). The hours are a
  * press of their own, which opens the detail: a percent is judged from them.
+ *
+ * It also says what we are charging, or that the job has no price, and the last day it was worked, by whom, and
+ * whether that day is a clocked one or a scheduled one (v2.7221; `pctFacts.ts`). The percent window carries the rest.
  *
  * Nothing is counted here. Every list is handed in from what the page has already read, in the order it is given.
  *
@@ -129,6 +133,8 @@ export type DiveFacts = {
     hoursLine?: string | null
     /** The same as cells: the hours as a figure, with its unit for a phone, and the people. */
     hoursCell?: { text: string; phone: string; by: string } | null
+    /** The last day worked, which reading it is, and who (`lastWorkedCell`). Absent until read: the line keeps its people. */
+    lastWorked?: { text: string; phone: string; muted: boolean } | null
   }>
   noPriceJobs: ReadonlyArray<{ id: string; label: string }>
   /** What falls due on the day the cash call names, one row a supply house, largest first. */
@@ -211,17 +217,20 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
         const todo = j.setPct == null ? { todo: pctTodo(j) } : {}
         // The hours are what a percent is judged from: the cell says them, and it opens who worked them and when.
         const hoursTarget = { kind: 'hours' as const, jobId: j.id, jobLabel: j.label, pctJob: j.pctJob ?? null }
+        // What we are charging, or that there is no price: never a blank where a figure belongs, and never $0.
+        const charge = chargeCell({ chargeUsd: j.revenueUsd != null && j.revenueUsd > 0 ? j.revenueUsd : null })
         const row: DiveRow = {
           ...(j.hoursCell ? { a: { text: j.hoursCell.text, phone: j.hoursCell.phone, target: hoursTarget, label: `See the hours on ${j.label}: ${j.hoursLine ?? j.hoursCell.phone}` } } : {}),
-          ...(j.revenueUsd != null && j.revenueUsd > 0 ? { b: { text: shortK(j.revenueUsd), phone: `${shortK(j.revenueUsd)} contract`, muted: true } } : {}),
-          // A percent set on this visit says so where the people were; the line stays where it was.
-          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
+          b: charge.warn ? { text: charge.text, phone: charge.phone, warn: true } : { text: charge.text, phone: charge.phone, muted: true },
+          // A percent set on this visit says so where the people were. Else the last day worked, and until that is
+          // read, the people with hours.
+          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.lastWorked ? { text: { text: j.lastWorked.text, phone: j.lastWorked.phone, ...(j.lastWorked.muted ? { muted: true } : {}) } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
         }
         return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row }
       }),
       press: null,
       target: null,
-      columns: { name: 'Job', a: 'Hours', b: 'Contract', text: 'Worked by' },
+      columns: { name: 'Job', a: 'Hours', b: 'Contract', text: facts.noPctJobs.some((j) => j.lastWorked) ? 'Last worked' : 'Worked by' },
     }
   }
   if (move.key === 'price') {

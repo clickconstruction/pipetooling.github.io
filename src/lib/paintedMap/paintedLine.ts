@@ -62,6 +62,38 @@ export function lineLengthMeters(points: ReadonlyArray<PaintedPoint>, leaveOut: 
   return sum
 }
 
+/**
+ * A line as the runs a map draws: the stretches the phone was sure of, and the faint ones. Each run
+ * is a list of points with its two ends shared with its neighbours, so the line shows no break
+ * where a faint part begins.
+ */
+export function lineRuns(points: ReadonlyArray<PaintedPoint>, poorParts: ReadonlyArray<PaintedPart> = []): { sure: PaintedPoint[][]; poor: PaintedPoint[][] } {
+  const sure: PaintedPoint[][] = []
+  const poor: PaintedPoint[][] = []
+  let run: PaintedPoint[] = []
+  let runPoor = false
+  for (let i = 1; i < points.length; i++) {
+    const legPoor = poorParts.length > 0 && legInParts(i, poorParts)
+    if (run.length === 0) {
+      run = [points[i - 1]!, points[i]!]
+      runPoor = legPoor
+    } else if (legPoor === runPoor) {
+      run.push(points[i]!)
+    } else {
+      ;(runPoor ? poor : sure).push(run)
+      run = [points[i - 1]!, points[i]!]
+      runPoor = legPoor
+    }
+  }
+  if (run.length > 0) (runPoor ? poor : sure).push(run)
+  return { sure, poor }
+}
+
+/** How much ground one dot of a map covers, in metres, at a zoom and a latitude (the web maps' own scale). */
+export function metersPerPixel(zoom: number, lat: number): number {
+  return (40075016.686 * Math.cos(rad(lat))) / 2 ** (zoom + 8)
+}
+
 /** The length of each leg, in metres: leg `i` runs from point `i` to point `i + 1`. */
 export function legLengthsMeters(points: ReadonlyArray<PaintedPoint>): number[] {
   const out: number[] = []

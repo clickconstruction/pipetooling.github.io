@@ -14,6 +14,9 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePartTies } from '../../hooks/usePartTies'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { TIES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { usePriceOffers } from '../../hooks/usePriceOffers'
 import { BookPartPicker } from './BookPartPicker'
 import { SitePricingWindow, type PricingAnswer, type TiePair } from './SitePricingWindow'
@@ -293,6 +296,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
         </div>
         {developmentHref ? <Link to={`${developmentHref}?report=materials`} style={{ ...btn, fontWeight: 500 }} title="One Letter paper of every cage and box on the site, by job, by location or by part. It opens on the site’s Development page.">Print the material location report</Link> : null}
       </div>
+
+      {/* The names joined here did not load (v2.7175): the rows still add up, each spelling apart, and the screen says so. */}
+      <OfflineRetryPanel failure={ties.failed ? recoveryFailureFromError(ties.failed, TIES_NOT_LOADED_WORDS, TIES_NOT_LOADED_WORDS) : null} onRetry={ties.retry} surface="materials-site-ties" offlineMessage={TIES_NOT_LOADED_WORDS} idempotent />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '0.5rem' }} role="group" aria-label="This site at a glance">
         <Tile label="Last recorded" big={last.big} small={last.small} tone={glance.lastRecorded ? (quiet ? 'amber' : 'green') : undefined} />
