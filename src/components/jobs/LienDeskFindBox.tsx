@@ -37,7 +37,7 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
     <div
       data-testid="lien-desk-find"
       data-finding={finding ? 'yes' : 'no'}
-      style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0.5rem 0.75rem 0.35rem', padding: '4px 8px 4px 9px', border: '1px solid var(--border-strong)', borderRadius: 9, background: 'var(--surface)' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0.5rem 0.75rem 0.35rem', padding: '4px 8px 4px 9px', border: '1px solid var(--border-strong)', borderRadius: 9, background: 'var(--surface)', ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null) }}
     >
       <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1 }}>⌕</span>
       <input
@@ -56,12 +56,12 @@ export default function LienDeskFindBox({ value, onChange, matched, isMobile }: 
         aria-label="Find on the list"
         autoComplete="off"
         data-testid="lien-desk-find-input"
-        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-strong)', outline: 'none', padding: '2px 0' }}
+        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', font: 'inherit', fontSize: isMobile ? '1rem' : '0.8125rem', color: 'var(--text-strong)', outline: 'none', padding: '2px 0', ...(isMobile ? { minHeight: 34 } : null) }}
       />
       {finding ? (
         <>
           <span data-testid="lien-desk-find-count" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{lienFindCountWords(matched)}</span>
-          <button type="button" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'var(--bg-subtle)', color: 'var(--text-muted)', borderRadius: 999, width: 20, height: 20, fontSize: '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0 }}>
+          <button type="button" onClick={() => { onChange(''); ref.current?.focus() }} aria-label="Clear the find" data-testid="lien-desk-find-clear" style={{ border: 'none', background: 'var(--bg-subtle)', color: 'var(--text-muted)', borderRadius: 999, width: isMobile ? 34 : 20, height: isMobile ? 34 : 20, fontSize: isMobile ? '1.1rem' : '0.8rem', cursor: 'pointer', lineHeight: 1, padding: 0, flex: 'none' }}>
             ×
           </button>
         </>
