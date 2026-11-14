@@ -4,7 +4,8 @@
  *
  * A name a crew typed has no page in the parts book. Its only price was the one the office read
  * off an invoice, kept in the browser that read it. The pricing window lets a person accept a
- * price for the row: what a supply house bill paid, or a price they type. Each answer is a row
+ * price for the row: what a supply house bill paid, a price they type, or a parts-book part's
+ * price taken without the tie, so the row keeps its own name (**Just price**). Each answer is a row
  * of `on_site_prices`, kept for the site, and the newest answer of a row is the one read. The
  * same table holds *not a part* (`left_out`): scrap, tools, a mixed box, set aside so the cover
  * on the Worth figure can reach the end.
@@ -32,9 +33,10 @@ export type SitePrice = {
   kind: 'price' | 'left_out'
   /** The price for one, as counted on site; null for a row left out. */
   unitPrice: number | null
-  source: 'typed' | 'bill'
+  /** `book`: a parts-book part's price taken without tying the name to the part (**Just price**). */
+  source: 'typed' | 'bill' | 'book'
   sourceLineId: string | null
-  /** The supply house, for a bill's price. */
+  /** The supply house, for a bill's price; the part's name, for a parts-book part's price. */
   sourceWords: string
   /** YYYY-MM-DD: the bill's day, or the day it was typed. */
   pricedOn: string
@@ -56,7 +58,7 @@ export function latestSitePrices(rows: ReadonlyArray<SitePrice>): Map<string, Si
 export function sitePick(p: SitePrice, today: string): PricePick | null {
   if (p.kind !== 'price' || p.unitPrice == null || !Number.isFinite(p.unitPrice) || p.unitPrice < 0) return null
   const ageDays = p.pricedOn ? ymdDaysBetween(p.pricedOn, today) : null
-  return { price: p.unitPrice, from: 'site', supplyHouse: p.source === 'bill' ? p.sourceWords || null : null, checkedOn: p.pricedOn || null, ageDays, stale: ageDays == null || ageDays > BOOK_PRICE_FRESH_DAYS, via: p.source, byName: p.byName || undefined }
+  return { price: p.unitPrice, from: 'site', supplyHouse: p.source === 'bill' ? p.sourceWords || null : null, checkedOn: p.pricedOn || null, ageDays, stale: ageDays == null || ageDays > BOOK_PRICE_FRESH_DAYS, via: p.source, byName: p.byName || undefined, ...(p.source === 'book' ? { bookPart: p.sourceWords } : {}) }
 }
 
 /** The site screen's row key of a ledger line's part key: a parts-book part as it is, a typed name by its same-words fold. */

@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from './lienAffidavitNoticeCheck'
+import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckShortLines } from './lienAffidavitNoticeCheck'
 import { lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
 import { describeNoticeMonths } from './lienNoticeDraft'
 import {
@@ -143,6 +143,9 @@ describe('lienNoticeRecord · each month the paper swears', () => {
     const record = recordOf(HARD, HARD_MONTHS)
     expect(record.flags).toEqual(lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: HARD_MONTHS, filings: HARD })))
     expect(record.flags).toHaveLength(2)
+    // The box at the record's foot reads the same check, said shorter.
+    expect(record.flagsShort).toEqual(lienNoticeCheckShortLines(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: HARD_MONTHS, filings: HARD })))
+    expect(record.flagsShort).toEqual(['Both copies went late for April to July 2026.'])
     expect(lienNoticeRecordAsks(record)).toBe(true)
   })
 
@@ -160,6 +163,7 @@ describe('lienNoticeRecord · each month the paper swears', () => {
   it('the clean case stands: every month on time to both, nothing asked, nothing missing', () => {
     const record = recordOf(CLEAN, CLEAN_MONTHS)
     expect(record.flags).toEqual([])
+    expect(record.flagsShort).toEqual([])
     expect(record.gaps).toEqual([])
     expect(record.lines.map((l) => l.state)).toEqual(['ok', 'ok'])
     expect(lienNoticeRecordAsks(record)).toBe(false)

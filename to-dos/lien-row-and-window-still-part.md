@@ -1,8 +1,8 @@
 ---
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
-group: waiting
-status: carried from #325 when it closed 2026-11-12 · rows 2, 4, 5 and 6 shipped v2.7187, v2.7198, v2.7184 and v2.7181 · row 4's Dashboard card is left · row 1 waits on the owner's reading
+group: ready
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4's Dashboard card is left
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The owner says which last day of work counts in row 1. Then one of the two readers changes. Row 4 changes the same clock, so it follows row 1.
-size: M as six small pieces (S · S · XS · M · S · XS), four shipped
-blocker: The owner's call on row 1.
+next: The Dashboard's closed-window card, as its own PR (the last part of row 4). Then the items under Also seen that wait on the owner's word.
+size: M as six small pieces (S · S · XS · M · S · XS), five shipped
+blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7198
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -29,23 +29,15 @@ what still differed. Counts only are given here, since the repo is public.
 
 ## The rows
 
-1. **A last day of work set by hand, earlier than later clock hours (S, the owner's call).** Two
-   rules, both written on purpose:
-   - The row's clock, `buildLienPayRunway`, counts every date from the hand day when one is set,
-     before the clock hours (v2.4830).
-   - The Lien window, `lienWindowLastMonth`, takes the later of the hand day and the last approved
-     hours (v2.4676). The affidavit's period follows the same rule (v2.6809).
-
-   One live row has a hand day in one month and approved hours four months later. The row reads
-   *Lien gone*. Its window reads *File the affidavit — 95 days*. The guide *file a lien and never
-   miss its deadlines* says: "If the crew goes back for a day, the clock moves to that later month."
-   The hand day is the cautious reading, since it gives the earlier last day. The later hours are
-   the generous one. Whether a return visit moves the clock is a question of law (new work under the
-   contract does, a call-back to fix old work may not), so it is the owner's reading, with counsel
-   if he wants it. My pick, to be confirmed: the two readers follow one rule, and the rule is the
-   window's, because the paper the office files already follows it. Then `buildLienPayRunway` takes
-   the later of the two, and the Lien desk's Deadlines view, the phone chip and the Dashboard's lien
-   card are walked, since they read the same clock.
+1. ~~**A last day of work set by hand, earlier than later clock hours (S, the owner's call).**~~
+   **Answered 2026-11-13, shipped v2.7193.** The owner, to *which last day of work counts for the
+   lien clock?*: "The day set by hand". The row's clock already read it that way, so it did not
+   change. The readers that took the later of the two now follow it: the Lien window
+   (`lienWindowLastMonth`), the affidavit's work period (`lienWorkSpan`) and four SQL readers
+   (migration `20261113190000`, pushed on the owner's named yes). The rule is `lienClockMonths` in
+   `lienLastWorkDay.ts`. The window says where later hours exist that they do not move the day.
+   The fragment lists every reader. One live job fits, and it has no affidavit drafted. Worth
+   counsel's eye, since the months a sworn affidavit names on such a job now end at the hand day.
 2. ~~**The header for an affidavit that is not drafted or approved (S).** It reads *File the
    affidavit* at every step. The row reads *Draft the affidavit*, *Approve the affidavit* or the
    fact that holds it (*Answer the homestead question*). `buildLienTimeline` has no sentence for
@@ -86,6 +78,14 @@ what still differed. Counts only are given here, since the repo is public.
 
 ## Also seen
 
+- The rule that refuses a typed last day earlier than the clock hours (`lienLastWorkDayProblem`)
+  sits oddly beside row 1's answer. A hand day that later hours follow counts, yet once those hours
+  are approved the office can only clear the day or set a later one. It cannot type or correct an
+  earlier day. Whether the box should allow it is the owner's call.
+- The Legal desk and the firm's page never read the last day set by hand (`legalLastWorkBasis` in
+  `legalLienPaper.ts`, `legalPacket.ts`, the `legal-portal` function's job columns). They date a job
+  from its approved hours, else its last work date, else its creation. So counsel's page can show a
+  later last day than the Lien window. It needs an edge deploy.
 - The header's button for an affidavit to draft, approve or review opens the Lien desk's Affidavits
   list, not the job's row in it. The desk selects a notice from its address (`&job=`) and has no
   such read for an affidavit. The Accounts Receivable chip's door lands the same way.

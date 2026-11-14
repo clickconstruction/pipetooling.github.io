@@ -2,11 +2,11 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code
 where: /jobs
 order: 123
 ---
-A painted map shows what a street address cannot say. Draw the way in to a job on the view from above. Mark the gate, the meter or where to park.
+A painted map shows what a street address cannot say. Walk the way in to a job, or draw it on the view from above. Mark the gate, the meter or where to park.
 
 Anyone who can open a job can paint a map for it.
 
@@ -24,7 +24,11 @@ The **Paint a map** sheet opens.
 
 1. Type what the map is, or press a name such as {{chip:gray|The way in}}.
 2. Type a line for whoever opens it, if a line would help.
-3. Press {{button:blue|Start drawing}} to begin with a line. Press {{button:outline|Start with a place}} to begin with a dot.
+3. Pick how to start.
+
+- {{button:red|Walk or drive it}} paints the line as you move.
+- {{button:blue|Draw it by hand}} lets you press the line out on the map.
+- {{button:outline|Start with a place}} begins with a dot.
 
 The map opens on the job's address. Nothing is saved yet.
 
@@ -32,7 +36,68 @@ A job in a development has two choices under **For**. Press the job's name to pa
 
 A map started on a development's page is for every lot. It shows on each job in the development.
 
-## Draw the line
+## Walk or drive the line
+
+Press {{button:red|Walk or drive it}}. Your phone asks to share where you are. Say yes.
+
+A red bar at the top says **Painting**, with a clock. Your phone is read only while that bar is red.
+
+Walk the way in with the phone in your hand. The line grows behind you on the map. The window shows the length so far and how sure your phone is, such as *Sure within 20 ft*.
+
+**Keep the screen on.** The app holds the screen on for you. A phone's browser cannot read where you are once the screen locks. A phone in a pocket draws nothing.
+
+- Press {{button:outline|Pause}} to stop the reading at once. The bar turns grey.
+- Press {{button:red|Keep painting}} to go on. The next stretch is a new line on the same map.
+- Press {{button:outline|＋ Place}} to mark what is here. The painting goes on behind it.
+- Press {{button:blue|Done}} when you reach the end.
+
+Painting pauses by itself after 5 minutes standing still. It ends by itself after an hour.
+
+### When the screen went off
+
+A call, another app or the lock button all pause the painting. The window then says the line has a gap.
+
+- {{button:red|Keep painting from here}} starts a new line where you stand now.
+- {{button:outline|Join the gap with a straight line}} carries the old line on to where you stand.
+
+### When the phone is not sure
+
+Walls and trees bend the signal. The window says *Only sure within 60 ft here*. That stretch is drawn as faint dots and is left out of the length.
+
+### When the phone gives a rough location
+
+The window says so and shows how to turn on **Precise Location**. You can press {{button:blue|Draw it by hand instead}} at any time.
+
+## Look it over, then save
+
+Press {{button:blue|Done}}. **Look it over** shows every line of the walk on the map. Nothing has left your phone yet.
+
+- **Fix this line by hand** opens the line's corners. Drag a corner onto the right spot, or press one and remove it. Then press {{button:blue|Use this line}}.
+- **Leave this line out** drops one line.
+- {{button:outline|Keep painting}} goes back to walking.
+- {{button:outline|Throw it away}} drops the whole walk. It leaves nothing behind.
+
+Press {{button:blue|Save the map}} to keep it.
+
+A saved line is only a shape. It keeps no time along it. It cannot say how fast you went or where you stopped.
+
+:::example The way in, walked
+**Walk or drive it** → walk from the gate to the slab → {{chip:gray|Gate}} at the gate → **Done** → **Save the map**.
+:::
+
+### With no signal
+
+Your phone finds itself without a signal, so the line paints the same. The picture under it may be blank.
+
+If the save does not go through, the walk stays on your phone. The app says so. Press {{button:blue|Save the map}} again when you have signal.
+
+### A walk you did not save
+
+Close the map before saving and the walk stays on your phone, paused, for a day. The app offers it back with **Look it over** and **Throw it away**.
+
+## Draw the line by hand
+
+Drawing by hand needs no location. It is the better way to show a drive from the office, and the better way to get a length.
 
 Press the map where the line starts. Press again at each turn. Each press is a corner.
 
@@ -92,7 +157,9 @@ Press a photo in the list to see it large.
 
 A length is always *about*. It comes with a give or take, such as *About 830 ft, give or take 10 ft*.
 
-A line drawn by hand is good to a few feet at each end. That is fine for how far a driver goes. It is not a number to price from.
+A line drawn by hand is good to a few feet at each end. A walked line is rougher. A phone under open sky is good to about 16 feet, and worse beside buildings and trees.
+
+So a walked 50 feet can read 35 or 65. Either line is fine for how far a driver goes. Neither is a number to price from.
 
 For a number you will price, measure with a wheel or a tape. Then type it onto the line.
 
@@ -119,11 +186,11 @@ Press {{button:outline|From above}} or {{button:outline|Streets}} to change the 
 
 ## Change a map
 
-Press {{button:blue|Draw a line}} to add another line to the map. Press {{button:outline|＋ Place}} to add a place. Anyone who can open the job can add one.
+Press {{button:blue|Draw a line}} to add another line to the map. Press {{button:outline|Walk or drive a line}} to walk one. Press {{button:outline|＋ Place}} to add a place. Anyone who can open the job can add one.
 
 Under a line you made:
 
-- **Move its corners** opens the line to drag its corners again.
+- **Move its corners** opens a line drawn by hand to drag its corners again.
 - **Remove this line** takes it off the map for everyone.
 
 Under the lines, **Rename this map** and **Throw this map away** show for whoever painted the map.
@@ -134,4 +201,4 @@ The office can change any line and any map.
 
 The view from above can be a year or two old. A new development may show as a bare field.
 
-Draw the line where the drive is today. The line shows what the picture does not.
+Walk or drive the way once, and the line shows what the picture does not.
