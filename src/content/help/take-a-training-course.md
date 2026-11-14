@@ -2,7 +2,7 @@
 title: take a training course
 category: Field Work
 roles: all
-keywords: training, course, OSHA 30, refresher, plumbing, lessons, check yourself, final check, caught up, lapsed, training due, take it again, available
+keywords: training, course, OSHA 30, refresher, plumbing, lessons, check yourself, final check, caught up, lapsed, due soon, training due, take it again, available, due strip, version
 where: /dashboard
 order: 80
 ---
@@ -39,6 +39,12 @@ Fourteen right passes. A pass is recorded with the day and your score. Your Trai
 A pass is good for a set time, usually a year. Thirty days before it runs out, your card turns amber and says the day. Press {{button:blue|Take it again}} to pass the course again. A fresh pass starts the clock again.
 
 The office can see where everyone stands. A red or amber course shows beside your name on the People page, the same way an expiring paper does. A lapsed course never stops you clocking in.
+
+## See the due day as a strip
+
+Press {{button:outline|Due strip}} at the top of the Training card. Each course then draws a thin line from the day you passed to the day the pass runs out. The last thirty days are shaded. A blue tick shows today. The version you passed is named under the start. A chip beside the course name says where you stand. **Due soon** means today is inside the shaded part. **Lapsed** means the day has passed. **Older version** means a dev asked everyone to take the course again after your pass. The line then ends at that day. The switch stays on for you on this phone or desk. Press it again to go back to the words.
+
+On Settings → Training the same switch turns the counts into chips. Press {{chip:yellow|due soon 1}} to see who is due soon. Press it again to see everyone. Each name gets its chip and its own line.
 
 ## Reference
 
