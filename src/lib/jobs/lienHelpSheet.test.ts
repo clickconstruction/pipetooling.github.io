@@ -3,6 +3,9 @@ import { buildLienAffidavitBlocks, filingDocFooter, filingDocHtml, filingDocPrin
 import { LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitPrintRun } from './lienAffidavitBatch'
 import {
   LIEN_HELP_ASK_FIRST,
+  LIEN_HELP_BATCH_ASK_LEAD,
+  LIEN_HELP_BATCH_ASK_RULE,
+  LIEN_HELP_HOMESTEAD_ROW,
   LIEN_HELP_BLANKS,
   LIEN_HELP_BLANKS_PRINTED_COUNTY,
   LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT,
@@ -21,6 +24,7 @@ import {
   lienHelpClerkLine,
   lienHelpPictureHtml,
   lienHelpBatchAsks,
+  lienHelpBatchAskWords,
   lienHelpBatchSummary,
   lienHelpChecks,
   lienHelpPrintedCountyLine,
@@ -125,9 +129,9 @@ describe('B · one sheet for a batch', () => {
     // The steps sit above the rows, so a long batch keeps every instruction on its first page.
     expect(html.indexOf('After the notary, one trip for each clerk')).toBeLessThan(html.indexOf('<table class="lien-help-rows">'))
   })
-  it('says ask first on a paper whose property an earlier paper of the batch is on, however the address is typed', () => {
+  it('says to ask the attorney first on a paper whose property an earlier paper of the batch is on, however the address is typed', () => {
     expect([...lienHelpSameProperty(papers)]).toEqual([[2, 0]])
-    expect(textOf(lienHelpBatchSheetHtml({ papers, printedOn: '' }))).toContain('Ask first. Same property as paper 1.')
+    expect(textOf(lienHelpBatchSheetHtml({ papers, printedOn: '' }))).toContain('Ask the attorney first. This is the same property as paper 1.')
     expect([...lienHelpSameProperty([{ propertyAddress: '' }, { propertyAddress: '' }])]).toEqual([])
   })
   it('names each paper’s own day when the batch has more than one, and counts a batch of one', () => {
@@ -221,6 +225,9 @@ describe('what the app checked on a paper', () => {
     expect(asks({})).toEqual([])
     expect(asks({ noticeLines: late.noticeLines })).toEqual([{ state: 'ask', lead: 'Notices.', words: late.noticeLines[0] }])
     expect(asks({ homestead: true }).map((c) => c.lead)).toEqual(['Homestead.'])
+    // The batch sheet's row has its own sentence for an ask: the homestead's, and the notice check's when the caller hands one in.
+    expect(asks({ homestead: true })[0]?.row).toBe(LIEN_HELP_HOMESTEAD_ROW)
+    expect(asks({ noticeLines: late.noticeLines, noticeRow: ' Notices for April to July 2026 went late or are not on record. ' })[0]?.row).toBe('Notices for April to July 2026 went late or are not on record.')
     expect(asks({ monthsWords: '' }).map((c) => c.words)).toEqual(['The paper names no month of work with a notice behind it.'])
   })
   it('the words follow the plain-words rules', () => {
@@ -307,25 +314,52 @@ describe('what the app checked on a paper', () => {
     expect(html).not.toContain('The same county as mark 1.')
   })
 
-  it('the batch sheet counts the clear, the ones with a question and the ones not printed, and each row says what to ask', () => {
-    const papers = [checkedPaper(), checkedPaper(late, { propertyAddress: '77 Mock Ave, Fenwick, TX 75002' }), checkedPaper(clear, { propertyAddress: '18 SAMPLE LN., Marlow TX 75001' })]
+  it('the batch sheet counts the clear, the ones that wait for the attorney and the ones not printed, and each row says why in a sentence', () => {
+    const lateRow = { ...late, noticeRow: 'Notices for April to July 2026 went late or are not on record.' }
+    const papers = [checkedPaper(), checkedPaper(lateRow, { propertyAddress: '77 Mock Ave, Fenwick, TX 75002' }), checkedPaper(clear, { propertyAddress: '18 SAMPLE LN., Marlow TX 75001' })]
     expect([...lienHelpBatchAsks(papers).entries()]).toEqual([
-      [1, [`Notices. ${late.noticeLines[0]}`]],
-      [2, ['Same property as paper 1.']],
+      [1, ['Notices for April to July 2026 went late or are not on record.']],
+      [2, ['This is the same property as paper 1.']],
     ])
-    expect(lienHelpBatchSummary({ papers: 3, asks: 2, leftOut: 1 })).toBe('1 clear to sign. 2 with a question: ask first. 1 not printed.')
-    expect(lienHelpBatchSummary({ papers: 3, asks: 1, leftOut: 0 })).toBe('2 clear to sign. 1 with a question: ask first.')
+    expect(lienHelpBatchSummary({ papers: 3, asks: 2, leftOut: 1 })).toBe('1 clear to sign. 2 wait for the attorney. 1 not printed.')
+    expect(lienHelpBatchSummary({ papers: 3, asks: 1, leftOut: 0 })).toBe('2 clear to sign. 1 waits for the attorney.')
     expect(lienHelpBatchSummary({ papers: 4, asks: 0, leftOut: 0 })).toBe('4 clear to sign.')
     const html = lienHelpBatchSheetHtml({ papers, leftOut: [{ jobLabel: '430 · Town Hall', reason: 'The owner is a public body. A mechanic’s lien does not attach to public property.' }], printedOn: 'November 11, 2026' })
     const text = textOf(html)
     expect(html).toContain('data-lien-help-batch-checks')
-    expect(text).toContain('1 clear to sign. 2 with a question: ask first. 1 not printed.')
-    expect(text).toContain(`Ask first. Notices. ${late.noticeLines[0]}`)
-    expect(text).toContain('Ask first. Same property as paper 1.')
+    expect(text).toContain('1 clear to sign. 2 wait for the attorney. 1 not printed.')
+    expect(text).toContain('Ask the attorney first. Notices for April to July 2026 went late or are not on record.')
+    expect(text).toContain('Ask the attorney first. This is the same property as paper 1.')
+    // The box above the rows names the lead as the rows write it, so the two cannot drift apart.
+    expect(LIEN_HELP_BATCH_ASK_RULE.join('')).toBe('A row that says Ask the attorney first is not signed until the attorney answers.')
+    expect(html).toContain('A row that says <strong>Ask the attorney first</strong> is not signed until the attorney answers.')
+    expect(text).not.toContain('Ask first')
+    expect(text).not.toContain('with a question')
     expect(text).toContain('Not printed. The owner is a public body.')
     expect(text).not.toContain('Call the office first')
     // One paper nobody checked, and the sheet keeps the list a reader checks by eye.
     expect(textOf(lienHelpBatchSheetHtml({ papers: [checkedPaper(), paper({ propertyAddress: '77 Mock Ave, Fenwick, TX 75002' })], printedOn: 'November 11, 2026' }))).toContain('Call the office first')
+  })
+  it('a flagged row says the lead once in bold, then each reason as its own sentence in regular weight', () => {
+    const both = { propertyKind: 'residential', homestead: true, noticeLines: late.noticeLines, noticeRow: 'The notice for July 2026 went late or is not on record.' }
+    const papers = [checkedPaper(), checkedPaper(both)]
+    expect(lienHelpBatchAsks(papers).get(1)).toEqual([LIEN_HELP_HOMESTEAD_ROW, 'The notice for July 2026 went late or is not on record.', 'This is the same property as paper 1.'])
+    expect(lienHelpBatchAskWords(lienHelpBatchAsks(papers).get(1) ?? [])).toBe('Ask the attorney first. The property record says this is a homestead. The notice for July 2026 went late or is not on record. This is the same property as paper 1.')
+    const html = lienHelpBatchSheetHtml({ papers, printedOn: '' })
+    expect(html.match(/Ask the attorney first\./g)).toHaveLength(1)
+    expect(html).toContain('<div data-lien-help-row-ask><strong>Ask the attorney first.</strong> The property record says this is a homestead. The notice for July 2026 went late or is not on record. This is the same property as paper 1.</div>')
+    expect(html).not.toContain('<div class="lien-help-flag">')
+    expect(textOf(html)).toContain('1 clear to sign. 1 waits for the attorney.')
+    // A batch with nothing to ask says nothing of the attorney.
+    const calm = lienHelpBatchSheetHtml({ papers: [checkedPaper()], printedOn: '' })
+    expect(calm).not.toContain('data-lien-help-row-ask')
+    expect(textOf(calm)).not.toContain('attorney')
+  })
+  it('a check with no sentence of its own for the row prints its own words, and the row’s words follow the plain-words rules', () => {
+    // The Lien window hands in no row sentence: the batch still says the lines in full under one lead.
+    expect(lienHelpBatchAsks([checkedPaper(late)]).get(0)).toEqual([late.noticeLines[0]])
+    expect(lienHelpBatchAsks([checkedPaper(clear, { workMonthsWords: '' })]).get(0)).toEqual(['The paper names no month of work with a notice behind it.'])
+    for (const s of [LIEN_HELP_BATCH_ASK_LEAD, LIEN_HELP_HOMESTEAD_ROW, LIEN_HELP_BATCH_ASK_RULE.join(''), 'This is the same property as paper 12.', lienHelpBatchSummary({ papers: 9, asks: 8, leftOut: 1 })]) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
 

@@ -80,8 +80,17 @@ export function lienHelpAskWords(leader: LienHelpAskPerson | null | undefined, d
   return people.length > 0 ? `Not sure? Ask ${people.join(', or ')}.` : ''
 }
 
+/** A homestead on the batch sheet's row: the row's lead already says who to ask. */
+export const LIEN_HELP_HOMESTEAD_ROW = 'The property record says this is a homestead.'
+
 /** One thing the app checked on a paper: `ok` it stands, `ask` it wants a person's answer before the paper is signed. */
-export type LienHelpCheck = { state: 'ok' | 'ask'; lead: string; words: string }
+export type LienHelpCheck = {
+  state: 'ok' | 'ask'
+  lead: string
+  words: string
+  /** An `ask` in one sentence, for the batch sheet's row, which has no room for `words`; absent, the row reads `words`. */
+  row?: string
+}
 
 /**
  * What the app checked on one paper. A warning printed on every paper is one people stop reading, and the app already
@@ -98,6 +107,8 @@ export function lienHelpChecks(f: {
   monthsWords: string
   /** The notice check's lines (`lienNoticeCheckLines`); none when every month has a timely notice to both. */
   noticeLines: ReadonlyArray<string>
+  /** The same check in one sentence (`lienNoticeCheckRowLine`), for the batch sheet's row. */
+  noticeRow?: string
   contractorName: string
 }): LienHelpCheck[] {
   const checks: LienHelpCheck[] = []
@@ -105,12 +116,12 @@ export function lienHelpChecks(f: {
   checks.push({ state: 'ok', lead: 'Owner.', words: `${owner ? `${owner}. ` : ''}A private owner, not a city, a county, a school or the State.` })
   if ((f.propertyKind ?? '').trim() !== 'non_residential') {
     // What the record says, never more: the app cannot know a house is not a homestead, only that nobody marked it one.
-    if (f.homestead) checks.push({ state: 'ask', lead: 'Homestead.', words: 'The property record says this is a homestead. That goes to the attorney.' })
+    if (f.homestead) checks.push({ state: 'ask', lead: 'Homestead.', words: 'The property record says this is a homestead. That goes to the attorney.', row: LIEN_HELP_HOMESTEAD_ROW })
     else checks.push({ state: 'ok', lead: 'Homestead.', words: 'The property record is not marked a homestead.' })
   }
   if (f.isSub) {
     const contractor = f.contractorName.trim() || 'the original contractor'
-    if (f.noticeLines.length > 0) checks.push({ state: 'ask', lead: 'Notices.', words: f.noticeLines.join(' ') })
+    if (f.noticeLines.length > 0) checks.push({ state: 'ask', lead: 'Notices.', words: f.noticeLines.join(' '), ...((f.noticeRow ?? '').trim() ? { row: (f.noticeRow ?? '').trim() } : {}) })
     else if (f.monthsWords.trim()) checks.push({ state: 'ok', lead: 'Notices.', words: `A notice went on time for every month sworn: ${f.monthsWords.trim()}. It went to the owner and to ${contractor}.` })
     else checks.push({ state: 'ask', lead: 'Notices.', words: 'The paper names no month of work with a notice behind it.' })
   }
@@ -546,7 +557,7 @@ const streetKey = (address: string): string => address.toLowerCase().replace(/[^
 
 /**
  * Which papers of a batch sit on a property an earlier paper of the batch is on: the row number each repeats, by its
- * own index. One affidavit for several jobs at a property is counsel's question, so the sheet says *ask first*.
+ * own index. One affidavit for several jobs at a property is counsel's question, so the row says to ask the attorney first.
  */
 export function lienHelpSameProperty(papers: ReadonlyArray<Pick<LienHelpPaper, 'propertyAddress'>>): Map<number, number> {
   const first = new Map<string, number>()
@@ -562,26 +573,41 @@ export function lienHelpSameProperty(papers: ReadonlyArray<Pick<LienHelpPaper, '
 }
 
 /**
- * What each paper of a batch wants asked before it is signed, by its index: a check the app could not clear, and a
- * property an earlier paper of the batch is on. A paper with nothing to ask is absent.
+ * What a flagged row of the batch sheet says first (the owner, 2026-11-13, reading a printed batch: *Ask first.* and
+ * *Notices.* each read as half a sentence). A whole sentence, said once on a row however many reasons follow it.
+ */
+export const LIEN_HELP_BATCH_ASK_LEAD = 'Ask the attorney first.'
+
+/** The box above the rows, on a batch with a flagged row: what the lead means. The lead's words are bold on the sheet. */
+export const LIEN_HELP_BATCH_ASK_RULE: readonly [string, string, string] = ['A row that says ', LIEN_HELP_BATCH_ASK_LEAD.replace(/\.$/, ''), ' is not signed until the attorney answers.']
+
+/**
+ * Why each paper of a batch waits for the attorney, by its index: a sentence for each check the app could not clear
+ * (`LienHelpCheck.row`, the check's own words where it has none), and one for a property an earlier paper of the batch
+ * is on. A paper with nothing to ask is absent.
  */
 export function lienHelpBatchAsks(papers: ReadonlyArray<Pick<LienHelpPaper, 'propertyAddress' | 'checks'>>): Map<number, string[]> {
   const repeats = lienHelpSameProperty(papers)
   const asks = new Map<number, string[]>()
   papers.forEach((p, i) => {
-    const lines = (p.checks ?? []).filter((c) => c.state === 'ask').map((c) => `${c.lead} ${c.words}`)
+    const reasons = (p.checks ?? []).filter((c) => c.state === 'ask').map((c) => (c.row ?? '').trim() || c.words)
     const repeat = repeats.get(i)
-    if (repeat !== undefined) lines.push(`Same property as paper ${repeat + 1}.`)
-    if (lines.length > 0) asks.set(i, lines)
+    if (repeat !== undefined) reasons.push(`This is the same property as paper ${repeat + 1}.`)
+    if (reasons.length > 0) asks.set(i, reasons)
   })
   return asks
 }
 
-/** The batch in one line: how many are clear, how many want a question answered, how many were not printed. */
+/** A flagged row's words in full: the lead once, then each reason as its own sentence. */
+export function lienHelpBatchAskWords(reasons: ReadonlyArray<string>): string {
+  return [LIEN_HELP_BATCH_ASK_LEAD, ...reasons].join(' ')
+}
+
+/** The batch in one line: how many are clear, how many wait for the attorney, how many were not printed. */
 export function lienHelpBatchSummary(n: { papers: number; asks: number; leftOut: number }): string {
   const clear = n.papers - n.asks
   const parts = [`${clear} clear to sign.`]
-  if (n.asks > 0) parts.push(n.asks === 1 ? '1 with a question: ask first.' : `${n.asks} with a question: ask first.`)
+  if (n.asks > 0) parts.push(n.asks === 1 ? '1 waits for the attorney.' : `${n.asks} wait for the attorney.`)
   if (n.leftOut > 0) parts.push(`${n.leftOut} not printed.`)
   return parts.join(' ')
 }
@@ -611,7 +637,9 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
         i === 0 || clerkOf(papers[i - 1] as LienHelpPaper) !== county
           ? `<tr class="lien-help-group" data-lien-help-clerk="${esc(county)}"><td colspan="${COLS}">${esc(lienHelpClerkGroupWords(county, papers.filter((q) => clerkOf(q) === county).length, lienHelpClerkLine(p.clerk)))}</td></tr>`
           : ''
-      const note = (asks.get(i) ?? []).map((words) => `<div class="lien-help-flag">Ask first. ${esc(words)}</div>`).join('')
+      // The lead alone is bold: on a batch where most rows are flagged, a row in all bold is the hardest thing on the page to read.
+      const reasons = asks.get(i)
+      const note = reasons ? `<div data-lien-help-row-ask><strong>${esc(LIEN_HELP_BATCH_ASK_LEAD)}</strong> ${esc(reasons.join(' '))}</div>` : ''
       const by = fileBys.length > 1 && p.fileBy ? `<br/>File by ${esc(p.fileBy)}` : ''
       const who = !oneAsk && (p.ask ?? '').trim() ? `<br/><span class="lien-help-small">${esc((p.ask ?? '').trim())}</span>` : ''
       const copyTo = [p.ownerName.trim(), p.contractorName.trim()].filter(Boolean).map(esc).join(' · ')
@@ -629,7 +657,7 @@ export function lienHelpBatchSheetHtml(input: { papers: ReadonlyArray<LienHelpPa
       ? blanksBox(lienHelpBatchBlanksTitle(true), '', LIEN_HELP_BLANKS_PRINTED_COUNTY_SHORT, lienHelpPrintedCountyLine(printedCounty), lienHelpPictureHtml(printedCounty), true)
       : blanksBox(lienHelpBatchBlanksTitle(false), '', LIEN_HELP_BLANKS_SHORT, '', lienHelpPictureHtml(''), true)) +
     (checked
-      ? `<div class="lien-help-box" data-lien-help-batch-checks><h3>What the app checked</h3><p><strong>${esc(lienHelpBatchSummary({ papers: papers.length, asks: asks.size, leftOut: leftOut.length }))}</strong></p><p style="margin-top:3pt">On each paper it read the owner, the homestead mark and the notice behind each month. ${asks.size > 0 ? 'A row marked <strong>Ask first</strong> waits for the attorney. ' : ''}</p><p style="margin-top:3pt"><strong>Your check.</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${oneAsk ? ` <strong data-lien-help-ask-who>${esc(oneAsk)}</strong>` : ''}</p></div>`
+      ? `<div class="lien-help-box" data-lien-help-batch-checks><h3>What the app checked</h3><p><strong>${esc(lienHelpBatchSummary({ papers: papers.length, asks: asks.size, leftOut: leftOut.length }))}</strong></p><p style="margin-top:3pt">On each paper it read the owner, the homestead mark and the notice behind each month. ${asks.size > 0 ? `${esc(LIEN_HELP_BATCH_ASK_RULE[0])}<strong>${esc(LIEN_HELP_BATCH_ASK_RULE[1])}</strong>${esc(LIEN_HELP_BATCH_ASK_RULE[2])} ` : ''}</p><p style="margin-top:3pt"><strong>Your check.</strong> ${esc(LIEN_HELP_YOUR_CHECK)}${oneAsk ? ` <strong data-lien-help-ask-who>${esc(oneAsk)}</strong>` : ''}</p></div>`
       : stopBox('Call the office first', LIEN_HELP_STOPS_SHORT)) +
     `</div>` +
     `<div class="lien-help-box" style="overflow:hidden">${recordCodeBlock(input.extras?.recordCode, LIEN_HELP_RECORD_CODE_WORDS.batch)}<h3>After the notary, one trip for each clerk</h3><ol>${lienHelpBatchAfterSteps(Boolean(input.extras?.recordCode)).map((s) => `<li>${s}</li>`).join('')}</ol></div>` +
@@ -733,7 +761,7 @@ export function lienHelpPaperFromFields(input: {
   claimWords: string
   fields: { county: string; propertyAddress: string; claimantPersonName: string; ownerName: string; ownerAddress: string; originalContractorName: string; originalContractorAddress: string; isSub?: boolean; workMonthsWords?: string; signingCounty?: string }
   /** What the desk knows of the property and the notices, for the checks; absent, the sheet keeps its list of warnings. */
-  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string> }
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; noticeRow?: string }
   /** The property's county clerk as Settings hold it; absent, the sheet names the clerk and no more. */
   clerk?: LienHelpClerk
   /** Who to ask about this job (`lienAskFor`). */
@@ -744,7 +772,7 @@ export function lienHelpPaperFromFields(input: {
   const signingCounty = signingCountyWords(f.signingCounty)
   return {
     ...(input.checked
-      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, contractorName: f.originalContractorName }) }
+      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, ...(input.checked.noticeRow ? { noticeRow: input.checked.noticeRow } : {}), contractorName: f.originalContractorName }) }
       : {}),
     ...(signingCounty ? { signingCounty } : {}),
     ...(input.clerk ? { clerk: input.clerk } : {}),
