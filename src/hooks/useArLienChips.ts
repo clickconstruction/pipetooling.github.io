@@ -14,7 +14,7 @@ import { mailPiecesByFiling as foldMailPieces, type LienMailPieceRow } from '../
 
 /**
  * The lien chips for the Accounts Receivable modal's jobs (v2.5488): the Lien desk's own data
- * (its queues, Do now's rows, letter two, the filings and their mail pieces for the jobs the
+ * (its queues, To do's rows, letter two, the filings and their mail pieces for the jobs the
  * desk lists), plus one read of the filings and pieces for the modal's jobs the desk does not
  * list — a notice sent months ago, a lien filed — so paper that is out still shows. Null until
  * the desk's data is in; a job with no chip maps to null. Fails soft: a read that fails leaves

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the hover cards on the Lien desk's Deadlines marks (v2.5531): a hover or a
+ * Render smoke for the hover cards on the Lien desk's By date marks (v2.5531): a hover or a
  * focus opens one mark's card a beat later; marks that touch share one card with a column per
  * mark; a GC row's folded flag lists its jobs and offers the bar's door for exactly those; a
  * card's door acts and the card goes; Esc and leaving close it. The words come from

@@ -7,7 +7,7 @@ export type LienClaimInvoice = Pick<BillTruthInvoice, 'id' | 'job_id' | 'status'
 /**
  * What a job's sent bills still owe — the money every lien reader counts (the owner, 2026-10-08:
  * "I can't lien work I have not done yet"). The desk's RPCs compute it as `lien_billed_open()`
- * (v2.4969); the readers that take the job from the client — the Pipeline's Deadlines runway,
+ * (v2.4969); the readers that take the job from the client — the Pipeline's By date runway,
  * the Dashboard's lien reminder, Put a GC on notice — call this, the same rule: once any bill
  * has gone out (status `billed` or `paid`), each `billed` one net of what it has been paid,
  * clamped at zero, and the paid ones nothing — whatever the job's own status, since a sent bill
