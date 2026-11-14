@@ -22,7 +22,7 @@ const g = generator as {
   DATABASE_TYPES: string
   IMPORTERS: string[]
   ENTRIES: Record<string, unknown>
-  generateEdgeKernels: (root: string, io?: Io) => { files: Map<string, string>; problems: string[]; typeFiles: string[]; typeReaders: string[] }
+  generateEdgeKernels: (root: string, io?: Io) => { files: Map<string, string>; problems: string[]; typeFiles: string[]; typeReaders: string[]; aliasFiles: string[] }
   copyDifferences: (root: string, copy: Map<string, string>) => string[]
   stringWords: (source: string) => Set<string>
   databaseParts: (source: string) => Parts | null
@@ -87,7 +87,8 @@ describe('the copy of the kernels', () => {
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
     // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
     // The database's types are held slim (v2.7256), for their types alone.
-    expect(typeFiles).toEqual(['lib/bids/bidPricingEngineTypes.ts', 'lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts', 'types/database.ts'])
+    // The core of the database types (punch list #359) is held for the inlined aliases' enums and Json, for their types alone.
+    expect(typeFiles).toEqual(['lib/bids/bidPricingEngineTypes.ts', 'lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts', 'types/database.ts', 'types/databaseCore.ts'])
   })
 })
 
@@ -333,6 +334,54 @@ describe('what the generator refuses and rewrites, on planted files', () => {
     expect(slim).toMatch(/^ {6}customers: \{$/m)
     expect(slim).not.toMatch(/^ {6}vehicles: \{$/m)
     expect(slim).toContain('the whole file: 2 tables, 0 views and 1 functions')
+  })
+
+  describe('a file whose database types are aliases (punch list #359): the copy inlines each alias and drops the import of the slim file', () => {
+    const planted = (body: string) => {
+      const fake: Record<string, string> = Object.fromEntries(Object.keys(g.ENTRIES).map((e) => [`/repo/src/${e}`, 'export const x = 1\n']))
+      fake[`/repo/src/${entry}`] = body
+      fake['/repo/src/types/database.ts'] = FAKE_DB
+      return g.generateEdgeKernels('/repo', { readFile: (p) => fake[p] ?? '', exists: (p) => p in fake })
+    }
+
+    it('inlines a row alias from the generated file and drops the import, so the slim file is not held', () => {
+      const { files, problems, typeFiles, aliasFiles } = planted(`import type { Database } from '${toTypes}'\n\n/** A bid. */\nexport type BidRow = Database['public']['Tables']['bids']['Row']\ntype Who = Database['public']['Tables']['customers']['Row']\nexport const pick = (b: BidRow, c: Who) => b.id + c.id\n`)
+      expect(problems).toEqual([])
+      expect(aliasFiles).toEqual([entry])
+      const out = files.get(entry)!
+      expect(out).toContain('export type BidRow = {\n  customer_id: string\n  id: string\n}')
+      expect(out).toContain('type Who = {\n  id: string\n}')
+      expect(out).not.toMatch(/import type \{ Database/)
+      expect(out).not.toContain('databaseCore')
+      expect(typeFiles).not.toContain('types/database.ts')
+      expect(files.has('types/database.ts')).toBe(false)
+      expect(files.has('types/databaseCore.ts')).toBe(false)
+    })
+
+    it('imports the core for Json and an enum a body names: every enum and helper, no table', () => {
+      const { files, problems, typeFiles } = planted(`import type { Database, Json } from '${toTypes}'\nexport type Name = Database['public']['Functions']['set_fn']['Returns']\nexport const j: Json = 1\n`)
+      expect(problems).toEqual([])
+      const out = files.get(entry)!
+      expect(out).toContain("import type { Json } from '../../../types/databaseCore.ts'")
+      expect(out).toContain('export type Name = {\n  id: string\n}')
+      expect(typeFiles).toEqual(['types/databaseCore.ts'])
+      const core = files.get('types/databaseCore.ts')!
+      expect(core).toContain('role: "owner" | "dev"')
+      expect(core).not.toMatch(/^ {6}bids: \{$/m)
+      expect(core).toContain('[_ in never]: never')
+    })
+
+    it('refuses an alias of a member the generated file lacks, and one whose body names a table', () => {
+      expect(planted(`import type { Database } from '${toTypes}'\nexport type Gone = Database['public']['Tables']['nothing']['Row']\n`).problems).toEqual([`src/${entry}: Tables nothing Row is not in the generated database types`])
+      expect(planted(`import type { Database } from '${toTypes}'\nexport type Words = Database['public']['Functions']['bid_words']['Args']\n`).problems).toEqual([`src/${entry}: Functions bid_words Args names a table, a view or a function, which the core does not hold: write that type out`])
+    })
+
+    it('leaves a file that uses Database any other way to the slim file', () => {
+      const { files, typeFiles, aliasFiles } = planted(`import type { Database, Tables } from '${toTypes}'\nexport type BidRow = Database['public']['Tables']['bids']['Row']\nexport const pick = (c: Tables<'customers'>) => c.id\n`)
+      expect(aliasFiles).toEqual([])
+      expect(typeFiles).toEqual(['types/database.ts'])
+      expect(files.get(entry)).toContain(`import type { Database, Tables } from '${toTypes}.ts'`)
+    })
   })
 
   it('refuses a database file not in the shape the types generator writes', () => {

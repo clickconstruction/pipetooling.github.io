@@ -59,8 +59,12 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(slugs.length).toBeGreaterThan(100)
     const uploading = slugs.filter((slug) => edgeUpload(`supabase/functions/${slug}/index.ts`).via('src/types/database.ts') !== null)
     expect(uploading).toEqual([])
-    // dev-mcp reaches the slim file through its bid kernels, a type import.
-    expect(edgeUpload('supabase/functions/dev-mcp/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
+    // dev-mcp reached the slim file through nine type imports until punch list #359 inlined their aliases: it now uploads the
+    // core (every enum and helper, 7 KB) and no slim file; the portals still reach the slim file through the GC kernels.
+    const seat = edgeUpload('supabase/functions/dev-mcp/index.ts')
+    expect(seat.via('supabase/functions/_shared/gcKernels/types/database.ts')).toBeNull()
+    expect(seat.via('supabase/functions/_shared/gcKernels/types/databaseCore.ts')).not.toBeNull()
+    expect(edgeUpload('supabase/functions/customer-portal/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
   })
 
   it('dev-mcp and quo-send upload no portal translations: the language and the Spanish switch sit in portalLang.ts (v2.7289, punch list #359)', () => {
