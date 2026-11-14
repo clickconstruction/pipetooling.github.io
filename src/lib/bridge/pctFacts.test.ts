@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { jobHoursByJob, type JobHoursSession } from './jobHours'
-import { PCT_FACTS_LINES_SHOWN, buildPctFacts, chargeCell, lastWorkedCell, lineUsd, pctFactsRows, pctRunAfterSave, pctRunPlace, shownLines, streetAndCity, usdWords, type PctFactsRead } from './pctFacts'
+import { PCT_FACTS_LINES_SHOWN, buildPctFacts, chargeCell, daysAgoWords, lastWorkedCell, lineUsd, pctFactsRows, pctRunAfterSave, pctRunPlace, shownLines, streetAndCity, usdWords, type PctFactsRead } from './pctFacts'
 
 // Made-up people on made-up jobs.
 const dayLabel = (ymd: string): string => `Mar ${Number(ymd.slice(8))}`
@@ -150,12 +150,32 @@ describe('what a percent is judged from', () => {
 })
 
 describe('the words', () => {
-  it('writes the row’s cell: the day, the reading, and who', () => {
-    expect(lastWorkedCell(j1, TODAY, dayLabel)).toEqual({ text: 'Mar 5, clocked · Sam and Dana', phone: 'Last clocked Mar 5 · Sam and Dana', muted: false })
-    expect(lastWorkedCell(j2, TODAY, dayLabel)).toEqual({ text: 'Mar 6, scheduled · Ana and Lee', phone: 'Last scheduled Mar 6 · Ana and Lee', muted: false })
-    expect(lastWorkedCell(j3, TODAY, dayLabel)).toEqual({ text: 'Not worked yet', phone: 'Not worked yet', muted: true })
-    expect(lastWorkedCell(j4, TODAY, dayLabel).text).toBe('Not worked yet · next Mar 18')
-    expect(lastWorkedCell({ lastWorked: null, nextScheduled: { ymd: TODAY, people: [] } }, TODAY, dayLabel).text).toBe('Not worked yet · scheduled today')
+  it('says how long ago a day was, in calendar days', () => {
+    expect(daysAgoWords('2026-03-10', TODAY)).toBe('today')
+    expect(daysAgoWords('2026-03-09', TODAY)).toBe('yesterday')
+    expect(daysAgoWords('2026-03-05', TODAY)).toBe('5 days ago')
+    expect(daysAgoWords('2025-01-17', TODAY)).toBe('417 days ago')
+    // Across the day the clocks change, a day is still a day.
+    expect(daysAgoWords('2026-03-07', '2026-03-09')).toBe('2 days ago')
+  })
+
+  it('lists who has worked a job, whoever was there most recently first, then the most hours', () => {
+    expect(j1.workedBy).toEqual(['Dana Reyes', 'Sam Holt'])
+    expect(j2.workedBy).toEqual(['Lee Park'])
+    expect(j3.workedBy).toEqual([])
+    // Two hours last week leads forty hours last month.
+    const order = buildPctFacts({ jobs: [{ id: 'j1', revenueUsd: 1 }], hours: jobHoursByJob([s({ ymd: '2026-02-02', hours: 40 }), s({ userId: 'u2', name: 'Sam Holt', ymd: '2026-03-03', hours: 2 })]), read: { ...read, blocks: [] }, todayYmd: TODAY })
+    expect(order.get('j1')!.workedBy).toEqual(['Sam Holt', 'Dana Reyes'])
+  })
+
+  it('writes the row’s cell: the day and how long ago, with the people in soft words under it', () => {
+    expect(lastWorkedCell(j1, TODAY, dayLabel)).toEqual({ text: 'Mar 5, 5 days ago', phone: 'Last worked Mar 5, 5 days ago', sub: 'Dana and Sam', muted: false })
+    // A day the schedule alone names says so under it, with whoever has clocked time before.
+    expect(lastWorkedCell(j2, TODAY, dayLabel)).toEqual({ text: 'Mar 6, 4 days ago', phone: 'Last worked Mar 6, 4 days ago', sub: 'Scheduled for Ana and Lee, hours by Lee', muted: false })
+    expect(lastWorkedCell({ ...j2, workedBy: [] }, TODAY, dayLabel).sub).toBe('Scheduled for Ana and Lee')
+    expect(lastWorkedCell(j3, TODAY, dayLabel)).toEqual({ text: 'Not worked yet', phone: 'Not worked yet', sub: '', muted: true })
+    expect(lastWorkedCell(j4, TODAY, dayLabel)).toEqual({ text: 'Not worked yet', phone: 'Not worked yet', sub: 'Next scheduled Mar 18', muted: true })
+    expect(lastWorkedCell({ lastWorked: null, nextScheduled: { ymd: TODAY, people: [] }, workedBy: [] }, TODAY, dayLabel).sub).toBe('Scheduled today')
   })
 
   it('writes the facts beside the percent control, the money first', () => {
@@ -163,7 +183,7 @@ describe('the words', () => {
       { key: 'address', label: 'Address', words: '14 Pine Row, Cedar Falls' },
       { key: 'charge', label: 'We are charging', words: '$9,500' },
       { key: 'billed', label: 'Billed so far', words: '$4,000 of $9,500' },
-      { key: 'worked', label: 'Last worked', words: 'Mar 5. Clocked by Sam and Dana.' },
+      { key: 'worked', label: 'Last worked', words: 'Mar 5, 5 days ago. Clocked by Sam and Dana.' },
       { key: 'next', label: 'Next scheduled', words: 'Mar 12, for Dana and Sam.' },
       { key: 'hours', label: 'Hours so far', words: '11 hours by Dana and Sam.' },
       { key: 'last-pct', label: 'Last percent', words: '0%, set Mar 1.' },
@@ -171,7 +191,7 @@ describe('the words', () => {
     expect(pctFactsRows(j2, TODAY, dayLabel)).toEqual([
       { key: 'address', label: 'Address', words: '9 Spruce Hall Lane Cedar Falls' },
       { key: 'charge', label: 'We are charging', words: 'No price yet. It is also on the list “Price the jobs with no price”.', warn: true },
-      { key: 'worked', label: 'Last worked', words: 'Mar 6. On the schedule for Ana and Lee, with no clock time since.' },
+      { key: 'worked', label: 'Last worked', words: 'Mar 6, 4 days ago. On the schedule for Ana and Lee, with no clock time since.' },
       { key: 'next', label: 'Next scheduled', words: 'Today, for Lee.' },
       { key: 'hours', label: 'Hours so far', words: '4 hours by Lee.' },
     ])

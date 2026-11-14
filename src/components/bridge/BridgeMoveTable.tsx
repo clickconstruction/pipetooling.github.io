@@ -96,6 +96,13 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
         {item.sub}
       </span>
     ) : null
+  /** Soft words under a cell's own: who worked a job, under the day it was last worked (v2.7245). */
+  const cellSub = (c: DiveCell | undefined): ReactNode =>
+    c?.sub ? (
+      <span data-testid="bridge-week-dive-cell-sub" title={c.sub} style={{ display: 'block', minWidth: 0, fontSize: '0.76rem', lineHeight: 1.3, color: 'var(--text-muted)', ...(narrow ? { overflowWrap: 'anywhere' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
+        {c.sub}
+      </span>
+    ) : null
   const check = (todo: CallTodo | undefined, state: TodoState): ReactNode =>
     todo ? <BridgeTodoCheck todo={todo} state={state} dayLabel={dayLabel} narrow={narrow} showWords={false} onMake={(t) => onDive?.({ kind: 'todo', todo: t })} onSee={(seen) => onTodoSee?.(seen)} /> : null
   /** The row's own press: *Set the percent*, *Set a pay date*, or the press that opens a customer's projects. */
@@ -166,6 +173,7 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
                   <span style={{ color: cellColor(c) ?? 'var(--text-700)' }}>{c.phone ?? c.text}</span>
                 </Fragment>
               ))}
+              {rest.map((c, i) => (c.sub ? <Fragment key={`sub-${i}`}>{cellSub(c)}</Fragment> : null))}
             </span>
             {action}
             {box}
@@ -258,9 +266,18 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
                   {cellWords(item.row?.b, false)}
                 </span>
                 <span role="cell" style={{ ...cell, ...lead(has.text) }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.row?.text?.text}>
-                    {cellWords(item.row?.text, false)}
-                  </span>
+                  {item.row?.text?.sub ? (
+                    <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.row.text.text}>
+                        {cellWords(item.row.text, false)}
+                      </span>
+                      {cellSub(item.row.text)}
+                    </span>
+                  ) : (
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.row?.text?.text}>
+                      {cellWords(item.row?.text, false)}
+                    </span>
+                  )}
                 </span>
                 <span role="cell" style={{ ...cell, justifyContent: 'flex-end', paddingLeft: GAP }}>
                   {actionOf(item)}

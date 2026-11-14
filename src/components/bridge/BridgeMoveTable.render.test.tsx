@@ -193,3 +193,33 @@ describe('BridgeMoveTable, a job’s address (v2.7232)', () => {
     expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
   })
 })
+
+describe('BridgeMoveTable, the last day worked (v2.7245)', () => {
+  const worked = moveDive(
+    { key: 'pct', title: 'Set a percent.', door: null },
+    { ...facts, noPctJobs: [{ ...facts.noPctJobs[0]!, lastWorked: { text: 'Mar 5, 5 days ago', phone: 'Last worked Mar 5, 5 days ago', sub: 'Dana and Sam', muted: false } }, { id: 'j303', label: '303 · Fir Lane', revenueUsd: 500, lastWorked: { text: 'Not worked yet', phone: 'Not worked yet', sub: '', muted: true } }] },
+  )!
+
+  it('says the day and how long ago at a desk, with who worked the job in soft words under it', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={worked} narrow={false} />)
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Hours', 'Contract', 'Last worked'])
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    const sub = within(rows[0]!).getByTestId('bridge-week-dive-cell-sub')
+    expect(sub.closest('[role="cell"]')!.textContent).toBe('Mar 5, 5 days agoDana and Sam')
+    // Soft: smaller and in the muted colour, on one line, cut with its whole text on hover.
+    expect(sub.style.color).toBe('var(--text-muted)')
+    expect(sub.style.whiteSpace).toBe('nowrap')
+    expect(sub.title).toBe('Dana and Sam')
+    // A job nobody has worked has nothing under it.
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-cell-sub')).toBeNull()
+    expect(texts(rows[1]!)[3]).toBe('Not worked yet')
+  })
+
+  it('says the same on a phone, the people on a line of their own', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={worked} narrow />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(rows[0]!.textContent).toBe('301 · Pine Row24 hours$30.0k contract · Last worked Mar 5, 5 days agoDana and SamSet the percent')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-cell-sub').style.display).toBe('block')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-cell-sub')).toBeNull()
+  })
+})
