@@ -17,6 +17,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { outbox } from '../offline/outboxState'
 import { applyOnSiteWrites, parseOnSiteWrites, type OnSiteRows, type OnSiteWrite } from './onSiteWrites'
 import { isPendingOnSitePress, onSiteSender, pendingOnSitePresses } from './onSiteSend'
+import { ON_SITE_REFRESH_AFTER_MS, readIsStale } from './onSiteFresh'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
@@ -62,6 +63,7 @@ let deskLoading = false
 let deskError: string | null = null
 let deskRaw: unknown = null
 let deskPromise: Promise<string[]> | null = null
+let deskLoadedAt: number | null = null
 let version = 0
 const listeners = new Set<() => void>()
 
@@ -127,16 +129,24 @@ export function deskLoadState(): LoadState {
   return { loaded: deskIds != null, loading: deskLoading, error: deskError, raw: deskRaw }
 }
 
-/** One job's places, containers, moves, movements and photo notes into the cache. A second call while the first runs waits on it. */
-export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<void> {
+/**
+ * One job's places, containers, moves, movements and photo notes into the cache. A second call while the first runs
+ * waits on it. `quiet` is a read made again behind a screen that already shows the job (`refreshJob`): nothing reads
+ * as loading, and a read that fails leaves the screen on its last good read with no error, since that read is still
+ * true as of its time and the next refresh tries again.
+ */
+export function loadJob(jobId: string, opts: { force?: boolean; quiet?: boolean } = {}): Promise<void> {
   const running = inflight.get(jobId)
   if (running && !opts.force) return running
   const c = cacheOf(jobId)
   if (c.loadedAt && !opts.force && !c.error) return Promise.resolve()
-  c.loading = true
-  c.error = null
-  c.raw = null
-  bump()
+  const quiet = Boolean(opts.quiet && c.loadedAt && !c.error)
+  if (!quiet) {
+    c.loading = true
+    c.error = null
+    c.raw = null
+    bump()
+  }
   const p = (async () => {
     try {
       // Every read is paged (v2.7160): PostgREST cuts an un-ranged answer at 1,000 rows without a word, so `.limit(5000)`
@@ -172,16 +182,35 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       void loadBookPrices(bookPartIds(c.movements))
       void loadSitePricing([jobId])
     } catch (e) {
-      c.error = formatErrorMessage(e, 'The boxes on this job did not load.')
-      c.raw = e
+      if (!quiet) {
+        c.error = formatErrorMessage(e, 'The boxes on this job did not load.')
+        c.raw = e
+      }
     } finally {
-      c.loading = false
+      if (!quiet) c.loading = false
       inflight.delete(jobId)
       bump()
     }
   })()
   inflight.set(jobId, p)
   return p
+}
+
+/** When the job was last read whole, epoch ms; null before its first read. */
+export function jobLoadedAt(jobId: string): number | null {
+  return jobs.get(jobId)?.loadedAt ?? null
+}
+
+/**
+ * Read a job again when its last read is older than `olderThanMs` (v2.7177, punch list #344 PR 4): quietly, behind
+ * the screen that shows it. A job never read, one being read, and one whose last read failed are left to their own
+ * screens. The presses still on their way are drawn over the new read as over any (`withPending`).
+ */
+export function refreshJob(jobId: string, olderThanMs: number = ON_SITE_REFRESH_AFTER_MS, now: number = Date.now()): void {
+  const c = jobs.get(jobId)
+  if (!c || c.loading || c.error || inflight.has(jobId)) return
+  if (!readIsStale(c.loadedAt, now, olderThanMs)) return
+  void loadJob(jobId, { force: true, quiet: true })
 }
 
 /** The database's summary of a capped job (v2.6743). A refused or failed read throws, so the job's load reports it like any other. */
@@ -191,32 +220,48 @@ async function loadServerSummary(jobId: string): Promise<ServerSummary> {
   return data as unknown as ServerSummary
 }
 
-/** Every job with a live container, each loaded: the desk across jobs, the tools menu's count, the header's box search. */
-export function loadDesk(opts: { force?: boolean } = {}): Promise<string[]> {
+/**
+ * Every job with a live container, each loaded: the desk across jobs, the tools menu's count, the header's box search.
+ * `quiet` is the desk read again behind its own screen (`refreshDesk`), with `loadJob`'s meaning.
+ */
+export function loadDesk(opts: { force?: boolean; quiet?: boolean } = {}): Promise<string[]> {
   if (deskPromise && !opts.force) return deskPromise
   if (deskIds && !opts.force) return Promise.resolve(deskIds)
-  deskLoading = true
-  deskError = null
-  deskRaw = null
-  bump()
+  const quiet = Boolean(opts.quiet && deskIds && !deskError)
+  if (!quiet) {
+    deskLoading = true
+    deskError = null
+    deskRaw = null
+    bump()
+  }
   deskPromise = (async () => {
     try {
       const live = await fetchAllRows<{ job_id: string }>((from, to) => db.from('job_containers').select('job_id').is('retired_at', null).order('id').range(from, to), 'read the jobs with boxes')
       const ids = [...new Set(live.map((r) => r.job_id))]
       await Promise.all(ids.map((id) => loadJob(id, opts)))
       deskIds = ids
+      deskLoadedAt = Date.now()
       return ids
     } catch (e) {
-      deskError = formatErrorMessage(e, 'The materials desk did not load.')
-      deskRaw = e
+      if (!quiet) {
+        deskError = formatErrorMessage(e, 'The materials desk did not load.')
+        deskRaw = e
+      }
       return deskIds ?? []
     } finally {
-      deskLoading = false
+      if (!quiet) deskLoading = false
       deskPromise = null
       bump()
     }
   })()
   return deskPromise
+}
+
+/** The desk read again when its last read is older than `olderThanMs` (v2.7177): which jobs hold a box, and each of them, quietly. */
+export function refreshDesk(olderThanMs: number = ON_SITE_REFRESH_AFTER_MS, now: number = Date.now()): void {
+  if (!deskIds || deskLoading || deskError || deskPromise) return
+  if (!readIsStale(deskLoadedAt, now, olderThanMs)) return
+  void loadDesk({ force: true, quiet: true })
 }
 
 // ---------------------------------------------------------------------------
