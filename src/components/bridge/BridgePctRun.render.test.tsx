@@ -66,12 +66,11 @@ const pine: PctJobFacts = {
   ],
   billedUsd: 4000,
   lastWorked: { ymd: '2026-03-05', source: 'clocked', people: ['Sam Holt', 'Dana Reyes'] },
-  workedBy: ['Dana Reyes', 'Sam Holt'],
   nextScheduled: { ymd: '2026-03-12', people: ['Dana Reyes'] },
   hoursLine: '11 hours by Dana and Sam',
   lastPct: null,
 }
-const spruce: PctJobFacts = { address: '', chargeUsd: null, lines: [], billedUsd: 0, lastWorked: null, workedBy: [], nextScheduled: null, hoursLine: 'No hours yet', lastPct: null }
+const spruce: PctJobFacts = { address: '', chargeUsd: null, lines: [], billedUsd: 0, lastWorked: null, nextScheduled: null, hoursLine: 'No hours yet', lastPct: null }
 const FACTS = new Map([
   ['j301', pine],
   ['j302', spruce],

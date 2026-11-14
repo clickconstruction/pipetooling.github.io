@@ -23,8 +23,9 @@ import { cleanStoredAddress } from '../displayAddress'
  *
  * The line's shape came next (v2.7245). The owner: "On last worked, instead of seeing September 22 comma clocked --
  * Malachi, I would like to see 'Sept 22, [number of days ago]' And then in soft text below it, who contributed to it".
- * So the day leads with how long ago it was, and the people sit under it: everyone with clock time on the job, whoever
- * was there most recently first (`workedBy`). A day the schedule alone names still says so, in that soft line.
+ * So the day leads with how long ago it was, and the people sit under it. Asked whether that meant everyone who has
+ * worked the job or the last day's crew: "just the last people to go out there". So the soft line names the people on
+ * that last day, and a day the schedule alone names says who it was scheduled for.
  *
  * Pure: no React, no Supabase (`pctFactsIo.ts` reads). The hours are `jobHours.ts`'s, which the page has already read.
  */
@@ -55,8 +56,6 @@ export type PctJobFacts = {
   /** What has gone out on bills, sent or paid. */
   billedUsd: number
   lastWorked: PctFactsDay | null
-  /** Everyone with clock time on the job, whoever was there most recently first, then the most hours. */
-  workedBy: string[]
   /** The first day from today on that the schedule has someone on the job. */
   nextScheduled: { ymd: string; people: string[] } | null
   /** The hours and the people, as the job's line says them (`jobHoursLine`). */
@@ -169,7 +168,6 @@ export function buildPctFacts(input: {
         .map((l) => ({ key: l.id, name: (l.name ?? '').trim(), usd: lineUsd(l), billed: l.invoiceId != null && out_.has(l.invoiceId) })),
       billedUsd: round2(jobInvoices.filter((i) => WENT_OUT.has(i.status)).reduce((s, i) => s + (Number.isFinite(i.usd) ? i.usd : 0), 0)),
       lastWorked: lastWorkedOf(jobHours, jobBlocks, input.todayYmd),
-      workedBy: [...(jobHours?.people ?? [])].sort((a, b) => (a.lastYmd < b.lastYmd ? 1 : a.lastYmd > b.lastYmd ? -1 : b.hours + b.waitingHours - (a.hours + a.waitingHours) || a.name.localeCompare(b.name))).map((p) => p.name),
       nextScheduled: nextScheduledOf(jobBlocks, input.todayYmd),
       hoursLine: jobHoursLine(jobHours),
       lastPct: newest ? { pct: newest.pct, ymd: newest.ymd } : null,
@@ -193,15 +191,15 @@ export function daysAgoWords(ymd: string, todayYmd: string): string {
 }
 
 /**
- * The job's line on the list: the day and how long ago it was, and under it, in soft words, who has worked the job.
- * A day the schedule alone names says who it was scheduled for. A job nobody has worked says what is next.
+ * The job's line on the list: the day and how long ago it was, and under it, in soft words, the last people out
+ * there. A day the schedule alone names says who it was scheduled for. A job nobody has worked says what is next.
  */
-export function lastWorkedCell(f: Pick<PctJobFacts, 'lastWorked' | 'nextScheduled' | 'workedBy'>, todayYmd: string, dayLabel: (ymd: string) => string): { text: string; phone: string; sub: string; muted: boolean } {
+export function lastWorkedCell(f: Pick<PctJobFacts, 'lastWorked' | 'nextScheduled'>, todayYmd: string, dayLabel: (ymd: string) => string): { text: string; phone: string; sub: string; muted: boolean } {
   const w = f.lastWorked
   if (w) {
     const day = `${dayLabel(w.ymd)}, ${daysAgoWords(w.ymd, todayYmd)}`
-    const crew = by(f.workedBy)
-    const sub = w.source === 'clocked' ? crew || by(w.people) : [by(w.people) ? `Scheduled for ${by(w.people)}` : 'On the schedule', crew ? `hours by ${crew}` : ''].filter(Boolean).join(', ')
+    const crew = by(w.people)
+    const sub = w.source === 'clocked' ? crew : crew ? `Scheduled for ${crew}` : 'On the schedule'
     return { text: day, phone: `Last worked ${day}`, sub, muted: false }
   }
   const n = f.nextScheduled

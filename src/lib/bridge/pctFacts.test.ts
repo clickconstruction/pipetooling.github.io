@@ -159,23 +159,17 @@ describe('the words', () => {
     expect(daysAgoWords('2026-03-07', '2026-03-09')).toBe('2 days ago')
   })
 
-  it('lists who has worked a job, whoever was there most recently first, then the most hours', () => {
-    expect(j1.workedBy).toEqual(['Dana Reyes', 'Sam Holt'])
-    expect(j2.workedBy).toEqual(['Lee Park'])
-    expect(j3.workedBy).toEqual([])
-    // Two hours last week leads forty hours last month.
-    const order = buildPctFacts({ jobs: [{ id: 'j1', revenueUsd: 1 }], hours: jobHoursByJob([s({ ymd: '2026-02-02', hours: 40 }), s({ userId: 'u2', name: 'Sam Holt', ymd: '2026-03-03', hours: 2 })]), read: { ...read, blocks: [] }, todayYmd: TODAY })
-    expect(order.get('j1')!.workedBy).toEqual(['Sam Holt', 'Dana Reyes'])
-  })
-
-  it('writes the row’s cell: the day and how long ago, with the people in soft words under it', () => {
-    expect(lastWorkedCell(j1, TODAY, dayLabel)).toEqual({ text: 'Mar 5, 5 days ago', phone: 'Last worked Mar 5, 5 days ago', sub: 'Dana and Sam', muted: false })
-    // A day the schedule alone names says so under it, with whoever has clocked time before.
-    expect(lastWorkedCell(j2, TODAY, dayLabel)).toEqual({ text: 'Mar 6, 4 days ago', phone: 'Last worked Mar 6, 4 days ago', sub: 'Scheduled for Ana and Lee, hours by Lee', muted: false })
-    expect(lastWorkedCell({ ...j2, workedBy: [] }, TODAY, dayLabel).sub).toBe('Scheduled for Ana and Lee')
+  it('writes the row’s cell: the day and how long ago, with the last people out there in soft words under it', () => {
+    expect(lastWorkedCell(j1, TODAY, dayLabel)).toEqual({ text: 'Mar 5, 5 days ago', phone: 'Last worked Mar 5, 5 days ago', sub: 'Sam and Dana', muted: false })
+    // Only the last day's people: someone with forty hours a month back is not named under a day he was not there.
+    const last = buildPctFacts({ jobs: [{ id: 'j1', revenueUsd: 1 }], hours: jobHoursByJob([s({ ymd: '2026-02-02', hours: 40 }), s({ userId: 'u2', name: 'Sam Holt', ymd: '2026-03-03', hours: 2 })]), read: { ...read, blocks: [] }, todayYmd: TODAY })
+    expect(lastWorkedCell(last.get('j1')!, TODAY, dayLabel)).toMatchObject({ text: 'Mar 3, 7 days ago', sub: 'Sam' })
+    // A day the schedule alone names says who it was scheduled for.
+    expect(lastWorkedCell(j2, TODAY, dayLabel)).toEqual({ text: 'Mar 6, 4 days ago', phone: 'Last worked Mar 6, 4 days ago', sub: 'Scheduled for Ana and Lee', muted: false })
+    expect(lastWorkedCell({ lastWorked: { ymd: '2026-03-06', source: 'scheduled', people: [] }, nextScheduled: null }, TODAY, dayLabel).sub).toBe('On the schedule')
     expect(lastWorkedCell(j3, TODAY, dayLabel)).toEqual({ text: 'Not worked yet', phone: 'Not worked yet', sub: '', muted: true })
     expect(lastWorkedCell(j4, TODAY, dayLabel)).toEqual({ text: 'Not worked yet', phone: 'Not worked yet', sub: 'Next scheduled Mar 18', muted: true })
-    expect(lastWorkedCell({ lastWorked: null, nextScheduled: { ymd: TODAY, people: [] }, workedBy: [] }, TODAY, dayLabel).sub).toBe('Scheduled today')
+    expect(lastWorkedCell({ lastWorked: null, nextScheduled: { ymd: TODAY, people: [] } }, TODAY, dayLabel).sub).toBe('Scheduled today')
   })
 
   it('writes the facts beside the percent control, the money first', () => {

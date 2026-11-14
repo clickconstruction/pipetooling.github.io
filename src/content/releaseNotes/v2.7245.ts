@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'On What to do now, the Last worked cell of each job under Set a percent now reads the day and how long ago it was, like Sep 22, 53 days ago.',
-    'Under it, in soft words, are the people who have clocked time on the job. Whoever was there most recently comes first.',
+    'Under it, in soft words, are the last people out there: the ones who clocked time on the job that day.',
     'When the schedule alone had someone on the job that day, the soft words say who it was scheduled for.',
     'The percent window says the same day with how long ago it was.',
   ],
