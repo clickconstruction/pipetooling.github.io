@@ -12,6 +12,7 @@ import { supabaseJobPhotosIo, type JobPhotosIo } from '../../lib/photos/jobPhoto
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { JobPhotoThumb, TILE } from './JobPhotoThumb'
 import { JobPhotosViewer } from './JobPhotosViewer'
+import { PhoneSectionTitle } from '../jobs/JobWindowPhoneSections'
 
 const label: CSSProperties = { fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }
 const doorBtn: CSSProperties = { ...label, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, font: 'inherit', fontSize: '0.8125rem' }
@@ -73,7 +74,7 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
   if (!hasFolder) {
     return (
       <div data-job-photos="no-folder" style={{ display: 'grid', gap: '0.35rem' }}>
-        <span style={label}>{photosDoorWords(null)}</span>
+        {banner ? <PhoneSectionTitle>Photos</PhoneSectionTitle> : <span style={label}>{photosDoorWords(null)}</span>}
         <div style={dashed}>
           <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-strong)' }}>{NO_FOLDER_WORDS}</span>
           {onSetFolder ? (
@@ -90,7 +91,23 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
 
   return (
     <div data-job-photos={read ? (read.photos.length ? 'photos' : 'empty') : error ? 'failed' : 'loading'} style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+      {banner ? (
+        <PhoneSectionTitle
+          right={
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+              {read ? <span style={{ ...muted, fontWeight: 600 }}>{read.photos.length}</span> : null}
+              {read && read.photos.length ? (
+                <button type="button" style={doorBtn} onClick={() => setViewer({ at: null })} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
+                  open all ›
+                </button>
+              ) : null}
+            </span>
+          }
+        >
+          Photos
+        </PhoneSectionTitle>
+      ) : null}
+      <div style={banner ? { display: 'none' } : { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
         {read && read.photos.length && !banner ? (
           <button type="button" style={doorBtn} onClick={() => setViewer({ at: null })} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
             {photosDoorWords(read.photos.length)} ▸

@@ -131,6 +131,10 @@ describe('JobWindowModal · the top on a phone', () => {
   it('the Money line ends in the bar’s money verb and opens the Bill tab; Job accounts ends in Add job account', async () => {
     renderWindowAs('assistant', job())
     await settle()
+    // PR B (v2.7278): the two lines sit in the Money fold under More on this job, closed until the phone opens it.
+    const moneyFold = await screen.findByRole('button', { name: /^Money/ })
+    expect(moneyFold.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(moneyFold)
     const money = await screen.findByTestId('job-window-money-line')
     expect(money.textContent).toContain('Job total $56,000 · nothing billed yet')
     // Working with no bill out: the bar says Ready to bill, a status move, so the line ends plain.

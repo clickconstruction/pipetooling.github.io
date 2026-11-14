@@ -2,7 +2,7 @@
 name: "The job window on a phone"
 number: 355
 group: ready
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -15,10 +15,10 @@ summary: >
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
   the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: PR B, the Job tab's sections on a phone (Where · Photos · Who · What's happening · the thread · More on this job), on A once it merges.
+next: both PRs to merge (A #8127, then B); then a month of `ui_nav_clicks` on the tabs and the sheet's rows before C is weighed.
 size: L as a train (S for A · M for B · L for C); the first step is S
 blocker: none
-opinion: A is built (v2.7271); B next, the one that makes the window easy to follow
+opinion: A and B are built (v2.7271, v2.7278); C waits for the count
 mockup: job-window-phone-directions.html
 ---
 
@@ -392,9 +392,11 @@ pick after each is the drawing's own.
    job accounts as one line each ending in their act, the photo banner, the Street View banner on a
    phone, Paint a map centred, the hours-target words, the three renames on every screen, the tabs
    counted; `jobWindowPhone.ts` with tests; a render smoke at 375 px; the guide; release note and fragment.
-2. **B** (M): the phone's top band in Where · Who · Now · the thread order, the folds with counts
-   remembered per device (`localStorage`, as the Pipeline's Overview does); a kernel for the fold
-   list and its counts; the guide.
+2. **B** (M): **built, v2.7278** (`docs/recent-features/v2.7278.md`): the Job tab in Where · Photos · Who ·
+   What's happening · the thread · More on this job, the rows ending in their acts, the customer's
+   links as presses, Copy beside the number, the summary's two lines renamed on every screen, the
+   bubbles, the six folds remembered per device; `jobWindowPhoneSections.ts` with tests; a render
+   smoke at 375 px; the guide.
 3. **C** (L), only when a master tech works from a phone or the tab count says the office's
    phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
    work.

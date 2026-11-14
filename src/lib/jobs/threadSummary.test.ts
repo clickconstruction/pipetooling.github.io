@@ -86,8 +86,8 @@ describe('buildThreadSummary', () => {
     const s = buildThreadSummary(inputs({ lines: [], owed: [], promises: [], job: { status: null, pctComplete: null }, eventCount: 1 }))
     expect(s.lines.map((l) => l.text)).toEqual([
       'No calls, texts or emails with Dana Whitfield on this job yet.',
-      'No day of Dana Whitfield’s is written down.',
-      'Nothing we owe is written down.',
+      'Nothing promised yet. A day Dana Whitfield gives for a payment or an answer lands here.',
+      'Nothing open. A call, a price or a date we said we would give lands here.',
     ])
     expect(s.lines.every((l) => l.href === null)).toBe(true)
     expect(s.stamp).toBe('Read 8:10 AM from 0 lines and 1 event.')
@@ -98,7 +98,7 @@ describe('buildThreadSummary', () => {
     const offered = { ...PROMISE, id: 'p2', state: 'offered' }
     const theirs = { ...PROMISE, id: 'p3', message: { contact_id: 'c-greg', at: PROMISE.message!.at } }
     const s = buildThreadSummary(inputs({ promises: [passed, offered, theirs] }))
-    expect(s.lines[1]?.text).toBe('No day of Dana Whitfield’s is written down.')
+    expect(s.lines[1]?.text).toBe('Nothing promised yet. A day Dana Whitfield gives for a payment or an answer lands here.')
   })
 
   it('writes the note as the title with the stamp, then the three lines', () => {
@@ -107,8 +107,8 @@ describe('buildThreadSummary', () => {
       [
         'Where it stands with Dana Whitfield, read 8:10 AM from 4 lines and 12 events.',
         'Where it stands: The last word was Dana Whitfield’s, a text last Saturday. The job is Working at 34%.',
-        'Their word: Dana Whitfield promised a decision by Thu Oct 29. Said last Friday.',
-        'Our word: We owe Dana Whitfield a start date by Mon Nov 2. Marked last Friday.',
+        'They promised: Dana Whitfield promised a decision by Thu Oct 29. Said last Friday.',
+        'We owe them: We owe Dana Whitfield a start date by Mon Nov 2. Marked last Friday.',
       ].join('\n'),
     )
   })
