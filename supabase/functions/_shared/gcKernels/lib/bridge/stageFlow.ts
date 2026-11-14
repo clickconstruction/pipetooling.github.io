@@ -329,7 +329,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       if (w == null) return 'no pace to read'
       if (b.guessUsd > 0 && b.outPerWeekUsd > 0) {
         const hi = (b.pileUsd + b.guessUsd / 2) / b.outPerWeekUsd
-        return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.build}`
+        if (Math.round(hi) !== Math.round(w)) return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.build}`
       }
       return `${oneDecimal(w)} weeks ${CLEAR_WORDS.build}`
     })

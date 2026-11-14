@@ -139,10 +139,10 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.83.0'")
-    expect(SERVER).toContain('Writes are ninety-nine verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.84.0'")
+    expect(SERVER).toContain('Writes are one hundred and one verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
-    expect(README).toContain('ninety-nine `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and one `plan_` / `apply_` / `revert_` verbs')
   })
   it('go through writeRpcBody with the app’s day, and an apply needs the plan’s hash', () => {
     const planned = writeRpcBody('plan_sub_labor', { labor: FLAT })

@@ -1,8 +1,8 @@
 ---
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
-group: ready
-status: the owner picked A, the one list, 2026-11-13 · PR 0 (the rows in reach) and PR 1 (one header row and More) are built, walked and in the merge queue · left: PR 2 to PR 7
+group: close
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 3 are on main (v2.7196, v2.7200, v2.7217, v2.7222) · PR 4 to PR 7 are open and armed (#8069, #8070, #8072, #8075) · left: the owner's look on his own phone
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -12,9 +12,9 @@ summary: >
   screen. Most presses are 20 to 30 px tall. The mock-up draws three whole directions on the same
   three moments: one list of jobs soonest first, the same desk made to fit, and a today card first.
   The owner picked the one list.
-next: PR 2, the lien month as one line with its cards as a sheet, cut from main once PR 0 has landed.
-size: L as a train of eight (S · S · M · M · M · S · S · S); left: PR 2 to PR 7 (M · M · M · S · S · S)
-blocker: None. PR 2 and PR 3 build on PR 0, so they wait for it to land.
+next: The owner opens the desk on his phone once PR 4 to PR 7 have merged and says what still reads wrong. Then this card is retired.
+size: L as a train of eight, all built; left: a look, and three small residues named under Where it stands
+blocker: None. PR 4 to PR 7 each merge on their own; the tab-rename PR #8038 is ahead of them in the merge queue and each gets main merged in after it lands.
 ---
 
 # The Lien desk on a phone
@@ -30,8 +30,8 @@ and **By paper**. On the day of the recording and the walk they read *Do now*, *
 
 Todd, 2026-11-13, with a screen recording from his iPhone: *"take a look at how the lien desk shows
 up on mobile, this is terrible and needs a lot of visual improvment. Help me come up with a solution
-that"*. The message ended there. He has been asked to finish the sentence. His answer goes here when
-it comes.
+that"*. The message ended there. He was asked to finish the sentence twice and went on without
+it: he picked a direction, then said to build the whole train.
 
 ## What the recording showed
 
@@ -154,22 +154,38 @@ the three on the Lien window.
 
 ## Where it stands
 
-The owner picked A on 2026-11-13. His cut-off sentence is still unfinished. It is asked for again
-before PR 3, since its ending may change what the one list should do.
+The owner picked A on 2026-11-13 and later said to build the whole train. His cut-off sentence was never finished; he chose to go on without it.
 
-| PR | State |
-|---|---|
-| 0 | Built and walked, in the merge queue. At 390 × 720 the room for the rows goes from 0 to 343 px, and to 410 px with PR 1. A pressed month card brings its rows to the top. No grey band. |
-| 1 | Built and walked, in the merge queue. The header at 390 wide is 114 px on To do and By date (was 181) and 173 px on Notices and Affidavits (was 235 and 207). No press in it is under 44 px. |
-| 2 to 7 | Not started. |
+Every PR was walked on the dev server against live data at 320, 390 and 430 wide, reads only, with every write refused at the network, and compared at 1,400 × 900 with the live desk box for box. No PR moved anything on a computer.
 
-Two things PR 1 taught, for the PRs after it:
+| PR | Version | State | What it did, measured at 390 × 720 |
+|---|---|---|---|
+| 0 | v2.7196 | On main | The first view scrolls as one page. The rows were out of reach; they are in reach. No grey band. |
+| 1 | v2.7200 | On main | One header row with More. The header is 114 px on To do and By date (was 181) and 173 px on Notices and Affidavits (was 235 and 207). |
+| 2 | v2.7217 | On main | The lien month is one line, its five cards a sheet; the step rails are one folded row. The first row of work is 408 px down (was 1,526 px and unreachable). |
+| 3 | v2.7222 | On main | Rows grouped by the day they are due, with the money. A row is 112 px (was about 225) and says what its job owes. |
+| 4 | v2.7234 | Open, #8069 | A tap on a row opens the job as its own screen: when the paper is due, the four steps, doors to the paper, the Lien window and the job, and the row's press pinned at the foot. The phone's Back closes it. |
+| 5 | v2.7236 | Open, #8070 | The Notices list pins one pile title in place of five (room for rows 209 → 308 px; at 320 wide, none → 89). No row of tabs slides sideways. The find box is 44 px with 16 px words. |
+| 6 | v2.7238 | Open, #8072 | An open notice, affidavit or retainage notice has the screen: a one-row header with the way back to its list, one pinned section title, no sideways slide, and a footer that folds. An open affidavit had no way back to its list at all. |
+| 7 | v2.7242 | Open, #8075 | The Lien window and the run window fill the screen. The Lien window's header folds as the paper scrolls (168 → 491 px of paper). The run's six steps are one line (266 → 446 px of list), and its fields no longer zoom an iPhone. |
 
-- **A thumb-tall row makes a pinned header taller.** With every press at 44 px the Affidavits header
-  first came out at 259 px against 207 before, because two pile chips wrapped. Whatever wraps goes
-  into the list's own scroller. Measure the header after every change.
-- **The computer check that works** is to read the same boxes on the dev server and on the live desk
-  at 1,400 × 900 and compare them. Both PRs matched to the pixel.
+What the build did differently from the table above, each recorded in its fragment:
 
-*Put a GC on notice* moved into More in PR 1, which the table above did not plan. The paper tabs
-still slide sideways at 320 wide until PR 5.
+- **PR 2.** The step tiles are a folded row above the rows, not a button inside the month's sheet.
+- **PR 3.** A row is three lines and 112 px, not two and 69, so the press keeps its exact words. The chips over the list were left out: the views stayed tabs.
+- **PR 4.** *Add the filed copy* is not a door on the job's screen. It is a write, and the Lien window's door leads to it.
+- **PR 5.** By date already had a phone layout of its own, and the three lists' rows already carry the job, the money and the state, so they were not rebuilt onto the first view's row. The kinds of paper are two-line tabs, not chips: chips that wrap made the pinned header taller.
+- **PR 6.** The paper keeps its printed layout and slides inside its own frame. Section heads do not wrap; one pins in place of five.
+- **PR 7.** The Lien window's header folds on a scroll, with a press of its own, in place of a fixed short header.
+
+Three small things are left, none of them in the way of a look:
+
+- **The notary's print box** on the Affidavits list is about 300 px at the top of the list on a phone. It scrolls away with the list. Folding it waits for the open PR that rewrites that bar (#8044).
+- **Inside an open paper** many presses are 14 to 28 px: the gates, the months grid and the page's own edit marks are drawn for a computer.
+- **The By job grid's own controls** (two pickers at 23 px, *Print the grid* at 25) belong to the PR that renames that view.
+
+Three things the train taught:
+
+- **A thumb-tall row makes a pinned header taller.** Whatever wraps goes into the list's own scroller. Measure the header after every change.
+- **A stack of pinned titles is a table of contents on a computer and a wall on a phone.** The pile titles, the section titles and the footer each took the list's whole window on a small phone. One pins; the rest scroll.
+- **The computer check that works** is to read the same boxes on the dev server and on the live desk at 1,400 × 900 and compare them. All eight PRs matched to the pixel.

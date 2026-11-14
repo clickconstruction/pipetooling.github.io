@@ -2,7 +2,7 @@
  * The lien chip on an Accounts Receivable row (v2.5488): whether lien paper is out on the job
  * and where it stands, in the Lien desk's own words — one chip of a few words in the worst
  * tone, the sentence after it, and the one door. Pure: it folds what the desk already builds
- * (Do now's rows, the notice and affidavit entries, the filings with their mail pieces, letter
+ * (To do's rows, the notice and affidavit entries, the filings with their mail pieces, letter
  * two) and reads nothing itself, so the modal and the desk can never disagree.
  *
  * When a row shows a chip (the owner's canvas, 2026-10-13):
@@ -57,7 +57,7 @@ export type LienArChip = {
    * Equal to `words` when the chip has nothing such a reader repeats.
    */
   lead: string
-  /** The Do now move the chip stands for; null when it reads paper that is out or a closed window. */
+  /** The To do move the chip stands for; null when it reads paper that is out or a closed window. */
   action: LienNextUpAction | null
   /** That move as the next act on the lien path (v2.7043, `lienActFor`): "Draft the affidavit"; null when the move is a reminder, or there is none. */
   act: LienAct | null
@@ -74,7 +74,7 @@ export type LienArChip = {
 export type LienArJobInput = {
   jobId: string
   todayYmd: string
-  /** Every Do now row the desk built (`buildLienNextUp`); the kernel picks this job's. */
+  /** Every To do row the desk built (`buildLienNextUp`); the kernel picks this job's. */
   nextUp: ReadonlyArray<LienNextUpRow>
   /** The job's notice entry when the desk lists it. */
   entry: LienDeskEntry | null
@@ -90,7 +90,7 @@ export type LienArJobInput = {
 
 const TONE_RANK: Record<LienArTone, number> = { red: 0, amber: 1, blue: 2, green: 3, muted: 4 }
 
-/** The chip's first words per Do now move — short, the desk's own. */
+/** The chip's first words per To do move — short, the desk's own. */
 const MOVE_WORDS: Record<LienNextUpAction, string> = {
   find_owner: 'Needs the owner',
   draft: 'Notice to draft',
@@ -394,7 +394,7 @@ function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): Chip
       paper = 'letter_two'
       tone = 'blue'
     } else if (two.state === 'due' || two.state === 'overdue') {
-      // Without Do now's row (a light read), the clock still says it.
+      // Without To do's row (a light read), the clock still says it.
       words = `${mail?.words && mail.tone === 'green' ? `${mail.words} · ` : ''}day ${two.day ?? ''} · the attorney’s letter${two.state === 'overdue' ? ' overdue' : ''}`.replace('day  ·', 'day ·')
       paper = 'letter_two'
       tone = two.state === 'overdue' ? 'red' : 'amber'

@@ -1,5 +1,5 @@
 /**
- * How the Lien desk's Do now view holds its three parts: the lien month, the find box and the list of rows
+ * How the Lien desk's To do view holds its three parts: the lien month, the find box and the list of rows
  * (punch list #352, PR 0).
  *
  * On a computer the month and the find box stay put and the list scrolls under them (`pinned`). On a phone the

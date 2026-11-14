@@ -7,7 +7,7 @@ import { lienStepFoldWords, lienStepRailsShown } from '../../lib/jobs/lienStepFo
 import { LienNoticeTimeline } from './LienNoticeTimeline'
 
 /**
- * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
+ * The To do list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
  * rows, each rung with its count, a press narrowing the list to that rung; the four dots and
  * the fraction a row wears; and the card that opens on the dots — the row's ladder written
  * out. The words all come from `lienNextUpSteps.ts`; nothing here reads or writes.
@@ -300,6 +300,45 @@ export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide, compa
   )
 }
 
+/**
+ * The row's ladder written out: four steps, the done ones ticked, the one it stands on lit. The card on the dots draws
+ * it, and so does a job's own screen on a phone (punch list #352, PR 4), where `roomy` sets it in a size a thumb reads.
+ */
+export function LienStepCardItems({ card, roomy = false }: { card: LienStepCard; roomy?: boolean }) {
+  const tone = LADDER_TONE[card.ladder]
+  const dot = roomy ? 24 : 18
+  return (
+    <ol data-roomy={roomy ? 'yes' : undefined} style={{ listStyle: 'none', margin: roomy ? 0 : '10px 0 0', padding: 0, display: 'grid' }}>
+      {card.items.map((it, i) => (
+        <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: `${dot + 2}px 1fr`, gap: roomy ? 10 : 8, alignItems: 'start', padding: roomy ? '7px 0' : '5px 0' }}>
+          <span
+            aria-hidden
+            style={{
+              width: dot,
+              height: dot,
+              borderRadius: 999,
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: roomy ? '0.8rem' : '0.66rem',
+              fontWeight: 700,
+              border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
+              background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
+              color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
+              boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
+            }}
+          >
+            {it.state === 'done' ? '✓' : i + 1}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: roomy ? '1rem' : '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
+            <span style={{ display: 'block', fontSize: roomy ? '0.875rem' : '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 /** Where the card sits: beside the dots on a computer, a sheet from the bottom on a phone. */
 export type LienStepCardPlace = { top: number; left: number } | 'sheet'
 
@@ -323,34 +362,7 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
       <div data-testid="lien-step-card-deadline" style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: 2, color: card.tone === 'red' ? 'var(--text-red-600)' : card.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
         {card.deadline}
       </div>
-      <ol style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid' }}>
-        {card.items.map((it, i) => (
-          <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: '20px 1fr', gap: 8, alignItems: 'start', padding: '5px 0' }}>
-            <span
-              aria-hidden
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 999,
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: '0.66rem',
-                fontWeight: 700,
-                border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
-                background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
-                color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
-                boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
-              }}
-            >
-              {it.state === 'done' ? '✓' : i + 1}
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
-              <span style={{ display: 'block', fontSize: '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
+      <LienStepCardItems card={card} />
       {card.blocked ? (
         <div data-testid="lien-step-card-blocked" style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>
           <strong>Blocked by:</strong> {card.blocked}
@@ -424,7 +436,7 @@ export function useLienStepCard(isMobile: boolean) {
  * Done steps ticked, the one the row stands on lit and saying whose it is. Nothing for a row past
  * the ladder.
  */
-export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the Do now rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
+export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the To do rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
   const tiles = lienStepTiles(at, ladder, viewerIsLeader)
   if (!tiles) return null
   const inner = tiles.map((t) => (

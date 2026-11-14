@@ -152,6 +152,42 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     fireEvent.click(screen.getByTestId('lien-next-up-job-j1'))
     expect(onOpenJob).toHaveBeenCalledWith('j1')
   })
+
+  it('on a phone with a job screen to open (punch list #352, PR 4): the row, its name and its dots open the job’s own screen; the press and the chip keep their own doors', () => {
+    const on = { row: vi.fn(), job: vi.fn(), act: vi.fn(), paper: vi.fn() }
+    const r = row({})
+    render(<LienDeskNextUp rows={[r]} loading={false} isMobile onAct={on.act} onOpenJob={on.job} onOpenPaper={on.paper} onOpenRow={on.row} />)
+    // The name is the press that opens the screen; the door to the Job window moved onto the screen.
+    expect(screen.queryByTestId('lien-next-up-job-j1')).toBeNull()
+    const name = screen.getByRole('button', { name: '650 · AXO Schertz: where it stands' })
+    fireEvent.click(name)
+    expect(on.row).toHaveBeenCalledTimes(1)
+    expect(on.row).toHaveBeenLastCalledWith(r)
+    // A tap anywhere on the row is the same press.
+    fireEvent.click(document.querySelector('[data-lien-next-up-sub]')!)
+    expect(on.row).toHaveBeenCalledTimes(2)
+    // The dots open the screen in place of the step card's sheet.
+    fireEvent.click(screen.getByTestId('lien-step-mark'))
+    expect(on.row).toHaveBeenCalledTimes(3)
+    expect(screen.queryByTestId('lien-step-card')).toBeNull()
+    // The row's own press and its chip do what they did, and do not open the screen.
+    fireEvent.click(screen.getByRole('button', { name: 'Draft notice' }))
+    expect(on.act).toHaveBeenCalledWith(r)
+    fireEvent.click(screen.getByTestId('lien-next-up-paper-j1-notice'))
+    expect(on.paper).toHaveBeenCalledWith(r)
+    expect(on.row).toHaveBeenCalledTimes(3)
+    expect(on.job).not.toHaveBeenCalled()
+  })
+
+  it('a computer never opens the job screen: the name stays the job’s door and a press on the row acts', () => {
+    const on = { row: vi.fn(), job: vi.fn(), act: vi.fn() }
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={on.act} onOpenJob={on.job} onOpenRow={on.row} />)
+    fireEvent.click(screen.getByTestId('lien-next-up-job-j1'))
+    expect(on.job).toHaveBeenCalledWith('j1')
+    fireEvent.click(document.querySelector('[data-lien-next-up-row]')!)
+    expect(on.act).toHaveBeenCalledTimes(1)
+    expect(on.row).not.toHaveBeenCalled()
+  })
 })
 
 describe('LienDeskNextUp · the steps (v2.4631)', () => {

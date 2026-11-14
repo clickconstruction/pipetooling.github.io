@@ -5,7 +5,7 @@
  * opened by a one-shot `?liendesk=` link the board stripped on arrival; `Jobs.tsx` sends every such link here.
  *
  * The page reads for itself what the board used to hand the window: the desk's own rows (`useLienDeskData`, the
- * full read), the work months behind each notice, the letterhead, the people who sign, the Deadlines rows from
+ * full read), the work months behind each notice, the letterhead, the people who sign, the By date rows from
  * the app-wide jobs cache (every billed job, through the kernel the Pipeline reads too) and the firm's matters
  * for counsel's sign-off. The doors back: the job form and the job window through their app-wide contexts, the
  * Legal desk and Settings by their addresses, and the three windows the desk opens over itself — a job's Lien
@@ -53,6 +53,7 @@ import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LienDeskPile } from '../lib/jobs/lienDesk'
+import { lienDeskRowFromState, lienDeskStateForView, lienDeskStateWithRow } from '../lib/jobs/lienPhoneJobScreen'
 
 /** The same people the Jobs page hands the desk: the office and the field, and a dev's fellow devs. */
 const DESK_USER_ROLES = ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
@@ -78,7 +79,7 @@ export default function LienDeskPage() {
   const authName = profileName?.trim() ?? ''
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
-  // The Deadlines rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
+  // The By date rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
   // filter's board, the page takes the Pipeline's own scoped first load for that one scope (a scope fetch alone is a no-op
   // until a board snapshot exists); on a warm cache it asks for the scope the way the Pipeline's doors did.
   const { jobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
@@ -137,7 +138,7 @@ export default function LienDeskPage() {
   const leaderNameFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
   const signerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, issuer?.phone ?? ''), [users, issuer?.phone])
 
-  // The Deadlines rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
+  // The By date rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
   // (v2.4153) re-reads what it wrote: a promise the pay dates, a kind or a last day the clocks.
   const [clocksRefresh, setClocksRefresh] = useState(0)
   const { rows: calendarRows, reloadPromises } = useLienCalendarRows(jobs, { role, billedLoaded: mergedScopes.has(billedScope), todayYmd, refreshKey: clocksRefresh })
@@ -175,10 +176,17 @@ export default function LienDeskPage() {
   const onAddressChange = useCallback(
     (next: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => {
       const href = lienDeskHref(next)
-      if (href !== here) navigate(href, { replace: true, state: location.state })
+      // A job's own screen belongs to the first view (punch list #352, PR 4): another view drops the open row from the entry.
+      if (href !== here) navigate(href, { replace: true, state: lienDeskStateForView(location.state, next.kind) })
     },
     [here, navigate, location.state],
   )
+
+  // A phone: a row's job opens as its own screen, as a history entry of its own at the same address, so the phone's Back
+  // closes it and the list is where it was (punch list #352, PR 4).
+  const openRowKey = lienDeskRowFromState(location.state)
+  const onOpenRow = useCallback((rowKey: string) => navigate(here, { state: lienDeskStateWithRow(location.state, rowKey) }), [here, navigate, location.state])
+  const onCloseRow = useCallback(() => navigate(-1), [navigate])
 
   // A phone (punch list #182, PR 3): the Notices list, then one notice at a time. Opening a notice is a new entry, so Back
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
@@ -269,6 +277,9 @@ export default function LienDeskPage() {
         onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}
+        openRowKey={openRowKey}
+        onOpenRow={onOpenRow}
+        onCloseRow={onCloseRow}
         data={data}
         loading={loading}
         todayYmd={todayYmd}
@@ -320,7 +331,7 @@ export default function LienDeskPage() {
         // v2.7187, punch list #335, row 2: and the step an affidavit is on.
         deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
-        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {
           setClocksRefresh((k) => k + 1)
           refetch()
