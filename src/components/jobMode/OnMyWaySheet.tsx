@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
+import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 import type { UpdateFocusApplyDirectFn } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -329,6 +330,13 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
             )
           })
         )}
+
+        {/* The way in (punch list #345): the chosen job's painted maps, the moment before the drive. Nothing for a job with none. */}
+        {dest ? (
+          <div style={{ marginTop: '0.6rem' }}>
+            <JobPaintedMapsStrip key={dest.jobId} jobId={dest.jobId} only="maps" />
+          </div>
+        ) : null}
 
         {problem ? (
           <p role="alert" style={{ ...S.muted, color: 'var(--text-red-700)' }}>

@@ -186,8 +186,8 @@ function byYmdOrder(a: { byYmd: string; owed: number }, b: { byYmd: string; owed
 
 /**
  * A notice job's GC as the message says it. The payload carries '' for a job with no GC set, and until v2.7171 every
- * rendering printed that as it was: *• , 1 job, $3,553* under By GC and *Summit GC- Auto Zone, , $3,553* on the waiting
- * line. The words are the notice gate's own (`lienDeskGates.ts`: *No GC on the job*), since a notice goes to the owner
+ * rendering printed that as it was: *• , 1 job, $1,200* under By GC and *Tire Barn, , $1,200* on the waiting line (a
+ * made-up job and amount). The words are the notice gate's own (`lienDeskGates.ts`: *No GC on the job*), since a notice goes to the owner
  * and the GC and the desk holds it until one is set. `mid` is the same words inside a line.
  */
 export const LIEN_STATUS_NO_GC = 'No GC on the job'

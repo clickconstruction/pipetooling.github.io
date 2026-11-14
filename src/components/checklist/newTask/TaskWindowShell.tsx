@@ -46,7 +46,9 @@ export function TaskWindowShell({ titleId, title, subtitle, headActions, childre
     if (!phone || !form || !(field instanceof HTMLElement) || !form.contains(field)) return
     const box = form.getBoundingClientRect()
     const at = field.getBoundingClientRect()
-    const next = scrollTopToReveal({ scrollTop: form.scrollTop, boxTop: box.top, boxBottom: box.bottom, fieldTop: at.top, fieldBottom: at.bottom })
+    // A search box goes to the top of the form, so what it finds shows under it and not under the bar.
+    const align = field.closest('[data-keyboard-reveal="top"]') ? 'top' : 'nearest'
+    const next = scrollTopToReveal({ scrollTop: form.scrollTop, boxTop: box.top, boxBottom: box.bottom, fieldTop: at.top, fieldBottom: at.bottom, align })
     if (next !== form.scrollTop) form.scrollTop = next
   }, [phone, showsHeight, showsTop])
   const overlayPadding = phone ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))'

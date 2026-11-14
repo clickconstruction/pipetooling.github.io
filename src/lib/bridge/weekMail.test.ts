@@ -4,8 +4,9 @@ import { buildCashForecast } from './cashForecast'
 import { buildFlowStrip } from './flowStrip'
 import type { Headline, HeadlineWeek } from './headline'
 import type { StageFlow, StageReading } from './stageFlow'
+import { accrualLine, burnPerDay, cashLine, runwayFoot } from './moneyCard'
 import { buildWeekCall, type WeekCallInput } from './weekCall'
-import { WEEK_MAIL_HALF_PX, WEEK_MAIL_TILE_PX, WEEK_MAIL_WORDS, weekMailGapsLine, weekMailHtml, weekMailLine, weekMailMarketLine, weekMailMoves, weekMailSubject, weekMailText, type WeekMail } from './weekMail'
+import { WEEK_MAIL_HALF_PX, WEEK_MAIL_WORDS, weekMailGapsLine, weekMailHtml, weekMailLine, weekMailMarketLine, weekMailMoves, weekMailSubject, weekMailText, weekMailTiles, type WeekMail, type WeekMailMoney } from './weekMail'
 
 // Made-up numbers throughout: a company whose finished work waits on the bill.
 
@@ -66,13 +67,23 @@ const input: WeekCallInput = {
 }
 
 const strip = buildFlowStrip(flow, { market: 210_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 41_000 })
-const mailOf = (over: Partial<WeekCallInput> = {}, gaps: string[] = []): WeekMail => ({ weekLabel: 'Nov 8–14', todayLabel: 'Nov 9', model: buildWeekCall({ ...input, ...over }), strip, gaps })
+/** The balances as the page builds them: $18.4k in the bank, $60k owed in, $25k owed out, payroll $14k a week and $300 a day of overhead. */
+const moneyOf = (over: Partial<WeekCallInput> = {}, cashNote: string | null = null): WeekMailMoney => {
+  const i = { ...input, ...over }
+  const burnPerDayUsd = burnPerDay({ payrollPerWeekUsd: 14_000, overheadPerDayUsd: 300 })
+  return {
+    cash: cashLine({ forecast: i.forecast, cashTodayUsd: i.cashTodayUsd, cashNote, todayYmd: i.todayYmd, dayLabel: i.dayLabel, burnPerDayUsd }),
+    accrual: accrualLine({ cashUsd: i.cashTodayUsd, owedToYouUsd: 60_000, owedByYouUsd: 25_000, burnPerDayUsd }),
+    foot: runwayFoot(burnPerDayUsd),
+  }
+}
+const mailOf = (over: Partial<WeekCallInput> = {}, gaps: string[] = []): WeekMail => ({ weekLabel: 'Nov 8–14', todayLabel: 'Nov 9', model: buildWeekCall({ ...input, ...over }), money: moneyOf(over), strip, gaps })
 
 const URL = 'https://app.example/bridge'
 
 describe('the Monday email as the first screen', () => {
-  it('the subject says the card’s lead, then cash, then what the field made', () => {
-    expect(weekMailSubject(mailOf())).toBe('The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash low point $18.4k. Made last week $31.0k ≈.')
+  it('the subject says the card’s lead, then the cash balance, then what the field made', () => {
+    expect(weekMailSubject(mailOf())).toBe('The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash balance $18.4k. Made last week $31.0k ≈.')
     expect(weekMailLine(mailOf())).toBe('the week of Nov 8–14, read Nov 9')
   })
 
@@ -101,10 +112,13 @@ describe('the Monday email as the first screen', () => {
     }
   })
 
-  it('three tiles sit in one row, the made tile with its bars', () => {
-    const html = weekMailHtml(mailOf(), URL)
-    expect(html.match(new RegExp(`max-width:${WEEK_MAIL_TILE_PX}px;font-size:14px`, 'g'))).toHaveLength(3)
+  it('two tiles share a row, the made tile with its bars, and the cash tile is the balances’ now', () => {
+    const mail = mailOf()
+    expect(weekMailTiles(mail.model).map((t) => t.id)).toEqual(['made', 'step'])
+    const html = weekMailHtml(mail, URL)
+    expect(html.match(new RegExp(`max-width:${WEEK_MAIL_HALF_PX}px;font-size:14px`, 'g'))).toHaveLength(2)
     expect(html).toContain('Made last week')
+    expect(html).not.toContain('Cash low point, 8 weeks')
     // A week whose hours still wait is the lightest bar, this week the full blue.
     expect(html).toContain('background:#bfdbfe')
     expect(html).toContain('background:#2563eb;border-radius:2px 2px 0 0')
@@ -143,14 +157,45 @@ describe('the Monday email as the first screen', () => {
     expect(weekMailText(mailOf(), URL)).not.toContain(WEEK_MAIL_WORDS.marketWorth)
   })
 
-  it('in a week cash leads its tile takes the row, the other two share the next, and the strip goes under the card', () => {
+  it('the two balances follow the slowest step, each with its runway, and one line says what runway counts (#334)', () => {
+    const mail = mailOf()
+    const html = weekMailHtml(mail, URL)
+    // Payroll $14k a week is $2k a day, plus $300 of overhead: $2.3k a day. $18.4k carries 8 days, $53.4k carries 23.
+    expect(mail.money.cash).toMatchObject({ label: 'Cash balance', value: '$18.4k', runway: '8 days of runway', tone: 'green' })
+    expect(mail.money.accrual).toMatchObject({ label: 'Accrual balance', value: '$53.4k', runway: '23 days of runway' })
+    for (const words of ['Cash balance', '$18.4k', '8 days of runway', 'Accrual balance', '$53.4k', '23 days of runway', 'Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.', 'Runway counts payroll and overhead, $2.3k a day.']) expect(html, words).toContain(words)
+    expect(html.indexOf('Slowest step')).toBeLessThan(html.indexOf('Cash balance'))
+    expect(html.indexOf('Cash balance')).toBeLessThan(html.indexOf('Accrual balance'))
+    expect(html.indexOf('Accrual balance')).toBeLessThan(html.indexOf('What to do now'))
+    const text = weekMailText(mail, URL)
+    expect(text).toContain('Slowest step: Bill\n  7.5 weeks to bill what is already finished.\nCash balance: $18.4k\n  8 days of runway\n  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\nAccrual balance: $53.4k\n  23 days of runway\n  Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.\nRunway counts payroll and overhead, $2.3k a day.\n')
+  })
+
+  it('the accounts left out of cash are said under the cash balance', () => {
+    const mail: WeekMail = { ...mailOf(), money: moneyOf({}, 'Leaves out Accounts Payable, $12.0k.') }
+    expect(weekMailHtml(mail, URL)).toContain('Leaves out Accounts Payable, $12.0k.')
+    expect(weekMailText(mail, URL)).toContain('  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\n  Leaves out Accounts Payable, $12.0k.\nAccrual balance')
+  })
+
+  it('with no balance read the cash line is the forecast’s low point, the accrual balance is not read, and no runway is claimed', () => {
+    const mail: WeekMail = { ...mailOf(), money: moneyOf({ cashTodayUsd: null }) }
+    expect(mail.money.cash.label).toBe('Cash low point, 8 weeks')
+    expect(mail.money.cash.runway).toBeUndefined()
+    expect(mail.money.accrual.value).toBe('not read')
+    expect(weekMailSubject(mail)).toBe('The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash low point $18.4k. Made last week $31.0k ≈.')
+    expect(weekMailText(mail, URL)).toContain('Accrual balance: not read\n  What is owed is not read yet.\n')
+  })
+
+  it('in a week cash leads the balances stay where they are, the cash balance says when it goes under, and the strip goes under the card', () => {
     const mail = mailOf({ forecast: under, cashMayLead: true, supplyDue: { usd: 10_800, ymd: '2026-11-24' } })
     expect(mail.model.cashLeads).toBe(true)
     const html = weekMailHtml(mail, URL)
     expect(html.match(new RegExp(`max-width:${WEEK_MAIL_HALF_PX}px;font-size:14px`, 'g'))).toHaveLength(2)
-    expect(html.indexOf('Cash comes first this week')).toBeLessThan(html.indexOf('Made last week'))
+    expect(html).not.toContain('Cash comes first this week')
+    expect(mail.money.cash.tone).toBe('amber')
+    expect(html).toMatch(/Goes under the \$10\.0k floor in \d+ (days|weeks), on Nov 24\./)
     expect(html.indexOf('Keep cash above the floor.')).toBeLessThan(html.indexOf('Dollars a week.'))
-    expect(weekMailSubject(mail)).toMatch(/^The Bridge, the week of Nov 8–14: Keep cash above the floor\. Under the floor in \d+ (days|weeks)\./)
+    expect(weekMailSubject(mail)).toMatch(/^The Bridge, the week of Nov 8–14: Keep cash above the floor\. Cash balance \$18\.4k\./)
     const text = weekMailText(mail, URL)
     expect(text.indexOf('Keep cash above the floor.')).toBeLessThan(text.indexOf('The five steps.'))
   })
@@ -177,7 +222,8 @@ describe('the Monday email as the first screen', () => {
   })
 
   it('the mail’s own words are plain', () => {
-    const words = [WEEK_MAIL_WORDS.open, WEEK_MAIL_WORDS.foot, WEEK_MAIL_WORDS.sent, weekMailGapsLine(['the bank', 'the people'])]
+    const money = moneyOf()
+    const words = [WEEK_MAIL_WORDS.open, WEEK_MAIL_WORDS.foot, WEEK_MAIL_WORDS.sent, weekMailGapsLine(['the bank', 'the people']), money.cash.sub, money.accrual.sub, money.foot]
     for (const line of words) expect(plainWordsFailures(line), line).toEqual([])
   })
 })

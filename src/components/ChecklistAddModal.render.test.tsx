@@ -394,6 +394,46 @@ describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () 
     cleanup()
   })
 
+  it('on a phone draws the four weeks only for a task that repeats (punch list #348)', async () => {
+    phoneViewport = true
+    try {
+      await renderOpenModal()
+      // A picked day: the date box opens, and the four weeks stay away so Where and Add keep their place.
+      fireEvent.click(screen.getByRole('button', { name: 'Pick a day' }))
+      expect(document.querySelector('input[type="date"]')).not.toBeNull()
+      expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+      // A due day on a one-time task: still no four weeks on a phone.
+      fireEvent.click(addPress('due'))
+      const dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]')
+      const dueBox = dates[dates.length - 1]!
+      const due = new Date(dueBox.min + 'T12:00:00')
+      due.setDate(due.getDate() + 3)
+      fireEvent.change(dueBox, { target: { value: `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}` } })
+      expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+      // A task that repeats: the four weeks are what shows which days it lands on.
+      fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+      expect(document.querySelector('[data-schedule-calendar]')!.querySelectorAll('[data-cal-day]')).toHaveLength(28)
+    } finally {
+      phoneViewport = false
+      cleanup()
+    }
+  })
+
+  it('at a desk still draws the four weeks for a picked day', async () => {
+    await renderOpenModal()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick a day' }))
+    expect(document.querySelector('[data-schedule-calendar]')!.querySelectorAll('[data-cal-day]')).toHaveLength(28)
+    cleanup()
+  })
+
+  it('says one line under the Done when… box (punch list #348)', async () => {
+    await renderOpenModal()
+    fireEvent.click(addPress('lines'))
+    expect(screen.getByText('The card reads its percent from the ticks.')).toBeTruthy()
+    expect(screen.queryByText(/sets the percent by hand/)).toBeNull()
+    cleanup()
+  })
+
   it('a one-off on today draws only once it has a due day', async () => {
     await renderOpenModal()
     expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
