@@ -1,4 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
+import { landedWhole, onSiteLandingWords, type OnSiteLanding } from '../materials/onSiteWrites'
 import { failureQueues, type BidPhotosPayload, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OnSitePressPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
 
 /**
@@ -207,7 +208,12 @@ export async function landBidPhotos(press: OutboxPress, io: LandBidPhotosIo = {}
 }
 
 export type LandOnSitePressIo = {
-  land?: (writes: ReadonlyArray<OnSitePressPayload['writes'][number]>) => Promise<unknown>
+  land?: (writes: ReadonlyArray<OnSitePressPayload['writes'][number]>, opts?: { rowsStandAlone?: boolean }) => Promise<OnSiteLanding | unknown>
+}
+
+/** The lander's answer when it says what became of each row. */
+function isOnSiteLanding(v: unknown): v is OnSiteLanding {
+  return !!v && typeof v === 'object' && Array.isArray((v as OnSiteLanding).landed) && Array.isArray((v as OnSiteLanding).refused)
 }
 
 /**
@@ -215,13 +221,18 @@ export type LandOnSitePressIo = {
  * in the order the press wrote them (`landOnSiteWrites`). An insert carries its phone-minted id, so a resend after a
  * lost answer meets its own row, which is read as a landing; an update is the same columns twice. A press whose rows
  * are not the shape the store writes is refused, never sent. The outcome is classed as any press's: a lost signal or
- * a timeout fails and waits, a refusal keeps the server's reason.
+ * a timeout fails and waits, a refusal keeps the server's reason. A press whose rows stand alone (a delivery's lines,
+ * v2.7267) is answered row by row, and a refused row among them makes a refusal that names what landed (`rows`).
  */
 export async function landOnSitePress(press: OutboxPress, io: LandOnSitePressIo = {}): Promise<LandOutcome> {
   try {
     const p = press.payload as OnSitePressPayload
     const land = io.land ?? (await import('../materials/onSiteWritesIo')).landOnSiteWrites
-    await withOperationTimeout(land(p.writes), LAND_TIMEOUT_MS, 'Save the press')
+    const landing = await withOperationTimeout(land(p.writes, { rowsStandAlone: p.rowsStandAlone === true }), LAND_TIMEOUT_MS, 'Save the press')
+    // Rows that stand alone are answered row by row (v2.7267): a refused row among them is a refusal that names what landed.
+    if (isOnSiteLanding(landing) && !landedWhole(landing)) {
+      return { kind: 'refused', refusal: { message: onSiteLandingWords(landing), code: landing.refused[0]?.code ?? null, rows: { landed: landing.landed, refused: landing.refused } } }
+    }
     return { kind: 'landed', result: { job_id: p.jobId, row_ids: p.writes.map((w) => w.id) } }
   } catch (e) {
     return outcomeOfFailure(e)

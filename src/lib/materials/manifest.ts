@@ -127,7 +127,7 @@ export function readInvoiceText(text: string): { lines: ParsedLine[]; notRead: s
 }
 
 /** The lines a press lands: a count above zero and a name, the name trimmed. The button counts these and the press sends these, no others. */
-export function landableLines(lines: ReadonlyArray<ParsedLine>): ParsedLine[] {
+export function landableLines<L extends ParsedLine>(lines: ReadonlyArray<L>): L[] {
   return lines.filter((l) => l.quantity > 0 && l.name.trim()).map((l) => ({ ...l, name: l.name.trim().replace(/\s+/g, ' ') }))
 }
 
