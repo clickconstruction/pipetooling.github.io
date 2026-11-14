@@ -80,177 +80,140 @@ export const IMPORTERS = [
   'your-week-email',
 ]
 
-/** Each entry (from `src/`) and what the copy's index exports of it. */
+/**
+ * Each entry (from `src/`) and what the copy's index exports of it: exactly the names a function imports through the
+ * index (the five portal files that read the schedule kernels and the two photo functions, on 2026-11-14), and nothing
+ * of any other entry, which its function imports by the file's own path (v2.7288, punch list #359). The index is what a
+ * portal uploads when it reads one kernel through it, so an entry exported there that no function reads through it
+ * rides every portal's deploy: with every entry exported, customer-portal uploaded 3.01 MB, and 1.64 MB with these
+ * alone. `edgeKernels.test.ts` holds the exports equal to the names imported through the index.
+ */
 export const ENTRIES = {
-  'lib/gc/schedule/portalSchedule.ts': { values: ['portalSchedule', 'portalScheduleX'], types: ['PortalSchedule', 'PortalScheduleBar'] },
+  'lib/gc/schedule/portalSchedule.ts': { values: ['portalSchedule'], types: ['PortalSchedule'] },
   'lib/gc/projectRows.ts': { values: ['gcProjectFromRows'], types: ['GcProjectRows'] },
   'lib/gc/boardRows.ts': { values: ['boardStateFromRows'], types: ['BoardRows', 'CompanyRow', 'InviteRow', 'SowRow', 'SowLineRow'] },
-  'lib/gc/drawRows.ts': { values: ['withDraws'], types: ['DrawTables', 'DrawTableRow', 'DrawLineRow', 'LineReportRow'] },
+  'lib/gc/drawRows.ts': { values: ['withDraws'], types: ['DrawTables'] },
   'lib/gc/schedule/rows.ts': { values: ['withScheduleRows'], types: ['ScheduleRows'] },
   // The Portal's P5d-ii: the trade's side of the schedule, worked out where every bar is.
-  'lib/gc/schedule/tellTrades.ts': { values: ['datesNotices'], types: ['DatesNotice'] },
-  'lib/gc/schedule/lateNotices.ts': { values: ['lateDoor', 'lateTarget', 'lateWaiting', 'portalLateNotice'], types: ['LateDoor', 'LateWaiting'] },
-  'lib/gc/schedule/crewCounts.ts': { values: ['portalCrewAsks'], types: ['PortalCrewWeek'] },
-  'lib/gc/portal.ts': { values: ['portalLookAhead', 'portalTodos'], types: ['PortalLookAheadWeek', 'PortalTodo'] },
+  'lib/gc/schedule/tellTrades.ts': { values: ['datesNotices'], types: [] },
+  'lib/gc/schedule/lateNotices.ts': { values: ['lateDoor', 'lateTarget', 'lateWaiting', 'portalLateNotice'], types: [] },
+  'lib/gc/schedule/crewCounts.ts': { values: ['portalCrewAsks'], types: [] },
+  'lib/gc/portal.ts': { values: ['portalLookAhead', 'portalTodos'], types: ['PortalTodo'] },
   // The customer's picture in their portal (the schedule's PR 15b): the picture, a bar in their words, the late
   // finish's customer words, and a change order's non-money half laid on the board.
-  'lib/gc/schedule/customerSchedule.ts': { values: ['customerSchedulePicture', 'customerBarWords'], types: ['CustomerSchedulePicture', 'CustomerStage', 'CustomerStanding'] },
-  'lib/gc/lateFinish.ts': { values: ['lateFinish'], types: ['LateFinish'] },
-  'lib/gc/changeOrderOfficeRows.ts': { values: ['withOfficeChangeOrders', 'CHANGE_ORDER_OFFICE_COLUMNS'], types: ['ChangeOrderOfficeRow'] },
+  'lib/gc/schedule/customerSchedule.ts': { values: ['customerSchedulePicture', 'customerBarWords'], types: ['CustomerSchedulePicture', 'CustomerStage'] },
+  'lib/gc/lateFinish.ts': { values: ['lateFinish'], types: [] },
+  'lib/gc/changeOrderOfficeRows.ts': { values: ['withOfficeChangeOrders'], types: ['ChangeOrderOfficeRow'] },
   // Messages, cut 6: the bids@ reader (gmail-sync) reads each email into a line with these.
-  'lib/emailIn/gmailMessage.ts': { values: ['readGmailMessage', 'base64UrlBytes', 'parseAddress'], types: ['EmailIn', 'GmailMessage'] },
-  'lib/emailIn/forwarded.ts': { values: ['readForwarded'], types: ['Forwarded'] },
-  'lib/emailIn/leftOut.ts': { values: ['leftOut', 'outsideInbox'], types: ['LeftOut'] },
+  'lib/emailIn/gmailMessage.ts': { values: [], types: [] },
+  'lib/emailIn/forwarded.ts': { values: [], types: [] },
+  'lib/emailIn/leftOut.ts': { values: [], types: [] },
   // A notice, not a person (punch list #223 PR 1, v2.6202): the senders the office marked, which the reader leaves out.
-  'lib/emailIn/leftOutSenders.ts': { values: ['leftOutSenders', 'domainOf', 'OPEN_MAIL_DOMAINS', 'NOTICE_LINES'], types: ['LeftOutSenderMatch', 'LeftOutSenderRow'] },
-  'lib/emailIn/bidInSubject.ts': { values: ['bidInSubject', 'BID_NAME_MIN'], types: ['LiveBid'] },
-  'lib/emailIn/invitation.ts': {
-    values: ['invitation', 'invitationCue', 'portalLink', 'projectFromSubject', 'dueIn', 'dayIn', 'timeIn', 'dueWords', 'invitationFacts', 'openInvitation', 'invitationOf', 'KIND_WORDS', 'CUE_LINES'],
-    types: ['Invitation', 'InvitationAnswer', 'InvitationInput', 'InvitationKind'],
-  },
-  'lib/emailIn/emailLine.ts': { values: ['emailLine', 'emailParty', 'emailFileRows'], types: ['EmailLine', 'EmailFileRow'] },
-  'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
-  'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
-  'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  'lib/emailIn/leftOutSenders.ts': { values: [], types: [] },
+  'lib/emailIn/bidInSubject.ts': { values: [], types: [] },
+  'lib/emailIn/invitation.ts': { values: [], types: [] },
+  'lib/emailIn/emailLine.ts': { values: [], types: [] },
+  'lib/emailIn/jobInSubject.ts': { values: [], types: [] },
+  'lib/emailIn/subjectJobs.ts': { values: [], types: [] },
+  'lib/emailIn/historyWalk.ts': { values: [], types: [] },
   // v2.6649: a run inside Google's retry window after a 429 waits instead of asking Gmail again.
-  'lib/emailIn/readerHold.ts': { values: ['readerHold', 'isRateLimited', 'retryAfterIn', 'RETRY_AFTER_DEFAULT_MS', 'RETRY_AFTER_CAP_MS'], types: ['ReaderHoldState'] },
+  'lib/emailIn/readerHold.ts': { values: [], types: [] },
   // v2.6667: a mail whose files killed the run is taken once more without them, so no file is fetched twice.
-  'lib/emailIn/copyStop.ts': { values: ['copyStop', 'copyMarkWords', 'markedMail', 'markOf', 'keepMark', 'fetchBytes', 'COPY_RUN_LIMIT_MS'], types: ['CopyStop', 'CopyStopState', 'FetchRow'] },
+  'lib/emailIn/copyStop.ts': { values: [], types: [] },
   // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
-  'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
+  'lib/emailIn/readerBoxes.ts': { values: [], types: [] },
   // Quickfill's Email station (punch list #159, v2.5820): the boxes the counter reads and one sweep's pure part.
-  'lib/emailIn/countedBoxes.ts': { values: ['cleanLabels', 'countedBoxes', 'findLabel', 'DEFAULT_LABELS'], types: ['CountedBox', 'GmailLabel', 'WatchRow'] },
-  'lib/emailIn/labelSweep.ts': { values: ['ageDays', 'dayRow', 'planSweep', 'threadSeen', 'SWEEP_PAGE_CAP', 'SWEEP_PAGE_SIZE'], types: ['DayRow', 'GmailThreadMeta', 'SweepPlan', 'ThreadSeen', 'TrendThread'] },
-  'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
+  'lib/emailIn/countedBoxes.ts': { values: [], types: [] },
+  'lib/emailIn/labelSweep.ts': { values: [], types: [] },
+  'lib/ledgerDisplayPrefixes.ts': { values: [], types: [] },
   // The dev seat's job verbs (punch list #293, v2.6790): the address saved as the New Job form saves it.
-  'lib/addressTitleCase.ts': { values: ['titleCaseAddress'], types: [] },
+  'lib/addressTitleCase.ts': { values: [], types: [] },
   // The dev seat's bill verb (punch list #293, v2.6794): the Billed line the sheet sends, the share row's copy, the bill's
   // short link and the remainder arithmetic Bill Customer bills.
-  'lib/tellCustomer/billedLine.ts': { values: ['BILLED_LINE', 'billedLineWords', 'billedText'], types: ['BilledLineWords'] },
-  'lib/stripeInvoiceShareCopy.ts': { values: ['buildStripeInvoiceEmailSubject', 'buildStripeInvoiceEmailBody', 'buildStripeInvoiceSmsText'], types: ['StripeInvoiceShareCopyInput'] },
-  'lib/billing/billTextLink.ts': { values: ['billTextLink'], types: ['BillTextLinkInput'] },
-  'lib/billing/newestBill.ts': { values: ['billDollars', 'newestBill'], types: ['NewestBill'] },
-  'lib/billing/openLineAllocation.ts': { values: ['allocatedOpenCents', 'moneyCents', 'isRtbPrimaryBundle', 'isOpenLine'], types: ['OpenLineInvoice', 'LinkedPayment'] },
+  'lib/tellCustomer/billedLine.ts': { values: [], types: [] },
+  'lib/stripeInvoiceShareCopy.ts': { values: [], types: [] },
+  'lib/billing/billTextLink.ts': { values: [], types: [] },
+  'lib/billing/newestBill.ts': { values: [], types: [] },
+  'lib/billing/openLineAllocation.ts': { values: [], types: [] },
   // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
-  'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },
+  'lib/photos/photoName.ts': { values: ['photoDriveName'], types: [] },
   'lib/photos/photoSave.ts': { values: ['photosToSave', 'PHOTO_SAVE_BATCH'], types: ['PhotoRow', 'PhotoSwitch'] },
-  'lib/photos/photoRows.ts': { values: ['PHOTO_ROWS_SELECT', 'PHOTO_SWITCHES_SELECT', 'photoRowOf', 'photoNameInputOf', 'onSwitches'], types: ['PhotoAttachmentRow', 'PhotoLineRow'] },
+  'lib/photos/photoRows.ts': { values: ['PHOTO_ROWS_SELECT', 'PHOTO_SWITCHES_SELECT', 'photoRowOf', 'photoNameInputOf', 'onSwitches'], types: ['PhotoAttachmentRow'] },
   // Materials on site (punch list #209): the ledger's arithmetic, read by dev-mcp's read_on_site so an agent's numbers are the screens'.
-  'lib/materials/onSite.ts': { values: ['containerLines', 'countDiffs', 'lastCountedAt', 'countIsDue', 'linesOf', 'partKey', 'groupByPlace', 'placeName', 'STALE_COUNT_DAYS', 'UNSORTED_LABEL'], types: ['Container', 'ContainerLine', 'CountDiff', 'Movement', 'MovementReason', 'Place'] },
+  'lib/materials/onSite.ts': { values: [], types: [] },
   // The signed hours statement's charged basis and a sub's sheets through the dev MCP (punch list #212): the crew-days
   // pricing the Hours statement window reads with, its rate card, standings and adjustments, and the sheets kernel, so
   // get_hours_statement's charged and sheet papers carry the numbers the printed paper carries.
-  'lib/people/hoursStatementCharged.ts': { values: ['hoursStatementChargedRows'], types: ['HoursStatementChargeFacts', 'HoursStatementChargedInput'] },
-  'lib/charges/crewDays.ts': { values: ['buildCrewDays', 'jobChargeRuleFrom', 'jobChargeRuleWords'], types: ['CrewSessionInput', 'CrewUncharged', 'JobChargeRule'] },
-  'lib/charges/rateCard.ts': { values: ['parseCrewShape', 'rateCardFromSettings', 'RATE_CARD_SETTING_KEYS'], types: ['RateCard'] },
-  'lib/charges/adjustments.ts': { values: ['chargeAdjustmentFromRow', 'indexAdjustments'], types: ['ChargeAdjustment'] },
-  'lib/charges/chargeStandings.ts': { values: ['standingsById'], types: ['ChargeStandingRow'] },
-  'lib/people/hoursStatementSheets.ts': { values: ['hoursStatementSheetCounts', 'hoursStatementSheetPayGroups', 'hoursStatementSheetRows'], types: ['HoursStatementSheet', 'HoursStatementSheetLine', 'HoursStatementSheetPayment'] },
+  'lib/people/hoursStatementCharged.ts': { values: [], types: [] },
+  'lib/charges/crewDays.ts': { values: [], types: [] },
+  'lib/charges/rateCard.ts': { values: [], types: [] },
+  'lib/charges/adjustments.ts': { values: [], types: [] },
+  'lib/charges/chargeStandings.ts': { values: [], types: [] },
+  'lib/people/hoursStatementSheets.ts': { values: [], types: [] },
   // Submittals through the dev seat (v2.6804): get_submittals reads a bid's rows and its order log through the tab's own
   // kernels — the rows that stand, each row as the log's lines, the log, its four steps and the Next line, the status
-  // against the plans — so where a part stands on the seat is where it stands on Bids → Submittals. The index exports
-  // nothing of them: the seat imports each file by its path, so the portals and the other functions that read the index
-  // do not carry twenty files they never call (customer-portal went over the 5 MB a deploy may upload).
+  // against the plans — so where a part stands on the seat is where it stands on Bids → Submittals.
   'lib/submittals/standingRows.ts': { values: [], types: [] },
   'lib/submittals/procurementItemSources.ts': { values: [], types: [] },
   'lib/submittals/procurementLog.ts': { values: [], types: [] },
   'lib/submittals/procurementBoard.ts': { values: [], types: [] },
   'lib/submittals/productStatus.ts': { values: [], types: [] },
   // v2.6406's way back from a retire: read_on_site lists a job's retired boxes with the screens' own Bring back verdict.
-  'lib/materials/unretire.ts': { values: ['retiredContainers', 'unretireVerdict'], types: ['UnretireVerdict'] },
+  'lib/materials/unretire.ts': { values: [], types: [] },
   // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,
   // so every import of the Quo kernels resolves inside the copy.
-  'lib/messages/thread.ts': { values: ['callLength'], types: ['MessageChannel', 'MessageDirection', 'ThreadMessage'] },
-  'lib/quo/webhook.ts': { values: ['verifySignature', 'webhookAnswer'], types: ['WebhookOutcome'] },
-  'lib/quo/events.ts': {
-    values: ['planQuoEvent', 'phoneWords', 'readQuoEvent', 'sentKey', 'toE164', 'unknownContact'],
-    types: ['QuoLine', 'QuoPlan', 'QuoPlanContext', 'QuoReading'],
-  },
+  'lib/messages/thread.ts': { values: [], types: [] },
+  'lib/quo/webhook.ts': { values: [], types: [] },
+  'lib/quo/events.ts': { values: [], types: [] },
   // Messages, cut 10: a text's pictures and files kept on arrival (quo-webhook through _shared/quoMedia.ts).
-  'lib/quo/mediaKeep.ts': { values: ['quoMediaPlans', 'quoMediaRow', 'mediaToKeep', 'keepsCopy', 'QUO_NOT_COPIED'], types: ['QuoMediaPlan', 'QuoMediaFetch', 'QuoMediaRow'] },
-  'lib/quo/send.ts': { values: ['planSend', 'refusalWords', 'sendOver', 'sentQuoId'], types: ['QuoSendInput', 'QuoSendPlan', 'SendPurpose', 'SentLine'] },
+  'lib/quo/mediaKeep.ts': { values: [], types: [] },
+  'lib/quo/send.ts': { values: [], types: [] },
   // Residential R6 (PR 4): the box a call or text came to, the one a text goes from, and a STOP to one number.
-  'lib/messages/boxes.ts': {
-    values: ['BOXES_SETTINGS_KEY', 'boxForReply', 'boxOfInbound', 'boxSetting', 'parseBoxSettings', 'sendBox', 'stopScope', 'stoppedOn'],
-    types: ['BoxFallback', 'BoxSettings', 'Mailbox', 'OptedOutByBox', 'StopChannel'],
-  },
-  'lib/quo/rows.ts': {
-    values: ['MESSAGE_ROW_COLUMNS', 'contactKindOf', 'contactWords', 'defaultJob', 'jobOf', 'lineFromRow', 'parseQuoSendBody', 'quoSeatUserIds', 'quoSeats', 'rowFromLine', 'seatOf', 'seatsSource'],
-    types: ['JobAt', 'MessageColumns', 'MessageRow', 'QuoSendBody'],
-  },
+  'lib/messages/boxes.ts': { values: [], types: [] },
+  'lib/quo/rows.ts': { values: [], types: [] },
   // Texts paused while Quo will not take one for the account's money (v2.5352).
-  'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
+  'lib/quo/paused.ts': { values: [], types: [] },
   // A missed call gets a text back (punch list #195, v2.6012): the setting, the gates in one answer, the line's words.
-  'lib/quo/missedReply.ts': {
-    values: ['MISSED_REPLY_HOLD_MS', 'MISSED_REPLY_KEY', 'TEXTED_BACK_WHO', 'holdWords', 'missedCall', 'parseMissedReply', 'planMissedReply', 'serializeMissedReply', 'textedBackLine'],
-    types: ['MissedHold', 'MissedLine', 'MissedReplyPlan', 'MissedReplySettings'],
-  },
+  'lib/quo/missedReply.ts': { values: [], types: [] },
   // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
   // the pushes a line makes.
-  'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'techHoldUntil', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
+  'lib/messages/hasRule.ts': { values: [], types: [] },
   // R5: quo-send's tech path. The text is made from the line and the record with the sheet's own kernel.
-  'lib/quo/techSend.ts': {
-    values: ['TECH_SEND_WORDS', 'TYPED_MAX', 'LINE_IDS_MAX', 'composeBioText', 'composeTechText', 'isJobModeSend', 'parseTechSendBody', 'pickPhone'],
-    types: ['BioSendText', 'PhoneChannel', 'PhoneLineRecord', 'TechSendBody', 'TechSendKind', 'TechSendText'],
-  },
-  'lib/bio/bio.ts': { values: ['bioText', 'bioPickedLines', 'bioLinesFromRows', 'usualPicks', 'firstNameOf', 'introduced', 'BIO_CAP'], types: ['BioLine', 'BioLineRow'] },
-  'lib/jobModeText.ts': { values: ['jobModeFills'], types: ['JobModeBlock', 'JobModeFillInput'] },
-  'lib/messages/customerLang.ts': { values: ['customerLang'], types: [] },
+  'lib/quo/techSend.ts': { values: [], types: [] },
+  'lib/bio/bio.ts': { values: [], types: [] },
+  'lib/jobModeText.ts': { values: [], types: [] },
+  'lib/messages/customerLang.ts': { values: [], types: [] },
   // May we text? (v2.5606): the one rule the card and quo-send read.
-  'lib/prospects/textingRule.ts': { values: ['textRefusal'], types: [] },
-  'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
-  'lib/messages/legalRoute.ts': {
-    values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],
-    types: ['LegalLine', 'LegalRoute', 'LegalSend'],
-  },
-  'lib/messages/notifyRule.ts': {
-    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'PUSH_CHANNELS', 'answeredBefore', 'pushDue', 'pushHeldRows', 'pushSentRow', 'pushesFor'],
-    types: ['HeldPush', 'NotifySettings', 'Push', 'PushSentRow', 'PushTemplate', 'ReplyHas', 'ReplyLine'],
-  },
+  'lib/prospects/textingRule.ts': { values: [], types: [] },
+  'lib/followUp/assignSeats.ts': { values: [], types: [] },
+  'lib/messages/legalRoute.ts': { values: [], types: [] },
+  'lib/messages/notifyRule.ts': { values: [], types: [] },
   // A person's own push hours (punch list #141 PR 3, v2.6029): messages-notify reads every row of user_push_hours and
   // holds a reply's push for whoever is off, the planner splitting each push with pushDecision.
-  'lib/messages/handedPush.ts': { values: ['handedPush', 'handedFresh', 'HANDED_TEMPLATE', 'HANDED_FRESH_MINUTES', 'HANDED_BODY_MAX'], types: ['HandedPush', 'HandedPushInput'] },
-  'lib/messages/pushHours.ts': {
-    values: ['NO_PUSH_HOURS', 'backAt', 'backWords', 'holderOffWords', 'parsePushHours', 'pushDecision', 'pushedNow'],
-    types: ['PushDecision', 'PushHoursByUser'],
-  },
-  'lib/messages/notifyPlan.ts': {
-    values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
-    types: ['NotifyPlan', 'NotifyPlanInput', 'PlanContact', 'PlanLine', 'PlanOut', 'PlanUser'],
-  },
+  'lib/messages/handedPush.ts': { values: [], types: [] },
+  'lib/messages/pushHours.ts': { values: [], types: [] },
+  'lib/messages/notifyPlan.ts': { values: [], types: [] },
   // The texts switch, Settings → Phone and texts → Send texts (v2.5440).
-  'lib/quo/textsSwitch.ts': { values: ['TEXTS_OFF', 'TEXTS_SWITCH_KEY', 'switchGates', 'textsAreOn'], types: [] },
+  'lib/quo/textsSwitch.ts': { values: [], types: [] },
   // Messages, cut 5: the morning run of the reminders the app sends itself (messages-nudge-dispatch): everyone's flow
   // from the run's rows, the planner, the 9 AM gate and the summary.
-  'lib/flows/nudgeRunInputs.ts': {
-    values: ['APP_SENDS_SETTING_KEY', 'nudgeRunReads', 'runContactsOf'],
-    types: ['NudgeRunReads', 'NudgeRunRows', 'RunChannelRow', 'RunContactRow', 'RunHoldRow', 'RunLineRow', 'RunNoteRow', 'RunOfferRow', 'RunQuickReplyRow', 'RunQuickReplyUseRow', 'RunSentRow', 'RunStepRow'],
-  },
-  'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeOffer', 'NudgeRun', 'NudgeText'] },
-  'lib/flows/nudgeRunLog.ts': { values: ['runHourNow', 'runSummary'], types: ['RunRefused', 'RunSummary'] },
+  'lib/flows/nudgeRunInputs.ts': { values: [], types: [] },
+  'lib/flows/nudgeDispatch.ts': { values: [], types: [] },
+  'lib/flows/nudgeRunLog.ts': { values: [], types: [] },
   // The walk kit (punch list #142 PR 1): our own addresses and numbers, and the kit whose contact may carry one. Both
   // readers (gmail-sync, quo-webhook) take an own address or number as a person only when the kit carries it.
-  'lib/messages/ownChannels.ts': { values: ['isOwnAddress', 'isOwnNumber', 'ownChannels'], types: ['OwnChannels'] },
-  'lib/walk/kit.ts': { values: ['WALK_KIT_KEY', 'channelKey', 'kitCarries', 'numberPlan', 'parseWalkKit'], types: ['WalkKit'] },
+  'lib/messages/ownChannels.ts': { values: [], types: [] },
+  'lib/walk/kit.ts': { values: [], types: [] },
   // The walk function's pure half (punch list #142 PR 7): the ask, the estimate email's search and link, the reply's bytes.
-  'lib/walk/walkFunction.ts': {
-    values: ['BROWSER_USER_AGENT', 'SEED_WHO', 'TESTER_EMAIL', 'TESTER_NAME', 'WALK_ACTIONS', 'acceptLinkIn', 'estimateMailQuery', 'isEstimateMail', 'lastFour', 'leakedSecret', 'parseWalkAsk', 'replyMessageId', 'replyRaw', 'seedOldColumns'],
-    types: ['WalkAction', 'WalkAsk'],
-  },
+  'lib/walk/walkFunction.ts': { values: [], types: [] },
   // Messages, email out through Gmail as the box (punch list #207 PR 2, v2.6702): the raw mail messages-email sends.
-  'lib/emailOut/rawMail.ts': {
-    values: ['base64OfBytes', 'base64UrlOfBytes', 'encodedWord', 'mailboxHeader', 'messagesEmailMessageId', 'mimeByName', 'rawMailBase64Url', 'rawMailMessage', 'senderDisplayName', 'wrap76'],
-    types: ['RawMailFile', 'RawMailInput'],
-  },
+  'lib/emailOut/rawMail.ts': { values: [], types: [] },
   // The walk tester's doors (punch list #142 PR 5): quo-send, messages-email and send-estimate-to-customer let the
   // tester through only at the kit's own targets.
-  'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
+  'lib/walk/kitDoor.ts': { values: [], types: [] },
   // The Bridge's Monday email (v2.5881): the reads with a client passed in, the mail from them, and the mail's parts.
   // Since v2.6888 the weekly send (bridge-weekly-sheet) builds the page's first screen: the tiles, the strip and the
   // card What to do now, with the accounts the owner left out of cash, and since v2.7214 the two balances.
-  // The index exports nothing of them: bridge-weekly-sheet imports each file by its path, so the portals and the other
-  // functions that read the index do not carry the Bridge's files (customer-portal went over the 5 MB a deploy may
-  // upload a second time when the email took Market's worth, punch list #318).
   'lib/bridge/sheetReads.ts': { values: [], types: [] },
   'lib/bridge/sheetBuild.ts': { values: [], types: [] },
   'lib/bridge/weekMail.ts': { values: [], types: [] },
@@ -260,12 +223,10 @@ export const ENTRIES = {
   'lib/jobs/zzTestJobReads.ts': { values: [], types: [] },
   // The dev seat's last day of work (v2.7206): the Lien window's own rule for a day set by hand and the table its
   // confirm window draws, so plan_last_work_day refuses what the window refuses and shows the dates the window shows.
-  // The index exports nothing of them: the seat imports each file by its path.
   'lib/jobs/lienLastWorkDay.ts': { values: [], types: [] },
   'lib/jobs/lienLastWorkDayPreview.ts': { values: [], types: [] },
   // The dev seat's notice recorded by hand (v2.7229): the app's own rule for the rows one mailed paper becomes, the day a
   // desk item marked sent after the fact says it went, the nine values a notice's record keeps and who signs it.
-  // The index exports nothing of them: the seat imports each file by its path.
   'lib/jobs/lienNoticeByHand.ts': { values: [], types: [] },
   'lib/jobs/lienSentAt.ts': { values: [], types: [] },
   'lib/jobs/lienNoticeJobFields.ts': { values: [], types: [] },
@@ -289,229 +250,52 @@ export const ENTRIES = {
   'lib/jobs/lienInKind.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
-  'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },
-  'lib/payWeekAnchor.ts': { values: ['previousCompletePayWeek', 'payWeekContaining'], types: ['PayWeek'] },
+  'lib/techWeek/weekEmail.ts': { values: [], types: [] },
+  'lib/payWeekAnchor.ts': { values: [], types: [] },
   'lib/bridge/weeklySend.ts': { values: [], types: [] },
   // The review ask's one rule (v2.6007): the {rate} blank, its link, and a job answered never asked again, which the
   // morning run's mint (`_shared/ratingMint.ts`) keeps as the press on Today's sends does.
-  'lib/ratings/ratingAsk.ts': {
-    values: ['RATE_BLANK', 'RATE_PATH', 'REUSE_DAYS', 'answeredAlready', 'answeredJobs', 'carriesRatingAsk', 'decideRatingAsk', 'needsRatingLink', 'ratingUrl'],
-    types: ['RatingAnswer', 'RatingAskDecision', 'RatingAskRow'],
-  },
+  'lib/ratings/ratingAsk.ts': { values: [], types: [] },
   // Messages → My email (punch list #230 PR 2): the contract gmail-mine and the tab share, PR 1's kernels (a mail as the
   // tab's row, the guess, what a tag writes, the three views) and the function's own pure half.
-  'lib/myMail/contract.ts': {
-    values: ['MY_MAIL_FUNCTION', 'MY_MAIL_GMAIL_LABEL', 'MY_MAIL_NO_SUBJECT', 'MY_MAIL_PAGE', 'MY_MAIL_REFUSAL_WORDS', 'myMailRefusal'],
-    types: [
-      'MyMailFile',
-      'MyMailFold',
-      'MyMailJobChip',
-      'MyMailJobKind',
-      'MyMailJobRef',
-      'MyMailLabel',
-      'MyMailListOk',
-      'MyMailListRequest',
-      'MyMailOpenOk',
-      'MyMailOpenRequest',
-      'MyMailParty',
-      'MyMailPersonRef',
-      'MyMailPersonTagCounts',
-      'MyMailPersonTagOk',
-      'MyMailPersonTagPlanMail',
-      'MyMailPersonTagPlanOk',
-      'MyMailPersonTagRequest',
-      'MyMailRefusal',
-      'MyMailRefusalError',
-      'MyMailRequest',
-      'MyMailRow',
-      'MyMailTagOk',
-      'MyMailTagRequest',
-      'MyMailUntagHeldWhy',
-      'MyMailUntagOk',
-      'MyMailUntagPlanOk',
-      'MyMailUntagRequest',
-      'MyMailUntagSweep',
-      'MyMailView',
-    ],
-  },
-  'lib/myMail/rows.ts': { values: ['MY_MAIL_METADATA_HEADERS', 'MY_MAIL_SNIPPET_MAX', 'isOwnMail', 'isTheirs', 'myMailFold', 'myMailRow', 'readMyMail'], types: ['MyMailGmailMessage', 'MyMailRead', 'MyMailReader'] },
-  'lib/myMail/mailGuess.ts': { values: ['guessJob', 'subjectJobChip'], types: ['MyMailGuess', 'MyMailGuessFacts'] },
+  'lib/myMail/contract.ts': { values: [], types: [] },
+  'lib/myMail/rows.ts': { values: [], types: [] },
+  'lib/myMail/mailGuess.ts': { values: [], types: [] },
   // Whose session reads the mail (v2.6290): one Imitate or View as opened is refused, and only the sign-in address is read.
-  'lib/myMail/imitation.ts': {
-    values: ['IMITATION_SKEW_SECONDS', 'IMITATION_WINDOW_SECONDS', 'MAGIC_LINK_METHODS', 'MY_MAIL_NOT_SIGN_IN_WORDS', 'imitationsSince', 'isSignInAddress', 'openedByImitation', 'sessionLinkAt'],
-    types: [],
-  },
-  'lib/myMail/tagPlan.ts': {
-    values: ['MY_MAIL_MAILBOX', 'MY_MAIL_NEVER_LABELS', 'MY_MAIL_SENT_LABEL', 'planTag'],
-    types: ['MyMailKnown', 'MyMailKnownLine', 'MyMailPerson', 'MyMailTagFile', 'MyMailTagLink', 'MyMailTagPlan', 'MyMailTagSkip', 'MyMailTagStep', 'MyMailThread', 'MyMailThreadRow'],
-  },
-  'lib/myMail/view.ts': { values: ['MY_MAIL_WORDS', 'foldedCount', 'rowsForView', 'viewRows'], types: ['MyMailViewRows'] },
+  'lib/myMail/imitation.ts': { values: [], types: [] },
+  'lib/myMail/tagPlan.ts': { values: [], types: [] },
+  'lib/myMail/view.ts': { values: [], types: [] },
   // Punch list #289: a conversation onto a person's HR file from the dev seat — one dated entry per mail in a fixed
   // shape, the file's own entries by Gmail id as the dedupe, which gmail-mine's person tag and its follow both run.
-  'lib/myMail/personTagPlan.ts': {
-    values: ['MY_MAIL_ENTRY_BODY_MAX', 'MY_MAIL_ENTRY_SOURCE', 'fileSizeWords', 'mailEntryContent', 'mailEntryDate', 'mailSentWords', 'personEntryRow', 'planPersonTag'],
-    types: ['MyMailPersonKnown', 'MyMailPersonTagPlan', 'MyMailPersonTagStep'],
-  },
+  'lib/myMail/personTagPlan.ts': { values: [], types: [] },
   // Since PR 4 (v2.6279) also the follow, the cron's action: whose tagged conversations it reads, the window and the
   // newest mail it keys on (v2.6289), what it does with each mail, and the tag's grey line on the thread. Since v2.6292
   // the hidden labels by Gmail's ids, the row's record of the tag's ties, and what an untag keeps for the office.
-  'lib/myMail/mineFunction.ts': {
-    values: [
-      'FOLLOW_ROWS_PER_RUN',
-      'FOLLOW_WINDOW_DAYS',
-      'LABEL_CLEANUP_KEY',
-      'MAIL_SAVED_BODY',
-      'MAIL_SAVED_CHANNEL',
-      'MAIL_SAVED_TEMPLATE',
-      'MY_MAIL_BUCKET',
-      'MY_MAIL_EML_MIME',
-      'MY_MAIL_FOLLOW_GONE',
-      'MY_MAIL_HTML_MAX',
-      'MY_MAIL_OFFICE_ROLES',
-      'MY_MAIL_QUERY_MAX',
-      'MY_MAIL_READ_CHUNK',
-      'MY_MAIL_REFUSAL_STATUS',
-      'MY_MAIL_STOPPED_STATUS',
-      'MY_MAIL_TAGGED_PAGE',
-      'PLACED_LINE_WORDS',
-      'SEAT_UNTAG_WORDS',
-      'SENT_FOLLOW_PAGE',
-      'bidIsOpen',
-      'columnNotPushed',
-      'contactJobsOf',
-      'contactsByAddress',
-      'conversationGuess',
-      'conversationJobs',
-      'conversationWhy',
-      'customerOpenJobs',
-      'domainCustomers',
-      'domainFilter',
-      'fencedQuery',
-      'filledRow',
-      'followPeople',
-      'followSince',
-      'followWindow',
-      'gcProjectIsOpen',
-      'gmailRefusal',
-      'isDuplicateKey',
-      'isFollowRequest',
-      'inAskedBoxes',
-      'isTagTie',
-      'knownLines',
-      'knownOwnLines',
-      'mailSavedBatchSince',
-      'mailSavedFacts',
-      'mailSavedTitle',
-      'labelCleanupCounts',
-      'labelCleanupDue',
-      'labelCleanupMarked',
-      'labelCleanupReason',
-      'myMailAddressKey',
-      'myMailBodyHtml',
-      'myMailEmlPath',
-      'myMailFileList',
-      'myMailFilePath',
-      'myMailFileRow',
-      'myMailGuessAsks',
-      'myMailGuessFacts',
-      'myMailHiddenLabelIds',
-      'myMailHiddenLabels',
-      'myMailJobs',
-      'myMailLineRow',
-      'myMailOurDomains',
-      'myMailParties',
-      'myMailQuery',
-      'myMailTagEventKey',
-      'myMailTagEventRow',
-      'myMailTagEventWords',
-      'myMailTagRecord',
-      'myMailTaggedBy',
-      'myMailTeam',
-      'neverRead',
-      'oldLabelId',
-      'onWorkspace',
-      'newestMailAt',
-      'orphanCopies',
-      'parseMyMailRequest',
-      'placedByAppWords',
-      'placedLineWords',
-      'readLabelCleanup',
-      'personTagPlanPreview',
-      'pipelineIsOpen',
-      'planFollow',
-      'planUntag',
-      'planUntagSweep',
-      'seatMayUntag',
-      'seatTagRecord',
-      'seatTagsOf',
-      'sentFollowQuery',
-      'sentPlacement',
-      'sentSince',
-      'safeFileName',
-      'stoppedRefusal',
-      'tagRowJob',
-      'taggedNextToken',
-      'taggedOffset',
-      'tokenRefusal',
-      'untagHeldWhy',
-      'untagPlanPreview',
-      'wantsGuess',
-      'withTies',
-    ],
-    types: [
-      'MyMailBidRow',
-      'MyMailCustomerPersonRow',
-      'MyMailCustomerRow',
-      'MyMailFollowLine',
-      'MyMailFollowOk',
-      'MyMailFollowPerson',
-      'MyMailFollowRequest',
-      'MyMailFollowStep',
-      'MyMailFollowUserRow',
-      'LabelCleanupState',
-      'MyMailHeldLine',
-      'MyMailJobRows',
-      'MyMailLine',
-      'MyMailNamed',
-      'MyMailPageFacts',
-      'MyMailPipelineRow',
-      'MyMailProjectRow',
-      'MyMailSeatCall',
-      'MyMailSeatTag',
-      'MyMailSweepContact',
-      'MyMailSweepTie',
-      'MyMailTagRecord',
-    ],
-  },
+  'lib/myMail/mineFunction.ts': { values: [], types: [] },
   // Punch list #255: a license's words written one way and the state's TDLR record, read by dev-mcp's plan_license
   // and check_license so a license the robot writes reads back in the logbook as the one the window writes.
-  'lib/logbook/licenseText.ts': {
-    values: ['LICENSE_LEVELS', 'licenseTypeText', 'cleanLicenseNumber', 'tdlrNumberFor', 'tdlrQueryUrl', 'tdlrAnswer', 'tradeCheckedByTdlr'],
-    types: ['LicenseTrade', 'LicenseLevel', 'TdlrRow', 'TdlrAnswer'],
-  },
+  'lib/logbook/licenseText.ts': { values: [], types: [] },
   // The dev seat's plan_bid_update (v2.6945): the line Edit Bid writes when the outcome moves, the six loss categories and
-  // the Bid Board's sections, so a bid changed from the seat reads on the Board as one changed on the form. The index
-  // exports nothing of them: the seat imports each file by its path, as it does the submittal kernels.
+  // the Bid Board's sections, so a bid changed from the seat reads on the Board as one changed on the form.
   'lib/outcomeChangeBidNote.ts': { values: [], types: [] },
   'lib/bidLossCategories.ts': { values: [], types: [] },
   'lib/bids/submissionSections.ts': { values: [], types: [] },
   // The dev seat's plan_bid_counts (v2.6967): the Count Sheet's own rules — one row a fixture in a scope, the units, the
-  // `[Group] ` prefix, the active version — so a row the seat writes is a row the sheet would have written. Off the
-  // index, like the rest of the seat's bid kernels.
+  // `[Group] ` prefix, the active version — so a row the seat writes is a row the sheet would have written.
   'lib/bids/countSheet.ts': { values: [], types: [] },
   'lib/bids/countRowUnit.ts': { values: [], types: [] },
   'lib/bids/parseCountsImportText.ts': { values: [], types: [] },
   'lib/bids/pickActiveVersion.ts': { values: [], types: [] },
   // The dev seat's plan_bid_takeoff: the bid's materials off its part lines (the Takeoffs strip's and Pricing's number,
-  // with the order rounding) and how a part is sold, so the plan states the tab's own total. Off the index.
+  // with the order rounding) and how a part is sold, so the plan states the tab's own total.
   'lib/bids/bidMaterials.ts': { values: [], types: [] },
   'lib/materials/orderIncrement.ts': { values: [], types: [] },
   // The dev seat's plan_bid_labor: the Labor tab's "Direct cost of this bid" (with the row hours and the direct cost
-  // tables it reads) and the load sync's fixture key, so the plan states the tab's own numbers. Off the index.
+  // tables it reads) and the load sync's fixture key, so the plan states the tab's own numbers.
   'lib/bids/bidTotalCostBreakdown.ts': { values: [], types: [] },
   'lib/bids/laborSyncPlan.ts': { values: [], types: [] },
   // The dev seat's priced total (get_bid, v2.6990): the Pricing grid's own projection, the tab's pick of the open
-  // pricing and where a write would land. Off the index.
+  // pricing and where a write would land.
   'lib/bids/scenarioPricingRows.ts': { values: [], types: [] },
   'lib/bids/legacyTemplatePricing.ts': { values: [], types: [] },
   'lib/bids/pickDefaultPriceBookTemplateId.ts': { values: [], types: [] },
