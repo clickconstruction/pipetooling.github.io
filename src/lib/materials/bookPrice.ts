@@ -7,6 +7,7 @@
  * and the invoice prices come in, a pick and its words go out; the store does the reading.
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, ymdDaysBetween } from '../../utils/dateUtils'
+import { PLACEHOLDER_PRICE } from './materialPriceIndex'
 
 /** The parts book's own freshness rule (What your materials cost): a price checked longer ago than this is stale. */
 export const BOOK_PRICE_FRESH_DAYS = 90
@@ -55,13 +56,24 @@ function isStale(ageDays: number | null): boolean {
 }
 
 /**
+ * A price a money figure may read (v2.7249, punch list #344 PR 7): above zero and under the parts book's stand-in,
+ * `PLACEHOLDER_PRICE`, the app's own rule for the book (`materialPriceIndex.ts`). The on-site rule refused only a
+ * price under zero, so a row at 0 won a same-day tie as the lower price and read as known and fresh, and a stand-in
+ * of 999,999 priced a line at a million dollars a piece. Neither is a price: the part then reads its next source, or
+ * *no price*.
+ */
+export function isRealPrice(price: number | null | undefined): price is number {
+  return typeof price === 'number' && Number.isFinite(price) && price > 0 && price < PLACEHOLDER_PRICE
+}
+
+/**
  * The supply house's latest price: of a part's rows, the one checked most recently wins; two checked
  * the same day go to the lower price; a row never checked comes after every dated one. Null for no rows.
  */
 export function pickBookPrice(rows: ReadonlyArray<BookPriceRow>, today: string): PricePick | null {
   let best: BookPriceRow | null = null
   for (const r of rows) {
-    if (!Number.isFinite(r.price) || r.price < 0) continue
+    if (!isRealPrice(r.price)) continue
     if (!best) {
       best = r
       continue
@@ -77,7 +89,7 @@ export function pickBookPrice(rows: ReadonlyArray<BookPriceRow>, today: string):
 
 /** The price the office read off the invoice that landed a part, kept on the device. */
 export function invoicePick(price: number | null): PricePick | null {
-  if (price == null || !Number.isFinite(price) || price < 0) return null
+  if (!isRealPrice(price)) return null
   return { price, from: 'invoice', supplyHouse: null, checkedOn: null, ageDays: null, stale: false }
 }
 
