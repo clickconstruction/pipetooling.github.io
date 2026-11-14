@@ -153,9 +153,9 @@ without the window (the customer's Agreements card and Dispatch Mode's schedule)
 no banner today; that stays as it is unless he asks.
 
 Also on pass 2: "I think we should move the paint a map plus button to the center, instead of to the
-left." So the *＋ Paint a map* press is centred in its dashed box, in A under the maps as today and in
-B under the Where rows as a 40 px press rather than a quiet line, and PR A centres the live press's
-words under `phonePane`.
+left." So the *＋ Paint a map* press is centred, in A under the maps as today and in B under the Where
+rows as a 40 px press rather than a quiet line, and PR A centres the live press's words under
+`phonePane` (and drops its box, next note).
 
 Also on pass 2: "Regarding their word, no day of theirs is written down, I don't think this has a lot
 of context and could be better presented." The live card's second and third lines are *Their word*
@@ -219,6 +219,11 @@ another added (the ⋯ sheet's row, so the row keeps its `data-navtrack` name); 
 the bar's verb from `tabbedJobWindowBar`, so the sentence and the press agree; when the move is
 someone else's (*The customer, to pay*) it ends in the nudge the Pipeline row offers, *Remind them*.
 Every row of What's happening and the thread now ends the same way.
+
+Also on pass 2, from a crop of Paint a map: "We should remove the border around this and push up the
+words." So the dashed box goes: *＋ Paint a map* is centred blue words straight under the painted
+maps, with the row above's gap closed, the same shape as every other act on the screen. The tap
+target stays 40 px tall around the words.
 
 ## What the phone draws today, measured
 
