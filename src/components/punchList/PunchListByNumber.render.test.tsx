@@ -55,6 +55,12 @@ function Harness({ visible = () => true, start = 'newest' }: { visible?: (item: 
 }
 
 const numbers = () => screen.getAllByTestId('punch-number-row').map((li) => li.getAttribute('data-number'))
+/** The row at a place in the list; the test fails here, by name, when the list is shorter. */
+const rowAt = (at: number): HTMLElement => {
+  const li = screen.getAllByTestId('punch-number-row')[at]
+  if (!li) throw new Error(`no row at ${at}`)
+  return li
+}
 
 describe('PunchListByNumber', () => {
   it('lists every card the highest number first, and one press flips it', () => {
@@ -72,7 +78,7 @@ describe('PunchListByNumber', () => {
 
   it('draws the number, the name, the group chip, the size letter, the version and the mock-up on a row', () => {
     renderWithProviders(<Harness />)
-    const receipt = within(screen.getAllByTestId('punch-number-row')[1])
+    const receipt = within(rowAt(1))
     expect(receipt.getByRole('link', { name: '#299' }).getAttribute('href')).toBe('#n299')
     expect(receipt.getByRole('link', { name: 'A receipt by text' }).getAttribute('href')).toContain('to-dos/a.md')
     expect(receipt.getByTestId('punch-number-group').textContent).toBe('Ready to build')
@@ -80,15 +86,15 @@ describe('PunchListByNumber', () => {
     expect(receipt.getByRole('link', { name: 'v2.7120' })).toBeTruthy()
     expect(receipt.getByRole('link', { name: /mock-up · 1 of 2/ }).getAttribute('href')).toBe('/to-dos/receipt/mockup.html')
     // The newest card is flagged and still waits on a drawing; the standing list takes no size.
-    const bill = within(screen.getAllByTestId('punch-number-row')[0])
+    const bill = within(rowAt(0))
     expect(bill.getByLabelText('Flagged')).toBeTruthy()
     expect(bill.getByText(/waiting on a mock-up/)).toBeTruthy()
-    expect(within(screen.getAllByTestId('punch-number-row')[4]).getByText('standing list')).toBeTruthy()
+    expect(within(rowAt(4)).getByText('standing list')).toBeTruthy()
   })
 
   it('opens the card under a row on a press of its Next line, and closes it on the next', () => {
     renderWithProviders(<Harness />)
-    const queue = screen.getAllByTestId('punch-number-row')[3]
+    const queue = rowAt(3)
     const next = within(queue).getByRole('button', { name: /Cut the next file from the queue/ })
     expect(next.getAttribute('title')).toContain('Cut the next file from the queue.')
     expect(next.getAttribute('aria-expanded')).toBe('false')

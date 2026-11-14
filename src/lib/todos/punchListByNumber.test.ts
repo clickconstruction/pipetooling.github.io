@@ -43,13 +43,10 @@ const slugs = (items: readonly BoardItem[]) => items.map((i) => i.slug)
 
 describe('byNumber', () => {
   // The board hands the rows over by group then name, so the numbers arrive shuffled.
-  const board = [
-    row({ slug: 'queue', number: 46 }),
-    row({ slug: 'receipt', number: 299 }),
-    row({ slug: 'pointer', number: 5, pointer: true }),
-    row({ slug: 'bill', number: 343, group: 'gated' }),
-    row({ slug: 'lien', number: 235, group: 'close' }),
-  ]
+  const queue = row({ slug: 'queue', number: 46 })
+  const receipt = row({ slug: 'receipt', number: 299 })
+  const bill = row({ slug: 'bill', number: 343, group: 'gated' })
+  const board = [queue, receipt, row({ slug: 'pointer', number: 5, pointer: true }), bill, row({ slug: 'lien', number: 235, group: 'close' })]
 
   it('puts the highest number on top by default order, newest first', () => {
     expect(byNumber(board, 'newest').map((i) => i.number)).toEqual([343, 299, 235, 46, 5])
@@ -68,14 +65,14 @@ describe('byNumber', () => {
   it('sorts a card with no number last in both directions, and names it', () => {
     const loose = row({ slug: 'loose', number: Number.NaN })
     const zero = row({ slug: 'zero', number: 0 })
-    const withLoose = [loose, ...board.slice(0, 2), zero]
+    const withLoose = [loose, queue, receipt, zero]
     expect(slugs(byNumber(withLoose, 'newest'))).toEqual(['receipt', 'queue', 'loose', 'zero'])
     expect(slugs(byNumber(withLoose, 'oldest'))).toEqual(['queue', 'receipt', 'loose', 'zero'])
     expect(hasNumber(loose)).toBe(false)
     expect(numberLabel(loose)).toBe(NO_NUMBER)
-    expect(numberLabel(board[3])).toBe('#343')
+    expect(numberLabel(bill)).toBe('#343')
     expect(rowAnchor(loose)).toBe('card-loose')
-    expect(rowAnchor(board[3])).toBe('n343')
+    expect(rowAnchor(bill)).toBe('n343')
   })
 
   it('keeps two cards on one number in the board’s order, whichever way the list runs', () => {
