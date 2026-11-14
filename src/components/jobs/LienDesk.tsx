@@ -119,6 +119,7 @@ import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
+import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
@@ -158,8 +159,7 @@ import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
 import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
-import { LIEN_DESK_ONE_LINE_QUERY, lienDeskTitleBarLayout } from '../../lib/jobs/lienDeskTitleBar'
-import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { lienDeskTitleBarLayout, lienDeskTitleLineFit, readLienDeskTitleLine, type LienDeskTitleLineFit } from '../../lib/jobs/lienDeskTitleBar'
 import { DeskLegendCard } from '../help/LegendCard'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
@@ -407,8 +407,10 @@ export default function LienDesk({
 }: LienDeskProps) {
   const stacked = layout === 'stacked'
   const isMobile = useIsMobile()
-  // A window wide enough for the title line to hold the tools too (v2.7213); the rule and its width are `lienDeskTitleBar.ts`.
-  const wideWindow = useMatchMedia(LIEN_DESK_ONE_LINE_QUERY)
+  // What the title line has room for at its end (v2.7213; measured since v2.7277): all five tools, the four presses with the
+  // owner-records door under them, or none. The bar reads the line it drew; the rule is `lienDeskTitleBar.ts`. None until it is drawn.
+  const titleBarRef = useRef<HTMLDivElement>(null)
+  const [titleLineFit, setTitleLineFit] = useState<LienDeskTitleLineFit>('none')
   // One column (the list or the pane, never both): a phone's width, or a host that stacks the desk (punch list #182 PR 3).
   const oneColumn = isMobile || stacked
   const { showToast } = useToastContext()
@@ -945,7 +947,7 @@ export default function LienDesk({
       const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
-        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd, form: lienAffidavitFormForItem(e?.item), filings: data.filingsByJob[jobId] ?? [], homestead: prop.homestead })
+        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd, form: lienAffidavitFormForItem(e?.item), filings: data.filingsByJob[jobId] ?? [], homestead: prop.homestead, monthsByHand: data.affidavitMonthsByJob[jobId]?.months ?? null })
         const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
         return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }
@@ -1774,7 +1776,9 @@ export default function LienDesk({
       // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
-      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd }
+      // The months set by hand (v2.7270) stand in for the record's on the paper, the check and the sheet's row.
+      const byHand = data.affidavitMonthsByJob[e.jobId] ?? null
+      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, monthsByHand: byHand?.months ?? null }
       const swornMonths = lienAffidavitSwornMonths({ ...swornFacts, filings })
       const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings, work: lienAffidavitWorkMonths(swornFacts) })
       const noticeLines = lienNoticeCheckLines(noticeCheck)
@@ -1782,7 +1786,7 @@ export default function LienDesk({
       const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
       const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn }
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
@@ -1832,8 +1836,33 @@ export default function LienDesk({
   const runDoorShown = kind !== 'affidavit' && office && runCount > 0
   const runDoorHint = runDoor.label === 'Record the mailing' ? 'The printed notices are in the mail: type each envelope’s tracking number in the run to record the mailing' : 'Every approved notice — monthly and retainage — as one packet and one tracking form'
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
-  // The title bar's shape on this screen: where the tools sit, and whether it has a second line (v2.7213).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, wide: wideWindow, paperShown, gcNotice: gcNoticeShown })
+  const recordsDoorShown = office && !!onOpenOwnerRecords
+  // Affidavits hides the run's pill without taking the run away: the line keeps the pill's last width there, so no view moves the door.
+  const runHiddenByView = kind === 'affidavit' && office && runCount > 0
+  const lastRunWidth = useRef(0)
+  useLayoutEffect(() => {
+    const bar = titleBarRef.current
+    if (isMobile || !bar) return
+    const measure = () => {
+      const line = readLienDeskTitleLine(bar)
+      if (!line) return setTitleLineFit('none')
+      if (line.parts.run > 0) lastRunWidth.current = line.parts.run
+      else if (runHiddenByView) line.parts.run = lastRunWidth.current
+      setTitleLineFit(lienDeskTitleLineFit(line.width, line.parts))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    // The bar moves with the window; the run's pill and the views move with their words. The door and the presses keep their widths wherever they sit.
+    const ro = new ResizeObserver(measure)
+    ro.observe(bar)
+    for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-run]']) {
+      const el = bar.querySelector(part)
+      if (el) ro.observe(el)
+    }
+    return () => ro.disconnect()
+  }, [isMobile, runDoorShown, runHiddenByView, recordsDoorShown])
+  // The title bar's shape on this screen: where the tools and the door sit, and whether it has a second line (v2.7213, v2.7277).
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, recordsDoor: recordsDoorShown, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
   const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: office && !!onOpenOwnerRecords })
   const moreButton = lienDeskMoreButton(moreRun)
@@ -3843,11 +3872,11 @@ export default function LienDesk({
   }
 
   // The tools (v2.6569): § Rules, ☎, ? and Share, with the owner-records door before them. On a computer they end the title line
-  // in a window of 1,540 px or more (v2.7213; 1,500 until By job widened the views, v2.7219) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
+  // when it has room for them (v2.7213; a 1,540 px viewport rule until v2.7277, which measures the line and puts the door under the four when the line has room for them alone) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
   // put them at the right; until v2.6569 they sat on the title line and fell under it when the window was narrower than about
   // 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places. Share (v2.4311) is the last of them.
   const headerTools = (
-    <span style={isMobile ? { position: 'absolute', right: '0.8rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <span data-lien-desk-presses style={isMobile ? { position: 'absolute', right: '0.8rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       {isMobile ? null : rulesAndCaller}
       {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
       <button
@@ -3896,7 +3925,7 @@ export default function LienDesk({
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        <div ref={titleBarRef} className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
           {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
           {noticeOpenStacked ? (
             <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 44 : 30, marginRight: 8 }}>
@@ -3941,9 +3970,10 @@ export default function LienDesk({
             </button>
           ) : null}
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
+          {/* With room for the four presses but not the door too (v2.7277, the owner's screenshot at about 1,290 px) the presses end the line and the door slides under them, the right end of the second line. */}
           {titleBar.tools === 'title_line' ? (
             <span data-lien-desk-tools style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem' }}>
-              {ownerRecordsDoor}
+              {titleBar.door === 'with_tools' ? ownerRecordsDoor : null}
               {headerTools}
             </span>
           ) : null}
@@ -3954,7 +3984,7 @@ export default function LienDesk({
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer narrower than 1,540 px (v2.6569); on a phone, and on a wider computer (v2.7213), it comes only with the paper tabs. */}
+          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
@@ -4021,7 +4051,7 @@ export default function LienDesk({
               ) : null}
             </div>
           ) : null}
-          {titleBar.tools === 'second_line' ? ownerRecordsDoor : null}
+          {titleBar.tools === 'second_line' || titleBar.door === 'second_line' ? ownerRecordsDoor : null}
           {titleBar.tools === 'second_line' ? headerTools : null}
           </span> : null}
           {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}

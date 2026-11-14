@@ -235,7 +235,7 @@ export function useGcOnNoticeData(
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob, filingsByJob: {},
+          claimCorrectionsByJob, affidavitMonthsByJob: {}, filingsByJob: {},
           mailPiecesByItem,
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
