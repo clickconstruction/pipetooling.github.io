@@ -2,7 +2,7 @@
 name: "Affidavits: print a picked set, and say why a job with a recorded notice still owes one"
 number: 353
 group: ready
-status: written 2026-11-14 from a Lien desk session · the owner picked all three doors for part 2 the same day · part 1 built 2026-11-14 as v2.7268 · part 2 next
+status: written 2026-11-14 from a Lien desk session · the owner picked all three doors for part 2 the same day · part 1 built 2026-11-14 as v2.7268 and part 2 as v2.7269
 summary: >
   Two gaps the office hit on one property's jobs on 2026-11-14. First, the Affidavits list's two
   batch presses take every paper in their pile. Print N for notarization prints every approved
@@ -14,7 +14,7 @@ summary: >
   no notice. But the row does not say so, and the affidavit pane let a draft through without
   naming the month still owed. The workflow from recording a mailing to drafting the affidavit
   needs a cleanup so the office sees what is owed and why.
-next: A mock-up of both parts, made-up rows only, part 2 with all three doors. Then build.
+next: Retire the card once both parts are on main and the office has worked a row with the doors.
 size: M as two PRs (S · M)
 blocker: none
 ver: v2.6918 · v2.7209 · v2.7247

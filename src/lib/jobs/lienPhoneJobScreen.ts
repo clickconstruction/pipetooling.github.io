@@ -44,6 +44,8 @@ export type LienJobScreen = {
   press: { label: string; primary: boolean }
   /** The row's second, quieter press (a run row's *Take back…*); null for most rows. */
   secondary: string | null
+  /** The row's other doors (punch list #353), in order, as rows above the foot: pressed by index. */
+  moreDoors: string[]
 }
 
 export type LienJobScreenCan = {
@@ -84,6 +86,7 @@ export function lienJobScreen(
     jobs: row.jobs ?? [],
     press: { label: row.button ?? 'Open', primary: row.button != null },
     secondary: row.secondary?.words ?? null,
+    moreDoors: (row.doors ?? []).map((d) => d.words),
   }
 }
 
