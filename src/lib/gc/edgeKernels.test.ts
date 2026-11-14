@@ -89,6 +89,7 @@ describe('what the index does not carry', () => {
     'lib/bridge/sheetReads.ts',
     'lib/bridge/sheetBuild.ts',
     'lib/bridge/weekMail.ts',
+    'lib/bridge/moneyCard.ts',
     'lib/bridge/cashAccounts.ts',
     'lib/bridge/mercuryCash.ts',
     'lib/jobs/zzTestJobReads.ts',

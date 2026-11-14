@@ -19,6 +19,7 @@ import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
+import { DONE_WHEN_HINT } from '../lib/tasks/taskRowsOnAPhone'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
 import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TASK_WORDS_BOX_STYLE, focusPeopleSearchIfOpen } from './checklist/newTask/taskWindowBits'
@@ -714,7 +715,7 @@ export default function ChecklistAddModal({
         onRepeatMode={setRepeatMode}
         linesText={linesText}
         onLinesText={setLinesText}
-        linesHint="The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand. A photo is offered at each new percent on every card. With Photo at the finish on, the finish holds until a photo is in or a reason is typed."
+        linesHint={DONE_WHEN_HINT.add}
         asksForPhoto={asksForPhoto}
         onAsksForPhoto={setAsksForPhotoPick}
         place={place}

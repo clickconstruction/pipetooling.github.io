@@ -278,7 +278,7 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on and the app mails the Bridge's first screen every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday.
 
-The email shows three tiles, the strip of pipe and **What to do now** with its first three moves. The email's tiles are what the field made, cash's low point, and the slowest step. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
+The email shows what the field made and the slowest step. Under them it shows the cash balance beside the accrual balance. Each balance says its runway in days, as on the page. Then come the strip of pipe and **What to do now** with its first three moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
 The email leaves out [what the Bridge leaves out](#what-the-bridge-leaves-out). When the list names something, a line under the email's name says what is left out. Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 

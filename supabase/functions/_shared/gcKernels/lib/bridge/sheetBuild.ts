@@ -3,8 +3,8 @@
 /**
  * The Monday email from the page's reads (v2.5881, redrawn in v2.6888): one pure function from everything the Bridge
  * loads to the mail `bridge-weekly-sheet` builds on Monday morning. Since v2.6888 (punch list #303, PR 5) that mail is
- * the page's first screen: the three tiles, the strip of pipe and the card What to do now, built by the page's own
- * kernels in the page's order, so the mail and the page read one implementation. Since punch list #334 it reads no
+ * the page's first screen: the tiles, the two balances, the strip of pipe and the card What to do now, built by the
+ * page's own kernels in the page's order, so the mail and the page read one implementation. Since punch list #334 it reads no
  * call: the card is today's reading, as on the page. `loadMondaySheetReads` (`sheetReads.ts`) makes
  * the reads with a client passed in. The page builds the same chain in its own memos, where a pressed step or a moved
  * dial changes it, and shares the receipts, the bills and the Collect desk below. Pure: no React, no Supabase.
@@ -38,6 +38,7 @@ import { buildEstimateWins, type EstimateSent } from './estimateWins.ts'
 import { leftOutWords, type LeftOutRule } from './leftOut.ts'
 import { buildFlowStrip } from './flowStrip.ts'
 import { WEEK_CASH_MAY_LEAD, buildWeekCall } from './weekCall.ts'
+import { accrualLine, burnPerDay, cashLine, runwayFoot } from './moneyCard.ts'
 import type { WeekMail } from './weekMail.ts'
 
 /** Everything the mail reads, as the page loads it; a read that failed is null and named in `gaps`. */
@@ -257,7 +258,15 @@ export function buildWeekMailFromReads(reads: MondaySheetReads, opts: WeekMailOp
     supplyDue: forecast ? (data.hazards.find((h) => h.ymd > todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
     dayLabel: md,
   })
+  // The two balances, from the page's own figures (`Bridge.tsx`): cash on hand, what customers owe less what the
+  // company owes, and a day's burn of payroll and overhead for the runway.
+  const burnPerDayUsd = burnPerDay({ payrollPerWeekUsd: data.payrollWeeklyEstUsd, overheadPerDayUsd: data.dailyDrainUsd })
+  const money = {
+    cash: cashLine({ forecast, cashTodayUsd: cashToday, cashNote: accounts?.note ?? null, todayYmd, dayLabel: md, burnPerDayUsd }),
+    accrual: accrualLine({ cashUsd: cashToday, owedToYouUsd: fin ? fin.ar.total : null, owedByYouUsd: fin ? fin.ap.total : null, burnPerDayUsd }),
+    foot: runwayFoot(burnPerDayUsd),
+  }
   const marketIsWorth = marketPaceIsWorth(stageInput)
   const strip = buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth })
-  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], leftOut: reads.leftOut?.length ? leftOutWords(reads.leftOut) : '', gaps: reads.gaps }
+  return { weekLabel: formatPayWeekLabel(thisWeek), todayLabel: md(todayYmd), model, money, strip, marketParts: marketIsWorth && marketWorth ? marketWorth.parts : [], leftOut: reads.leftOut?.length ? leftOutWords(reads.leftOut) : '', gaps: reads.gaps }
 }
