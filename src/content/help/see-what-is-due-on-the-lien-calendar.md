@@ -42,7 +42,7 @@ Inside a month, each job sits under its GC. The GC row says how many notices to 
 
 ## Draft the notices
 
-When a month's notices can go out, its bar shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The bar offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
+When a month's notices can go out, its bar shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Monthly notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The bar offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
 
 ## Use the date row
 

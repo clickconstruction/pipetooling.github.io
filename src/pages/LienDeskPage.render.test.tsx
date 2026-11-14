@@ -36,7 +36,7 @@ vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => screenSize.phone }))
 vi.mock('../lib/people/fetchActiveUsers', () => ({ fetchActiveUsers: async () => ({ data: [], error: null }) }))
 vi.mock('../contexts/JobsListCacheContext', () => ({
   buildJobsListCacheKey: (userId: string, customerFilter: string | null) => `${userId}:${customerFilter || 'all'}`,
-  useJobsListCache: () => ({ jobs: [], jobsListLoading: false, jobsListDataKey: 'smoke-auth-user-1:all', fetchScopeIfNeeded: cache.fetchScopeIfNeeded, runFetchScopes: cache.runFetchScopes, mergedScopes: new Set(['billed_all']) }),
+  useJobsListCache: () => ({ jobs: [], setJobs: () => {}, jobsListLoading: false, jobsListDataKey: 'smoke-auth-user-1:all', fetchScopeIfNeeded: cache.fetchScopeIfNeeded, runFetchScopes: cache.runFetchScopes, mergedScopes: new Set(['billed_all']) }),
   JobsListCacheProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 vi.mock('../hooks/useLienDeskData', () => ({ useLienDeskData: () => ({ data: desk.data, loading: false, refetch: desk.refetch }) }))
@@ -144,7 +144,7 @@ describe('LienDeskPage (/lien-desk)', () => {
     const { container } = renderWithProviders(<Harness start="/lien-desk?tab=affidavits" />)
     await settle()
     await waitFor(() => expect(container.querySelector('[data-lien-desk-panel="page"]')).not.toBeNull())
-    expect(screen.getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /^Lien affidavits/ }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'By paper' }).getAttribute('aria-selected')).toBe('true')
     expect(container.querySelector('[data-lien-desk-back]')).not.toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Lien desk' })).toBeNull()
@@ -168,7 +168,7 @@ describe('LienDeskPage (/lien-desk)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     // On a computer the Notices list opens on its first notice, and the address names it.
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
-    fireEvent.click(screen.getByRole('tab', { name: /^Timeline/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^By job/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=timeline'))
     fireEvent.click(screen.getByRole('tab', { name: /^To do/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
@@ -177,7 +177,7 @@ describe('LienDeskPage (/lien-desk)', () => {
   it('a pasted notice address opens that notice and keeps the address', async () => {
     renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650" />)
     await settle()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^Monthly notices/ }).getAttribute('aria-selected')).toBe('true'))
     await settle()
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650')
   })

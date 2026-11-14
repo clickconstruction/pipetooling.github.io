@@ -21397,6 +21397,7 @@ export type Database = {
           part_name: string
           quantity: number
           reason: string
+          recorded_at: string | null
           source: string | null
           to_container_id: string | null
         }
@@ -21414,6 +21415,7 @@ export type Database = {
           part_name: string
           quantity: number
           reason: string
+          recorded_at?: string | null
           source?: string | null
           to_container_id?: string | null
         }
@@ -21431,6 +21433,7 @@ export type Database = {
           part_name?: string
           quantity?: number
           reason?: string
+          recorded_at?: string | null
           source?: string | null
           to_container_id?: string | null
         }
@@ -46583,6 +46586,7 @@ export type Database = {
         }
         Returns: string
       }
+      on_site_caller_name: { Args: never; Returns: string }
       on_site_can_read_ties: {
         Args: { p_development_id: string; p_job_id: string }
         Returns: boolean

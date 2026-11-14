@@ -277,3 +277,40 @@ describe('LienInstrumentsModal · a paper keeps the form it was drafted on (punc
   })
 })
 
+
+describe('LienInstrumentsModal · a saved last day is handed to the opener, for the rows behind the window (v2.7208)', () => {
+  // The owner, 2026-11-13: with a day set in this window, the By date row behind it kept its old dates. The window
+  // re-read the day for itself and told its opener only that something was saved, so the opener had nothing to write
+  // into the jobs it already held.
+  it('hands up the job and the last-work facts it re-read, and only those columns', async () => {
+    const onLastWorkSaved = vi.fn()
+    renderWithProviders(<LienInstrumentsModal {...props} job={job891()} openLastWork onLastWorkSaved={onLastWorkSaved} />)
+    const day = await screen.findByLabelText('Last day of work')
+    fireEvent.change(day, { target: { value: '2026-09-04' } })
+    fireEvent.blur(day)
+    fireEvent.click(screen.getByTestId('lien-last-work-save'))
+    fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'Went back for the valve' } })
+    // The write lands: this is the row the window reads back.
+    const saved = { last_work_date: '2026-08-11', lien_last_work_on: '2026-09-04', lien_last_work_note: 'Went back for the valve', lien_last_work_set_at: '2026-10-24T17:00:00+00:00', lien_last_work_set_by: 'u-office' }
+    db.rows.jobs_ledger = [{ id: 'job-891', customer_address_id: 'site-891', job_name: 'Tune 5- Liberty Hill', ...saved }]
+    fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))
+    await waitFor(() => expect(onLastWorkSaved).toHaveBeenCalledTimes(1))
+    expect(onLastWorkSaved).toHaveBeenCalledWith('job-891', saved)
+    // The window's own strip moved too: last work is September now.
+    await waitFor(() => expect(stepText('last_work')).toContain('Sep 2026'))
+  })
+
+  it('a re-read that fails still tells the opener the day changed, with no facts to write', async () => {
+    const onLastWorkSaved = vi.fn()
+    renderWithProviders(<LienInstrumentsModal {...props} job={job891()} openLastWork onLastWorkSaved={onLastWorkSaved} />)
+    const day = await screen.findByLabelText('Last day of work')
+    fireEvent.change(day, { target: { value: '2026-09-04' } })
+    fireEvent.blur(day)
+    fireEvent.click(screen.getByTestId('lien-last-work-save'))
+    fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'Went back for the valve' } })
+    db.rows.jobs_ledger = []
+    fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))
+    await waitFor(() => expect(onLastWorkSaved).toHaveBeenCalledTimes(1))
+    expect(onLastWorkSaved).toHaveBeenCalledWith('job-891', null)
+  })
+})

@@ -17,7 +17,7 @@ import { LIEN_DESK_PILES, type LienDeskPile } from '../jobs/lienDesk'
 
 export const LIEN_DESK_PATH = '/lien-desk'
 
-/** The desk's views and kinds as the desk names them: To do, By date, and the four lists under By paper. */
+/** The desk's views and kinds as the desk names them: To do, By date, the three papers under By paper, and By job (`timeline`; a fourth list under By paper until v2.7219). */
 export type LienDeskKind = 'next' | 'calendar' | 'notice' | 'affidavit' | 'retainage' | 'timeline'
 
 /** The view the desk opens on when the address names none. */
