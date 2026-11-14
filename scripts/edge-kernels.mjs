@@ -245,13 +245,14 @@ export const ENTRIES = {
   'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
   // The Bridge's Monday email (v2.5881): the reads with a client passed in, the mail from them, and the mail's parts.
   // Since v2.6888 the weekly send (bridge-weekly-sheet) builds the page's first screen: the tiles, the strip and the
-  // week's call, with the accounts the owner left out of cash and the Done presses on the call's moves.
+  // card What to do now, with the accounts the owner left out of cash, and since v2.7214 the two balances.
   // The index exports nothing of them: bridge-weekly-sheet imports each file by its path, so the portals and the other
   // functions that read the index do not carry the Bridge's files (customer-portal went over the 5 MB a deploy may
   // upload a second time when the email took Market's worth, punch list #318).
   'lib/bridge/sheetReads.ts': { values: [], types: [] },
   'lib/bridge/sheetBuild.ts': { values: [], types: [] },
   'lib/bridge/weekMail.ts': { values: [], types: [] },
+  'lib/bridge/moneyCard.ts': { values: [], types: [] },
   'lib/bridge/cashAccounts.ts': { values: [], types: [] },
   'lib/bridge/mercuryCash.ts': { values: [], types: [] },
   'lib/jobs/zzTestJobReads.ts': { values: [], types: [] },

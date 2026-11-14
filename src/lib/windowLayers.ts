@@ -27,3 +27,12 @@ export const ROADMAP_TASK_WINDOW_Z = 10050
  */
 export const ROADMAP_TASK_PICKER_Z = 10060
 
+/**
+ * A painted map's window (`PaintedMapWindow`, punch list #345). It opens from the line under a job's address, so it
+ * sits over Job Detail (1004), Edit Job (1010), a thread's window and Add a task.
+ */
+export const PAINTED_MAP_WINDOW_Z = 1230
+
+/** What a painted map's window opens over itself: the start sheet and a place's sheet. A confirm sits above both (1300). */
+export const PAINTED_MAP_SHEET_Z = 1240
+

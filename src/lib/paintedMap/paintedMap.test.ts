@@ -12,6 +12,7 @@ import {
   mapLengthMeters,
   mapStart,
   mapSummaryWords,
+  mapsForDevelopment,
   mapsForJob,
   numberedPlaces,
   paintedByWords,
@@ -204,6 +205,17 @@ describe('a map as a whole', () => {
     ]
     expect(mapsForJob(maps, 'j1', 'd1').map((m) => `${m.id}${m.fromDevelopment ? '*' : ''}`)).toEqual(['new', 'old', 'dev*'])
     expect(mapsForJob(maps, 'j1', null).map((m) => m.id)).toEqual(['new', 'old'])
+  })
+  it('shows a development its own maps first, then each lot\'s with the lot\'s name', () => {
+    const maps = [
+      map({ id: 'lotA', jobId: 'j1', createdAt: '2026-11-12T00:00:00Z' }),
+      map({ id: 'site', developmentId: 'd1', createdAt: '2026-11-01T00:00:00Z' }),
+      map({ id: 'lotB', jobId: 'j2', createdAt: '2026-11-13T00:00:00Z' }),
+      map({ id: 'elsewhere', jobId: 'j9' }),
+      map({ id: 'otherSite', developmentId: 'd2' }),
+    ]
+    const shown = mapsForDevelopment(maps, 'd1', new Map([['j1', 'Lot 14'], ['j2', 'Lot 15']]))
+    expect(shown.map((m) => `${m.id}:${m.jobLabel ?? 'site'}`)).toEqual(['site:site', 'lotB:Lot 15', 'lotA:Lot 14'])
   })
   it('numbers places in the order they were set, so a number never moves', () => {
     const place = (id: string, setAt: string): PaintedPlace => ({ id, mapId: 'm', name: id, words: '', ...at(0, 0), accuracyM: null, photoPath: null, setBy: null, setAt })

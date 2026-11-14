@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: close
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · `bridge-weekly-sheet` is redeployed and current · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · the Monday email shows the page's two balances since v2.7214, on the owner's word, and `bridge-weekly-sheet` is redeployed with it · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,7 +12,7 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: A read of Monday 2026-11-16's email, the first the app has ever sent and the first without the call. Then the owner's first presses, each of which records. The generated types catch up with #8011, for the tag's column.
+next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
 blocker: None. The code is all on `main` and nothing is owed on the live database or the functions.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
@@ -181,6 +181,10 @@ in the same PR. After its merge, `npm run check:edge-drift` names what to redepl
   redeploy. It was redeployed on 2026-11-13 at 19:38 UTC, two minutes after PR 11 merged, and
   `check:edge-drift` reads it as current. That build also carries v2.7141, which leaves out of the mail what
   the page leaves out.
+- **v2.7214**: `bridge-weekly-sheet` once more, with the two balances. It was built on live reads and held
+  against the page before the deploy, redeployed on 2026-11-14 at 00:54 UTC, then dry-run and held against
+  the page again. The four functions that read the kernel index (`customer-portal`, `drive-link`,
+  `gc-trade-portal`, `photo-save`) read as behind by two comment lines until each is next deployed.
 
 ### The guide and the docs
 
@@ -195,7 +199,8 @@ in the same PR. After its merge, `npm run check:edge-drift` names what to redepl
 The owner was not asked about these. Each is the builder's reading. Say so if one is wrong.
 
 - **The Monday email loses its call section.** With no call to record, the section would be empty every
-  week. The rest of the email is as it was.
+  week. The rest of the email was left as it was. The owner then said to match the page, so since v2.7214
+  the mail shows the cash balance and the accrual balance with their runway.
 - **The calls table stays, empty.** Dropping it gains nothing, and the one test call on it was undone.
 - **A to-do turns amber after three days.** When the card has a due day, amber starts the day after it.
 - **A finished to-do stays named on its line for 14 days.** After that the line forgets it.
@@ -243,7 +248,7 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
 ## Found while building, not built
 
 Two faults turned up while PRs 2 and 3 were built, two more on the final walk of the live site, and two
-more on the walk of PRs 9 to 12. Each is bigger than a fix on the way or belongs to another part of the
+more on the walk of PRs 9 to 12 and the email's dry runs. Each is bigger than a fix on the way or belongs to another part of the
 app, so each waits here.
 
 - **A dev who shows ZZ test jobs loses some of them once the left-out list names anything.** Every read on
@@ -266,10 +271,9 @@ app, so each waits here.
 - **New task did not close on one press of Escape when a grey check opened it.** Its own *Cancel* closed
   it. The *Done when…* box holds the focus when the window opens this way, which may be why. It is the
   app's own window, from #331, so the fix belongs to it.
-- **The Monday email's tiles are not the page's.** The mail still leads with *Made*, *Cash low point, 8
-  weeks* and *Slowest step*. The page has shown the cash and accrual balances with their runway since PR 6.
-  The default above kept the rest of the email as it was. Whether the mail follows the page is the owner's
-  call.
+- **The slowest step can read *7 to 7 weeks*.** When both ends of Build's range round to one number, the
+  sentence says the number twice. It is on the page and in the email. Bill's sentence already guards
+  against it (`stageFlow.ts`), so the fix is the same one line for Build.
 
 ## Where it stands
 
@@ -303,8 +307,9 @@ found.
   nothing of a call. Its cash low point equals the page's.
 - **The tag.** The page's reads by `source_tag` answer on the live database.
 
-The walk also saw two things that are not faults of these PRs, listed under *Found while building, not
-built*.
+The walk also saw two things that are not faults of these PRs. New task's Escape is listed under *Found
+while building, not built*. The email's tiles were the old three, and the owner said to match the page:
+v2.7214 gives the mail the page's two balances, and the deployed mail agrees with the page word for word.
 
 PR 11 landed after v2.7141, which makes the Monday email leave out what the page leaves out. The two met
 in the email's reads, and PR 11 was resolved over it. The email shows *What to do now* and still reads the
@@ -312,8 +317,8 @@ left-out list, and its tests hold both.
 
 PR 11's migration is pushed: the two functions behind the old Needs you line are gone from the live
 database. PR 12's is pushed too, so a new to-do carries its tag in its own column. `bridge-weekly-sheet` is
-redeployed, and `check:edge-drift` reads every function as current. The generated types no longer list the
-two dropped functions, since #7989. The tag's column reaches them with #8011.
+redeployed with v2.7214. The generated types no longer list the two dropped functions, since #7989, and
+know the tag's column, since #8011.
 
 Not walked on purpose, because each one records. The first of each is the owner's or the office's:
 
