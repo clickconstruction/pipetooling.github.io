@@ -110,4 +110,6 @@ and `src/lib/jobs/lienAffidavitNoticeCheck.ts` (the pane's notice lines), and th
 ## Where it stands
 
 Nothing is built. The three affidavit drafts are saved and wait in To draft. The notice for
-their last work month is the owner's call, and it is due before this card can ship.
+their last work month is the owner's call, and it is due before this card can ship. The owner
+picked all three of part 2's doors on 2026-11-14: draft the month's notice, the paper named that
+month too, and the last day of work is wrong.
