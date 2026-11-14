@@ -8,8 +8,10 @@
  *
  * Since v2.7072 (punch list #329) a code may be a sticker's: a printed code that points at a box, or at nothing yet.
  * The function reads the sticker first (`boxPageStickerAnswer`). One on a box answers that box's page as a label does;
- * a blank one answers its number and nothing else; a lost one says so.
+ * a blank one answers its number and nothing else; a lost one says so. Since v2.7264 the guess lock is read before the
+ * sticker (`boxPageEarlyAnswer`): a locked source hears `locked` for every code, a sticker's included.
  */
+import { ESTIMATE_LINK_LOCKED_CODE } from './estimateLinkMisses.ts'
 
 /** A box's code: the container id's first eight hex characters, as `job_containers.code` keeps them (capitals). */
 const BOX_CODE_RE = /^[0-9A-F]{8}$/
@@ -280,6 +282,21 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
 
 /** The 429's words when a source has guessed too often. The page shows them as they are. */
 export const BOX_PAGE_LOCKED_WORDS = 'Too many wrong codes from this connection in the last hour. Wait an hour and scan the label again.'
+
+/** An answer the function gives before any box is read: its status, its body and the state its log line carries. */
+export type BoxPageEarlyAnswer = { status: number; body: Record<string, unknown>; state: string }
+
+/**
+ * What a code is answered before its box is read (v2.7264). The guess lock comes first: a source past the hour's limit
+ * hears 429 `locked` whatever the code is — a hit (v2.7240), a miss, a blank sticker or a lost one — so a locked source
+ * learns nothing, not even which sticker numbers exist. Then a blank or a lost sticker's own answer. Null: the box is
+ * read next, as a label's own code or the box the sticker is on.
+ */
+export function boxPageEarlyAnswer(locked: boolean, sticker: BoxPageStickerAnswer): BoxPageEarlyAnswer | null {
+  if (locked) return { status: 429, body: { error: BOX_PAGE_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }, state: 'locked' }
+  if (sticker.kind === 'blank' || sticker.kind === 'lost') return { status: sticker.status, body: sticker.body, state: sticker.body.error }
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // Find a part on this site (PR 3, v2.6799): the search a scanned code opens, over that box's job and no other.

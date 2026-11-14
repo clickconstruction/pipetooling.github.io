@@ -5204,6 +5204,76 @@ export type Database = {
           },
         ]
       }
+      bill_hand_ways: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          key: string
+          label: string
+          retired_at: string | null
+          retired_by: string | null
+          retired_by_name: string
+          sent_how: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          key?: string
+          label: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retired_by_name?: string
+          sent_how?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          key?: string
+          label?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retired_by_name?: string
+          sent_how?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_hand_ways_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_hand_ways_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_hand_ways_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billed_report_email_requests: {
         Row: {
           attempts: number
@@ -30248,6 +30318,8 @@ export type Database = {
           actor_user_id: string | null
           amount: number
           created_at: string
+          credit_amount: number | null
+          credit_person_id: string | null
           from_job_id: string | null
           hidden_from_sub: boolean
           id: string
@@ -30259,6 +30331,7 @@ export type Database = {
           payment_id: string | null
           reason: string | null
           restored_event_id: string | null
+          sending_id: string | null
           sequence_order: number | null
           to_job_id: string | null
         }
@@ -30267,6 +30340,8 @@ export type Database = {
           actor_user_id?: string | null
           amount: number
           created_at?: string
+          credit_amount?: number | null
+          credit_person_id?: string | null
           from_job_id?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -30278,6 +30353,7 @@ export type Database = {
           payment_id?: string | null
           reason?: string | null
           restored_event_id?: string | null
+          sending_id?: string | null
           sequence_order?: number | null
           to_job_id?: string | null
         }
@@ -30286,6 +30362,8 @@ export type Database = {
           actor_user_id?: string | null
           amount?: number
           created_at?: string
+          credit_amount?: number | null
+          credit_person_id?: string | null
           from_job_id?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -30297,6 +30375,7 @@ export type Database = {
           payment_id?: string | null
           reason?: string | null
           restored_event_id?: string | null
+          sending_id?: string | null
           sequence_order?: number | null
           to_job_id?: string | null
         }
@@ -30334,6 +30413,9 @@ export type Database = {
       people_labor_job_payments: {
         Row: {
           amount: number
+          checked_at: string | null
+          checked_by: string | null
+          checked_by_name: string | null
           created_at: string | null
           hidden_from_sub: boolean
           id: string
@@ -30342,10 +30424,14 @@ export type Database = {
           method: string | null
           method_ref: string | null
           payment_date: string | null
+          sending_id: string | null
           sequence_order: number
         }
         Insert: {
           amount: number
+          checked_at?: string | null
+          checked_by?: string | null
+          checked_by_name?: string | null
           created_at?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -30354,10 +30440,14 @@ export type Database = {
           method?: string | null
           method_ref?: string | null
           payment_date?: string | null
+          sending_id?: string | null
           sequence_order?: number
         }
         Update: {
           amount?: number
+          checked_at?: string | null
+          checked_by?: string | null
+          checked_by_name?: string | null
           created_at?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -30366,14 +30456,29 @@ export type Database = {
           method?: string | null
           method_ref?: string | null
           payment_date?: string | null
+          sending_id?: string | null
           sequence_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "people_labor_job_payments_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_labor_job_payments_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_payments_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
             referencedColumns: ["id"]
           },
         ]
@@ -36050,6 +36155,153 @@ export type Database = {
           stripe_event_id?: string
         }
         Relationships: []
+      }
+      sub_credit_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          payment_id: string | null
+          person_id: string
+          sending_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          payment_id?: string | null
+          person_id: string
+          sending_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          payment_id?: string | null
+          person_id?: string
+          sending_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_credit_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_credit_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_job_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_credit_entries_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_credit_entries_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_payment_bank_matches: {
+        Row: {
+          matched_at: string
+          matched_by: string | null
+          matched_by_name: string | null
+          mercury_transaction_id: string
+          payment_id: string
+        }
+        Insert: {
+          matched_at?: string
+          matched_by?: string | null
+          matched_by_name?: string | null
+          mercury_transaction_id: string
+          payment_id: string
+        }
+        Update: {
+          matched_at?: string
+          matched_by?: string | null
+          matched_by_name?: string | null
+          mercury_transaction_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_payment_bank_matches_matched_by_fkey"
+            columns: ["matched_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_payment_bank_matches_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_payment_bank_matches_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "people_labor_job_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_payment_sendings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          number: number
+          person_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          number?: number
+          person_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          number?: number
+          person_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_payment_sendings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_payment_sendings_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sub_portal_links: {
         Row: {
@@ -41861,6 +42113,16 @@ export type Database = {
       }
       apply_read_only_stmt_blocks: { Args: never; Returns: number }
       apply_read_only_write_blocks: { Args: never; Returns: number }
+      apply_sub_credit: {
+        Args: {
+          p_amount: number
+          p_job_id: string
+          p_memo?: string
+          p_payment_date?: string
+          p_person_id: string
+        }
+        Returns: string
+      }
       approve_clause_proposal: {
         Args: { p_proposal_id: string }
         Returns: Json
@@ -46378,6 +46640,10 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      match_sub_payment: {
+        Args: { p_payment_id: string; p_transaction_id: string }
+        Returns: number
+      }
       materialize_bid_version: {
         Args: { p_bid_id: string; p_name: string }
         Returns: string
@@ -47149,6 +47415,19 @@ export type Database = {
           p_report_id?: string
         }
         Returns: undefined
+      }
+      record_sub_sending: {
+        Args: {
+          p_credit?: number
+          p_hidden_from_sub?: boolean
+          p_lines: Json
+          p_memo?: string
+          p_method?: string
+          p_method_ref?: string
+          p_payment_date?: string
+          p_person_id: string
+        }
+        Returns: Json
       }
       refresh_jobs_ledger_last_work_date: {
         Args: { p_job_id: string }
@@ -47978,6 +48257,10 @@ export type Database = {
         Args: { p_contact_id: string; p_state: string }
         Returns: string
       }
+      set_sub_payment_checked: {
+        Args: { p_checked: boolean; p_payment_id: string }
+        Returns: number
+      }
       set_sub_payment_visibility: {
         Args: { p_hidden: boolean; p_payment_id: string }
         Returns: Json
@@ -48162,6 +48445,7 @@ export type Database = {
       }
       sticker_by_code: { Args: { p_code: string }; Returns: Json }
       sticker_can_mint: { Args: never; Returns: boolean }
+      sub_credit_lock: { Args: { p_person_id: string }; Returns: undefined }
       sub_portal_visit_summary: {
         Args: { p_person_ids: string[] }
         Returns: {
@@ -48387,6 +48671,7 @@ export type Database = {
       }
       unhighlight: { Args: { p_highlight_id: string }; Returns: undefined }
       unmark_notice: { Args: { p_contact_id: string }; Returns: undefined }
+      unmatch_sub_payment: { Args: { p_payment_id: string }; Returns: number }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
         Returns: undefined

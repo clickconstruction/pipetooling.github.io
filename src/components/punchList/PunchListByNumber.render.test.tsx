@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Render smoke for the punch list's By number view. */
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { PunchListByNumber } from './PunchListByNumber'
 import { flipOrder, type NumberOrder } from '../../lib/todos/punchListByNumber'
@@ -123,5 +123,26 @@ describe('PunchListByNumber', () => {
     expect(screen.getByText('No cards match the filters.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Clear the filters' }))
     expect(numbers()).toEqual(['343', '299', '76', '46', '5'])
+  })
+
+  it('names the search when it is what left no card, and its press clears the search alone', () => {
+    const onClearSearch = vi.fn()
+    const onClearFilters = vi.fn()
+    renderWithProviders(
+      <PunchListByNumber
+        items={items}
+        visible={() => false}
+        query="zzqq"
+        onClearSearch={onClearSearch}
+        order="newest"
+        onFlip={() => {}}
+        onClearFilters={onClearFilters}
+        renderCard={() => null}
+      />,
+    )
+    expect(screen.getByText('No cards match ‘zzqq’.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(onClearSearch).toHaveBeenCalledTimes(1)
+    expect(onClearFilters).not.toHaveBeenCalled()
   })
 })

@@ -336,6 +336,10 @@ describe('read_on_site (v2.6367, punch list #209)', () => {
     ])
     expect(out.boxes.map((b: Loose) => b.container)).toEqual(['Unsorted', 'A2'])
     expect(out.writes).toContain('bring a retired one back')
+    // Every pair the agent's door opens is named, the three newer ones too (v2.7264), each with a meaning of its own.
+    for (const pair of ['plan_container → apply_container', 'plan_delivery → apply_delivery', 'plan_movement → apply_movement', 'plan_count → apply_count', 'plan_materials_move → apply_materials_move', 'plan_container_edit → apply_container_edit', 'plan_part_rename → apply_part_rename']) {
+      expect(out.writes).toMatch(new RegExp(`${pair} \\([^)]+\\)`))
+    }
   })
   it('a box 15 days past its count is due; a job with no boxes reads empty, not an error', async () => {
     const out = (await getOnSite(catalogReader({ rows: { ...rows, job_material_movements: movements.slice(0, 3) } }), JOB, new Date('2026-11-12T17:00:00Z'))) as Loose
