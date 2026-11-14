@@ -15,7 +15,7 @@ summary: >
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
   the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: both PRs to merge (A #8127, then B); then a month of `ui_nav_clicks` on the tabs and the sheet's rows before C is weighed.
+next: build D, H, E, F, G in that order, each its own PR on the one before, verified at 375 and 768 before it opens; tell the owner when each is live.
 size: L as a train (S for A · M for B · L for C); the first step is S
 blocker: none
 opinion: A and B are built (v2.7271, v2.7278); C waits for the count
@@ -385,6 +385,167 @@ pick after each is the drawing's own.
   rewritten with A; `src/lib/jobs/jobWindowLegend.ts`'s phone row names the press row.
 - No table, migration or edge function in any of the three.
 
+## The other six tabs on a phone (pass 3)
+
+The owner, after A and B went live (2026-11-14): "can you now look at the edit, bill, costs,
+history, documents, materials?" Measured the same way, on the ZZ test job at 375 × 812, signed in
+as the dev, each tab's body under the strip. The second mock-up is
+[`job-window-phone-tabs.html`](job-window-phone-tabs.html).
+
+| Tab | Screens | Presses | Under 32 px | What reads badly |
+|---|---|---|---|---|
+| Every tab | +0.5 | | | The shared band (the house photo, Paint a map, the photo banner) takes the first 340 px of every tab, so Edit, Bill, Costs, Documents and Materials each start a half screen down |
+| Edit | 3.3 | 64 | 40 | The Stages card and the status rail squeezed to 375 px; sixteen fact rows each with a 24 px ✎, nothing grouped |
+| Bill | 2.9 | 72 | 22 | A line item is five presses on three lines (name ✎, the ≈ budget line, × count, $ price, 🗑); the money card and Make a bill sit a screen and a half down; *Multiple Segment Generator* is a 13 px link |
+| Costs | 5.7 | 43 | 18 | The four numbers read well; the chart's legend and axes are 10 px; *Where the money went* is a three-column table whose header wraps to four lines; the dev's cost-move panel takes a screen with every row empty |
+| History | 1.4 | 16 | 3 | Reads well: the lien path's card is dense but whole, Days on the job is a calendar already drawn for a phone |
+| Documents | 4.7 | 56 | 41 | Eleven sections with 28 px outline presses (*+ New set*, *Keep a paper*, *New application*, *Contract window*…), and an empty section still takes four lines to say it is empty |
+| Materials | 1.0 | 16 | 2 | One paragraph and one press; only the band pushes it down |
+
+So the band is the one change every tab shares, three tabs are desk layouts at phone width (Edit,
+Bill, Costs), Documents is a list of small presses, and History and Materials are fine.
+
+**D · The band on the other tabs** (S, first). On every tab but Job the band is the Street View
+banner alone, 90 px with the address pinned, which the owner asked for on Edit; Paint a map and the
+photo banner stay on the Job tab's Where and Photos. Each tab gains back 250 px of its first screen.
+
+**E · Edit as grouped rows** (M). The identity fields stay first (C#, service type, name, kind,
+address). The Stages card draws each stage as a 44 px row (the name, the draw, the window) with *See
+it as the customer* and *Set stages on Bill →* under them. The status rail leaves the Edit tab on a
+phone: the bar's Status ▾ is the same rail. The sixteen fact rows are 44 px with the whole row the
+press and the ✎ gone, grouped under three section titles in B's shape: **The people** (account man,
+team, customer, phone, email, bills also go to, GC/builder, development), **The paper** (contract,
+sub work order, property record, pay calendar, plans, bid, project), **The folders** (files,
+pictures). Charging the customer stays last.
+
+**F · Bill in a phone's order** (M). On a phone the Bill tab opens on the money card (done, paid,
+billed open, left to bill, the draws as 44 px rows with their ticks), then Make a bill, then the
+bills and the payments, then the line items last, each one card: the name on the first line, *× 3 ·
+$24,000 ea · $72,000* on the second, the ≈ budget line under it, and 🗑 behind a ⋯ at the card's
+right. The desk's order stays: the office types the lines at a desk and sends the bill from a phone.
+
+**G · Costs with the table as rows** (M). The four numbers stay first. The chart folds behind *Show
+the chart*. *Where the money went* is rows, not a table: the source on the left, hours and cost on
+the right, the bar under the row. The accordions stay. The dev's cost-move panel folds behind *Move
+cost rows…* and draws nothing of its empty rows until opened.
+
+**H · Documents as one line per empty section** (S). A section with nothing in it is one 44 px row:
+the title at the left, its press at the right (*Plans · + New set*, *Pay applications · New
+application*). A section with something keeps its list, its presses 40 px. The order stays. Stage
+checklists is one row per stage, never one row for the three (the owner, pass 3: "should this be
+expanded?"): each row carries the stage's standing as the section already words it, *Filed ·
+CL-1042-1*, *Ready · 4 of 4*, *Not ready · 2 of 5*, and a tap opens that stage's read-out in place,
+as the section's phone fold does today. Print stays at the title's right; Add a check stays inside
+the opened stage; the answering stays on the Job tab's checklist strip.
+
+### What is lost, and what the drawing missed (the owner: "is this the best we can do, are we losing anything?")
+
+- **D, E, G, H lose nothing worth keeping.** D moves nothing off the app, only off five tabs it was
+  never asked for. E's status rail is the same stepper the bar's Status ▾ opens, Collections switch
+  included. G folds the chart, which is unreadable at this width anyway; the numbers it plots stay in
+  the four cards. H keeps every press, one per row.
+- **F loses two things, on purpose, and the second can be kept.** The desk's order (lines first) is
+  not the phone's order, so a person who knows the desk looks twice the first time. And a line item
+  drawn as a card with ⋯ makes a price change two taps instead of one. The count and the price can
+  stay live fields on the card's second line, with only Remove and Move behind ⋯; the drawing should
+  say so. Add ▾ must carry everything the desk's title row carries: a line, a discount, the Stripe
+  preview, the Multiple Segment Generator, the hazmat rider.
+- **Measured, not drawn: every field is under 16 px.** Edit's fields are 14 px, Bill's 13 px, Costs'
+  12 to 14 px. An iPhone zooms the page into any field under 16 px when it gets focus, which is the
+  lurch the owner feels typing a price. E, F and G each set their tab's fields to 16 px on a phone,
+  as the Note sheet already does (`JOB_WINDOW_BAR_MIN_HEIGHT`'s box at 1 rem).
+- **Not in the drawing, and worth it:** the lien path card on History sets its words at 11 px; it
+  reads, but a 13 px version on a phone costs nothing. Documents' *Add a file* picker stays the
+  phone's own file sheet, which already offers the camera.
+
+### Every press on Documents, and what it opens (the owner: "should we go through what clicking every button opens?")
+
+Read from the tab's code, 2026-11-14. **Window** is a desk-sized window over the job window; **sheet** rises from
+the foot on a phone; **tab** opens in the phone's browser; **picker** is the phone's own file sheet, which
+offers the camera, the photo library and Files.
+
+| Section | Press | Opens | At 375 px |
+|---|---|---|---|
+| Plans | + New set | The plan set form (a sheet) | fine |
+| Plans | Add our as-built | The picker, PDFs and images, into the Plans folder | fine |
+| Plans | Open ↗ | The set in Drive, a tab | fine |
+| Plans | Keep a paper · We are owed a paper | The paper form (a sheet) · a mark with a note | fine |
+| Pay applications | New application · Open application N | The AIA G702/G703 **window** | a desk window: measure |
+| Pay applications | Open the file | Downloads the workbook as it went out | fine |
+| Bills | the bill's name · PDF | View bill, a window · the invoice in a tab | the window: measure |
+| Contract | Contract window · a signed contract | The Contract **window** · the signed page in a tab | a desk window: measure |
+| Test reports | a sent report · a draft | The PDF in a tab · the Test report **window** | a desk window: measure |
+| Lien paper | Lien window · a release · a notice or letter | The Lien **window** · the signed page · the Lien window | a desk window: measure |
+| Hours statements · Statements of charges | the row · Print | The statement's PDF · the print window | print is a desk act |
+| Stage checklists | a stage · Print the checklists | That stage's read-out in place · the print window | fine · print is a desk act |
+| Sent from this job | Open the file | Downloads the copy | fine |
+| Job folders | the folder's name · Add a file · Make the job's Drive folders | Drive in a tab · the picker, then a panel with *Add it to Plans* · makes the folders | fine, see below |
+| In the folders · Index | a file · Index the folder | Drive in a tab · the index run | fine |
+| Photos | the line | The job's photos window, Add a photo first | fine |
+
+So four presses open a desk window at phone width: the AIA application, View bill, the Contract window, the
+Test report window, the Lien window. None of them was drawn. Each needs a measure of its own before
+H is called done; a window that cannot be used at 375 px gets a phone sheet or a *This opens at a
+desk* line with the one thing a phone can do (read the PDF). The same inventory for Edit, Bill and
+Costs goes into each of E, F and G's fragments as they are built, since every press those tabs
+carry is a door the PR touches.
+
+### The job folders on a phone (the owner: "now that the app manages each, should we make the buttons of upload and then offering the customer to take a photo or upload a file or bring them to the google drive easier?")
+
+Yes. Today a folder row is its name, which opens Drive in a tab, and a small *Add a file*, which
+opens the picker and then a panel; the picker already holds the camera on an iPhone, but nothing
+says so, and a photo taken there is sent as a file with its camera name. The row becomes a 44 px
+row with the folder's name and **Add ▾** at its right, and Add opens a sheet of three 48 px rows:
+**Take a photo** (the camera, as the materials page's Photo press opens it, the shot shrunk and
+named the way the photo sweep names one, *2026-11-14 Robert · Plans.jpg*), **Choose a file** (the
+picker, then the same panel with *Add it to Plans*), and **Open in Google Drive** (the tab). For
+Customer Pictures the sheet's first row is the same camera the photo banner's Add a photo opens,
+so a photo goes into the same place either way. The three choices live in the sheet, not on the
+row: four folders with three presses each is twelve presses on one screen.
+
+### The five desk windows, measured at 375 px
+
+| Window | What it does at 375 px | What H does |
+|---|---|---|
+| AIA G702/G703 | Already a full-screen sheet, nothing past the edge; 33 of its fields are under 16 px, 5 presses under 32 | Fields to 16 px on a phone |
+| Contract | A full-screen sheet; reads whole, the paper's chips and the agreement in order | Nothing |
+| Test report | A full-screen sheet, but 51 elements run past the right edge (the duration field, the PASS and FAIL cards, the notes box); 14 presses under 32, 3 fields under 16 | The result cards stack, the duration wraps under the date, fields to 16 px |
+| Lien | Not measured: the ZZ job's press did not open it in the pane; measured in H on a job with paper | Measured in H |
+| View bill | Not measured: the ZZ job has no bill; measured in H on a job with one | Measured in H |
+
+### The plan to build it all (the owner, 2026-11-14: "I like it now, come up with a plan to build it all to the spec, and then build it")
+
+Five PRs, each with its kernel and tests, a render smoke at 375 px, the guide's words, a release note and a
+fragment, verified in the pane at 375 and 768 before it opens, and before each opens a last look against the
+measure: screens, presses under 32 px, fields under 16 px, and the question *is this the best we can do?*
+answered in the fragment. Each PR stacks on the one before and opens with auto-merge; the queue takes them in
+order.
+
+1. **D** (S): on every tab but Job the band is the Street View banner alone, 90 px; Paint a map, the photo
+   banner and the checklist strip stay on Job. The pass-3 card and mock-up ride with it.
+2. **H** (M): Documents on a phone: an empty section one 44 px row with its press; presses 40 px; Stage
+   checklists one row per stage with its standing; the folders' Add ▾ sheet (Take a photo · Choose a file ·
+   Open in Google Drive); the AIA and Test report windows' fields 16 px and the Test report's cards stacked;
+   the Lien window and View bill measured on a job with paper and a bill, fixed in the same PR when small.
+3. **E** (M): Edit on a phone: the stages as rows; the status rail off the tab; the fact rows 44 px, the
+   whole row the press, grouped under The people, The paper, The folders, Charging the customer; fields 16 px.
+4. **F** (M): Bill on a phone: the money first, Make a bill, the bills and payments, the line items last as
+   cards with the count and the price live and Remove and Move behind ⋯; Add ▾ carrying the desk's title row;
+   fields 16 px. The desk's order stays.
+5. **G** (M): Costs on a phone: the four numbers first, the chart folded, Where the money went as rows with a
+   bar each, the dev's cost-move panel folded; fields 16 px.
+
+### The questions for the owner, pass 3
+
+1. **D now, as its own small PR?** It is the one change every tab shares and the cheapest.
+2. **F's order on a phone**: the money first and the line items last, or the desk's order with the
+   line items first? The pick above is the money first.
+3. **E's status rail**: off the Edit tab on a phone, since the bar's Status ▾ is the same rail?
+4. **E, F, G, H as one PR each, in that order?**
+5. **The folders' Add ▾ sheet** (Take a photo · Choose a file · Open in Google Drive) as part of H?
+6. **The five desk windows** Documents opens (the AIA application, View bill, Contract, Test report, Lien):
+   measure each at 375 px as its own pass, or leave them to a desk with a *This opens at a desk* line?
+
 ## The plan
 
 1. **A** (S): **built, v2.7271** (`docs/recent-features/v2.7271.md`): the title row first with ⋯ over ✕,
@@ -397,7 +558,8 @@ pick after each is the drawing's own.
    links as presses, Copy beside the number, the summary's two lines renamed on every screen, the
    bubbles, the six folds remembered per device; `jobWindowPhoneSections.ts` with tests; a render
    smoke at 375 px; the guide.
-3. **C** (L), only when a master tech works from a phone or the tab count says the office's
+3. **D** (S), **E** (M), **F** (M), **G** (M), **H** (S): the six other tabs, pass 3 above, D first.
+4. **C** (L), only when a master tech works from a phone or the tab count says the office's
    phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
    work.
 
