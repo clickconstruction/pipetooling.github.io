@@ -60,6 +60,8 @@ import { calendarYmdInAppTzFromIso, formatDenverDateTimeShort, todayYmdInAppTz }
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
+import { bankLineWords, bankMatchedWords, bankReadFromYmd, bankReadWords, matchUnits, suggestBankMatches, type BankCandidate } from '../../lib/subWorkOrders/subPaymentBankMatch'
+import { useSubPaymentBank } from '../../hooks/useSubPaymentBank'
 import { SubLedgerPeople, SubLedgerStatement } from './SubLedgerBySub'
 import { chip, field, jobLink, outPress, pill, td, th, tile, tileLabel, tileSub } from './subLedgerStyles'
 
@@ -86,6 +88,8 @@ export type SubPaymentsLedgerProps = {
   balanceDueByPersonId?: ReadonlyMap<string, number>
   /** v2.7237: tick or clear a payment against the bank. Left out, the list has no ✓ column. */
   onSetChecked?: (paymentId: string, checked: boolean) => Promise<SubSendingResult>
+  /** v2.7239: read the sheets again after a match or an unmatch, which tick and untick payments in the database. */
+  onBankChanged?: () => void | Promise<void>
 }
 
 /** The amount cell: a payment plain, a back-charge red with its minus sign. */
@@ -114,7 +118,7 @@ function Left({ line }: { line: LedgerLine }) {
   return <AmountSmallCents value={line.leftOnSheet} />
 }
 
-export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay, by: byProp, onByChange, initialBy, sub: subProp, onSubChange, balanceDueByPersonId, onSetChecked }: SubPaymentsLedgerProps) {
+export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay, by: byProp, onByChange, initialBy, sub: subProp, onSubChange, balanceDueByPersonId, onSetChecked, onBankChanged }: SubPaymentsLedgerProps) {
   const narrow = useIsNarrowScreen()
   const { showToast } = useToastContext()
   const { roster } = useRosterSubKinds()
@@ -128,10 +132,25 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   // v2.7237: the two bank filters. They narrow the by-date list and the people it counts, never a statement.
   const [notChecked, setNotChecked] = useState(false)
   const [method, setMethod] = useState('')
+  // v2.7239: which payments are matched to a bank line, and the bank lines a person asks to be read.
+  const bankApi = useSubPaymentBank(!!onSetChecked)
   const toggleChecked = async (line: LedgerLine) => {
     if (!onSetChecked) return
+    const wasMatched = bankApi.matchedByPayment.has(line.id)
     const res = await onSetChecked(line.id, !line.checkedAt)
     if (!res.ok) showToast(res.missing ? 'Ticking a payment against the bank is not switched on yet.' : res.message, 'error')
+    // Clearing a tick clears its match in the database: read the matches back.
+    else if (wasMatched) await bankApi.reloadMatches()
+  }
+  const matchLine = async (line: LedgerLine, transactionId: string) => {
+    const res = await bankApi.match(line.id, transactionId)
+    if (!res.ok) showToast(res.missing ? 'Matching a payment to the bank is not switched on yet.' : res.message, 'error')
+    else await onBankChanged?.()
+  }
+  const unmatchLine = async (line: LedgerLine) => {
+    const res = await bankApi.unmatch(line.id)
+    if (!res.ok) showToast(res.missing ? 'Matching a payment to the bank is not switched on yet.' : res.message, 'error')
+    else await onBankChanged?.()
   }
   const by = byProp ?? ownBy
   const setBy = (next: LedgerGrouping) => {
@@ -176,6 +195,18 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const periodLines = useMemo(() => filterLedger(allLines, { ...range, paidToKey, search }), [allLines, range, paidToKey, search])
   const periodTotals = useMemo(() => ledgerTotals(periodLines), [periodLines])
   const methodOptions = useMemo(() => ledgerMethodOptions(allLines), [allLines])
+  /** Each unmatched payment's bank lines, once the bank has been read. Held against every line, so a line outside the period cannot be offered a bank line a shown one should take. */
+  const bankOffers = useMemo(() => (bankApi.bank ? suggestBankMatches(allLines, bankApi.bank, bankApi.matchedByPayment) : new Map<string, BankCandidate[]>()), [allLines, bankApi.bank, bankApi.matchedByPayment])
+  const findBankLines = async () => {
+    const res = await bankApi.readBank(bankReadFromYmd(periodLines))
+    if (!res.ok) showToast(res.message, 'error')
+  }
+  // What the read found, said once it lands and again as matches are made.
+  const bankWords = useMemo(() => {
+    if (!bankApi.bank) return ''
+    const open = matchUnits(periodLines).filter((u) => bankOffers.has(u.paymentId)).length
+    return bankReadWords(bankApi.bank.length, open)
+  }, [bankApi.bank, periodLines, bankOffers])
   const bank = ledgerCheckedWords(periodTotals)
   const shownTraces = useMemo(() => filterLedger(allTraces, { ...range, paidToKey, search, check: notChecked ? 'unchecked' : null, method: method || null }), [allTraces, range, paidToKey, search, notChecked, method])
   const months = useMemo(() => ledgerMonths([...shownLines, ...shownTraces] as LedgerRow[]), [shownLines, shownTraces])
@@ -316,9 +347,19 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             <button type="button" aria-pressed={notChecked} onClick={() => setNotChecked((v) => !v)} title="Show only the payments not yet ticked against the bank" style={chip(notChecked)}>
               Not checked
             </button>
+            {onSetChecked && by === 'date' && !narrow ? (
+              <button type="button" onClick={() => void findBankLines()} disabled={bankApi.reading || periodLines.length === 0} title="Read the bank's outgoing lines for this period and offer the ones that line up with a payment" style={outPress}>
+                {bankApi.reading ? 'Reading the bank…' : bankApi.bank ? 'Read the bank again' : 'Find bank lines'}
+              </button>
+            ) : null}
           </>
         )}
       </div>
+      {bankWords ? (
+        <p data-ledger-bank-said role="status" style={{ margin: '-4px 2px 10px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {bankWords}
+        </p>
+      ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12 }}>
         <div style={tile} data-ledger-tile="paid">
@@ -504,6 +545,33 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                           <span data-ledger-sending={r.sendingNo} title="Lines with the same number were one check or one transfer." style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                             {sendingTagWords(r.sendingNo)}
                           </span>
+                        ) : null}
+                        {bankApi.matchedByPayment.has(r.id) ? (
+                          <span data-ledger-matched={r.id} style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-green-700)' }}>
+                            {bankMatchedWords(bankApi.bankById.get(bankApi.matchedByPayment.get(r.id) ?? ''), withYear)}
+                            {onSetChecked ? (
+                              <button type="button" onClick={() => void unmatchLine(r)} aria-label="Take this payment off its bank line" title="Take this payment off its bank line. Its tick is cleared with it." style={{ ...jobLink, marginLeft: 6, fontSize: '0.72rem' }}>
+                                undo
+                              </button>
+                            ) : null}
+                          </span>
+                        ) : onSetChecked && bankOffers.has(r.id) ? (
+                          <select
+                            data-ledger-match={r.id}
+                            aria-label={`Match to a bank line: ${r.paidTo}, ${ledgerDayWords(r.ymd, true)}`}
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) void matchLine(r, e.target.value)
+                            }}
+                            style={{ ...field, display: 'block', marginTop: 3, padding: '0.1rem 0.3rem', fontSize: '0.72rem', maxWidth: 220 }}
+                          >
+                            <option value="">Match to a bank line…</option>
+                            {(bankOffers.get(r.id) ?? []).map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {bankLineWords(c, withYear)}
+                              </option>
+                            ))}
+                          </select>
                         ) : null}
                       </td>
                       <td style={td}>

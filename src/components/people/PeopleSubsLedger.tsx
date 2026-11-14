@@ -44,6 +44,7 @@ export function PeopleSubsLedger({ balanceDueByPersonId, sub, onSubChange }: { b
         onSubChange={onSubChange}
         balanceDueByPersonId={balanceDueByPersonId}
         onSetChecked={setSubPaymentChecked}
+        onBankChanged={() => loadLaborJobs()}
       />
     </div>
   )

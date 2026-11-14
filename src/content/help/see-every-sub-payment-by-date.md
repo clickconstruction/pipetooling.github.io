@@ -2,7 +2,7 @@
 title: see every payment made to subs by date
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: ledger, sub payments, checked, tick, not checked, bank reconciliation, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
+keywords: ledger, sub payments, mercury, bank line, match, find bank lines, checked, tick, not checked, bank reconciliation, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
 order: 32
 ---
 Jobs → Subs → Ledger lists every payment made to a sub, newest first. You hold it beside a bank statement and check each line.
@@ -54,6 +54,22 @@ A back-charge has no box, and neither does a line paid from credit. No money lef
 **How paid** narrows the list to one method. Pick {{chip:gray|Check}} to work through the checks on one statement.
 
 Changing a ticked payment's amount or date clears its tick. The Edit window says so before you save.
+
+## Let the bank find the line
+
+Press {{button:outline|Find bank lines}} above the list. The app reads the money that left Mercury in the period.
+
+A payment gets a small picker when a bank line fits it. A line fits when the amount is the same and the day is within three days.
+
+Open the picker and choose the bank line. The payment is matched and ticked in one press.
+
+The closest day comes first in the picker. A payee that reads like the sub's name breaks a tie.
+
+A matched payment shows the bank line's day and payee in green. Press **undo** beside it to take the match off. The tick is cleared with it.
+
+One check that paid several sheets is matched as one. The picker compares the whole check with the bank line.
+
+Nothing is matched by itself. A payment with no bank line that fits keeps its box, and you tick it by hand.
 
 {{button:outline|Download CSV}} saves the lines to sort in a spreadsheet. The file has a column for the day each was checked.
 
