@@ -170,8 +170,8 @@ Never applied silently. A sub reads the payment record and must find their own a
 ## What this card asks of card #347
 
 1. **The method and its reference on a payment.** PR #7992 adds both. The papers print them.
-2. **One sending recorded once**, with a row per sheet tied to it, placed by hand with Oldest first as the fill. Its window is #347's to grow.
-3. **A number per sending**, never reused. If #347 mints it, this card prints it. If not, PR 3 here mints it on the register.
+2. **One sending recorded once**, with a row per sheet tied to it, placed by hand with Oldest first as the fill. Its window is #347's to grow. **Built in #347, v2.7235**, with the fill and no hand placement yet: `sub_payment_sendings`, and `people_labor_job_payments.sending_id` on each row.
+3. **A number per sending**, never reused. If #347 mints it, this card prints it. If not, PR 3 here mints it on the register. **#347 mints it, v2.7235**: `sub_payment_sendings.number`, from a sequence. A payment recorded before then has none.
 4. **A Date sent on every new payment and a day on a back-charge** (#347's PR 4).
 5. **The office note kept apart from the memo the sub reads** (#7992's call 3). A paper prints the memo only.
 6. **An answer on overpayment** (#7992's call 1). **Answered 2026-11-13: it becomes a credit**, so the statement of account needs a credit line. Card #347's call 6 holds what the credit is.

@@ -10,7 +10,28 @@ export type LaborJobPayment = {
   method?: string | null
   /** The method's own number: a check number, a Cash App id, a confirmation. */
   method_ref?: string | null
+  /** v2.7235: the sending this row is part of. Rows that share one were one check or one transfer. */
+  sending_id?: string | null
+  /** The sending's number, never reused. Resolved by the ledger hook. */
+  sending_no?: number | null
+  /** Credit kept with this row: what was sent past what the sheets needed. Resolved by the ledger hook. */
+  credit_kept?: number | null
 }
+
+/** v2.7235: one sending to record. `lines` are the sheets it pays, `credit` what is kept past them. */
+export type SubSendingInput = {
+  personId: string | null
+  lines: Array<{ jobId: string; amount: number }>
+  credit: number
+  paymentDate: string | null
+  method: string | null
+  methodRef: string | null
+  memo: string | null
+  hiddenFromSub: boolean
+}
+
+/** What a write that leans on the credit migration answers: done, not live yet, or refused with its reason. */
+export type SubSendingResult = { ok: true } | { ok: false; missing: boolean; message: string }
 
 /** What the Record payment and Edit Payment windows add to a payment beyond its amount, date and memo (v2.7176). */
 export type SubPaymentExtras = { method?: string | null; method_ref?: string | null; hidden_from_sub?: boolean }
