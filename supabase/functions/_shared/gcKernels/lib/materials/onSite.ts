@@ -7,9 +7,10 @@
  * count is a row like any other, a point in time that resets the sum and leaves the difference on
  * record, so "report when they are missing" is the same rows read a second way.
  *
- * Pure rules only. The spike's store is `onSiteStore.ts` (the phone's own storage until the two
- * tables land); the field tab is `components/tally/TallyOnSiteTab.tsx`, the office tab
- * `components/jobs/JobsMaterialsTab.tsx`.
+ * Pure rules only. The store over the five tables is `onSiteStore.ts`; the field tab is
+ * `components/tally/TallyOnSiteTab.tsx`, the office tab `components/jobs/JobsMaterialsTab.tsx`.
+ * The same arithmetic lives in SQL as `on_site_job_summary`, held equal by
+ * `onSiteServerSummary.test.ts`.
  */
 
 export const MOVEMENT_REASONS = ['delivered', 'moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged', 'counted'] as const
