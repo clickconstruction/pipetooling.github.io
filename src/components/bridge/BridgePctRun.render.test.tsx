@@ -54,6 +54,7 @@ const TODAY = '2026-03-10'
 const job = (n: number, name: string): DivePctJob => ({ id: `j${n}`, hcpNumber: String(n), jobName: name, label: `${n} · ${name}` })
 const RUN = [job(301, 'Pine Row'), job(302, 'Spruce Hall'), job(303, 'Fir Lane')]
 const pine: PctJobFacts = {
+  address: '14 Pine Row, Cedar Falls',
   chargeUsd: 9500,
   lines: [
     { key: 'l1', name: 'Rough in', usd: 4000, billed: true },
@@ -69,7 +70,7 @@ const pine: PctJobFacts = {
   hoursLine: '11 hours by Dana and Sam',
   lastPct: null,
 }
-const spruce: PctJobFacts = { chargeUsd: null, lines: [], billedUsd: 0, lastWorked: null, nextScheduled: null, hoursLine: 'No hours yet', lastPct: null }
+const spruce: PctJobFacts = { address: '', chargeUsd: null, lines: [], billedUsd: 0, lastWorked: null, nextScheduled: null, hoursLine: 'No hours yet', lastPct: null }
 const FACTS = new Map([
   ['j301', pine],
   ['j302', spruce],
@@ -103,6 +104,8 @@ const ready = () => waitFor(() => expect(screen.getByText('Save 0%')).toBeTruthy
 describe('BridgePctFacts', () => {
   it('says what we charge, the days and the hours, then the job’s lines with their amounts', () => {
     renderWithProviders(<BridgePctFacts facts={pine} error={null} todayYmd={TODAY} dayLabel={dayLabel} jobHref="/jobs?tab=stages&edit=j301" />)
+    // The place leads: it is how the owner knows the job.
+    expect(screen.getByTestId('bridge-pct-facts').textContent!.startsWith('Address14 Pine Row, Cedar Falls')).toBe(true)
     expect(screen.getByTestId('bridge-pct-fact-charge').textContent).toBe('We are charging$9,500')
     expect(screen.getByTestId('bridge-pct-fact-billed').textContent).toBe('Billed so far$4,000 of $9,500')
     expect(screen.getByTestId('bridge-pct-fact-worked').textContent).toBe('Last workedMar 5. Clocked by Sam and Dana.')
@@ -120,6 +123,7 @@ describe('BridgePctFacts', () => {
   it('says a job has no price and no lines, and offers the job, never $0', () => {
     renderWithProviders(<BridgePctFacts facts={spruce} error={null} todayYmd={TODAY} dayLabel={dayLabel} jobHref="/jobs?tab=stages&edit=j302" />)
     expect(screen.getByTestId('bridge-pct-fact-charge').textContent).toBe('We are chargingNo price yet. It is also on the list “Price the jobs with no price”.')
+    expect(screen.getByTestId('bridge-pct-fact-address').textContent).toBe('AddressThe job has no address yet.')
     expect(screen.getByTestId('bridge-pct-fact-worked').textContent).toBe('Last workedNot worked yet.')
     expect(screen.queryByTestId('bridge-pct-fact-billed')).toBeNull()
     expect(screen.getByTestId('bridge-pct-lines').textContent).toBe('The job’s linesThis job has no lines yet. Open the job to add them.')
