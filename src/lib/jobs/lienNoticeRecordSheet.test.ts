@@ -28,14 +28,17 @@ import {
   LIEN_RECORD_ON,
   LIEN_RECORD_SAVED_NOTE,
   LIEN_RECORD_STYLES,
+  LIEN_RECORD_TOTAL_IN_ALL,
   LIEN_RECORD_WHOLE,
   lienNoticeCopiesHtml,
   lienNoticeCopyNotices,
   lienNoticeRecordBatchHtml,
   lienNoticeRecordSheetHtml,
+  lienRecordClaimWords,
   lienRecordDay,
   lienRecordDeliveryLine,
   lienRecordFootNext,
+  lienRecordHasPaperTotal,
   lienRecordNoticeWords,
   lienRecordSentAgoWords,
   lienRecordSentWhatWords,
@@ -239,8 +242,37 @@ describe('the record’s words', () => {
 
   it('says a notice’s paper total beside this job’s share, and a saved copy’s note', () => {
     const base = { n: 1, recordedOn: '', byHand: false, months: ['2026-08'], claim: 1200, printedClaim: 4180, savedCopy: false, savedNote: 'in the blue folder', copies: [], snapshot: null }
-    expect(lienRecordNoticeWords(base)).toBe(`Names August 2026 · Claim $4,180.00 on the paper, $1,200.00 for this job · ${LIEN_RECORD_NOTE_ONLY}`)
+    expect(lienRecordNoticeWords(base)).toBe(`Names August 2026 · The notice claimed $4,180.00 in all, $1,200.00 of it for this job · ${LIEN_RECORD_NOTE_ONLY}`)
     expect(lienRecordNoticeWords({ ...base, months: [], claim: null, printedClaim: null, byHand: true, savedNote: '' })).toBe('Names no month · Entered after the fact · No saved copy')
+  })
+
+  it('names a paper total as the notice’s, never as this paper’s claim (the owner, 2026-11-13)', () => {
+    // One notice over several jobs at a property: the total is the notice's, the job's part is a part of it.
+    expect(lienRecordClaimWords({ claim: 1200, printedClaim: 4180 })).toBe('The notice claimed $4,180.00 in all, $1,200.00 of it for this job')
+    // A figure set by hand under the job's amount is not a part of anything: the two are said apart.
+    expect(lienRecordClaimWords({ claim: 1200, printedClaim: 900 })).toBe('The notice claimed $900.00, and this job’s amount on record is $1,200.00')
+    expect(lienRecordClaimWords({ claim: 1200, printedClaim: null })).toBe('Claim $1,200.00')
+    expect(lienRecordClaimWords({ claim: null, printedClaim: 4180 })).toBe('')
+    expect(lienRecordClaimWords({ claim: 1200, printedClaim: 4180 })).not.toContain('on the paper')
+  })
+
+  it('says whose figure a total is, once, only where a notice carries one', () => {
+    const shared: LienNoticeRecordFiling[] = CLEAN.map((f, i) => (i === 0 ? { ...f, printed_claim: 9999 } : f))
+    const withTotal = recordOf(shared, CLEAN_MONTHS)
+    expect(lienRecordHasPaperTotal(withTotal)).toBe(true)
+    expect(lienRecordHasPaperTotal(recordOf(CLEAN, CLEAN_MONTHS))).toBe(false)
+    expect(lienRecordHasPaperTotal(null)).toBe(false)
+
+    const page = lienNoticeRecordSheetHtml(HEAD, withTotal, '')
+    expect(page).toContain('in all, ')
+    expect(page.match(/data-lien-record-total-in-all/g)).toHaveLength(1)
+    expect(textOf(page)).toContain(`${LIEN_RECORD_ENVELOPE} ${LIEN_RECORD_TOTAL_IN_ALL}`)
+    expect(lienNoticeRecordSheetHtml(HEAD, recordOf(CLEAN, CLEAN_MONTHS), '')).not.toContain('data-lien-record-total-in-all')
+
+    const batch = lienNoticeRecordBatchHtml([{ head: HEAD, record: withTotal }, { head: HEAD, record: recordOf(CLEAN, CLEAN_MONTHS) }, { head: HEAD, record: null }], '')
+    expect(batch.match(/data-lien-record-total-in-all/g)).toHaveLength(1)
+    expect(textOf(batch)).toContain(`${LIEN_RECORD_FIX} ${LIEN_RECORD_TOTAL_IN_ALL}`)
+    expect(lienNoticeRecordBatchHtml([{ head: HEAD, record: recordOf(CLEAN, CLEAN_MONTHS) }], '')).not.toContain('data-lien-record-total-in-all')
   })
 
   it('says the voided count', () => {
@@ -248,7 +280,7 @@ describe('the record’s words', () => {
   })
 
   it('every sentence the page writes follows the plain-words rules', () => {
-    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ON, LIEN_RECORD_ENVELOPE, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
+    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ON, LIEN_RECORD_ENVELOPE, LIEN_RECORD_TOTAL_IN_ALL, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
