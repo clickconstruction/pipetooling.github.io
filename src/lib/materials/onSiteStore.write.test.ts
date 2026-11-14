@@ -277,3 +277,43 @@ describe('the store reads a job again by itself (v2.7177)', () => {
     expect(b.store.jobLoadState('never-opened')).toMatchObject({ loaded: false, loading: false })
   })
 })
+
+describe('a delivery off an invoice is one press (v2.7250)', () => {
+  const lines = [{ partName: ' ZZ test elbow ', quantity: 25, note: 'ea' }, { partName: 'ZZ test tee', quantity: 4 }, { partName: 'ZZ test wax ring', quantity: 12.4 }]
+  const delivery = { jobId: 'j1', toContainerId: 'a1', source: 'INV-ZZ1', byUserId: 'u1', byName: 'Sam', lines }
+
+  it('lands every line together and answers once, with nothing said and nothing waiting', async () => {
+    const b = await bench()
+    const answer = b.store.addDelivery(delivery)
+    // On the screen at once, like any press.
+    expect(b.store.listMovements('j1').map((m) => [m.partName, m.quantity, m.reason, m.source])).toEqual([['ZZ test elbow', 25, 'delivered', 'INV-ZZ1'], ['ZZ test tee', 4, 'delivered', 'INV-ZZ1'], ['ZZ test wax ring', 12, 'delivered', 'INV-ZZ1']])
+    expect(await answer).toEqual({ kind: 'landed' })
+    await settle()
+    expect(tables.job_material_movements!.map((r) => [r.part_name, r.quantity, r.to_container_id, r.source, r.note])).toEqual([['ZZ test elbow', 25, 'a1', 'INV-ZZ1', 'ea'], ['ZZ test tee', 4, 'a1', 'INV-ZZ1', ''], ['ZZ test wax ring', 12, 'a1', 'INV-ZZ1', '']])
+    expect(b.outbox.presses()).toEqual([])
+    expect(b.said).toEqual([])
+  })
+
+  it('with no signal it is one press kept on the device, and the caller hears that it waits', async () => {
+    signal.online = false
+    const b = await bench()
+    expect(await b.store.addDelivery(delivery)).toMatchObject({ kind: 'queued' })
+    await settle()
+    expect(inserts).toEqual([])
+    expect(b.outbox.presses().map((p) => [p.kind, p.state])).toEqual([['on-site-press', 'waiting']])
+    signal.online = true
+    await b.replay()
+    expect(tables.job_material_movements).toHaveLength(3)
+  })
+
+  it('a refusal is answered as one, said once with its reason, and taken back off the screen', async () => {
+    const b = await bench()
+    nextInsert.push({ lands: false, answer: { data: null, error: { code: '42501', message: 'new row violates row-level security policy for table "job_material_movements"' }, status: 403 } })
+    const outcome = await b.store.addDelivery(delivery)
+    expect(outcome.kind).toBe('refused')
+    await settle()
+    expect(b.said).toHaveLength(1)
+    expect(b.said[0]!.message).toMatch(/^3 lines from INV-ZZ1 did not save: /)
+    expect(b.store.listMovements('j1')).toEqual([])
+  })
+})

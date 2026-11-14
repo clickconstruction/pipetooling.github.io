@@ -12,16 +12,88 @@ export type ParsedLine = {
   name: string
   unit: string | null
   unitPrice: number | null
+  /**
+   * The one money figure on a line of more than one piece (v2.7250): the price of each, or the line's total? The
+   * line does not say, so the reader takes neither and the office says which (`linePrice`).
+   */
+  loneFigure?: number | null
   raw: string
 }
 
+/** What the office said the one figure on a line is, for the whole paste: the price of each piece, or the line's total. */
+export type LoneFigureIs = 'each' | 'total'
+
 export const UNITS = ['EA', 'EACH', 'FT', 'LF', 'PC', 'PCS', 'BX', 'BOX', 'RL', 'ROLL', 'CS', 'CASE', 'BG', 'BAG', 'PR', 'ST', 'SET', 'CTN', 'PK']
 const SKIP = /^(invoice|inv\b|date|ship|sold|bill|total|subtotal|sub-total|tax|freight|balance|terms|page|qty\b|quantity|description|amount|thank|remit|po\b|p\.o\.|order|account|customer|phone|fax|due)/i
+/** A count: 25, 2.5, and 1,000 with its comma (a line of a thousand feet was dropped whole before v2.7250). */
+const COUNT = '(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)'
+const MONEY = '\\$?(\\d[\\d,]*\\.\\d{2})'
+/** A street address: a number, words with no digit in them, a street suffix. `10 2" PVC 90 ST` is a part, not a street. */
+const STREET = /^\d+\s+[a-z .,'-]+\b(rd|st|dr|ave|blvd|ln|way|ct|pkwy|hwy|tx)\.?$/i
+const CITY_ZIP = /\b[a-z]{2}\.?,?\s+\d{5}(-\d{4})?$/i
 
+function count(s: string | undefined): number {
+  return Number((s ?? '').replace(/,/g, ''))
+}
+
+/** A money figure off the line; a 0.00 is no figure, so a no-charge line never lands a price of nothing. */
 function money(s: string | undefined): number | null {
   if (!s) return null
   const n = Number(s.replace(/[$,]/g, ''))
-  return Number.isFinite(n) ? n : null
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/**
+ * The unit price off a line's figures. Two figures: the one that makes the other when multiplied by the count is
+ * the unit price, whichever comes first, and when neither does (a discount moved the total) the first is, as
+ * printed. One figure on a line of one piece is its price. One figure on a line of more is not read as either: a
+ * line total taken for a unit price multiplied the money by the count.
+ */
+function priceOf(qty: number, first: number | null, second: number | null): Pick<ParsedLine, 'unitPrice' | 'loneFigure'> {
+  if (first == null) return { unitPrice: null }
+  if (second == null) return qty === 1 ? { unitPrice: first } : { unitPrice: null, loneFigure: first }
+  const near = (x: number, y: number) => Math.abs(x - y) <= Math.max(0.011, 0.005 * qty)
+  if (near(first * qty, second)) return { unitPrice: first }
+  if (near(second * qty, first)) return { unitPrice: second }
+  return { unitPrice: first }
+}
+
+/** A line's unit price with the office's answer in it: the price read, or the one figure as each or as the line's total. */
+export function linePrice(line: Pick<ParsedLine, 'unitPrice' | 'loneFigure' | 'quantity'>, loneIs: LoneFigureIs | null): number | null {
+  if (line.unitPrice != null) return line.unitPrice
+  if (line.loneFigure == null || loneIs == null) return null
+  if (loneIs === 'each') return line.loneFigure
+  return line.quantity > 0 ? Math.round((line.loneFigure / line.quantity) * 10000) / 10000 : null
+}
+
+type LineRead = ParsedLine | 'skip' | 'not-read'
+
+function readLine(raw: string): LineRead {
+  const line = raw.replace(/\s+/g, ' ').trim()
+  if (!line || SKIP.test(line)) return 'skip'
+  const unitRe = UNITS.join('|')
+  // quantity first: "25 EA name [price] [total]"
+  let m = new RegExp(`^${COUNT}(\\s*[x×]\\s+|\\s+)(?:(${unitRe})\\s+)?(.+?)(?:\\s+${MONEY})?(?:\\s+${MONEY})?$`, 'i').exec(line)
+  if (m) {
+    const qty = count(m[1])
+    const said = Boolean(m[3]) || /[x×]/i.test(m[2] ?? '')
+    const name = (m[4] ?? '').replace(/\s+\$?\d[\d,]*\.\d{2}$/, '').trim()
+    // With no unit and no × the count is a guess, so three things stop it. An address is not a line. A number too
+    // big to be a count is a street number. And 1, 2 or 3 right before a fraction may be one size, `2 1/2"`.
+    const guess = !said && (STREET.test(line) || /^[123]$/.test(m[1] ?? '') && /^\d+\/\d+/.test(name))
+    const tooBig = !m[3] && qty > 999
+    if (qty > 0 && !guess && !tooBig && name && !/^\d+(\.\d+)?$/.test(name)) return { quantity: qty, name, unit: m[3]?.toUpperCase() ?? null, ...priceOf(qty, money(m[5]), money(m[6])), raw }
+  }
+  // name first: "name 25 EA [price] [total]"
+  m = new RegExp(`^(.+?)\\s+${COUNT}\\s*(${unitRe})\\b(?:\\s+${MONEY})?(?:\\s+${MONEY})?$`, 'i').exec(line)
+  if (m) {
+    const qty = count(m[2])
+    const name = (m[1] ?? '').trim()
+    if (qty > 0 && name) return { quantity: qty, name, unit: m[3]?.toUpperCase() ?? null, ...priceOf(qty, money(m[4]), money(m[5])), raw }
+  }
+  // Not a line of parts: an address, or words with no number in them, or numbers with no word.
+  if (STREET.test(line) || CITY_ZIP.test(line) || !/\d/.test(line) || !/[a-z]{2}/i.test(line)) return 'skip'
+  return 'not-read'
 }
 
 /**
@@ -30,33 +102,47 @@ function money(s: string | undefined): number | null {
  * A line with no quantity, or a header, a total or an address line, is left out.
  */
 export function parseInvoiceLine(raw: string): ParsedLine | null {
-  const line = raw.replace(/\s+/g, ' ').trim()
-  if (!line || SKIP.test(line)) return null
-  const unitRe = UNITS.join('|')
-  // quantity first: "25 EA name [price] [total]"
-  // An address is not a line: a street suffix at the end, or a number too big to be a count with no unit after it.
-  if (/\b(rd|st|dr|ave|blvd|ln|way|ct|pkwy|hwy|tx)\.?$/i.test(line)) return null
-  let m = new RegExp(`^(\\d+(?:\\.\\d+)?)(?:\\s*[x×]\\s+|\\s+)(?:(${unitRe})\\s+)?(.+?)(?:\\s+\\$?(\\d[\\d,]*\\.\\d{2}))?(?:\\s+\\$?(\\d[\\d,]*\\.\\d{2}))?$`, 'i').exec(line)
-  if (m) {
-    const qty = Number(m[1])
-    const name = (m[3] ?? '').replace(/\s+\$?\d[\d,]*\.\d{2}$/, '').trim()
-    if (qty > 0 && (m[2] || qty <= 999) && name && !/^\d+(\.\d+)?$/.test(name)) return { quantity: qty, name, unit: m[2]?.toUpperCase() ?? null, unitPrice: money(m[4]), raw }
-  }
-  // name first: "name 25 EA [price] [total]"
-  m = new RegExp(`^(.+?)\\s+(\\d+(?:\\.\\d+)?)\\s*(${unitRe})\\b(?:\\s+\\$?(\\d[\\d,]*\\.\\d{2}))?(?:\\s+\\$?(\\d[\\d,]*\\.\\d{2}))?$`, 'i').exec(line)
-  if (m) {
-    const qty = Number(m[2])
-    const name = (m[1] ?? '').trim()
-    if (qty > 0 && name) return { quantity: qty, name, unit: m[3]?.toUpperCase() ?? null, unitPrice: money(m[4]), raw }
-  }
-  return null
+  const read = readLine(raw)
+  return typeof read === 'string' ? null : read
 }
 
 export function parseInvoiceText(text: string): ParsedLine[] {
-  return text
-    .split(/\r?\n/)
-    .map(parseInvoiceLine)
-    .filter((l): l is ParsedLine => l != null)
+  return readInvoiceText(text).lines
+}
+
+/**
+ * The paste read whole (v2.7250): the lines, and the lines that hold a number and a word and still did not read,
+ * as pasted. A line the reader dropped was dropped in silence, so a part that came on the truck was never on the
+ * job and nobody knew to type it. Headers, totals, addresses and blank lines are not listed.
+ */
+export function readInvoiceText(text: string): { lines: ParsedLine[]; notRead: string[] } {
+  const lines: ParsedLine[] = []
+  const notRead: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const read = readLine(raw)
+    if (read === 'not-read') notRead.push(raw.replace(/\s+/g, ' ').trim())
+    else if (read !== 'skip') lines.push(read)
+  }
+  return { lines, notRead }
+}
+
+/** The lines a press lands: a count above zero and a name, the name trimmed. The button counts these and the press sends these, no others. */
+export function landableLines(lines: ReadonlyArray<ParsedLine>): ParsedLine[] {
+  return lines.filter((l) => l.quantity > 0 && l.name.trim()).map((l) => ({ ...l, name: l.name.trim().replace(/\s+/g, ' ') }))
+}
+
+/** What a job already holds from one invoice: its Delivered rows with that source, and the newest of them. Null when none, or when the source is no invoice's own. */
+export function landedFromInvoice(movements: ReadonlyArray<Pick<Movement, 'reason' | 'source' | 'at'>>, invoiceNo: string): { lines: number; lastAt: string } | null {
+  const want = invoiceNo.trim().toLowerCase()
+  if (!want) return null
+  let lines = 0
+  let lastAt = ''
+  for (const m of movements) {
+    if (m.reason !== 'delivered' || (m.source ?? '').trim().toLowerCase() !== want) continue
+    lines += 1
+    if (m.at > lastAt) lastAt = m.at
+  }
+  return lines > 0 ? { lines, lastAt } : null
 }
 
 /** "Invoice 48812", "INV# 48812", "Invoice No. 48812" → "INV-48812"; null when nothing reads as one. */

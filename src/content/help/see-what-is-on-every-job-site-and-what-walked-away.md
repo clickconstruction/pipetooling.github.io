@@ -115,6 +115,14 @@ A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. P
 
 To land the lines, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
+The button counts the lines with a count and a name, and sends those. A line with no count or no name stays on the screen for you to finish. One sentence says what happened: the lines landed, or they are kept on this device until the signal is back.
+
+A line the app could not read is listed above the table, as you pasted it. Press **Add it as a line** and type its count, or leave it out. *2 1/2" x 10 PVC pipe* is one of these. The app cannot tell whether the 2 is a count or part of the size.
+
+Some invoices print one figure on a line. The app does not guess whether that is the price of each or the line's total. Press **The price of each** or **The line’s total** once, and every such line follows. Until you say, those lines land with no price.
+
+An invoice that already landed on this job is named above the button. Press the button and a window asks before the lines land a second time.
+
 ## Print a label
 
 Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
