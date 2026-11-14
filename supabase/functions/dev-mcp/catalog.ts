@@ -2000,6 +2000,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "open-test-report-pdf",
   "owner-confirm-nightly",
   "paid-job-email",
+  "painted-map-link",
   "pay-link",
   "payment-forecast-email-dispatch",
   "people-week-email",
