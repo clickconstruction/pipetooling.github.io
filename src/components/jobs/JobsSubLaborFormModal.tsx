@@ -2068,7 +2068,7 @@ function JobsSubLaborFormModalInner(
                                     <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', color: 'var(--text-muted)', paddingTop: '0.2rem' }}>{p.memo || '—'}</span>
                                     {(() => {
                                       // v2.3562: Edit · Move… · Remove on the row; on a phone, Edit and a ⋯ menu.
-                                      const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null, method: p.method ?? null, methodRef: p.method_ref ?? null }
+                                      const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null, method: p.method ?? null, methodRef: p.method_ref ?? null, checkedAt: p.checked_at ?? null }
                                       // A backcharge stays on the sheet it was raised on: Move says so on the row instead of opening.
                                       const tryMove = () => {
                                         if (subPaymentMoveRefusal(target)) setMoveRefusedId(p.id)

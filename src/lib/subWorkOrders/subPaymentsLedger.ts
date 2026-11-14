@@ -82,6 +82,11 @@ export type LedgerLine = {
   sendingNo: number | null
   /** What left the bank with this line: the amount and the credit kept. Zero for a back-charge and for a line paid from credit. */
   sent: number
+  /** v2.7237: a line that moved money and so can be ticked against the bank. A back-charge and a line paid from credit cannot. */
+  checkable: boolean
+  /** When it was ticked, as stored, or '' when it is not checked. */
+  checkedAt: string
+  checkedBy: string
   /** What the sheet still owed after this line: agreed, less every payment and back-charge up to it. Below zero is over-paid. */
   leftOnSheet: number
 }
@@ -136,6 +141,9 @@ export function buildLedgerLines(sheets: readonly LedgerSheet[]): LedgerLine[] {
         creditKept,
         sendingNo: p.sending_no ?? null,
         sent: amount > 0 && !fromCredit ? cents(amount + creditKept) : 0,
+        checkable: amount > 0 && !fromCredit,
+        checkedAt: amount > 0 && !fromCredit ? (p.checked_at ?? '') : '',
+        checkedBy: amount > 0 && !fromCredit && p.checked_at ? (p.checked_by_name ?? '').trim() : '',
         leftOnSheet: left,
       })
     }
@@ -195,7 +203,19 @@ export function ledgerPeriodRange(key: LedgerPeriodKey, todayYmd: string, custom
   return { from: null, to: null }
 }
 
-export type LedgerFilter = { from?: string | null; to?: string | null; paidToKey?: string | null; search?: string | null }
+export type LedgerFilter = {
+  from?: string | null
+  to?: string | null
+  paidToKey?: string | null
+  search?: string | null
+  /** v2.7237: `unchecked` keeps the lines still to tick against the bank, `checked` the ticked ones. */
+  check?: 'unchecked' | 'checked' | null
+  /** A method's label as the chip reads (`Check`), or `none` for a payment with no method. */
+  method?: string | null
+}
+
+/** `none`: the How paid filter's pick for payments nobody gave a method. */
+export const LEDGER_NO_METHOD = 'none'
 
 function haystack(r: LedgerRow): string {
   if (r.kind === 'trace') return r.text.toLowerCase()
@@ -213,6 +233,15 @@ export function filterLedger<T extends LedgerRow>(rows: readonly T[], f: LedgerF
       if (f.to && r.ymd > f.to) return false
     }
     if (f.paidToKey && (r.kind === 'trace' ? !r.paidToKeys.includes(f.paidToKey) : r.paidToKey !== f.paidToKey)) return false
+    // The two bank filters are about payments: a trace is neither checked nor sent by a method.
+    if (f.check) {
+      if (r.kind === 'trace' || !r.checkable) return false
+      if (f.check === 'unchecked' ? !!r.checkedAt : !r.checkedAt) return false
+    }
+    if (f.method) {
+      if (r.kind !== 'payment') return false
+      if (f.method === LEDGER_NO_METHOD ? !!r.method : r.method !== f.method) return false
+    }
     if (words.length > 0) {
       const hay = haystack(r)
       if (!words.every((w) => hay.includes(w))) return false
@@ -234,10 +263,13 @@ export type LedgerTotals = {
   creditKept: number
   /** Paid from credit: lines that are in no `paidTotal`. */
   creditUsed: number
+  /** v2.7237: payments ticked against the bank, out of `payments`, and what is left to tick. */
+  checked: number
+  uncheckedTotal: number
 }
 
 export function ledgerTotals(rows: readonly LedgerRow[]): LedgerTotals {
-  const t: LedgerTotals = { payments: 0, paidTotal: 0, backcharges: 0, backchargeTotal: 0, people: 0, undated: 0, creditKept: 0, creditUsed: 0 }
+  const t: LedgerTotals = { payments: 0, paidTotal: 0, backcharges: 0, backchargeTotal: 0, people: 0, undated: 0, creditKept: 0, creditUsed: 0, checked: 0, uncheckedTotal: 0 }
   const people = new Set<string>()
   for (const r of rows) {
     if (r.kind === 'payment' && r.fromCredit) {
@@ -247,6 +279,8 @@ export function ledgerTotals(rows: readonly LedgerRow[]): LedgerTotals {
       t.payments += 1
       t.paidTotal = cents(t.paidTotal + r.sent)
       t.creditKept = cents(t.creditKept + r.creditKept)
+      if (r.checkedAt) t.checked += 1
+      else t.uncheckedTotal = cents(t.uncheckedTotal + r.sent)
       people.add(r.paidToKey)
       if (r.recorded || !r.ymd) t.undated += 1
     } else if (r.kind === 'backcharge') {
@@ -256,6 +290,27 @@ export function ledgerTotals(rows: readonly LedgerRow[]): LedgerTotals {
   }
   t.people = people.size
   return t
+}
+
+/** `6 of 8 checked` and `2 left · $3,600.00`, or `all checked`: the bank tile's two lines. */
+export function ledgerCheckedWords(t: LedgerTotals): { head: string; sub: string } {
+  if (t.payments === 0) return { head: '0 of 0', sub: 'nothing to check in this period' }
+  const left = t.payments - t.checked
+  return { head: `${t.checked} of ${t.payments}`, sub: left === 0 ? 'all checked against the bank' : `${left} left to check · ${money(t.uncheckedTotal)}` }
+}
+
+/** The methods the lines carry, as the chips read, for the How paid filter. `none` joins when a payment has no method. */
+export function ledgerMethodOptions(lines: readonly LedgerLine[]): Array<{ key: string; label: string }> {
+  const seen = new Set<string>()
+  let bare = false
+  for (const l of lines) {
+    if (l.kind !== 'payment') continue
+    if (l.method) seen.add(l.method)
+    else bare = true
+  }
+  const out = [...seen].sort((a, b) => a.localeCompare(b)).map((m) => ({ key: m, label: m }))
+  if (bare) out.push({ key: LEDGER_NO_METHOD, label: 'No method given' })
+  return out
 }
 
 /** `8 payments to 5 people`, `1 payment`. */
@@ -322,7 +377,7 @@ const csvCell = (v: string): string => escapeCsvField(/^[=+\-@\t\r]/.test(v) ? `
 /** A number cell: left as it is so a column of them adds, and a back-charge keeps its minus sign. */
 const csvNumber = (n: number): string => n.toFixed(2)
 
-export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'How paid', 'Reference', 'Memo', 'Amount', 'Left on the sheet', 'Sending', 'Credit kept']
+export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'How paid', 'Reference', 'Memo', 'Amount', 'Left on the sheet', 'Sending', 'Credit kept', 'Checked on', 'Checked by']
 
 /** The lines as a spreadsheet, in the order given. Amounts are plain numbers; a back-charge is below zero. */
 export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
@@ -344,6 +399,8 @@ export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
         csvNumber(l.leftOnSheet),
         l.sendingNo ? String(l.sendingNo) : '',
         l.creditKept ? csvNumber(l.creditKept) : '',
+        csvCell(l.checkedAt ? calendarYmdInAppTzFromIso(l.checkedAt) : ''),
+        csvCell(l.checkedBy),
       ].join(','),
     )
   }
