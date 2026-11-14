@@ -126,7 +126,10 @@
   .fold .n.live { color: var(--blue-ink); }
   .fold .chev { color: var(--soft); }
   .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
-  .sect { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 12px 0 4px; }
+  /* Section titles (the owner's word, pass 2f): Where, Who, Now and the thread stand out as sections, not labels. */
+  .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 18px -14px 8px; padding: 10px 14px 6px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
+  .sect:first-child, .body > .sect:first-of-type { border-top: none; margin-top: 2px; }
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
   .line .m { color: var(--muted); }
   .feed { font-size: 13px; }
@@ -175,7 +178,7 @@
     <p class="eyebrow">Punch list #355 · the job window at 375 px · pass 2</p>
     <h1>The job window on a phone: today, and three ways forward</h1>
   </div>
-  <div class="stamp">drawn 2026-11-14 · pass 2 the same day · the owner's words on the number and the email, the thread's name and the header that scrolls away<br>measured on the dev server, iPhone preset<br>presses read from prod, 2026-10-26 to 11-14<br>every name and number here is made up</div>
+  <div class="stamp">drawn 2026-11-14 · pass 2 the same day · the owner's words on the number and the email, the thread's name, the header that scrolls away and the section titles<br>measured on the dev server, iPhone preset<br>presses read from prod, 2026-10-26 to 11-14<br>every name and number here is made up</div>
 </header>
 <p class="lede">The owner opened a job on his iPhone and said: <b>the top line wraps into two, throughout it is not easy to follow, and the buttons are not easy to press.</b> The measured window bears him out: the tab row takes two lines, the title block has eight presses between 20 and 31 px tall, the Job tab runs <b>4,350 px</b> (six and a half screens) before the bar, and the only presses a thumb can land on without care are the bar's three and <b>Paint a map</b>. Pass 2 adds what prod says people press on this window, and redraws the top from it. Each phone below scrolls. The first screen is what matters.</p>
 
@@ -344,7 +347,7 @@
       </div>
 
         <div class="body">
-          <div class="sect" style="margin-top:4px">Where</div>
+          <div class="sect">Where</div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="quiet" style="margin:0 0 4px">＋ Paint a map · street view ▸</div>
@@ -371,7 +374,7 @@
             <div class="pressrow" style="margin:8px 0 0"><span class="press" style="min-height:40px">Note</span><span class="press" style="min-height:40px">Text</span><span class="press" style="min-height:40px">Email</span></div></div>
           <span class="mark ok" style="top:620px">the newest three, not the whole feed</span>
 
-          <div class="sect">Folded until needed</div>
+          <div class="sect">More on this job</div>
           <div class="fold"><span>Photos</span><span class="n">0</span><span class="chev">›</span></div>
           <div class="fold"><span>Questions on this job</span><span class="n live">6 answered</span><span class="chev">›</span></div>
           <div class="fold"><span>Money<span class="sub">Job total $56,000 · nothing billed · accounts none yet</span></span><span class="chev">›</span></div>
@@ -385,7 +388,8 @@
     <div class="verdict"><b>What changes, on top of A</b>
       <ul>
         <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside them, so a glance says whether it is the right person), <b>Now</b> (the next block, the target, the Pipeline row's own line), then <b>the thread</b>: where it stands, the customer's newest word, the newest three events, and Note, Text, Email.</li>
-        <li>Everything else folds under a heading with its count: Photos, Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
+        <li>Each part is a <b>section with a title of its own</b>: Where, Who, Now, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
+        <li>Everything else folds under More on this job, each with its count: Photos, Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
         <li>The first screen is one screen. The scroll ends near 1,200 px with every fold closed.</li>
         <li>The desk is untouched: the order and the folds exist only under 640 px.</li>
       </ul>
@@ -409,7 +413,7 @@
       </div>
 
         <div class="body">
-          <div class="sect" style="margin-top:4px">Where</div>
+          <div class="sect">Where</div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
 

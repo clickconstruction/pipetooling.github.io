@@ -46,6 +46,11 @@ the page so the user can see more." So the title row and the tab strip are part 
 scrolls, not a fixed band: a flick gives the whole screen to the job, a small ✕ floats at the
 corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays.
 
+Also on pass 2: "I don't like how the titles blend in the way they do. I think where, who, now
+should all be more defined as titles or sections." So Where, Who, Now, the thread and More on this
+job are sections with a title of their own, in the body's own type and weight with a band between
+them, not the small grey labels pass 2 drew.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -125,8 +130,9 @@ address with a Directions press, the painted map, the street view folded), Who (
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside them), Now (the next block, the target, the Pipeline row's
 own line), then the thread (Where it stands, the customer's newest word, the newest three events
-with *All 56 ›*, Note, Text, Email). The rest folds under headings with counts: Photos, Questions,
-Money, Plans and papers, Work and time, Their journey. With every fold closed the scroll ends near
+with *All 56 ›*, Note, Text, Email). Each is a section with a title of its own, with a band between
+them. The rest folds under More on this job, each with its count: Photos, Questions, Money, Plans
+and papers, Work and time, Their journey. With every fold closed the scroll ends near
 1,200 px. The desk is untouched.
 
 **C · The crew lead's window** (not recommended now). A `JobWindowPhone` drawn from a kernel that
