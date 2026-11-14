@@ -180,7 +180,7 @@ describe('what the index carries (v2.7288, punch list #359: only what a function
     const out = new Map<string, string[]>()
     for (const file of edgeFiles()) {
       for (const m of readFileSync(file, 'utf8').matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+'[^']*gcKernels\/index\.ts'/g)) {
-        const names = m[1].split(',').map((n) => n.trim().replace(/^type\s+/, '')).filter(Boolean)
+        const names = (m[1] ?? '').split(',').map((n) => n.trim().replace(/^type\s+/, '')).filter(Boolean)
         out.set(file.slice(ROOT.length + 1), [...(out.get(file.slice(ROOT.length + 1)) ?? []), ...names])
       }
     }
@@ -189,7 +189,7 @@ describe('what the index carries (v2.7288, punch list #359: only what a function
   /** The names the index on disk exports. */
   const exportedByIndex = () => {
     const names = new Set<string>()
-    for (const m of readFileSync(join(ROOT, g.OUT_DIR, 'index.ts'), 'utf8').matchAll(/^export (?:type )?\{([^}]*)\} from/gm)) for (const n of m[1].split(',').map((x) => x.trim()).filter(Boolean)) names.add(n)
+    for (const m of readFileSync(join(ROOT, g.OUT_DIR, 'index.ts'), 'utf8').matchAll(/^export (?:type )?\{([^}]*)\} from/gm)) for (const n of (m[1] ?? '').split(',').map((x) => x.trim()).filter(Boolean)) names.add(n)
     return names
   }
 
