@@ -63,6 +63,20 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(edgeUpload('supabase/functions/dev-mcp/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
   })
 
+  it('dev-mcp and quo-send upload no portal translations: the language and the Spanish switch sit in portalLang.ts (v2.7289, punch list #359)', () => {
+    const i18n = 'supabase/functions/_shared/gcKernels/lib/gc/portalI18n.ts'
+    const lang = 'supabase/functions/_shared/gcKernels/lib/gc/portalLang.ts'
+    for (const slug of ['dev-mcp', 'quo-send']) {
+      const u = edgeUpload(`supabase/functions/${slug}/index.ts`)
+      expect(u.via(i18n)).toBeNull()
+      expect(u.via(lang)).not.toBeNull()
+    }
+    // The portals say the schedule in two languages, so they keep the translations, through the file that re-exports the switch.
+    const portal = edgeUpload('supabase/functions/customer-portal/index.ts')
+    expect(portal.via(i18n)).not.toBeNull()
+    expect(portal.via(lang)?.slice(-2)).toEqual([i18n, lang])
+  })
+
   it('legal-portal uploads neither the sample fixtures, the kernel copy’s index nor the generated types', () => {
     const u = edgeUpload('supabase/functions/legal-portal/index.ts')
     expect(u.via('supabase/functions/_shared/customerSampleFixtures.ts')).toBeNull()

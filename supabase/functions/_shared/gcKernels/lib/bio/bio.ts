@@ -9,7 +9,7 @@
  * The reads and writes are `bioIo.ts`; the server composes the text with the same rules (`quo-send`'s tech path,
  * PR 3) so what the tech read is what goes. No import a copy for the edge cannot hold.
  */
-import type { PortalLang } from '../gc/portalI18n.ts'
+import type { PortalLang } from '../gc/portalLang.ts'
 
 /** The most characters the whole bio holds in one language, opener included: two text segments. */
 export const BIO_CAP = 320

@@ -5,21 +5,12 @@
  * (branch spike/gc-mode, `gcPortalI18n.ts`): a date in Spanish by the schedule's PR 1b, which reads it, and every other word
  * the portal and its emails say by the Portal lane's P0 (to-dos/gc-mode/PORTAL_REAL_BUILD.md).
  */
+import type { PortalLang } from './portalLang.ts'
 import { shortDate, weekdayDate } from './words.ts'
 
-export type PortalLang = 'en' | 'es'
-
-/**
- * The portal's Spanish is built whole and held until a native speaker reads it (PORTAL_REAL_BUILD.md, decision 8, the
- * owner's call 9). Until then a company kept as Spanish reads English, and its language stays on its record for the day
- * this turns on. Turning it on is this one line, with the reader's name in the PR's fragment.
- */
-export const PORTAL_SPANISH_ON = false
-
-/** The language the portal shows a company: its own once Spanish is on, English until then. */
-export function portalShownLang(lang: PortalLang): PortalLang {
-  return PORTAL_SPANISH_ON ? lang : 'en'
-}
+// The two languages and the owner's switch for Spanish live in portalLang.ts (v2.7289), so a kernel that needs the
+// language alone does not carry these translations onto the edge; every reader of this file still finds them here.
+export { PORTAL_SPANISH_ON, portalShownLang, type PortalLang } from './portalLang.ts'
 
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
