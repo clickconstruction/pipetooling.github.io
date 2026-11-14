@@ -219,6 +219,10 @@ Robert opens J650 under Awaiting approval. Lowbeck Contracting owes $33,500 on i
 
 The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section.
 
+On a phone an open notice takes the whole desk. The tabs fold away, and the top row holds {{button:outline|← Notices}} to go back to the list. One title row stays pinned, the row of the section you are reading. A page of the notice slides sideways inside its own frame when it is wider than the phone.
+
+The buttons for the next step sit in a footer under the notice. On a phone a bar over the footer reads **Hide the next step**. Press the bar to fold the footer away and give the notice the screen. Press **Show the next step** to bring the footer back. What you typed in the footer is kept. A tall footer starts folded, so the notice is not squeezed into a strip. An open affidavit and an open retainage notice work the same way. The way back reads {{button:outline|← Affidavits}} or {{button:outline|← Retainage}}.
+
 Each row ends with its fact.
 
 - **Where this notice is**. The next step and its days.

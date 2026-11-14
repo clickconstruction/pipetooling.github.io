@@ -1015,6 +1015,93 @@ describe('LienDesk · the demand letter on the panes’ strips (v2.3880, punch l
   })
 })
 
+describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
+  const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+
+  it('an open notice has a one-row header, one pinned section title, a column held to the screen and a footer that folds without losing what is in it', async () => {
+    // A computer: the pane beside the list keeps its stacked titles and has no fold.
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="notice" initialJobId="j650" />)
+    await settle()
+    expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-pane]')!.getAttribute('data-lien-pane-phone')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(wideHeads.length).toBeGreaterThan(1)
+    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 30))
+    expect(wideHeads.every((h) => h.style.height === '')).toBe(true)
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      const onShowList = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} layout="stacked" initialKind="notice" initialJobId="j650" onOpenNotice={() => {}} onShowList={onShowList} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-pane]')).not.toBeNull())
+      // The header says a paper is open, which hides both rows of tabs (`index.css`); its way back is the list.
+      expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBe('notice')
+      expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: '← Back to the list' })).toBeNull()
+      // The pane: one column held to its width, one title pinned at a time, a thumb tall.
+      const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+      expect(pane.getAttribute('data-lien-pane-phone')).toBe('yes')
+      expect(pane.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+      const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+      expect(heads.length).toBe(wideHeads.length)
+      for (const h of heads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+      }
+      // The footer folds to one bar and comes back with its presses, never unmounted.
+      const fold = document.querySelector<HTMLButtonElement>('[data-lien-desk-foot-fold]')!
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+      expect(fold.textContent).toContain('Hide the next step')
+      const footer = fold.nextElementSibling as HTMLElement
+      const footerButtons = footer.querySelectorAll('button').length
+      expect(footerButtons).toBeGreaterThan(0)
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      expect(fold.textContent).toContain('Show the next step')
+      expect((fold.nextElementSibling as HTMLElement).querySelectorAll('button').length).toBe(footerButtons)
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
+  it('an open affidavit has a way back to its list in the header, where it had none', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} layout="stacked" initialKind="affidavit" backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      // The list first: the page's own door, both rows of tabs, no fold.
+      expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
+      expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /AXO Schertz/ }))
+      await waitFor(() => expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBe('affidavit'))
+      expect(screen.queryByRole('button', { name: '← Pipeline' })).toBeNull()
+      const back = screen.getByRole('button', { name: 'Back to the affidavits' })
+      expect(back.textContent).toContain('Affidavits')
+      expect(back.style.height).toBe('44px')
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull()
+      fireEvent.click(back)
+      await waitFor(() => expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull())
+      expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /AXO Schertz/ })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+})
+
 describe('LienDesk reads the roll (v2.3450)', () => {
   function payload(owner: string, mailing: string) {
     return { ok: true, county_geocoder: 'Guadalupe', parcel: { propId: '12345', ownerName: owner, nameCare: '', legalDescription: 'LOT 1', situsAddress: '1204 ELWICK RD, SCHERTZ, TX', mailingAddress: mailing, county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' } }
