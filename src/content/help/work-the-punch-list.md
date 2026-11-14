@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -24,6 +24,19 @@ A card is open while its file is in the folder. A card closes when it leaves the
 Cards in **Needs an owner decision** and **Waiting on time or usage** do not close by building. The sentence over the chart counts them for that reason.
 
 **Hide the burndown** folds it to one line. This device remembers the choice.
+
+## Work the cards by number
+
+The page has two views. **By group** is the board in its five groups. **By number** is every card in one list.
+
+You press **By number** in the **View** row above the list. The newest card is on top. A number is given once, so the highest number is the newest card.
+
+- **↓ Newest first** is the sort. You press it and the list runs from the oldest card. The press then reads **↑ Oldest first**.
+- A row shows the card's number, its name, its group, its size and its **Next** line.
+- You press the **Next** line to open the whole card. The open card has {{button:green|Do}}, {{button:amber|Later}} and {{button:red|Drop}}, as in the groups.
+- The chips under the heading narrow the list to one group. The **Show** filters work here too.
+
+The heading counts the cards in the list. This device remembers the view and the sort. The address `/punch-list?view=number` opens the view from a link.
 
 ## What a row tells you
 
