@@ -238,6 +238,9 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     // The reason rides in front of it (punch list #356): the job's work months and the notice's months, side by side.
     expect(String(blank.reply.no_month)).toContain('No recorded notice names a month this job was worked.')
     expect(String(blank.reply.no_month)).toContain('The notice on record names October 2026.')
+    // The last work month's own notice is still due (punch list #353, part 2): September on a house closes Nov 16.
+    expect(String(planned(world()).reply.notice_still_due)).toBe("September 2026's notice is still due, by 2026-11-16. The paper will not name that month until the notice is recorded.")
+    expect(planned(world({ filings: [{ ...NOTICE, months_covered: [...NOTICE.months_covered, '2026-09'] }] })).reply.notice_still_due).toBeUndefined()
   })
 
   it('refreshes a standing draft in place, clearing any signature, as the pane does', () => {

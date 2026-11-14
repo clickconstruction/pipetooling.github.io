@@ -19,6 +19,7 @@ import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -56,7 +57,10 @@ export type LienNextUpTarget =
   | { open: 'retainage'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
-  | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
+  /** The Lien window on a paper's tab; `openLastWork` (punch list #353) opens it with the last day of work ready to change. */
+  | { open: 'lien_window'; jobId: string; tab: 'affidavit' | 'notice'; openLastWork?: true }
+  /** The recorded notice's months, corrected (punch list #353): the paper as mailed named these months too, so they join its record. */
+  | { open: 'notice_record_months'; jobId: string; months: string[] }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. */
 export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
@@ -82,6 +86,8 @@ export type LienNextUpRow = {
   target: LienNextUpTarget
   /** A second, quieter button (punch list #101: the run row's *Take back…*); null or absent for most rows. */
   secondary?: { words: string; target: LienNextUpTarget } | null
+  /** More doors beside the button (punch list #353): on a job with a recorded notice that still owes one, the two ways the row may be wrong. */
+  doors?: ReadonlyArray<{ words: string; target: LienNextUpTarget }>
   /** The jobs a run row stands for, in deadline order (punch list #101), for its fold and the find. */
   jobs?: ReadonlyArray<{ jobId: string; title: string; dueOn: string | null }>
   /** A courtesy or letter-two row's rung on the REMINDERS ladder (punch list #262), read from the two statuses; null when the desk did not build the courtesy status. */
@@ -137,6 +143,8 @@ export type LienNextUpInput = {
   masterUserId?: (jobId: string) => string | null
   /** The envelopes mailed through the provider that want a person (the Docsmit train, 6b): `mailNeedsYouRows` from the desk's pieces. */
   mailNeedsYou?: ReadonlyArray<{ jobId: string; pieceId: string; who: string; words: string }>
+  /** The months the live § 53.056 notices name, by job (punch list #353): a To draft row with a notice on record names the owed month beside them. Absent, the row keeps its plain words. */
+  noticeMonthsByJob?: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -223,9 +231,28 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'needs_owner':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Needs the owner of record', action: 'find_owner', target: pane('needs_owner') })
         break
-      case 'to_draft':
-        push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to draft', action: 'draft', target: pane('to_draft') })
+      case 'to_draft': {
+        // A notice on record that names other months (punch list #353, part 2): the row says which month still owes one, and
+        // offers the two ways it may be wrong beside the draft. With no notice on record the row keeps its plain words.
+        const owedWords = lienNoticeOwedWords(e.dueMonths, input.noticeMonthsByJob?.[e.jobId] ?? [])
+        const owed = lienNoticeOwedMonths(e)
+        push({
+          ...base,
+          key: `notice:${e.jobId}`,
+          sub: owedWords ?? 'Notice to draft',
+          action: 'draft',
+          target: pane('to_draft'),
+          ...(owedWords && canAct
+            ? {
+                doors: [
+                  { words: LIEN_NOTICE_OWED_DOORS.named(owed), target: { open: 'notice_record_months' as const, jobId: e.jobId, months: owed } },
+                  { words: LIEN_NOTICE_OWED_DOORS.lastDay, target: { open: 'lien_window' as const, jobId: e.jobId, tab: 'notice' as const, openLastWork: true as const } },
+                ],
+              }
+            : {}),
+        })
         break
+      }
       case 'awaiting': {
         const a = awaiting(e.jobId, e.item)
         push({ ...base, key: `notice:${e.jobId}`, sub: a.sub, action: a.action, button: a.button, target: pane('awaiting') })

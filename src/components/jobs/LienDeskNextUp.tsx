@@ -212,20 +212,25 @@ export default function LienDeskNextUp({
       onHide={card.hide}
     />
   )
-  const secondary = (r: LienNextUpRow) =>
-    r.secondary ? (
+  // The quieter doors beside the button: the run row's second press, and (punch list #353) a row's other ways to be right.
+  const secondary = (r: LienNextUpRow) => {
+    const extra = [...(r.secondary ? [{ words: r.secondary.words, target: r.secondary.target, hook: { 'data-lien-next-up-secondary': r.key } }] : []), ...(r.doors ?? []).map((d, i) => ({ words: d.words, target: d.target, hook: { 'data-lien-next-up-door': `${r.key}:${i}` } }))]
+    if (extra.length === 0) return null
+    return extra.map((d) => (
       <button
+        key={d.words}
         type="button"
         onClick={(ev) => {
           ev.stopPropagation()
-          onAct({ ...r, target: r.secondary!.target })
+          onAct({ ...r, target: d.target })
         }}
         style={{ ...openBtn, ...(isMobile ? PHONE_PRESS : { padding: '2px 10px', fontSize: '0.78rem' }) }}
-        data-lien-next-up-secondary={r.key}
+        {...d.hook}
       >
-        {r.secondary.words}
+        {d.words}
       </button>
-    ) : null
+    ))
+  }
   // A run row's jobs (punch list #101): each a door to its job, with its day.
   const fold = (r: LienNextUpRow) => {
     if (!r.jobs || r.jobs.length === 0) return null
@@ -420,6 +425,12 @@ export default function LienDeskNextUp({
                   <span style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap' }}>{due}</span>
                   <span style={{ justifySelf: 'end' }}>{button(r)}</span>
                   {fold(r)}
+                  {/* The row's other doors (punch list #353) read on a line of their own under the row, so the title keeps its column. */}
+                  {!r.jobs && r.doors?.length ? (
+                    <div data-lien-next-up-doors={r.key} style={{ gridColumn: '1 / -1', paddingLeft: 'calc(84px + 0.75rem)', display: 'flex', flexWrap: 'wrap', gap: '4px 8px' }} onClick={(ev) => ev.stopPropagation()}>
+                      {secondary(r)}
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
