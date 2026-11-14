@@ -2,15 +2,16 @@
 name: "Lien desk: a started paper stays on the desk, whatever its day"
 number: 354
 group: ready
-status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · nothing built
+status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR
 summary: >
   The Lien desk lists what is due within 30 days, and builds every list from the readers' rows
   alone. A paper someone already drafted, sent for approval, approved or held drops off every list
   while its day is further out. Three affidavits drafted on 2026-11-14 for a Dec 15 day showed in
   their jobs' Lien windows and nowhere on the desk. The fix keeps any started paper on the desk
   without widening the window for every job.
-next: Build it. One PR, a kernel with tests and three lines in the desk's data hook.
+next: Retire the card once v2.7261 is on main and the office has seen a started paper on the desk.
 size: S
+ver: v2.7261
 blocker: none
 ver: v2.7247
 ---
@@ -91,5 +92,7 @@ from it, or they would change too.
 
 ## Where it stands
 
-Nothing is built. The owner picked this shape over widening the window, then asked for it on a card
-instead of in the session that found it.
+Built 2026-11-14 as v2.7261: the kernel `src/lib/jobs/lienDeskStarted.ts` with its tests, the three
+reader calls in `useLienDeskData` asking 180 days ahead and keeping a row inside the lead or on a job
+with a started paper of that kind, and the guide's two sentences. The owner picked this shape over
+widening the window, then asked for it on a card instead of in the session that found it.

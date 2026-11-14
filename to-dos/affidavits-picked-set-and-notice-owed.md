@@ -2,7 +2,7 @@
 name: "Affidavits: print a picked set, and say why a job with a recorded notice still owes one"
 number: 353
 group: ready
-status: written 2026-11-14 from a Lien desk session · nothing built
+status: written 2026-11-14 from a Lien desk session · the owner picked all three doors for part 2 the same day · nothing built
 summary: >
   Two gaps the office hit on one property's jobs on 2026-11-14. First, the Affidavits list's two
   batch presses take every paper in their pile. Print N for notarization prints every approved
@@ -14,9 +14,9 @@ summary: >
   no notice. But the row does not say so, and the affidavit pane let a draft through without
   naming the month still owed. The workflow from recording a mailing to drafting the affidavit
   needs a cleanup so the office sees what is owed and why.
-next: A mock-up of both parts, made-up rows only. Then the owner's pick on part 2's doors, then build.
+next: A mock-up of both parts, made-up rows only, part 2 with all three doors. Then build.
 size: M as two PRs (S · M)
-blocker: The owner's pick on which doors the To do row offers (part 2).
+blocker: none
 ver: v2.6918 · v2.7209 · v2.7247
 ---
 
@@ -110,4 +110,6 @@ and `src/lib/jobs/lienAffidavitNoticeCheck.ts` (the pane's notice lines), and th
 ## Where it stands
 
 Nothing is built. The three affidavit drafts are saved and wait in To draft. The notice for
-their last work month is the owner's call, and it is due before this card can ship.
+their last work month is the owner's call, and it is due before this card can ship. The owner
+picked all three of part 2's doors on 2026-11-14: draft the month's notice, the paper named that
+month too, and the last day of work is wrong.
