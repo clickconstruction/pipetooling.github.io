@@ -86,10 +86,22 @@ function singular(word: string): string {
   return word
 }
 
+/** The words that say a fitting has two ends, each with its own size: `1/2 pex x 3/4 mip`, `4" to 2" reducer`, `3 by 4`. */
+const TWO_ENDS = new Set(['x', BY, 'by', 'to'])
+
 /**
  * The same-words fold of a typed name: the words that make it, in one order. `2" 90 PVC`,
  * `2 inch 90 pvc`, `PVC 2”90` and `2inch 90s pvc` are one key; `3" 90 pvc` is another, and so is
  * `2" 90` with no material named. A bare `2` is never read as `2"`: that would be a guess.
+ *
+ * Two things keep their place (v2.7249, punch list #344 PR 7). **A fitting with two ends keeps the order it was
+ * typed in.** Sorting the words made `1/2 pex x 3/4 mip adapter` and `3/4 pex x 1/2 mip adapter` one key, and
+ * `4" to 2" reducer` and `2" to 4"`: the `×` guard only held when the `x` sat right between two numbers. A name that
+ * holds `x`, `by` or `to` as a word is now folded word for word and never sorted, so the same fitting typed in
+ * another order is two rows a person may join, never two fittings in one row. Two sizes glued by the `×` (`3x4`,
+ * `1/2 x 3/8`) were always one word and still sort with the rest. **A decimal keeps its point.** The punctuation
+ * sweep turned `.5"` into `5"` and `1.5` into `1 5`; a point that leads or sits inside a number stays, and `0.5`
+ * reads as `.5`. A point after a letter (`no.4`) is still punctuation.
  */
 export function sameWordsKey(name: string): string {
   let s = name.toLowerCase()
@@ -103,10 +115,14 @@ export function sameWordsKey(name: string): string {
   s = s.replace(/(\d"?)\s*x\s*(?=\d)/g, `$1${BY}`)
   // A mixed number: 1-1/2 and 1 1/2.
   s = s.replace(/(\d)-(?=\d+\/\d)/g, '$1 ')
-  s = s.replace(/[.,;:()[\]!?*#]/g, ' ').replace(/-/g, ' ')
+  // A point that leads or sits inside a number is the number's own; any other is punctuation.
+  s = s.replace(/\.(?!\d)/g, ' ').replace(/([a-z"])\.(?=\d)/g, '$1 ').replace(/(^|[^\d.])0\.(?=\d)/g, '$1.')
+  s = s.replace(/[,;:()[\]!?*#]/g, ' ').replace(/-/g, ' ')
   // A size glued to its word, either way round: 2"90, 3/4tees, pex3/4.
   s = s.replace(/"(?=[^\s×])/g, `${INCH} `).replace(/(\d)(?=[a-z])/g, '$1 ').replace(/([a-z])(?=\d)/g, '$1 ')
   const words = s.split(/\s+/).filter(Boolean).map(singular)
+  // Two ends, two sizes: the order is part of what the fitting is.
+  if (words.some((w) => TWO_ENDS.has(w))) return words.join(' ')
   return words.sort().join(' ')
 }
 

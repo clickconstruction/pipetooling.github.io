@@ -71,6 +71,31 @@ describe('sameWordsKey: the same words are one key', () => {
     expect(sameWordsKey('3x4 reducer')).not.toBe(sameWordsKey('4x3 reducer'))
     expect(sameWordsKey('1/2 x 3/8 stop')).toBe(sameWordsKey('1/2x3/8 stops'))
   })
+  it('never joins two fittings whose sizes swap ends across a word (v2.7249)', () => {
+    // The × guard only held with the x right between two numbers: a word between them let the sort swap the sizes.
+    expect(sameWordsKey('1/2 pex x 3/4 mip adapter')).not.toBe(sameWordsKey('3/4 pex x 1/2 mip adapter'))
+    expect(sameWordsKey('3/4" MIP x 1/2" FIP')).not.toBe(sameWordsKey('1/2" MIP x 3/4" FIP'))
+    expect(sameWordsKey('4" to 2" reducer')).not.toBe(sameWordsKey('2" to 4" reducer'))
+    expect(sameWordsKey('4 by 2 bushing')).not.toBe(sameWordsKey('2 by 4 bushing'))
+    // The same fitting typed the same way still folds case, the inch mark, spaces and a plural.
+    expect(sameWordsKey('1/2 PEX x 3/4 MIP Adapters')).toBe(sameWordsKey('1/2  pex X 3/4 mip adapter'))
+    expect(sameWordsKey('4 inch to 2 inch reducer')).toBe(sameWordsKey('4" to 2" Reducers'))
+    // Typed in another word order it is two rows a person may join: the safe side of a guess.
+    expect(sameWordsKey('adapter 1/2 pex x 3/4 mip')).not.toBe(sameWordsKey('1/2 pex x 3/4 mip adapter'))
+    // A name with no such word still folds its word order, glued sizes and all.
+    expect(sameWordsKey('wye 3x4 pvc')).toBe(sameWordsKey('PVC 3 x 4 wyes'))
+  })
+  it('keeps the point of a decimal size, and reads 0.5 as .5 (v2.7249)', () => {
+    expect(sameWordsKey('.5" coupling')).not.toBe(sameWordsKey('5" coupling'))
+    expect(sameWordsKey('1.5" trap')).not.toBe(sameWordsKey('15" trap'))
+    expect(sameWordsKey('1.5" trap')).not.toBe(sameWordsKey('1 5" trap'))
+    expect(sameWordsKey('0.5" coupling')).toBe(sameWordsKey('.5 inch couplings'))
+    expect(sameWordsKey('10.5 gasket')).not.toBe(sameWordsKey('1.5 gasket'))
+    // A point that ends a word or a sentence, or follows a letter, is still punctuation.
+    expect(sameWordsKey('2 in. 90 pvc.')).toBe(sameWordsKey('2" 90 pvc'))
+    expect(sameWordsKey('No.4 screw')).toBe(sameWordsKey('no 4 screws'))
+    expect(sameWordsKey('trap, 2".')).toBe(sameWordsKey('2" trap'))
+  })
   it('reads a mixed number and a size glued to its word', () => {
     expect(sameWordsKey('1-1/2 traps')).toBe(sameWordsKey('1 1/2 trap'))
     expect(sameWordsKey('3/4tees')).toBe(sameWordsKey('3/4 tee'))
