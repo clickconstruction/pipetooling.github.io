@@ -21,7 +21,7 @@ import { usePriceOffers } from '../../hooks/usePriceOffers'
 import { BookPartPicker } from './BookPartPicker'
 import { SitePricingWindow, type PricingAnswer, type TiePair } from './SitePricingWindow'
 import { countedLabel } from '../../lib/batchWords'
-import { offerRowsWords, siteOffers, type BillOffer } from '../../lib/materials/priceOffers'
+import { offerRowsWords, siteOffers, type BillOffer, type BookOffer } from '../../lib/materials/priceOffers'
 import { isLeftOut, rowSitePrices, sitePriceWords, type SitePrice } from '../../lib/materials/sitePrices'
 import type { SitePriceInput } from '../../lib/materials/sitePricesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -246,6 +246,8 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
     }
   }
   const billPrice = (row: SitePartRow, offer: BillOffer) => priceRow(row, { kind: 'price', unitPrice: Math.round(offer.priceEach * 10000) / 10000, source: 'bill', sourceLineId: offer.lineId, sourceWords: offer.houseName, pricedOn: offer.datedOn ?? today })
+  /** Just price: the part's price for one on this site, dated the day the book last checked it. No tie, so the row keeps its name. */
+  const bookPriceOnly = (row: SitePartRow, offer: BookOffer) => priceRow(row, { kind: 'price', unitPrice: offer.pick.price, source: 'book', sourceWords: offer.name, pricedOn: offer.pick.checkedOn ?? today })
   const undoPrice = async (id: string): Promise<boolean> => {
     setBusy(id)
     try {
@@ -425,6 +427,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           onUsePart={tieBook}
           canOwnPrice={canOwnPrice}
           onUseBill={billPrice}
+          onUseBookPrice={bookPriceOnly}
           onTypePrice={(row, price) => priceRow(row, { kind: 'price', unitPrice: price, source: 'typed', pricedOn: today })}
           onLeaveOut={(row) => priceRow(row, { kind: 'left_out', pricedOn: today })}
           onUndo={undoAnswer}

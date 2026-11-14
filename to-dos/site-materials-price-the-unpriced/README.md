@@ -4,7 +4,7 @@ number: 342
 group: close
 status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge) · PR 3 the end and the old prices v2.7165 · all three LIVE 2026-11-13 and walked on clicktooling.com, read only · migration 20261113160000 pushed on the owner's yes · left: the owner's look on the real site and his first answers
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
-ver: v2.7156 · 7159 · 7165
+ver: v2.7156 · 7159 · 7165 · 7216
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -331,6 +331,12 @@ counts in *known*. 4 **Not a part** leaves the cover, which says how many were l
 or bill price is flagged past 90 days. 6 a price belongs to the site. 7 the roles that tie, and
 read is held to them too. 8 the job's Missing table and the desk read the same price. 9 Worth
 lists the rows, and one press opens the window.
+
+**Just price (v2.7216), the owner's first ask after pricing a row.** A press on a parts-book offer
+ties the name to the part, so the row is re-labelled as well as priced. He asked for a press on
+the right of each offer that takes the price alone. It writes a row of the site's own prices with
+source `book` and no tie, so the row keeps its name and its own count. One small migration,
+`20261113233000`, widens the source check. The price is a copy dated the book's check day.
 
 ## How to verify (when it is built)
 
