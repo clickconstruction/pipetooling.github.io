@@ -71,6 +71,19 @@ label and tip on the Job tab, the window's own title, the legend's row, the Disp
 house*, with the old slug kept in `helpGuideFormerSlugs.ts`). The press count keeps its old row's
 name until then, so the before and after can be told apart.
 
+Also on pass 2: "Instead of write up a change, make the words make change order." The press opens the
+Quick Estimate write-up on this job, which is the change order, and the guide already calls it one
+(*write up a change order from the field*). The ⋯ sheet's row reads **Make change order**, and PR A
+renames the live press the same way wherever it is named: the icon's label and tip on the Job tab,
+the Settings switch *Write up a change from the field*, the field card's press under the day's list,
+the legend's row and the guides' words for the press. The guide slug stays.
+
+Also on pass 2: "Instead of send the paid-in-full email, it should say email the paid-in-full report."
+The press sends the Customer paid report by hand, to yourself as a test or to one chosen person, and
+on a part-paid job the same report carries a payment-progress banner. The ⋯ sheet's row reads
+**Email the paid-in-full report**, and PR A renames the live press the same way: the envelope's label
+and tip on the Job tab, the modal's title and the guide's words for the press.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -106,7 +119,7 @@ counted. Read as the dev on 2026-11-14 through the dev seat, nineteen days:
 | Share job | The dev account | 3 |
 | Open the job calendar | The dev account | 2 |
 | Status ▾ | The dev account | 1 |
-| Money story, Supply house, Paid email, Send as task, Write up a change, the trade pill | Nobody | 0 |
+| Money story, Supply house, Send paid-in-full email (Email the paid-in-full report in A), Send as task, Write up a change (Make change order in A), the trade pill | Nobody | 0 |
 
 So the crew's bar is the live part of the window; the icons are dead weight on a phone (six of
 the eight were not pressed once, on any screen, by any role); and no office role pressed the
@@ -141,7 +154,7 @@ sideways under it, 40 px tall, the active one kept in view, a fade at the edge. 
 the strip scroll away with the page; a small ✕ floats at the corner the whole way down, and a
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
 Calendar first, since they are the two anyone pressed; Supply house: Request job account with
-*none yet*; money story; the paid email; send as a task; write up a change; the ? card last). The three money tiles
+*none yet*; money story; Email the paid-in-full report; send as a task; Make change order; the ? card last). The three money tiles
 and the job accounts chips fold to one line each. The tabs join the press count. Nothing below
 moves; the bar is as today.
 
