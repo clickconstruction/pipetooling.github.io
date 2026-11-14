@@ -221,3 +221,50 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(t.waitingOn).toEqual({ who: 'ours', words: 'the leader’s approval of the affidavit' })
   })
 })
+
+describe('the day set by hand counts in the Lien window (v2.7193, punch list #335, row 1, the owner’s reading of 2026-11-13)', () => {
+  // A commercial sub job: hours in May, the last day set by hand as Jun 12, then hours approved in October.
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-05', '2026-08-17', -37), month('2026-10', '2027-01-15', 114)], totalHours: 40, sessionCount: 6, pendingSessions: 0, lastMonthKey: '2026-10', affidavitDue: '2027-02-16' }
+  const job = { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' }
+  const src = { workMonths: wm, filings: [], job, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY }
+  const keys = (t: ReturnType<typeof buildLienTimelineFromWindow>) => t.steps.filter((s) => s.kind === 'notice').map((s) => s.monthKey ?? s.key)
+
+  it('the last month is the hand day’s, the later hours’ month owes no notice, and the node says the hours do not move it', () => {
+    const t = buildLienTimelineFromWindow(src)
+    const lastWork = t.steps.find((s) => s.kind === 'last_work')!
+    expect(lastWork.date).toBe('2026-06-01')
+    expect(lastWork.words).toBe('last day set by hand · later hours do not move it')
+    // May and June are on the clock; October is not. It read May and October, and counted the affidavit from October.
+    const t2 = buildLienTimelineFromWindow({ ...src, filings: [filing({ months_covered: ['2026-05', '2026-06'], filed_at: '2026-07-10' })] })
+    expect(keys(t2)).toEqual(['2026-05', '2026-06'])
+    expect(t2.steps.find((s) => s.key === 'affidavit')!.date).toBe('2026-10-15')
+    expect(t2.next).toMatchObject({ kind: 'affidavit', date: '2026-10-15', daysLeft: 22 })
+  })
+
+  it('with no notice sent the window reads what the billed row reads: the late notice while the affidavit’s day is ahead, then gone', () => {
+    // Sep 23: May's and June's notice windows are closed, the affidavit's day (Oct 15) is ahead.
+    expect(buildLienTimelineFromWindow(src).next.kind).toBe('late_notice')
+    const gone = buildLienTimelineFromWindow({ ...src, todayYmd: '2026-11-13' })
+    expect(gone.next.kind).toBe('lien_gone')
+    expect(gone.lienGone).toBe(true)
+  })
+
+  it('a hand day later than the hours owes its own month’s notice in the window, as on the desk and the row', () => {
+    const later = buildLienTimelineFromWindow({ ...src, workMonths: { ...wm, months: [month('2026-07', '2026-10-15', 22)], lastMonthKey: '2026-07' }, job: { ...job, last_work_date: '2026-07-20', lien_last_work_on: '2026-08-14' } })
+    expect(keys(later)).toEqual(['2026-07', '2026-08'])
+    expect(later.steps.find((s) => s.kind === 'last_work')!.words).toBe('last day set by hand')
+    expect(later.next.words).toBe('Draft the Jul + Aug notice — 22 days.')
+  })
+
+  it('the desk’s own timeline keeps the hand month the RPC marks, whatever the ledger’s later hours say', () => {
+    const rows = [
+      { job_id: 'j1', work_month: '2026-05', approved_hours: 20, deadline: '2026-08-17', noticed: true, month_source: 'hours' },
+      { job_id: 'j1', work_month: '2026-06', approved_hours: 0, deadline: '2026-09-15', noticed: true, month_source: 'hand' },
+    ] as unknown as LienNoticeMonthRow[]
+    const t = buildLienTimelineFromDesk('j1', { rows, items: [], filings: [], entry: null, affidavit: null, isSub: true, propertyKind: 'non_residential', lastWorkDate: '2026-10-20', openBalance: 5_000, todayYmd: TODAY })
+    const lastWork = t.steps.find((s) => s.kind === 'last_work')!
+    expect(lastWork.date).toBe('2026-06-01')
+    expect(lastWork.words).toBe('last day set by hand · later hours do not move it')
+    expect(t.steps.find((s) => s.key === 'affidavit')!.date).toBe('2026-10-15')
+  })
+})

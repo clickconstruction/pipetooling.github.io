@@ -6,7 +6,7 @@ export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 import { lienActFor } from './lienActWords'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
-import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
+import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
 /**
@@ -196,6 +196,8 @@ export interface LienTimelineInput {
   lastMonthFromCreation: boolean
   /** The last month is the day set by hand (v2.4676) — the node says so. */
   lastMonthByHand?: boolean
+  /** 'YYYY-MM-DD': the last approved clock day when it follows the day set by hand (v2.7193, punch list #335, row 1). The hand day still counts; the node says the later hours do not move it. */
+  laterHoursDay?: string
   months: ReadonlyArray<LienTimelineMonth>
   /** Where the job's live notice sits on the desk, for the due node's words. */
   noticeState: LienTimelineNoticeState
@@ -440,7 +442,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       date: `${input.lastMonth}-01`,
       dateWords: `${workMonthShort(input.lastMonth)} ${input.lastMonth.slice(0, 4)}`,
       state: 'done',
-      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? LAST_DAY_SET_BY_HAND_WORDS : 'clock hours',
+      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? (input.laterHoursDay ? LAST_DAY_BY_HAND_LATER_HOURS_WORDS : LAST_DAY_SET_BY_HAND_WORDS) : 'clock hours',
       daysLeft: null,
       door: null,
     })
