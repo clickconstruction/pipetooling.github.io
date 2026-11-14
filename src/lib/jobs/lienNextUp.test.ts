@@ -368,7 +368,7 @@ describe('another master’s jobs read as the office reads them (v2.6734, punch 
 
 describe('a sent job with new months due (v2.6624, punch list #248)', () => {
   const sentItem = { id: 'sent1', status: 'sent', sent_at: '2026-09-23T12:00:00Z', months: ['2026-07'], fields: {} } as unknown as LienDeskEntry['item']
-  it('Do now shows the draft row and the attorney’s-letter row for one job, the reminder opening the To draft pane', () => {
+  it('To do shows the draft row and the attorney’s-letter row for one job, the reminder opening the To draft pane', () => {
     const rows = build({ notices: [notice('j1', 'to_draft', { sentItem })], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') } })
     expect(rows.map((r) => [r.key, r.action])).toEqual([
       ['letter-two:j1', 'letter_two'],

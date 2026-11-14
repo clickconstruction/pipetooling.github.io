@@ -41,15 +41,15 @@ describe('lienDeskEmptyWords (punch list #184, sweep C)', () => {
     expect(clear).toHaveBeenCalledTimes(1)
   })
 
-  it('the affidavit list with nothing close sends the reader to Deadlines', () => {
+  it('the affidavit list with nothing close sends the reader to By date', () => {
     const open = vi.fn()
     const words = lienAffidavitsEmptyWords(open)
-    expect(read(words)).toBe('No affidavit window closes within 30 days. Deadlines › shows what falls due later.')
+    expect(read(words)).toBe('No affidavit window closes within 30 days. By date › shows what falls due later.')
     press(words)
     expect(open).toHaveBeenCalledTimes(1)
   })
 
-  it('the Deadlines board: the good state alone, a search that hides every job quotes it and clears it', () => {
+  it('the By date board: the good state alone, a search that hides every job quotes it and clears it', () => {
     expect(LIEN_CALENDAR_EMPTY).toEqual({ main: 'Nothing billed is on a lien clock.' })
     const clear = vi.fn()
     const words = lienCalendarSearchEmptyWords('  Ridgeway ', clear)

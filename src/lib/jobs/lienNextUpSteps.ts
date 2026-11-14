@@ -1,5 +1,5 @@
 /**
- * The steps behind the Lien desk's Do now rows (v2.4631, the owner's ask): each kind of paper
+ * The steps behind the Lien desk's To do rows (v2.4631, the owner's ask): each kind of paper
  * walks a ladder of four, and a row stands on one rung of it. `lienStepOfRow` says which;
  * `countLienSteps` adds the rows up per rung for the rail above the list; `lienStepCard`
  * writes one row's ladder out for the card that opens on its dots — what is done, what is

@@ -9,7 +9,7 @@ import { canSeeBilledExpectedPay, isStagesOfficeRole } from '../lib/jobs/stagesR
 import { billedLienClockJobsOf, buildLienCalendarRows, lienRunwayForJob, paceContextPayerIds } from '../lib/jobs/lienCalendarRows'
 
 /**
- * The Lien desk's Deadlines rows for a host that is not the Pipeline (punch list #182: the desk's own page).
+ * The Lien desk's By date rows for a host that is not the Pipeline (punch list #182: the desk's own page).
  * The Pipeline builds the same rows from the reads it already holds for its Billed rows; this hook makes those
  * reads for the page alone — the lien clocks of the billed jobs, the payer paces and promised dates behind each
  * bill's expected-pay date, the pace rule's facts — and shapes the rows through `lienCalendarRows.ts`. Null until
