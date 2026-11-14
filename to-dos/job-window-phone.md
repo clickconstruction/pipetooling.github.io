@@ -119,10 +119,8 @@ labelled rows that are the live summary's own lines (`threadSummary.ts`: **Last 
 text, yesterday · Nobody has answered yet*, **They promised**, **We owe them**), then the newest two
 messages with the customer as bubbles, theirs at the left on amber and ours at the right, each with
 who, the channel and when, then *Open the thread · 56 ›*. Crew stamps and office notes are not
-messages; they stay under Work and time and the Activity door. The presses are **Reply by text**
-(the last word's channel, blue because it is the one act the row asks for) and **Note**. Text and
-Email as bare presses are gone from here; Who already carries them beside the number and the
-address.
+messages; they stay under Work and time and the Activity door. Text and Email as bare presses are gone from here; Who already carries them beside the number and
+the address, and the thread's acts are the rows' blue words and the bar (pass 2x below).
 
 Also on pass 2, on the photo banner: "Moving the photos five open all to the right hand side of the
 photos title line is the right move." So the count and the door sit at the right end of the section's
@@ -193,6 +191,12 @@ short sentence with the door as blue words at its end: **They promised** · *Not
 gave for a payment or an answer. Write it down*, and **We owe them** · *Nothing open* · *A call, a
 price or a date we said we would give. Mark it*. Filled, the blue words read *Change it* on both, and
 We owe them adds *Done* after it. The doors are the ones above.
+
+Also on pass 2: "Should we make 'Theirs, by text, yesterday · Nobody has answered yet.' as well?"
+Yes: **Last word** · *Theirs, by text, yesterday* · *Nobody has answered yet. Reply*, with *Reply* the
+blue words that open the thread at the reply box on the last word's channel. The boxed *Reply by text*
+and *Note* presses under the bubbles go: Reply lives on the row, and Note is on the bar at the foot of
+every screen already. The thread's acts are then the three rows' blue words and the bar.
 
 ## What the phone draws today, measured
 
@@ -277,7 +281,7 @@ the phone number and the email address written out, each a 44 px press that call
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
 plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the two promise rows
 each ending in the blue words that open its writer, the newest two
-messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
+messages with the customer as bubbles, *Open the thread · 56 ›*; Reply is the Last word row's blue words and Note is the bar's). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
 and papers, Work and time, Their journey. With every fold closed the scroll ends near
