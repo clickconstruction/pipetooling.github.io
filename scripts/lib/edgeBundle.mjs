@@ -4,7 +4,8 @@
  *
  * A function's deploy bundles its `index.ts` plus every relative import, transitively — `_shared/`
  * files included. Statement-level `import type` / `export type` are erased at deploy, so their files
- * never reach the bundle (a downloaded deploy has none of them).
+ * never reach the bundle that runs (a downloaded deploy has none of them); the upload carries them all
+ * the same, which `edgeUploadGraph.mjs` walks and `check:edge-bundles` holds under a ceiling (v2.7256).
  */
 
 import { createHash } from 'node:crypto'

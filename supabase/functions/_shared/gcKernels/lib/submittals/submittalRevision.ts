@@ -6,7 +6,7 @@
  * the sheet page lists, and the revision chip's words. Pure; the tab does the
  * fetching and writing.
  */
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import type { PreviousItem, SubmittalRowDraft } from './buildSubmittalRows.ts'
 import type { ProductStatus, ReasonKind } from './productStatus.ts'
 import { isOrderOnlyRow, orderOnlyInsert } from './orderOnly.ts'

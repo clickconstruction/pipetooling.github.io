@@ -6,7 +6,7 @@
  * subs, waste, other — as one list with a kind. The tables stay; writes still
  * go to the table the kind names. Pure.
  */
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 
 export type CostEstimateDirectCostRow = Database['public']['Views']['cost_estimate_direct_costs']['Row']
 

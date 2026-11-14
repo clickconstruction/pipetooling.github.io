@@ -10,7 +10,7 @@
  * `sends`: who it went to, how and on what day), `job_lien_desk_items` (a sent item marked `letterTwo` names the filing
  * that was the second letter) and `job_demand_letters`.
  */
-import type { Tables } from '../../../../../../src/types/database.ts'
+import type { Tables } from '../../types/database.ts'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs } from '../../utils/dateUtils.ts'
 import type { ContactFollowUpRow } from '../../../../../../src/lib/followUp/followUpTypes.ts'
 import { jobKey } from './jobKeys.ts'

@@ -32,6 +32,8 @@ if [ "$push_ok" != true ]; then
     exit 1
   fi
 fi
+# gen-types:linked also rewrites the kernel copy's slim database types (gen:edge-kernels, v2.7256), and so must every
+# types PR, or edgeKernels.test.ts fails it.
 npm run gen-types:linked
 # The dev-mcp catalog is generated from database.ts: a types PR without it fails devMcpCatalog.test.ts.
 node scripts/build-dev-mcp-catalog.mjs

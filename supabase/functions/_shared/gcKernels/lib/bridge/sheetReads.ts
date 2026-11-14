@@ -16,7 +16,7 @@
  * No row is an empty list and nothing changes. A list that cannot be read leaves nothing out and is named in `gaps`.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import { loadDashboardFinancials } from '../dashboardFinancialsLoad.ts'
 import { loadBridgeData } from './loadBridgeData.ts'
 import { loadBridgeVectorInputs } from './loadBridgeVectors.ts'

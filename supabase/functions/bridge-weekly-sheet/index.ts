@@ -38,7 +38,9 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { fetchMercuryAccounts } from '../_shared/mercuryAccounts.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
-import type { Database } from '../../../src/types/database.ts'
+// The copy's slim database types (v2.7256): the deploy uploads a type import too, and the whole file is 1.45 MB. The
+// generator reads this file for the names it keeps.
+import type { Database } from '../_shared/gcKernels/types/database.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { loadMondaySheetReads } from '../_shared/gcKernels/lib/bridge/sheetReads.ts'
 import { buildWeekMailFromReads } from '../_shared/gcKernels/lib/bridge/sheetBuild.ts'

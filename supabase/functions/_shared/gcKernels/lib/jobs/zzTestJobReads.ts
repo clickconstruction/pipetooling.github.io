@@ -8,7 +8,7 @@
  * re-checks every row (`isZzTestName` trims).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import { fetchAllRows } from '../supabasePaging.ts'
 import { withSupabaseRetry } from '../../utils/errorHandling.ts'
 import { isZzTestJob } from './zzTestJobSweep.ts'
