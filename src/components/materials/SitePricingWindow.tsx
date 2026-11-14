@@ -6,7 +6,9 @@
  * An offer is a guess, drawn with a dashed edge and the word Offer, and nothing is taken until a
  * person presses it or its number key. A parts-book part writes the tie that already exists
  * (`on_site_part_ties`). Since PR 2 a bill's price, a price typed in the box and **Not a part**
- * each write one row of the site's own prices (`on_site_prices`). Every answer is undone from the
+ * each write one row of the site's own prices (`on_site_prices`). **Just price**, on the right of
+ * a parts-book offer (v2.7216), writes such a row too: the part's price with no tie, so the row
+ * keeps the name the crew wrote. Every answer is undone from the
  * window's foot. Before that table is on the database, or for a reader it gives nothing to, the
  * bills are shown to read and the box is not drawn.
  *
@@ -24,7 +26,7 @@ import { BookPartPicker } from './BookPartPicker'
 import type { BookPartHit } from '../../lib/materials/bookSearchIo'
 import { parsePriceInput } from '../../lib/materials/materialPriceIndex'
 import { priceWords, type PricePick } from '../../lib/materials/bookPrice'
-import { offerWords, rowOffers, type BillOffer, type PriceOffer } from '../../lib/materials/priceOffers'
+import { offerWords, rowOffers, type BillOffer, type BookOffer, type PriceOffer } from '../../lib/materials/priceOffers'
 import { answerWalk, currentKey, skipWalk, startWalk, undoWalk, walkEndWords, walkWords, type Walk } from '../../lib/materials/pricingWalk'
 import type { SitePartRow } from '../../lib/materials/siteRollup'
 import type { PriceOffersState } from '../../hooks/usePriceOffers'
@@ -52,6 +54,8 @@ type Props = {
   canOwnPrice: boolean
   /** Accept what a bill paid as the row's price on this site. The answer's id, or null when refused. */
   onUseBill: (row: SitePartRow, offer: BillOffer) => Promise<string | null>
+  /** **Just price**: take a parts-book part's price for the row and leave its name alone. No tie is written. */
+  onUseBookPrice: (row: SitePartRow, offer: BookOffer) => Promise<string | null>
   /** Accept a typed price for one. */
   onTypePrice: (row: SitePartRow, price: number) => Promise<string | null>
   /** Set the row aside as not a part to price. */
@@ -77,7 +81,7 @@ function typing(target: EventTarget | null): boolean {
   return Boolean(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))
 }
 
-export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offers, today, searchBook, onUsePart, canOwnPrice, onUseBill, onTypePrice, onLeaveOut, onUndo, onClose }: Props) {
+export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offers, today, searchBook, onUsePart, canOwnPrice, onUseBill, onUseBookPrice, onTypePrice, onLeaveOut, onUndo, onClose }: Props) {
   const old = mode === 'old'
   // The order is fixed when the window opens, so a row never jumps under the reader.
   const [walk, setWalk] = useState<Walk>(() => startWalk(rows.map((r) => r.key)))
@@ -136,6 +140,11 @@ export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offe
     const w = offerWords(offer, today)
     if (offer.kind === 'book') return takePart({ id: offer.partId, name: offer.name }, `${offer.name} · ${w.price}`)
     return take(async (r) => asPrice(await onUseBill(r, offer)), `${w.price} from ${offer.houseName ? `${offer.houseName}’s bill` : 'a bill'}`)
+  }
+  /** The part's price and nothing else: the row keeps the name the crew wrote. */
+  const takeJustPrice = (offer: BookOffer) => {
+    const w = offerWords(offer, today)
+    void take(async (r) => asPrice(await onUseBookPrice(r, offer)), `${w.price} for one, the price of ${offer.name}, name kept`)
   }
   const takeTyped = () => {
     if (typed == null) return
@@ -245,15 +254,24 @@ export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offe
               <div style={{ display: 'grid', gap: '0.4rem' }} role="group" aria-label="Offers that fit">
                 {answers.map((o, i) => {
                   const w = offerWords(o, today)
+                  const first = i === 0
                   return (
-                    <button key={o.key} type="button" disabled={busy} onClick={() => void takeOffer(o)} style={{ ...offerBox, cursor: 'pointer', ...(i === 0 ? { borderColor: 'var(--text-link)', background: 'var(--bg-blue-tint)' } : {}) }} aria-label={`Use ${o.kind === 'book' ? o.name : `the bill’s price for ${o.description}`} at ${w.price} for ${row.name}`} data-offer={o.key}>
-                      <span style={kbd} aria-hidden="true">{i + 1}</span>
-                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                        <strong style={{ display: 'block', color: 'var(--text-strong)' }}>{w.name}{o.kind === 'book' && o.manufacturer ? <span style={{ ...muted, fontWeight: 500 }}> · {o.manufacturer}</span> : null}</strong>
-                        {w.from}
-                      </span>
-                      <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w.price}</span>
-                    </button>
+                    // One offer, two presses: the answer itself, and for a parts-book part its price alone.
+                    <div key={o.key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', borderWidth: 1.5, borderStyle: 'dashed', borderColor: first ? 'var(--text-link)' : 'var(--border-strong)', borderRadius: 10, background: first ? 'var(--bg-blue-tint)' : 'var(--surface)', overflow: 'hidden' }}>
+                      <button type="button" disabled={busy} onClick={() => void takeOffer(o)} style={{ ...offerBox, flex: '1 1 260px', width: 'auto', border: 'none', borderRadius: 0, background: 'none', cursor: 'pointer' }} aria-label={`Use ${o.kind === 'book' ? o.name : `the bill’s price for ${o.description}`} at ${w.price} for ${row.name}`} data-offer={o.key}>
+                        <span style={kbd} aria-hidden="true">{i + 1}</span>
+                        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                          <strong style={{ display: 'block', color: 'var(--text-strong)' }}>{w.name}{o.kind === 'book' && o.manufacturer ? <span style={{ ...muted, fontWeight: 500 }}> · {o.manufacturer}</span> : null}</strong>
+                          {w.from}
+                        </span>
+                        <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w.price}</span>
+                      </button>
+                      {o.kind === 'book' && canOwnPrice ? (
+                        <button type="button" disabled={busy} onClick={() => takeJustPrice(o)} style={{ ...btn, flex: '0 0 auto', minHeight: 40, margin: '6px 6px 6px auto', fontSize: '0.8rem', padding: '0 0.7rem' }} title="Take this price for one. The row keeps its own name and is not counted as this part." aria-label={`Just the price of ${o.name}, ${w.price}, for ${row.name}`} data-just-price={o.key}>
+                          Just price
+                        </button>
+                      ) : null}
+                    </div>
                   )
                 })}
               </div>

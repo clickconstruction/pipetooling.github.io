@@ -32,7 +32,9 @@ export type PricePick = {
   /** A book price checked longer ago than `BOOK_PRICE_FRESH_DAYS`, or never checked. An invoice price is never stale: it is what was paid. */
   stale: boolean
   /** A site's own price: where the person took it from. */
-  via?: 'bill' | 'typed'
+  via?: 'bill' | 'typed' | 'book'
+  /** A site's own price taken from a parts-book part without tying the name to it: the part's name. */
+  bookPart?: string
   /** A site's own price: who accepted it. */
   byName?: string
 }
@@ -111,6 +113,7 @@ export function priceWords(pick: PricePick, today: string): string {
     const day = pick.checkedOn ? ` · ${dayWords(pick.checkedOn, today)}` : ''
     const old = pick.stale && pick.ageDays != null ? `, ${pick.ageDays} days ago` : ''
     if (pick.via === 'bill') return `${pick.supplyHouse ? `${pick.supplyHouse}’s bill` : 'a bill'}${day}${old}`
+    if (pick.via === 'book') return `the parts book’s price for ${pick.bookPart || 'a part'}${pick.checkedOn ? ` · checked ${dayWords(pick.checkedOn, today)}` : ''}${old}`
     return `typed${pick.byName ? ` by ${pick.byName}` : ''}${day}${old}`
   }
   if (!pick.checkedOn) return 'parts book · never checked'
@@ -127,6 +130,7 @@ export function priceTitle(pick: PricePick, today: string): string {
     const old = pick.stale ? ` It is older than ${BOOK_PRICE_FRESH_DAYS} days.` : ''
     const on = pick.checkedOn ? ` of ${dayWords(pick.checkedOn, today)}` : ''
     if (pick.via === 'bill') return `What ${pick.supplyHouse ? `${pick.supplyHouse}’s bill` : 'a bill'}${on} paid, accepted for this site${by}.${old}`
+    if (pick.via === 'book') return `The parts book’s price for ${pick.bookPart || 'a part'}, taken for this site${by}. The row keeps its own name.${old}`
     return `A price typed for this site${by}${pick.checkedOn ? ` on ${dayWords(pick.checkedOn, today)}` : ''}.${old}`
   }
   const whose = pick.supplyHouse ? `${pick.supplyHouse}’s price` : 'The parts book’s price'
