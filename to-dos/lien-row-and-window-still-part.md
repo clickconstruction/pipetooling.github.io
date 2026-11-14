@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: ready
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4's Dashboard card is left
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The Dashboard's closed-window card, as its own PR (the last part of row 4). Then the items under Also seen that wait on the owner's word.
+next: The items under Also seen that wait on the owner's word.
 size: M as six small pieces (S · S · XS · M · S · XS), five shipped
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -59,13 +59,16 @@ what still differed. Counts only are given here, since the repo is public.
    *send the late notice*, counts it as a late notice on the bar and the GC row, and keeps it out
    of Overdue and Lien gone. The Share message's past-window count leaves it out. The row and the
    phone chip read the state where they read past `closed`.
-   **Left, as its own PR:** the Dashboard's card *N lien windows closed with nothing recorded … the
-   lien right on that work is gone* still says gone while a late notice can go. It does not read
-   this clock. It reads the Lien desk's summary (`lienDeskMissedSummary` in `lienDesk.ts`), which
-   knows a window closed and not whether the affidavit can still be filed. It touches
-   `summarizeLienDeskForNeedsYou` and its callers (`useLienDeskData`, the Dashboard's inputs), the
-   card's words in `dashboardNeedsYou.ts`, and the Pipeline money card's *the earliest closed Sep
-   15* in `lienDeskMoneyCard.ts`.
+   **Shipped v2.7273, the last part.** The Dashboard's card *N lien windows closed with nothing
+   recorded … the lien right on that work is gone* read the Lien desk's summary
+   (`lienDeskMissedSummary` in `lienDesk.ts`), which knew a window closed and not whether the
+   affidavit could still be filed. The queue's entries now carry the affidavit's day, from the
+   affidavit windows when they list the job and else from the entry's last month, and the summary
+   splits the count: a job whose day is ahead reads *send the late notice by Oct 15*, the clock's
+   own words, amber and red inside a week, and is not called gone; a job whose day has passed too
+   keeps the gone words. The Pipeline money card's *the earliest closed Sep 15* reads the same way.
+   Both lines open the desk's Missed lens. The desk's own Missed pile and the By date view did not
+   change.
 5. ~~**The phone's two-line rows (S).** Their chip comes from the runway (*lien in 4 d*, *file
    first*). It can take the act table's words (`lienActWords.ts`), as the Accounts Receivable chip
    did in v2.7048.~~ **Shipped v2.7184.** The chip reads the step and the days left, *Draft the

@@ -24,6 +24,8 @@ function entry(p: Partial<LienDeskEntry> = {}): LienDeskEntry {
     dueMonths: ['2026-08'],
     missedMonths: ['2026-07'],
     missedUnrecorded: ['2026-07'],
+    affidavitDay: null,
+    affidavitDaysLeft: null,
     earliestDeadline: '2026-10-15',
     daysLeft: 2,
     severity: 'red',

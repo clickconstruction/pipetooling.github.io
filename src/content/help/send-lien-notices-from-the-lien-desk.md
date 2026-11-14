@@ -223,7 +223,7 @@ The record lands on every one of those jobs, and the desk stops asking for them.
 
 There is no button to give up a month. If the notice should wait, the master can hold it. If a month will never go out, let its window close and note it as missed.
 
-A window that closes with nothing recorded is never silent. The Dashboard's lien card adds a quiet line with the count, the money and a link to note them. That link opens the desk's **Missed** lens. That month's row under **Months on this job** turns red, with {{button:outline|Note it as missed}}.
+A window that closes with nothing recorded is never silent. The Dashboard's lien card adds a line for it. While the job's affidavit window is still open, the line reads *send the late notice by Oct 15*. The late notice still carries the lien until that day. When nothing else is due, that line is a card of its own. The card is amber, and red inside a week of that day. Once the affidavit window closes too, the line reads *closed with nothing recorded*, with the count and the money. Then the lien right on that work is gone. Both lines open the desk's **Missed** lens. That month's row under **Months on this job** turns red, with {{button:outline|Note it as missed}}.
 
 Noting a month records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 

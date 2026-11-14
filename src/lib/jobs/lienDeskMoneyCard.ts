@@ -61,12 +61,23 @@ export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefi
   // information) reads as closed, never as "today".
   const closed = soon != null && soon < 0
   const when = soon == null ? '' : closed ? `closed ${-soon === 1 ? 'yesterday' : `${-soon} days ago`}` : soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `in ${soon} days`
-  const tone: LienDeskMoneyCard['tone'] = soon != null && soon <= 7 ? 'red' : soon != null && soon <= 14 ? 'amber' : 'gray'
   const day = earliest ? formatYmdMonthDay(earliest) : null
-  const claim = `${count} lien ${count === 1 ? 'notice' : 'notices'} due · ${formatUsdNoCents(dollars)}${day ? ` — the earliest ${closed ? 'closed' : 'by'} ${day}` : ''}`
+  const next = office.next
+  // A closed window is a lien lost only once the affidavit's day has passed too (v2.7273, punch list #335, row 4): while that
+  // day is ahead the card says *send the late notice by <day>*, in the clock's words, amber and red inside a week as the clock
+  // is; past it, the gone words. The day is the office's group's (`next.affidavitBy`) when its window is the earliest, else the
+  // leader's (`leader.affidavitBy`, job 891 on 2026-11-14: awaiting approval 30 days past its window, the affidavit's day Dec 15).
+  const affidavitBy = !closed ? null : next.deadline === earliest && next.notices > 0 ? next.affidavitBy : leader.earliestDeadline === earliest ? leader.affidavitBy : null
+  const lateDays = affidavitBy ? daysBetweenYmd(todayYmd, affidavitBy) : null
+  const lateBy = lateDays != null && lateDays >= 0 ? affidavitBy : null
+  const lateDay = lateBy ? formatYmdMonthDay(lateBy) : null
+  const lateWhen = lateDays == null ? '' : lateDays === 0 ? 'today' : lateDays === 1 ? 'tomorrow' : `in ${lateDays} days`
+  const goneForGood = closed && affidavitBy != null && lateBy == null
+  const tone: LienDeskMoneyCard['tone'] = lateBy ? (lateDays != null && lateDays <= 7 ? 'red' : 'amber') : soon != null && soon <= 7 ? 'red' : soon != null && soon <= 14 ? 'amber' : 'gray'
+  const claim = `${count} lien ${count === 1 ? 'notice' : 'notices'} due · ${formatUsdNoCents(dollars)}${day ? ` — the earliest ${closed ? 'closed' : 'by'} ${day}` : ''}${lateDay ? ` · send the late notice by ${lateDay}` : ''}`
+  const closedTail = lateDay ? ` — the window closed; send the late notice by ${lateDay} and the affidavit can still follow` : goneForGood ? ' — the window closed and the affidavit’s day has passed too; the lien right on that work is gone' : closed ? ' — the window closed; a late notice can still carry the affidavit while its own window is open' : ''
 
   const parts: string[] = []
-  const next = office.next
   if (earliest && next.deadline === earliest && next.notices > 0) {
     const names = next.gcNames.length ? next.gcNames : next.gcIds.map(() => 'a GC')
     const gcWords = names.length === 0 ? '' : names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
@@ -79,7 +90,7 @@ export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefi
   if (office.needsOwner > 0) parts.push(`${office.needsOwner} waiting on the owner of record`)
   if (leader.jobs > 0) parts.push(`${leader.jobs} awaiting approval`)
   if (office.ready > 0) parts.push(`${office.ready} approved for the run`)
-  const why = `${parts.join(' · ')}${tone === 'red' && day && !closed ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
+  const why = `${parts.join(' · ')}${tone === 'red' && day && !closed ? ` — mail by ${day} or the lien right on that work is gone` : lateDay || goneForGood ? closedTail : ''}`
 
   // The two-line card (v2.3822): the count and the money on line one; the piles and the deadline as chips.
   const title = `${count} lien ${count === 1 ? 'notice' : 'notices'} due · ${formatUsdNoCents(dollars)}`
@@ -96,9 +107,9 @@ export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefi
     const many = next.deadline === earliest && next.notices > 1 ? `${next.notices} notices` : ''
     // v2.4054: the chip leads with the count and the day, and the GCs are a chip of their
     // own — so the count is never the part a narrow card cuts off ("15 noti…").
-    const when = closed ? `closed ${day}` : soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `by ${day} · in ${soon} days`
+    const when = lateDay ? `late notice by ${lateDay} · ${lateWhen}` : closed ? `closed ${day}` : soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `by ${day} · in ${soon} days`
     const label = many ? `${many} ${when}` : when
-    const hover = `${parts[0] ?? ''}${closed ? ' — the window closed; a late notice can still carry the affidavit while its own window is open' : day ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
+    const hover = `${parts[0] ?? ''}${closed ? closedTail : day ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
     deadline = { label, who: who || null, tone, hover, pile: leaderFirst ? 'awaiting' : 'to_draft' }
   }
   return { claim, why, count, tone, title, piles, deadline }

@@ -15,6 +15,8 @@ const notice = (over: Partial<LienDeskEntry> & { jobId: string }): LienDeskEntry
   dueMonths: ['2026-08'],
   missedMonths: [],
   missedUnrecorded: [],
+  affidavitDay: null,
+  affidavitDaysLeft: null,
   earliestDeadline: '2026-11-16',
   daysLeft: 9,
   severity: 'amber',

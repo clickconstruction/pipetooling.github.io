@@ -323,7 +323,11 @@ export function useLienDeskData(
             for (const list of Object.values(paymentsByJob)) list.sort((a, b) => (a.paidOn ?? '') < (b.paidOn ?? '') ? -1 : 1)
           }
         }
-        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs)
+        // The affidavit's day per job (v2.7273, punch list #335, row 4): a closed notice window is a lien lost only once that day
+        // has passed too, and the Dashboard's closed-window line tells the two apart. Read in light mode too, so the Dashboard and the desk agree.
+        const affidavitDayByJob: Record<string, string> = {}
+        for (const r of affidavitRows) affidavitDayByJob[r.job_id] = r.deadline
+        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs, affidavitDayByJob)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)

@@ -13,12 +13,12 @@ function summary(over: { office?: Partial<LienDeskNeedsYou['office']>; leader?: 
       needsOwner: 0,
       earliestDeadline: null,
       ready: 0,
-      next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0 },
+      next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0, affidavitBy: null },
       ...over.office,
     },
-    leader: { jobs: 0, dollars: 0, earliestDeadline: null, ...over.leader },
+    leader: { jobs: 0, dollars: 0, earliestDeadline: null, affidavitBy: null, ...over.leader },
     held: 0,
-    missed: { jobs: 0, months: 0, dollars: 0, lines: [] },
+    missed: { jobs: 0, months: 0, dollars: 0, lines: [], lateNotice: { jobs: 0, months: 0, dollars: 0, by: null }, gone: { jobs: 0, months: 0, dollars: 0 } },
   }
 }
 
@@ -39,7 +39,7 @@ describe('buildLienDeskMoneyCard', () => {
           needsOwner: 1,
           earliestDeadline: '2026-10-15',
           ready: 4,
-          next: { deadline: '2026-10-15', notices: 2, dollars: 12_000, gcIds: ['a', 'b'], gcNames: ['Dunmere Mallin', 'RLC'], toDraft: 1, needsOwner: 1 },
+          next: { deadline: '2026-10-15', notices: 2, dollars: 12_000, gcIds: ['a', 'b'], gcNames: ['Dunmere Mallin', 'RLC'], toDraft: 1, needsOwner: 1, affidavitBy: null },
         },
         leader: { jobs: 2, dollars: 8_987, earliestDeadline: '2026-10-03' },
       }),
@@ -70,7 +70,7 @@ describe('buildLienDeskMoneyCard', () => {
           dollars: 13_680,
           needsOwner: 0,
           earliestDeadline: '2026-09-29',
-          next: { deadline: '2026-09-29', notices: 1, dollars: 13_680, gcIds: ['a'], gcNames: ['Southern Pine'], toDraft: 1, needsOwner: 0 },
+          next: { deadline: '2026-09-29', notices: 1, dollars: 13_680, gcIds: ['a'], gcNames: ['Southern Pine'], toDraft: 1, needsOwner: 0, affidavitBy: null },
         },
       }),
       TODAY,
@@ -85,7 +85,7 @@ describe('buildLienDeskMoneyCard', () => {
   })
 
   it('reads today / tomorrow, and stays gray past two weeks or with no date at all', () => {
-    const today = buildLienDeskMoneyCard(summary({ office: { jobs: 1, dollars: 100, earliestDeadline: TODAY, next: { deadline: TODAY, notices: 1, dollars: 100, gcIds: [], gcNames: [], toDraft: 1, needsOwner: 0 } } }), TODAY)
+    const today = buildLienDeskMoneyCard(summary({ office: { jobs: 1, dollars: 100, earliestDeadline: TODAY, next: { deadline: TODAY, notices: 1, dollars: 100, gcIds: [], gcNames: [], toDraft: 1, needsOwner: 0, affidavitBy: null } } }), TODAY)
     expect(today?.why.startsWith('Today: the notice ·')).toBe(true)
     expect(today?.tone).toBe('red')
     const tomorrow = buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 100, earliestDeadline: '2026-09-25' } }), TODAY)
@@ -107,7 +107,7 @@ describe('buildLienDeskMoneyCard', () => {
           dollars: 150_000,
           needsOwner: 2,
           earliestDeadline: '2026-09-15',
-          next: { deadline: '2026-09-15', notices: 1, dollars: 9_000, gcIds: ['a'], gcNames: ['Lowbeck Contracting'], toDraft: 1, needsOwner: 0 },
+          next: { deadline: '2026-09-15', notices: 1, dollars: 9_000, gcIds: ['a'], gcNames: ['Lowbeck Contracting'], toDraft: 1, needsOwner: 0, affidavitBy: null },
         },
         leader: { jobs: 1, dollars: 6_423, earliestDeadline: '2026-10-20' },
       }),
@@ -121,6 +121,36 @@ describe('buildLienDeskMoneyCard', () => {
     })
     expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Lowbeck Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Lowbeck Contracting — the window closed; a late notice can still carry the affidavit while its own window is open', pile: 'to_draft' })
     expect(buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 1, earliestDeadline: '2026-09-23' } }), TODAY)?.why).toBe('Closed yesterday: the first window closes · 1 awaiting approval')
+  })
+
+  it('a closed window whose affidavit can still be filed says send the late notice by <day>; one whose affidavit day passed too says gone (v2.7273, punch list #335, row 4)', () => {
+    const closedOn = (affidavitBy: string | null) =>
+      buildLienDeskMoneyCard(
+        summary({
+          office: { jobs: 1, dollars: 9_000, earliestDeadline: '2026-09-15', next: { deadline: '2026-09-15', notices: 1, dollars: 9_000, gcIds: ['a'], gcNames: ['Lowbeck Contracting'], toDraft: 1, needsOwner: 0, affidavitBy } },
+        }),
+        TODAY,
+      )
+    // The affidavit's day, Oct 15, is 21 days ahead: the clock's words, amber (red inside a week), the chip leads with the late notice.
+    const late = closedOn('2026-10-15')
+    expect(late).toMatchObject({
+      claim: '1 lien notice due · $9,000 — the earliest closed Sep 15 · send the late notice by Oct 15',
+      why: 'Closed 9 days ago: the notice under Lowbeck Contracting · 1 to draft — the window closed; send the late notice by Oct 15 and the affidavit can still follow',
+      tone: 'amber',
+    })
+    expect(late?.deadline).toEqual({ label: 'late notice by Oct 15 · in 21 days', who: 'Lowbeck Contracting', tone: 'amber', hover: 'Closed 9 days ago: the notice under Lowbeck Contracting — the window closed; send the late notice by Oct 15 and the affidavit can still follow', pile: 'to_draft' })
+    expect(closedOn('2026-09-30')?.tone).toBe('red')
+    expect(closedOn('2026-09-30')?.deadline?.label).toBe('late notice by Sep 30 · in 6 days')
+    // The affidavit's day passed on Sep 15 too: closed for good, red, the gone words.
+    const gone = closedOn('2026-09-15')
+    expect(gone).toMatchObject({ claim: '1 lien notice due · $9,000 — the earliest closed Sep 15', why: 'Closed 9 days ago: the notice under Lowbeck Contracting · 1 to draft — the window closed and the affidavit’s day has passed too; the lien right on that work is gone', tone: 'red' })
+    expect(gone?.deadline).toMatchObject({ label: 'closed Sep 15', tone: 'red', hover: 'Closed 9 days ago: the notice under Lowbeck Contracting — the window closed and the affidavit’s day has passed too; the lien right on that work is gone' })
+    // No affidavit day known: the words it had.
+    expect(closedOn(null)?.deadline).toMatchObject({ label: 'closed Sep 15', hover: 'Closed 9 days ago: the notice under Lowbeck Contracting — the window closed; a late notice can still carry the affidavit while its own window is open' })
+    // The leader's pile first (job 891 on 2026-11-14, awaiting approval a month past its window): its own affidavit day reads the same way.
+    const leaderFirst = buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 2_976, earliestDeadline: '2026-09-15', affidavitBy: '2026-10-15' } }), TODAY)
+    expect(leaderFirst).toMatchObject({ claim: '1 lien notice due · $2,976 — the earliest closed Sep 15 · send the late notice by Oct 15', why: 'Closed 9 days ago: the first window closes · 1 awaiting approval — the window closed; send the late notice by Oct 15 and the affidavit can still follow', tone: 'amber' })
+    expect(leaderFirst?.deadline).toMatchObject({ label: 'late notice by Oct 15 · in 21 days', tone: 'amber', pile: 'awaiting' })
   })
 })
 
