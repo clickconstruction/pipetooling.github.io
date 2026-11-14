@@ -866,7 +866,7 @@ function BucketBar({ b, open, onToggle, onDraft, onRecord, top, phone }: { b: Li
             </button>
           ) : null}
           {draft ? (
-            <button type="button" className="lienCalDraft" onClick={() => onDraft?.(draft.ymd, draft.jobIds)} title="Open the Notices tab on these jobs, ready to draft">
+            <button type="button" className="lienCalDraft" onClick={() => onDraft?.(draft.ymd, draft.jobIds)} title="Open the Monthly notices tab on these jobs, ready to draft">
               {draft.label} ›
             </button>
           ) : null}

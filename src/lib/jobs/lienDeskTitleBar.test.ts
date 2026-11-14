@@ -31,9 +31,9 @@ describe('the Lien desk title bar on a computer (v2.7213)', () => {
   it('the width is the longest title line the desk can draw, so the tools never fall off it', () => {
     const longest = lienDeskTitleLineNeeds(LIEN_DESK_TITLE_LINE_PARTS)
     expect(longest).toBeLessThanOrEqual(LIEN_DESK_ONE_LINE_MIN_WIDTH)
-    // Not padded past the next round number either: a 1,512 px laptop is wide.
+    // Not padded far past it either. Since By job (v2.7219) the line is 1,528.6 px, so a 1,512 px laptop keeps two lines.
     expect(LIEN_DESK_ONE_LINE_MIN_WIDTH - longest).toBeLessThan(20)
-    expect(LIEN_DESK_ONE_LINE_QUERY).toBe('(min-width: 1500px)')
+    expect(LIEN_DESK_ONE_LINE_QUERY).toBe('(min-width: 1540px)')
   })
 
   it('the line needs less with a shorter run or none, and counts a gap only between the parts that are there', () => {

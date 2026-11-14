@@ -6,16 +6,16 @@
  * by itself. A phone's one row and its More are `lienDeskPhoneMore.ts`.
  *
  * The width is a viewport rule on purpose, as `.lienDeskTitleBar`'s own is: every view and every kind of paper
- * answers it the same way, so the tools never change lines between To do, By date and By paper.
+ * answers it the same way, so the tools never change lines between To do, By date, By paper and By job.
  */
 
 /**
  * What the title line holds at its widest, in px, measured on the live desk on 2026-11-13: the way back as
- * *← Pipeline*, the title, the three views with a three-figure To do count, the run as *Send the run · 24* with
+ * *← Pipeline*, the title, the four views with a three-figure To do count (290 px since By job, v2.7219, measured 2026-11-14; 259 with three), the run as *Send the run · 24* with
  * *12 sealed · 8 ready · 4 wait on* and a long first name (today's *Record the mailing · 7 sealed* is 270), and the
  * five tools. `gap` is `.lienDeskTitleBar`'s column gap; `chrome` is the page's 24 px margins and the bar's 20 px padding.
  */
-export const LIEN_DESK_TITLE_LINE_PARTS = { back: 90, title: 100, views: 259, run: 463, tools: 440, gap: 14.4, chrome: 88 } as const
+export const LIEN_DESK_TITLE_LINE_PARTS = { back: 90, title: 100, views: 290, run: 463, tools: 440, gap: 14.4, chrome: 88 } as const
 
 /** The window width the title line needs to hold these parts on one line. */
 export function lienDeskTitleLineNeeds(parts: { back: number; title: number; views: number; run: number; tools: number; gap: number; chrome: number }): number {
@@ -24,7 +24,7 @@ export function lienDeskTitleLineNeeds(parts: { back: number; title: number; vie
 }
 
 /** The narrowest window whose title line holds the tools too: the longest line above, rounded up to a round number. */
-export const LIEN_DESK_ONE_LINE_MIN_WIDTH = 1500
+export const LIEN_DESK_ONE_LINE_MIN_WIDTH = 1540
 export const LIEN_DESK_ONE_LINE_QUERY = `(min-width: ${LIEN_DESK_ONE_LINE_MIN_WIDTH}px)`
 
 export type LienDeskTitleBarLayout = {
@@ -38,7 +38,7 @@ export type LienDeskTitleBarLayout = {
 
 /**
  * The title bar's shape. `wide` is the window answering `LIEN_DESK_ONE_LINE_QUERY`; `paperShown` is By paper,
- * whose four kinds of paper lead the second line; `gcNotice` is *Put a GC on notice…*, the second line's own door.
+ * whose three kinds of paper lead the second line; `gcNotice` is *Put a GC on notice…*, the second line's own door.
  */
 export function lienDeskTitleBarLayout(o: { isMobile: boolean; wide: boolean; paperShown: boolean; gcNotice: boolean }): LienDeskTitleBarLayout {
   // A phone (punch list #352, PR 1): the tools are rows of More, the break comes only with the paper tabs, and the span holds the GC picker's sheet.

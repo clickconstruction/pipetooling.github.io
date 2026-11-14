@@ -825,9 +825,9 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: ran
         ? n === 1 ? 'A filed lien’s year to sue has run out' : `${n} filed liens’ years to sue have run out or end soon`
         : n === 1 ? `A filed lien’s year to sue ends ${first.suitDate}` : `${n} filed liens’ years to sue end soon (first: ${first.suitDate})`,
-      detail: `${money} is still open behind ${n === 1 ? 'a recorded affidavit' : `${n} recorded affidavits`}. A lien lapses one year after the last day the affidavit could have filed (§ 53.158)${ran ? ' — that day has passed; talk to counsel' : ` — paid, file the release of record; unpaid, counsel on the suit by ${counselBy}`}. The Lien desk’s Timeline lists each job with its date.`,
+      detail: `${money} is still open behind ${n === 1 ? 'a recorded affidavit' : `${n} recorded affidavits`}. A lien lapses one year after the last day the affidavit could have filed (§ 53.158)${ran ? ' — that day has passed; talk to counsel' : ` — paid, file the release of record; unpaid, counsel on the suit by ${counselBy}`}. The Lien desk’s By job tab lists each job with its date.`,
       figure: money,
-      actionLabel: 'Open the Timeline',
+      actionLabel: 'Open By job',
     })
   }
 
