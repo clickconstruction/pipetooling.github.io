@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BOOK_PRICE_FRESH_DAYS, bookPartIds, bookPriceRow, pickBookPrice, priceLookup, priceTitle, priceWords, type BookPriceRow } from './bookPrice'
+import { BOOK_PRICE_FRESH_DAYS, bookPartIds, bookPriceRow, invoicePick, isRealPrice, pickBookPrice, priceLookup, priceTitle, priceWords, type BookPriceRow } from './bookPrice'
+import { PLACEHOLDER_PRICE } from './materialPriceIndex'
 
 const TODAY = '2026-11-07'
 const row = (over: Partial<BookPriceRow>): BookPriceRow => ({ partId: 'p1', supplyHouse: 'Pecan Supply', price: 4.7, checkedOn: '2026-10-03', ...over })
@@ -35,6 +36,28 @@ describe('pickBookPrice', () => {
   it('returns null for no rows and skips a row with no number', () => {
     expect(pickBookPrice([], TODAY)).toBeNull()
     expect(pickBookPrice([row({ price: Number.NaN })], TODAY)).toBeNull()
+  })
+
+  it('never takes a zero or the book’s stand-in for a price (v2.7249)', () => {
+    // A row at 0 used to win the same-day tie as the lower price and read as known and fresh.
+    expect(pickBookPrice([row({ price: 4.7 }), row({ supplyHouse: 'Oak Hollow Plumbing Supply', price: 0 })], TODAY)).toMatchObject({ price: 4.7, supplyHouse: 'Pecan Supply' })
+    // The stand-in, checked today, loses to a real price checked months ago.
+    expect(pickBookPrice([row({ price: PLACEHOLDER_PRICE, checkedOn: TODAY }), row({ price: 4.7, checkedOn: '2026-06-01' })], TODAY)).toMatchObject({ price: 4.7, checkedOn: '2026-06-01' })
+    // With nothing else, the part has no price at all.
+    expect(pickBookPrice([row({ price: 0 })], TODAY)).toBeNull()
+    expect(pickBookPrice([row({ price: PLACEHOLDER_PRICE })], TODAY)).toBeNull()
+    expect(pickBookPrice([row({ price: 1_250_000 })], TODAY)).toBeNull()
+  })
+
+  it('holds the invoice price to the same rule, and one money figure to the next source', () => {
+    for (const p of [0, -1, PLACEHOLDER_PRICE, Number.NaN, Number.POSITIVE_INFINITY, null]) expect(invoicePick(p), String(p)).toBeNull()
+    expect(invoicePick(0.01)).toMatchObject({ price: 0.01, from: 'invoice' })
+    expect(isRealPrice(999_998.99)).toBe(true)
+    // A book page that holds only the stand-in reads the invoice price the office typed.
+    const price = priceLookup(() => [row({ price: PLACEHOLDER_PRICE })], () => 3.25, TODAY)
+    expect(price('id:p1')).toMatchObject({ price: 3.25, from: 'invoice' })
+    // And with no invoice price either, it has no price: never a million dollars a piece.
+    expect(priceLookup(() => [row({ price: PLACEHOLDER_PRICE })], () => null, TODAY)('id:p1')).toBeNull()
   })
 })
 

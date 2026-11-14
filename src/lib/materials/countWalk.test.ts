@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { countWalkAt, countWalkKeys } from './countWalk'
+import { countWalkAt, countWalkCantFindWords, countWalkKeys } from './countWalk'
 
-const line = (partKey: string, onHand: number) => ({ partKey, onHand })
+const line = (partKey: string, onHand: number, cannotFindSinceCount = 0) => ({ partKey, onHand, cannotFindSinceCount })
 
 describe('countWalkKeys', () => {
   it('lists the lines with parts on hand, in the box’s order', () => {
@@ -9,6 +9,14 @@ describe('countWalkKeys', () => {
   })
   it('is empty for an empty box', () => {
     expect(countWalkKeys([])).toEqual([])
+  })
+  it('takes a line at none that carries a Can’t find, which only the office could clear (v2.7252)', () => {
+    // B was pressed Can't find down to none. It is drawn in the box with its mark, so the walk visits it.
+    expect(countWalkKeys([line('a', 4), line('b', 0, 3), line('c', 0)])).toEqual(['a', 'b'])
+    // A box whose only line is such a one can be counted.
+    expect(countWalkKeys([line('b', 0, 3)])).toEqual(['b'])
+    expect(countWalkCantFindWords(3)).toBe("3 marked can't find. Your count clears the mark.")
+    expect(countWalkCantFindWords(0)).toBe('')
   })
 })
 

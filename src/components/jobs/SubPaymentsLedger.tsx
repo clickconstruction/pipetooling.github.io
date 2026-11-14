@@ -28,6 +28,7 @@ import {
   ledgerSubKeyFromParam,
   ledgerSubParam,
   overPaidWords,
+  sendingTagWords,
   statementCheckWords,
   subStatementCsv,
   subStatementCsvFileName,
@@ -56,6 +57,7 @@ import { saveBlobAs } from '../../lib/storageSave'
 import { calendarYmdInAppTzFromIso, formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
+import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 import { SubLedgerPeople, SubLedgerStatement } from './SubLedgerBySub'
 import { chip, field, jobLink, outPress, pill, td, th, tile, tileLabel, tileSub } from './subLedgerStyles'
 
@@ -89,9 +91,16 @@ function Amount({ line }: { line: LedgerLine }) {
       −<AmountSmallCents value={-line.amount} />
     </span>
   ) : (
-    <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>
-      <AmountSmallCents value={line.amount} />
-    </span>
+    <>
+      <span style={{ fontWeight: 700, color: line.fromCredit ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+        <AmountSmallCents value={line.amount} />
+      </span>
+      {line.creditKept > 0 ? (
+        <span data-ledger-kept={line.id} title="Sent with this payment, past what the sheets needed. It is kept as their credit." style={{ display: 'block', fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-green-700)' }}>
+          + ${line.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kept as credit
+        </span>
+      ) : null}
+    </>
   )
 }
 
@@ -276,7 +285,10 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>
             <AmountSmallCents value={totals.paidTotal} />
           </strong>
-          <span style={tileSub}>{ledgerPaidWords(totals)}</span>
+          <span style={tileSub}>
+            {ledgerPaidWords(totals)}
+            {totals.creditKept ? ` · $${totals.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} of it kept as credit` : ''}
+          </span>
         </div>
         <div style={tile} data-ledger-tile="backcharged">
           <span style={tileLabel}>Back-charged</span>
@@ -289,7 +301,15 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           <div style={tile} data-ledger-tile="owed">
             <span style={tileLabel}>We owe today</span>
             <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{statement ? weOweWords(statement.owedToday) : <AmountSmallCents value={subTotals.weOwe} />}</strong>
-            <span style={tileSub}>{statement ? (statement.crew ? 'crew pay runs through payroll' : 'every sheet of theirs, whatever the period') : subTotals.over ? `still open on sheets · ${overPaidWords(subTotals.over)}` : 'still open on sheets, whatever the period'}</span>
+            <span style={tileSub}>
+              {statement
+                ? statement.crew
+                  ? 'crew pay runs through payroll'
+                  : creditNoteWords(statement.credit)
+                    ? `after their ${creditNoteWords(statement.credit)}`
+                    : 'every sheet of theirs, whatever the period'
+                : ['still open on sheets', overPaidWords(subTotals.over), creditNoteWords(subTotals.credit) ? `${creditNoteWords(subTotals.credit)} held` : ''].filter(Boolean).join(' · ')}
+            </span>
           </div>
         ) : (
           <div style={tile} data-ledger-tile="undated">
@@ -409,7 +429,12 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                         {r.address && !r.job.includes(r.address) ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.address}</div> : null}
                       </td>
                       <td style={{ ...td, whiteSpace: 'nowrap' }} data-ledger-how={r.id}>
-                        {ledgerHowPaidWords(r) || <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                        {r.fromCredit ? <span style={pill('gray')}>From credit</span> : ledgerHowPaidWords(r) || <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                        {r.sendingNo ? (
+                          <span data-ledger-sending={r.sendingNo} title="Lines with the same number were one check or one transfer." style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {sendingTagWords(r.sendingNo)}
+                          </span>
+                        ) : null}
                       </td>
                       <td style={td}>
                         {r.kind === 'backcharge' ? <span style={{ ...pill('red'), marginRight: 6 }}>Back-charge</span> : null}

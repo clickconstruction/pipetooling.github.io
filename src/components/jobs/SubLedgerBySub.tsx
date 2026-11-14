@@ -7,7 +7,8 @@
  * figure is known. Nothing here is fetched or written: both views read the sheets the ledger already holds.
  */
 import type { LedgerBySubTotals, LedgerSubRow, StatementEntry, SubStatement } from '../../lib/subWorkOrders/subPaymentsLedger'
-import { ledgerDayWords, ledgerHowPaidWords, ledgerSpanWords, overPaidWords, weOweWords } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { ledgerDayWords, ledgerHowPaidWords, ledgerSpanWords, overPaidWords, STATEMENT_WHAT, weOweWords } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { jobLink, pill, td, th } from './subLedgerStyles'
 
@@ -40,7 +41,7 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
               <AmountSmallCents value={r.paid} />
             </span>
             <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
-              {[paymentsWords(r), ledgerSpanWords(r.firstYmd, r.lastYmd, withYear), r.backcharges ? `back-charged $${r.backcharged.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '', r.weOwe === null ? 'paid through payroll' : r.weOwe === 0 ? (r.over ? '' : 'settled') : `we owe ${weOweWords(r.weOwe)}`, overPaidWords(r.over)].filter(Boolean).join(' · ')}
+              {[paymentsWords(r), ledgerSpanWords(r.firstYmd, r.lastYmd, withYear), r.backcharges ? `back-charged $${r.backcharged.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '', r.weOwe === null ? 'paid through payroll' : r.weOwe === 0 ? (r.over ? '' : 'settled') : `we owe ${weOweWords(r.weOwe)}`, overPaidWords(r.over), creditNoteWords(r.credit)].filter(Boolean).join(' · ')}
             </span>
           </button>
         ))}
@@ -84,6 +85,11 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
                 ) : r.weOwe === 0 && r.over ? null : (
                   <Owed value={r.weOwe} />
                 )}
+                {creditNoteWords(r.credit) ? (
+                  <div data-ledger-credit={r.key} title="Sent past what their sheets needed. The next payment to them offers it first." style={{ fontSize: '0.75rem', color: 'var(--text-green-700)' }}>
+                    {creditNoteWords(r.credit)}
+                  </div>
+                ) : null}
                 {r.over ? (
                   <div data-ledger-over={r.key} title="A sheet of theirs was paid past its total. It is not taken off what another sheet is owed." style={{ fontSize: '0.75rem', color: 'var(--text-green-700)' }}>
                     {overPaidWords(r.over)}
@@ -112,7 +118,9 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
   )
 }
 
-const WHAT: Record<StatementEntry['kind'], string> = { sheet: 'Sheet agreed', payment: 'Payment', backcharge: 'Back-charge' }
+const WHAT = STATEMENT_WHAT
+/** A line with nothing in the Paid column: a sheet adds, and credit used moves no money. */
+const noPaid = (e: StatementEntry) => e.kind === 'sheet' || e.kind === 'credit-used'
 
 export function SubLedgerStatement({ statement: st, check, narrow, withYear, onOpenSheet }: { statement: SubStatement; check: { agrees: boolean | null; words: string }; narrow: boolean; withYear: boolean; onOpenSheet: (sheetId: string) => void }) {
   const day = (e: StatementEntry) => (
@@ -123,8 +131,8 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
   )
   const what = (e: StatementEntry) => (
     <>
-      <span style={e.kind === 'backcharge' ? pill('red') : e.kind === 'sheet' ? pill('gray') : { fontWeight: 600 }}>{WHAT[e.kind]}</span>
-      {[ledgerHowPaidWords(e), e.memo].filter(Boolean).map((w) => (
+      <span style={e.kind === 'backcharge' ? pill('red') : e.kind === 'sheet' ? pill('gray') : e.kind === 'credit-kept' || e.kind === 'credit-used' ? pill('green') : { fontWeight: 600 }}>{WHAT[e.kind]}</span>
+      {(e.kind === 'credit-used' ? [`$${e.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} of their credit paid this sheet`, e.memo] : e.kind === 'credit-kept' ? ['sent past what the sheets needed'] : [ledgerHowPaidWords(e), e.memo]).filter(Boolean).map((w) => (
         <span key={w} style={{ color: 'var(--text-muted)' }}>
           {' '}
           · {w}
@@ -154,8 +162,8 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
                 {day(e)} · {what(e)}
               </span>
               <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: e.kind === 'sheet' ? 'var(--text-strong)' : e.kind === 'backcharge' ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
-                {e.kind === 'sheet' ? '+' : '−'}
-                <AmountSmallCents value={e.amount} />
+                {e.kind === 'sheet' ? '+' : e.kind === 'credit-used' ? '' : '−'}
+                {e.kind === 'credit-used' ? null : <AmountSmallCents value={e.amount} />}
               </span>
               <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
                 {e.job} · we owe {weOweWords(e.owed)}
@@ -208,7 +216,7 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
                   {e.address && !e.job.includes(e.address) ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{e.address}</div> : null}
                 </td>
                 <td style={right}>{e.kind === 'sheet' ? <AmountSmallCents value={e.amount} /> : ''}</td>
-                <td style={{ ...right, color: e.kind === 'backcharge' ? 'var(--text-red-700)' : undefined }}>{e.kind === 'sheet' ? '' : <AmountSmallCents value={e.amount} />}</td>
+                <td style={{ ...right, color: e.kind === 'backcharge' ? 'var(--text-red-700)' : undefined }}>{noPaid(e) ? '' : <AmountSmallCents value={e.amount} />}</td>
                 <td style={right}>
                   <Owed value={e.owed} />
                 </td>

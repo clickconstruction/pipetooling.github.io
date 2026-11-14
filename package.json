@@ -112,6 +112,7 @@
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:lien-hand-day": "bash scripts/pgtest-lien-hand-day.sh",
+    "test:pg:lien-bill-months": "bash scripts/pgtest-lien-bill-months.sh",
     "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",

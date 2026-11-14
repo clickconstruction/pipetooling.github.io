@@ -1,5 +1,6 @@
 import { ownerKind } from './ownerConfirm'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
+import { DATED_FROM_BILL_WORDS, MONTH_STAND_IN_DOOR_WORDS } from './lienBillMonths'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 
 /**
@@ -53,6 +54,8 @@ export interface LienDeskGatesInput {
   pendingSessions: number
   /** The job has no approved clock hours: its one month is the month it was created (v2.3747) — the gate says so instead of "Approved hours". */
   datedFromCreation?: boolean
+  /** That stand-in month came from a sent, unpaid bill (v2.7224): the gate reads *Dated from the bill*. */
+  datedFromBill?: boolean
   /** What the job's sent bills still owe — the claim's base (v2.4969). Absent on a reader that has no bills to show. */
   billedOpen?: number
   /** The part of the job no sent bill carries (v2.4969): with nothing owed on the sent bills, a fifth gate holds the send until it is billed. */
@@ -93,10 +96,12 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
         ? {
             n: 4,
             key: 'months',
-            label: 'Dated from creation',
+            label: input.datedFromBill ? 'Dated from the bill' : 'Dated from creation',
             value: input.monthLabels.join(', ') || '—',
             tone: 'ok',
-            title: `No clock hours on this job — its month is the month it was created (${DATED_FROM_CREATION_WORDS})`,
+            title: input.datedFromBill
+              ? `No clock hours on this job. Its month is the month of its bill (${DATED_FROM_BILL_WORDS}). ${MONTH_STAND_IN_DOOR_WORDS}`
+              : `No clock hours on this job — its month is the month it was created (${DATED_FROM_CREATION_WORDS})`,
           }
         : {
             n: 4,
@@ -108,7 +113,7 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
           }
       : input.monthsOnJob === 0
         ? { n: 4, key: 'months', label: 'Approved hours', value: 'No month open', tone: 'blocker', title: 'Every month’s window has closed — nothing is left for a new notice to name' }
-        : { n: 4, key: 'months', label: input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
+        : { n: 4, key: 'months', label: input.datedFromBill ? 'Dated from the bill' : input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
 
   // The fifth gate (v2.4969) is drawn only when it blocks: nothing owed on the sent bills while money is still on the
   // job — work not yet billed, or a bill still at Ready to Bill. A notice claims what is billed, so the send waits.

@@ -41,7 +41,7 @@ Press **Due a count**, **Can't find** or **Short at a count** to narrow the list
 
 Under the figures, **By part** lists one row per part across the site's jobs. The row shows the total and the boxes that hold it. Press a row to see each box with its place, its job and its last count. Press a box's stencil to open that job's page.
 
-Two names are one row when their words are the same. *2" 90 PVC* and *2 inch 90 pvc* are one row, and the row says **2 spellings**. Each name keeps its own count in its box. A name with a different size or a missing word stays its own row. The app never guesses.
+Two names are one row when their words are the same. *2" 90 PVC* and *2 inch 90 pvc* are one row, and the row says **2 spellings**. Each name keeps its own count in its box. A name with a different size or a missing word stays its own row. A fitting with two sizes keeps the order you typed. *4" to 2" reducer* and *2" to 4" reducer* are two rows. The app never guesses.
 
 Some names are nearly the same. One may have one more word, or a small spelling slip. Under such a row the screen asks **Same part?** and shows the other name. Press {{button:blue|Same part}} to make them one row with one total. Press **Different** to keep them apart. The screen remembers either answer for this site and does not ask again.
 

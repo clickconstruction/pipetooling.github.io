@@ -27,8 +27,12 @@ describe('LienRulesDoor', () => {
     view.rerender(<LienRulesDoor where="desk_notice" button={false} open onOpenChange={onOpenChange} />)
     expect(await screen.findByTestId('lien-rules-modal')).toBeTruthy()
     expect(screen.queryByTestId('lien-rules-door')).toBeNull()
-    fireEvent.keyDown(window, { key: 'Escape' })
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    // The key is pressed inside the wait (v2.7248): the window listens for Escape from an effect, which can run a
+    // moment after the window is in the page, and one press before it listens would be a press nothing hears.
+    await waitFor(() => {
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
   })
 
   it('opens the rules in a window at the rule for the surface, not a new page', async () => {

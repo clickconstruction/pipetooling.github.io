@@ -105,7 +105,8 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     expect(lienAffidavitPrintWords(plan)).toEqual({
       lead: '2 affidavits on the short form are ready to file.',
       button: 'Print 2 for notarization',
-      foot: '1 ready affidavit is held by a gate and is left out. Its row says why.',
+      // The held paper is the bar's amber press, not a line of the foot (v2.7209, `lienAffidavitPrintBarStatus`).
+      foot: null,
       dead: false,
     })
     // Every ready paper gated: nothing to print, and the press is dead.

@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · PR 1 (dates on the Pay rows), PR 2 (the Ledger by date), PR 2b (the Record payment window, migration 20261113180000 pushed) and PR 3 (by sub, one sub's statement, People → Subs, v2.7231) are built · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
+status: asked 2026-11-13 · PR 1 (dates on the Pay rows), PR 2 (the Ledger by date), PR 2b (the Record payment window), PR 3 (by sub, one sub's statement, People → Subs, v2.7231) and the credit with sendings (v2.7235, migration 20261114020000) are built · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: the credit with one sending across several sheets (a migration); then PR 4, the check mark; then PR 5, the match to Mercury
+next: PR 4, the check mark; then PR 5, the match to Mercury
 size: M as a train of six (XS · S · S · S · S · M)
-blocker: none; each of the three left carries a migration that is pushed right after its merge
-opinion: the credit first, since the by-sub list already shows a sheet paid past its total with nowhere to put it
+blocker: none; PR 4 and PR 5 each carry a migration that is pushed right after its merge
+opinion: PR 4 ticks a sending, not a row, now that one check is one sending; a row from before sendings is ticked by itself
 ---
 
 # Sub payments as a ledger (#347)
@@ -120,7 +120,7 @@ Built with this card's edit, between PR 2 and PR 3:
 3. **Crew pay sheets in the ledger?** My pick: yes, with a *crew* chip and a filter, and out of every *We owe*.
 4. **Who sees it?** My pick: the roles who open the Pay view today.
 5. **Order.** My pick: newest first by date, oldest first on one sub's statement.
-6. **An overpayment to a sub. Answered 2026-11-13: a credit.** The owner: "overpayment -> credit". An amount past what remains is still refused today. What the answer asks for: the window records what remains on the sheet and keeps the rest as a credit for that sub; the credit shows on the sub's row, on their statement and in the ledger; and the next payment to that sub offers the credit first. Nothing holds a credit today: a sheet that is paid past its total reads *Over* and never counts against another sheet. So it needs a place to live, which is a migration, and it is the same shape as card #350's ask for one sending recorded across several sheets: one amount sent, landing in more than one place. Build the two together.
+6. **An overpayment to a sub. Answered 2026-11-13: a credit. Built, v2.7235.** The owner: "overpayment -> credit". An amount past what remains is still refused today. What the answer asks for: the window records what remains on the sheet and keeps the rest as a credit for that sub; the credit shows on the sub's row, on their statement and in the ledger; and the next payment to that sub offers the credit first. Nothing holds a credit today: a sheet that is paid past its total reads *Over* and never counts against another sheet. So it needs a place to live, which is a migration, and it is the same shape as card #350's ask for one sending recorded across several sheets: one amount sent, landing in more than one place. Build the two together.
 
 ## How to verify
 
@@ -128,3 +128,13 @@ Built with this card's edit, between PR 2 and PR 3:
 - **On the live app, read only:** the ledger's total for *All* equals the sum of the Pay view's Paid column across every chip, and each sub's *We owe today* equals their Balance due on People → Subs. On 2026-11-13 the Pay view read 88 sheets, 81 paid, $13,400 owed.
 - **Test rows:** the *Claude Test Sub* on the roster and its *ZZ Test Walk Project* sheet. Record a ZZ payment with a Date sent in the past and one with none, see both lines, then remove them through the sheet form's Remove, which leaves its trace.
 - **Gotchas:** `payment_date` is a bare date and `created_at` a timestamp, so the fallback day must be cut in the app's timezone. Old rows from before 2026-08-14 have no `payment_date` at all. PostgREST caps a read at 1,000 rows: the payments read on People → Subs must page once the table passes that.
+
+## The credit and the sending, built 2026-11-13 (v2.7235)
+
+- **A sending** is one money movement: `sub_payment_sendings`, with a number that is never reused. The Record payment window makes one for every payment. It stores no amount: what was sent is its rows plus the credit kept with it.
+- **Past the sheet.** The extra fills the sub's other open sheets, oldest first, and a tick switches that off. What is still left is kept as their credit. The window lists each line before the press.
+- **The credit** is a ledger, `sub_credit_entries`: kept above zero, used below. A sub holds one only as one person on the roster. Anyone else is refused past what their sheets need, with the reason.
+- **Offered first.** A sub with a credit gets *Use $… on this sheet* at the top of the window. It makes a payment row with the method *From credit*, and no money leaves.
+- **Where it shows:** the Pay row's payment, the Ledger by date (a green note, a *From credit* chip, the sending's number), the Ledger by sub, a statement (*Credit kept*, *Credit used*), and under Balance due on People → Subs.
+- **It cannot drift.** A payment that carries a credit stays on its sheet. One made from a credit keeps its amount. Removing a use puts the credit back, and removing a payment whose credit was already used is refused.
+- **Not built:** placing a sending's lines by hand (card #350's ask 2 wanted the fill as the start and the hand as the override), and turning a sheet that is already paid past its total into a credit. One sheet is in that state today.

@@ -16,12 +16,29 @@ import { lienChipSigned, lienFieldsHash, signatureColumnsOf } from './lienNotice
  * notice would name, and the reason a leader is being asked (or not).
  */
 
-/** Where a job's lien month came from (v2.3747): approved clock sessions, or — for a job with none — the month the job was created. */
-export type LienMonthSource = 'hours' | 'job_created' | 'hand'
+/**
+ * Where a job's lien month came from: approved clock sessions, a last day of work set by hand (v2.4676), or, for a job
+ * with neither, a stand-in: the month of a sent, unpaid bill (v2.7224, `lienBillMonths.ts`), else the month the job was
+ * created (v2.3747).
+ */
+export type LienMonthSource = 'hours' | 'job_created' | 'hand' | 'bill'
 
 /** A row from any of the four lien readers whose month is the job's creation month. Absent on an older RPC = hours. */
 export function monthFromCreation(r: { month_source?: LienMonthSource | string | null }): boolean {
   return r.month_source === 'job_created'
+}
+
+/** A row whose month came from a sent, unpaid bill: the job has no approved hours and no day set by hand (v2.7224). */
+export function monthFromBill(r: { month_source?: LienMonthSource | string | null }): boolean {
+  return r.month_source === 'bill'
+}
+
+/**
+ * A row whose month is a stand-in, from a bill or from the job's creation: nobody clocked on the job and nobody set its
+ * last day. The flags named `fromCreation` since v2.3747 carry this, and `fromBill` beside each says which it is.
+ */
+export function monthIsStandIn(r: { month_source?: LienMonthSource | string | null }): boolean {
+  return monthFromCreation(r) || monthFromBill(r)
 }
 
 /** The month came from the last day of work set by hand on the job (v2.4676). */
@@ -50,7 +67,7 @@ export type LienNoticeMonthRow = {
   desk_item_id: string | null
   desk_status: string | null
   desk_months: string[] | null
-  /** 'hours' from approved sessions; 'job_created' when the job has none and the month is its creation month (v2.3747). Absent on an older RPC. */
+  /** 'hours' from approved sessions; 'hand' from a day set by hand; with neither, 'bill' from a sent, unpaid bill (v2.7224) or 'job_created' from the creation month (v2.3747). Absent on an older RPC. */
   month_source?: LienMonthSource | null
 }
 
@@ -110,8 +127,10 @@ export type LienDeskMonth = {
   /** Whole days from today to the deadline (negative once past). */
   daysLeft: number
   noticed: boolean
-  /** The month is the job's creation month — it has no approved hours (v2.3747). */
+  /** The month is a stand-in: the job has no approved hours and no day set by hand (v2.3747). From a bill when `fromBill`, else from the job's creation. */
   fromCreation: boolean
+  /** The stand-in month came from a sent, unpaid bill (v2.7224). */
+  fromBill?: boolean
   /** The month is the last day of work set by hand (v2.4676). */
   byHand?: boolean
 }
@@ -125,8 +144,10 @@ export type LienDeskEntry = {
   propertyKind: string
   /** Every month the RPC returned for the job, chronological. */
   months: LienDeskMonth[]
-  /** The job has no approved clock hours: its one month is the month it was created (v2.3747). */
+  /** The job has no approved clock hours and no day set by hand: its months are stand-ins (v2.3747), from its bills when `datedFromBill`, else its creation month. */
   datedFromCreation: boolean
+  /** Those stand-in months came from the job's sent, unpaid bills (v2.7224). */
+  datedFromBill?: boolean
   /** The job's last month is the day set by hand (v2.4676). */
   datedByHand?: boolean
   /** Unnoticed months whose window is still open — what a new notice would name. */
@@ -278,7 +299,8 @@ export function buildLienDeskQueue(
       deadline: r.deadline,
       daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0,
       noticed: r.noticed,
-      fromCreation: monthFromCreation(r),
+      fromCreation: monthIsStandIn(r),
+      ...(monthFromBill(r) ? { fromBill: true } : {}),
       byHand: monthSetByHand(r),
     }))
     const dueMonths = months.filter((m) => !m.noticed && m.daysLeft >= 0).map((m) => m.key)
@@ -319,6 +341,7 @@ export function buildLienDeskQueue(
       propertyKind: first?.property_kind ?? '',
       months,
       datedFromCreation: months.length > 0 && months.every((m) => m.fromCreation),
+      datedFromBill: months.length > 0 && months.every((m) => m.fromBill === true),
       datedByHand: months.length > 0 && Boolean(months[months.length - 1]?.byHand),
       dueMonths,
       missedMonths,

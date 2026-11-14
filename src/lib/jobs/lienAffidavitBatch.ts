@@ -124,18 +124,17 @@ export function lienAffidavitPrintPlan<E extends PrintEntry>(entries: ReadonlyAr
   }
 }
 
+/** `foot` is the earlier form's line alone since v2.7209: a paper a gate holds is the bar's amber press (`lienAffidavitPrintBarStatus`). */
 export type LienAffidavitPrintWords = { lead: string; button: string; foot: string | null; dead: boolean }
 
 export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'> & Partial<Pick<LienAffidavitPrintPlan, 'gated'>>): LienAffidavitPrintWords {
   const ready = plan.ready.length
   const held = plan.held.length
   const gated = plan.gated?.length ?? 0
-  const gatedWords = gated > 0 ? count(gated, '1 ready affidavit is held by a gate and is left out. Its row says why.', '# ready affidavits are held by a gate and are left out. Each row says why.') : ''
-  const heldWords = held > 0 ? count(held, '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.', '# ready affidavits are on the earlier form and are left out. Redraw them, or print each from its own Lien window.') : ''
   return {
     lead: count(ready, '1 affidavit on the short form is ready to file.', '# affidavits on the short form are ready to file.'),
     button: `${countedLabel('Print', ready)} for notarization`,
-    foot: [heldWords, gatedWords].filter(Boolean).join(' ') || null,
+    foot: held > 0 ? count(held, '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.', '# ready affidavits are on the earlier form and are left out. Redraw them, or print each from its own Lien window.') : null,
     dead: batchWords({ verb: 'Print', ready, held: held + gated }).dead,
   }
 }

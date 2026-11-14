@@ -1,3 +1,4 @@
+import { lienStandInFlag, lienStandInLine, type LienStandInSource } from './lienBillMonths'
 import { lienAffidavitMethodWords, lienAffidavitNoticesWords, type LienAffidavitNoticeRow, type LienAffidavitOwnerSend } from './lienAffidavitNotices'
 import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckShortLines } from './lienAffidavitNoticeCheck'
 import { lienCommercialClock } from './lienDeadlines'
@@ -88,7 +89,7 @@ export type LienNoticeRecordLine = { state: 'ok' | 'ask' | 'note'; lead: string;
 export type LienNoticeRecord = {
   notices: LienNoticeRecordNotice[]
   months: LienNoticeRecordMonth[]
-  /** The notice check's own lines (`lienNoticeCheckLines`): what the help sheet says under **Ask first**. None when every month is on time to both. */
+  /** What the help sheet says under **Ask first**: that the month is a stand-in (v2.7224), then the notice check's own lines (`lienNoticeCheckLines`). None when the month is from recorded work and every month is on time to both. */
   flags: string[]
   /** The same check in the fewest sentences that still say which copy (`lienNoticeCheckShortLines`): what the box at the record's foot says. Empty exactly when `flags` is. */
   flagsShort: string[]
@@ -294,6 +295,8 @@ export function lienNoticeRecord(input: {
   /** The job's work dates as the paper's fields hold them, 'YYYY-MM-DD'. */
   workStart?: string | null
   workEnd?: string | null
+  /** The paper's month is a stand-in, from a bill or the job's creation (v2.7224): the record says so first and never reads *On record*. */
+  monthStandIn?: LienStandInSource | null
 }): LienNoticeRecord | null {
   if (!input.isSub) return null
   const filings = input.filings ?? []
@@ -335,8 +338,8 @@ export function lienNoticeRecord(input: {
   return {
     notices,
     months,
-    flags: lienNoticeCheckLines(check),
-    flagsShort: lienNoticeCheckShortLines(check),
+    flags: [lienStandInFlag(input.monthStandIn), ...lienNoticeCheckLines(check)].filter(Boolean),
+    flagsShort: [lienStandInLine(input.monthStandIn), ...lienNoticeCheckShortLines(check)].filter(Boolean),
     lines,
     gaps: lienNoticeRecordGaps(notices),
     voided: filings.filter((f) => f.kind === 'notice_53_056' && Boolean(f.voided_at)).length,

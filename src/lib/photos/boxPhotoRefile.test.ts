@@ -300,7 +300,7 @@ describe('the function, the server and the docs', () => {
   })
 
   it('the seat asks after the move’s rows land, as the dev, and never before', () => {
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.85\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.86\.0'/)
     expect(SERVER).toContain("refiledForSeat(toJob, await invokeAsDev(session, 'photo-save', { refile_box_photos: toJob }))")
     expect(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)')).toBeLessThan(SERVER.indexOf("refiledForSeat(toJob, await invokeAsDev(session, 'photo-save'"))
     expect(SERVER).toContain("name === 'plan_materials_move' ? moveReplyWithRefileWords(redactSecrets(res.body)) : redactSecrets(res.body), await planHash(name, built.body.p, res.body)")
@@ -310,5 +310,18 @@ describe('the function, the server and the docs', () => {
     expect(README).toContain('`photos.refiled`')
     expect(EDGE).toContain('refile_box_photos')
     expect(MAP).toContain('refile_box_photos')
+  })
+})
+
+describe('the box photo sweep takes what has not failed first (v2.7252)', () => {
+  it('orders the waiting rows by no reason first, then oldest, so twenty stuck photos never hold a newer one', () => {
+    const at = FUNCTION.indexOf("table: 'job_box_photos',")
+    const source = FUNCTION.slice(at, FUNCTION.indexOf("failWhyColumn: 'fail_why'", at))
+    const byReason = source.indexOf(".order('fail_why', { ascending: true, nullsFirst: true })")
+    const byAge = source.indexOf(".order('taken_at', { ascending: true })")
+    expect(byReason).toBeGreaterThan(-1)
+    expect(byAge).toBeGreaterThan(byReason)
+    expect(source).toContain('.limit(BOX_PHOTO_BATCH)')
+    expect(EDGE).toContain('v2.7252')
   })
 })
