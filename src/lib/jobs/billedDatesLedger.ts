@@ -45,7 +45,7 @@ import { usuallyLandsShort, usuallyLandsWords, type PayCalendarArg } from './pay
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 import { LIEN_LATE_NOTICE_ACT, LIEN_ROW_PRESS_SENTENCE, lienActFor, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
-import { lienLateNoticeOpen, lienLineStep, type LienLineTab } from './lienLineStep'
+import { lienLineStep, type LienLineTab } from './lienLineStep'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
@@ -297,8 +297,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   }
   // A notice window that closed with the affidavit's own day still ahead (v2.7047, punch list #325, PR 4): the Lien
   // window and the desk read v2.4708's rule, that a late notice can still carry the lien, and the row follows them.
-  // The runway keeps its own states; this row and the phone's chip read past them (`lienLineStep.ts`).
-  const lateOpen = lienLateNoticeOpen(runway)
+  // The clock says so itself since v2.7198 (punch list #335, row 4) (`late_notice`), so `closed` here is closed for good.
   // Which paper's day the line races and whether the desk's act names it: one reading with the phone's chip (punch list #335, row 5).
   const step = lienLineStep(todayYmd, runway, lienState)
   if (runway && runway.state !== 'none') {
@@ -318,7 +317,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
         const served = runway.servedYmd ? { sub: `served ${formatYmdMonthDay(runway.servedYmd)}`, subTone: 'green' as const } : null
         rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: filedDate, far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: lienRowTip({ why: 'The lien affidavit is on file. The money is still owed.', dayWords: '' }), sub: '', ...(served ?? stateUnder('affidavit', '', false)) })
       }
-    } else if (runway.state === 'closed' && !lateOpen) {
+    } else if (runway.state === 'closed') {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
