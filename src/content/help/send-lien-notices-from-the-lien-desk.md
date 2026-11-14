@@ -95,7 +95,7 @@ On **Lien affidavits** and **Retainage notices** the pile chips sit at the top o
 
 The **By date** tab is beside **To do**. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
 
-Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
+Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month. Under the pills each month is a coloured band. Later starts folded. Press its band to list its jobs, oldest bill first.
 
 Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. A job's number is a button of its own. Press it to open the job itself, with its history, its bills and **Edit**. It is on every row of the **By date** tab and of the **By job** tab. On the three tabs under **By paper** it is at the top of the job you picked. The **By date** tab is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
 

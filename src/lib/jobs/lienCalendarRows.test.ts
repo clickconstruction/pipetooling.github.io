@@ -60,6 +60,8 @@ describe('lienCalendarRows (punch list #182: the By date rows, one kernel for th
     expect(row.isSub).toBe(true)
     expect(row.lastWorkYmd).toBe('2026-07-20')
     expect(row.addressId).toBe('addr-1')
+    // v2.7254: the day its oldest open bill went out, for the Later list's Billed column
+    expect(row.billedOnYmd).toBe('2026-08-01')
     expect(row.runway.state).not.toBe('none')
   })
 

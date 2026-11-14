@@ -52,10 +52,13 @@ describe('buildLienCalendar', () => {
       ['gc', 'RLC · Dunmere Mallin', 2, 'send 2 notices by Oct 15 · 17 d'],
       ['gc', 'Late Notice Builders', 1, 'send the late notice · 17 d'],
       ['gc', 'Hunter Homes', 1, '49 d to the flag'],
-      ['direct', 'Direct — we contracted with the owner', 1, '47 d of room'],
+      ['direct', 'Direct to owner', 1, '47 d of room'],
       ['gone', 'Lien gone', 1, 'money still owed'],
     ])
     expect(cal.groups[0]!.sub).toBe('GC · 2 jobs · 2 notices owed · 2 at one property') // both rows sit at the fixture's one address
+    // v2.7254: a group reads as one quiet line, its counts in its words; the direct heading is short enough to fit
+    expect(lienGroupLine(cal.groups[0]!)).toBe('RLC · Dunmere Mallin · GC · 2 jobs · 2 notices owed · 2 at one property')
+    expect(lienGroupLine(cal.groups[3]!)).toBe('Direct to owner · 1 job · no notice step')
     expect(cal.groups[0]!.total).toBe(17702)
     expect(cal.groups[0]!.tone).toBe('amber')
     // The late notice sits with its GC, by name, and is neither a notice to draft from the bar nor a lien gone.
@@ -91,7 +94,7 @@ describe('buildLienCalendar', () => {
 })
 
 // ---- PR C (v2.4152): the shared axis, the marks, the density and the to-do ----
-import { LIEN_CALENDAR_KEY, closedYmdFor, commercialLienByFor, lienCalendarAxis, lienCalendarGroupFlags, lienCalendarMarks, noticeFlagsFor, rowWord, sharedPropertyNote, workMarkFor } from './lienCalendar'
+import { LIEN_CALENDAR_KEY, closedYmdFor, commercialLienByFor, lienCalendarAxis, lienCalendarGroupFlags, lienCalendarMarks, lienGroupLine, lienNoHoursChip, noticeFlagsFor, rowWord, sharedPropertyNote, workMarkFor } from './lienCalendar'
 import { buildLienCalendarBoard } from './lienCalendarBuckets'
 
 const TODAY = '2026-09-28'
@@ -154,6 +157,10 @@ describe('lienCalendarMarks', () => {
     expect(created.runway.basisYmd).toBe('2026-08-03')
     expect(workMarkFor(created, axis)).toMatchObject({ fromCreation: true, offAxis: true, label: '◂ Aug · no hours' })
     expect(workMarkFor(job({ jobId: 'd', r: { lastWorkYmd: null, createdAt: null } }), axis)).toBeNull()
+    // v2.7254: the same words as a chip beside the job's name, with no arrow: a chip sits on no axis
+    expect(lienNoHoursChip(created)).toBe('Aug · no hours')
+    expect(lienNoHoursChip(worked)).toBeNull()
+    expect(lienNoHoursChip(job({ jobId: 'd', r: { lastWorkYmd: null, createdAt: null } }))).toBeNull()
   })
   it('a notice window closed unsent dies on the notice date, not the lien date — the gutter and the flag follow it', () => {
     // June's notice was due Aug 17 and its affidavit Sep 15: both behind us, so the lien is gone.
@@ -227,7 +234,7 @@ describe('the GC row and the key', () => {
   })
   it('the key names every glyph the rows can draw, each with a few words and the long ones (v2.4265)', () => {
     const glyphs = LIEN_CALENDAR_KEY.map((k) => k.glyph)
-    for (const g of ['today', 'work', 'work_hollow', 'pay', 'pay_missing', 'notice', 'check', 'lien', 'room', 'short', 'bracket', 'count', 'gone']) expect(glyphs).toContain(g)
+    for (const g of ['today', 'work', 'work_hollow', 'pay', 'pay_missing', 'notice', 'check', 'lien', 'room', 'short', 'bracket', 'gone']) expect(glyphs).toContain(g)
     for (const k of LIEN_CALENDAR_KEY) {
       expect(k.short.split(/\s+/).length, k.glyph).toBeLessThanOrEqual(4)
       expect(k.long.length, k.glyph).toBeGreaterThan(k.label.length)

@@ -99,6 +99,9 @@ describe('what each bucket says', () => {
   it('This month: one date, the days to it, the notices and their GCs, and the door to draft them', () => {
     expect(thisMonth).toMatchObject({ title: 'This month', dateLabel: 'Oct 15', total: 72018, notices: 4, lateNotices: 1, liens: 0, dates: ['2026-10-15'] })
     expect(thisMonth!.facts).toBe('by Oct 15 · in 14 days · 4 notices across 3 GCs · 1 late notice')
+    // v2.7254: the band draws the date as a pill and the count at its right, so its summary is the rest
+    expect(thisMonth!.datePill).toBe('by Oct 15 · in 14 days')
+    expect(thisMonth!.summary).toBe('4 notices across 3 GCs · 1 late notice')
     // tightest first, then the bigger balance
     expect(thisMonth!.draft).toEqual({ ymd: '2026-10-15', jobIds: ['k', 'c', 'a', 'b'], label: 'Draft the 4' })
     expect(thisMonth!.groups.map((g) => g.name)).toEqual(['Southern Pine Construction', 'RLC · Dunmere Mallin', 'Kestrin Contracting'])
@@ -121,6 +124,8 @@ describe('what each bucket says', () => {
   })
   it('Later: more than one date reads "and after"; a filed lien waits here', () => {
     expect(later!.facts).toBe('Dec 15 and after · 2 liens to file · 1 lien filed')
+    expect(later!.datePill).toBe('Dec 15 and after')
+    expect(later!.summary).toBe('2 liens to file · 1 lien filed')
     expect(later!.dateLabel).toBe('Dec 15 +')
     expect(later!.dates).toEqual(['2026-12-15', '2027-01-15'])
     expect(ids(later!.jobs)).toEqual(['f', 'g', 'j'])
@@ -128,6 +133,8 @@ describe('what each bucket says', () => {
   it('Overdue: the closed windows, one lien-gone group, no door', () => {
     expect(overdue).toMatchObject({ title: 'Overdue', dateLabel: '', total: 5355, draft: null, lateNotices: 0 })
     expect(overdue!.facts).toBe('1 job · nothing left to file · money still owed')
+    expect(overdue!.datePill).toBe('')
+    expect(overdue!.summary).toBe('nothing left to file · money still owed')
     expect(overdue!.groups.map((g) => g.kind)).toEqual(['gone'])
   })
   it('each bucket covers its stretch of the axis', () => {
@@ -302,6 +309,9 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
       TODAY,
     )
     expect(later.buckets[0]!.facts).toBe('1 job · 0 listed here · 1 is listed under Next month')
+    expect(later.buckets[0]!.summary).toBe('0 listed here · 1 is listed under Next month')
+    // shown on its own, Overdue is whole again: its plain summary rides along
+    expect(later.buckets[0]!.whole!.summary).toBe('nothing left to file · money still owed')
     expect(later.buckets[2]!.guests).toBe(1)
     expect(lienGroupRows(later.buckets[2]!.groups[0]!).map((r) => (r.kind === 'label' ? r.label : `${r.job.jobId}${r.closed ? ' closed' : ''}`))).toEqual(['12 Oak St, Seguin', 'd1', 'x1 closed'])
   })
