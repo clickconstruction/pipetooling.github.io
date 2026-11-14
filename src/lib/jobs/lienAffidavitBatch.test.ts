@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
+import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitHiddenWords, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitShownEntries, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
+import { plainWordsFailures } from '../plainWords'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
@@ -54,6 +55,7 @@ describe('send every drafted affidavit for approval (punch list #305, v2.6918)',
       confirmLabel: 'Send 13 for approval',
       foot: '1 in To draft has no draft yet. Draft it from its own paper.',
       dead: false,
+      hidden: null,
     })
   })
 
@@ -84,6 +86,7 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
       button: 'Print 2 for notarization',
       foot: '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.',
       dead: false,
+      hidden: null,
     })
     expect(lienAffidavitPrintWords({ ready: [], held: plan.held }).dead).toBe(true)
   })
@@ -108,6 +111,7 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
       // The held paper is the bar's amber press, not a line of the foot (v2.7209, `lienAffidavitPrintBarStatus`).
       foot: null,
       dead: false,
+      hidden: null,
     })
     // Every ready paper gated: nothing to print, and the press is dead.
     expect(lienAffidavitPrintWords({ ready: [], held: [], gated: plan.gated }).dead).toBe(true)
@@ -202,5 +206,51 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     expect(lienAffidavitSheetFlags(sheets, { ...read('job-1', ONE), ...read('job-2', ONE), ...read('job-3', null) })).toBeNull()
     expect(lienAffidavitSheetFlags(sheets, read('job-2', MOVED, '<p>two, before the edit</p>'))).toBeNull()
     expect(lienAffidavitSheetFlags(sheets.slice(0, 1), { ...read('job-1', ONE), ...read('job-2', MOVED) })).toBeNull()
+  })
+})
+
+describe('the batch presses take what the find shows (punch list #353, part 1)', () => {
+  const ready = ['a', 'b', 'c', 'd'].map((id) => entry(id, 'ready', item('approved')))
+  const drafted = ['x', 'y', 'z'].map((id) => entry(id, 'to_draft', item('drafted')))
+
+  it('with nothing typed every paper is taken, and the words are as before', () => {
+    expect(lienAffidavitShownEntries(ready, null).map((e) => e.jobId)).toEqual(['a', 'b', 'c', 'd'])
+    expect(lienAffidavitPrintWords(lienAffidavitPrintPlan(ready)).button).toBe('Print 4 for notarization')
+    expect(lienAffidavitPrintWords(lienAffidavitPrintPlan(ready)).hidden).toBeNull()
+    expect(lienAffidavitSendWords(lienAffidavitSendPlan(drafted, ctx)).button).toBe('Send 3 for approval…')
+    expect(lienAffidavitSendWords(lienAffidavitSendPlan(drafted, ctx)).hidden).toBeNull()
+  })
+
+  it('with a find typed the press takes the shown rows alone, says shown, and counts the ready papers the find hides', () => {
+    const shown = { jobIds: new Set(['b', 'c', 'y']) }
+    const printPlan = lienAffidavitPrintPlan(lienAffidavitShownEntries(ready, shown))
+    expect(printPlan.ready.map((e) => e.jobId)).toEqual(['b', 'c'])
+    const print = lienAffidavitPrintWords(printPlan, { hiddenReady: 2 })
+    expect(print.button).toBe('Print 2 shown for notarization')
+    expect(print.hidden).toBe('2 more ready papers are not shown. Clear the find to print them too.')
+    expect(print.dead).toBe(false)
+    const sendPlan = lienAffidavitSendPlan(lienAffidavitShownEntries(drafted, shown), ctx)
+    expect(sendPlan.ready.map((r) => r.entry.jobId)).toEqual(['y'])
+    const send = lienAffidavitSendWords(sendPlan, { hiddenReady: 2 })
+    expect(send.button).toBe('Send 1 shown for approval…')
+    expect(send.confirmLabel).toBe('Send 1 shown for approval')
+    expect(send.title).toBe('Send 1 affidavit for approval?')
+    expect(send.hidden).toBe('2 more drafted papers are not shown. Clear the find to send them too.')
+  })
+
+  it('one hidden paper reads in the singular, and a find that hides nothing says nothing', () => {
+    expect(lienAffidavitHiddenWords('print', 1, 'ready')).toBe('1 more ready paper is not shown. Clear the find to print it too.')
+    expect(lienAffidavitHiddenWords('send', 0, 'drafted')).toBeNull()
+    expect(lienAffidavitPrintWords(lienAffidavitPrintPlan(ready), { hiddenReady: 0 })).toMatchObject({ button: 'Print 4 shown for notarization', hidden: null })
+  })
+
+  it('a find that shows no ready paper leaves the press dead, with the hidden count', () => {
+    const print = lienAffidavitPrintWords(lienAffidavitPrintPlan(lienAffidavitShownEntries(ready, { jobIds: new Set(['nobody']) })), { hiddenReady: 4 })
+    expect(print.dead).toBe(true)
+    expect(print.hidden).toBe('4 more ready papers are not shown. Clear the find to print them too.')
+  })
+
+  it('says it in plain words', () => {
+    for (const s of [lienAffidavitHiddenWords('print', 3, 'ready')!, lienAffidavitHiddenWords('send', 1, 'drafted')!]) expect(plainWordsFailures(s), s).toEqual([])
   })
 })

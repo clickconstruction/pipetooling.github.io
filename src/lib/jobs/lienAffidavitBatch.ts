@@ -61,16 +61,34 @@ export function lienAffidavitSendPlan<E extends SendEntry>(entries: ReadonlyArra
 
 const count = (n: number, one: string, many: string) => (n === 1 ? one : many.replace('#', String(n)))
 
-export type LienAffidavitSendWords = { lead: string; button: string; title: string; message: string; confirmLabel: string; foot: string | null; dead: boolean }
+/**
+ * What the find box leaves shown (punch list #353, part 1): while a find is typed, both batch presses take only the
+ * rows the list shows, and their words say so. `null` while nothing is typed, so the presses take every paper as before.
+ */
+export type LienAffidavitShown = { jobIds: ReadonlySet<string> }
 
-export function lienAffidavitSendWords(plan: Pick<LienAffidavitSendPlan, 'ready' | 'held'>): LienAffidavitSendWords {
+/** The entries a batch press takes: every one, or the shown ones while a find is typed. Order unchanged. */
+export function lienAffidavitShownEntries<E extends { jobId: string }>(entries: ReadonlyArray<E>, shown: LienAffidavitShown | null | undefined): E[] {
+  return shown ? entries.filter((e) => shown.jobIds.has(e.jobId)) : [...entries]
+}
+
+/** How many ready papers a find hides from a press, and the line under the press that says so; null with no find or nothing hidden. */
+export function lienAffidavitHiddenWords(verb: 'print' | 'send', hidden: number, what: string): string | null {
+  if (hidden <= 0) return null
+  return `${count(hidden, `1 more ${what} paper is not shown.`, `# more ${what} papers are not shown.`)} Clear the find to ${verb} ${hidden === 1 ? 'it' : 'them'} too.`
+}
+
+export type LienAffidavitSendWords = { lead: string; button: string; title: string; message: string; confirmLabel: string; foot: string | null; dead: boolean; /** The ready drafts a find hides (punch list #353), under the press; null with no find or nothing hidden. */ hidden: string | null }
+
+/** `shown` (punch list #353): the press takes the shown rows alone, says *shown* in its label, and counts the drafts the find hides. */
+export function lienAffidavitSendWords(plan: Pick<LienAffidavitSendPlan, 'ready' | 'held'>, shown?: { hiddenReady: number } | null): LienAffidavitSendWords {
   const ready = plan.ready.length
   const held = plan.held.length
   const by = (status: LienSubmitOutcome['status']) => plan.ready.filter((r) => r.outcome.status === status).length
   const approved = by('approved')
   const asked = by('awaiting_approval')
   const parked = by('held')
-  const counted = `${countedLabel('Send', ready)} for approval`
+  const counted = `${countedLabel('Send', ready)}${shown ? ' shown' : ''} for approval`
   const ways = [
     approved > 0 ? count(approved, '1 is approved at once by its GC’s standing rule and moves to Ready to file.', '# are approved at once by a GC’s standing rule and move to Ready to file.') : '',
     asked > 0 ? count(asked, '1 goes to the leader for approval.', '# go to the leader for approval.') : '',
@@ -84,6 +102,7 @@ export function lienAffidavitSendWords(plan: Pick<LienAffidavitSendPlan, 'ready'
     confirmLabel: counted,
     foot: held > 0 ? count(held, '1 in To draft has no draft yet. Draft it from its own paper.', '# in To draft have no draft yet. Draft each from its own paper.') : null,
     dead: batchWords({ verb: 'Send', ready, held }).dead,
+    hidden: shown ? lienAffidavitHiddenWords('send', shown.hiddenReady, 'drafted') : null,
   }
 }
 
@@ -124,18 +143,20 @@ export function lienAffidavitPrintPlan<E extends PrintEntry>(entries: ReadonlyAr
   }
 }
 
-/** `foot` is the earlier form's line alone since v2.7209: a paper a gate holds is the bar's amber press (`lienAffidavitPrintBarStatus`). */
-export type LienAffidavitPrintWords = { lead: string; button: string; foot: string | null; dead: boolean }
+/** `foot` is the earlier form's line alone since v2.7209: a paper a gate holds is the bar's amber press (`lienAffidavitPrintBarStatus`). `hidden` (punch list #353) counts the ready papers a find hides. */
+export type LienAffidavitPrintWords = { lead: string; button: string; foot: string | null; dead: boolean; hidden: string | null }
 
-export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'> & Partial<Pick<LienAffidavitPrintPlan, 'gated'>>): LienAffidavitPrintWords {
+/** `shown` (punch list #353): the press takes the shown rows alone, says *shown* in its label, and counts the ready papers the find hides. */
+export function lienAffidavitPrintWords(plan: Pick<LienAffidavitPrintPlan, 'ready' | 'held'> & Partial<Pick<LienAffidavitPrintPlan, 'gated'>>, shown?: { hiddenReady: number } | null): LienAffidavitPrintWords {
   const ready = plan.ready.length
   const held = plan.held.length
   const gated = plan.gated?.length ?? 0
   return {
     lead: count(ready, '1 affidavit on the short form is ready to file.', '# affidavits on the short form are ready to file.'),
-    button: `${countedLabel('Print', ready)} for notarization`,
+    button: `${countedLabel('Print', ready)}${shown ? ' shown' : ''} for notarization`,
     foot: held > 0 ? count(held, '1 ready affidavit is on the earlier form and is left out. Redraw it, or print it from its own Lien window.', '# ready affidavits are on the earlier form and are left out. Redraw them, or print each from its own Lien window.') : null,
     dead: batchWords({ verb: 'Print', ready, held: held + gated }).dead,
+    hidden: shown ? lienAffidavitHiddenWords('print', shown.hiddenReady, 'ready') : null,
   }
 }
 
