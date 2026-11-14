@@ -140,6 +140,18 @@ describe('JobWindowModal · the Job tab’s sections on a phone', () => {
     expect(within(thread).getByRole('button', { name: 'Open the thread ›' })).toBeTruthy()
   })
 
+  it('on every tab but Job the band is the Street View banner alone (D, v2.7281): the photo strip and Paint a map hide', async () => {
+    renderWindow(job())
+    await settle()
+    await screen.findByTestId('job-window-who')
+    expect(screen.getByRole('button', { name: /Paint a map/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Edit' }))
+    expect(screen.queryByRole('button', { name: /Paint a map/ })).toBeNull()
+    expect(document.querySelector('[data-job-photos]')?.closest('div[style*="display: none"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Job' }))
+    expect(screen.getByRole('button', { name: /Paint a map/ })).toBeTruthy()
+  })
+
   it('More on this job: six folds, closed, and an opened one is remembered on this phone', async () => {
     renderWindow(job())
     await settle()
