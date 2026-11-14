@@ -110,6 +110,20 @@ second line." So the row is three lines, never one that wraps where it likes: th
 November 14*), then the hours on a line of their own (*8:00 AM – 12:00 PM*), then who is on it. The
 kernel hands the three lines apart; the screen never joins them with a dot.
 
+Also on pass 2: "Now I need your help to look at the thread section. I don't totally love how it
+looks." Three things were off in the drawing: two titles in a row (*The thread*, then a card called
+*Where it stands*); a feed that mixed the customer's text with a helper's Arrived stamp and an office
+note, three shapes in three rows; and a summary that said the last word was Robert's while the feed
+showed the customer's text from yesterday. So the section takes the shape of What's happening: three
+labelled rows that are the live summary's own lines (`threadSummary.ts`: **Last word** *Theirs, by
+text, yesterday · Nobody has answered yet*, **Their word**, **Our word**), then the newest two
+messages with the customer as bubbles, theirs at the left on amber and ours at the right, each with
+who, the channel and when, then *Open the thread · 56 ›*. Crew stamps and office notes are not
+messages; they stay under Work and time and the Activity door. The presses are **Reply by text**
+(the last word's channel, blue because it is the one act the row asks for) and **Note**. Text and
+Email as bare presses are gone from here; Who already carries them beside the number and the
+address.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -190,8 +204,8 @@ moves; the bar is as today.
 address with a Directions press, the painted map, the street view folded), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside them), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
-plain label and its answer), then the thread (Where it stands, the customer's newest word, the newest three events
-with *All 56 ›*, Note, Text, Email). Each is a section with a title of its own, with a band between
+plain label and its answer), then the thread (Last word, Their word and Our word as labelled rows, the newest two
+messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
 and papers, Work and time, Their journey. With every fold closed the scroll ends near
