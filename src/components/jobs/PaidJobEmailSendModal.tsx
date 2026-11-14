@@ -173,7 +173,7 @@ export default function PaidJobEmailSendModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Paid-in-full email"
+      aria-label="Email the paid-in-full report"
       onClick={() => (busy ? null : onClose())}
       style={{
         position: 'fixed',
@@ -212,7 +212,7 @@ export default function PaidJobEmailSendModal({
             marginBottom: '0.25rem',
           }}
         >
-          <span style={{ fontWeight: 700 }}>Paid-in-full email</span>
+          <span style={{ fontWeight: 700 }}>Email the paid-in-full report</span>
           <span
             style={{
               fontSize: '0.8125rem',
@@ -517,7 +517,7 @@ export default function PaidJobEmailSendModal({
             </p>
           ) : html ? (
             <iframe
-              title="Paid-in-full email preview"
+              title="Paid-in-full report preview"
               sandbox=""
               srcDoc={html}
               style={{

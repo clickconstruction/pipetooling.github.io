@@ -997,10 +997,10 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-account-email',
           label: 'Job account email',
-          sublabel: 'Jobs → Share with supply house',
+          sublabel: 'Jobs → Add job account',
           when: 'When a job opens an account',
           customerCan: 'Read which job is opening an account, who to bill, and the company particulars.',
-          guide: 'share-job-with-supply-house',
+          guide: 'add-a-job-account-at-a-supply-house',
           reflects: ['Job account email wording', 'Company particulars'],
           render: { kind: 'email', email: 'job-account' },
         },

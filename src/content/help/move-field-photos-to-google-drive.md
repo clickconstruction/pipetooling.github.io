@@ -6,7 +6,7 @@ keywords: field photos, google drive, quick estimate, handover, quickfill, photo
 ---
 A leader who writes up a change in the field snaps photos into app storage. You move those photos to the customer's Google Drive from Quickfill.
 
-A leader writes up a change order from the field with **Write up a change**. Any photos they snap land in app storage. They cannot reach Google Drive from a job site. All customer photos belong in Google Drive long-term. So the photos wait for you on Quickfill until you move them over.
+A leader writes up a change order from the field with **Make change order**. Any photos they snap land in app storage. They cannot reach Google Drive from a job site. All customer photos belong in Google Drive long-term. So the photos wait for you on Quickfill until you move them over.
 
 ## Work the section
 

@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Job Window on a Phone</title>
+<style>
+  /* Layout: one row of phone frames, each a scrolling 375 px screen; the frames stack at phone width. */
+  :root {
+    --ground: #F1F3F6; --surface: #FFFFFF; --subtle: #F6F8FA; --ink: #111827; --muted: #6B7280; --soft: #9CA3AF;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB; --blue: #2563EB; --blue-bg: #DBEAFE; --blue-ink: #1D4ED8;
+    --green: #16A34A; --green-bg: #DCFCE7; --green-ink: #15803D; --amber-bg: #FEF3C7; --amber-ink: #B45309;
+    --red: #DC2626; --red-bg: #FEE2E2; --brown: #92400E; --purple: #7C3AED;
+    --font: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1680px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  .lede { margin: 14px 0 0; color: var(--muted); max-width: 78ch; }
+  .lede b { color: var(--ink); }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; margin-top: 14px; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 9px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; }
+  .tag.before { background: var(--red-bg); color: var(--red); }
+  .tag.a { background: var(--green-bg); color: var(--green-ink); }
+  .tag.b { background: var(--blue-bg); color: var(--blue-ink); }
+  .tag.c { background: var(--amber-bg); color: var(--amber-ink); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 18px; }
+
+  /* The phone */
+  .phone { margin: 12px auto 0; width: 100%; max-width: 375px; height: 740px; border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; font-size: 14px; position: relative; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .status { height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 6px; } .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+  .mark { position: absolute; right: 8px; font-size: 10px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 6px; pointer-events: none; z-index: 1; }
+  .mark.ok { color: var(--green-ink); background: var(--green-bg); }
+
+  /* Tabs */
+  .tabs { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0; position: relative; }
+  .tabs.wrap { flex-wrap: wrap; }
+  .tab { padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .tab.on { background: var(--blue); color: #fff; }
+  .tabs .help { margin-left: auto; width: 26px; height: 26px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .tabs .x { font-size: 20px; padding: 2px 8px; color: var(--muted); }
+  .tabs.strip { padding: 0; gap: 0; }
+  .tabs.strip .rail { display: flex; gap: 2px; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; flex: 1; min-width: 0; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .tabs.strip .rail::-webkit-scrollbar { display: none; }
+  .tabs.strip .rail .tab { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; }
+  .tabs.four .rail { mask-image: none; -webkit-mask-image: none; }
+  .tabs.four .rail .tab.more { border: 1px solid var(--line-strong); color: var(--ink); }
+
+  /* The title row that comes first in A, B and C */
+  .head { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 6px 14px; flex-shrink: 0; }
+  .head .names { flex: 1; min-width: 0; }
+  .head .names b { font-size: 18px; line-height: 1.2; display: block; }
+  .head .names .quiet { margin: 2px 0 0; }
+  .head .pin { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; color: var(--muted); flex-shrink: 0; border-radius: 10px; }
+  .head .pins { display: flex; flex-direction: column; flex-shrink: 0; }
+  .head .pin.dots { font-size: 20px; letter-spacing: 1px; }
+
+  /* The header scrolls away (the owner's word, pass 2e): only a small ✕ floats at the corner. */
+  .floatx { position: absolute; top: 84px; right: 10px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.88); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 18px; color: var(--muted); z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .scroll > .head, .scroll > .tabs { flex-shrink: 0; }
+  .scroll > .head .pin.x { visibility: hidden; }
+
+  /* Body */
+  .body { padding: 8px 14px 16px; }
+  .title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 4px 0 6px; }
+  .title b { font-size: 18px; line-height: 1.2; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .chip.kind { background: var(--amber-bg); color: var(--amber-ink); }
+  .chip.status { background: var(--blue-bg); color: var(--blue-ink); }
+  .chip.num { background: var(--brown); color: #fff; border-radius: 6px; font-size: 12px; padding: 2px 8px; }
+  .quiet { color: var(--muted); font-size: 12.5px; margin: -2px 0 6px; }
+  .iconrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 8px; }
+  .iconrow .link { color: var(--link); font-size: 13px; white-space: nowrap; margin: 0 4px; }
+  .iconrow .spacer { flex: 1; }
+  .ic { width: 29px; height: 29px; display: grid; place-items: center; font-size: 17px; }
+  .ic.blue { color: var(--blue); } .ic.purple { color: var(--purple); } .ic.green { color: var(--green); }
+  .pressrow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; margin: 6px 0 10px; }
+  .press { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; background: var(--surface); padding: 0 10px; white-space: nowrap; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .press.amber { background: var(--amber-bg); border-color: #F59E0B; color: var(--amber-ink); }
+  .who { display: grid; gap: 6px; margin-top: 6px; }
+  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+  .who .press { justify-content: flex-start; min-width: 0; }
+  .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
+  .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
+  .who .press.sq { width: 56px; justify-content: center; }
+  .sv { position: relative; height: 104px; border-radius: 10px; overflow: hidden; margin: 2px 0 8px; background: linear-gradient(180deg, #bcd3ea 0%, #d9e4ee 48%, #8e9aa6 50%, #6b7480 100%); }
+  .sv::before { content: ''; position: absolute; left: 12%; right: 30%; top: 22%; height: 30%; background: #c9b79c; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .sv .pin { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; background: rgba(17,24,39,.6); color: #f9fafb; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .sv .pin .tag { margin-left: auto; font-size: 11px; font-weight: 700; opacity: .85; }
+  .addr { color: var(--link); text-decoration: underline; font-size: 13px; display: block; margin: 2px 0 6px; }
+  .maprow { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .maprow .dot { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: #F97316; margin-right: 8px; vertical-align: middle; }
+  .maprow .dist { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .paint { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; color: var(--link); font-weight: 600; margin-bottom: 8px; }
+  .label { font-size: 13px; color: var(--muted); margin: 10px 0 2px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+  .grid4 .ph, .photos .ph { height: 72px; border-radius: 8px; position: relative; overflow: hidden; background: linear-gradient(135deg, #cbd5e1, #64748b); }
+  .photos .ph { flex: 0 0 72px; border-radius: 10px; }
+  .ph .d { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 600; text-align: center; background: rgba(17,24,39,.55); color: #f9fafb; padding: 1px 0; }
+  .grid4 .more { height: 72px; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; color: var(--muted); font-size: 13px; }
+  .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 6px -14px 0; padding: 0 14px 4px; -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); }
+  .photos::-webkit-scrollbar { display: none; }
+  .photos .add { flex: 0 0 72px; height: 72px; border-radius: 10px; border: 1.5px dashed var(--blue); display: grid; place-items: center; color: var(--link); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.2; }
+  .empty { color: var(--muted); font-size: 13px; }
+  .cust { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .cust b { font-size: 17px; }
+  .cust .icons { display: flex; gap: 10px; color: var(--blue); font-size: 17px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 12px; color: var(--link); font-size: 14px; margin: 4px 4px 0 0; }
+  .pill.copy { padding: 4px 8px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 10px 0 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .tile .k { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-weight: 800; font-size: 15px; }
+  .accounts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .04em; color: var(--muted); margin-bottom: 8px; }
+  .accounts .lab { text-transform: uppercase; font-weight: 700; }
+  .accounts .acc { border: 1px dashed var(--line-strong); border-radius: 999px; padding: 3px 10px; letter-spacing: 0; font-size: 13px; color: var(--muted); }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }
+  .card.subtle { background: var(--subtle); }
+  .card b.h { display: block; font-size: 15px; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .kv:last-of-type { border-bottom: 0; }
+  .kv .k { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+  .kv .v { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .kv .v .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .kv .v .press { display: inline-block; margin-top: 6px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; color: var(--link); }
+  .card .right { float: right; border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 13px; }
+  .fold { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; min-height: 44px; font-weight: 700; }
+  .fold .n { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .fold .n.live { color: var(--blue-ink); }
+  .fold .chev { color: var(--soft); }
+  .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
+  /* Section titles (the owner's word, pass 2f): Where, Who, What's happening and the thread stand out as sections, not labels. */
+  .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 18px -14px 8px; padding: 10px 14px 6px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect .right { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--link); }
+  .sect .right .n { color: var(--muted); margin-right: 6px; }
+  .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
+  .sect:first-child, .body > .sect:first-of-type { border-top: none; margin-top: 2px; }
+  .line { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .line .m { color: var(--muted); }
+  .feed { font-size: 13px; }
+  .msgs { display: grid; gap: 8px; margin: 10px 0 4px; }
+  .msg { max-width: 86%; border-radius: 14px; padding: 8px 12px; font-size: 14px; line-height: 1.35; color: var(--ink); }
+  .msg.them { background: var(--amber-bg); border-bottom-left-radius: 4px; justify-self: start; }
+  .msg.us { background: var(--subtle); border: 1px solid var(--line); border-bottom-right-radius: 4px; justify-self: end; }
+  .msg .meta { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .msgs .open { justify-self: center; color: var(--link); font-weight: 700; font-size: 13px; padding: 6px 0 0; }
+  .feed .ev { padding: 6px 0; border-top: 1px solid var(--line); }
+  .feed .ev .who { color: var(--muted); font-size: 12px; }
+  .feed .ev.them { background: var(--amber-bg); border-radius: 8px; padding: 8px 10px; border: none; margin: 4px 0; }
+  .feed .all { color: var(--link); font-weight: 600; padding: 6px 0 0; }
+  .pct { height: 6px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .pct i { display: block; height: 100%; width: 17%; background: var(--green); }
+
+  /* The bar at the foot */
+  .bar { display: grid; gap: 6px; padding: 8px 10px 12px; border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+  .bar .press { min-height: 48px; }
+  .bar.three { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .bar.crew { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+  /* The sheet */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 8px 12px 14px; z-index: 2; }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 8px; }
+  .sheet .row { display: flex; align-items: center; gap: 12px; min-height: 48px; border-top: 1px solid var(--line); font-weight: 600; }
+  .sheet .row:first-of-type { border-top: none; }
+  .sheet .row .ic { width: 28px; }
+  .sheet .row .sub { color: var(--muted); font-weight: 400; font-size: 12.5px; margin-left: auto; text-align: right; }
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 1; }
+
+  /* Tables and the questions */
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--subtle); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+  .q ol { margin: 8px 0 0; padding-left: 22px; }
+  .q li { margin: 8px 0; }
+  .q li b { color: var(--ink); }
+  .q li .pick { color: var(--green-ink); font-weight: 600; }
+  .measure { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+  .measure p { margin: 0 0 8px; max-width: 80ch; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #355 · the job window at 375 px · pass 2</p>
+    <h1>The job window on a phone: today, and three ways forward</h1>
+  </div>
+  <div class="stamp">drawn 2026-11-14 · pass 2 the same day · the owner's words on the number and the email, the thread's name, the header that scrolls away, the section titles, the hours target and the job-account press named<br>measured on the dev server, iPhone preset<br>presses read from prod, 2026-10-26 to 11-14<br>every name and number here is made up</div>
+</header>
+<p class="lede">The owner opened a job on his iPhone and said: <b>the top line wraps into two, throughout it is not easy to follow, and the buttons are not easy to press.</b> The measured window bears him out: the tab row takes two lines, the title block has eight presses between 20 and 31 px tall, the Job tab runs <b>4,350 px</b> (six and a half screens) before the bar, and the only presses a thumb can land on without care are the bar's three and <b>Paint a map</b>. Pass 2 adds what prod says people press on this window, and redraws the top from it. Each phone below scrolls. The first screen is what matters.</p>
+
+<h2>What people press on this window, read from prod</h2>
+<div class="measure">
+  <p>Every press on the window's icon row and its bar has been counted since 2026-10-26 (<code>ui_nav_clicks</code>, v2.5904). Nineteen days, every screen size, every role. The tabs are not counted yet.</p>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Press</th><th>Who</th><th class="n">Presses</th><th>What it says</th></tr>
+    <tr><td><b>Arrived</b> and <b>Leaving</b></td><td>One superintendent, on his phone, from the Dashboard</td><td class="n">28</td><td>The bar is the part of the window that gets used. He stamps most working days.</td></tr>
+    <tr><td><b>Close job detail</b></td><td>Helpers, the superintendent, a sub</td><td class="n">25</td><td>Fourteen of them by one helper on one morning: the window opened, held nothing for him, and closed.</td></tr>
+    <tr><td><b>Leave report</b></td><td>The superintendent</td><td class="n">3</td><td>The crew's third press.</td></tr>
+    <tr><td><b>Note</b></td><td>A sub, the dev account</td><td class="n">3</td><td></td></tr>
+    <tr><td><b>Share job</b></td><td>The dev account</td><td class="n">3</td><td>The only icon anyone pressed, three times, by one account.</td></tr>
+    <tr><td><b>Calendar</b></td><td>The dev account</td><td class="n">2</td><td></td></tr>
+    <tr><td><b>Status ▾</b></td><td>The dev account</td><td class="n">1</td><td></td></tr>
+    <tr><td>Money story · Add job account (today *Share with supply house*) · Email the paid-in-full report (today *Send paid-in-full email*) · Send as task · Make change order (today *Write up a change*) · the trade pill</td><td>Nobody</td><td class="n">0</td><td>Six of the eight presses on the title block were not pressed once in nineteen days, on any screen, by any role.</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:10px"><b>So:</b> the crew's bar is the live part of the window, the icons are dead weight on a phone, and no office role has pressed the window's chrome at all in nineteen days (the office works it at a desk, through the tabs and the body, which the count does not see). The first PR adds the tabs to the count, so the second PR's tab question is answered by a month of data instead of a guess.</p>
+</div>
+
+<div class="grid">
+
+  <!-- ============ BEFORE ============ -->
+  <div class="panel">
+    <div class="cap"><span>Before · as it draws today</span><span class="tag before">measured</span></div>
+    <div class="phone">
+      <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <div class="tabs wrap">
+        <span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span>
+        <span class="tab">Materials</span><span class="help">?</span><span class="x">✕</span>
+        <span class="mark" style="top:4px">two lines · 78 px</span>
+      </div>
+      <div class="scroll">
+        <div class="body">
+          <div class="title"><b>Ridgeway Walk</b> <span class="chip kind">Kind not set</span> <span class="chip status">Working</span></div>
+          <div class="iconrow">
+            <span class="chip num">1042 PLUM</span><span class="link">money story →</span><span class="spacer"></span>
+            <span class="ic">🏪</span><span class="ic green">✉</span><span class="ic blue">📅</span><span class="ic purple">➤</span><span class="ic blue">📄</span><span class="ic">⇧</span>
+          </div>
+          <span class="mark" style="top:108px">8 presses · 20–31 px · 6 never pressed</span>
+          <a class="addr">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
+          <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
+          <div class="paint">＋ Paint a map</div>
+          <div class="label">Photos · 5</div>
+          <div class="grid4"><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="more">+ 2</span></div>
+          <div class="cust"><span><b>Ridgeway Builders</b> <span style="color:var(--blue)">🌐 💬</span></span><span class="icons">▲ 🖼</span></div>
+          <div><span class="pill">📞 (512) 555-0142</span></div>
+          <div><span class="pill">✉ office@ridgewaybuilders.example</span><span class="pill copy">⧉</span></div>
+          <div class="tiles"><div class="tile"><div class="k">Job total</div><div class="v">—</div></div><div class="tile"><div class="k">Billed</div><div class="v">—</div></div><div class="tile"><div class="k">Paid</div><div class="v">—</div></div></div>
+          <div class="accounts"><span class="lab">Job accounts</span><span class="acc">Ferguson · none yet</span><span class="acc">Moore Supply · none yet</span><span class="acc">Reece · none yet</span></div>
+          <div class="card subtle"><b class="h">Scheduled block - Saturday</b><span class="sub">November 14, 2026 · 8:00 AM–12:00 PM</span></div>
+          <div class="card"><span class="right">Set a target</span><b class="h">🎯 No target yet</b><span class="sub">The crew's hours against the target are counted once this is set.</span></div>
+          <div class="card"><b class="h">▶ Their journey</b><span class="sub">what Ridgeway Builders was sent, opened, signed and paid on this job · Every job →</span></div>
+          <div class="card"><b class="h">▼ Where it stands with Ridgeway Builders</b><span class="sub">The last word was Robert's, an email last week. The job is Working, nothing billed yet. Nobody has answered.</span><div style="margin-top:8px;display:flex;gap:6px"><span class="press" style="min-height:36px;font-size:13px">Read again</span><span class="press" style="min-height:36px;font-size:13px">Keep as a note</span></div></div>
+          <div class="card"><b class="h">Questions on this job</b><span class="sub">nothing waiting · 6 answered</span>
+            <div class="feed"><div class="ev"><span class="who">Nov 5 · asked · Robert → Dispatch</span><br>Stage check · Trim Set · "are the trim caps on site?"</div><div class="ev"><span class="who">Nov 4 · asked · Robert → Dispatch</span><br>Stage check · Trim Set · "is the water heater pad poured?"</div><div class="ev"><span class="who">Nov 3 · asked</span><br>…four more rows like these…</div></div></div>
+          <div class="card"><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="pill" style="font-size:12px;color:var(--ink)">All</span><span class="pill" style="font-size:12px;color:var(--ink)">Notes 6</span><span class="pill" style="font-size:12px;color:var(--ink)">Reports 2</span><span class="pill" style="font-size:12px;color:var(--ink)">＋ Report</span><span class="pill" style="font-size:12px;color:var(--ink)">Status 5</span><span class="pill" style="font-size:12px;color:var(--ink)">Billing 4</span><span class="pill" style="font-size:12px;color:var(--ink)">Crew 7</span></div>
+            <div class="feed"><div class="ev"><span class="who">Opened · Sample leader · 20 days ago</span><br>Job opened</div><div class="ev"><span class="who">Work · 20 days ago</span><br>Specific work added: Rough In</div><div class="ev"><span class="who">Crew · 20 days ago</span><br>Sample leader added to crew</div><div class="ev"><span class="who">…52 more in a box that scrolls on its own…</span></div></div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span class="pill" style="color:var(--ink)">Note</span><span class="pill" style="color:var(--ink)">Text</span><span class="pill" style="color:var(--ink)">Email</span></div></div>
+          <div class="line"><span>Last work date</span><span class="m">—</span></div><div class="line"><span>Last bill date</span><span class="m">—</span></div>
+          <div class="card subtle"><b class="h">Status</b><span class="sub">Waiting → <b>Working</b> → Ready to bill → Billed → Paid</span></div>
+          <div class="card"><b class="h">Plans</b><span class="sub">Building from: Issued set · the GC · came Nov 7 · Papers with the plans · 0</span></div>
+          <div class="line"><span>Assigned Team</span><span class="m">Sample leader</span></div>
+          <div class="line"><span>Job Start</span><span class="m">—</span></div><div class="line"><span>Last Work</span><span class="m">—</span></div>
+          <div class="line"><span>Reports</span><span class="m">2 reports · 19d ago</span></div>
+          <div class="line"><span>▶ Schedule and recorded time</span><span class="m"></span></div>
+          <div class="card"><b class="h">Costs <span style="float:right;font-size:13px;color:var(--link)">Open Costs →</span></b><div class="line"><span>Team labor</span><span class="m">$0.00</span></div><div class="line"><span>Sub labor</span><span class="m">$0.00</span></div><div class="line"><span>Parts</span><span class="m">$6,200.00</span></div><div class="line"><span>Margin before team labor</span><span class="m">$49,800.00</span></div></div>
+          <div class="card"><b class="h">Specific Work</b><span class="sub">[1] Rough In × 1 @ $24,000.00 · [2] Top Out · [3] Trim Set · [4] Water heater</span></div>
+          <div class="line"><span>Job Total</span><span class="m">$56,000.00</span></div><div class="line"><span>Payments</span><span class="m">None</span></div><div class="line"><span>Invoices</span><span class="m">None</span></div>
+        </div>
+      </div>
+      <div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What the measure says</b>
+      <ul>
+        <li>Tab row: 7 pills, the <b>?</b> and the <b>✕</b> on two lines, 78 px, the pills 26 px tall. The name of the job comes after the tabs.</li>
+        <li>Title block: 100 px with eight presses from 20 to 31 px; six of them never pressed in nineteen days.</li>
+        <li>Job tab: 4,350 px to the end, 6.5 screens; the activity feed scrolls inside the scroll.</li>
+        <li>Thumb-sized presses: the bar (48 px), Paint a map (40), the photo tile. Everything else is under 32 px.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ A ============ -->
+  <div class="panel">
+    <div class="cap"><span>A · The top in the right order</span><span class="tag a">one PR · the first step</span></div>
+    <div class="phone">
+      <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
+      <div class="head">
+        <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Kind not set</div></div>
+        <span class="pins"><span class="pin dots">⋯</span><span class="pin x">✕</span></span>
+        <span class="mark ok" style="top:4px;right:100px">the name first · scrolls away</span>
+      </div>
+      <div class="tabs strip">
+        <div class="rail"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span><span class="tab">Materials</span></div>
+        <span class="mark ok" style="top:16px">one line · scrolls · 40 px</span>
+      </div>
+
+        <div class="body">
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
+          <a class="addr" style="margin-top:4px">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
+          <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
+          <div style="text-align:center;color:var(--link);font-weight:700;font-size:14px;padding:4px 0 2px;margin-top:-2px">＋ Paint a map</div>
+          <div class="label" style="display:flex;align-items:center">Photos · 5<span style="margin-left:auto;color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
+          <div class="cust"><span><b>Ridgeway Builders</b> <span style="color:var(--blue)">🌐 💬</span></span><span class="icons">▲ 🖼</span></div>
+          <div><span class="pill">📞 (512) 555-0142</span></div>
+          <div><span class="pill">✉ office@ridgewaybuilders.example</span><span class="pill copy">⧉</span></div>
+          <div class="fold" style="margin-top:10px"><span>Money</span><span class="sub" style="margin-left:6px">Job total — · nothing billed yet. <span style="color:var(--link);font-weight:700">Bill it</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Job accounts</span><span class="sub" style="margin-left:6px">None yet. <span style="color:var(--link);font-weight:700">Add job account</span></span><span class="chev">›</span></div>
+          <span class="mark ok" style="top:355px">two lines, not two blocks</span>
+          <div class="card subtle"><b class="h">Scheduled block - Saturday</b><span class="sub">November 14, 2026 · 8:00 AM–12:00 PM</span></div>
+          <div class="card"><span class="right">Set the hours</span><b class="h">⏱ Hours target · none yet</b><span class="sub">How many hours the job should take. The crew's hours are counted against it once it is set.</span></div>
+          <div class="card"><b class="h">▶ Their journey</b><span class="sub">what Ridgeway Builders was sent, opened, signed and paid on this job</span></div>
+          <div class="card"><b class="h">▼ Where it stands with Ridgeway Builders</b><span class="sub">The last word was Robert's, an email last week. Nobody has answered.</span></div>
+          <div class="card"><b class="h">Questions on this job</b><span class="sub">nothing waiting · 6 answered</span></div>
+          <div class="card"><b class="h">Activity</b><span class="sub">…the same feed as today, unchanged…</span></div>
+          <div class="card subtle"><b class="h">Status</b><span class="sub">Waiting → <b>Working</b> → Ready to bill → Billed → Paid</span></div>
+          <div class="line"><span>…the rest of the Job tab as today…</span><span class="m"></span></div>
+        </div>
+      </div>
+      <div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div style="font-weight:700;margin-bottom:4px">Ridgeway Walk</div>
+        <div class="row"><span class="ic">⇧</span>Share the job</div>
+        <div class="row"><span class="ic blue">📅</span>Open the calendar<span class="sub">next: Sat 8:00</span></div>
+        <div class="row"><span class="ic">🏪</span>Add job account<span class="sub">none yet</span></div>
+        <div class="row"><span class="ic">📈</span>Money story<span class="sub">Job Summary</span></div>
+        <div class="row"><span class="ic green">✉</span>Email the paid-in-full report</div>
+        <div class="row"><span class="ic purple">➤</span>Send as a task</div>
+        <div class="row"><span class="ic blue">📄</span>Make change order</div>
+        <div class="row"><span class="ic">?</span>What this window holds</div>
+      </div>
+    </div>
+    <div class="verdict"><b>What changes</b>
+      <ul>
+        <li><b>The name comes first.</b> A title row like the desk's since v2.6539: the name and the status, a quiet line with the number, the customer and the kind, and at the right <b>⋯</b> on the name's line with <b>✕</b> under it on the quiet line, so the name and the status have the whole first line.</li>
+        <li>The seven tabs run on <b>one line that scrolls sideways</b> under it, 40 px tall, the active one kept in view, a fade at the edge saying there is more.</li>
+        <li><b>The header scrolls away.</b> The title row and the tab strip go up with the page, so a thumb's first flick gives the whole screen to the job. A small <b>✕</b> floats where the ✕ sat, under the ⋯'s place, the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays put.</li>
+        <li>The icon row is gone. Every door is a named 48 px row in the <b>⋯</b> sheet, Share and Calendar first since they are the two anyone pressed, with the <b>?</b> card as its last row.</li>
+        <li>The three money tiles and the job accounts fold to <b>one line each</b>, and each line ends in its act as blue words: <b>Bill it</b> (the job's next money move, the bar's verb) and <b>Add job account</b>. The row itself opens the Bill tab or the accounts sheet.</li>
+        <li>The <b>Street View banner</b> draws on a phone as it does on a desk, under the tabs on <b>every tab, Edit included</b>, the address pinned on it, and scrolls away with the header. The <i>street view ▸</i> fold is gone.</li>
+        <li>The photos are a <b>banner</b>: a row of 72 px tiles that flicks sideways, <b>Add a photo</b> the first tile, then every photo newest first with its day. A tap on a photo opens the viewer there; a tap on the first tile opens the camera on a phone, the picker on a desk. Today's three thumbnails and a <b>+ N</b> tile go.</li>
+        <li>The tabs join the press count, so the second PR's tab question is answered by data.</li>
+        <li>Nothing below moves. The bar is as today.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ B ============ -->
+  <div class="panel">
+    <div class="cap"><span>B · The job on one screen</span><span class="tag b">A, then a second PR</span></div>
+    <div class="phone">
+      <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
+      <div class="head">
+        <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Kind not set</div></div>
+        <span class="pins"><span class="pin dots">⋯</span><span class="pin x">✕</span></span>
+      </div>
+      <div class="tabs strip">
+        <div class="rail"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span><span class="tab">Materials</span></div>
+      </div>
+
+        <div class="body">
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
+          <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
+          <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
+          <div style="text-align:center;color:var(--link);font-weight:700;font-size:14px;padding:4px 0 2px;margin-top:-2px">＋ Paint a map</div>
+
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span></div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+            <div class="row"><span class="press">✉ <span class="v">office@ridgewaybuilders.example</span><span class="verb">EMAIL</span></span><span class="press sq">⧉</span></div>
+          </div>
+          <div class="pressrow" style="margin:6px 0 0"><span class="press" style="color:var(--link)">🌐 Portal</span><span class="press" style="color:var(--link)">▲ Files</span><span class="press" style="color:var(--muted)">🖼 Photos<span style="font-size:11px;font-weight:600">· set</span></span></div>
+          <span class="mark ok" style="top:300px">the number, the address and the three links, each a 44 px press with its word</span>
+
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday, November 14<span class="sub" style="color:var(--ink);font-weight:600;font-size:15px">8:00 AM – 12:00 PM</span><span class="sub">Sample leader and one helper. <span style="color:var(--link);font-weight:700">Open the calendar</span></span></span></div>
+          <div class="kv"><span class="k">Waiting on</span><span class="v">The office, to <span style="color:var(--link)">bill it</span><span class="sub">Nothing has happened for 6 days.</span></span></div>
+          <div class="kv"><span class="k">Hours</span><span class="v">No target set<span class="sub">How many hours the job should take. The crew's hours count against it. <span style="color:var(--link);font-weight:700">Set the hours</span></span></span></div>
+
+          <div class="sect">The thread</div>
+          <div class="kv"><span class="k">Last word</span><span class="v">Theirs, by text, yesterday<span class="sub">Nobody has answered yet. <span style="color:var(--link);font-weight:700">Reply</span></span></span></div>
+          <div class="kv"><span class="k">They promised</span><span class="v">Nothing yet<span class="sub">A day they gave for a payment or an answer. <span style="color:var(--link);font-weight:700">Write it down</span></span></span></div>
+          <div class="kv"><span class="k">We owe them</span><span class="v">Nothing open<span class="sub">A call, a price or a date we said we would give. <span style="color:var(--link);font-weight:700">Mark it</span></span></span></div>
+          <div class="msgs">
+            <div class="msg us"><span class="meta">Robert · email · Nov 7</span>Trim set is on for the 14th. Taunya will send the draw once it is in.</div>
+            <div class="msg them"><span class="meta">Ridgeway Builders · text · yesterday</span>Can the crew come Thursday instead?</div>
+            <div class="open">Open the thread · 56 ›</div>
+          </div>
+          <span class="mark ok" style="top:620px">the customer's messages only; the crew's stamps live under Work and time</span>
+
+          <div class="sect">More on this job</div>
+          <div class="fold"><span>Questions on this job</span><span class="n live">6 answered</span><span class="chev">›</span></div>
+          <div class="fold"><span>Money<span class="sub">Job total $56,000 · nothing billed yet. <span style="color:var(--link);font-weight:700">Bill it</span></span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Job accounts<span class="sub">None yet. <span style="color:var(--link);font-weight:700">Add job account</span></span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans and papers<span class="sub">Issued set · came Nov 7 · 0 papers</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Work and time<span class="sub">team, start and last work, reports, costs, specific work</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Their journey</span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What changes, on top of A</b>
+      <ul>
+        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the Street View banner, the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside the number and Copy beside the address, so a glance says whether it is the right person, then the customer's three links as presses with their words: Portal, Files, Photos), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours, each ending in its act as blue words), then <b>the thread</b>: three labelled rows (Last word, They promised, We owe them: the live summary's three lines with plainer labels, the two promise rows each ending in the blue words that open its writer), the newest two messages with the customer as bubbles, theirs left and ours right, and the door to the whole thread. Reply is the blue words at the end of the Last word row, and Note is on the bar already.</li>
+        <li>Each part is a <b>section with a title of its own</b>: Where, Photos, Who, What's happening, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
+        <li><b>Photos</b> is a section of its own right after Where, the banner from A under its title, so the pictures are the second thing a thumb meets. Everything else folds under More on this job, each with its count: Questions, Money and Job accounts (each ending in its act, Bill it or Add job account), Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
+        <li>The first screen is one screen. The scroll ends near 1,300 px with every fold closed.</li>
+        <li>The desk is untouched: the order and the folds exist only under 640 px.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ C ============ -->
+  <div class="panel">
+    <div class="cap"><span>C · The crew lead's window</span><span class="tag c">not recommended now</span></div>
+    <div class="phone">
+      <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
+      <div class="head">
+        <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Saturday 8:00–12:00</div></div>
+        <span class="pins"><span class="pin dots">⋯</span><span class="pin x">✕</span></span>
+      </div>
+      <div class="tabs strip four">
+        <div class="rail"><span class="tab on">Job</span><span class="tab">Materials</span><span class="tab">Documents</span><span class="tab more">More ▾</span></div>
+        <span class="mark ok" style="top:16px">the crew lead's three</span>
+      </div>
+
+        <div class="body">
+          <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
+          <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
+          <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
+
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
+          <div class="sect">Who</div>
+          <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">📸</span></div>
+          <div class="who">
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
+            <div class="row"><span class="press">✉ <span class="v">office@ridgewaybuilders.example</span><span class="verb">EMAIL</span></span><span class="press sq">⧉</span></div>
+          </div>
+
+          <div class="sect">Today's work</div>
+          <div class="card"><b class="h">Trim Set</b><span class="sub">Rough In done · Top Out done · Trim Set open</span><div class="pct"><i style="width:66%"></i></div></div>
+          <div class="fold"><span>Trim Set checklist</span><span class="n live">2 of 9 answered</span><span class="chev">›</span></div>
+          <div class="fold"><span>Plans<span class="sub">Issued set · came Nov 7</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Materials on site<span class="sub">2 cages · 1 box · 3 short</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Questions<span class="sub">nothing waiting · 6 answered</span></span><span class="chev">›</span></div>
+          <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
+          <span class="mark ok" style="top:560px">no money on the crew's screen</span>
+        </div>
+      </div>
+      <div class="bar crew"><span class="press green">Arrived</span><span class="press">Report</span><span class="press">Note</span></div>
+    </div>
+    <div class="verdict"><b>What it would be, and why not now</b>
+      <ul>
+        <li>A window shaped by role: the three tabs the role uses and a More ▾, and for a master tech on the crew a Job tab that is Where, Who, <b>Today's work</b> (the open stage, its checklist, the plans, materials on site), Questions, Notes and reports, the photo banner after Where. No money.</li>
+        <li>The crew who use the window on a phone today (the superintendent, helpers, a sub) already get the plain read-only window with <b>Arrived or Leaving · Leave report · Note</b> on its bar, and the count says that bar is what they press. C would redraw the tabbed window for a master tech on site, and no master tech has pressed it on a phone in nineteen days.</li>
+        <li>So C waits for a master tech who works from a phone, or for the tab count after A to say the office's phone use is real.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>What each part of the window is for on a phone</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Part</th><th>Who reads it on a phone, and for what</th><th>Order it is read in</th><th>Press that matters</th></tr>
+  <tr><td>Name, number, status</td><td>Everyone: am I on the right job, and where does it stand.</td><td>1</td><td>The ✕ to leave; ⋯ for every other door</td></tr>
+  <tr><td>The tab strip</td><td>Everyone: which part of the job this is. The office moves between Job, Edit and Bill.</td><td>2, as a frame</td><td>The tab, 40 px tall</td></tr>
+  <tr><td>The address and the painted map</td><td>The crew lead: where to drive and park. The office: which house this is.</td><td>3 (crew), 4 (office)</td><td><b>Directions</b>, the map row</td></tr>
+  <tr><td>The customer, with the number and the email written out</td><td>The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address.</td><td>4 (crew), 3 (office)</td><td><b>The number</b> (calls) · <b>the address</b> (emails) · Text · Copy</td></tr>
+  <tr><td>The next block, the hours target, the Pipeline line</td><td>Everyone: what is happening now, how many hours the job should take, and what it is waiting on.</td><td>5</td><td>Set the hours</td></tr>
+  <tr><td>Where it stands, the thread, the newest three events</td><td>The office: has the customer answered, what went out last, what the crew wrote.</td><td>6 (office); folded for the crew</td><td>Note · Text · Email</td></tr>
+  <tr><td>Today's work: the open stage, its checklist, plans, materials on site</td><td>The crew lead: what to do and what is on site to do it with.</td><td>5 (crew); folded for the office</td><td>The checklist, Materials on site</td></tr>
+  <tr><td>Money tiles and job accounts</td><td>The office only, and rarely on a phone: the Bill tab holds the real work.</td><td>Folded</td><td>One line that opens the Bill tab</td></tr>
+  <tr><td>Photos</td><td>Everyone: what the place looks like now, and the door to add the next one</td><td>A banner after Where</td><td>Add a photo · a photo</td></tr>
+  <tr><td>Questions, Their journey</td><td>Everyone, when looking for something. Not first.</td><td>Folded with counts</td><td>The fold</td></tr>
+  <tr><td>Plans and papers, team, dates, reports, costs, specific work, payments, invoices</td><td>The desk's reads. On a phone, a reference.</td><td>Folded, last</td><td>The fold</td></tr>
+  <tr><td>The bar</td><td>The one press this person needs now. The count says it is the part of the window that gets used.</td><td>Always on screen</td><td>The office: the next verb. The crew: Arrived or Leaving.</td></tr>
+</table>
+</div>
+
+<h2>The questions for the owner</h2>
+<div class="q">
+  Pass 1 asked seven. The count answered three of them (the icons go behind ⋯, the bar stays as it is, C waits) and the desk's own title row answers one (the kind chip reads on the quiet line). Three are left. The green words are the drawing's own pick.
+  <ol>
+    <li><b>A as drawn?</b> The name first with ⋯ and ✕ fixed at the right, the seven tabs on one line that scrolls under it, every door in the ⋯ sheet, money and job accounts as one line each, nothing below moved. <span class="pick">Yes, as the first PR.</span></li>
+    <li><b>The tabs that do not fit.</b> A scrolling strip hides the last tab or two until a thumb slides it. The other way is three tabs and a More ▾, which hides them behind a press instead. <span class="pick">Scroll for now, count the tab presses for a month, then move the tabs nobody presses on a phone behind More ▾ in B.</span></li>
+    <li><b>B as the second PR?</b> Where · Who · Now · the thread first, with the newest three events shown and the rest folded under counted headings. <span class="pick">Yes, once A has been on phones for a week.</span></li>
+  </ol>
+</div>
+
+<footer>Measured on the dev server at the 375 × 812 preset on 2026-11-14 with the ZZ test job; the presses read from <code>ui_nav_clicks</code> on prod for 2026-10-26 to 2026-11-14 as the dev. The names, address, numbers and amounts on the phones are invented. The card is <code>to-dos/job-window-phone.md</code> (#355).</footer>
+</div>
+</body>
+</html>

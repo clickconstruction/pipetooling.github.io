@@ -94,7 +94,7 @@ describe('JobWindowModal', () => {
   it('Documents is the last tab: it mounts on first visit, hides the form pane and stays mounted (v2.4491)', async () => {
     await renderSettled(windowUi(vi.fn()), {
       loaded: async () => {
-        await screen.findByRole('button', { name: 'Share with supply house' })
+        await screen.findByRole('button', { name: 'Add job account' })
         await screen.findByDisplayValue('Kitchen rough-in')
       },
     })
@@ -115,7 +115,7 @@ describe('JobWindowModal', () => {
     // busy machine the 1s wait below runs out before React gets to it (v2.3771).
     await renderSettled(windowUi(vi.fn()), {
       loaded: async () => {
-        await screen.findByRole('button', { name: 'Share with supply house' })
+        await screen.findByRole('button', { name: 'Add job account' })
         await screen.findByDisplayValue('Kitchen rough-in')
       },
     })
@@ -204,14 +204,14 @@ describe('JobWindowModal', () => {
 
   it('carries no ⚙ Edit gear — the Edit tab replaced it (v2.1677)', async () => {
     renderWindow(vi.fn(), 'job')
-    await screen.findByRole('button', { name: 'Share with supply house' })
+    await screen.findByRole('button', { name: 'Add job account' })
     expect(screen.queryByLabelText('Edit job')).toBeNull()
   })
 
   it('keeps the job header — title + live action icons — on the Bill tab (v2.1676)', async () => {
     renderWindow(vi.fn(), 'bill')
     // The header's icon cluster renders even though the read-view body is hidden…
-    const share = await screen.findByRole('button', { name: 'Share with supply house' })
+    const share = await screen.findByRole('button', { name: 'Add job account' })
     expect(share.closest('div[style*="none"]')).toBeNull()
     // …the read-view body itself is display-toggled off…
     const jobPane = document.querySelector('[role="tabpanel"][aria-label="Job"]')!

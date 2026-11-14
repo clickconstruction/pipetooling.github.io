@@ -45,13 +45,13 @@ describe('parseFindOwnerPendingPayload', () => {
 describe('findOwnerRequestTitle', () => {
   it('keeps the v2.1610 title when no supply house was picked', () => {
     expect(findOwnerRequestTitle('925 · Keith', [])).toBe(
-      'Find the property owner for 925 · Keith (name/company + mailing address), then open Job Detail → Share with supply house and send the job account.'
+      'Find the property owner for 925 · Keith (name/company + mailing address), then open Job Detail → Add job account and send the job account.'
     )
   })
 
   it('names the wanted supply houses so the inbox card carries the intent', () => {
     expect(findOwnerRequestTitle('925 · Keith', [ferguson, winsupply])).toBe(
-      'Find the property owner for 925 · Keith (name/company + mailing address), then open Job Detail → Share with supply house and send the job account to Ferguson — Central desk, Winsupply.'
+      'Find the property owner for 925 · Keith (name/company + mailing address), then open Job Detail → Add job account and send the job account to Ferguson — Central desk, Winsupply.'
     )
   })
 })

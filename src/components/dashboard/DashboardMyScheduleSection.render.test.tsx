@@ -243,7 +243,7 @@ describe('DashboardMyScheduleSection Write up a change (v2.4047)', () => {
     renderSection({ role: 'master_technician', onWriteUpChange })
     await settle()
     const { fireEvent } = await import('@testing-library/react')
-    fireEvent.click(screen.getByLabelText('Write up a change'))
+    fireEvent.click(screen.getByLabelText('Make change order'))
     expect(onWriteUpChange).toHaveBeenCalledWith(JOB_ID)
   })
 
@@ -252,15 +252,15 @@ describe('DashboardMyScheduleSection Write up a change (v2.4047)', () => {
     renderSection({ role: 'master_technician', onWriteUpChange })
     await settle()
     const { fireEvent } = await import('@testing-library/react')
-    fireEvent.click(screen.getByText('Write up a change on another job, or new work'))
+    fireEvent.click(screen.getByText('Make change order on another job, or new work'))
     expect(onWriteUpChange).toHaveBeenCalledWith(null)
   })
 
   it('neither door renders without the opener (the person has not switched it on)', async () => {
     renderSection({ role: 'master_technician' })
     await settle()
-    expect(screen.queryByLabelText('Write up a change')).toBeNull()
-    expect(screen.queryByText('Write up a change on another job, or new work')).toBeNull()
+    expect(screen.queryByLabelText('Make change order')).toBeNull()
+    expect(screen.queryByText('Make change order on another job, or new work')).toBeNull()
   })
 
   it('a bid-anchored block gets the foot link but no square (no job to open on)', async () => {
@@ -276,8 +276,8 @@ describe('DashboardMyScheduleSection Write up a change (v2.4047)', () => {
       subScheduleLabels: new Map([['bid:bid-1', 'b100 · Site visit']]),
     })
     await settle()
-    expect(screen.queryByLabelText('Write up a change')).toBeNull()
-    expect(screen.getByText('Write up a change on another job, or new work')).toBeTruthy()
+    expect(screen.queryByLabelText('Make change order')).toBeNull()
+    expect(screen.getByText('Make change order on another job, or new work')).toBeTruthy()
   })
 })
 

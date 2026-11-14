@@ -46,13 +46,13 @@ import {
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
-import { ShareJobButton } from './ShareJobButton'
+import { ShareJobButton, useShareJob } from './ShareJobButton'
 import { SupplyHouseShareModal } from './SupplyHouseShareModal'
 import { useJobAccountShares } from '../../hooks/useJobAccountShares'
 import { useJobAccountStrips } from '../../hooks/useJobAccountStrips'
 import { JobAccountsStrip } from './JobAccountsStrip'
 import { stripHasOpen } from '../../lib/jobs/jobAccountStrip'
-import { jobAccountShareIconTitle } from '../../lib/supplyHouseJobAccountsLedger'
+import { jobAccountHouseShortName, jobAccountShareIconTitle } from '../../lib/supplyHouseJobAccountsLedger'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { checklistJobModalPreset } from '../../lib/checklistJobPreset'
 import { renderAccountManChip } from './jobsStagesRowShared'
@@ -87,7 +87,12 @@ import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSec
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobStatusStepper'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import { crewJobWindowBar, crewStampOffer, jobWindowTiles, viewerOnCrew, type JobWindowBarKey } from '../../lib/jobs/jobWindowBar'
+import { crewJobWindowBar, crewStampOffer, viewerOnCrew, type JobWindowBarKey, type JobWindowVerb } from '../../lib/jobs/jobWindowBar'
+import { accountQuietWords, jobAccountsLine, jobWindowMoneyLine, type JobWindowSheetDoors, type JobWindowSheetKey } from '../../lib/jobs/jobWindowPhone'
+import { stripStateWord } from '../../lib/jobs/jobAccountStrip'
+import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
+import { JobWindowThread, JobWindowWho, PhoneFold, PhoneRow, PhoneSectionTitle } from './JobWindowPhoneSections'
+import { foldCountWords, keepPhoneFolds, nextOnSite, NOTHING_SCHEDULED, OPEN_THE_CALENDAR, PHONE_FOLDS, readPhoneFolds, waitingOnWords, type PhoneFoldKey } from '../../lib/jobs/jobWindowPhoneSections'
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
 import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -189,7 +194,21 @@ type Props = {
   onJobLoaded?: ((job: JobWithDetails) => void) | null
   /** Pane mode on a phone (punch list #189, PR 4): the pane's half of the window's phone bar; null off a phone. */
   onPhoneBarChange?: ((bar: JobPanePhoneBar | null) => void) | null
+  /** Pane mode on a phone (punch list #355, v2.7271): the doors the window's ⋯ sheet draws and the press that opens one; null off a phone. */
+  onPhoneDoorsChange?: ((doors: JobPanePhoneDoors | null) => void) | null
+  /** Pane mode on a phone: the bar's verb, so the money line ends in the same act, and its press. */
+  phoneVerb?: JobWindowVerb | null
+  onPhoneVerb?: (() => void) | null
 }
+
+/** The sheet's doors the pane answers: every row but the window's own ? card. */
+export type JobPanePhoneDoorKey = Exclude<JobWindowSheetKey, 'legend'>
+
+/**
+ * What the Job pane gives the job window's ⋯ sheet on a phone (punch list #355, v2.7271): which doors are open for
+ * this viewer and job, the trade for the quiet line, and the press that opens a door with the pane's own handlers.
+ */
+export type JobPanePhoneDoors = { doors: JobWindowSheetDoors; trade: string | null; press: (key: JobPanePhoneDoorKey) => void }
 
 /** The presses on the job window's phone bar that only the Job pane can answer. */
 export type JobPanePhoneBarKey = 'arrived' | 'leaving' | 'note'
@@ -577,6 +596,13 @@ export type JobDetailAddLinkTarget = {
   label: string
 }
 
+/** The phone's one-line rows (punch list #355): a label, the words, and the act in blue words at the end. */
+const phoneLineRow: CSSProperties = { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.25rem 0.4rem', minHeight: 44, padding: '0.5rem 0', borderTop: '1px solid var(--border)', fontSize: '0.9375rem' }
+const phoneLineDoor: CSSProperties = { display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.25rem 0.4rem', minWidth: 0, padding: 0, border: 'none', background: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'inherit' }
+const phoneLineLabel: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)' }
+const phoneLineText: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.875rem', minWidth: 0 }
+const phoneLineAct: CSSProperties = { padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }
+
 /**
  * Customer Files / Customer Photos icon pair above the Address block. Blue =
  * link set (opens it); grey = missing (opens the add-link modal for roles
@@ -803,6 +829,9 @@ export default function DetailJobModal({
   onRequestTab = null,
   onJobLoaded = null,
   onPhoneBarChange = null,
+  onPhoneDoorsChange = null,
+  phoneVerb = null,
+  onPhoneVerb = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -1098,7 +1127,21 @@ export default function DetailJobModal({
     })
   }, [paneMode, showMaterialsCostSection, materialsSnapshot, materialsSnapshotLoading, fullJob?.materials, showProfitSection, teamLaborRowState, profitSummary, profitLaborLoading, profitLaborFailed])
 
-  const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && scheduleTimeSectionOpen)
+  // Punch list #355, PR B (v2.7278): on a phone the Job tab reads Where · Photos · Who · What's happening · the thread,
+  // the rest under More on this job in folds the phone remembers; Next on site reads the blocks, so the read is on.
+  const [phoneFolds, setPhoneFolds] = useState<Set<PhoneFoldKey>>(() => readPhoneFolds())
+  const togglePhoneFold = (key: PhoneFoldKey) =>
+    setPhoneFolds((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      keepPhoneFolds(next)
+      return next
+    })
+  // The width hook sits here (moved up in v2.7278) so the schedule read below can read it on a phone's pane.
+  const narrowViewport = useNarrowViewport640()
+  // `phonePane` is defined further down; the same test here, so the blocks read on a phone's pane.
+  const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && (scheduleTimeSectionOpen || (paneMode && narrowViewport)))
   const {
     loading: scheduleSessionsLoading,
     error: scheduleSessionsError,
@@ -1129,7 +1172,6 @@ export default function DetailJobModal({
     [fullJob],
   )
 
-  const narrowViewport = useNarrowViewport640()
   // Punch list #30, PR 2b: the tabbed window on a phone — status chip in the title, the three
   // tiles under the customer, the street view folded behind a link, Arrived / Leaving to the crew.
   const phonePane = paneMode && narrowViewport
@@ -1139,7 +1181,6 @@ export default function DetailJobModal({
   // the crew) and Note opens the composer as a sheet over the keyboard.
   const phoneCrewBar = !paneMode && narrowViewport
   const [noteSheetOpen, setNoteSheetOpen] = useState(false)
-  const [streetViewShown, setStreetViewShown] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
       narrowViewport
@@ -1513,7 +1554,10 @@ export default function DetailJobModal({
   // keep their ✕). v2.3839 adds the add-link dialog, the supply-house packet and
   // the job-account sheets, which Escape used to close Job Detail underneath.
   const [jobAccountSheetOpen, setJobAccountSheetOpen] = useState(false)
-  /** Write up a change (v2.4057): the header icon opens the Quick Estimate wizard on this job. */
+  /** The phone's photo banner (punch list #355): Add a photo opens the job's photos window; the strip reads again when it closes. */
+  const [photosWindowOpen, setPhotosWindowOpen] = useState(false)
+  const [photosRev, setPhotosRev] = useState(0)
+  /** Make change order (v2.4057, Write up a change until v2.7271): the header icon opens the Quick Estimate wizard on this job. */
   const writeUpChangeDoor = useQuickEstimateDoor(authUser?.id, viewerAuthRole)
   const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
   const detailEscBlocked =
@@ -1527,7 +1571,8 @@ export default function DetailJobModal({
     stackedAddFilesOpen ||
     addLinkTarget != null ||
     supplyHouseShareOpen ||
-    jobAccountSheetOpen
+    jobAccountSheetOpen ||
+    photosWindowOpen
   useEffect(() => {
     // Pane mode: the Job window (or the embedded form's own listener) owns
     // Escape — a second listener here would double-close and skip the flush.
@@ -1601,9 +1646,148 @@ export default function DetailJobModal({
 
   const showDetailHeaderRightCluster = headerTradePill != null || showEditJobButton || showWeekDispatchButton
 
+  // Punch list #355 (v2.7271): on a phone the window's ⋯ sheet holds the icon row's doors. The pane says which are
+  // open for this viewer and job and answers the press with the same handlers and satellite states the icons use,
+  // read through a ref so the window hears again only when a door opens or closes.
+  const shareJob = useShareJob()
+  const sheetPressRef = useRef<(key: JobPanePhoneDoorKey) => void>(() => {})
+  sheetPressRef.current = (key) => {
+    if (key === 'share') {
+      if (jobId) void shareJob(jobId, shareFields)
+    } else if (key === 'calendar') setJobCalendarOpen(true)
+    else if (key === 'account') setSupplyHouseShareOpen(true)
+    else if (key === 'money') {
+      if (jobId) {
+        onClose()
+        navigate(moneyStoryHref(jobId))
+      }
+    } else if (key === 'paid') setPaidEmailModalOpen(true)
+    else if (key === 'task') openSendJobAsTask()
+    else if (key === 'change') setWriteUpChangeOpen(true)
+  }
+  const sheetPress = useCallback((key: JobPanePhoneDoorKey) => sheetPressRef.current(key), [])
+  const accountQuiet = useMemo(
+    () =>
+      accountQuietWords(
+        [...(jobAccountShares ?? [])]
+          .sort((a, b) => (a.sent_at < b.sent_at ? 1 : -1))
+          .map((r) => ({ house: jobAccountHouseShortName(r), day: new Date(r.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })),
+      ),
+    [jobAccountShares],
+  )
+  const canMoneyStory = Boolean(jobId) && canOpenMoneyStory(viewerAuthRole)
+  const canPaidEmail = showDetailHeaderRightCluster && isOfficeRole(authRole) && Boolean(jobId)
+  const canCalendar = showDetailHeaderRightCluster && showWeekDispatchButton
+  const canChange = Boolean(writeUpChangeDoor && jobId)
+  const canAccount = canShareSupplyHouse && Boolean(fullJob)
+  const canTask = showWorkflowLink && Boolean(jobId)
+  const sheetDoors = useMemo<JobWindowSheetDoors>(
+    () => ({ share: Boolean(jobId), calendar: canCalendar, nextBlock: null, account: canAccount, accountQuiet, money: canMoneyStory, paid: canPaidEmail, task: canTask, taskReady: sendJobAsTaskReady, change: canChange }),
+    [jobId, canCalendar, canAccount, accountQuiet, canMoneyStory, canPaidEmail, canTask, sendJobAsTaskReady, canChange],
+  )
+  const tradeLabel = headerTradePill?.label ?? null
+  useEffect(() => {
+    if (!paneMode || !onPhoneDoorsChange) return
+    onPhoneDoorsChange(phonePane ? { doors: sheetDoors, trade: tradeLabel, press: sheetPress } : null)
+  }, [paneMode, phonePane, sheetDoors, tradeLabel, onPhoneDoorsChange, sheetPress])
+  useEffect(() => {
+    if (!paneMode || !onPhoneDoorsChange) return
+    return () => onPhoneDoorsChange(null)
+  }, [paneMode, onPhoneDoorsChange])
+
   useBodyScrollLock(open && narrowViewport)
 
   if (!open) return null
+
+  // v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to this job. Office roles
+  // only; reads only; collapsed until opened so the window does not pay the loader's fan-out on every open. On a phone
+  // it is the last fold under More on this job (punch list #355, PR B).
+  const theirJourney =
+    jobId && canSeeWhatCustomersSee(viewerAuthRole) && detailJob?.customer_name && ('customer_id' in detailJob ? detailJob.customer_id : null) ? (
+          <div
+            style={{ marginTop: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}
+            data-testid="job-their-journey"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            role="presentation"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+              <button
+                type="button"
+                onClick={() => setTheirJourneyOpen((v) => !v)}
+                aria-expanded={theirJourneyOpen}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span aria-hidden>{theirJourneyOpen ? '\u25BC' : '\u25B6'}</span>
+                Their journey
+              </button>
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>what {detailJob.customer_name} was sent, opened, signed and paid on this job</span>
+              <Link
+                to={`/customers/${'customer_id' in detailJob ? detailJob.customer_id : ''}`}
+                style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+              >
+                Every job →
+              </Link>
+            </div>
+            {theirJourneyOpen ? (
+              <div style={{ padding: '0 11px', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                <PersonJourneyStrips
+                  subject={{ kind: 'customer', id: ('customer_id' in detailJob ? detailJob.customer_id : null) ?? '', name: detailJob.customer_name }}
+                  jobId={jobId}
+                  compact
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null
+
+  /** A fold under More on this job on a phone; the node itself on a desk. */
+  const fold = (key: PhoneFoldKey, node: ReactNode, count?: string): ReactNode => {
+    if (!phonePane) return node
+    if (node == null) return null
+    const title = PHONE_FOLDS.find((f) => f.key === key)?.title ?? key
+    return (
+      <PhoneFold key={key} title={title} count={count} open={phoneFolds.has(key)} onToggle={() => togglePhoneFold(key)}>
+        {node}
+      </PhoneFold>
+    )
+  }
+
+  // Punch list #355 (v2.7271): on a phone the three tiles are one line ending in the bar's money verb, and the job
+  // accounts one line ending in Add job account; a tap on the row opens the Bill tab. Both sit in the Money fold (PR B).
+  const phoneMoneyLine =
+    phonePane && fullJob && showJobDetailJobTotal(authRole)
+      ? (() => {
+              const line = jobWindowMoneyLine(buildEditJobBillingBar({ total: Number(fullJob.revenue ?? 0), payments: fullJob.payments ?? [], invoices: fullJob.invoices ?? [] }), phoneVerb)
+              return (
+                <div data-testid="job-window-money-line" style={phoneLineRow}>
+                  <button type="button" onClick={() => onRequestTab?.('bill')} aria-label="Money: open the Bill tab" style={phoneLineDoor}>
+                    <span style={phoneLineLabel}>Money</span>
+                    <span style={phoneLineText}>{line.text}{line.act ? '.' : ''}</span>
+                  </button>
+                  {line.act && onPhoneVerb ? (
+                    <button type="button" onClick={onPhoneVerb} style={phoneLineAct}>
+                      {line.act}
+                    </button>
+                  ) : null}
+                </div>
+              )
+        })()
+      : null
+  const phoneAccountsLine =
+    jobId && phonePane && canShareSupplyHouse && fullJob ? (
+              <div data-testid="job-window-accounts-line" style={phoneLineRow}>
+                <span style={phoneLineLabel}>Job accounts</span>
+                {jobAccountStripEntries && jobAccountStripEntries.length > 0 ? (
+                  <JobAccountsStrip jobId={jobId} jobLabel={modalTitle} jobAddress={mapsAddressLine || null} entries={jobAccountStripEntries} onChanged={jobAccountStrips.reload} onSheetOpenChange={setJobAccountSheetOpen} compact />
+                ) : (
+                  <span style={phoneLineText}>{jobAccountsLine([], true).text}.</span>
+                )}
+                <button type="button" onClick={() => setSupplyHouseShareOpen(true)} style={phoneLineAct}>
+                  {jobAccountsLine((jobAccountStripEntries ?? []).map((e) => ({ houseName: e.houseName, stateWord: stripStateWord(e.state) })), true).act}
+                </button>
+              </div>
+    ) : null
 
   // Backdrop-close fires only for a click on the backdrop itself (`target ===
   // currentTarget`). The satellite modals further down (Reports, Job Calendar,
@@ -1746,7 +1930,8 @@ export default function DetailJobModal({
             data-navbuttons=""
             onClickCapture={recordViewerNavClick}
             style={{
-              display: 'flex',
+              // On a phone (punch list #355, v2.7271) the row's doors are the window's ⋯ sheet; the handlers stay here.
+              display: phonePane ? 'none' : 'flex',
               alignItems: 'center',
               // Pane mode: full-width row, pill + icons pinned left (the
               // "Link to" cluster whose marginLeft:auto used to split the row
@@ -1819,7 +2004,7 @@ export default function DetailJobModal({
                   setSupplyHouseShareOpen(true)
                 }}
                 title={jobAccountShareIconTitle(jobAccountShares ?? [], (iso) => new Date(iso).toLocaleDateString())}
-                aria-label="Share with supply house"
+                aria-label="Add job account"
                 data-job-account={jobAccountOnFile ? 'on-file' : undefined}
                 style={{
                   display: 'inline-flex',
@@ -1851,8 +2036,8 @@ export default function DetailJobModal({
                   e.stopPropagation()
                   setPaidEmailModalOpen(true)
                 }}
-                title="Send paid-in-full email"
-                aria-label="Send paid-in-full email"
+                title="Email the paid-in-full report"
+                aria-label="Email the paid-in-full report"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1977,8 +2162,8 @@ export default function DetailJobModal({
                   e.stopPropagation()
                   setWriteUpChangeOpen(true)
                 }}
-                title="Write up a change on this job"
-                aria-label="Write up a change"
+                title="Make change order on this job"
+                aria-label="Make change order"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2068,10 +2253,11 @@ export default function DetailJobModal({
           <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem' }}>{renderAccountManChip(accountManDisplay)}</div>
         ) : null}
 
+        {phonePane && !paneBodyHidden ? <PhoneSectionTitle first>Where</PhoneSectionTitle> : null}
         {/* Option B photo header (v2.1529): Street View leads as a slim banner with the
             address pinned on it; when there's no imagery (or still loading with nothing
             to show yet) the address falls back to a plain map-link row. */}
-        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) && (!phonePane || streetViewShown) ? (
+        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) ? (
           <div
             role="button"
             tabIndex={0}
@@ -2167,16 +2353,6 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
-            {phonePane && (streetViewLoading || streetViewImgUrl) ? (
-              <button
-                type="button"
-                onClick={() => setStreetViewShown((v) => !v)}
-                aria-expanded={streetViewShown}
-                style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontSize: '0.8125rem', cursor: 'pointer' }}
-              >
-                {streetViewShown ? 'hide street view' : 'street view ▸'}
-              </button>
-            ) : null}
           </div>
         ) : mapsAddressLine ? (
           <div style={{ marginTop: '0.75rem', minWidth: 0 }}>
@@ -2216,6 +2392,7 @@ export default function DetailJobModal({
           <div style={{ marginTop: '0.6rem' }}>
             <JobPaintedMapsStrip
               jobId={jobId}
+              addCentred={phonePane}
               developmentId={detailJob?.development_id ?? null}
               jobLabel={(fullJob ?? limitedJob)?.job_name ?? null}
               developmentLabel={detailJob ? ('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null)) : null}
@@ -2230,6 +2407,9 @@ export default function DetailJobModal({
           <div style={{ marginTop: '0.75rem' }}>
             <JobPhotosStrip
               jobId={jobId}
+              banner={phonePane}
+              onAddPhoto={phonePane && fullJob ? () => setPhotosWindowOpen(true) : undefined}
+              rev={photosRev}
               driveLink={(fullJob ?? limitedJob)?.google_drive_link}
               picturesLink={(fullJob ?? limitedJob)?.job_pictures_link}
               onSetFolder={
@@ -2258,7 +2438,51 @@ export default function DetailJobModal({
         <div style={paneBodyHidden ? { display: 'none' } : undefined}>
         {showTopBand ? (
           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            {phonePane && detailJob ? (
+              <>
+                <PhoneSectionTitle>Who</PhoneSectionTitle>
+                <JobWindowWho
+                  name={detailJob.customer_name?.trim() ?? ''}
+                  phone={detailJob.customer_phone?.trim() ?? ''}
+                  email={detailJob.customer_email?.trim() ?? ''}
+                  customerId={'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
+                  gcName={(() => {
+                    const gc = ('gc_customer_name' in detailJob ? detailJob.gc_customer_name : (detailJob.gcCustomer?.name ?? null))?.trim() ?? ''
+                    return gc.toLowerCase() === (detailJob.customer_name?.trim() ?? '').toLowerCase() ? '' : gc
+                  })()}
+                  developmentName={('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null))?.trim() ?? ''}
+                  onOpenDevelopment={
+                    detailJob.development_id
+                      ? () => {
+                          onClose()
+                          navigate(`/developments/${detailJob.development_id}`)
+                        }
+                      : undefined
+                  }
+                  onText={
+                    fullJob
+                      ? () => {
+                          setCustomerDoorKind('text')
+                          setCustomerDoorOpen(true)
+                        }
+                      : undefined
+                  }
+                  onEmail={
+                    fullJob
+                      ? () => {
+                          setCustomerDoorKind('email')
+                          setCustomerDoorOpen(true)
+                        }
+                      : undefined
+                  }
+                  links={[
+                    { key: 'files', label: 'Files', url: (fullJob ?? limitedJob)?.google_drive_link?.trim() ?? '', onAdd: canEditJobLinks ? () => { setAddLinkTarget({ field: 'google_drive_link', label: 'Customer Files' }); setAddLinkUrl('') } : undefined },
+                    { key: 'photos', label: 'Photos', url: (fullJob ?? limitedJob)?.job_pictures_link?.trim() ?? '', onAdd: canEditJobLinks ? () => { setAddLinkTarget({ field: 'job_pictures_link', label: 'Customer Photos' }); setAddLinkUrl('') } : undefined },
+                  ]}
+                />
+              </>
+            ) : null}
+            <div style={phonePane ? { display: 'none' } : { display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
               {detailJob ? (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <DetailJobModalCustomerPanel
@@ -2295,19 +2519,7 @@ export default function DetailJobModal({
                 />
               </div>
             </div>
-            {phonePane && fullJob && showJobDetailJobTotal(authRole) ? (() => {
-              const tiles = jobWindowTiles(
-                buildEditJobBillingBar({ total: Number(fullJob.revenue ?? 0), payments: fullJob.payments ?? [], invoices: fullJob.invoices ?? [] }),
-              )
-              const tile = (label: string, value: string) => (
-                <div key={label} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.4rem 0.5rem', background: 'var(--surface)' }}>
-                  <div style={{ fontSize: '0.625rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</div>
-                  <div style={{ fontSize: '0.9375rem', fontWeight: 800, color: 'var(--text-strong)' }}>{value}</div>
-                </div>
-              )
-              return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>{[tile('Job total', tiles.total), tile('Billed', tiles.billed), tile('Paid', tiles.paid)]}</div>
-            })() : null}
-            {jobId ? (
+            {!phonePane && jobId ? (
               <JobAccountsStrip
                 jobId={jobId}
                 jobLabel={modalTitle}
@@ -2317,7 +2529,7 @@ export default function DetailJobModal({
                 onSheetOpenChange={setJobAccountSheetOpen}
               />
             ) : null}
-            {scheduleContext ? (
+            {scheduleContext && !phonePane ? (
               <div
                 style={{
                   minWidth: 0,
@@ -2345,51 +2557,58 @@ export default function DetailJobModal({
           </div>
         ) : null}
 
+        {phonePane && fullJob ? (() => {
+          const next = nextOnSite(detailScheduleBlocks, todayYmdInAppTz()) ?? (scheduleContext ? nextOnSite([{ work_date: scheduleContext.workDate, time_start: scheduleContext.timeStart, time_end: scheduleContext.timeEnd }], '0000-00-00') : null)
+          const newest = threadNotes.activity.reduce<string | null>((best, item) => {
+            const at = item.kind === 'note' ? item.note.created_at : item.kind === 'report' ? item.report.created_at : null
+            return at && (!best || at > best) ? at : best
+          }, null)
+          const waiting = waitingOnWords({ status: fullJob.status, verb: phoneVerb, lastActivityIso: newest, nowIso: new Date().toISOString() })
+          const calendar = canCalendar ? () => setJobCalendarOpen(true) : undefined
+          return (
+            <>
+              <PhoneSectionTitle>What's happening</PhoneSectionTitle>
+              <PhoneRow
+                testId="job-window-next-on-site"
+                label="Next on site"
+                value={next ? (
+                  <>
+                    {next.day}
+                    <span style={{ display: 'block' }}>{next.hours}</span>
+                  </>
+                ) : NOTHING_SCHEDULED}
+                sub={next?.who || undefined}
+                act={calendar ? OPEN_THE_CALENDAR : null}
+                onAct={calendar}
+              />
+              <PhoneRow
+                testId="job-window-waiting-on"
+                label="Waiting on"
+                value={
+                  <>
+                    {waiting.lead}{' '}
+                    {waiting.ours && onPhoneVerb ? (
+                      <button type="button" onClick={onPhoneVerb} style={{ padding: 0, border: 'none', background: 'none', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }}>
+                        {waiting.verb}
+                      </button>
+                    ) : (
+                      waiting.verb
+                    )}
+                  </>
+                }
+                sub={waiting.quiet || undefined}
+                act={!waiting.ours && waiting.act && onPhoneVerb ? waiting.act : null}
+                onAct={onPhoneVerb ?? undefined}
+              />
+            </>
+          )
+        })() : null}
         {/* v2.6585 (punch list #255): the job's target in hours, for any job: the expected hours, else the labor budget, else none yet. */}
-        {jobId ? <JobTargetLine jobId={jobId} /> : null}
+        {jobId ? <JobTargetLine jobId={jobId} row={phonePane} /> : null}
         {/* v2.5946 (punch list #185): the job's review ask, the stars and the words, and I called on a low one. */}
         {jobId ? <JobReviewLine jobId={jobId} /> : null}
 
-        {/* v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to
-            this job. Office roles only; reads only; collapsed until opened so the window does not pay
-            the loader's fan-out on every open. */}
-        {jobId && canSeeWhatCustomersSee(viewerAuthRole) && detailJob?.customer_name && ('customer_id' in detailJob ? detailJob.customer_id : null) ? (
-          <div
-            style={{ marginTop: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}
-            data-testid="job-their-journey"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            role="presentation"
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>
-              <button
-                type="button"
-                onClick={() => setTheirJourneyOpen((v) => !v)}
-                aria-expanded={theirJourneyOpen}
-                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <span aria-hidden>{theirJourneyOpen ? '\u25BC' : '\u25B6'}</span>
-                Their journey
-              </button>
-              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>what {detailJob.customer_name} was sent, opened, signed and paid on this job</span>
-              <Link
-                to={`/customers/${'customer_id' in detailJob ? detailJob.customer_id : ''}`}
-                style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
-              >
-                Every job →
-              </Link>
-            </div>
-            {theirJourneyOpen ? (
-              <div style={{ padding: '0 11px', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                <PersonJourneyStrips
-                  subject={{ kind: 'customer', id: ('customer_id' in detailJob ? detailJob.customer_id : null) ?? '', name: detailJob.customer_name }}
-                  jobId={jobId}
-                  compact
-                />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {!phonePane ? theirJourney : null}
 
         <div
           style={{ marginTop: '0.75rem' }}
@@ -2411,7 +2630,29 @@ export default function DetailJobModal({
               }}
             />
           ) : null}
-          {summaryOffered && fullJob ? (
+          {summaryOffered && fullJob && phonePane ? (
+            <>
+              <PhoneSectionTitle>The thread</PhoneSectionTitle>
+              <JobWindowThread
+                summary={summary}
+                loading={summaryRead.loading}
+                customerLines={customerLines}
+                nowIso={summaryRead.facts?.readAtIso ?? new Date().toISOString()}
+                onOpenHref={(href) => {
+                  onClose()
+                  navigate(href)
+                }}
+                onOpenThread={() => {
+                  const customerId = fullJob.customer_id
+                  if (!customerId) return
+                  void contactForCustomer(customerId).then((contactId) => {
+                    onClose()
+                    navigate(messagesThreadHref(contactId))
+                  })
+                }}
+              />
+            </>
+          ) : summaryOffered && fullJob ? (
             <JobThreadSummary
               customerName={summaryCustomerName}
               narrow={narrowViewport}
@@ -2447,12 +2688,18 @@ export default function DetailJobModal({
               }}
             />
           ) : null}
+          {phonePane ? <PhoneSectionTitle>More on this job</PhoneSectionTitle> : null}
           {/* Questions on this job (punch list #208 PR 4b): the job's own log under Where it stands, with Ask the estimators and Ask Dispatch. */}
-          {fullJob && jobId ? (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <RecordQuestions record={{ kind: 'job', job: fullJob }} role={authRole as UserRole | null} />
-            </div>
-          ) : null}
+          {fullJob && jobId
+            ? fold(
+                'questions',
+                <div style={{ marginBottom: phonePane ? 0 : '0.75rem' }}>
+                  <RecordQuestions record={{ kind: 'job', job: fullJob }} role={authRole as UserRole | null} />
+                </div>,
+              )
+            : null}
+          {fold(
+            'activity',
           <JobThreadNotesPanel
             activity={threadNotes.activity}
             loading={threadNotes.loading}
@@ -2489,7 +2736,9 @@ export default function DetailJobModal({
                   }
                 : undefined
             }
-          />
+          />,
+            foldCountWords(threadNotes.activity.length || null),
+          )}
         </div>
 
         {loading ? <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p> : null}
@@ -2498,7 +2747,9 @@ export default function DetailJobModal({
         ) : null}
 
         {!loading && !error && fullJob ? (
-          <div style={{ marginTop: '1rem' }}>
+          (() => {
+            const head = (
+              <>
             {showWorkflowLink && fullJob.project_id ? (
               <div style={{ marginBottom: '0.75rem' }}>
                 <Link
@@ -2544,8 +2795,13 @@ export default function DetailJobModal({
             </div>
 
 
+              </>
+            )
+            const plans = (
             <DetailJobModalPlans job={{ id: fullJob.id, job_name: fullJob.job_name, hcp_number: fullJob.hcp_number, job_plans_link: fullJob.job_plans_link }} />
-
+            )
+            const tail = (
+              <>
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
               {(() => {
@@ -2699,6 +2955,10 @@ export default function DetailJobModal({
               ) : null}
             </div>
 
+              </>
+            )
+            const money = (
+              <>
             {costsCardModel ? (
               <JobDetailCostsSummaryCard model={costsCardModel} onOpenCosts={onRequestTab ? () => onRequestTab('costs') : null} />
             ) : showMaterialsCostSection ? (
@@ -2857,7 +3117,26 @@ export default function DetailJobModal({
                 </ul>
               )}
             </div>
-          </div>
+              </>
+            )
+            if (phonePane)
+              return (
+                <>
+                  {fold('money', <>{phoneMoneyLine}{phoneAccountsLine}{money}</>)}
+                  {fold('plans', plans)}
+                  {fold('work', <>{head}{tail}</>)}
+                  {fold('journey', theirJourney)}
+                </>
+              )
+            return (
+              <div style={{ marginTop: '1rem' }}>
+                {head}
+                {plans}
+                {tail}
+                {money}
+              </div>
+            )
+          })()
         ) : null}
 
         {!loading && !error && limitedJob ? (
@@ -3213,6 +3492,15 @@ export default function DetailJobModal({
           hcpNumber={jobForLines.hcp_number}
           jobName={jobForLines.job_name}
           jobAddress={jobForLines.job_address}
+        />
+      ) : null}
+      {photosWindowOpen && fullJob ? (
+        <JobPhotosWindowLazy
+          job={{ id: fullJob.id, hcp_number: fullJob.hcp_number, click_number: fullJob.click_number, job_name: fullJob.job_name, job_address: fullJob.job_address, google_drive_link: fullJob.google_drive_link, job_pictures_link: fullJob.job_pictures_link }}
+          onClose={() => {
+            setPhotosWindowOpen(false)
+            setPhotosRev((r) => r + 1)
+          }}
         />
       ) : null}
       {paidEmailModalOpen && jobId ? (

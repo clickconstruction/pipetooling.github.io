@@ -20,8 +20,8 @@ import { jobStatusWord } from './jobContractCovers'
 export const SUMMARY_WORDS = {
   title: (name: string) => `Where it stands with ${name}`,
   stands: 'Where it stands',
-  theirs: 'Their word',
-  ours: 'Our word',
+  theirs: 'They promised',
+  ours: 'We owe them',
   readAgain: 'Read again',
   keep: 'Keep as a note',
   keeping: 'Keeping…',
@@ -136,7 +136,8 @@ const PROMISE_WHAT: Record<Exclude<HeardPromiseKind, 'said'>, string> = {
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
-const NOTHING_OWED = 'Nothing we owe is written down.'
+/** Nothing open (the owner, punch list #355, v2.7278: the old *Nothing we owe is written down* named the mechanism, not the meaning). */
+const NOTHING_OWED = 'Nothing open. A call, a price or a date we said we would give lands here.'
 
 /** A person as a line names them: the name they go by, else their full name, never cut to a first word. */
 const theirName = (c: { name: string; goesBy?: string | null }): string => (c.goesBy ?? '').trim() || c.name.trim()
@@ -191,7 +192,7 @@ function theirsLine(inputs: ThreadSummaryInputs, name: string, contactIds: reado
     if (best && line.at <= best.at) continue
     best = { messageId: line.messageId, contactId: line.contactId, at: line.at, kind: line.kind, dayYmd: line.dayYmd }
   }
-  if (!best) return { key: 'theirs', label: SUMMARY_WORDS.theirs, text: `No day of ${name}’s is written down.`, href: null, doorWord: '' }
+  if (!best) return { key: 'theirs', label: SUMMARY_WORDS.theirs, text: `Nothing promised yet. A day ${name} gives for a payment or an answer lands here.`, href: null, doorWord: '' }
   const day = dayLabel(best.dayYmd)
   const said = `Said ${whenWords(best.at, inputs.nowIso)}.`
   const text = best.kind === 'said' ? `${name} gave ${day} on the call. ${said}` : `${name} promised ${PROMISE_WHAT[best.kind]} by ${day}. ${said}`

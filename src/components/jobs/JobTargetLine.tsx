@@ -4,12 +4,13 @@ import { useExpectedHours, type ExpectedHoursApi } from '../../hooks/useExpected
 import { canSetExpectedHours } from '../../lib/jobs/projectsBoard'
 import { jobTargetWords, parseHours, targetDraftProblem, WHY_MAX } from '../../lib/jobs/jobTarget'
 import { fetchJobTargetBudget, type JobTargetBudget } from '../../lib/jobs/jobTargetIo'
+import { PhoneRow } from './JobWindowPhoneSections'
 
 /**
  * The job's Target line on the job window's Job tab (punch list #255, v2.6585): the open expected hours
- * (`job_expected_hours`, v2.6321), else the labor budget's hours, else *No target yet*. The leader and the office
- * press **Set a target** or **Change the target** (hours and why, through `set_job_expected_hours`) and **Back to the
- * budget** (`clear_job_expected_hours`); everyone who opens the window reads it. The project board keeps its slider;
+ * (`job_expected_hours`, v2.6321), else the labor budget's hours, else *Hours target · none yet* (named the hours
+ * target since v2.7271, punch list #355). The leader and the office press **Set the hours** or **Change the hours**
+ * (hours and why, through `set_job_expected_hours`) and **Back to the budget** (`clear_job_expected_hours`); everyone who opens the window reads it. The project board keeps its slider;
  * this is the door a service job never had, so the crew's hours against the target can be counted on any job.
  */
 
@@ -17,7 +18,7 @@ const ROW: CSSProperties = { marginTop: '0.75rem', border: '1px solid var(--bord
 const BUTTON: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.25rem 0.7rem', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 const FIELD: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function JobTargetLine({ jobId, api: apiIn, readBudget = fetchJobTargetBudget }: { jobId: string; api?: ExpectedHoursApi; readBudget?: (jobId: string) => Promise<JobTargetBudget> }) {
+export function JobTargetLine({ jobId, api: apiIn, readBudget = fetchJobTargetBudget, row = false }: { jobId: string; api?: ExpectedHoursApi; readBudget?: (jobId: string) => Promise<JobTargetBudget>; /** The phone's row (punch list #355, PR B): Hours · the answer · the sentence · Set the hours in blue words. */ row?: boolean }) {
   const { role, readOnly } = useAuth()
   const ids = useMemo(() => [jobId], [jobId])
   const live = useExpectedHours(ids, !apiIn)
@@ -68,10 +69,57 @@ export function JobTargetLine({ jobId, api: apiIn, readBudget = fetchJobTargetBu
     if (!ok) setProblem(api.error ?? 'The target was not cleared.')
   }
 
+  const editor = editing ? (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }} data-testid="job-target-edit">
+      <input aria-label="Target hours" inputMode="decimal" value={hoursText} onChange={(e) => setHoursText(e.target.value)} style={{ ...FIELD, width: 72, textAlign: 'right', fontWeight: 700 }} />
+      <span style={{ color: 'var(--text-muted)' }}>h</span>
+      <input aria-label="Why this target" placeholder="why · the crew reads this" value={why} maxLength={WHY_MAX} onChange={(e) => setWhy(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void keep() }} style={{ ...FIELD, flex: '1 1 12rem' }} autoFocus />
+      <button type="button" style={{ ...BUTTON, background: '#2563eb', borderColor: '#2563eb', color: '#fff', opacity: draftProblem ? 0.5 : 1 }} disabled={busy} onClick={() => void keep()}>
+        {busy ? 'Keeping…' : 'Keep it'}
+      </button>
+      <button type="button" style={BUTTON} disabled={busy} onClick={() => setEditing(false)}>
+        Not now
+      </button>
+    </div>
+  ) : null
+  const alert = problem ? (
+    <div role="alert" style={{ color: 'var(--text-red-700)' }}>
+      {problem}
+    </div>
+  ) : null
+
+  if (row) {
+    return (
+      <div data-testid="job-target-line" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+        <PhoneRow
+          label="Hours"
+          value={words.head.replace(/^Hours target · /, '').replace(/^none yet$/, 'No target set')}
+          sub={
+            <>
+              {words.detail}
+              {canEdit && !editing && words.clearable ? (
+                <>
+                  {' '}
+                  <button type="button" disabled={busy} onClick={() => void clear()} style={{ padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }}>
+                    Back to the budget
+                  </button>
+                </>
+              ) : null}
+            </>
+          }
+          act={canEdit && !editing ? words.press : null}
+          onAct={canEdit && !editing ? open : undefined}
+        />
+        {editor}
+        {alert}
+      </div>
+    )
+  }
+
   return (
     <div style={ROW} data-testid="job-target-line" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>🎯 {words.head}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>⏱ {words.head}</span>
         {canEdit && !editing ? (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {words.clearable ? (
@@ -86,24 +134,8 @@ export function JobTargetLine({ jobId, api: apiIn, readBudget = fetchJobTargetBu
         ) : null}
       </div>
       <div style={{ color: 'var(--text-muted)' }}>{words.detail}</div>
-      {editing ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }} data-testid="job-target-edit">
-          <input aria-label="Target hours" inputMode="decimal" value={hoursText} onChange={(e) => setHoursText(e.target.value)} style={{ ...FIELD, width: 72, textAlign: 'right', fontWeight: 700 }} />
-          <span style={{ color: 'var(--text-muted)' }}>h</span>
-          <input aria-label="Why this target" placeholder="why · the crew reads this" value={why} maxLength={WHY_MAX} onChange={(e) => setWhy(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void keep() }} style={{ ...FIELD, flex: '1 1 12rem' }} autoFocus />
-          <button type="button" style={{ ...BUTTON, background: '#2563eb', borderColor: '#2563eb', color: '#fff', opacity: draftProblem ? 0.5 : 1 }} disabled={busy} onClick={() => void keep()}>
-            {busy ? 'Keeping…' : 'Keep it'}
-          </button>
-          <button type="button" style={BUTTON} disabled={busy} onClick={() => setEditing(false)}>
-            Not now
-          </button>
-        </div>
-      ) : null}
-      {problem ? (
-        <div role="alert" style={{ color: 'var(--text-red-700)' }}>
-          {problem}
-        </div>
-      ) : null}
+      {editor}
+      {alert}
     </div>
   )
 }
