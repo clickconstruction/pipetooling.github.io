@@ -186,8 +186,10 @@ in the same PR. After its merge, `npm run check:edge-drift` names what to redepl
   the page again. The four functions that read the kernel index (`customer-portal`, `drive-link`,
   `gc-trade-portal`, `photo-save`) read as behind by two comment lines until each is next deployed.
 - **v2.7230**: `bridge-weekly-sheet` a third time. The slowest step's sentence for Build no longer reads
-  *7 to 7 weeks* when both ends of its range round to one number. The page has it from the merge. The email
-  has it once the function is redeployed, which waits on the owner's yes.
+  *7 to 7 weeks* when both ends of its range round to one number. The page has it from the merge. The
+  function was redeployed on 2026-11-14 at 03:44 UTC, on the owner's yes, then dry-run: the sentence reads
+  as one figure, and the two balances, the lead and the line still equal the page's. `check:edge-drift` then
+  read every function as current.
 
 ### The guide and the docs
 
@@ -317,7 +319,7 @@ left-out list, and its tests hold both.
 
 PR 11's migration is pushed: the two functions behind the old Needs you line are gone from the live
 database. PR 12's is pushed too, so a new to-do carries its tag in its own column. `bridge-weekly-sheet` is
-redeployed with v2.7214. The generated types no longer list the two dropped functions, since #7989, and
+redeployed with v2.7214 and again with v2.7230. The generated types no longer list the two dropped functions, since #7989, and
 know the tag's column, since #8011.
 
 Not walked on purpose, because each one records. The first of each is the owner's or the office's:

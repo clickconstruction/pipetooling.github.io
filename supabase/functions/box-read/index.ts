@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
 import { googleAccessToken } from '../_shared/driveUpload.ts'
 import { driveMedia } from '../_shared/driveJobFolder.ts'
-import { ESTIMATE_LINK_LOCKED_CODE, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
+import { ESTIMATE_LINK_LOCKED_CODE, readEstimateLinkLock, recordEstimateLinkMiss, type EstimateMissReader } from '../_shared/estimateLinkMisses.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
@@ -30,7 +30,8 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageFind, boxPageFindWords, boxP
  * No auth (`verify_jwt = false`): the code is the capability, as the estimate and bill links are. Eight hex characters
  * is 32 bits against a few hundred live boxes, and the page carries nothing worth a guess; a code that opens nothing
  * counts a miss against its source through the estimate link's guard (`estimate_link_miss`), and past 20 misses in the
- * hour the function answers 429 `locked`. A retired box answers 410 `retired` with no lines, and since v2.6874 its stencil,
+ * hour the function answers 429 `locked`, to a code that opens a box as well since v2.7240 (`readEstimateLinkLock`:
+ * eight characters is short enough that a lock which still answered a right guess held nothing). A retired box answers 410 `retired` with no lines, and since v2.6874 its stencil,
  * kind and the office's number, which the label in the hand already prints or the letterhead already carries. Each read that opens lands
  * one `public_page_views` row (surface `box_page`); a staff session or `?preview=1` is stamped and not counted, as the
  * portals do. Rate limit: 60 reads a minute per client address and 600 across the isolate, in memory, best effort.
@@ -137,6 +138,13 @@ serve(async (req) => {
       const miss = await recordEstimateLinkMiss(admin, req, 'box-read')
       if (miss.locked) return json({ error: BOX_PAGE_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }, 429)
       return json({ error: 'not_found' }, 404)
+    }
+    // A source past the limit this hour is refused a right guess as well as a wrong one (v2.7240): the code is eight
+    // characters, so a lock that still answered a hit held nothing. Someone signed in never comes through here.
+    const lock = await readEstimateLinkLock(admin as unknown as EstimateMissReader, req, 'box-read')
+    if (lock.locked) {
+      console.log(JSON.stringify({ event: 'box_page_open', code, state: 'locked' }))
+      return json({ error: BOX_PAGE_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }, 429)
     }
     if (row.retired_at) {
       console.log(JSON.stringify({ event: 'box_page_open', code, state: 'retired' }))
