@@ -436,7 +436,8 @@ the signing code the Lien desk takes on anyone's screen under Your account (`/se
 fold brings it back with **Restore**, v2.5741; guide `run-the-robots-from-claude-desktop`), where the walk tester's line
 sits under the Sample accounts card (v2.5738). A dev sees every screen as every role on invented data at `/settings?tab=settings-what-everyone-sees` (What everyone sees, v2.5963; `/help?g=see-every-screen-as-every-role`). A dev's map of every door only a dev or the controller can open today is
 `/settings?tab=settings-dev-doors` (Dev doors, the card *Only devs and the controller see these*, each a link with who may open
-it beside it, v2.5882; the audit with a call per door is punch list #188).
+it beside it, v2.5882; the audit with a call per door is punch list #188). The scales a GC is rated on, their rungs and their sentences, published as versions, are a dev's at
+`/settings?tab=settings-difficulty-criteria` (Difficulty criteria, v2.7275, punch list #357; guide `change-the-difficulty-criteria`).
 
 ### Header (any page)
 Global search (⌘K or Ctrl+K; for the office jobs/bids/customers by name or J#/B#/C#, and under them every page, tab, window, Settings card, guide and to-do the role may open, from one gated index, `src/lib/search/doors.ts`, v2.5900 to v2.5933, punch list #181; the estimator, primary and superintendent get the doors alone, helpers and subs their job lookup with the guides; guide `global-search`), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,

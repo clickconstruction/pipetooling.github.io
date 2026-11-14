@@ -33,6 +33,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-flows',
       'settings-company',
       'settings-dev-doors',
+      'settings-difficulty-criteria',
       'settings-usage',
       'settings-data',
       'settings-templates',
