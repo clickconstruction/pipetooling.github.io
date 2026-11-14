@@ -243,6 +243,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
 
   // Tell the customer (v2.5593): the Booked text is the office's press on the schedule; its line is read in their thread.
   steps['booked-text'] = na('Schedule: pressed by the office when the first visit is booked; read in their thread')
+  // A painted map's link (#345) is made on the map and names no customer, so no person's strip can say whether theirs was sent.
+  steps['painted-map-page'] = na('A painted map: shared from the map’s own window, by a link that is tied to no customer')
   steps['estimate-text'] = na('Estimates: pressed by the office with the email; read in their thread')
 
   // -- estimate lane --
