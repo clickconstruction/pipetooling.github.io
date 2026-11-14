@@ -587,7 +587,8 @@ export function addMovement(input: AddMovementInput): Movement {
   const c = cacheOf(input.jobId)
   const id = newId()
   const partName = input.partName.trim()
-  const quantity = Math.max(0, Math.round(input.quantity))
+  // A count may be zero; every other reason moves at least one, as the table's CHECK says, so a press of none never leaves the phone.
+  const quantity = Math.max(input.reason === 'counted' ? 0 : 1, Math.round(input.quantity))
   commit(input.jobId, `${quantity} ${partName}`, [
     {
       table: 'job_material_movements',

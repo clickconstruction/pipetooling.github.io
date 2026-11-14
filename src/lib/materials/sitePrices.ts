@@ -20,7 +20,7 @@
  * Pure: the rows come in (`sitePricesIo.ts` through the on-site store), the picks go out.
  */
 import { ymdDaysBetween, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
-import { BOOK_PRICE_FRESH_DAYS, invoicePick, pickBookPrice, priceWords, type BookPriceRow, type PricePick } from './bookPrice'
+import { BOOK_PRICE_FRESH_DAYS, invoicePick, isRealPrice, pickBookPrice, priceWords, type BookPriceRow, type PricePick } from './bookPrice'
 import { sameWordsKey } from './siteRollup'
 
 /** One answer about a row's price on one site. */
@@ -54,9 +54,9 @@ export function latestSitePrices(rows: ReadonlyArray<SitePrice>): Map<string, Si
   return out
 }
 
-/** An answer as the price rule reads it; null for a row left out, which has no price. */
+/** An answer as the price rule reads it; null for a row left out, which has no price, and for a price that is no price (zero or the stand-in, `isRealPrice`, v2.7249). */
 export function sitePick(p: SitePrice, today: string): PricePick | null {
-  if (p.kind !== 'price' || p.unitPrice == null || !Number.isFinite(p.unitPrice) || p.unitPrice < 0) return null
+  if (p.kind !== 'price' || !isRealPrice(p.unitPrice)) return null
   const ageDays = p.pricedOn ? ymdDaysBetween(p.pricedOn, today) : null
   return { price: p.unitPrice, from: 'site', supplyHouse: p.source === 'bill' ? p.sourceWords || null : null, checkedOn: p.pricedOn || null, ageDays, stale: ageDays == null || ageDays > BOOK_PRICE_FRESH_DAYS, via: p.source, byName: p.byName || undefined, ...(p.source === 'book' ? { bookPart: p.sourceWords } : {}) }
 }

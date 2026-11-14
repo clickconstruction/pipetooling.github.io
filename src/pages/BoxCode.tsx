@@ -44,7 +44,7 @@ function wordsFor(found: CodeLookup, words: string, wanted: string, error: strin
     case 'lost':
       return { title: lostStickerTitle(found.sticker.number), detail: lostStickerDetail(found.sticker) }
     case 'retired':
-      return { title: retiredBoxStickerTitle(found.sticker), detail: 'Open On site and bring the box back to use it.' }
+      return { title: retiredBoxStickerTitle(found.sticker), detail: 'The office brings a retired box back from the Retired fold on its Materials page.' }
     case 'out_of_reach':
       return { title: outOfReachStickerTitle(found.sticker.number), detail: 'Ask the office to add you to that job.' }
     default:

@@ -129,11 +129,11 @@ A line the app cannot save stays on the table with its reason under it. The line
 
 ## Print a label
 
-Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
+Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A paper label carries the stencil, the job, the place, a small code and ruled lines to write on. A tape label carries the stencil and the code alone. The crew's camera opens the box from the code.
 
 ## Print a manifest
 
-A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **None** clears them and **Every box** picks them all again. The press names its count, such as {{button:blue|Print 2 manifests}}.
+A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **Every box** picks them all again and **None** clears them. The press names its count, such as {{button:blue|Print 2 manifests}}.
 
 Each box prints on its own Letter page in large plain type. The page carries the stencil, the job and the site. It carries the same code the label has, so the crew's camera opens the box from the manifest. The page shows the day the manifest was printed. The page also shows the day something was last recorded in the box, and by whom. Under the dates it lists what is in the box with each number. Ruled lines at the foot take what is added on site by hand. Each line has room for the item, the quantity, who added it and the day.
 
@@ -149,7 +149,7 @@ The press is withheld when a live box on the job already carries that stencil. T
 
 ## Find a box from anywhere
 
-Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Type a site's name and the list has a row for the whole site. Press it to open the site's materials. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
+Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Type a site's name and the list has a row for the whole site. Press that row to open the site's materials. Press a box's row to open the job's materials page. **Open on the phone screen** opens the box itself.
 
 ## Find a part on any job
 

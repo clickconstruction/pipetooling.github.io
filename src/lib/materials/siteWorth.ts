@@ -7,10 +7,10 @@
  * counted, never guessed.
  *
  * A row that is a parts-book part reads the book's price through the one rule every money figure
- * on site reads (`priceLookup` in `bookPrice.ts`): a fresh book price, the invoice price past 90
- * days, a stale book price flagged when that is all there is. A typed name tied to the book is
- * such a row, which is how a tie raises the cover. A typed name with no tie carries only the
- * price the office read off the invoice that landed it, per line.
+ * on site reads (`sitePriceLookup` in `sitePrices.ts`): a fresh book price, the site's own price,
+ * the invoice price, a stale book price flagged when that is all there is. A typed name tied to
+ * the book is such a row, which is how a tie raises the cover. A typed name with no tie carries
+ * the site's own price or the price the office read off the invoice that landed it, per line.
  *
  * Pure: the rows and the price lookup come in, the figures go out.
  */
