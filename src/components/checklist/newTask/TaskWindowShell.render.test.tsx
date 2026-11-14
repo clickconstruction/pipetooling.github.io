@@ -94,6 +94,25 @@ describe('TaskWindowShell on a phone', () => {
     expect(form.scrollTop).toBe(108)
   })
 
+  it('brings a search box to the top of the form, so the names it finds are not under the bar (punch list #348)', () => {
+    const vv = installViewport(740)
+    render(
+      <TaskWindowShell titleId="t" title="New task" headActions={null} bar={<button type="button">Send</button>} phone zIndex={10} cardTestId="card">
+        <div data-keyboard-reveal="top">
+          <input aria-label="Search people" />
+        </div>
+      </TaskWindowShell>,
+    )
+    const form = screen.getByTestId('new-task-form')
+    const field = screen.getByLabelText('Search people')
+    // The box already shows, low in the form. It still goes to the top.
+    place(form, 100, 300)
+    place(field, 230, 274)
+    field.focus()
+    vv.keyboard(377, 0)
+    expect(form.scrollTop).toBe(122)
+  })
+
   it('leaves the form alone when the field with the keyboard already shows', () => {
     const vv = installViewport(740)
     shell(true)

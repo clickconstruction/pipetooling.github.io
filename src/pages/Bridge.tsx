@@ -62,7 +62,10 @@ import { leftOutKey, leftOutPickerNames, withLeftOutJobIds, type LeftOutRule } f
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
-import { moveDive, type DiveFacts, type DivePctJob, type DiveTarget } from '../lib/bridge/callDive'
+import { jobPage, moveDive, type DiveFacts, type DivePctJob, type DiveTarget } from '../lib/bridge/callDive'
+import { lastWorkedCell } from '../lib/bridge/pctFacts'
+import { useBridgePctFacts } from '../hooks/useBridgePctFacts'
+import { BridgePctRun } from '../components/bridge/BridgePctRun'
 import { todoLinkPaths, type CallTodo } from '../lib/bridge/callTodo'
 import { todoStates, type TodoCard, type TodoState } from '../lib/bridge/callTodoState'
 import type { TodoLinesRead } from '../components/bridge/BridgeTodoCheck'
@@ -72,7 +75,6 @@ import { APP_ORIGIN } from '../lib/appOrigin'
 import { NO_JOB_HOURS, jobHoursByJob, jobHoursCell, jobHoursLine, type JobHoursSession } from '../lib/bridge/jobHours'
 import { BridgeJobHoursWindow } from '../components/bridge/BridgeJobHours'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
-import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { deskStatus, isStageLink, type CallLink } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -903,9 +905,10 @@ export default function Bridge() {
       chase: receipts.filter((r) => r.basis === 'late').reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
       approve: data ? data.crew.pendingClosedHours : null,
       price: data ? data.earned.noRevenueJobs.length : null,
-      pct: data ? data.earned.assumedHalfJobs.length : null,
+      // A job set above nothing on this visit has its percent: it is off the count, and off the list below.
+      pct: data ? data.earned.assumedHalfJobs.filter((id) => !((pctSetThisVisit.get(id) ?? 0) > 0)).length : null,
     }),
-    [billPile, receipts, doubtful, data],
+    [billPile, receipts, doubtful, data, pctSetThisVisit],
   )
   const deskReading = useMemo(() => {
     if (litLink && !isStageLink(litLink)) {
@@ -987,6 +990,9 @@ export default function Bridge() {
     }
   }, [noPctKey, refreshKey])
   const jobHours = useMemo(() => (jobHoursSessions ? jobHoursByJob(jobHoursSessions) : null), [jobHoursSessions])
+  // What a percent is judged from, for the same jobs (v2.7221; `pctFacts.ts`): read while the move or its window is on screen.
+  const noPctJobRows = useMemo(() => (data ? data.jobs.filter((j) => data.earned.assumedHalfJobs.includes(j.id)) : []), [data])
+  const pctFacts = useBridgePctFacts({ jobs: noPctJobRows, hours: jobHours, todayYmd: data?.todayYmd ?? null, enabled: pctFor != null || (weekModel?.card.moves.some((m) => m.key === 'pct') ?? false), refreshKey })
   const callDives = useMemo<DiveFacts | null>(() => {
     if (!data) return null
     const jobById = new Map(data.jobs.map((j) => [j.id, j]))
@@ -1018,8 +1024,9 @@ export default function Bridge() {
         }),
       // Each job as the percent window takes it, so its row can set the percent here: the percent prompt's own row
       // when it knows the job, else the job named by its label, as the prompt names a job with no number.
-      // A job set on this visit stays listed, and says so.
+      // A job set above nothing on this visit leaves the list: it has its percent. One set to 0% stays, and says so.
       noPctJobs: named(data.earned.assumedHalfJobs)
+        .filter((j) => !((pctSetThisVisit.get(j.id) ?? 0) > 0))
         .sort(byRevenue)
         .map((j) => ({
           id: j.id,
@@ -1029,6 +1036,7 @@ export default function Bridge() {
           setPct: pctSetThisVisit.get(j.id) ?? null,
           hoursLine: jobHours ? jobHoursLine(jobHours.get(j.id)) : null,
           hoursCell: jobHours ? jobHoursCell(jobHours.get(j.id)) : null,
+          lastWorked: pctFacts.facts?.has(j.id) ? lastWorkedCell(pctFacts.facts.get(j.id)!, data.todayYmd, md) : null,
         })),
       noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
@@ -1044,7 +1052,7 @@ export default function Bridge() {
       ].sort((a, b) => b.usd - a.usd),
       dayLabel: md,
     }
-  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours])
+  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours, pctFacts.facts])
   // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
   // cards that carry one of its own tags (PR 12), or one of its tagged addresses in a link, and reads again after a
   // card is made or changed here.
@@ -1906,7 +1914,7 @@ export default function Bridge() {
             />
           )}
           {/* From the card What to do now: the app's own percent window and its sheet for a customer's word. */}
-          {pctFor && <FieldPctUpdateModal job={pctFor} onClose={() => setPctFor(null)} onSaved={(pct) => savePct(pctFor.id, pct)} />}
+          {pctFor && <BridgePctRun job={pctFor} run={(callDives?.noPctJobs ?? []).flatMap((j) => (j.pctJob ? [j.pctJob] : []))} facts={pctFacts.facts} factsError={pctFacts.error} todayYmd={data.todayYmd} dayLabel={md} jobHref={jobPage} onMove={setPctFor} onSaved={savePct} onClose={() => setPctFor(null)} />}
           {promiseFor && (
             <SetPromisedPayDateModal
               jobId={promiseFor.jobId}

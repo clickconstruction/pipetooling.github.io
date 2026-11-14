@@ -84,6 +84,25 @@ describe('BridgeWeek', () => {
     expect(screen.queryAllByTestId('bridge-week-move').length).toBe(0)
   })
 
+  it('keeps a move’s number and its heading as one piece, so a long heading wraps beside its number', () => {
+    renderWithProviders(week(propose))
+    const heads = screen.getAllByTestId('bridge-week-move-head')
+    expect(heads.map((h) => h.textContent)).toEqual(['1Bill the 11 finished jobs. ›', '2Price the 4 jobs with no price. ›', '3Take bank sorting off whoever bills, so billing is never idle.'])
+    for (const h of heads) {
+      // One flex piece that may shrink: the number keeps its size and the words give way and wrap.
+      expect(h.style.display).toBe('flex')
+      expect(h.style.minWidth).toBe('0')
+      expect(h.style.flex).toBe('0 1 auto')
+      const [num, words] = [...h.children] as HTMLElement[]
+      expect(num!.style.flex).toBe('0 0 auto')
+      expect(words!.style.minWidth).toBe('0')
+      expect(words!.style.whiteSpace).toBe('')
+    }
+    // The why stays a piece of its own after the heading.
+    expect(heads[0]!.parentElement!.textContent).toContain('$142k is finished and not billed.')
+    expect(heads[0]!.textContent).not.toContain('$142k')
+  })
+
   it('shows the first three moves at a desk: the step’s desk lists the rest', () => {
     const four: WeekCallModel = { ...propose, card: { ...propose.card, moves: [...propose.card.moves, move({ title: 'Ask the field for the day each job finishes.' })] } }
     renderWithProviders(week(four))

@@ -4,6 +4,7 @@ import { parseLines } from '../../lib/taskCriteria'
 import { asksForPhotoDefault } from '../../lib/taskProgress'
 import type { TaskPlaceDraft } from '../../lib/tasks/taskPlace'
 import { roadmapTaskSentence, taskPersonName } from '../../lib/tasks/newTaskWindow'
+import { DONE_WHEN_HINT } from '../../lib/tasks/taskRowsOnAPhone'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useRecentTaskAssignees } from '../../hooks/useRecentTaskAssignees'
@@ -192,7 +193,7 @@ export function ChecklistTechTreeAddTaskModal({
         addKeys={isEditMode ? [] : ROADMAP_ADD_KEYS}
         linesText={linesText}
         onLinesText={setLinesText}
-        linesHint="Each line becomes a box the person ticks. The task reads its percent from the ticks."
+        linesHint={DONE_WHEN_HINT.roadmap}
         asksForPhoto={asksForPhoto}
         onAsksForPhoto={setAsksForPhotoPick}
         place={place}

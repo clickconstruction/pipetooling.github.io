@@ -16,6 +16,7 @@ import { LIEN_DESK_PATH } from '../lib/lien/lienDeskRoute'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
 import { HistoryLegendPress } from '../components/developments/HistoryLegendWindow'
+import { DevelopmentPaintedMapsStrip } from '../components/paintedMap/JobPaintedMapsStrip'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY, type DevelopmentJumpKey, type DevelopmentLook } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
@@ -1216,6 +1217,11 @@ export default function DevelopmentPage() {
             📞 {contact.phone}
           </a>
         ) : null}
+      </div>
+      {/* Painted maps (punch list #345): the site's way in and what is where, as lines under its address. A map painted
+          here is for every lot and shows on each of its jobs. */}
+      <div style={{ padding: '0 0 10px' }}>
+        <DevelopmentPaintedMapsStrip developmentId={dev.id} developmentLabel={dev.name} jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) }))} address={address || null} />
       </div>
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', padding: '2px 0 10px', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
         <span>
