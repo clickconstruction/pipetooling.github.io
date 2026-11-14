@@ -9,10 +9,12 @@
  * it is on the phone, offers to look it over or throw it away, and drops it after a day.
  */
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useAuth } from '../../hooks/useAuth'
 import { readKeptWalkRaw, writeKeptWalk } from '../../hooks/usePaintedWalk'
 import { onPaintedMapAsk, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
+import { paintedMapAskFromSearch, withoutPaintedMapAsk } from '../../lib/paintedMap/paintedMapSearch'
 import { readKeptWalk, walkHasLine, type KeptWalk } from '../../lib/paintedMap/paintedWalk'
 import { keptWalkWords } from '../../lib/paintedMap/paintedWalkWords'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -42,6 +44,17 @@ export function PaintedMapHost() {
       }),
     [],
   )
+
+  // The header search's doors are links: `?paintMap=1` opens the start sheet with no job, `?paintedMap=<id>` opens a
+  // map. The key is taken off the address at once, so a reload or Back does not open the window again.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    const ask = paintedMapAskFromSearch(searchParams)
+    if (!ask) return
+    if (ask.kind === 'start') setOpen({ kind: 'sheet', home: { jobId: null, developmentId: null, label: '', developmentLabel: '', address: null, center: null } })
+    else setOpen({ kind: 'map', mapId: ask.mapId, address: null })
+    setSearchParams(withoutPaintedMapAsk(searchParams), { replace: true })
+  }, [searchParams, setSearchParams])
 
   // What the phone keeps, read whenever no map is open: on arrival, and after a window closes.
   const readOffer = useCallback(() => {

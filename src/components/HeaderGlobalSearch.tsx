@@ -58,6 +58,8 @@ import {
   type DoorViewer,
 } from '../lib/search/doors'
 import { boxDoors, siteDoors, type BoxSearchJob } from '../lib/materials/boxSearch'
+import { loadPaintedMapsForSearch } from '../lib/paintedMap/paintedMapIo'
+import { paintedMapDoors, type PaintedMapSearchRow } from '../lib/paintedMap/paintedMapSearch'
 import { canOpenMaterialsTab } from '../lib/materials/materialsTabs'
 import { groupDeskBySite } from '../lib/materials/siteRollup'
 import { useOnSiteSites } from '../hooks/useOnSiteSites'
@@ -275,6 +277,15 @@ export function HeaderGlobalSearchProvider({
         setBoxJobs(rows.map((r) => ({ id: r.id, label: [r.hcp_number, r.job_name].filter(Boolean).join(' · ') || `job ${r.id.slice(0, 8)}` })))
       })
   }, [open, viewer, storeVersion])
+  // Painted maps (#345): every map the reader can open is a door, found by its name, its words and its job. Read
+  // once per open, under the reader's own access, and never in the way: a failed read is an empty list.
+  const [paintedMaps, setPaintedMaps] = useState<PaintedMapSearchRow[]>([])
+  useEffect(() => {
+    if (!open || !viewer) return
+    void loadPaintedMapsForSearch().then((rows) => {
+      if (mountedRef.current) setPaintedMaps(rows)
+    })
+  }, [open, viewer])
   // The sites behind the boxes, read once the box opens: the office and the field roles that run a site, never an estimator.
   const sitesAllowed = Boolean(role) && role !== 'estimator' && canOpenMaterialsTab(role, 'on-site')
   const onSiteSites = useOnSiteSites(open && sitesAllowed && storeVersion >= 0 ? jobIdsWithData() : [], open && sitesAllowed)
@@ -285,8 +296,9 @@ export function HeaderGlobalSearchProvider({
     // A site that holds boxes (punch list #330): one door to the whole site's materials, for the roles that get that screen.
     const siteGroups = sitesAllowed && storeVersion >= 0 ? groupDeskBySite(jobIdsWithData(), onSiteSites.siteOfJob, onSiteSites.siteNames) : []
     const sites = siteDoors(siteGroups.flatMap((g) => (g.kind === 'site' ? [{ siteId: g.siteId, name: g.name, jobs: g.jobIds.length, boxes: g.jobIds.reduce((n, id) => n + listContainers(id).filter((c) => !c.retiredAt && c.kind !== 'unsorted').length, 0) }] : [])))
-    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...sites, ...boxes] : [...mine, ...sites, ...boxes]
-  }, [viewer, sources, fieldLookup, boxJobs, storeVersion, sitesAllowed, onSiteSites])
+    const maps = paintedMapDoors(paintedMaps)
+    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...sites, ...boxes, ...maps] : [...mine, ...sites, ...boxes, ...maps]
+  }, [viewer, sources, fieldLookup, boxJobs, storeVersion, sitesAllowed, onSiteSites, paintedMaps])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {

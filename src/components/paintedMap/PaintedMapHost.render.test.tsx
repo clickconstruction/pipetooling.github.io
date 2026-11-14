@@ -5,7 +5,9 @@
  * unseen: it is offered, or it is thrown away.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as renderBare, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { fromPlane } from '../../lib/paintedMap/paintedLine'
 import { startWalk, walkFix, walkPause, type WalkState } from '../../lib/paintedMap/paintedWalk'
 
@@ -51,6 +53,36 @@ afterEach(() => {
   cleanup()
   phone.raw = null
   phone.writes = []
+})
+
+/** The host reads the address, so it stands inside a router; `at` is the address it is opened on. */
+const Where = () => <span data-testid="where">{useLocation().search}</span>
+const render = (ui: ReactElement, at = '/dashboard') =>
+  renderBare(
+    <MemoryRouter initialEntries={[at]}>
+      {ui}
+      <Where />
+    </MemoryRouter>,
+  )
+
+describe('the header search\'s doors', () => {
+  it('opens the start sheet with no job, and takes the key off the address', () => {
+    render(<PaintedMapHost />, '/dashboard?paintMap=1')
+    expect(screen.getByTestId('sheet').textContent).toContain('sheet for nothing')
+    expect(screen.getByTestId('where').textContent).toBe('')
+  })
+
+  it('opens the map a door names, and leaves the rest of the address', () => {
+    render(<PaintedMapHost />, '/jobs?tab=stages&paintedMap=11111111-1111-4111-8111-111111111111')
+    expect(screen.getByTestId('window').textContent).toContain('map 11111111-1111-4111-8111-111111111111')
+    expect(screen.getByTestId('where').textContent).toBe('?tab=stages')
+  })
+
+  it('opens nothing for an id that is not an id', () => {
+    render(<PaintedMapHost />, '/dashboard?paintedMap=nope')
+    expect(screen.queryByTestId('window')).toBeNull()
+    expect(screen.queryByTestId('sheet')).toBeNull()
+  })
 })
 
 describe('PaintedMapHost', () => {
