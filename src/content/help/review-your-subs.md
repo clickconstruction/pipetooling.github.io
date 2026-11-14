@@ -2,10 +2,16 @@
 title: review your subs in one place
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: subs, subcontractor, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order, multiple subs, teammates, crew sheet, counted twice, double count
+keywords: subs, subcontractor, ledger, statement, payments, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order, multiple subs, teammates, crew sheet, counted twice, double count
 order: 80
 ---
 People → Subs shows one row per subcontractor, an outside crew you hire. The row shows their work, what you owe them, whether their paperwork is current, and how they have performed.
+
+## Roster and Ledger
+
+Two chips sit at the top. {{chip:gray|Roster}} is the list of subs this guide describes. {{chip:gray|Ledger}} shows what was paid to each sub and when.
+
+Press a name on the Ledger to open that sub's statement. Its last row is checked against their Balance due here. See [every payment made to subs by date](/help/see-every-sub-payment-by-date#the-statement-for-one-sub).
 
 ## The columns
 

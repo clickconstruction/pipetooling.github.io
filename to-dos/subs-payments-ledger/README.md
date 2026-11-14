@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · PR 1 the dates on the Pay rows, PR 2 the Ledger by date and PR 2b the sub's Record payment window all merged the same day, and migration 20261113180000 is pushed · the owner answered call 6 the same day: an overpayment to a sub becomes a credit
+status: asked 2026-11-13 · PR 1 (dates on the Pay rows), PR 2 (the Ledger by date), PR 2b (the Record payment window, migration 20261113180000 pushed) and PR 3 (by sub, one sub's statement, People → Subs, v2.7231) are built · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: PR 3 (by sub, People → Subs), which needs no answer; then the credit, drawn with card #350's sending; the owner's answers to calls 1 and 2
+next: the credit with one sending across several sheets (a migration); then PR 4, the check mark; then PR 5, the match to Mercury
 size: M as a train of six (XS · S · S · S · S · M)
-blocker: none for PR 3; the credit is a migration and is built with one sending across several sheets; PR 4 is a migration and wants call 1 settled; PR 5 waits on call 2
-opinion: PR 3 next, it reads rows already in memory; then the credit together with the sending, since both change how one payment lands on more than one place; stop before PR 5 until he says where sub money leaves from
+blocker: none; each of the three left carries a migration that is pushed right after its merge
+opinion: the credit first, since the by-sub list already shows a sheet paid past its total with nowhere to put it
 ---
 
 # Sub payments as a ledger (#347)
@@ -94,7 +94,7 @@ Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job
 
 1. **Dates on the Pay rows** (XS). `sheetPaymentDates(payments)` gives the dates, the count, the last date and how many have no Date sent. The Paid cell's second line, the paid sheet's Pay when words, the phone row's line. Guides `sub-labor-outstanding` and `work-the-subs-tab-on-a-phone`. No migration.
 2. **The Ledger on Jobs → Subs, by date** (S). The kernel's lines and month groups, `?view=ledger` on `JobsSubsTab`, the desk table and the phone cards, periods, Paid to, search, the tiles, Print and CSV, with no ✓ column. A new guide, *see every payment made to subs by date*. `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `docs/JOBS_TABS_ARCHITECTURE.md` gain the view. No migration.
-3. **By sub, and People → Subs** (S). The by-sub rows, one sub's statement with its running balance and the check against Balance due, the statement's print, the **Roster | Ledger** switch on `PeopleSubsTab` (`/people?tab=subs&view=ledger`, and `&sub=<id>` for one sub). `docs/PEOPLE_TABS_ARCHITECTURE.md`, guide `review-your-subs`. No migration.
+3. **By sub, and People → Subs** (S). **Built, v2.7231.** The by-sub rows, one sub's statement with its running balance and the check against Balance due, the statement's print, the **Roster | Ledger** switch on `PeopleSubsTab` (`/people?tab=subs&view=ledger`, and `&sub=<id>` for one sub). `docs/PEOPLE_TABS_ARCHITECTURE.md`, guide `review-your-subs`. No migration.
 4. **The check mark** (S, a migration). On `people_labor_job_payments`: `checked_at timestamptz`, `checked_by uuid`. A definer RPC `set_sub_payment_checked(p_payment_id, p_checked)` for office staff, and a trigger that clears the tick when `amount` or `payment_date` changes. The ✓ column, the *Not checked* chip, the tile, a How paid filter and a Method column on the ledger. **How paid itself shipped with PR 2b**: `method` and `method_ref` are on the row since migration 20261113180000. A back-charge gets a date field. The client reads columns only the migration creates, so it is a *push right after the merge* PR.
 5. **Match to the bank** (M, the owner's yes to call 2). A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
 

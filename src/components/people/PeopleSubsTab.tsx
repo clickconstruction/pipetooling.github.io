@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { assignedNamesLabel, buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
@@ -16,6 +16,7 @@ import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDo
 import { EmptyState } from '../EmptyState'
 import { subsRosterEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
+import { PeopleSubsLedger } from './PeopleSubsLedger'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -74,6 +75,20 @@ const CAN_ADD_DOCUMENT_ROLES = new Set(['dev', 'master_technician', 'assistant',
 /** `onOpenHire` opens People's Hire window on Subcontractor, the empty roster's press (punch list #184, sweep C); absent for a viewer who adds nobody. */
 export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void } = {}) {
   const navigate = useNavigate()
+  // v2.7231 (punch list #347, PR 3): Roster | Ledger. The Ledger is what was paid to each sub, and one sub's
+  // statement, at `/people?tab=subs&view=ledger` (`&sub=<people id>` for one person).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const subsView: 'roster' | 'ledger' = searchParams.get('view') === 'ledger' ? 'ledger' : 'roster'
+  const setSubsView = (view: 'roster' | 'ledger') =>
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      if (view === 'ledger') next.set('view', 'ledger')
+      else {
+        next.delete('view')
+        next.delete('sub')
+      }
+      return next
+    })
   const personDesk = useOptionalPersonDesk()
   const { role, readOnly } = useAuth()
   const canAddDocument = !readOnly && role != null && CAN_ADD_DOCUMENT_ROLES.has(role)
@@ -357,6 +372,60 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     await load()
   }
 
+  const balanceDueByPersonId = useMemo(() => new Map((result?.rows ?? []).map((r) => [r.personId, r.balanceDue] as const)), [result])
+
+  const viewSwitch = (
+    <div role="group" aria-label="Subs view" style={{ display: 'inline-flex', gap: 4, marginBottom: '0.75rem' }}>
+      {(
+        [
+          ['roster', 'Roster', 'who they are, their papers and what we owe'],
+          ['ledger', 'Ledger', 'what was paid to each sub, and when'],
+        ] as const
+      ).map(([key, label, hint]) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={subsView === key}
+          title={hint}
+          onClick={() => setSubsView(key)}
+          style={{
+            font: 'inherit',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            padding: '0.3rem 0.85rem',
+            borderRadius: 999,
+            border: `1px solid ${subsView === key ? 'var(--text-strong)' : 'var(--border-strong)'}`,
+            background: subsView === key ? 'var(--text-strong)' : 'var(--surface)',
+            color: subsView === key ? 'var(--surface)' : 'var(--text-700)',
+            cursor: 'pointer',
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (subsView === 'ledger') {
+    return (
+      <div>
+        {viewSwitch}
+        <PeopleSubsLedger
+          balanceDueByPersonId={balanceDueByPersonId}
+          sub={searchParams.get('sub')}
+          onSubChange={(sub) =>
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              if (sub) next.set('sub', sub)
+              else next.delete('sub')
+              return next
+            })
+          }
+        />
+      </div>
+    )
+  }
+
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (!result) return <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
   if (result.rows.length === 0 && unattributedGroups.length === 0) return <EmptyState {...subsRosterEmptyWords(onOpenHire ?? null)} />
@@ -480,6 +549,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
 
   return (
     <div>
+      {viewSwitch}
       {actionableGroups.length > 0 && (
         <div
           style={{
