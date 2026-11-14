@@ -807,6 +807,56 @@ describe('LienDesk', () => {
     }
   })
 
+  it('on a phone a row opens its job as a screen over the desk: the steps, the doors and the row’s press; the way back returns to the list and the press goes where the row’s goes (punch list #352, PR 4)', async () => {
+    // A computer has no such screen: a press on the row acts.
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-next-up-open]')).toBeNull()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onOpenJob = vi.fn()
+      const onOpenLienInstruments = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" onOpenJob={onOpenJob} onOpenLienInstruments={onOpenLienInstruments} />)
+      await settle()
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      const name = document.querySelector<HTMLElement>('[data-lien-next-up-open]')!
+      const rowKey = name.getAttribute('data-lien-next-up-open')!
+      const rowPress = name.closest('[data-lien-next-up-row]')!.querySelector<HTMLElement>('[data-lien-next-up-act]')!.textContent
+      fireEvent.click(name)
+      const jobScreen = document.querySelector<HTMLElement>('[data-lien-job-screen]')!
+      expect(jobScreen.getAttribute('data-lien-job-screen')).toBe(rowKey)
+      // It sits inside the desk's panel, over the header and the list.
+      expect(jobScreen.closest('[data-lien-desk-panel]')).not.toBeNull()
+      expect(jobScreen.style.position).toBe('absolute')
+      expect(within(jobScreen).getAllByTestId('lien-step-card-item')).toHaveLength(4)
+      // The doors open what the row's chip and name opened.
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="job"]')!)
+      expect(onOpenJob).toHaveBeenCalledWith('j650')
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="lien_window"]')!)
+      expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="paper"]')!)
+      expect(await screen.findByTestId('lien-paper-preview')).toBeTruthy()
+      fireEvent.keyDown(document, { key: 'Escape' })
+      // The way back closes the screen and the list is still the first view.
+      fireEvent.click(within(document.querySelector<HTMLElement>('[data-lien-job-screen]')!).getByRole('button', { name: 'Back to the list' }))
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      expect(document.querySelector('[data-lien-do-now]')).not.toBeNull()
+      // The pinned press has the row's words and goes where the row's press goes: the notice, with the screen closed behind it.
+      fireEvent.click(document.querySelector<HTMLElement>('[data-lien-next-up-open]')!)
+      const press = document.querySelector<HTMLElement>('[data-lien-job-screen-act]')!
+      expect(press.textContent).toBe(rowPress)
+      fireEvent.click(press)
+      await settle()
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      expect(document.querySelector('[data-lien-do-now]')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia

@@ -300,6 +300,45 @@ export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide, compa
   )
 }
 
+/**
+ * The row's ladder written out: four steps, the done ones ticked, the one it stands on lit. The card on the dots draws
+ * it, and so does a job's own screen on a phone (punch list #352, PR 4), where `roomy` sets it in a size a thumb reads.
+ */
+export function LienStepCardItems({ card, roomy = false }: { card: LienStepCard; roomy?: boolean }) {
+  const tone = LADDER_TONE[card.ladder]
+  const dot = roomy ? 24 : 18
+  return (
+    <ol data-roomy={roomy ? 'yes' : undefined} style={{ listStyle: 'none', margin: roomy ? 0 : '10px 0 0', padding: 0, display: 'grid' }}>
+      {card.items.map((it, i) => (
+        <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: `${dot + 2}px 1fr`, gap: roomy ? 10 : 8, alignItems: 'start', padding: roomy ? '7px 0' : '5px 0' }}>
+          <span
+            aria-hidden
+            style={{
+              width: dot,
+              height: dot,
+              borderRadius: 999,
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: roomy ? '0.8rem' : '0.66rem',
+              fontWeight: 700,
+              border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
+              background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
+              color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
+              boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
+            }}
+          >
+            {it.state === 'done' ? '✓' : i + 1}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: roomy ? '1rem' : '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
+            <span style={{ display: 'block', fontSize: roomy ? '0.875rem' : '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 /** Where the card sits: beside the dots on a computer, a sheet from the bottom on a phone. */
 export type LienStepCardPlace = { top: number; left: number } | 'sheet'
 
@@ -323,34 +362,7 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
       <div data-testid="lien-step-card-deadline" style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: 2, color: card.tone === 'red' ? 'var(--text-red-600)' : card.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
         {card.deadline}
       </div>
-      <ol style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid' }}>
-        {card.items.map((it, i) => (
-          <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: '20px 1fr', gap: 8, alignItems: 'start', padding: '5px 0' }}>
-            <span
-              aria-hidden
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 999,
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: '0.66rem',
-                fontWeight: 700,
-                border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
-                background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
-                color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
-                boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
-              }}
-            >
-              {it.state === 'done' ? '✓' : i + 1}
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
-              <span style={{ display: 'block', fontSize: '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
+      <LienStepCardItems card={card} />
       {card.blocked ? (
         <div data-testid="lien-step-card-blocked" style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>
           <strong>Blocked by:</strong> {card.blocked}

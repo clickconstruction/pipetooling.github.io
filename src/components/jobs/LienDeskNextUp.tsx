@@ -82,6 +82,7 @@ export default function LienDeskNextUp({
   timelineFor,
   scrolls = true,
   amountFor,
+  onOpenRow,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -120,6 +121,8 @@ export default function LienDeskNextUp({
   scrolls?: boolean
   /** What a row's job still owes, for a phone's row and its day's total (punch list #352, PR 3; `lienPhoneAmounts`). Absent, no money is drawn. */
   amountFor?: (row: LienNextUpRow) => number | null
+  /** A phone: a tap on a row, its name or its dots opens the job as its own screen (punch list #352, PR 4). Absent, the name is the job's door and the dots open the step card. */
+  onOpenRow?: (row: LienNextUpRow) => void
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
@@ -198,6 +201,11 @@ export default function LienDeskNextUp({
       isMobile={isMobile}
       compact={isMobile}
       onShow={(el, c) => {
+        // On a phone the job's own screen writes the steps out, so the dots open it in place of a second sheet.
+        if (isMobile && onOpenRow) {
+          onOpenRow(r)
+          return
+        }
         setOpenRow(r)
         card.show(el, c)
       }}
@@ -286,6 +294,24 @@ export default function LienDeskNextUp({
   // and the money its jobs hold; a row is the job and what it owes, its state in words, then the paper, four dots,
   // the step's name and the press. The rows were cards 225 px tall with four named tiles and a full-width button.
   const phoneGroups: LienPhoneGroup[] = isMobile ? lienPhoneGroups(groups, amountFor ?? (() => null)) : []
+  // A phone row's name (PR 4): the press that opens the job's own screen, where the door to the Job window now sits.
+  const phoneTitle = (r: LienNextUpRow, style: CSSProperties) => {
+    if (!onOpenRow) return title(r, style)
+    return (
+      <button
+        type="button"
+        data-lien-next-up-open={r.key}
+        aria-label={`${r.title}: where it stands`}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onOpenRow(r)
+        }}
+        style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, fontFamily: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', minHeight: 28 }}
+      >
+        {markTitle ? markTitle(r.title) : r.title}
+      </button>
+    )
+  }
   const phoneGroup = (g: LienPhoneGroup) => {
     const whose = g.group === 'mine' || g.group === 'sign' || g.group === 'pen'
     const violet = g.group === 'reminders' || (g.group === 'step_on' && on?.ladder === 'reminder')
@@ -308,9 +334,9 @@ export default function LienDeskNextUp({
           // A day's head says the day; under any other head the row says its own.
           const due = g.group === 'day' ? '' : lienNextUpDueWords(r)
           return (
-            <div key={r.key} data-lien-next-up-row={r.key} data-layout="lines" style={{ display: 'grid', gap: 2, padding: '0.55rem 0.75rem 0.4rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)' }}>
+            <div key={r.key} data-lien-next-up-row={r.key} data-layout="lines" onClick={onOpenRow ? () => onOpenRow(r) : undefined} style={{ display: 'grid', gap: 2, padding: '0.55rem 0.75rem 0.4rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', ...(onOpenRow ? { cursor: 'pointer' } : null) }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ flex: 1, minWidth: 0 }}>{title(r, { fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, overflowWrap: 'anywhere', whiteSpace: 'normal' })}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{phoneTitle(r, { fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, overflowWrap: 'anywhere', whiteSpace: 'normal' })}</span>
                 {amount != null ? <span data-lien-next-up-amount style={{ flex: 'none', fontWeight: 700, fontSize: '1rem', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(amount)}</span> : null}
               </div>
               <div data-lien-next-up-sub style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
