@@ -84,6 +84,16 @@ on a part-paid job the same report carries a payment-progress banner. The ⋯ sh
 **Email the paid-in-full report**, and PR A renames the live press the same way: the envelope's label
 and tip on the Job tab, the modal's title and the guide's words for the press.
 
+Also on pass 2: "When a job has photos, I would like for them to be presented as a banner where a
+user can add a photo as the first icon and then flip through the photos as additional icons." So
+the photos strip (punch list #164, `JobPhotosStrip`: a *Photos · N* door, three thumbnails and a
+*+ N* tile in a grid) becomes a **banner**: one row of 72 px tiles that flicks sideways, **Add a
+photo** the first tile, then every photo newest first with its day on it. A tap on a photo opens
+the viewer at that photo; the first tile opens the camera on a phone and the picker on a desk, the
+same door `JobPhotosWindow` draws first. A sits it where the strip is today; B gives it a section of
+its own, **Photos**, right after Where. A job with no photos draws the Add tile alone with *No
+photos yet* beside it.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -138,7 +148,8 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
 | Money tiles and job accounts | The office, rarely on a phone; the Bill tab holds the work | Folded | One line that opens Bill |
-| Photos, Questions, Activity, Their journey | Everyone, when looking for something | Folded, with counts | The fold |
+| Photos, as a banner | Everyone: what the place looks like now, and the door to add the next one | After Where | Add a photo · a photo |
+| Questions, Activity, Their journey | Everyone, when looking for something | Folded, with counts | The fold |
 | Plans and papers, team, dates, reports, costs, specific work, payments, invoices | The desk's reads; a reference on a phone | Folded, last | The fold |
 | The bar | The one press this person needs now | Always on screen | The office: the next verb. The crew: Arrived or Leaving |
 
@@ -155,7 +166,8 @@ the strip scroll away with the page; a small ✕ floats at the corner the whole 
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
 Calendar first, since they are the two anyone pressed; Add job account with
 *none yet*; money story; Email the paid-in-full report; send as a task; Make change order; the ? card last). The three money tiles
-and the job accounts chips fold to one line each. The tabs join the press count. Nothing below
+and the job accounts chips fold to one line each. The photos strip becomes the banner: Add a photo
+first, then the photos, flicked sideways. The tabs join the press count. Nothing below
 moves; the bar is as today.
 
 **B · The job on one screen** (a second PR on A). The Job tab under 640 px reads Where (the
@@ -164,14 +176,15 @@ the phone number and the email address written out, each a 44 px press that call
 Text and Copy beside them), Now (the next block, the target, the Pipeline row's
 own line; the target is the job's target in hours, named as such), then the thread (Where it stands, the customer's newest word, the newest three events
 with *All 56 ›*, Note, Text, Email). Each is a section with a title of its own, with a band between
-them. The rest folds under More on this job, each with its count: Photos, Questions, Money, Plans
+them. Photos is a section of its own right after Where, the banner
+under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
 and papers, Work and time, Their journey. With every fold closed the scroll ends near
-1,200 px. The desk is untouched.
+1,300 px. The desk is untouched.
 
 **C · The crew lead's window** (not recommended now). A `JobWindowPhone` drawn from a kernel that
 shapes it by role: the three tabs the role uses and a More ▾ sheet, and for a master tech on the
 crew a Job tab that is Where, Who, Today's work (the open stage, its checklist, the plans, materials
-on site), Questions, Photos, Notes and reports, with no money and the crew's bar. The count says
+on site), Questions, Notes and reports, the photo banner after Where, with no money and the crew's bar. The count says
 why it waits: the crew who use the window on a phone today (the superintendent, helpers, a sub)
 already get the plain read-only window with Arrived or Leaving · Leave report · Note on its bar,
 and that bar is what they press; no master tech has pressed the tabbed window on a phone in
@@ -208,6 +221,12 @@ pick after each is the drawing's own.
   (the same handlers and satellite states, which stay in the pane; the sheet's rows keep the
   `data-navtrack` names so the count continues), and folds the tiles and the strip to one line
   each. B reorders the top band and folds the body under `phonePane`.
+- `src/components/photos/JobPhotosStrip.tsx` and `src/lib/photos/jobPhotos.ts`: `stripTiles` (three
+  thumbnails and a *+ N* tile) becomes the banner's row kernel (Add a photo first, then every photo
+  newest first, each with its day), drawn as one `overflowX: auto` row of 72 px tiles on every screen;
+  the first tile reuses `JobPhotosWindow`'s add door (the camera for the field roles on a phone, the
+  picker at a desk) and the viewer opens at the tapped photo. The *Photos · N* door stays as the
+  label's *open all*.
 - `src/lib/jobs/jobWindowBar.ts`: `jobWindowTiles` stays; A adds a kernel for the one-line money
   words (*Job total $56,000 · nothing billed*) and the ⋯ sheet's rows (which doors, in which
   order, with which quiet word, by role). C adds the role's tabs and the role's bar there.

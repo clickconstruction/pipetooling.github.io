@@ -103,6 +103,14 @@
   .maprow .dist { color: var(--muted); font-size: 13px; white-space: nowrap; }
   .paint { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; color: var(--link); font-weight: 600; margin-bottom: 8px; }
   .label { font-size: 13px; color: var(--muted); margin: 10px 0 2px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+  .grid4 .ph, .photos .ph { height: 72px; border-radius: 8px; position: relative; overflow: hidden; background: linear-gradient(135deg, #cbd5e1, #64748b); }
+  .photos .ph { flex: 0 0 72px; border-radius: 10px; }
+  .ph .d { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 600; text-align: center; background: rgba(17,24,39,.55); color: #f9fafb; padding: 1px 0; }
+  .grid4 .more { height: 72px; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; color: var(--muted); font-size: 13px; }
+  .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 6px -14px 0; padding: 0 14px 4px; -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); }
+  .photos::-webkit-scrollbar { display: none; }
+  .photos .add { flex: 0 0 72px; height: 72px; border-radius: 10px; border: 1.5px dashed var(--blue); display: grid; place-items: center; color: var(--link); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.2; }
   .empty { color: var(--muted); font-size: 13px; }
   .cust { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
   .cust b { font-size: 17px; }
@@ -224,8 +232,8 @@
           <a class="addr">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="paint">＋ Paint a map</div>
-          <div class="label">Photos · 0</div>
-          <div class="empty">No photos in the folder yet. A photo taken in the app saves there.</div>
+          <div class="label">Photos · 5</div>
+          <div class="grid4"><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="more">+ 2</span></div>
           <div class="cust"><span><b>Ridgeway Builders</b> <span style="color:var(--blue)">🌐 💬</span></span><span class="icons">▲ 🖼</span></div>
           <div><span class="pill">📞 (512) 555-0142</span></div>
           <div><span class="pill">✉ office@ridgewaybuilders.example</span><span class="pill copy">⧉</span></div>
@@ -285,8 +293,8 @@
           <a class="addr" style="margin-top:4px">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="paint">＋ Paint a map</div>
-          <div class="label">Photos · 0</div>
-          <div class="empty">No photos in the folder yet. A photo taken in the app saves there.</div>
+          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="cust"><span><b>Ridgeway Builders</b> <span style="color:var(--blue)">🌐 💬</span></span><span class="icons">▲ 🖼</span></div>
           <div><span class="pill">📞 (512) 555-0142</span></div>
           <div><span class="pill">✉ office@ridgewaybuilders.example</span><span class="pill copy">⧉</span></div>
@@ -325,6 +333,7 @@
         <li><b>The header scrolls away.</b> The title row and the tab strip go up with the page, so a thumb's first flick gives the whole screen to the job. A small <b>✕</b> floats at the corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays put.</li>
         <li>The icon row is gone. Every door is a named 48 px row in the <b>⋯</b> sheet, Share and Calendar first since they are the two anyone pressed, with the <b>?</b> card as its last row.</li>
         <li>The three money tiles and the job accounts fold to <b>one line each</b>; a tap opens the Bill tab or the accounts sheet.</li>
+        <li>The photos are a <b>banner</b>: a row of 72 px tiles that flicks sideways, <b>Add a photo</b> the first tile, then every photo newest first with its day. A tap on a photo opens the viewer there; a tap on the first tile opens the camera on a phone, the picker on a desk. Today's three thumbnails and a <b>+ N</b> tile go.</li>
         <li>The tabs join the press count, so the second PR's tab question is answered by data.</li>
         <li>Nothing below moves. The bar is as today.</li>
       </ul>
@@ -352,6 +361,9 @@
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="quiet" style="margin:0 0 4px">＋ Paint a map · street view ▸</div>
 
+          <div class="sect">Photos</div>
+          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">🌐 ▲ 🖼</span></div>
           <div class="who">
@@ -375,7 +387,6 @@
           <span class="mark ok" style="top:620px">the newest three, not the whole feed</span>
 
           <div class="sect">More on this job</div>
-          <div class="fold"><span>Photos</span><span class="n">0</span><span class="chev">›</span></div>
           <div class="fold"><span>Questions on this job</span><span class="n live">6 answered</span><span class="chev">›</span></div>
           <div class="fold"><span>Money<span class="sub">Job total $56,000 · nothing billed · accounts none yet</span></span><span class="chev">›</span></div>
           <div class="fold"><span>Plans and papers<span class="sub">Issued set · came Nov 7 · 0 papers</span></span><span class="chev">›</span></div>
@@ -389,8 +400,8 @@
       <ul>
         <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside them, so a glance says whether it is the right person), <b>Now</b> (the next block, the hours target, the Pipeline row's own line), then <b>the thread</b>: where it stands, the customer's newest word, the newest three events, and Note, Text, Email.</li>
         <li>Each part is a <b>section with a title of its own</b>: Where, Who, Now, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
-        <li>Everything else folds under More on this job, each with its count: Photos, Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
-        <li>The first screen is one screen. The scroll ends near 1,200 px with every fold closed.</li>
+        <li><b>Photos</b> is a section of its own right after Where, the banner from A under its title, so the pictures are the second thing a thumb meets. Everything else folds under More on this job, each with its count: Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
+        <li>The first screen is one screen. The scroll ends near 1,300 px with every fold closed.</li>
         <li>The desk is untouched: the order and the folds exist only under 640 px.</li>
       </ul>
     </div>
@@ -417,6 +428,9 @@
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
 
+          <div class="sect">Photos</div>
+          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">📸</span></div>
           <div class="who">
@@ -430,7 +444,6 @@
           <div class="fold"><span>Plans<span class="sub">Issued set · came Nov 7</span></span><span class="chev">›</span></div>
           <div class="fold"><span>Materials on site<span class="sub">2 cages · 1 box · 3 short</span></span><span class="chev">›</span></div>
           <div class="fold"><span>Questions<span class="sub">nothing waiting · 6 answered</span></span><span class="chev">›</span></div>
-          <div class="fold"><span>Photos</span><span class="n">0</span><span class="chev">›</span></div>
           <div class="fold"><span>Notes and reports</span><span class="n">8</span><span class="chev">›</span></div>
           <span class="mark ok" style="top:560px">no money on the crew's screen</span>
         </div>
@@ -439,7 +452,7 @@
     </div>
     <div class="verdict"><b>What it would be, and why not now</b>
       <ul>
-        <li>A window shaped by role: the three tabs the role uses and a More ▾, and for a master tech on the crew a Job tab that is Where, Who, <b>Today's work</b> (the open stage, its checklist, the plans, materials on site), Questions, Photos, Notes and reports. No money.</li>
+        <li>A window shaped by role: the three tabs the role uses and a More ▾, and for a master tech on the crew a Job tab that is Where, Who, <b>Today's work</b> (the open stage, its checklist, the plans, materials on site), Questions, Notes and reports, the photo banner after Where. No money.</li>
         <li>The crew who use the window on a phone today (the superintendent, helpers, a sub) already get the plain read-only window with <b>Arrived or Leaving · Leave report · Note</b> on its bar, and the count says that bar is what they press. C would redraw the tabbed window for a master tech on site, and no master tech has pressed it on a phone in nineteen days.</li>
         <li>So C waits for a master tech who works from a phone, or for the tab count after A to say the office's phone use is real.</li>
       </ul>
@@ -459,7 +472,8 @@
   <tr><td>Where it stands, the thread, the newest three events</td><td>The office: has the customer answered, what went out last, what the crew wrote.</td><td>6 (office); folded for the crew</td><td>Note · Text · Email</td></tr>
   <tr><td>Today's work: the open stage, its checklist, plans, materials on site</td><td>The crew lead: what to do and what is on site to do it with.</td><td>5 (crew); folded for the office</td><td>The checklist, Materials on site</td></tr>
   <tr><td>Money tiles and job accounts</td><td>The office only, and rarely on a phone: the Bill tab holds the real work.</td><td>Folded</td><td>One line that opens the Bill tab</td></tr>
-  <tr><td>Photos, Questions, Their journey</td><td>Everyone, when looking for something. Not first.</td><td>Folded with counts</td><td>The fold</td></tr>
+  <tr><td>Photos</td><td>Everyone: what the place looks like now, and the door to add the next one</td><td>A banner after Where</td><td>Add a photo · a photo</td></tr>
+  <tr><td>Questions, Their journey</td><td>Everyone, when looking for something. Not first.</td><td>Folded with counts</td><td>The fold</td></tr>
   <tr><td>Plans and papers, team, dates, reports, costs, specific work, payments, invoices</td><td>The desk's reads. On a phone, a reference.</td><td>Folded, last</td><td>The fold</td></tr>
   <tr><td>The bar</td><td>The one press this person needs now. The count says it is the part of the window that gets used.</td><td>Always on screen</td><td>The office: the next verb. The crew: Arrived or Leaving.</td></tr>
 </table>
