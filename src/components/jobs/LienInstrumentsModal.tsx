@@ -1143,6 +1143,7 @@ export default function LienInstrumentsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="lien-instruments-title"
+      data-lien-window=""
       style={{
         position: 'fixed',
         inset: 0,
@@ -1156,6 +1157,8 @@ export default function LienInstrumentsModal({
       }}
       onClick={onClose}
     >
+      {/* Punch list #355 H (v2.7282): a field under 16 px makes an iPhone zoom the page on focus. */}
+      <style>{`@media (max-width: 640px) { [data-lien-window] input, [data-lien-window] select, [data-lien-window] textarea { font-size: 16px; } }`}</style>
       <div
         style={{
           background: 'var(--surface)',

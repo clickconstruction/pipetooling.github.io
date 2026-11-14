@@ -321,7 +321,9 @@ export default function TestReportModal({
       maxWidthDesktop={1120}
       zIndex={zIndex}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 0.95fr', gap: isMobile ? 16 : 24, padding: '0.25rem 0 1rem' }}>
+      <div data-test-report-form="" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 0.95fr', gap: isMobile ? 16 : 24, padding: '0.25rem 0 1rem' }}>
+        {/* Punch list #355 H (v2.7282): on a phone the fields are 16 px, so an iPhone does not zoom on focus; the result cards and the pressure boxes stack. */}
+        <style>{`@media (max-width: 640px) { [data-test-report-form] input, [data-test-report-form] select, [data-test-report-form] textarea { font-size: 16px; } }`}</style>
         <div>
           {/* Reports on this job */}
           <div style={{ ...field, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -357,7 +359,7 @@ export default function TestReportModal({
             ) : null}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: hydro ? '1fr 1fr' : '1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: hydro && !isMobile ? '1fr 1fr' : '1fr', gap: 12 }}>
             <div style={field}>
               <div style={label}>Test date</div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -382,7 +384,7 @@ export default function TestReportModal({
           {hydro ? (
             <div style={field}>
               <div style={label}>Result</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                 {(['pass', 'fail'] as const).map((r) => {
                   const on = data.result === r
                   const color = r === 'pass' ? '#1f7a3a' : '#b42318'
@@ -418,7 +420,7 @@ export default function TestReportModal({
             <>
               <div style={field}>
                 <div style={label}>House pressure — type one, the others follow</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 8 }}>
                   {(
                     [
                       ['psi', 'PSI'],
@@ -447,7 +449,7 @@ export default function TestReportModal({
                   ))}
                 </div>
                 {data.gasFixtures.map((f, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 140px auto auto', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 140px auto auto', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                     <input type="text" list="test-report-gas-fixtures" value={f.name} placeholder="Fixture" onChange={(e) => update({ gasFixtures: data.gasFixtures.map((g, j) => (j === i ? { ...g, name: e.target.value } : g)) })} style={input} />
                     <input type="number" min={0} step={5000} inputMode="numeric" value={f.btuPerHour ?? ''} placeholder="BTU/hr" onChange={(e) => update({ gasFixtures: data.gasFixtures.map((g, j) => (j === i ? { ...g, btuPerHour: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) } : g)) })} style={input} />
                     <button type="button" style={pill(false)} title="Multiply by 1,000" onClick={() => update({ gasFixtures: data.gasFixtures.map((g, j) => (j === i && g.btuPerHour != null ? { ...g, btuPerHour: g.btuPerHour * 1000 } : g)) })}>×1,000</button>

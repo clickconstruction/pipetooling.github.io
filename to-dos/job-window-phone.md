@@ -510,8 +510,8 @@ row: four folders with three presses each is twelve presses on one screen.
 | AIA G702/G703 | Already a full-screen sheet, nothing past the edge; 33 of its fields are under 16 px, 5 presses under 32 | Fields to 16 px on a phone |
 | Contract | A full-screen sheet; reads whole, the paper's chips and the agreement in order | Nothing |
 | Test report | A full-screen sheet, but 51 elements run past the right edge (the duration field, the PASS and FAIL cards, the notes box); 14 presses under 32, 3 fields under 16 | The result cards stack, the duration wraps under the date, fields to 16 px |
-| Lien | Not measured: the ZZ job's press did not open it in the pane; measured in H on a job with paper | Measured in H |
-| View bill | Not measured: the ZZ job has no bill; measured in H on a job with one | Measured in H |
+| Lien | A full-screen sheet on the ZZ dispute-walk job: the next step, the three papers' tabs, the letter's fields and four presses at the foot, nothing past the edge; 10 fields under 16 px, 7 presses under 32 | Fields to 16 px on a phone |
+| View bill | A centred window that fits the width on the dispute-walk job's Bill 1: the contract card, the saved amounts, the payment links, Close; nothing past the edge | Nothing |
 
 ### The plan to build it all (the owner, 2026-11-14: "I like it now, come up with a plan to build it all to the spec, and then build it")
 
@@ -521,9 +521,9 @@ measure: screens, presses under 32 px, fields under 16 px, and the question *is 
 answered in the fragment. Each PR stacks on the one before and opens with auto-merge; the queue takes them in
 order.
 
-1. **D** (S): on every tab but Job the band is the Street View banner alone, 90 px; Paint a map, the photo
+1. **D** (S, **built, v2.7281**): on every tab but Job the band is the Street View banner alone, 90 px; Paint a map, the photo
    banner and the checklist strip stay on Job. The pass-3 card and mock-up ride with it.
-2. **H** (M): Documents on a phone: an empty section one 44 px row with its press; presses 40 px; Stage
+2. **H** (M, **built, v2.7282**): Documents on a phone: an empty section one 44 px row with its press; presses 40 px; Stage
    checklists one row per stage with its standing; the folders' Add ▾ sheet (Take a photo · Choose a file ·
    Open in Google Drive); the AIA and Test report windows' fields 16 px and the Test report's cards stacked;
    the Lien window and View bill measured on a job with paper and a bill, fixed in the same PR when small.

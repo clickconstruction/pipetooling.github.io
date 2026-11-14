@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ADD_FILE_MAX_BYTES, ADD_FILE_WORDS, addFileConfirmLabel, addFileSizeWords, addFileTooBig, addFileWhereFor, addedWords } from './jobFolderAddFile'
+import { ADD_FILE_MAX_BYTES, ADD_FILE_WORDS, ADD_SHEET_WORDS, addFileConfirmLabel, addFileSizeWords, addFileTooBig, addFileWhereFor, addedWords, folderPhotoFileName } from './jobFolderAddFile'
 
 describe('jobFolderAddFile (v2.6303)', () => {
   it('maps the Job folders rows to where a put lands, and serves no other row', () => {
@@ -26,5 +26,15 @@ describe('jobFolderAddFile (v2.6303)', () => {
     expect(addFileConfirmLabel('Plans')).toBe('Add it to Plans')
     expect(addedWords('Permit 2026-0412.pdf', 'Plans')).toBe('Permit 2026-0412.pdf is in Plans.')
     expect(ADD_FILE_WORDS.where.top).toMatch(/the job’s folder itself/)
+  })
+})
+
+describe('the phone’s Add ▾ sheet (punch list #355 H, v2.7282)', () => {
+  it('names the three rows and the shot as the photo sweep names one', () => {
+    expect(ADD_SHEET_WORDS.button).toBe('Add ▾')
+    expect(ADD_SHEET_WORDS.title('Plans')).toBe('Add to Plans')
+    expect([ADD_SHEET_WORDS.photo, ADD_SHEET_WORDS.file, ADD_SHEET_WORDS.drive]).toEqual(['Take a photo', 'Choose a file', 'Open in Google Drive'])
+    const name = folderPhotoFileName({ at: '2026-11-14T15:00:00Z', byName: 'Robert', folder: 'Plans', mime: 'image/jpeg' })
+    expect(name).toMatch(/^2026-11-14 Robert · Plans\.jpe?g$/)
   })
 })
