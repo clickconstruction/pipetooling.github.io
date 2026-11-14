@@ -2,7 +2,7 @@
  * The contract field on a job (Contract sweep refresh — docs/recent-features/v2.3669.md).
  *
  * Some customers already have a contract with us, kept in Google Drive. When a job has nothing
- * on file, its Customer Contract row shows a field for that link; filing it is the ordinary
+ * on file, its Contract row offers a field for that link behind Paste a link…; filing it is the ordinary
  * paper-record write (`fileSignedJobContract`), so the job reads "✍ On file · Google Doc"
  * everywhere the contract record is read — the sweep, the chips, Bill Customer. The link lives
  * on the contract record, not in a second column on the job that could fall out of step. Pure.

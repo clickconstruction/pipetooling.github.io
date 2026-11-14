@@ -53,6 +53,17 @@ describe('LienDeskNextUp', () => {
     expect((screen.getByRole('button', { name: 'Draft notice' }) as HTMLButtonElement).style.width).toBe('100%')
   })
 
+  it('the list is its own scroller unless the desk scrolls it with the month as one page (punch list #352, PR 0)', () => {
+    const view = render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={() => {}} />)
+    const list = () => document.querySelector('[data-lien-next-up="list"]') as HTMLElement
+    expect(list().getAttribute('data-scrolls')).toBe('yes')
+    expect(list().style.overflowY).toBe('auto')
+    view.unmount()
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} scrolls={false} />)
+    expect(list().getAttribute('data-scrolls')).toBe('no')
+    expect(list().style.overflowY).toBe('visible')
+  })
+
   it('a phone row names the four steps in place of the dots, with the current one saying whose it is (v2.4881)', () => {
     render(<LienDeskNextUp rows={[row({ action: 'approve', button: 'Approve' })]} loading={false} isMobile onAct={() => {}} viewerIsLeader />)
     const tiles = Array.from(screen.getByTestId('lien-step-row').querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)

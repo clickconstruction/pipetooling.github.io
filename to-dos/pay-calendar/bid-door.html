@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay calendar: the estimator's door on a won bid</title>
+<style>
+  /* Punch list #323 and #341. The owner's question of 2026-11-13: should an estimator be able to set a payer's Pay
+     calendar while working a bid? This page draws the form I would build. Third drawing the same day, at his word
+     that the terms only matter once the bid is won: the door is on a won bid alone, inside the Send to Dispatch sheet
+     an estimator already fills in, and the office makes the terms the calendar. Nothing here is built. Every name,
+     bid, job, clause and date is made up: Larkfield Construction, Sable Ridge Builders, Dana Whitfield, bid B412,
+     job J1502, section 5.2. No live row and no real contract's words are on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e; --text-blue-800: #1e40af;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --dead-fill: #e5e7eb; --dead-text: #6b7280;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-blue-800: #93c5fd;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --new: #c4b5fd; --new-tint: #2a2350;
+    --dead-fill: #374151; --dead-text: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 40px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--new); }
+  .cap.quiet { color: var(--text-muted); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .pad { padding: 12px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 6px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 14px; }
+  .bar .x { margin-left: auto; font-size: 16px; line-height: 1; }
+  .sect { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 6px; }
+  .lab { font-weight: 600; font-size: 13px; color: var(--text-strong); margin: 0 0 6px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .card + .card { margin-top: 8px; }
+  .gchead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .gchead b { color: var(--text-strong); font-size: 14px; }
+  .gchead .link { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-link); }
+  .who { font-size: 12px; color: var(--text-muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--bg-blue-tint); color: var(--text-blue-800); white-space: nowrap; }
+  .chip.plain { background: var(--bg-muted); color: var(--text-700); }
+  .chip.green { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .fact { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; }
+  .fact dt { color: var(--text-muted); }
+  .fact dd { margin: 0; min-width: 0; }
+  .press { color: var(--text-link); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .small { display: block; font-size: 12px; color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 32px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.quiet { color: var(--text-muted); font-weight: 600; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: flex-end; }
+
+  .win { background: var(--surface); padding: 14px 16px; }
+  .win h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .win .hint { margin: 4px 0 0; font-size: 12.5px; color: var(--text-muted); }
+  .fl { display: block; font-size: 12px; font-weight: 600; color: var(--text-700); margin: 11px 0 4px; }
+  .sel { display: inline-flex; align-items: center; gap: 14px; min-height: 34px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font-size: 13.5px; }
+  .sel::after { content: "▾"; color: var(--text-muted); font-size: 11px; }
+  .inp { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); font-size: 13.5px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13.5px; }
+  .box { margin: 11px 0 0; padding: 8px 11px; border-radius: 8px; font-size: 13px; }
+  .box.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .box.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .box.gone { border: 1.5px dashed var(--border-strong); color: var(--text-muted); background: none; }
+  .foot { margin: 9px 0 0; font-size: 12px; color: var(--text-muted); }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; margin-top: 11px; }
+  .check i { flex: none; width: 15px; height: 15px; border: 1.5px solid var(--border-strong); border-radius: 3px; margin-top: 2px; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg span { flex: 1 1 130px; min-width: 0; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-base); }
+  .seg span.on { font-weight: 700; border-color: var(--text-link); background: var(--bg-blue-tint); }
+  .why { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); }
+  .or { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 6px 0 0; }
+  .jobrow { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--border); }
+  .jobrow:first-of-type { border-top: none; }
+  .jobrow dt { color: var(--text-muted); }
+  .jobrow dd { margin: 0; min-width: 0; }
+  .today { margin: 0; padding: 7px 10px; border: 1px dashed var(--border-strong); border-radius: 8px; font-size: 12.5px; color: var(--text-muted); }
+  .part { margin-top: 12px; padding: 10px 12px 12px; border-radius: 10px; }
+  .part h4 { margin: 0; font-size: 13.5px; color: var(--text-strong); }
+  .f { margin-top: 9px; }
+  .f small { display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 3px; }
+  .f .inp { display: flex; width: 100%; min-height: 30px; font-size: 13px; }
+  .radio { display: flex; align-items: center; gap: 7px; font-size: 13.5px; padding: 2px 0; }
+  .radio i { flex: none; width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--border-strong); }
+  .radio.on i { border: 4px solid var(--text-link); }
+  .quietline { display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: baseline; margin: 5px 0 0 20px; padding: 3px 6px; font-size: 12.5px; color: var(--text-muted); }
+  .quietline .press { font-size: 12.5px; }
+  .quietline b { color: var(--text-base); font-weight: 600; }
+  .openpart { margin: 6px 0 0 20px; padding: 9px 11px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); }
+  .openpart .fl:first-child { margin-top: 0; }
+  .inbox { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .inbox b { color: var(--text-strong); }
+
+  table.cost { width: 100%; border-collapse: collapse; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  table.cost th, table.cost td { text-align: left; vertical-align: top; padding: 9px 11px; border-bottom: 1px solid var(--border); }
+  table.cost th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  table.cost tr:last-child td { border-bottom: none; }
+  table.cost tr.pick td { background: var(--new-tint); }
+  table.cost td b { color: var(--text-strong); }
+  .scroll { overflow-x: auto; }
+  @media (max-width: 720px) { table.cost { min-width: 760px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #323 and #341 · the owner's question, 2026-11-13 · a draft, nothing built</p>
+    <h1>The estimator's pay terms, on a won bid only</h1>
+    <p><b>My pick: yes, only once the bid is won, and as one quiet line.</b> An estimator who wins a bid already sends Dispatch a short draft of the job. Under <i>The GC that won it</i> the draft gains one small press, <b>Add their pay terms</b>. The same line then rides with the GC into New Job, where the office checks it against the payer's record and uses it. Nothing shows on a bid that is not won. The estimator never sees a payment.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+
+<h2>One line that travels with the GC <small>left to right</small></h2>
+<p class="lede">The purple outline marks what is new. Everything else is on the screen today. The line sits in the same place on both forms: right under the GC it belongs to.</p>
+
+<div class="three">
+
+  <div class="col">
+    <div class="cap">1 · The estimator sends the draft</div>
+    <p class="say">The <b>Send to Dispatch</b> sheet is the one an estimator fills in today on a won bid. The only new thing is one small line under the GC. Most drafts will leave it alone.</p>
+    <div class="frame">
+      <div class="bar"><b>Send to Dispatch</b><span class="x">×</span></div>
+      <div class="win">
+        <div class="f" style="margin-top:0"><small>Job name</small><span class="inp">Larkfield Medical Office</span></div>
+        <div class="f"><small>Address</small><span class="inp">2200 Canal Street</span></div>
+        <div class="f"><small>The GC that won it</small>
+          <div class="radio on"><i></i>Larkfield Construction</div>
+          <div class="quietline new"><span class="press">+ Add their pay terms</span><span>if they pay on a set day of the month</span></div>
+          <div class="radio"><i></i>Sable Ridge Builders</div>
+        </div>
+        <div class="f"><small>The job starts at</small><span class="inp" style="color:var(--text-muted)">the bid's figure</span></div>
+        <div class="f"><small>Trade · Wanted by · A note for Dispatch</small><span class="inp" style="color:var(--text-muted)">as today</span></div>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Send to Dispatch</span></div>
+      </div>
+    </div>
+    <p class="say">It is a line of small words, not a field. It takes less room than the address.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap">2 · Pressed, it opens in place</div>
+    <p class="say">The same three choices the office's window has, with the plain-date read-back. No payment record is drawn for an estimator.</p>
+    <div class="frame">
+      <div class="win">
+        <div class="f" style="margin-top:0"><small>The GC that won it</small>
+          <div class="radio on"><i></i>Larkfield Construction</div>
+          <div class="openpart new">
+            <span class="fl">These terms are for</span>
+            <div class="seg"><span class="on">Only this job</span><span>Every job they pay</span></div>
+            <span class="fl">Bills must be in by</span>
+            <span class="sel">The 25th</span>
+            <span class="fl">They pay on the</span>
+            <div class="row"><span class="sel">10th</span><span>of</span><span class="sel">the next month</span></div>
+            <div class="check"><i></i><span>They pay when the owner pays them</span></div>
+            <span class="fl">Where it says so</span>
+            <div class="row"><span class="inp">§ 5.2</span><span class="inp" style="flex:1 1 140px">Paid the 10th of the month after it is received.</span></div>
+            <div class="box blue"><b>In by Nov 25, due Dec 10.</b><br>One day late is due Jan 10.</div>
+            <div class="btnrow"><span class="btn quiet">Leave it out</span><span class="btn">Done</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="or">After Done, it is one line again</p>
+    <div class="frame">
+      <div class="win">
+        <div class="f" style="margin-top:0"><small>The GC that won it</small>
+          <div class="radio on"><i></i>Larkfield Construction</div>
+          <div class="quietline new"><b>In by the 25th, paid the 10th of the next month</b><span>only this job</span><span class="press">Change</span></div>
+        </div>
+        <div class="btnrow"><span class="btn quiet">Cancel</span><span class="btn blue">Send to Dispatch</span></div>
+      </div>
+    </div>
+    <p class="say">The button does not change. The terms go with the draft.</p>
+  </div>
+
+  <div class="col">
+    <div class="cap">3 · The office opens the job</div>
+    <p class="say">The Dispatch row and <b>Open the job</b> are today's. New Job opens from the draft, and the line is there under the GC, where the estimator left it.</p>
+    <div class="frame">
+      <div class="pad">
+        <div class="inbox">
+          <b>Open the job for B412 Larkfield Medical Office, won with Larkfield Construction</b>
+          <span class="small">From Dana Whitfield · a draft of the job<span class="new" style="margin-left:6px;padding:0 4px">with their pay terms</span></span>
+          <div class="btnrow" style="justify-content:flex-start;margin-top:8px"><span class="btn" style="color:var(--text-green-700)">Open the job</span></div>
+        </div>
+      </div>
+      <div class="bar" style="border-top:1px solid var(--border)"><b>New Job</b><span>from Dana Whitfield's draft</span><span class="x">×</span></div>
+      <div class="win">
+        <div class="f" style="margin-top:0"><small>GC</small><span class="inp">Larkfield Construction</span>
+          <div class="quietline new" style="margin-left:0"><span>Pay terms from the draft:</span><b>in by the 25th, paid the 10th of the next month</b><span>only this job</span><span class="press">Check and use</span></div>
+        </div>
+        <div class="f"><small>Team · Schedule · the rest of the form</small><span class="inp" style="color:var(--text-muted)">as today</span></div>
+      </div>
+    </div>
+    <p class="say"><b>Check and use</b> opens today's Pay calendar window, filled in, with <i>Their record against this</i> in front of the office. After they agree, the line reads:</p>
+    <div class="frame">
+      <div class="win">
+        <div class="quietline new" style="margin:0"><b>In by the 25th, paid the 10th of the next month</b><span>sets with the job</span><span class="press">Change</span></div>
+        <div class="btnrow"><span class="btn blue">Create Job</span></div>
+      </div>
+    </div>
+    <p class="say">Create Job makes the job and its calendar together. No window opens by itself, and the office is never stopped.</p>
+  </div>
+
+</div>
+
+<h2>If the office skips it, or the job is already open</h2>
+<div class="three">
+  <div class="col">
+    <div class="cap quiet">Skipped in New Job</div>
+    <p class="say">The terms stay with the job. The job window's <b>Pay calendar</b> row, there today, keeps the offer until someone takes it.</p>
+    <div class="frame">
+      <div class="bar"><b>J1502 Larkfield Medical Office · Edit</b><span class="x">×</span></div>
+      <div class="pad">
+        <div class="card">
+          <dl style="margin:0">
+            <div class="jobrow"><dt>Bills go to</dt><dd>Larkfield Construction</dd></div>
+            <div class="jobrow new"><dt>Pay calendar</dt>
+              <dd>From Dana Whitfield's draft · in by the 25th, paid the 10th of the next month · <span class="press">Check and use</span></dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap quiet">The job is already open, or the contract came later</div>
+    <p class="say">The won bid's Job block shows the same small line beside the job's chip. It sends the terms to Dispatch on their own.</p>
+    <div class="frame">
+      <div class="bar"><b>B412 Larkfield Medical Office · Won</b></div>
+      <div class="pad">
+        <div class="card">
+          <div class="gchead"><span class="chip green">J1502 opened from this bid</span></div>
+          <div class="quietline new" style="margin-left:0"><span class="press">+ Send their pay terms to the office</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap quiet">Who never sees any of this</div>
+    <p class="say">An estimator on a bid that is not won. An office person who marks a bid won, since they open the job themselves and use the job's own Pay calendar row. A digital twin.</p>
+  </div>
+</div>
+
+<h2>The forms, and what each costs</h2>
+<div class="scroll">
+<table class="cost">
+  <thead>
+    <tr><th>Form</th><th>What the estimator does</th><th>Migration and gates</th><th>What the estimator newly reads</th><th>The risk</th></tr>
+  </thead>
+  <tbody>
+    <tr class="pick">
+      <td><b>On a won bid, the office sets it</b><span class="tag">my pick</span></td>
+      <td>Adds the terms to the job draft they already send, behind one small press, and says whose they are. The office checks them in New Job and they set with the job.</td>
+      <td><b>None.</b> The terms ride the draft's Dispatch row. The two money gates are not touched.</td>
+      <td><b>Nothing.</b></td>
+      <td>The estimator reads the contract while bidding and writes the terms down at the win, so they may open it twice.</td>
+    </tr>
+    <tr>
+      <td><b>On every bid, the office sets it</b> <span class="small">the last drawing</span></td>
+      <td>Writes the terms on the bid's GC card at any time. A job's terms wait for the win.</td>
+      <td><b>One small migration.</b> A column on the bid's own GC row for the terms to wait in.</td>
+      <td>What estimators wrote on bids.</td>
+      <td>Most bids are not won, so most of what is typed is never used. The bid documents' sample contract may not be the one that gets signed.</td>
+    </tr>
+    <tr>
+      <td><b>The estimator sets it</b></td>
+      <td>Saves the calendar themselves. Sees the two days and the read-back, never the record.</td>
+      <td><b>One migration.</b> Two gates of the calendar's own, a new policy, and a refusal for the digital twins written into the save.</td>
+      <td>Every payer's calendar: the days, the clause, who set it.</td>
+      <td>A payer's calendar moves the due day on every bill that payer has out, set by someone who sees none of those bills and cannot see the record that would warn them.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="note"><b>Why the two money gates cannot simply be widened.</b> The gate that lets the office set a calendar also lets it record a customer's promise to pay, mark a bill as paid by claim and set the day a payer accepted a bill. The gate that reads a calendar also reads every promise and paid claim in the company. Adding estimators to either would hand them all of that, and the digital twins sign in as estimators. So any form where the estimator reads or saves a calendar needs gates of the calendar's own.</p>
+
+</div>
+<script>
+  document.querySelectorAll('.themes button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.dataset.set);
+      document.querySelectorAll('.themes button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+</script>
+</body>
+</html>
