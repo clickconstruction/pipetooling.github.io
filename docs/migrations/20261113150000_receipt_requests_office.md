@@ -32,3 +32,5 @@ Applied twice on a throwaway Postgres 15 with stub tables and the two migrations
 ## Undo
 
 `DROP FUNCTION public.receipt_requests_set_done(uuid[], boolean); DROP FUNCTION public.receipt_requests_to_chase();` and the two columns dropped once nothing reads them.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8011.

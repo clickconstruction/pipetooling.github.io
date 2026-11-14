@@ -31,3 +31,5 @@ So the client is safe on either side of the push. Until the push, a new card is 
 ## Rollback
 
 `DROP INDEX IF EXISTS public.checklist_items_source_tag_idx; ALTER TABLE public.checklist_items DROP COLUMN IF EXISTS source_tag;` The cards are then found by their links again.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8011.

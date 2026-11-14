@@ -26,3 +26,5 @@ After the push, `src/types/database.ts` and `supabase/functions/dev-mcp/catalog.
 ## Rollback
 
 Run `20261110213000_bridge_moves_reach_people.sql` again: it creates both functions with their grants.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #7989.

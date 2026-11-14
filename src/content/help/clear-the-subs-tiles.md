@@ -54,7 +54,7 @@ Every row is an agreement signed this calendar month. The row shows where the sh
 
 - Sheet in **Pre-inspection** means the sub said done. {{button:outline|Schedule inspection…}} opens the inspection request. {{button:green|Passed → bill}} moves the sheet on.
 - Sheet **waiting on the customer**: {{button:blue|Bill Kestrin Contracting}} opens Bill Customer pre-filled.
-- Sheet **queued for the pay run**: {{button:blue|Pay Behar Kraja · $1,000.00}} opens Make Payment with the amount.
+- Sheet **queued for the pay run**: {{button:blue|Pay Behar Kraja · $1,000.00}} opens Record payment with the amount.
 - Rows the sub still owns read {{chip:gray|Waiting on the sub}}. That keeps the count of what needs the office honest.
 - Each row shows **portal** or **on paper** for how it was signed. It shows the sub's own picked dates when there are some. **Print** opens the document. The footer steps back a month: {{button:outline|‹ August · 5}}.
 

@@ -48,3 +48,5 @@ Each guard speaks only to a direct caller: `current_user` is `authenticated` or 
 
 - The gate itself. A superintendent or an estimator on a job's team, who cannot read `jobs_ledger` or their own team row, is still let in only once clocked onto the job. Nobody in that position is on a team that holds boxes today.
 - `at` behind the server's time. A phone whose clock runs slow still sorts its press early; `recorded_at` now shows the gap.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8083.

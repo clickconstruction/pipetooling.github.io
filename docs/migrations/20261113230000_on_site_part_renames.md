@@ -48,3 +48,5 @@ Read-only on prod after the push:
 - `select count(*) from job_part_renames` reads `0`.
 - `select tgname from pg_trigger where tgrelid = 'public.job_part_renames'::regclass and not tgisinternal` lists `job_part_renames_judge` and `job_part_renames_apply`, with the fences' own.
 - `select count(*) from pg_trigger where tgrelid = 'public.job_material_movements'::regclass and not tgisinternal` reads what it read before.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8061.

@@ -51,3 +51,5 @@ Read-only on prod after the push:
 - `select pg_get_functiondef('public.job_containers_keep_names'::regproc) like '%on_site_by_name()%'` reads `t`, and the same for `job_part_renames_judge`.
 - `select has_function_privilege('anon', 'public.dev_on_site_rename(jsonb, boolean)', 'execute')` reads `f`.
 - From the seat, after the deploy: `plan_part_rename` on a ZZ test job, which writes nothing.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8097.

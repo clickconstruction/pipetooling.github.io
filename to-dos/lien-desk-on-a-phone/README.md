@@ -2,7 +2,7 @@
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
 group: close
-status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 3 are on main (v2.7196, v2.7200, v2.7217, v2.7222) · PR 4 to PR 7 are open and armed (#8069, #8070, #8072, #8075) · left: the owner's look on his own phone
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · left: the owner's look on his own phone
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -12,9 +12,9 @@ summary: >
   screen. Most presses are 20 to 30 px tall. The mock-up draws three whole directions on the same
   three moments: one list of jobs soonest first, the same desk made to fit, and a today card first.
   The owner picked the one list.
-next: The owner opens the desk on his phone once PR 4 to PR 7 have merged and says what still reads wrong. Then this card is retired.
+next: The owner opens the desk on his phone, now that all eight PRs are on main, and says what still reads wrong. Then this card is retired.
 size: L as a train of eight, all built; left: a look, and three small residues named under Where it stands
-blocker: None. PR 4 to PR 7 each merge on their own; the tab-rename PR #8038 is ahead of them in the merge queue and each gets main merged in after it lands.
+blocker: None.
 ---
 
 # The Lien desk on a phone
@@ -164,10 +164,10 @@ Every PR was walked on the dev server against live data at 320, 390 and 430 wide
 | 1 | v2.7200 | On main | One header row with More. The header is 114 px on To do and By date (was 181) and 173 px on Notices and Affidavits (was 235 and 207). |
 | 2 | v2.7217 | On main | The lien month is one line, its five cards a sheet; the step rails are one folded row. The first row of work is 408 px down (was 1,526 px and unreachable). |
 | 3 | v2.7222 | On main | Rows grouped by the day they are due, with the money. A row is 112 px (was about 225) and says what its job owes. |
-| 4 | v2.7234 | Open, #8069 | A tap on a row opens the job as its own screen: when the paper is due, the four steps, doors to the paper, the Lien window and the job, and the row's press pinned at the foot. The phone's Back closes it. |
-| 5 | v2.7236 | Open, #8070 | The Notices list pins one pile title in place of five (room for rows 209 → 308 px; at 320 wide, none → 89). No row of tabs slides sideways. The find box is 44 px with 16 px words. |
-| 6 | v2.7238 | Open, #8072 | An open notice, affidavit or retainage notice has the screen: a one-row header with the way back to its list, one pinned section title, no sideways slide, and a footer that folds. An open affidavit had no way back to its list at all. |
-| 7 | v2.7242 | Open, #8075 | The Lien window and the run window fill the screen. The Lien window's header folds as the paper scrolls (168 → 491 px of paper). The run's six steps are one line (266 → 446 px of list), and its fields no longer zoom an iPhone. |
+| 4 | v2.7234 | On main | A tap on a row opens the job as its own screen: when the paper is due, the four steps, doors to the paper, the Lien window and the job, and the row's press pinned at the foot. The phone's Back closes it. |
+| 5 | v2.7236 | On main | The Notices list pins one pile title in place of five (room for rows 209 → 308 px; at 320 wide, none → 89). No row of tabs slides sideways. The find box is 44 px with 16 px words. |
+| 6 | v2.7238 | On main | An open notice, affidavit or retainage notice has the screen: a one-row header with the way back to its list, one pinned section title, no sideways slide, and a footer that folds. An open affidavit had no way back to its list at all. |
+| 7 | v2.7242 | On main | The Lien window and the run window fill the screen. The Lien window's header folds as the paper scrolls (168 → 491 px of paper). The run's six steps are one line (266 → 446 px of list), and its fields no longer zoom an iPhone. |
 
 What the build did differently from the table above, each recorded in its fragment:
 
@@ -180,7 +180,7 @@ What the build did differently from the table above, each recorded in its fragme
 
 Three small things are left, none of them in the way of a look:
 
-- **The notary's print box** on the Affidavits list is about 300 px at the top of the list on a phone. It scrolls away with the list. Folding it waits for the open PR that rewrites that bar (#8044).
+- **The notary's print box** on the Affidavits list is about 300 px at the top of the list on a phone. It scrolls away with the list. That bar's PR landed as v2.7209 (#8044) and left the box unfolded on a phone, so the fold is still to do.
 - **Inside an open paper** many presses are 14 to 28 px: the gates, the months grid and the page's own edit marks are drawn for a computer.
 - **The By job grid's own controls** (two pickers at 23 px, *Print the grid* at 25) belong to the PR that renames that view.
 

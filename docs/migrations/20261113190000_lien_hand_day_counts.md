@@ -21,3 +21,5 @@ The day set by hand counts (punch list #335, row 1). The owner's reading of 2026
 **Bed.** `npm run test:pg:lien-hand-day` (`supabase/tests/lien_hand_day/`, in `scripts/sql-beds.txt`): the four readers on stand-in tables with the two real deadline functions, the migration applied twice, 21 assertions. It fails on a copy of the migration with the rule taken out.
 
 **What moves on prod.** One live job fits today (a day set by hand, approved hours four months later). After the push the desk stops listing the later month for it and counts its affidavit from the hand month, whose window has closed.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936).
