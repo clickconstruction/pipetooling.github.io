@@ -175,6 +175,65 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     }
   })
 
+  it('on a phone the window is the whole screen, and its header folds to the title line once the paper is scrolled and by its own press (punch list #352, PR 7)', async () => {
+    // A computer keeps its inset window and has no fold.
+    const wide = renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-card]')).toBeTruthy())
+    const wideCard = document.querySelector('[data-lien-window-card]') as HTMLElement
+    expect(wideCard.style.maxHeight).toBe('min(92vh, 100%)')
+    expect(wideCard.style.borderRadius).toBe('8px')
+    expect(document.querySelector('[data-lien-window-head-fold]')).toBeNull()
+    expect(document.querySelector('[data-lien-window-head]')!.getAttribute('data-folded')).toBeNull()
+    wide.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+      await waitFor(() => expect(document.querySelector('[data-lien-window-fold-strip]')).toBeTruthy())
+      const card = document.querySelector('[data-lien-window-card]') as HTMLElement
+      expect(card.style.maxHeight).toBe('100%')
+      expect(parseFloat(card.style.borderRadius)).toBe(0)
+      const head = card.querySelector('[data-lien-window-head]') as HTMLElement
+      const fold = card.querySelector('[data-lien-window-head-fold]') as HTMLButtonElement
+      expect(head.getAttribute('data-folded')).toBeNull()
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+      expect(fold.getAttribute('aria-label')).toBe('Hide the next step and the job’s details')
+      expect(fold.style.width).toBe('44px')
+      // The paper under the header: a long one in a short window.
+      const paper = [...card.children].find((c) => c !== head && (c as HTMLElement).style.overflowY === 'auto') as HTMLElement
+      Object.defineProperty(paper, 'scrollHeight', { value: 4000, configurable: true })
+      Object.defineProperty(paper, 'clientHeight', { value: 225, configurable: true })
+      const scrollTo = (el: HTMLElement, top: number) => fireEvent.scroll(el, { target: { scrollTop: top } })
+      scrollTo(paper, 30)
+      expect(head.getAttribute('data-folded')).toBeNull()
+      scrollTo(paper, 60)
+      expect(head.getAttribute('data-folded')).toBe('yes')
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      expect(fold.getAttribute('aria-label')).toBe('Show the next step and the job’s details')
+      // The papers' bar sliding sideways is not the paper: it leaves the header as it is.
+      scrollTo(document.querySelector('[data-lien-window-papers]') as HTMLElement, 0)
+      expect(head.getAttribute('data-folded')).toBe('yes')
+      // Back at the paper's top the header returns.
+      scrollTo(paper, 0)
+      expect(head.getAttribute('data-folded')).toBeNull()
+      // Folded by its own press, a scroll to the top does not bring it back; the press does.
+      fireEvent.click(fold)
+      expect(head.getAttribute('data-folded')).toBe('yes')
+      scrollTo(paper, 0)
+      expect(head.getAttribute('data-folded')).toBe('yes')
+      fireEvent.click(fold)
+      expect(head.getAttribute('data-folded')).toBeNull()
+      // Another paper opens with its header showing.
+      scrollTo(paper, 60)
+      expect(head.getAttribute('data-folded')).toBe('yes')
+      fireEvent.click(screen.getByRole('tab', { name: '§ 53.056 notice' }))
+      await waitFor(() => expect(head.getAttribute('data-folded')).toBeNull())
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the LAST WORK stop’s change › opens the last day’s line editing under the timeline; Save the day opens the window that shows what moves; Cancel folds it away (v2.4735)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy())
