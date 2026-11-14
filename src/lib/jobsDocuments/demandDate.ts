@@ -1,0 +1,13 @@
+/**
+ * A day as a legal paper says it: 'YYYY-MM-DD' → "September 22, 2026". A blank reads as a dash and anything that is not
+ * a day prints as typed. In a file of its own so a kernel that only words a day does not pull the demand letter behind
+ * it, and the edge copy can carry that kernel. `demandLetter.ts` re-exports it, so every caller's import stands.
+ */
+export function demandDate(ymd: string): string {
+  const d = (ymd ?? '').trim()
+  if (!d) return '—'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+  const parsed = new Date(d + 'T00:00:00')
+  if (Number.isNaN(parsed.getTime())) return d
+  return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}

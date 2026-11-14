@@ -1,5 +1,5 @@
 import { noticeDeadlineForMonth } from './lienDeadlines'
-import { describeNoticeMonths } from './lienNoticeDraft'
+import { describeNoticeMonths } from './lienNoticeMonthWords'
 import type { LienAffidavitNoticeRow } from './lienAffidavitNotices'
 
 /**

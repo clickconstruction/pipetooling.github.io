@@ -39,6 +39,7 @@ import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
 import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
+import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
@@ -216,6 +217,11 @@ export const WRITE_VERBS = {
   // null, the dry run the server's read run through the form's own kernel (devMcpNoticeByHand.ts).
   plan_notice_by_hand: { rpc: null, step: 'plan' },
   apply_notice_by_hand: { rpc: null, step: 'apply' },
+  // v2.7247 / 0.87.0: a lien affidavit drafted on the Lien desk as its Affidavits pane saves a draft — one
+  // job_lien_desk_items row, kind affidavit, status drafted; rpc is null, the dry run the server's read run through the
+  // desk's own queue (devMcpAffidavitDraft.ts). A draft alone: never sent for approval, approved or printed.
+  plan_affidavit_draft: { rpc: null, step: 'plan' },
+  apply_affidavit_draft: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -412,6 +418,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobMarkVerb(verb)) {
     // v2.6795: the shape check is devMcpJobMarks'; the dry run is the server's read of the job.
     const built = jobMarkInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isAffidavitDraftVerb(verb)) {
+    // v2.7247: the shape check is devMcpAffidavitDraft's; the dry run is the server's read of the job, the desk's reader and the notices on record.
+    const built = affidavitDraftInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
