@@ -12,7 +12,7 @@
  * was last chased (the newest office line on it), how many trades it won (the awards on its asks), and its
  * papers, from its own rows in person_contract_documents (B6-b-ii, `companyPapers`).
  */
-import type { Json } from '../../../../../../src/types/database.ts'
+import type { Json } from '../../types/database.ts'
 import { extractContactFromCustomer } from '../customerContactDisplay.ts'
 import { companyPapers, type CompanyPaperRow } from './companyPapers.ts'
 import { townFromAddress } from './map.ts'

@@ -7,7 +7,7 @@
  * read as the service role on the edge; `hooks/useSubLaborDueTotal.ts` binds the app's client.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../src/types/database.ts'
+import type { Database } from '../types/database.ts'
 import { laborItemsSubtotal } from './peopleLaborJobItemLineCost.ts'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils.ts'
 

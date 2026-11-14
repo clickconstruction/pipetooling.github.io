@@ -6,7 +6,7 @@
  * for its 21 readers and keeps the two writes.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../src/types/database.ts'
+import type { Database } from '../types/database.ts'
 import { APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 } from './appSettingsKeys.ts'
 import { withSupabaseRetry } from '../utils/errorHandling.ts'
 

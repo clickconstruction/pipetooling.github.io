@@ -8,7 +8,7 @@
  * same facts.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import { withSupabaseRetry } from '../../utils/errorHandling.ts'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging.ts'
 import type { PaceFacts } from './payPace.ts'

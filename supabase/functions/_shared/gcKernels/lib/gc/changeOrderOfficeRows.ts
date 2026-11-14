@@ -8,7 +8,7 @@
  * schedule reader reads (to-dos/gc-mode/mockups/schedule-pr16.md on branch spike/gc-mode, call 4). The money team's
  * own lines read the full table into a state of their own (16c), so a hidden 0 never reaches a money line.
  */
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import type { ChangeOrder, ChangeOrderReason, GcState } from './types.ts'
 
 /**

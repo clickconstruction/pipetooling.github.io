@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter.ts'
-import type { Database, Json } from '../../../../../src/types/database.ts'
+import type { Database, Json } from '../types/database.ts'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils.ts'
 import { withSupabaseRetry, type SupabaseClientResult } from '../utils/errorHandling.ts'
 import { fetchAllRows } from './supabasePaging.ts'

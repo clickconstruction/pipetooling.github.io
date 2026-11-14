@@ -6,7 +6,7 @@
  * binds the app's client for its readers.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../src/types/database.ts'
+import type { Database } from '../types/database.ts'
 import { fetchAllRowsChunkedIn } from './supabasePaging.ts'
 import {
   readOverheadOfficePartsByDay,

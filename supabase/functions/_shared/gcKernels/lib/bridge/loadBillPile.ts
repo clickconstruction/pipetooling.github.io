@@ -10,7 +10,7 @@
  * same reads as the service role on the edge. `billPile.ts` does the arithmetic.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { Database } from '../../../../../../src/types/database.ts'
+import type { Database } from '../../types/database.ts'
 import { withSupabaseRetry } from '../../utils/errorHandling.ts'
 import { fetchAllRowsChunkedIn } from '../supabasePaging.ts'
 import type { BillPileJob } from './billPile.ts'
