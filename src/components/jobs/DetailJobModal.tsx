@@ -125,6 +125,7 @@ import { EmptyState } from '../EmptyState'
 import { JobPlansSection, type JobPlansSectionState } from './JobPlansSection'
 import { JobStageChecklistStrip, type OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { JobPhotosStrip } from '../photos/JobPhotosStrip'
+import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -2206,6 +2207,20 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
+          </div>
+        ) : null}
+
+        {/* Painted maps (punch list #345): the way in and what is where, as lines under the address. A painted map is the
+            address, continued, so it sits in this band and shows on every tab. */}
+        {open && jobId ? (
+          <div style={{ marginTop: '0.6rem' }}>
+            <JobPaintedMapsStrip
+              jobId={jobId}
+              developmentId={detailJob?.development_id ?? null}
+              jobLabel={(fullJob ?? limitedJob)?.job_name ?? null}
+              developmentLabel={detailJob ? ('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null)) : null}
+              address={mapsAddressLine || null}
+            />
           </div>
         ) : null}
 

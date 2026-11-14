@@ -37,7 +37,7 @@ A lien is a legal claim on the property for unpaid work. Every row in **Billed**
 The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Commercial}} to confirm it.
 :::
 
-On a phone the row's one chip carries the verdict. It reads {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|notice in 17 d}}, {{chip:yellow|lien in 17 d}} or {{chip:green|12 d of room}}. It shows once the flag is inside three weeks or the money is due after it. A tap opens the Lien window.
+On a phone the row's one chip carries the lien line. The chip names the next step and the days left. It reads like {{chip:yellow|Draft the notice · 17 d}} or {{chip:red|File the affidavit · 4 d}}. The step's words are the ones the billed row uses on a computer. A long step takes two lines in the chip. With no step to name, the chip reads the clock. Then it says {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|notice in 17 d}}, {{chip:yellow|lien in 17 d}} or {{chip:green|12 d of room}}. The chip shows once the flag is inside three weeks or the money is due after it. A tap opens the Lien window on the tab of the paper the chip names.
 
 ### A job with more than one bill out
 

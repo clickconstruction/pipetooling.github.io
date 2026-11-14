@@ -1562,7 +1562,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // On the two papers, behind the help sheet (whose small picture of the paper names the county too).
     expect(html.slice(html.lastIndexOf('</section>')).match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
     expect(html).not.toContain('where signed')
-    expect(html).toContain('Each paper has four things to write')
+    expect(html).toContain('Each paper has three things to write')
     expect(html).toContain('data-lien-help-batch-checks')
     expect(html).toMatch(/\d clear to sign\./)
     expect(html).toContain('1 not printed.')

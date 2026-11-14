@@ -19,13 +19,21 @@ import { formatStagesCompactWindow, formatStagesNextDateLabel, type StagesUpcomi
 import { jobFollowupQuietSeverity } from './jobFollowupQueue'
 import { formatTimeSince } from './jobFormatting'
 import { lienRunwayWantsTheChip, type LienPayRunway } from './lienPayRunway'
+import { lienPhoneChipWords, type LienLineDeskState, type LienLineTab } from './lienLineStep'
 
 export type JobNextStage = 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'collections'
 export type JobNextTone = 'red' | 'amber' | 'green'
 /** What a tap on the chip opens; the list maps each to a door it already has. */
 export type JobNextChipAction = 'no-bid' | 'pct' | 'notes' | 'bill-row' | 'contract' | 'bill-stage' | 'advance' | 'payments' | 'lien'
 
-export type JobNextChip = { label: string; tone: JobNextTone; action: JobNextChipAction; title: string }
+export type JobNextChip = {
+  label: string
+  tone: JobNextTone
+  action: JobNextChipAction
+  title: string
+  /** A lien chip only: the Lien window's tab for the paper the chip names (punch list #335, row 5); absent or null opens the window's first tab. */
+  lienTab?: LienLineTab | null
+}
 
 export type JobNextLine = {
   /** The grey line under the name: the next block and crew, then one fact. Never empty. */
@@ -58,6 +66,12 @@ export type JobNextLineInput = {
   bankReturned?: BankReturnedOnJob | null
   /** Billed / Collections rows (v2.4051): does the money land before the lien dies? null / undefined = no reading. */
   lienRunway?: LienPayRunway | null
+  /**
+   * The Lien desk's word on the job (punch list #335, row 5): the next act on its lien path, the paper it is about and
+   * that paper's day, as the billed row takes them (`LedgerLienState`). With it the lien chip names the step in the act
+   * table's words; null or absent, the chip keeps the clock's.
+   */
+  lienDesk?: LienLineDeskState | null
   /** undefined = the viewer cannot see contracts (no chip, no fact). */
   contract: JobContractCoverage | null | undefined
   /**
@@ -93,7 +107,7 @@ function money(n: number): string {
 }
 
 export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
-  const { view, money: bar, billSentAlert, quietDays, expectedPay, contractAsk, stage, bankReturned, lienRunway } = input
+  const { view, money: bar, billSentAlert, quietDays, expectedPay, contractAsk, stage, bankReturned, lienRunway, lienDesk } = input
   if (view.mode === 'nobid') {
     // v2.4390: the money cell's words ("No price yet · Add the price ›", v2.4351) — was "no bid value".
     return { label: 'no price yet', tone: 'red', action: 'no-bid', title: 'No priced line items on the job, so nothing to bill against. Tap to add the price.' }
@@ -107,7 +121,9 @@ export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
   }
   // v2.4051: the lien verdict outranks the softer facts once it bites — the lien dies before the money lands, the window closed, or the flag is inside 21 days.
   if (lienRunway && lienRunwayWantsTheChip(lienRunway)) {
-    return { label: lienRunway.chipLabel, tone: lienRunway.tone === 'green' ? 'green' : lienRunway.tone === 'red' ? 'red' : 'amber', action: 'lien', title: `${lienRunway.title} Tap to open the Lien window.` }
+    // Punch list #335, row 5: the step the desk names, in the act table's words; the clock keeps the colour.
+    const words = lienPhoneChipWords(input.todayYmd, lienRunway, lienDesk)
+    return { label: words.label, tone: lienRunway.tone === 'green' ? 'green' : lienRunway.tone === 'red' ? 'red' : 'amber', action: 'lien', title: words.title, lienTab: words.tab }
   }
   if (quietDays != null) {
     const sev = jobFollowupQuietSeverity(quietDays)

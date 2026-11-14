@@ -19,6 +19,7 @@ import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLin
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
 import { JobFirstLookStrip } from '../firstLook/JobFirstLookStrip'
+import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 import { TicketPress } from '../tickets/TicketPress'
 import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 
@@ -31,6 +32,8 @@ type CustomerContact = {
   created_at?: string | null
   /** The job's Plans folder, the door a checklist's plan-sheet chip opens (#237 PR 1b). */
   job_plans_link?: string | null
+  /** The job's development (#345): its painted maps show on the job, since a site's way in serves every lot. */
+  development_id?: string | null
 }
 
 const sectionLabel: CSSProperties = {
@@ -144,7 +147,7 @@ export default function JobModeDetailsSection({
           async () =>
             supabase
               .from('jobs_ledger')
-              .select('customer_name, customer_phone, customer_email, status, created_at, job_plans_link')
+              .select('customer_name, customer_phone, customer_email, status, created_at, job_plans_link, development_id')
               .eq('id', jobId)
               .maybeSingle(),
           'job mode load customer contact',
@@ -272,6 +275,9 @@ export default function JobModeDetailsSection({
         gap: '0.75rem',
       }}
     >
+      {/* Painted maps (punch list #345): the way in and what is where. The person standing on the site is the one who
+          can mark it, so the press to paint one is here, beside the address and out of the day's press bar. */}
+      <JobPaintedMapsStrip jobId={jobId} developmentId={contact?.development_id ?? null} jobLabel={[hcpNumber, jobName].filter(Boolean).join(' · ') || null} address={jobAddress} />
       {/* What the customer sent before the visit (punch list #319 PR 6): a First look's photos, video and words. Nothing for a job with none. */}
       <JobFirstLookStrip jobId={jobId} />
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}

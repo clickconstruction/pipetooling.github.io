@@ -1,4 +1,5 @@
 import { STRIP_LEGEND, type FlowStrip } from './flowStrip'
+import { MONEY_CASH_LABEL, type MoneyLine } from './moneyCard'
 import { WEEK_CALL_MOVES, type WeekBar, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from './weekCall'
 
 /**
@@ -6,9 +7,13 @@ import { WEEK_CALL_MOVES, type WeekBar, type WeekCallModel, type WeekMove, type 
  *
  * Until that version the weekly send mailed the Monday sheet: three lights, five moves, the
  * people and a block of readings, a second reading of the company that the page itself stopped
- * showing in v2.6840. Now the mail is what the page opens on: the three tiles, the strip of
+ * showing in v2.6840. Now the mail is what the page opens on: the tiles, the strip of
  * pipe, and the card *What to do now* with its moves. The words and the numbers are
  * `buildWeekCall`'s and `buildFlowStrip`'s, so the mail and the page cannot say two things.
+ *
+ * Since v2.7214 the tiles are the page's own (punch list #334): what the field made, the slowest
+ * step, then the cash balance beside the accrual balance, each with its runway (`moneyCard.ts`).
+ * Until then the mail kept the tile *Cash low point, 8 weeks*, which the page had dropped.
  *
  * The mail speaks of no call (punch list #334, PR 11): the page stopped making one, so the mail
  * names its card as the page does, puts no person on a move, asks nothing about Friday and shows
@@ -18,12 +23,17 @@ import { WEEK_CALL_MOVES, type WeekBar, type WeekCallModel, type WeekMove, type 
  * it on Monday morning from the page's reads (`buildWeekMailFromReads`, `sheetBuild.ts`).
  */
 
+/** The two balances and the line under both that says what runway counts, as the page builds them. */
+export type WeekMailMoney = { cash: MoneyLine; accrual: MoneyLine; foot: string }
+
 export type WeekMail = {
   /** "Nov 8–14, 2026": the pay week it was built in. */
   weekLabel: string
   /** "Nov 9": the day it was built. */
   todayLabel: string
   model: WeekCallModel
+  /** The cash balance and the accrual balance, where the page shows them: after the slowest step. */
+  money: WeekMailMoney
   /** The five steps as one pipe; null when it was not built. */
   strip: FlowStrip | null
   /**
@@ -81,25 +91,34 @@ export function weekMailMarketLine(mail: Pick<WeekMail, 'marketParts'>): string 
   return [`${WEEK_MAIL_WORDS.marketWorth}: ${first}.`, ...rest.map((p) => `${p.charAt(0).toUpperCase()}${p.slice(1)}.`)].join(' ')
 }
 
-/** The subject: the card's lead, then cash, then what the field made. */
+/** The tiles the mail draws beside the balances: what the field made and the slowest step. The cash tile is the balances' now. */
+export function weekMailTiles(model: WeekCallModel): WeekTile[] {
+  return model.tiles.filter((t) => t.id !== 'cash')
+}
+
+/** The subject: the card's lead, then the cash balance, then what the field made. */
 export function weekMailSubject(mail: WeekMail): string {
-  const tile = (id: WeekTile['id']): WeekTile | undefined => mail.model.tiles.find((t) => t.id === id)
-  const cash = tile('cash')
-  const made = tile('made')
+  const cash = mail.money.cash
+  const made = mail.model.tiles.find((t) => t.id === 'made')
   const parts = [mail.model.card.lead]
-  if (cash) parts.push(cash.wide ? `${cash.value}.` : `Cash low point ${cash.value}.`)
+  // With no balance read today the line is the forecast's low point, and the subject says so in two words.
+  parts.push(`${cash.label === MONEY_CASH_LABEL ? cash.label : 'Cash low point'} ${cash.value}.`)
   if (made) parts.push(`${made.label} ${made.value}.`)
   return `The Bridge, the week of ${mail.weekLabel.replace(/, \d{4}$/, '')}: ${parts.join(' ')}`
 }
 
 // ── the HTML ───────────────────────────────────────────────────────────────
 
-/** The mail's content is at most this wide: three tiles, or two halves, fill it edge to edge under the full-width cards. */
+/** The mail's content is at most this wide: two halves fill it edge to edge over the full-width cards. */
 export const WEEK_MAIL_WIDTH_PX = 720
-export const WEEK_MAIL_TILE_PX = 240
 export const WEEK_MAIL_HALF_PX = 360
-/** Under this wide the media query lets each tile fill the screen, where a mail app keeps the `<style>`. */
-export const WEEK_MAIL_STACK_PX = 620
+/** The gutter on each side of the mail's content. */
+export const WEEK_MAIL_GUTTER_PX = 12
+/**
+ * Under this wide two halves no longer fit side by side, so the media query lets each tile fill the row, where a mail
+ * app keeps the `<style>`. It is the content's width plus its two gutters.
+ */
+export const WEEK_MAIL_STACK_PX = WEEK_MAIL_WIDTH_PX + 2 * WEEK_MAIL_GUTTER_PX - 1
 
 const INK = '#1f2328'
 const MUTED = '#5b6470'
@@ -134,11 +153,25 @@ function tileHtml(t: WeekTile): string {
   const red = t.tone === 'red'
   return card(
     `<div style="${KICKER}">${esc(t.label)}</div>
-<div style="font-size:${t.wide ? 22 : 26}px;font-weight:800;line-height:1.15;margin-top:4px;color:${TONE_HEX[t.tone]}">${esc(t.value)}</div>${barsHtml(t.bars)}
-<div style="font-size:13px;color:${MUTED};margin-top:4px">${esc(t.sub)}</div>${t.note ? `\n<div style="font-size:12px;color:${MUTED};margin-top:2px">${esc(t.note)}</div>` : ''}`,
+<div style="font-size:26px;font-weight:800;line-height:1.15;margin-top:4px;color:${TONE_HEX[t.tone]}">${esc(t.value)}</div>${barsHtml(t.bars)}
+<div style="font-size:13px;color:${MUTED};margin-top:4px">${esc(t.sub)}</div>`,
     `1px solid ${red ? '#f1b5ae' : LINE}`,
     red ? '#fef3f2' : '#fff',
   )
+}
+
+/** One balance: its name, the number, its runway a step stronger than the sentence under it, and on cash the accounts left out. */
+function balanceHtml(line: MoneyLine): string {
+  return `<div style="${KICKER}">${esc(line.label)}</div>
+<div style="font-size:26px;font-weight:800;line-height:1.15;margin-top:4px;color:${TONE_HEX[line.tone]}">${esc(line.value)}</div>${line.runway ? `\n<div style="font-size:13px;font-weight:700;color:${INK};margin-top:2px">${esc(line.runway)}</div>` : ''}
+<div style="font-size:13px;color:${MUTED};margin-top:2px">${esc(line.sub)}</div>${line.note ? `\n<div style="font-size:12px;color:${TONE_HEX.amber};margin-top:2px">${esc(line.note)}</div>` : ''}`
+}
+
+/** The two balances side by side in one card, with the line under both that says what runway counts. */
+function balancesHtml(money: WeekMailMoney): string {
+  const half = 'width:50%;vertical-align:top;padding:12px 14px'
+  const foot = money.foot ? `<tr><td colspan="2" style="padding:6px 14px 8px;border-top:1px solid ${LINE};font-size:12px;color:${MUTED}">${esc(money.foot)}</td></tr>` : ''
+  return `<div style="border:1px solid ${LINE};border-radius:10px;background:#fff"><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed"><tr><td style="${half}">${balanceHtml(money.cash)}</td><td style="${half};border-left:1px solid ${LINE}">${balanceHtml(money.accrual)}</td></tr>${foot}</table></div>`
 }
 
 const STRIP_PIPE_PX = 30
@@ -193,18 +226,17 @@ ${movesHtml(weekMailMoves(model))}
 }
 
 /**
- * The first screen as an email body: the tiles, the strip, the card. Inline styles, light. In a week cash leads its
- * tile takes the whole row and the strip goes under the card, as on the page.
+ * The first screen as an email body: the tiles, the balances, the strip, the card. Inline styles, light. The two
+ * tiles share a row and the balances take the next one whole, as the page lays them out on a phone. In a week cash
+ * leads, the strip goes under the card, as on the page.
  */
 export function weekMailHtml(mail: WeekMail, bridgeUrl: string): string {
   const { model } = mail
-  const wide = model.tiles.filter((t) => t.wide)
-  const rest = model.tiles.filter((t) => !t.wide)
-  const tiles = `${wide.map((t) => block(tileHtml(t))).join('')}${row(rest.map((t) => col(wide.length ? WEEK_MAIL_HALF_PX : WEEK_MAIL_TILE_PX, tileHtml(t))))}`
+  const tiles = `${row(weekMailTiles(model).map((t) => col(WEEK_MAIL_HALF_PX, tileHtml(t))))}${block(balancesHtml(mail.money))}`
   const strip = mail.strip ? block(stripHtml(mail.strip, weekMailMarketLine(mail))) : ''
   const gaps = weekMailGapsLine(mail.gaps)
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media (max-width:${WEEK_MAIL_STACK_PX}px){.col{max-width:100%!important}}</style></head><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${INK}">
-<div style="max-width:${WEEK_MAIL_WIDTH_PX}px;margin:0 auto;padding:20px 12px">
+<div style="max-width:${WEEK_MAIL_WIDTH_PX}px;margin:0 auto;padding:20px ${WEEK_MAIL_GUTTER_PX}px">
 <div style="padding:0 6px"><div style="font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">${WEEK_MAIL_WORDS.title}</div>
 <div style="font-size:13px;color:${MUTED};margin:2px 0 14px">${esc(weekMailLine(mail))}${weekMailLeftOutLine(mail) ? `<br>${esc(weekMailLeftOutLine(mail))}` : ''}</div></div>
 ${tiles}
@@ -219,7 +251,8 @@ ${gaps ? `<div style="font-size:12px;color:#b42318;padding:0 6px 8px">${esc(gaps
 export function weekMailText(mail: WeekMail, bridgeUrl: string): string {
   const { model } = mail
   const c = model.card
-  const tiles = model.tiles.flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`, ...(t.note ? [`  ${t.note}`] : [])])
+  const balance = (line: MoneyLine): string[] => [`${line.label}: ${line.value}`, ...(line.runway ? [`  ${line.runway}`] : []), `  ${line.sub}`, ...(line.note ? [`  ${line.note}`] : [])]
+  const tiles = [...weekMailTiles(model).flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`]), ...balance(mail.money.cash), ...balance(mail.money.accrual), ...(mail.money.foot ? [mail.money.foot] : [])]
   const strip = mail.strip
     ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.slowest}` : ''}`), ...(weekMailMarketLine(mail) ? [`  ${weekMailMarketLine(mail)}`] : [])]
     : []
