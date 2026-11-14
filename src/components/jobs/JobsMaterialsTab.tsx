@@ -22,6 +22,7 @@ import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
 import { useOnSiteDesk, useOnSiteJob, useOnSiteStoreVersion } from '../../hooks/useOnSiteStore'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import OnSiteJobsNotLoaded from '../materials/OnSiteJobsNotLoaded'
+import { missingWeekIsPartial, missingWeekNote } from '../../lib/materials/missingWeekWords'
 import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
@@ -231,7 +232,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
       // A lost signal reads the read's own sentence; the store's says *nothing was saved*, which is a write's.
       return { id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now), failed: st.error ? (errorKindOf(st.raw) === 'network' ? OFFLINE_READ_MESSAGE : st.error) : null }
     })
-    rows.sort((a, b) => Number(Boolean(b.failed)) - Number(Boolean(a.failed)) || b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
+    rows.sort((a, b) => Number(Boolean(b.failed)) - Number(Boolean(a.failed)) || b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.missingLines - a.sum.missingLines || b.sum.stale.length - a.sum.stale.length)
     const groups = groupDeskBySite(rows.map((r) => r.id), sites.siteOfJob, sites.siteNames)
     const anySite = groups.some((g) => g.kind === 'site')
     const rowOf = (id: string) => rows.find((r) => r.id === id)!
@@ -263,11 +264,11 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                     </td>
                   </tr>
                 ) : (
-                  <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : under ? { background: 'var(--bg-subtle)' } : undefined}>
+                  <tr key={r.id} style={r.sum.missingLines > 0 ? { background: 'var(--bg-amber-100)' } : under ? { background: 'var(--bg-subtle)' } : undefined}>
                   <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}) }}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: under ? 600 : 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
                   <td style={{ ...td, ...num }}>{r.sum.containers}{listPlaces(r.id).length > 1 ? <span style={muted}> · {listPlaces(r.id).length} places</span> : null}</td>
                   <td style={{ ...td, ...num }}>{r.sum.onSiteLines}</td>
-                  <td style={{ ...td, ...num, fontWeight: r.sum.missingMoneyWeek > 0 ? 700 : 400 }}><Money n={r.sum.missingMoneyWeek} /></td>
+                  <td style={{ ...td, ...num, fontWeight: r.sum.missingLines > 0 ? 700 : 400 }}><Money n={r.sum.missingMoneyWeek} />{missingWeekNote(r.sum.missingLines, r.sum.missingUnpricedLines) ? <div style={{ fontSize: '0.72rem', fontWeight: 600, color: missingWeekIsPartial(r.sum.missingLines, r.sum.missingUnpricedLines) ? 'var(--text-amber-700)' : 'var(--text-muted)' }} data-missing-note>{missingWeekNote(r.sum.missingLines, r.sum.missingUnpricedLines)}</div> : null}</td>
                   <td style={td}>{r.sum.stale.length === 0 ? <span style={chip('green')}>all this fortnight</span> : <span style={chip('amber')} title={r.sum.stale.map((c) => `${c.label} ${lastCountedAt(listMovements(r.id), c.id) ? `${daysSince(lastCountedAt(listMovements(r.id), c.id)!.at, now)} d` : 'never'}`).join(' · ')}>{staleWords(r.sum.stale)}</span>}</td>
                   <td style={{ ...td, ...num }}>{r.sum.credits}</td>
                   {rowDoors ? (
@@ -293,10 +294,12 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                 const boxes = members.reduce((n, r) => n + r.sum.containers, 0)
                 const lines = members.reduce((n, r) => n + r.sum.onSiteLines, 0)
                 const missing = members.reduce((n, r) => n + r.sum.missingMoneyWeek, 0)
+                const missingLines = members.reduce((n, r) => n + r.sum.missingLines, 0)
+                const missingUnpriced = members.reduce((n, r) => n + r.sum.missingUnpricedLines, 0)
                 const stale = members.reduce((n, r) => n + r.sum.stale.length, 0)
                 const credits = members.reduce((n, r) => n + r.sum.credits, 0)
                 return [
-                  <tr key={`site:${g.siteId}`} data-site-row={g.siteId} style={missing > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
+                  <tr key={`site:${g.siteId}`} data-site-row={g.siteId} style={missingLines > 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
                     <td style={td}>
                       <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 800, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setSite(g.siteId)} title="Everything on this site on one screen, across its jobs">{g.name}</button>
                       <span style={muted}> · {members.length === 1 ? '1 job' : `${members.length} jobs`} · the whole site</span>
@@ -304,7 +307,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                     </td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{boxes}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{lines}</td>
-                    <td style={{ ...td, ...num, fontWeight: 700 }}><Money n={missing} /></td>
+                    <td style={{ ...td, ...num, fontWeight: 700 }}><Money n={missing} />{missingWeekNote(missingLines, missingUnpriced) ? <div style={{ fontSize: '0.72rem', fontWeight: 600, color: missingWeekIsPartial(missingLines, missingUnpriced) ? 'var(--text-amber-700)' : 'var(--text-muted)' }} data-missing-note>{missingWeekNote(missingLines, missingUnpriced)}</div> : null}</td>
                     <td style={td}>{stale === 0 ? <span style={chip('green')}>all this fortnight</span> : <span style={chip('amber')}>{stale} due a count</span>}</td>
                     <td style={{ ...td, ...num }}>{credits}</td>
                     {rowDoors ? <td style={td}></td> : null}

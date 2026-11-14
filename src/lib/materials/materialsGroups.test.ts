@@ -71,6 +71,14 @@ describe('trackBadges', () => {
     expect(trackBadges(needs, 'primary')).toEqual([{ text: '3 due a count', tone: 'amber' }])
     expect(trackBadges(needs, 'estimator')).toEqual([{ text: '3 due a count', tone: 'amber' }])
   })
+
+  it('names the short lines for the office when none of them has a price, where there is no money to name', () => {
+    expect(trackBadges({ staleBoxes: 0, missingMoneyWeek: 0, missingLines: 4 }, 'assistant')).toEqual([{ text: '4 lines came up short', tone: 'amber' }])
+    expect(trackBadges({ staleBoxes: 0, missingMoneyWeek: 0, missingLines: 1 }, 'dev')).toEqual([{ text: '1 line came up short', tone: 'amber' }])
+    // Money, when there is any, is still the badge; and a field role sees neither.
+    expect(trackBadges({ staleBoxes: 0, missingMoneyWeek: 12.5, missingLines: 4 }, 'assistant')).toEqual([{ text: '$12.50 walked away', tone: 'red' }])
+    expect(trackBadges({ staleBoxes: 0, missingMoneyWeek: 0, missingLines: 4 }, 'primary')).toEqual([])
+  })
 })
 
 describe('onSiteJobHref', () => {
