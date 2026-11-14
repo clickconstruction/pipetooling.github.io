@@ -24,6 +24,7 @@
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitEntry, type LienAffidavitRow } from './gcKernels/lib/jobs/lienDeskAffidavits.ts'
 import { lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitSwornMonths, lienAffidavitWorkMonths, type LienAffidavitNoticeRow } from './gcKernels/lib/jobs/lienAffidavitNotices.ts'
 import { lienAffidavitNoticeCheck, lienNoticeCheckEmptyLines, lienNoticeCheckLines } from './gcKernels/lib/jobs/lienAffidavitNoticeCheck.ts'
+import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue } from './gcKernels/lib/jobs/lienNoticeOwed.ts'
 import { describeNoticeMonths } from './gcKernels/lib/jobs/lienNoticeMonthWords.ts'
 import { correctedClaim } from './gcKernels/lib/jobs/lienClaimCorrection.ts'
 import { LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItem } from './gcKernels/lib/jobs/lienAffidavitForm.ts'
@@ -231,6 +232,8 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
   const noticeCheck = lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: sworn, filings: world.filings, work: lienAffidavitWorkMonths(swornFacts) })
   const askFirst = lienNoticeCheckLines(noticeCheck)
   const emptyWhy = lienNoticeCheckEmptyLines(noticeCheck).join(' ')
+  // The last work month's own notice still due and not recorded (punch list #353, part 2): the pane's line, said here too. A line, not a hold.
+  const noticeDue = lienLastMonthNoticeDue({ isSub: entry.isSub, lastMonth: entry.lastMonth, propertyKind: entry.propertyKind, filings: world.filings, todayYmd })
   const claim = cents(claimed.claim)
   const beyondDesk = entry.daysLeft > AFFIDAVIT_DESK_LEAD_DAYS
   // A job with no approved hours is dated from its bill when it has one (v2.7224), else from the day it was made.
@@ -261,6 +264,7 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
       ...(entry.isSub && !monthsWords ? { no_month: `${emptyWhy ? `${emptyWhy} ` : ''}The paper prints a blank where its months go.` } : {}),
       ...(entry.isSub && !noticeWords ? { no_notice_day: 'No send to the owner is on record with its day, so the paper prints a blank where the notice goes.' } : {}),
       ...(askFirst.length > 0 ? { ask_the_attorney_before_this_is_filed: askFirst } : {}),
+      ...(noticeDue ? { notice_still_due: lienAffidavitNoticeDueLine(noticeDue, (ymd: string) => ymd) } : {}),
       writes: standing ? { refreshes_the_draft: String(standing.id) } : { a_new_draft: true },
       draft: { months, fields },
       drafted_by: who.userId,

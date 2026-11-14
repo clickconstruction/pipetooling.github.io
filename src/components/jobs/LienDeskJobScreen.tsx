@@ -30,6 +30,7 @@ export default function LienDeskJobScreen({
   onClose,
   onAct,
   onSecondary,
+  onMoreDoor,
   onDoor,
   onOpenJob,
 }: {
@@ -40,6 +41,8 @@ export default function LienDeskJobScreen({
   /** The pinned press: what the row's button does. */
   onAct: () => void
   onSecondary?: () => void
+  /** The row's other doors (punch list #353), by their index in `screen.moreDoors`. */
+  onMoreDoor?: (i: number) => void
   onDoor: (key: LienJobScreenDoorKey) => void
   /** A run row's jobs are doors to each job. */
   onOpenJob?: (jobId: string) => void
@@ -100,6 +103,16 @@ export default function LienDeskJobScreen({
               ))}
             </div>
           </>
+        ) : null}
+        {screen.moreDoors.length > 0 && onMoreDoor ? (
+          <div data-lien-job-screen-more-doors style={{ marginTop: '0.6rem', borderBottom: '1px solid var(--border)' }}>
+            {screen.moreDoors.map((words, i) => (
+              <button key={words} type="button" onClick={() => onMoreDoor(i)} data-lien-job-screen-more-door={i} style={DOOR}>
+                <span style={{ display: 'block', minWidth: 0, fontSize: '1rem', fontWeight: 600 }}>{words}</span>
+                <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>›</span>
+              </button>
+            ))}
+          </div>
         ) : null}
         {screen.doors.length > 0 ? (
           <div style={{ marginTop: '0.6rem', borderBottom: '1px solid var(--border)' }}>
