@@ -10,7 +10,7 @@ summary: >
   map; everything else is 20 to 31 px. Three directions, each built on the last: A tidies the top
   (one tab strip that scrolls, a title with a quiet line, three named 44 px presses with the rest
   under More, money and job accounts folded to one line each); B puts the job on one screen in the
-  order a phone needs (Where, Who, Now, Communication with customer) with the rest folded under counted headings;
+  order a phone needs (Where, Who, Now, the thread) with the rest folded under counted headings;
   C gives the phone its own window shaped by role. Pass 2 read nineteen days of presses on the
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
@@ -37,8 +37,9 @@ quickly identify if they're calling the right person or if they're seeing the ri
 Who section never hides them behind a bare Call or Email press: the number is the Call press and
 the address is the Email press, each written out.
 
-Also on pass 2: "Instead of calling it the thread, I think it should be communication with
-customer." The section is named **Communication with customer** everywhere.
+Also on pass 2, the section's name: *the thread* was renamed *Communication with customer* on his
+word and put back on his next: "Actually, I don't like the new name. Bring it back." It stays
+**the thread**.
 
 ## What the phone draws today, measured
 
@@ -91,7 +92,7 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | The address and the painted map | The crew lead: where to drive and park. The office: which house | 2 (crew) · 3 (office) | Directions, the map row |
 | The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy |
 | The next block, the target, the Pipeline line | Everyone: what is happening now, what the job waits on | 4 | Set a target |
-| Communication with customer: where it stands, the newest three events | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
+| Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
 | Money tiles and job accounts | The office, rarely on a phone; the Bill tab holds the work | Folded | One line that opens Bill |
 | Photos, Questions, Activity, Their journey | Everyone, when looking for something | Folded, with counts | The fold |
@@ -117,7 +118,7 @@ moves; the bar is as today.
 address with a Directions press, the painted map, the street view folded), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside them), Now (the next block, the target, the Pipeline row's
-own line), then Communication with customer (Where it stands, the customer's newest word, the newest three events
+own line), then the thread (Where it stands, the customer's newest word, the newest three events
 with *All 56 ›*, Note, Text, Email). The rest folds under headings with counts: Photos, Questions,
 Money, Plans and papers, Work and time, Their journey. With every fold closed the scroll ends near
 1,200 px. The desk is untouched.
@@ -143,8 +144,8 @@ pick after each is the drawing's own.
 2. **The tabs that do not fit.** A scrolling strip hides the last tab or two until a thumb slides
    it; three tabs and a More ▾ hide them behind a press instead. *Scroll for now, count the tab
    presses for a month, then move the tabs nobody presses on a phone behind More ▾ in B.*
-3. **B as the second PR?** Where · Who (the number and the email written out) · Now · Communication
-   with customer first, the newest three events shown, the rest folded under counted headings. *Yes, once A has been on phones for a week.*
+3. **B as the second PR?** Where · Who (the number and the email written out) · Now · the thread
+   first, the newest three events shown, the rest folded under counted headings. *Yes, once A has been on phones for a week.*
 
 ## Where it plugs in
 
@@ -174,7 +175,7 @@ pick after each is the drawing's own.
 1. **A** (S): the title row first with ⋯ and ✕, the strip that scrolls, the ⋯ sheet, money and
    job accounts as one line each, the tabs counted; a kernel for the sheet's rows and the money
    line with tests; a render smoke at 375 px; the guide's phone section; release note and fragment.
-2. **B** (M): the phone's top band in Where · Who · Now · Communication with customer order, the folds with counts
+2. **B** (M): the phone's top band in Where · Who · Now · the thread order, the folds with counts
    remembered per device (`localStorage`, as the Pipeline's Overview does); a kernel for the fold
    list and its counts; the guide.
 3. **C** (L), only when a master tech works from a phone or the tab count says the office's
