@@ -101,7 +101,7 @@ section is **What's happening**, and it is three labelled rows, each a plain lab
 its answer at the right: **Next on site** (the day, the hours on their own line, who is on it), **Waiting on** (what the
 job waits for and from whom, in a sentence: *The office, to bill it. Nothing has happened for 6
 days.*, which is the Pipeline row's line and the bar's press said the other way round), and **Hours**
-(*No target set*, what the target is, the Set the hours press). The label says what the answer is
+(*No target set*, what the target is, and *Set the hours* as blue words at the end of the sentence). The label says what the answer is
 before the eye reaches it, the way a form reads, and the Waiting on row names the person as well
 as the gap. The crew's window (C) drops the Hours row, since the crew do not set it.
 
@@ -181,6 +181,12 @@ call. Filled, the press reads *Change their day*. **We owe them** · *We owe the
 the reply box with the owed marker (*Mark it*), as the guide *keep track of what we owe someone*
 shows; filled, the row's press reads *Change what we owe* and a second, *Mark it done*, which opens
 the team-note box. Nothing new is written anywhere; the rows are doors to the writers Messages has.
+
+Also on pass 2: "Set the hours should not be in a blue box, it should just be a blue text at the end
+of 'against it' period." So the Hours row has no press box: *Set the hours* is blue words at the end of
+its sentence, *… The crew's hours count against it. Set the hours*, the whole row the tap target at 44
+px. The promise rows keep their boxed presses, since each opens a writer; the owner has not said
+otherwise.
 
 ## What the phone draws today, measured
 
