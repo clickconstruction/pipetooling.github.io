@@ -2739,6 +2739,7 @@ export default function JobFormModal({
       }}
     >
       <div
+        data-job-form-embedded={embedded ? '' : undefined}
         style={
           embedded
             ? undefined
@@ -2756,6 +2757,8 @@ export default function JobFormModal({
         }
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Punch list #355 E (v2.7283): a field under 16 px makes an iPhone zoom the page on focus; the embedded form's fields are 16 px on a phone, Edit, Bill and Costs alike. */}
+        {embedded ? <style>{`@media (max-width: 640px) { [data-job-form-embedded] input:not([type=checkbox]):not([type=radio]):not([type=range]), [data-job-form-embedded] select, [data-job-form-embedded] textarea { font-size: 16px !important; } }`}</style> : null}
         <div style={!embedded || embeddedRegion === 'edit' ? undefined : { display: 'none' }}>
         <JobFormHeaderRow
           mode={mode}
@@ -2846,7 +2849,8 @@ export default function JobFormModal({
                   flag. v2.3238: it sits right under the Stages read-out, where the
                   job's state is read, instead of above the footer at the very bottom
                   of the Edit tab (Grace). This fragment renders in the Edit region only. */}
-              <div ref={focusFieldFlash === 'status' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'status' ? 'status' : undefined} style={{ margin: '0 0 0.25rem', ...(focusFieldFlash === 'status' ? FOCUS_FIELD_RING : {}) }}>
+              {/* Punch list #355 E (v2.7283): on a phone the rail leaves the tab; the bar's Status ▾ is the same stepper. */}
+              <div ref={focusFieldFlash === 'status' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'status' ? 'status' : undefined} style={{ margin: '0 0 0.25rem', ...(focusFieldFlash === 'status' ? FOCUS_FIELD_RING : {}), ...(embedded && narrowViewport ? { display: 'none' } : {}) }}>
                 <JobStatusStepper
                   job={{
                     id: editing.id,

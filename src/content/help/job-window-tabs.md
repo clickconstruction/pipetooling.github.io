@@ -67,7 +67,7 @@ The job may still owe money. Or a lien paper or demand letter may be out. Then *
 
 ## The Edit tab reads as rows
 
-The middle of the Edit tab is a compact list. Its rows are **Account man, Team, Customer, Phone, Email, GC/Builder, Date met, Folders, Project, Plans, Bid, Development**. GC means the general contractor. Each row shows the current value at a glance, with a *—* where nothing is set. You tap a row or its ✎ to open the familiar editor for just that field. You tap again to fold it away. The **Folders** and **Plans** rows keep their Drive links clickable right on the row. So opening the customer's files never requires expanding anything.
+The middle of the Edit tab is a compact list. Its rows are **Account man, Team, Customer, Phone, Email, GC/Builder, Date met, Folders, Project, Plans, Bid, Development**. GC means the general contractor. Each row shows the current value at a glance, with a *—* where nothing is set. You tap a row or its ✎ to open the familiar editor for just that field. You tap again to fold it away. On a phone the rows read under five titles. They are **The people**, **The folders**, **The customer**, **The GC and the site** and **The paper**. Each row is 44 px tall and a chevron sits at its right. The status rail is not on the Edit tab on a phone. The bar's **Status ▾** is the same rail. The **Folders** and **Plans** rows keep their Drive links clickable right on the row. So opening the customer's files never requires expanding anything.
 
 :::example Fixing a phone number
 Edit tab → tap the **Phone** row → retype the number → tap the row again to fold it. Autosave takes it from there.

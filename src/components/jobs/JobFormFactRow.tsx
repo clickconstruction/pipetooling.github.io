@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Pencil, ChevronUp } from 'lucide-react'
+import { Pencil, ChevronUp, ChevronRight } from 'lucide-react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 
 /**
  * One row of the Edit-tab fact list (v2.1681): collapsed it reads
@@ -34,16 +35,20 @@ export function JobFormFactRow({
   children?: ReactNode
   last?: boolean
 }) {
+  // Punch list #355 E (v2.7283): on a phone a row stands 44 px, the whole row is the press, and a chevron stands for the pencil.
+  const phone = useNarrowViewport640()
   return (
     <>
       <div
         onClick={onToggle}
+        data-fact-row={label}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
           width: '100%',
-          padding: '0.5rem 0.15rem',
+          minHeight: phone ? 44 : undefined,
+          padding: phone ? '0.4rem 0.15rem' : '0.5rem 0.15rem',
           borderBottom: !last || expanded ? '1px solid var(--border)' : 'none',
           cursor: onToggle ? 'pointer' : 'default',
         }}
@@ -53,8 +58,8 @@ export function JobFormFactRow({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.3rem',
-            flex: '0 0 108px',
-            fontSize: '0.8125rem',
+            flex: phone ? '0 0 104px' : '0 0 108px',
+            fontSize: phone ? '0.875rem' : '0.8125rem',
             color: 'var(--text-muted)',
             minWidth: 0,
             whiteSpace: labelNoWrap ? 'nowrap' : undefined,
@@ -70,7 +75,7 @@ export function JobFormFactRow({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.4rem',
-            fontSize: '0.875rem',
+            fontSize: phone ? '0.9375rem' : '0.875rem',
           }}
         >
           {value != null ? (
@@ -102,7 +107,7 @@ export function JobFormFactRow({
             flexShrink: 0,
           }}
         >
-          {expanded ? <ChevronUp size={14} aria-hidden /> : <Pencil size={13} aria-hidden />}
+          {expanded ? <ChevronUp size={phone ? 18 : 14} aria-hidden /> : phone ? <ChevronRight size={18} aria-hidden /> : <Pencil size={13} aria-hidden />}
         </button>
         ) : null}
       </div>
