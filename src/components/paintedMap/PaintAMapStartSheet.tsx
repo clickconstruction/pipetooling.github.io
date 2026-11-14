@@ -6,6 +6,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { PAINTED_MAP_NAME_MAX, PAINTED_MAP_UNNAMED, PAINTED_MAP_WORDS_MAX, cleanPaintedText } from '../../lib/paintedMap/paintedMap'
+import { WALK_ASK_WORDS, WALK_BEFORE_WORDS } from '../../lib/paintedMap/paintedWalkWords'
 import type { PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import type { PaintedMapToStart } from './PaintedMapWindow'
@@ -45,7 +46,8 @@ export function PaintAMapStartSheet({ home, onStart, onClose }: Props) {
   }, [isTopmost, onClose])
 
   const both = !!home.jobId && !!home.developmentId
-  const start = (first: 'line' | 'place') => {
+  const canWalk = typeof navigator !== 'undefined' && 'geolocation' in navigator
+  const start = (first: 'line' | 'place' | 'walk') => {
     onStart({
       first,
       id: newId(),
@@ -108,11 +110,24 @@ export function PaintAMapStartSheet({ home, onStart, onClose }: Props) {
             )}
             {both && forSite ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>It will show on every job in the development.</span> : null}
           </div>
+          {canWalk ? (
+            <div data-paint-a-map-walk-box style={{ display: 'grid', gap: '0.45rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.6rem 0.7rem' }}>
+              <button type="button" data-paint-a-map-walk onClick={() => start('walk')} style={{ minHeight: 52, borderRadius: 8, border: '1px solid #dc2626', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
+                Walk or drive it
+              </button>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)', display: 'grid', gap: '0.15rem' }}>
+                {WALK_BEFORE_WORDS.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_ASK_WORDS}</span>
+            </div>
+          ) : null}
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
-            Draw a line by hand on the view from above: press along the way, and each press is a corner. Or start with a place, such as the gate. The map is saved with its first line or place.
+            Or draw the line by hand on the view from above: press along the way, and each press is a corner. It needs no location, and it is the better way to get a length. The map is saved with its first line or place.
           </p>
           <button type="button" data-paint-a-map-go onClick={() => start('line')} style={{ minHeight: 52, borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
-            Start drawing
+            Draw it by hand
           </button>
           <button type="button" data-paint-a-map-place onClick={() => start('place')} style={{ minHeight: 48, borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>
             Start with a place

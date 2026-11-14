@@ -69,7 +69,9 @@ describe('lienLastWorkPreview — the dates that move', () => {
     expect(p.rows[1]).toMatchObject({ before: 'Jul 2026', after: 'Aug 2026', changed: true })
     expect(p.rows[2]).toMatchObject({ before: 'Jul 2026 · mail by Oct 15', after: 'Aug 2026 · mail by Nov 16' })
     expect(lienLastWorkMonthsFor('2026-08-14', [])).toEqual(['2026-08'])
-    expect(lienLastWorkMonthsFor('2026-08-14', ['2026-09'])).toEqual(['2026-09'])
+    // v2.7193, punch list #335, row 1: the day set by hand counts, so a month of hours after it is off the clock. It read ['2026-09'].
+    expect(lienLastWorkMonthsFor('2026-08-14', ['2026-09'])).toEqual(['2026-08'])
+    expect(lienLastWorkMonthsFor('2026-08-14', ['2026-06', '2026-08', '2026-09'])).toEqual(['2026-06', '2026-08'])
   })
   it('with no property kind on record the words stand and the table does not', () => {
     const p = lienLastWorkPreview(job922('2026-10-02', { propertyKind: '' }))

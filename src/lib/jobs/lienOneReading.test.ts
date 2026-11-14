@@ -8,6 +8,8 @@ import type { LienNextUpAction, LienNextUpRow } from './lienNextUp'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
 import { buildLienTimeline, type LienTimelineAffidavitState, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
 import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from './lienWindowNextStep'
+import { buildLienTimelineFromWindow } from './lienTimelineDesk'
+import type { JobWorkMonths } from './forecastWorkMonths'
 
 /**
  * One job, one reading (v2.7048, punch list #325, PR 5). Four places name a job's next lien step: the Pipeline's
@@ -165,4 +167,32 @@ describe('the phone row’s chip names an affidavit’s step as the billed row d
       expect(next.daysLeft).toBe(step.dated === false ? null : 83)
     })
   }
+})
+
+describe('a last day set by hand, with approved hours after it: the row and the window count from the same day (v2.7193, punch list #335, row 1)', () => {
+  // The owner's reading of 2026-11-13: the day set by hand counts. A commercial sub job with hours in May, the last day
+  // set by hand as Jun 12, and hours approved in October. The row's clock counted from June (v2.4830) and read *Lien
+  // gone*; the window took October, the later of the two (v2.4676), and read *File the affidavit* with months to spare.
+  const month = (key: string, due: string): JobWorkMonths['months'][number] => ({ key, label: key, weeks: [], people: ['M'], hours: 20, pendingHours: 0, dayCount: 3, hoursShare: 50, notice: { due, daysLeft: 0, state: 'open' } as never })
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-05', '2026-08-17'), month('2026-10', '2027-01-15')], totalHours: 40, sessionCount: 6, pendingSessions: 0, lastMonthKey: '2026-10', affidavitDue: '2027-02-16' }
+  const job = { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' }
+  const row = (todayYmd: string) => buildLienPayRunway(runwayInput({ todayYmd, lastWorkYmd: job.last_work_date, handLastWorkYmd: job.lien_last_work_on, workMonths: wm.months.map((m) => m.key) }))
+  const header = (todayYmd: string) => buildLienTimelineFromWindow({ workMonths: wm, filings: [], job, isSub: true, propertyKind: 'non_residential', openBalance: 4200, todayYmd }).next
+
+  it('both count the affidavit from June: its last day is Oct 15, never a day in 2027', () => {
+    const before = '2026-09-23'
+    expect(row(before)).toMatchObject({ lienByYmd: '2026-10-15', datedByHand: true })
+    expect(header(before).date).toBe('2026-10-15')
+    // May's and June's notice windows are closed with none sent: the late notice, on the row, the chip and the header.
+    expect(rowLabel(row(before), null, before)).toBe('Send the late notice')
+    expect(phoneChip(row(before), null, before).label).toBe('Send the late notice · 22 d')
+    expect(header(before).kind).toBe('late_notice')
+  })
+
+  it('past that day both say the lien is gone', () => {
+    const after = '2026-11-13'
+    expect(rowLabel(row(after), null, after)).toBe('Lien gone')
+    expect(phoneChip(row(after), null, after).label).toBe('lien gone')
+    expect(header(after).kind).toBe('lien_gone')
+  })
 })
