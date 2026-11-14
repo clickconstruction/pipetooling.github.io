@@ -126,6 +126,43 @@ describe("the customer's page, shape B", () => {
   })
 })
 
+describe('the Money tab as one bar (punch list #217, outside-2, a prototype)', () => {
+  afterEach(() => window.history.replaceState({}, '', '/'))
+
+  it('draws today’s head with no flag, and the bar on ?shape=1', () => {
+    window.history.replaceState({}, '', '/portal?t=tok-1234567890abcdef&shape=1')
+    show()
+    fireEvent.click(screen.getByTestId('portal-gc-tab-money'))
+    expect(screen.queryByTestId('portal-gc-money-header')).toBeNull()
+    const bar = screen.getByTestId('portal-gc-money-bar')
+    expect(bar.textContent).toContain('Nothing paid yet')
+    expect(bar.textContent).toContain('Your contract, $418,300')
+    expect(bar.textContent).toContain('with your architect $63,000')
+    expect(bar.textContent).toContain('Balance to finish$418,300')
+    expect([...bar.querySelectorAll('[data-money-part]')].map((e) => e.getAttribute('data-money-part'))).toEqual(['architect', 'rest'])
+  })
+
+  it('keeps a real visitor on today’s head with ?sbs=1, and draws today over the bar on a sample page, with the three-months-in frame', () => {
+    window.history.replaceState({}, '', '/portal?t=tok-1234567890abcdef&sbs=1')
+    show()
+    fireEvent.click(screen.getByTestId('portal-gc-tab-money'))
+    expect(screen.getByTestId('portal-gc-money-header')).toBeTruthy()
+    expect(screen.queryByTestId('prototype-side-by-side')).toBeNull()
+    cleanup()
+    window.history.replaceState({}, '', '/portal?t=sample-owner&sbs=1')
+    const payload = payloadOf()
+    render(<PortalGcJobs token="sample-owner" jobs={payload.gcJobs} formatUsd={usd} payload={payload} />)
+    fireEvent.click(screen.getByTestId('portal-gc-tab-money'))
+    const frames = screen.getAllByTestId('prototype-side-by-side')
+    expect(frames).toHaveLength(2)
+    expect(frames[0]!.querySelector('[data-side="today"]')?.textContent).toContain('Getting started')
+    expect(frames[0]!.querySelector('[data-side="shape"]')?.textContent).toContain('Nothing paid yet')
+    expect(screen.getByTestId('portal-gc-money-header-later').textContent).toContain('34% built')
+    expect(frames[1]!.querySelector('[data-side="shape"]')?.textContent).toContain('34% paid')
+    expect(frames[1]!.querySelector('[data-side="shape"]')?.textContent).toContain('is our guess from the schedule')
+  })
+})
+
 describe("the office's preview (Messages cut 8d)", () => {
   const preview = (office: { sources: boolean; onSource: (fix: string) => void }) => {
     const payload = payloadOf()
