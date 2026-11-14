@@ -146,7 +146,8 @@ const PROP_START = /([A-Za-z]+)\s*:/g
  * ternary's `:`, and what follows it is the next `:` or the value's end. A string the condition compares against
  * (`kind === 'white' ? …`) or one handed to a call (`tint('#eff6ff')`) is not a branch and is left alone. The value
  * runs on to the next line only when a line ends on `?`, `:` or an open bracket, or the next begins with `?` or `:`.
- * A template string or a comment inside the value ends the read with nothing: those need a person.
+ * A template string or a comment inside the value ends the read with nothing: a value that is a template string is
+ * `templateBranches`' to read, and a comment needs a person.
  */
 export function ternaryBranches(src, from) {
   const stack = [] // true for a grouping paren, false for a call, an index or an object
@@ -201,16 +202,73 @@ export function ternaryBranches(src, from) {
   return found.filter((q) => q.after === '' || q.after === ':')
 }
 
-/** Every `prop: …` whose value holds a ternary or a `??` fallback: its quoted branches go through the prop's table. */
+/**
+ * A template string standing as a style value (`1px solid ${on ? '#2563eb' : '#d1d5db'}`, v2.7287): the quoted
+ * branches inside each `${…}` (read by `ternaryBranches`, so a nested ternary or a `??` fallback counts and a
+ * string handed to a call does not) and the string's own text between them, which may carry a hex of its own
+ * (`1px solid #e5e7eb`). A text run comes back with `raw: true`, since it has no quotes to keep. Nothing when the
+ * value does not start with a backtick, or the string never closes on this read.
+ */
+export function templateBranches(src, from) {
+  let i = from
+  while (i < src.length && (src[i] === ' ' || src[i] === '\t')) i++
+  if (src[i] !== '`') return []
+  const found = []
+  const text = (a, b) => {
+    if (b > a) found.push({ start: a, end: b, value: src.slice(a, b), raw: true })
+  }
+  let textStart = i + 1
+  for (let j = i + 1; j < src.length; j++) {
+    const ch = src[j]
+    if (ch === '\\') {
+      j++
+      continue
+    }
+    if (ch === '`') {
+      text(textStart, j)
+      return found
+    }
+    if (ch === '$' && src[j + 1] === '{') {
+      text(textStart, j)
+      const exprStart = j + 2
+      found.push(...ternaryBranches(src, exprStart))
+      // past the brace that closes the expression, skipping the strings inside it
+      let depth = 1
+      let k = exprStart
+      for (; k < src.length && depth > 0; k++) {
+        const c = src[k]
+        if (c === "'" || c === '"' || c === '`') {
+          let q = k + 1
+          while (q < src.length && src[q] !== c && src[q] !== '\n') q += src[q] === '\\' ? 2 : 1
+          k = q
+          continue
+        }
+        if (c === '{') depth++
+        else if (c === '}') depth--
+      }
+      if (depth > 0) return []
+      j = k - 1
+      textStart = k
+    }
+  }
+  return []
+}
+
+/**
+ * Every `prop: …` whose value holds a ternary, a `??` fallback or a template string: its quoted branches and
+ * the template's own text go through the prop's table.
+ */
 function rewriteTernaries(src) {
   const edits = []
   PROP_START.lastIndex = 0
   for (let m = PROP_START.exec(src); m; m = PROP_START.exec(src)) {
     const table = tableFor(m[1])
     if (!table) continue
-    for (const q of ternaryBranches(src, PROP_START.lastIndex)) {
+    const branches = ternaryBranches(src, PROP_START.lastIndex)
+    const pieces = branches.length > 0 ? branches : templateBranches(src, PROP_START.lastIndex)
+    for (const q of pieces) {
       const next = rewriteValue(q.value, table)
-      if (next !== q.value) edits.push({ start: q.start, end: q.end, text: `'${next}'` })
+      if (next !== q.value) edits.push({ start: q.start, end: q.end, text: q.raw ? next : `'${next}'` })
       // a branch is never read again as a prop of its own (`cond ? color : '#fff'`)
       if (q.end > PROP_START.lastIndex) PROP_START.lastIndex = q.end
     }

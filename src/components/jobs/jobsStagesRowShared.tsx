@@ -372,7 +372,7 @@ export function renderStagesThreadFullscreenJobHeader(job: JobCalendarJobIdentit
     ? {
         ...stagesJobSublinePillBoxBase,
         letterSpacing: '0.02em',
-        border: `1px solid ${tagInfo?.color ?? '#d1d5db'}`,
+        border: `1px solid ${tagInfo?.color ?? 'var(--border-strong)'}`,
         background: tagInfo ? tagInfo.color : 'var(--bg-muted)',
         color: tagInfo ? '#fff' : 'var(--text-700)',
       }

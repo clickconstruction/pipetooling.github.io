@@ -87,7 +87,7 @@ const readingChip = (tone: 'red' | 'amber'): CSSProperties => ({
   textAlign: 'left',
   cursor: 'pointer',
   font: 'inherit',
-  border: `1px solid ${tone === 'red' ? 'var(--border-red, #fca5a5)' : 'var(--border-amber)'}`,
+  border: `1px solid ${tone === 'red' ? 'var(--border-red)' : 'var(--border-amber)'}`,
   background: tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
   color: tone === 'red' ? 'var(--text-red-600)' : 'var(--text-amber-800)',
 })
