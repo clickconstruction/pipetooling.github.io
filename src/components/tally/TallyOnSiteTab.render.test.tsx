@@ -221,3 +221,46 @@ describe('TallyOnSiteTab · Count this box walks every line (v2.7161)', () => {
     vi.mocked(addMovement).mockReset()
   })
 })
+
+describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
+  it('a line pressed Can’t find down to none is in the walk, and the count clears its mark', async () => {
+    const { addMovement } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(addMovement).mockImplementation(((input: { partName: string; quantity: number; reason: string; fromContainerId: string | null; toContainerId: string | null }) => {
+      const row = mv({ partName: input.partName, quantity: input.quantity, reason: input.reason, fromContainerId: input.fromContainerId, toContainerId: input.toContainerId, at: '2026-11-12T10:00:00Z' })
+      store.movements = [...store.movements, row]
+      return row
+    }) as never)
+    // Three came in and all three could not be found: none on hand, and the mark on the line.
+    store.movements = [mv({ reason: 'delivered', quantity: 3, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' }), mv({ reason: 'cannot_find', quantity: 3, at: '2026-11-05T10:00:00Z', fromContainerId: 'a2' })]
+    open()
+    // The box's only line has none on hand. Before, the box had no Count this box at all.
+    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    expect(screen.getByText('1 of 1')).toBeTruthy()
+    expect(screen.getByTestId('count-walk-cant-find').textContent).toBe("3 marked can't find. Your count clears the mark.")
+    fireEvent.click(screen.getByRole('button', { name: '0 is right' }))
+    expect(vi.mocked(addMovement).mock.calls.map((c) => [(c[0] as { reason: string }).reason, (c[0] as { quantity: number }).quantity])).toEqual([['counted', 0]])
+    expect(await screen.findByText('A2 counted. 1 line, 0 corrected.')).toBeTruthy()
+    vi.mocked(addMovement).mockReset()
+  })
+
+  it('the number field can be cleared and typed over, where it snapped back to 1', async () => {
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Used' }))
+    const field = screen.getByLabelText('How many') as HTMLInputElement
+    expect(field.value).toBe('1')
+    // Cleared, it stays empty: the 1 used to come back at once, so the next key made 12.
+    fireEvent.change(field, { target: { value: '' } })
+    expect(field.value).toBe('')
+    fireEvent.change(field, { target: { value: '5' } })
+    expect(field.value).toBe('5')
+    // Past what the box has, it shows the most there is.
+    fireEvent.change(field, { target: { value: '50' } })
+    expect(field.value).toBe('8')
+    // Left empty, it shows the number the press will use.
+    fireEvent.change(field, { target: { value: '' } })
+    fireEvent.blur(field)
+    expect(field.value).toBe('8')
+    fireEvent.click(screen.getByRole('button', { name: 'One fewer' }))
+    expect(field.value).toBe('7')
+  })
+})

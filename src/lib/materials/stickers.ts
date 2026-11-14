@@ -263,6 +263,17 @@ export function lostStickerDetail(sticker: Pick<StickerFacts, 'containerLabel'>)
   return sticker.containerLabel ? `It was on ${sticker.containerLabel}. It no longer opens that box.` : 'It no longer opens a box.'
 }
 
+/**
+ * A box label's own code that opens nothing for the person signed in (v2.7252). The page said the code *is not a box
+ * on any job* and that the label *may be from a box that was retired*. It cannot know either: a box on a job the
+ * reader is not on comes back as no row, the same as a retired box and a code nobody printed. So it says what it
+ * knows, that the code opened no box for them, and both reasons.
+ */
+export function noBoxTitle(codeWords: string): string {
+  return `${codeWords} did not open a box`
+}
+export const NO_BOX_DETAIL = 'The box may be on a job you are not on, or it may be retired. Ask the office, or open On site and find the box by its stencil.'
+
 /** A sticker on a box of a job the reader is not on. */
 export function outOfReachStickerTitle(number: number): string {
   return `Sticker ${stickerNumberWords(number)} is on a box of a job you are not on`

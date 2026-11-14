@@ -85,7 +85,10 @@ describe('BoxCode, signed in', () => {
   it('a code nothing carries reads as before, and a failed read names its reason', async () => {
     resolveBoxCode.mockResolvedValue({ kind: 'none' })
     mount()
-    expect((await screen.findByTestId('box-code-title')).textContent).toBe('9B1C-0D2E is not a box on any job')
+    // The page cannot tell a box on a job the reader is not on from a retired one or a code nobody printed, so it
+    // claims neither (v2.7252). It said the code was on no job and the label was from a retired box.
+    expect((await screen.findByTestId('box-code-title')).textContent).toBe('9B1C-0D2E did not open a box')
+    expect(screen.getByTestId('box-code-detail').textContent).toBe('The box may be on a job you are not on, or it may be retired. Ask the office, or open On site and find the box by its stencil.')
     cleanup()
     resolveBoxCode.mockRejectedValue({ message: 'permission denied for table job_containers' })
     mount()
