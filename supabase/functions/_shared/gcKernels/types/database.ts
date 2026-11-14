@@ -7702,6 +7702,9 @@ export type Database = {
       people_labor_job_payments: {
         Row: {
           amount: number
+          checked_at: string | null
+          checked_by: string | null
+          checked_by_name: string | null
           created_at: string | null
           hidden_from_sub: boolean
           id: string
@@ -7710,10 +7713,14 @@ export type Database = {
           method: string | null
           method_ref: string | null
           payment_date: string | null
+          sending_id: string | null
           sequence_order: number
         }
         Insert: {
           amount: number
+          checked_at?: string | null
+          checked_by?: string | null
+          checked_by_name?: string | null
           created_at?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -7722,10 +7729,14 @@ export type Database = {
           method?: string | null
           method_ref?: string | null
           payment_date?: string | null
+          sending_id?: string | null
           sequence_order?: number
         }
         Update: {
           amount?: number
+          checked_at?: string | null
+          checked_by?: string | null
+          checked_by_name?: string | null
           created_at?: string | null
           hidden_from_sub?: boolean
           id?: string
@@ -7734,14 +7745,29 @@ export type Database = {
           method?: string | null
           method_ref?: string | null
           payment_date?: string | null
+          sending_id?: string | null
           sequence_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "people_labor_job_payments_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_labor_job_payments_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_payments_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
             referencedColumns: ["id"]
           },
         ]
