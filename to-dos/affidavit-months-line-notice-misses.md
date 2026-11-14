@@ -116,4 +116,5 @@ counsel's, never the app's.
 
 ## Where it stands
 
-Nothing is built. The two drafts wait in To draft, unapproved, until counsel answers.
+Nothing is built. The two drafts wait in To draft, unapproved, until counsel answers. The owner picked
+door 1 on 2026-11-14: months set by hand, with counsel's reason typed, as the claim set by hand works.

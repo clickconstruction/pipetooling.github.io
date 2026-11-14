@@ -8,7 +8,6 @@ import {
   buildLienDeskQueue,
   parseLienNoticePolicy,
   summarizeLienDeskForNeedsYou,
-  LIEN_DESK_LEAD_DAYS,
   type LienDeskItemRow,
   type LienDeskNeedsYou,
   type LienDeskQueue,
@@ -19,6 +18,7 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
+import { LIEN_DESK_STARTED_READ_DAYS, lienDeskKeepNoticeRows, lienDeskKeepRows } from '../lib/jobs/lienDeskStarted'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
 import { readCourtesyOwnerContacts, readCourtesyRepliesByJob, type CourtesyReplySource } from '../lib/jobs/lienCourtesyReplyIo'
@@ -185,25 +185,32 @@ export function useLienDeskData(
     setLoading(true)
     void (async () => {
       try {
+        // The three readers are asked further ahead than the desk's lead (v2.7261, punch list #354), and the rows past the
+        // lead are kept only on a job with a started paper of that kind (`lienDeskStarted.ts`), so a drafted, held or
+        // approved paper due in six weeks is on the desk and nothing else past thirty days is.
         const [rowsRaw, itemsRaw, affRaw, retRaw] = await Promise.all([
-          withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: due months'),
+          withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
             () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
             'lien desk: items',
           ),
-          withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
+          withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
           // The retainage reader (v2.3753) — empty until its migration is pushed, so the client can ship first.
-          withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
+          withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
         ])
         if (cancelled) return
-        const rowsRead = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
-          ...r,
-          approved_hours: Number(r.approved_hours) || 0,
-          open_balance: Number(r.open_balance) || 0,
-        }))
         const itemsRead = (itemsRaw ?? []) as LienDeskItemRow[]
-        const affidavitRowsRead = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
-        const retainageRowsRead = ((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 }))
+        const rowsRead = lienDeskKeepNoticeRows(
+          ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
+            ...r,
+            approved_hours: Number(r.approved_hours) || 0,
+            open_balance: Number(r.open_balance) || 0,
+          })),
+          itemsRead,
+          todayYmd,
+        )
+        const affidavitRowsRead = lienDeskKeepRows(((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'affidavit', todayYmd)
+        const retainageRowsRead = lienDeskKeepRows(((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'retainage_53_057', todayYmd)
         const jobIdsRead = [...new Set([...rowsRead.map((r) => r.job_id), ...itemsRead.map((i) => i.job_id), ...affidavitRowsRead.map((r) => r.job_id), ...retainageRowsRead.map((r) => r.job_id)])]
 
         // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
