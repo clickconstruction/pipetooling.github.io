@@ -113,7 +113,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     expect(DESK_IO).toContain(".insert({ job_id: input.jobId, kind: input.kind ?? 'notice_53_056', status: 'drafted', drafted_by: input.userId, ...payload } as never)")
     expect(DESK_IO).toContain(".update({ ...payload, status: 'drafted', ...LIEN_DESK_SIGNATURE_CLEAR } as never).eq('id', input.itemId as string)")
     // The desk: the same reader, and the same three fills before the queue.
-    expect(DESK_DATA).toContain("supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_LEAD_DAYS } as never)")
+    expect(DESK_DATA).toContain("supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never)")
     expect(DESK_DATA).toContain('withHomesteadAnswer(withPublicOwner(withContractorAddress(affidavitRowsKept, gcsById), affidavitAddressIdByJob, affidavitPropertiesById), affidavitAddressIdByJob, affidavitPropertiesById)')
     expect(SERVER).toContain("windows: (days) => rowsOf('rpc/list_lien_affidavit_windows', `p_within_days=${days}`)")
     expect(SERVER).toContain("await restRows(session, 'POST', 'job_lien_desk_items', 'select=id', dry.write.row)")
