@@ -5,6 +5,8 @@ import {
   isPaintedPoint,
   legLengthsMeters,
   lineLengthMeters,
+  lineRuns,
+  metersPerPixel,
   nearestOnLine,
   partsAfterReplace,
   partsFromJson,
@@ -56,6 +58,34 @@ describe('lineLengthMeters', () => {
     const line = [at(0, 0), at(100, 0), at(200, 0), at(300, 0), at(400, 0)]
     // points 1 to 3 are a faint part: two legs of 100 m each.
     expect(lineLengthMeters(line, [[1, 3]])).toBeCloseTo(200, 0)
+  })
+})
+
+describe('lineRuns', () => {
+  const line = [at(0, 0), at(100, 0), at(200, 0), at(300, 0), at(400, 0)]
+  it('is one sure run for a line with nothing faint', () => {
+    const runs = lineRuns(line)
+    expect(runs.sure).toHaveLength(1)
+    expect(runs.sure[0]).toHaveLength(5)
+    expect(runs.poor).toEqual([])
+  })
+  it('splits at a faint part and shares the point where they meet', () => {
+    const runs = lineRuns(line, [[1, 3]])
+    expect(runs.sure.map((r) => r.length)).toEqual([2, 2])
+    expect(runs.poor.map((r) => r.length)).toEqual([3])
+    expect(runs.poor[0]![0]).toEqual(line[1])
+    expect(runs.sure[1]![0]).toEqual(line[3])
+  })
+  it('draws nothing for a point alone', () => {
+    expect(lineRuns([at(0, 0)])).toEqual({ sure: [], poor: [] })
+  })
+})
+
+describe('metersPerPixel', () => {
+  it('halves with each zoom step and shrinks toward the poles', () => {
+    expect(metersPerPixel(18, 0)).toBeCloseTo(0.597, 2)
+    expect(metersPerPixel(19, 0)).toBeCloseTo(metersPerPixel(18, 0) / 2, 6)
+    expect(metersPerPixel(18, 29.5)).toBeLessThan(metersPerPixel(18, 0))
   })
 })
 

@@ -166,7 +166,9 @@ export function BridgeWeek({
     return (
       <li key={m.title} data-testid="bridge-week-move" style={{ padding: narrow ? '10px 0 6px' : '12px 0 8px', borderTop: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
-          <span aria-hidden style={{ width: 22, height: 22, flex: '0 0 auto', borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* The number and its heading are one piece (the owner, 2026-11-13): a heading too long for the line wraps beside its number, where it used to drop under it and leave the number alone. */}
+          <span data-testid="bridge-week-move-head" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: '0 1 auto', minWidth: 0 }}>
+          <span aria-hidden style={{ width: 22, height: 22, flex: '0 0 auto', marginTop: -1, borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {i + 1}
           </span>
           <span style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3, minWidth: 0 }}>
@@ -181,6 +183,7 @@ export function BridgeWeek({
             ) : (
               m.title
             )}
+          </span>
           </span>
           {m.why && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>{m.why}</span>}
           {/* The move's own press sits on its heading, so no button floats beside the rows. */}

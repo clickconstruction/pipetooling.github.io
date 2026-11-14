@@ -28,6 +28,7 @@ import { loadAndApplyExtraTxCountyMappings } from '../lib/txCountySettings'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
+import { PaintedMapHost } from './paintedMap/PaintedMapHost'
 import DispatchTaskModal from './DispatchTaskModal'
 import EstimatorTaskModal from './EstimatorTaskModal'
 import UserReviewModal from './UserReviewModal'
@@ -2280,6 +2281,8 @@ export default function Layout() {
       ) : null}
       {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
       <ChecklistAddModal />
+      {/* Painted maps (punch list #345): the one host that answers a line under an address, whatever window it sits in. */}
+      <PaintedMapHost />
       <DispatchTaskModal />
       <EstimatorTaskModal />
       <UserReviewModal />

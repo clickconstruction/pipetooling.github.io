@@ -59,6 +59,15 @@ describe('scrollTopToReveal', () => {
     expect(scrollTopToReveal({ ...box, scrollTop: 0, fieldTop: 320, fieldBottom: 620 })).toBe(212)
   })
 
+  it('puts a search box at the top of the room, so what it finds shows under it (punch list #348)', () => {
+    // Moved no further than it must, the box at 280 to 324 would stop just above the bar, at 248 to 292.
+    expect(scrollTopToReveal({ ...box, scrollTop: 40, fieldTop: 280, fieldBottom: 324 })).toBe(72)
+    expect(scrollTopToReveal({ ...box, scrollTop: 40, fieldTop: 280, fieldBottom: 324, align: 'top' })).toBe(212)
+    // Already in view lower down: it still goes to the top.
+    expect(scrollTopToReveal({ ...box, scrollTop: 40, fieldTop: 200, fieldBottom: 244, align: 'top' })).toBe(132)
+    expect(scrollTopToReveal({ ...box, scrollTop: 0, fieldTop: 104, fieldBottom: 148, align: 'top' })).toBe(0)
+  })
+
   it('takes the margin it is given', () => {
     expect(scrollTopToReveal({ ...box, scrollTop: 0, fieldTop: 280, fieldBottom: 360, margin: 0 })).toBe(60)
   })

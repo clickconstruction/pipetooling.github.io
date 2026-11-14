@@ -29956,6 +29956,8 @@ export type Database = {
           id: string
           kind: string
           memo: string | null
+          method: string | null
+          method_ref: string | null
           payment_date: string | null
           payment_id: string | null
           reason: string | null
@@ -29973,6 +29975,8 @@ export type Database = {
           id?: string
           kind: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           payment_id?: string | null
           reason?: string | null
@@ -29990,6 +29994,8 @@ export type Database = {
           id?: string
           kind?: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           payment_id?: string | null
           reason?: string | null
@@ -30036,6 +30042,8 @@ export type Database = {
           id: string
           job_id: string
           memo: string | null
+          method: string | null
+          method_ref: string | null
           payment_date: string | null
           sequence_order: number
         }
@@ -30046,6 +30054,8 @@ export type Database = {
           id?: string
           job_id: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           sequence_order?: number
         }
@@ -30056,6 +30066,8 @@ export type Database = {
           id?: string
           job_id?: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           sequence_order?: number
         }
