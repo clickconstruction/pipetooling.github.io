@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react'
  */
 const KEY = 'pt.lienHelpSheet.v1'
 
-/** The box beside the print press. */
+/** The box beside the Lien window's print press. On the desk's print bar it is the chip *Help sheet* (`lienPrintWithChips`, v2.7209). */
 export const LIEN_HELP_SHEET_BOX = 'Print the help sheet first'
 
 /**
@@ -18,18 +18,16 @@ export const LIEN_HELP_SHEET_BOX = 'Print the help sheet first'
  */
 const RECORD_KEY = 'pt.lienNoticeRecord.v1'
 
-/** The box beside the print press, under the help sheet's. */
+/** The box beside the Lien window's print press, under the help sheet's. On the desk's print bar it is the chip *Notice record*. */
 export const LIEN_NOTICE_RECORD_BOX = 'Print the notice record'
 
 /**
  * Whether a batch print adds a copy of each notice behind its notice records (punch list #322). Off by default, the
  * one box that is: a batch of eighteen papers has twenty or more notices behind it, and a run's packet once reached
- * 154 pages. The Lien window's own print has no such box; there the copies come with the notice record.
+ * 154 pages. The Lien window's own print has no such box; there the copies come with the notice record. On the desk's
+ * print bar it is the chip *Notice copies, about N pages* (`lienPrintWithChips`).
  */
 const COPIES_KEY = 'pt.lienNoticeCopiesBatch.v1'
-
-/** The box under the batch's notice record box. */
-export const LIEN_NOTICE_COPIES_BOX = 'Add a copy of each notice'
 
 function read(key: string, fallback: boolean): boolean {
   try {

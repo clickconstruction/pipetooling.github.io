@@ -120,9 +120,10 @@ import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFi
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
 import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords } from '../../lib/jobs/lienAffidavitBatch'
-import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_COPIES_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeCopiesBatchChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
+import { useLienHelpSheetChoice, useLienNoticeCopiesBatchChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
+import { LIEN_PRINT_WITH_LABEL, lienAffidavitPrintBarStatus, lienPrintWithChips } from '../../lib/jobs/lienAffidavitPrintBar'
 import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
@@ -560,6 +561,8 @@ export default function LienDesk({
   const hideZzTestJobs = useZzTestJobsHidden(authRole)
   const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
+  // The print bar's amber press (v2.7209): the list narrowed to the ready papers a gate holds out of the print.
+  const [affHeldOnlyPicked, setAffHeldOnlyPicked] = useState(false)
   // Redraw on the short form, for every ready paper at once (punch list #305): the press in flight, and the papers that did not take with their reasons.
   const [redrawBusy, setRedrawBusy] = useState(false)
   const [redrawFailed, setRedrawFailed] = useState<Array<{ jobId: string; reason: string }>>([])
@@ -981,6 +984,7 @@ export default function LienDesk({
     } else if (t.open === 'affidavits') {
       setKind('affidavit')
       setAffPile(null)
+      setAffHeldOnlyPicked(false)
       setAffSelectedJobId(t.jobId)
     } else if (t.open === 'retainage') {
       setKind('retainage')
@@ -1647,7 +1651,12 @@ export default function LienDesk({
 
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
-  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
+  // Print every ready affidavit on the short form for the notary (v2.6918): what the press takes, and what it leaves with the reason.
+  const affPrintPlan = lienAffidavitPrintPlan(affEntries)
+  // The held papers alone (v2.7209): only while a gate holds one, so the list never narrows to nothing when the last one clears.
+  const affHeldJobIds = new Set(affPrintPlan.gated.map((g) => g.entry.jobId))
+  const affHeldOnly = affHeldOnlyPicked && affHeldJobIds.size > 0
+  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   // Redraw every ready affidavit on the short form (punch list #305): the ready earlier-form papers, the ones left in other piles, and the words.
@@ -1695,14 +1704,23 @@ export default function LienDesk({
       setAffSendBusy(false)
     }
   }
-  // Print every ready affidavit on the short form for the notary (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
-  const affPrintPlan = lienAffidavitPrintPlan(affEntries)
+  // The print itself (v2.6918): one document, each paper on its own sheet, and each job keeps its own copy.
   const [affHelpSheet, setAffHelpSheet] = useLienHelpSheetChoice()
   // The notice records (punch list #322): what was mailed before each paper, in front of the stack with the help sheet.
   const [affNoticeRecord, setAffNoticeRecord] = useLienNoticeRecordChoice()
   // A copy of each notice behind the records: off until someone ticks it, since a batch has many notices behind it.
   const [affNoticeCopies, setAffNoticeCopies] = useLienNoticeCopiesBatchChoice()
   const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
+  // The bar's status line and its amber press (v2.7209).
+  const affPrintStatus = lienAffidavitPrintBarStatus({ ready: affPrintPlan.ready.length, gated: affPrintPlan.gated.length })
+  const affHeldStrip = useRef<HTMLDivElement>(null)
+  const showHeldAffidavits = (on: boolean) => {
+    setAffHeldOnlyPicked(on)
+    // The held papers are in Ready to file: a pile picked in the header would hide them.
+    if (on) setAffPile(null)
+    // The rows sit under the bars: bring the narrowed list's first line into view once it is drawn.
+    if (on) window.setTimeout(() => affHeldStrip.current?.scrollIntoView?.({ block: 'nearest' }), 0)
+  }
   // The county these are signed in (punch list #314): Settings' county, typed over for this print when the notary is somewhere else.
   const affSigning = useLienSigningCounty(issuer)
   // Who a help sheet says to ask (change 9): the job's lien leader, or the dev.
@@ -2879,8 +2897,9 @@ export default function LienDesk({
   const affPileChips = LIEN_AFFIDAVIT_PILES.flatMap((p) => {
     const n = data?.affidavits.counts[p.key] ?? 0
     if (n === 0 && affPile !== p.key) return []
-    const on = affPile === p.key
-    return [pileChip(p.key, p.label, n, on, () => setAffPile(on ? null : p.key))]
+    // A pile chip lifts the print bar's held-only list (v2.7209), and reads unpressed while that list is up.
+    const on = affPile === p.key && !affHeldOnly
+    return [pileChip(p.key, p.label, n, on, () => { setAffHeldOnlyPicked(false); setAffPile(on ? null : p.key) })]
   })
   const retPileChips = LIEN_RETAINAGE_PILES.flatMap((p) => {
     const n = data?.retainage.counts[p.key] ?? 0
@@ -2959,30 +2978,56 @@ export default function LienDesk({
         </div>
       ) : null}
       {office && affPrintPlan.ready.length > 0 ? (
-        <div data-lien-affidavit-print-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span>{affPrintWords.lead}</span>
+        <div data-lien-affidavit-print-all style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {/* The status line (v2.7209): what this press prints, and beside it the one warning as a press. On a phone the press sits under the words. */}
+          <div data-lien-affidavit-print-status style={{ display: 'flex', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '0.35rem 0.6rem' }}>
+            <span data-lien-affidavit-print-ready title={affPrintStatus.readyTip} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>{affPrintStatus.ready}</span>
+            {affPrintStatus.held ? (
+              <button
+                type="button"
+                data-lien-affidavit-print-held
+                aria-pressed={affHeldOnly}
+                title={affPrintStatus.held.tip}
+                onClick={() => showHeldAffidavits(!affHeldOnly)}
+                style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${affHeldOnly ? 'var(--text-amber-800)' : 'var(--border-amber)'}`, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {affPrintStatus.held.press} <span aria-hidden>›</span>
+              </button>
+            ) : null}
+          </div>
           <button type="button" onClick={printReadyAffidavits} style={{ ...btn('plain'), justifySelf: 'start' }}>
             {affPrintWords.button}
           </button>
-          {/* The help sheet (punch list #314): on unless the office turns it off, and the choice is kept on this computer. */}
-          <label data-lien-affidavit-help-sheet style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
-            <input type="checkbox" checked={affHelpSheet} onChange={(e) => setAffHelpSheet(e.target.checked)} />
-            {LIEN_HELP_SHEET_BOX}
-          </label>
-          {/* The notice records (punch list #322): on unless the office turns them off, kept on this computer as the help sheet's box is. */}
-          <label data-lien-affidavit-notice-record style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
-            <input type="checkbox" checked={affNoticeRecord} onChange={(e) => setAffNoticeRecord(e.target.checked)} />
-            {LIEN_NOTICE_RECORD_BOX}
-          </label>
-          {affNoticeCopyCount > 0 ? (
-            <label data-lien-affidavit-notice-copies style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifySelf: 'start', cursor: 'pointer' }}>
-              <input type="checkbox" checked={affNoticeCopies} onChange={(e) => setAffNoticeCopies(e.target.checked)} />
-              {LIEN_NOTICE_COPIES_BOX} ({affNoticeCopyCount === 1 ? '1 more page' : `${affNoticeCopyCount} more pages or so`})
-            </label>
-          ) : null}
+          {/* What prints in front of the stack, as three ticked chips under one label (v2.7209). Each is still a tick box, kept on this computer: the help sheet (punch list #314) and the notice records (punch list #322) are on until the office turns them off, and the copies of the notices are off until someone ticks them. */}
+          <div role="group" aria-labelledby="lien-affidavit-print-with" data-lien-affidavit-print-with style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.4rem' }}>
+            <span id="lien-affidavit-print-with" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '0.1rem' }}>{LIEN_PRINT_WITH_LABEL}</span>
+            {lienPrintWithChips(affNoticeCopyCount).map((c) => {
+              const [on, set, hook] =
+                c.key === 'help_sheet'
+                  ? ([affHelpSheet, setAffHelpSheet, { 'data-lien-affidavit-help-sheet': true }] as const)
+                  : c.key === 'notice_record'
+                    ? ([affNoticeRecord, setAffNoticeRecord, { 'data-lien-affidavit-notice-record': true }] as const)
+                    : ([affNoticeCopies, setAffNoticeCopies, { 'data-lien-affidavit-notice-copies': true }] as const)
+              return (
+                <label key={c.key} {...hook} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '2px 9px 2px 6px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.75rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} style={{ margin: 0 }} />
+                  {c.label}
+                </label>
+              )
+            })}
+          </div>
           <LienSigningCountyBox id="lien-affidavit-signing-county" county={affSigning.county} onChange={affSigning.setCounty} />
           <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
           {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
+        </div>
+      ) : null}
+      {/* The list narrowed to the held papers (v2.7209): how many, that each row says why, and the way back. */}
+      {affHeldOnly && affPrintStatus.held ? (
+        <div ref={affHeldStrip} data-lien-affidavit-held-only style={{ padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.6rem', fontSize: '0.78rem' }}>
+          <span>{affPrintStatus.held.showing}</span>
+          <button type="button" onClick={() => showHeldAffidavits(false)} style={{ ...btn('plain'), padding: '2px 10px', fontSize: '0.78rem' }}>
+            {affPrintStatus.held.back}
+          </button>
         </div>
       ) : null}
       {LIEN_AFFIDAVIT_PILES.map((p) => {
