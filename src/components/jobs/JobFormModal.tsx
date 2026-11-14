@@ -3081,6 +3081,8 @@ export default function JobFormModal({
               bar, segments + break-off, invoices, payments, labor + parts
               cost. */}
           <div style={{ display: !embedded || embeddedRegion === 'bill' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Punch list #355 F (v2.7284): on a phone the money card, Make a bill, the bills and the payments come first and the line items last; the desk keeps its order. */}
+          <div data-job-form-lines="" style={embedded && narrowViewport ? { order: 9 } : undefined}>
           <JobFormFixturesSection
             fixtures={fixtures}
             riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
@@ -3107,6 +3109,7 @@ export default function JobFormModal({
             payerTags={billToParty === 'split' ? { customerName: customerName.trim() || null, gcName: gcNameForPayerTags } : null}
             isProject={kindRead.kind === 'project'}
           />
+          </div>
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
               Job form keeps both (it has no tab to say "Bill" for it). */}

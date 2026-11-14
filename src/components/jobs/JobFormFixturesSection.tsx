@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
 import AutosizeTextarea from '../AutosizeTextarea'
+import { PhoneSheet } from '../PhoneSheet'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { MoneyWithSmallCents } from './MoneySmallCents'
@@ -135,6 +136,8 @@ export function JobFormFixturesSection({
   // On touch every control in the row is 44 px (`.jobLineItems--stacked` in
   // index.css).
   const narrowViewport = useNarrowViewport640()
+  // Punch list #355 F (v2.7284): on a phone a row's ⋯ holds Move up, Move down and Remove, so no 24 px trash sits beside the price.
+  const [menuRowId, setMenuRowId] = useState<string | null>(null)
   // Line budgets (punch list #234): only a project carries them — a job priced before the
   // work, #238's kind as the form reads it (PR 1a). A caller with no read leaves a Stage Plan
   // with an ordered stage to stand in; a service call's single line shows nothing.
@@ -223,12 +226,15 @@ export function JobFormFixturesSection({
                 onClick={onOpenSegmentGenerator}
                 style={{
                   marginLeft: 'auto',
-                  padding: 0,
+                  padding: narrowViewport ? '0 0.7rem' : 0,
+                  minHeight: narrowViewport ? 40 : undefined,
                   background: 'transparent',
-                  border: 'none',
+                  border: narrowViewport ? '1px solid var(--border-strong)' : 'none',
+                  borderRadius: narrowViewport ? 8 : 0,
                   color: 'var(--text-link)',
-                  textDecoration: 'underline',
-                  fontSize: '0.75rem',
+                  textDecoration: narrowViewport ? 'none' : 'underline',
+                  fontSize: narrowViewport ? '0.875rem' : '0.75rem',
+                  fontWeight: narrowViewport ? 600 : undefined,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
                   whiteSpace: 'nowrap',
@@ -444,10 +450,10 @@ export function JobFormFixturesSection({
                                 />
                               </div>
                             )}
-                            {fixtures.length > 1 && (
+                            {fixtures.length > 1 && !narrowViewport && (
                               /* On a phone this column stands beside the name and the ×/$
                                  line under it, so on touch each arrow takes half that
-                                 height (v2.4312). */
+                                 height (v2.4312); since v2.7284 the phone's ⋯ holds the moves. */
                               <div
                                 className="jobLineMove"
                                 style={{
@@ -569,7 +575,7 @@ export function JobFormFixturesSection({
                                       }
                                       aria-label={!scopeExpanded ? 'Add scope or notes' : 'Scope or notes'}
                                       style={{
-                                        padding: '0.3rem',
+                                        padding: narrowViewport ? '0.6rem' : '0.3rem',
                                         background: 'transparent',
                                         border: 'none',
                                         borderRadius: 4,
@@ -610,7 +616,18 @@ export function JobFormFixturesSection({
                                 <div data-testid="line-numbers" className="jobLineNumbers">
                                   {countGroup}
                                   {priceGroup}
-                                  {deleteButton}
+                                  {!locked && (fixtures.length > 1 || deleteButton) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setMenuRowId(row.id)}
+                                      aria-haspopup="dialog"
+                                      aria-label={`More for ${row.name.trim() || `line item ${idx + 1}`}`}
+                                      title="Move up, Move down, Remove"
+                                      style={{ marginLeft: 'auto', width: 40, height: 40, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}
+                                    >
+                                      ⋯
+                                    </button>
+                                  ) : null}
                                 </div>
                               )}
                             </div>
@@ -854,7 +871,8 @@ export function JobFormFixturesSection({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.35rem',
-                  padding: '0.4rem 0.9rem',
+                  padding: narrowViewport ? '0 0.9rem' : '0.4rem 0.9rem',
+                  minHeight: narrowViewport ? 40 : undefined,
                   background: 'transparent',
                   border: '1px dashed var(--border-strong)',
                   borderRadius: 6,
@@ -875,7 +893,8 @@ export function JobFormFixturesSection({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.35rem',
-                    padding: '0.4rem 0.9rem',
+                    padding: narrowViewport ? '0 0.9rem' : '0.4rem 0.9rem',
+                    minHeight: narrowViewport ? 40 : undefined,
                     background: 'transparent',
                     border: '1px dashed #a7dcc2',
                     borderRadius: 6,
@@ -1017,6 +1036,31 @@ export function JobFormFixturesSection({
                 ) : null}
               </div>
             )}
+          {menuRowId ? (() => {
+            const idx = fixtures.findIndex((r) => r.id === menuRowId)
+            const row = fixtures[idx]
+            if (!row) return null
+            const name = row.name.trim() || `Line item ${idx + 1}`
+            const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%', minHeight: 48, padding: '0.5rem 1rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '1rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer' }
+            const dead: CSSProperties = { color: 'var(--text-muted)', cursor: 'not-allowed' }
+            return (
+              <PhoneSheet label={`More for ${name}`} title={name} width={420} onClose={() => setMenuRowId(null)}>
+                <div role="menu" aria-label={`More for ${name}`} style={{ display: 'grid', paddingBottom: '0.25rem' }}>
+                  <button type="button" role="menuitem" disabled={idx === 0} style={{ ...rowStyle, ...(idx === 0 ? dead : {}) }} onClick={() => { moveFixtureRow(row.id, 'up'); setMenuRowId(null) }}>
+                    ▲ Move up
+                  </button>
+                  <button type="button" role="menuitem" disabled={idx === fixtures.length - 1} style={{ ...rowStyle, ...(idx === fixtures.length - 1 ? dead : {}) }} onClick={() => { moveFixtureRow(row.id, 'down'); setMenuRowId(null) }}>
+                    ▼ Move down
+                  </button>
+                  {fixtures.length > 1 ? (
+                    <button type="button" role="menuitem" style={{ ...rowStyle, borderBottom: 'none', color: 'var(--text-red-700)' }} onClick={() => { removeFixtureRow(row.id); setMenuRowId(null) }}>
+                      Remove this line
+                    </button>
+                  ) : null}
+                </div>
+              </PhoneSheet>
+            )
+          })() : null}
           </div>
   )
 }
