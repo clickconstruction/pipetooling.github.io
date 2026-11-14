@@ -5,7 +5,7 @@
  * opened by a one-shot `?liendesk=` link the board stripped on arrival; `Jobs.tsx` sends every such link here.
  *
  * The page reads for itself what the board used to hand the window: the desk's own rows (`useLienDeskData`, the
- * full read), the work months behind each notice, the letterhead, the people who sign, the Deadlines rows from
+ * full read), the work months behind each notice, the letterhead, the people who sign, the By date rows from
  * the app-wide jobs cache (every billed job, through the kernel the Pipeline reads too) and the firm's matters
  * for counsel's sign-off. The doors back: the job form and the job window through their app-wide contexts, the
  * Legal desk and Settings by their addresses, and the three windows the desk opens over itself — a job's Lien
@@ -79,7 +79,7 @@ export default function LienDeskPage() {
   const authName = profileName?.trim() ?? ''
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
-  // The Deadlines rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
+  // The By date rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
   // filter's board, the page takes the Pipeline's own scoped first load for that one scope (a scope fetch alone is a no-op
   // until a board snapshot exists); on a warm cache it asks for the scope the way the Pipeline's doors did.
   const { jobs, setJobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
@@ -138,10 +138,10 @@ export default function LienDeskPage() {
   const leaderNameFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
   const signerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, issuer?.phone ?? ''), [users, issuer?.phone])
 
-  // The Deadlines rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
+  // The By date rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
   // (v2.4153) re-reads what it wrote: a promise the pay dates, a kind or a last day the clocks.
   const [clocksRefresh, setClocksRefresh] = useState(0)
-  // v2.7208: a last day set on the desk's own line (the Notices pane) comes back in the desk's read of its jobs. A Deadlines row
+  // v2.7208: a last day set on the desk's own line (the Notices pane) comes back in the desk's read of its jobs. A By date row
   // counts from the day on the jobs list this page holds, so the fresh day is written there; the list is left as it is
   // when nothing differs, and the rows stay mounted either way.
   useEffect(() => {
@@ -328,7 +328,7 @@ export default function LienDeskPage() {
         // v2.7187, punch list #335, row 2: and the step an affidavit is on.
         deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
-        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read. v2.7208: the row counts from
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read. v2.7208: the row counts from
         // the day on the jobs list this page holds, so the day is written there too; it kept its old dates until a reload.
         onLastWorkSaved={(jobId, facts) => {
           setJobs((prev) => withJobLastWork(prev, jobId, facts))

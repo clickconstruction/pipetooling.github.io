@@ -185,6 +185,9 @@ in the same PR. After its merge, `npm run check:edge-drift` names what to redepl
   against the page before the deploy, redeployed on 2026-11-14 at 00:54 UTC, then dry-run and held against
   the page again. The four functions that read the kernel index (`customer-portal`, `drive-link`,
   `gc-trade-portal`, `photo-save`) read as behind by two comment lines until each is next deployed.
+- **v2.7230**: `bridge-weekly-sheet` a third time. The slowest step's sentence for Build no longer reads
+  *7 to 7 weeks* when both ends of its range round to one number. The page has it from the merge. The email
+  has it once the function is redeployed, which waits on the owner's yes.
 
 ### The guide and the docs
 
@@ -271,9 +274,6 @@ app, so each waits here.
 - **New task did not close on one press of Escape when a grey check opened it.** Its own *Cancel* closed
   it. The *Done when…* box holds the focus when the window opens this way, which may be why. It is the
   app's own window, from #331, so the fix belongs to it.
-- **The slowest step can read *7 to 7 weeks*.** When both ends of Build's range round to one number, the
-  sentence says the number twice. It is on the page and in the email. Bill's sentence already guards
-  against it (`stageFlow.ts`), so the fix is the same one line for Build.
 
 ## Where it stands
 

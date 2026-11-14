@@ -196,7 +196,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy()
   })
 
-  it('reads a day set by hand on its timeline, and the Deadlines door opens it already editing (v2.4735)', async () => {
+  it('reads a day set by hand on its timeline, and the By date door opens it already editing (v2.4735)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ created_at: '2026-02-03T15:00:00Z', last_work_date: null, lien_last_work_on: '2026-08-11', lien_last_work_note: 'The crew’s last trip' })} openLastWork />)
     await waitFor(() => expect(document.querySelector('[data-lien-timeline-step="last_work"]')).toBeTruthy())
     const stop = document.querySelector('[data-lien-timeline-step="last_work"]') as HTMLElement

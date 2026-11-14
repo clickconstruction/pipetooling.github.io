@@ -279,7 +279,7 @@ describe('LienInstrumentsModal · a paper keeps the form it was drafted on (punc
 
 
 describe('LienInstrumentsModal · a saved last day is handed to the opener, for the rows behind the window (v2.7208)', () => {
-  // The owner, 2026-11-13: with a day set in this window, the Deadlines row behind it kept its old dates. The window
+  // The owner, 2026-11-13: with a day set in this window, the By date row behind it kept its old dates. The window
   // re-read the day for itself and told its opener only that something was saved, so the opener had nothing to write
   // into the jobs it already held.
   it('hands up the job and the last-work facts it re-read, and only those columns', async () => {

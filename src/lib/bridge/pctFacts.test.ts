@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { jobHoursByJob, type JobHoursSession } from './jobHours'
-import { PCT_FACTS_LINES_SHOWN, buildPctFacts, chargeCell, lastWorkedCell, lineUsd, pctFactsRows, pctRunAfterSave, pctRunPlace, shownLines, usdWords, type PctFactsRead } from './pctFacts'
+import { PCT_FACTS_LINES_SHOWN, buildPctFacts, chargeCell, lastWorkedCell, lineUsd, pctFactsRows, pctRunAfterSave, pctRunPlace, shownLines, streetAndCity, usdWords, type PctFactsRead } from './pctFacts'
 
 // Made-up people on made-up jobs.
 const dayLabel = (ymd: string): string => `Mar ${Number(ymd.slice(8))}`
@@ -48,6 +48,11 @@ const read: PctFactsRead = {
     { jobId: 'j1', pct: 30, at: '2026-02-01T15:00:00Z', ymd: '2026-02-01' },
     { jobId: 'j1', pct: 0, at: '2026-03-01T15:00:00Z', ymd: '2026-03-01' },
   ],
+  addresses: [
+    { jobId: 'j1', address: '14 Pine Row, Cedar Falls, TX 78000' },
+    { jobId: 'j2', address: '9 Spruce Hall Lane Cedar Falls TX 78000' },
+    { jobId: 'j3', address: null },
+  ],
 }
 const jobs = [
   { id: 'j1', revenueUsd: 9500 },
@@ -62,6 +67,27 @@ const j3 = facts.get('j3')!
 const j4 = facts.get('j4')!
 
 describe('what a percent is judged from', () => {
+  it('says where a job is by its street and city, with no state and no zip', () => {
+    expect(j1.address).toBe('14 Pine Row, Cedar Falls')
+    expect(j2.address).toBe('9 Spruce Hall Lane Cedar Falls')
+    // No address on the job, and a job the read brought nothing for.
+    expect(j3.address).toBe('')
+    expect(j4.address).toBe('')
+    expect(streetAndCity('14 Pine Row, Cedar Falls, TX')).toBe('14 Pine Row, Cedar Falls')
+    expect(streetAndCity('14 Pine Row, Cedar Falls, Texas 78000-1234')).toBe('14 Pine Row, Cedar Falls')
+    expect(streetAndCity('14 Pine Row, Cedar Falls, TX 78000, USA')).toBe('14 Pine Row, Cedar Falls')
+    expect(streetAndCity('  14 Pine Row, Cedar Falls, tx 78000 Null ')).toBe('14 Pine Row, Cedar Falls')
+    expect(streetAndCity('14 Pine Row, Cedar Falls 78000')).toBe('14 Pine Row, Cedar Falls')
+    // A quarter of town is not a state: NE stays where no zip stood behind it, and so does a street's last word.
+    expect(streetAndCity('12 Main St NE')).toBe('12 Main St NE')
+    expect(streetAndCity('12 Main St')).toBe('12 Main St')
+    expect(streetAndCity('12 County Road 40')).toBe('12 County Road 40')
+    // Nothing but a state or a zip comes back as stored, never empty.
+    expect(streetAndCity('TX 78000')).toBe('TX 78000')
+    expect(streetAndCity('78000')).toBe('78000')
+    expect(streetAndCity('')).toBe('')
+  })
+
   it('prices a line as the job’s total does: a count of nothing is one, and a discount is one line', () => {
     expect(lineUsd({ count: 12, unitPrice: 250, lineKind: 'work' })).toBe(3000)
     expect(lineUsd({ count: 0, unitPrice: 4000, lineKind: 'work' })).toBe(4000)
@@ -134,6 +160,7 @@ describe('the words', () => {
 
   it('writes the facts beside the percent control, the money first', () => {
     expect(pctFactsRows(j1, TODAY, dayLabel)).toEqual([
+      { key: 'address', label: 'Address', words: '14 Pine Row, Cedar Falls' },
       { key: 'charge', label: 'We are charging', words: '$9,500' },
       { key: 'billed', label: 'Billed so far', words: '$4,000 of $9,500' },
       { key: 'worked', label: 'Last worked', words: 'Mar 5. Clocked by Sam and Dana.' },
@@ -142,16 +169,18 @@ describe('the words', () => {
       { key: 'last-pct', label: 'Last percent', words: '0%, set Mar 1.' },
     ])
     expect(pctFactsRows(j2, TODAY, dayLabel)).toEqual([
+      { key: 'address', label: 'Address', words: '9 Spruce Hall Lane Cedar Falls' },
       { key: 'charge', label: 'We are charging', words: 'No price yet. It is also on the list “Price the jobs with no price”.', warn: true },
       { key: 'worked', label: 'Last worked', words: 'Mar 6. On the schedule for Ana and Lee, with no clock time since.' },
       { key: 'next', label: 'Next scheduled', words: 'Today, for Lee.' },
       { key: 'hours', label: 'Hours so far', words: '4 hours by Lee.' },
     ])
-    expect(pctFactsRows(j3, TODAY, dayLabel).map((r) => r.words)).toEqual(['No price yet. It is also on the list “Price the jobs with no price”.', 'Not worked yet.', 'No hours yet.'])
+    expect(pctFactsRows(j3, TODAY, dayLabel).map((r) => r.words)).toEqual(['The job has no address yet.', 'No price yet. It is also on the list “Price the jobs with no price”.', 'Not worked yet.', 'No hours yet.'])
   })
 
   it('passes the plain-words rule', () => {
-    for (const f of [j1, j2, j3, j4]) for (const r of pctFactsRows(f, TODAY, dayLabel)) expect(plainWordsFailures(r.words), r.words).toEqual([])
+    // An address is the job's own, not a sentence of ours.
+    for (const f of [j1, j2, j3, j4]) for (const r of pctFactsRows(f, TODAY, dayLabel)) if (r.key !== 'address' || r.warn) expect(plainWordsFailures(r.words), r.words).toEqual([])
   })
 
   it('writes whole dollars with commas', () => {

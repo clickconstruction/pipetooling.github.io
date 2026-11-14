@@ -506,6 +506,7 @@ export const CONTRACT_ROUTE_REASONS: Readonly<Record<string, string>> = {
   '/rate': 'Five stars, the customer’s own words and, at five, the ask to put it on Google; no terms are offered.',
   '/show/:code': 'Photos and a short video of a problem, where it is and the customer’s own words; no terms are offered and nothing is agreed to.',
   '/submittal': 'The reviewer approves or returns submittals; no terms are offered.',
+  '/way/:code': 'A painted map of the way in to a job, with its places; no terms are offered and nothing is agreed to.',
 }
 
 // ---------------------------------------------------------------------------

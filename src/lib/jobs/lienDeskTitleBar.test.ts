@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { LIEN_DESK_ONE_LINE_MIN_WIDTH, LIEN_DESK_ONE_LINE_QUERY, LIEN_DESK_TITLE_LINE_PARTS, lienDeskTitleBarLayout, lienDeskTitleLineNeeds } from './lienDeskTitleBar'
 
 describe('the Lien desk title bar on a computer (v2.7213)', () => {
-  it('in a wide window the tools end the title line, and the bar has no second line off All filings', () => {
+  it('in a wide window the tools end the title line, and the bar has no second line off By paper', () => {
     for (const gcNotice of [false, true]) {
       expect(lienDeskTitleBarLayout({ isMobile: false, wide: true, paperShown: false, gcNotice })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false })
     }
   })
 
-  it('on All filings a wide window keeps a second line for the paper tabs, with the right span only for Put a GC on notice', () => {
+  it('on By paper a wide window keeps a second line for the paper tabs, with the right span only for Put a GC on notice', () => {
     expect(lienDeskTitleBarLayout({ isMobile: false, wide: true, paperShown: true, gcNotice: false })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false })
     expect(lienDeskTitleBarLayout({ isMobile: false, wide: true, paperShown: true, gcNotice: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: true })
   })

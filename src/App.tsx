@@ -59,6 +59,7 @@ const BoxCode = lazy(() => import('./pages/BoxCode'))
 // #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
 const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
 const ReceiptLink = lazy(() => import('./pages/ReceiptLink'))
+const PaintedWay = lazy(() => import('./pages/PaintedWay'))
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BillsSent = lazy(() => import('./pages/BillsSent'))
 const FirstLookRead = lazy(() => import('./pages/FirstLookRead'))
@@ -299,6 +300,15 @@ function AppContent() {
           element={
             <Suspense fallback={null}>
               <ShowUs />
+            </Suspense>
+          }
+        />
+        {/* #345 (v2.7223): a painted map, shared, /way/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the receipt link is. */}
+        <Route
+          path="/way/:code"
+          element={
+            <Suspense fallback={null}>
+              <PaintedWay />
             </Suspense>
           }
         />

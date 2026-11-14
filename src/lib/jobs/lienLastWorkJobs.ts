@@ -1,7 +1,7 @@
 /**
  * A job's last-work facts, written back into a list of jobs that is already on screen (v2.7208).
  *
- * The owner, 2026-11-13, looking at the Lien desk's Deadlines tab behind a job's Lien window: *"when a day is set the
+ * The owner, 2026-11-13, looking at the Lien desk's By date tab behind a job's Lien window: *"when a day is set the
  * underlying jobs don't refresh with the new dates … when I close the modal I don't want to lose my place on the page
  * but I do want the main page to update"*. The window saved the day and re-read it for itself. Its openers re-read the
  * lien clocks and the desk. But the row behind the window counts from `job.lien_last_work_on` on the jobs list the page

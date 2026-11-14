@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * `/lien-desk`: what the page does when a job's Lien window changes something the Deadlines rows behind it read (v2.7208).
+ * `/lien-desk`: what the page does when a job's Lien window changes something the By date rows behind it read (v2.7208).
  *
- * The owner, 2026-11-13, with the Deadlines tab behind *Liens on job 226*: *"when a day is set the underlying jobs
+ * The owner, 2026-11-13, with the By date tab behind *Liens on job 226*: *"when a day is set the underlying jobs
  * don't refresh with the new dates … when I close the modal I don't want to lose my place on the page but I do want
  * the main page to update"*. The page re-read its lien clocks and the desk, but the row counts from the job's own
  * `lien_last_work_on` on the jobs list the page holds, and nothing wrote the saved day there. A filing recorded in the
