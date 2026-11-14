@@ -164,7 +164,8 @@ describe('a paper on a stand-in month is flagged, never held, and never reads On
 
   it('the help sheet asks, on a sub job and on a job contracted with the owner', () => {
     const sub = lienHelpChecks({ ownerName: 'Jordan Sample', propertyKind: 'residential', homestead: false, isSub: true, monthsWords: 'August 2026', noticeLines: [], contractorName: 'Ridgeway Builders', monthStandIn: 'bill' })
-    expect(sub[sub.length - 1]).toEqual({ state: 'ask', lead: 'Work month.', words: lienStandInFlag('bill') })
+    // The batch sheet's row has no room for the door, so it reads the plain line.
+    expect(sub[sub.length - 1]).toEqual({ state: 'ask', lead: 'Work month.', words: lienStandInFlag('bill'), row: MONTH_FROM_BILL_LINE })
     const direct = lienHelpChecks({ ownerName: 'Mock Holdings LLC', propertyKind: 'non_residential', homestead: false, isSub: false, monthsWords: '', noticeLines: [], contractorName: '', monthStandIn: 'job_created' })
     expect(direct.map((c) => [c.state, c.lead])).toEqual([['ok', 'Owner.'], ['ask', 'Work month.']])
     // A month from hours or a day set by hand adds nothing.
@@ -178,6 +179,9 @@ describe('a paper on a stand-in month is flagged, never held, and never reads On
     expect(fromHours.flags).toEqual([])
     const fromBill = lienNoticeRecord({ ...input, monthStandIn: 'bill' })!
     expect(fromBill.flags).toEqual([lienStandInFlag('bill')])
+    // The box at the record's foot reads the short flags (v2.7218): the plain line leads them, so the two lists are empty together.
+    expect(fromBill.flagsShort).toEqual([MONTH_FROM_BILL_LINE])
+    expect(fromHours.flagsShort).toEqual([])
     expect(lienNoticeRecordAsks(fromBill)).toBe(true)
     expect(lienNoticeRecord({ ...input, monthStandIn: 'job_created' })!.flags).toEqual([lienStandInFlag('job_created')])
   })
