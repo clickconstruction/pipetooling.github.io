@@ -52,7 +52,8 @@ describe('BridgeMoveTable at a desk', () => {
     // Nothing late yet: the amount says it is open, so the heading does not call it late.
     expect(texts(rows[1]!)).toEqual(['Birch and Sons', '$9.0k open', '12 days', 'Said Mar 20', '', ''])
     expect(screen.queryByTestId('bridge-week-dive-project')).toBeNull()
-    // The rest are one press away, here, and one press back.
+    // The rest are one press away, here, and one press back. The press sits under the middle of the table, not under the names.
+    expect(screen.getByRole('button', { name: 'Show all 4' }).parentElement!.style.justifyContent).toBe('center')
     fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
     expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
     fireEvent.click(screen.getByRole('button', { name: 'Show the first 3' }))
@@ -127,6 +128,13 @@ describe('BridgeMoveTable at a desk', () => {
 })
 
 describe('BridgeMoveTable on a phone', () => {
+  it('centres Show all under the lines too', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow />)
+    expect(screen.getByTestId('bridge-week-dive-all-row').style.justifyContent).toBe('center')
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
+    expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
+  })
+
   it('draws a line as its name and figure, then the rest with its press, with no headings', () => {
     renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow />)
     expect(screen.queryByRole('columnheader')).toBeNull()

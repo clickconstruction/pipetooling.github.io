@@ -14,7 +14,7 @@ import { loadItemLines, syncItemLines } from '../lib/taskLinesIo'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
-import { newTaskSentence, taskPersonName } from '../lib/tasks/newTaskWindow'
+import { editTaskWhenNote, newTaskSentence, taskPersonName } from '../lib/tasks/newTaskWindow'
 import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TaskSendBar } from './checklist/newTask/TaskSendBar'
 import { TaskWindowClose, TaskWindowShell } from './checklist/newTask/TaskWindowShell'
@@ -201,6 +201,8 @@ export function ChecklistItemEditModal({
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
   /** Same When grammar as the Add modal (v2.2075); derived from the stored item on open. */
   const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('date')
+  /** The task repeats as it is saved. Edit task's line about the days to come is for such a task only. */
+  const [savedRepeats, setSavedRepeats] = useState(false)
   const [repeatMode, setRepeatMode] = useState<'weekly' | 'after_done'>('weekly')
 
   // Reachability (v2.2096): which assignees can this reminder actually reach?
@@ -261,6 +263,7 @@ export function ChecklistItemEditModal({
           .order('changed_at', { ascending: true })
           .then(({ data }) => setDueChanges((data ?? []) as DueChangeRow[]))
         const today = todayYmdInAppTz()
+        setSavedRepeats(item.repeat_type !== 'once')
         if (item.repeat_type === 'day_of_week') {
           setWhen('repeat')
           setRepeatMode('weekly')
@@ -515,7 +518,7 @@ export function ChecklistItemEditModal({
             </div>
           ) : null
         }
-        whenNote="Saving reshapes the days still to come. The ones already done keep their notes."
+        whenNote={editTaskWhenNote({ savedRepeats, repeatsNow: when === 'repeat' })}
       />
     </TaskWindowShell>
   )

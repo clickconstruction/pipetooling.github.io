@@ -2,7 +2,7 @@
 name: "The dev seat files a bid's sent paper from Drive and links it: plan_bid_submission and read_drive_folder"
 number: 339
 group: ready
-status: LIVE on `dev-mcp` 0.82.0 (2026-11-13, v2.7154, PR #7964): `read_drive_folder` and `plan_bid_submission` / `apply_bid_submission`, kernel `_shared/devMcpBidSubmission.ts` · walked on prod the same day on the owner's word: the read on b398's folder, on one file and on a folder the account cannot open, a dry run on b398 "ZZ Test", and one apply there (Drive's own copy into Team only › Sent by us, the link set, the note on its Notes, a second apply refused) · the three legs left were walked the same afternoon on a fresh ZZ bid, b605: the project folder made at the apply, `replace: true`, and a file from outside the company's Shared Drive read and uploaded · every leg has now run on prod · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13
+status: LIVE on `dev-mcp` 0.82.0 (2026-11-13, v2.7154, PR #7964): `read_drive_folder` and `plan_bid_submission` / `apply_bid_submission`, kernel `_shared/devMcpBidSubmission.ts` · walked on prod the same day on the owner's word: the read on b398's folder, on one file and on a folder the account cannot open, a dry run on b398 "ZZ Test", and one apply there (Drive's own copy into Team only › Sent by us, the link set, the note on its Notes, a second apply refused) · the three legs left were walked the same afternoon on a fresh ZZ bid, b605: the project folder made at the apply, `replace: true`, and a file from outside the company's Shared Drive read and uploaded · every leg has now run on prod · the owner's call on the link, 2026-11-13: "Use the folder", built as v2.7186, server 0.83.0, NOT deployed · the bid train's pair 6 (card #317), briefed 2026-11-11 and added to the punch list on the owner's word 2026-11-13
 summary: >
   Old proposal files are being copied into company Drive, a folder a bid, and each bid should
   link the paper that was sent. The dev seat can set the link, but it cannot read a Drive folder,
@@ -10,7 +10,7 @@ summary: >
   Drive through a browser and left the links in bid notes. Two verbs close it: a read of a Drive
   folder and a file's facts, and a plan → apply pair that files a sent paper into the bid's own
   folder and links it, as the Files window would if it had the press.
-next: Ask the owner the one design call below (the link as the Sent by us folder once a bid holds several papers), then retire this card and #317. b605 "ZZ Test Sent Paper Walk 2026-11-13" and its Drive folder are test leftovers, safe to delete.
+next: With the owner's yes, deploy `dev-mcp` 0.83.0 from main, then plan any of b605's three papers: the link should move to its Sent by us folder with nothing copied. Then retire this card and #317. b605 "ZZ Test Sent Paper Walk 2026-11-13" and its Drive folder are test leftovers, safe to delete.
 size: M (one read verb, one write pair, no migration)
 blocker: none
 opinion: build — the old-proposals work waits on it, and every door it needs already exists on the server
@@ -62,8 +62,8 @@ changed, so the real case was read through a browser.
 - **The link**: `bids.bid_submission_link` set to the copied file. A bid that already has a link is
   refused unless `replace: true`, and the plan names the link it would replace.
 - **Several papers on one bid** (a revision, a second option): the column holds one link. The plan
-  says so and keeps the newest as the link. **Ask the owner** whether he wants the link to be the
-  Sent by us folder instead once a bid holds more than one; that is the one design call left.
+  says so. **Decided 2026-11-13, "Use the folder"** (v2.7186): the link is the paper while Sent by us
+  holds it alone, and the Sent by us folder once it holds more. v2.7154 kept the newest paper as the link.
 - **What it also says**: a note on the bid naming the file and where it was filed, written as
   `plan_activity_note` writes one, so the Bid Board's Notes show it.
 - **Not done**: the Log contact press (a contact with its method, no verb yet), and anything sent
@@ -99,7 +99,7 @@ Until it is built: `plan_bid_update` links a file that is already where it belon
 - The ask is `submission = { bid, drive_file_id | drive_url, replace? }`; `bid` is an id or text that finds one bid.
 - "The company's Shared Drive" is the one that holds the jobs root (Documents → Where files go). A file in it is copied by Drive; any other is read on the server and put through `drive-link`, 10 MB at most.
 - A paper whose bytes are already in Sent by us (the same name, size and md5, or the file itself) is not copied again: only the link and the note are written.
-- Several papers on one bid: each is filed in Sent by us and the newest filed keeps the link. The owner's call on the folder as the link is still open.
+- Several papers on one bid: each is filed in Sent by us. Since v2.7186 the link is the folder once it holds more than one paper; a link that already points into that folder moves without `replace: true`.
 - A Google Doc, Sheet or Slides is refused: it can still be edited, so it is not the paper that was sent. Download it as a PDF.
 - The plan reads Drive on a `drive.readonly` token; the full token is minted in the copy alone, after the hash matched.
 - `read_drive_folder` runs with a dev's own key alone and is refused under `view_as`: the service account sees more than any one person.

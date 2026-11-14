@@ -23,6 +23,13 @@ type Props = {
   onClose: () => void
 }
 
+/**
+ * The window's width on a desk (v2.7194): wide enough for a job's number and a long name beside its label count. It
+ * was 460, and its two grids had no column rule, so a name that did not fit widened the column past the window and
+ * the window scrolled sideways, with the label counts and the close press off its right edge.
+ */
+export const PRINT_LABELS_WINDOW_WIDTH = 640
+
 const row: CSSProperties = { minHeight: 48, width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.9rem', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, textAlign: 'left', cursor: 'pointer' }
 
 export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null, onAddFirst, onClose }: Props) {
@@ -35,7 +42,7 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
   }
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Print labels" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, width: 'min(460px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem 1.25rem', display: 'grid', gap: '0.75rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Print labels" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, width: `min(${PRINT_LABELS_WINDOW_WIDTH}px, 100%)`, maxHeight: 'min(90vh, 100%)', overflowX: 'hidden', overflowY: 'auto', padding: '1rem 1.25rem 1.25rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem', flex: '1 1 auto' }}>Print labels</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', minHeight: 36, minWidth: 36 }}>×</button>
@@ -48,11 +55,11 @@ export default function PrintLabelsWindow({ jobs, loading, failure, jobId = null
         {withBoxes.length > 0 ? (
           <>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Which job?</p>
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem' }}>
               {withBoxes.map((j) => (
                 <button key={j.jobId} type="button" style={row} onClick={() => setPicked(j.jobId)} data-testid="print-labels-job">
-                  <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.label}</span>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.85rem', flex: '0 0 auto' }}>{labelCountWords(labelBoxes(j).length)}</span>
+                  <span style={{ flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.25 }}>{j.label}</span>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.85rem', flex: '0 0 auto', whiteSpace: 'nowrap' }}>{labelCountWords(labelBoxes(j).length)}</span>
                 </button>
               ))}
             </div>

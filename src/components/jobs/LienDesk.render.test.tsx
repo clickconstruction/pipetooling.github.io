@@ -448,6 +448,43 @@ describe('LienDesk', () => {
     expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
   })
 
+  it('Do now on a computer pins the month and scrolls the list; stacked, the month and the list scroll as one page and a pressed zone brings its rows up (punch list #352, PR 0)', async () => {
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    const frame = () => document.querySelector('[data-lien-do-now]') as HTMLElement
+    const list = () => document.querySelector('[data-lien-next-up="list"]') as HTMLElement
+    expect(frame().getAttribute('data-lien-do-now')).toBe('pinned')
+    expect(frame().style.gridTemplateRows).toBe('auto auto minmax(0, 1fr)')
+    expect(list().getAttribute('data-scrolls')).toBe('yes')
+    // The month, the find box and the list are all inside the one frame.
+    expect(frame().contains(list())).toBe(true)
+    view.unmount()
+
+    const brought: Element[] = []
+    const before = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) { brought.push(this) }
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" />)
+      await settle()
+      expect(frame().getAttribute('data-lien-do-now')).toBe('one-page')
+      expect(frame().style.overflowY).toBe('auto')
+      expect(frame().style.gridTemplateRows).toBe('')
+      expect(list().getAttribute('data-scrolls')).toBe('no')
+      expect(list().style.overflowY).toBe('visible')
+      expect(frame().contains(list())).toBe(true)
+      // Opening the desk brings no rows up (the view tabs bring their own picked tab into view); a pressed zone does.
+      const rowsBrought = () => brought.filter((el) => el.matches('[data-lien-next-up-group], [data-lien-next-up="empty"]'))
+      expect(rowsBrought()).toHaveLength(0)
+      const zone = frame().querySelector('[data-testid="lien-month-bar"] button[data-testid^="lien-month-zone-"]') as HTMLButtonElement
+      fireEvent.click(zone)
+      await settle()
+      expect(rowsBrought()).toHaveLength(1)
+      expect(frame().contains(rowsBrought()[0]!)).toBe(true)
+    } finally {
+      Element.prototype.scrollIntoView = before
+    }
+  })
+
   it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
@@ -644,6 +681,54 @@ describe('LienDesk', () => {
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
+  })
+
+  it('a phone\u2019s header is one row with More; the doors it held are rows of the sheet and open what they open on a computer (punch list #352, PR 1)', { timeout: 30000 }, async () => {
+    // A computer keeps its header: the doors are in the bar and there is no More.
+    const onOpenOwnerRecords = vi.fn()
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" onOpenOwnerRecords={onOpenOwnerRecords} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-more="door"]')).toBeNull()
+    expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
+    expect(screen.getByTestId('lien-owner-records-door')).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" onOpenOwnerRecords={onOpenOwnerRecords} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
+      const more = bar.querySelector('[data-lien-desk-more="door"]') as HTMLButtonElement
+      expect(more.getAttribute('aria-label')).toBe('More')
+      expect(more.style.height).toBe('44px')
+      // None of the doors is in the bar any more.
+      expect(within(bar).queryByTestId('lien-rules-door')).toBeNull()
+      expect(within(bar).queryByTestId('lien-owner-records-door')).toBeNull()
+      expect(bar.querySelector('[data-lien-desk-share]')).toBeNull()
+      expect(bar.querySelector('[data-lien-caller-door]')).toBeNull()
+      expect(bar.querySelector('[data-lien-desk-run]')).toBeNull()
+      // The three views are a thumb tall and share the width.
+      for (const tab of bar.querySelectorAll('[data-lien-desk-view]')) expect((tab as HTMLElement).style.minHeight).toBe('44px')
+
+      fireEvent.click(more)
+      const sheet = screen.getByRole('dialog', { name: 'More on the Lien desk' })
+      expect([...sheet.querySelectorAll('[data-lien-desk-more-row]')].map((r) => r.getAttribute('data-lien-desk-more-row'))).toEqual(['rules', 'caller', 'legend', 'share', 'owner_records'])
+
+      // A row closes the sheet and opens its door.
+      fireEvent.click(within(sheet).getByRole('button', { name: /An owner asked for records/ }))
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('dialog', { name: 'More on the Lien desk' })).toBeNull()
+
+      fireEvent.click(more)
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'More on the Lien desk' })).getByRole('button', { name: /§ Rules/ }))
+      expect(screen.queryByRole('dialog', { name: 'More on the Lien desk' })).toBeNull()
+      // The window is a lazy chunk that carries every help guide; give its first import room.
+      expect(await screen.findByTestId('lien-rules-modal', undefined, { timeout: 15000 })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
   })
 
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
@@ -1448,7 +1533,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // On the two papers, behind the help sheet (whose small picture of the paper names the county too).
     expect(html.slice(html.lastIndexOf('</section>')).match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
     expect(html).not.toContain('where signed')
-    expect(html).toContain('Each paper has four things to write')
+    expect(html).toContain('Each paper has three things to write')
     expect(html).toContain('data-lien-help-batch-checks')
     expect(html).toMatch(/\d clear to sign\./)
     expect(html).toContain('1 not printed.')

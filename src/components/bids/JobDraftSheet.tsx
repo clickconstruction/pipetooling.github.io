@@ -5,6 +5,10 @@
  * opens New Job with it laid over the bid's import. The assistant adds the team and the schedule and saves. It opens
  * with what New Job's import would choose (`draftFromBid`), so the two agree, and sends through the bid's existing
  * hand-off (`askDispatchToOpenJob`), which still refuses when the bid already has a job or Dispatch already has it.
+ *
+ * Under the GC that won it sits one small line, **Add their pay terms** (punch list #323, `DraftPayTermsPart`): the
+ * estimator has the GC's contract in hand and may not set a Pay calendar, so the terms go with the draft and the office
+ * makes them the calendar. Never drawn for a digital twin, nor on a draft with no GC.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,6 +20,8 @@ import { supabaseJobDraftIo, type JobDraftIo, type JobDraftStart } from '../../l
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
+import DraftPayTermsPart from './DraftPayTermsPart'
 
 export interface JobDraftSheetProps {
   bidId: string
@@ -39,6 +45,7 @@ export function JobDraftSheet({ bidId, onClose, onSent, io = supabaseJobDraftIo,
   const [draft, setDraft] = useState<JobDraft | null>(null)
   const [carryText, setCarryText] = useState('')
   const [sending, setSending] = useState(false)
+  const isTwin = useIsDigitalTwin()
 
   useEffect(() => {
     let live = true
@@ -68,7 +75,8 @@ export function JobDraftSheet({ bidId, onClose, onSent, io = supabaseJobDraftIo,
   const pickGc = (key: string) => {
     if (!start) return
     const opt = start.options.find((o) => o.key === key) ?? null
-    set({ gcKey: opt?.key ?? null, gcName: opt?.name ?? null })
+    // The terms were read for one GC: another GC starts with none.
+    set({ gcKey: opt?.key ?? null, gcName: opt?.name ?? null, payTerms: null })
     const figure = draftCarryFor(start.bid, opt)
     setCarryText(figure != null ? String(figure) : '')
   }
@@ -133,17 +141,27 @@ export function JobDraftSheet({ bidId, onClose, onSent, io = supabaseJobDraftIo,
               <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                 <legend style={labelStyle}>The GC that won it</legend>
                 {start.options.map((o) => (
-                  <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', padding: '2px 0' }}>
-                    <input type="radio" name={`job-draft-gc-${bidId}`} checked={draft.gcKey === o.key} onChange={() => pickGc(o.key)} />
-                    {o.name}
-                    {o.value != null ? <span style={quiet}>· sent ${formatCurrency(o.value)}</span> : null}
-                  </label>
+                  <div key={o.key}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', padding: '2px 0' }}>
+                      <input type="radio" name={`job-draft-gc-${bidId}`} checked={draft.gcKey === o.key} onChange={() => pickGc(o.key)} />
+                      {o.name}
+                      {o.value != null ? <span style={quiet}>· sent ${formatCurrency(o.value)}</span> : null}
+                    </label>
+                    {draft.gcKey === o.key && !isTwin ? (
+                      <div style={{ marginLeft: 22 }}>
+                        <DraftPayTermsPart key={o.key} gcName={o.name} value={draft.payTerms ?? null} onChange={(payTerms) => set({ payTerms })} />
+                      </div>
+                    ) : null}
+                  </div>
                 ))}
               </fieldset>
             ) : draft.gcName ? (
-              <p style={{ ...quiet, marginTop: '0.6rem' }}>
-                GC: <strong style={{ color: 'var(--text-base)' }}>{draft.gcName}</strong>
-              </p>
+              <>
+                <p style={{ ...quiet, marginTop: '0.6rem' }}>
+                  GC: <strong style={{ color: 'var(--text-base)' }}>{draft.gcName}</strong>
+                </p>
+                {!isTwin ? <DraftPayTermsPart gcName={draft.gcName} value={draft.payTerms ?? null} onChange={(payTerms) => set({ payTerms })} /> : null}
+              </>
             ) : null}
             <label style={labelStyle}>
               The job starts at <span style={{ color: 'var(--text-faint)' }}>(blank starts it at $0)</span>

@@ -17,12 +17,35 @@ const LienRulesModal = lazy(() => import('./LienRulesModal'))
  * the desk hands it the picked job (`job`), which the window names in a strip with its two
  * dates and lights in the clock rule's table.
  */
-export function LienRulesDoor({ where, style, job, todayYmd }: { where: keyof typeof LIEN_RULES_DOOR; style?: CSSProperties; job?: LienRulesJob | null; todayYmd?: string }) {
+export function LienRulesDoor({
+  where,
+  style,
+  job,
+  todayYmd,
+  open: openGiven,
+  onOpenChange,
+  button = true,
+}: {
+  where: keyof typeof LIEN_RULES_DOOR
+  style?: CSSProperties
+  job?: LienRulesJob | null
+  todayYmd?: string
+  /** Held by the caller when the door is pressed somewhere else: the Lien desk's More sheet on a phone (punch list #352, PR 1). Absent, the door holds it. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** False draws no button, only the window when open. */
+  button?: boolean
+}) {
   const cite = LIEN_RULES_DOOR[where]
-  const [open, setOpen] = useState(false)
+  const [openHere, setOpenHere] = useState(false)
+  const open = openGiven ?? openHere
+  const setOpen = (next: boolean) => {
+    setOpenHere(next)
+    onOpenChange?.(next)
+  }
   return (
     <>
-      <button
+      {button ? <button
         type="button"
         data-testid="lien-rules-door"
         aria-haspopup="dialog"
@@ -50,7 +73,7 @@ export function LienRulesDoor({ where, style, job, todayYmd }: { where: keyof ty
         }}
       >
         § Rules
-      </button>
+      </button> : null}
       {open ? (
         <Suspense fallback={null}>
           <LienRulesModal cite={cite} job={job} todayYmd={todayYmd} onClose={() => setOpen(false)} />

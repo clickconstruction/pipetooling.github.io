@@ -34,7 +34,7 @@ import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkKeys } from '../../lib/materials/countWalk'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { editBoxTitle } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -46,6 +46,7 @@ import { findOnSite, otherJobsWithBoxes, otherJobsWords, type OnSiteFindHit } fr
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import ScanLabelWindow from '../materials/ScanLabelWindow'
+import { ON_SITE_BOX_REFRESH_AFTER_MS } from '../../lib/materials/onSiteFresh'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -132,6 +133,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const lines = containerLines(movements)
   const now = new Date()
   const [view, setView] = useState<View>({ kind: 'containers' })
+  // Opening a box reads the job again when its last read is more than a few seconds old (v2.7177): the number on a
+  // line is about to be pressed against, and another phone may have changed it.
+  const openBoxId = view.kind === 'container' ? view.id : null
+  useEffect(() => { if (jobId && openBoxId) refreshJob(jobId, ON_SITE_BOX_REFRESH_AFTER_MS) }, [jobId, openBoxId])
   const [sheet, setSheet] = useState<Sheet>(null)
   const [query, setQuery] = useState('')
   const navigate = useNavigate()

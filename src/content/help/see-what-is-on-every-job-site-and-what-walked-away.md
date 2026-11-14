@@ -11,6 +11,8 @@ The Materials tab on Jobs is the office side of the cages and boxes on a big sit
 
 Open **Jobs** and press **Materials**. The desk lists every job with a container and sorts the ones losing money to the top. Press a job to open its page.
 
+A job whose boxes did not load says so in its row, with the reason. The row's figures are left blank, never drawn as zero. Press **Read again** on that row. A site's screen says the same at its top when one of its jobs did not load.
+
 The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open.
 
 The Pipeline's tools menu has a **Materials desk** row with the count of jobs that lost something this week. A job's window has a **Materials** tab with the same facts and **Open the materials page**. A bid's Procure step has the same door once the bid is a job. The line under its four steps reads **Materials on site**.
@@ -86,6 +88,8 @@ Press **Print the material location report** at the top to print the site. The [
 ## Read the row
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
+
+The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.
 
 A very large job can pass 5,000 rows in its ledger. Then History and the boxes show the newest 5,000 rows. The totals come from the database, and a line under the job's name says so.
 

@@ -7,11 +7,9 @@
  * being typed in. So the window follows the part that shows: it starts where that part starts and is no taller.
  */
 
-/** The part of the page that shows: `window.visualViewport`'s height and how far it has slid down the page. */
-export type VisualViewportBox = {
-  height: number
-  offsetTop: number
-}
+import { visibleBand, type VisualViewportBox } from '../visibleBand'
+
+export type { VisualViewportBox }
 
 export type TaskWindowPhoneFrame = {
   /** How far down the page the card starts, in px. 0 unless the keyboard slid the page. */
@@ -25,19 +23,22 @@ export type TaskWindowPhoneFrame = {
  * 1.25 and the same slide, so the scale is not read. A card that stood still under a zoom was pushed off the top.
  */
 export function taskWindowPhoneFrame(box: VisualViewportBox | null): TaskWindowPhoneFrame {
-  if (!box || !Number.isFinite(box.height) || box.height <= 0) return { top: 0, maxHeight: '100%' }
-  return {
-    top: Number.isFinite(box.offsetTop) ? Math.max(0, Math.round(box.offsetTop)) : 0,
-    maxHeight: `min(100%, calc(${Math.round(box.height)}px - env(safe-area-inset-top, 0px)))`,
-  }
+  const band = visibleBand(box)
+  if (!band) return { top: 0, maxHeight: '100%' }
+  return { top: band.top, maxHeight: `min(100%, calc(${band.height}px - env(safe-area-inset-top, 0px)))` }
 }
 
 /**
  * The scroll position that brings a field inside the part of a scrolling box that shows, moving it no further than
  * it must. All four edges are measured from the same origin, as `getBoundingClientRect` gives them.
+ *
+ * `align: 'top'` is for a field whose answer draws under it, a search box over its list: the field goes to the top
+ * of the box, so the room left is the list's. Moved no further than it must, such a box landed just above the bar
+ * and the names it found were under the bar (punch list #348).
  */
-export function scrollTopToReveal(a: { scrollTop: number; boxTop: number; boxBottom: number; fieldTop: number; fieldBottom: number; margin?: number }): number {
+export function scrollTopToReveal(a: { scrollTop: number; boxTop: number; boxBottom: number; fieldTop: number; fieldBottom: number; margin?: number; align?: 'nearest' | 'top' }): number {
   const margin = a.margin ?? 8
+  if (a.align === 'top') return Math.max(0, a.scrollTop + (a.fieldTop - a.boxTop) - margin)
   const room = a.boxBottom - a.boxTop
   const fieldHeight = a.fieldBottom - a.fieldTop
   // A field taller than the room shows from its top, where the typing starts.

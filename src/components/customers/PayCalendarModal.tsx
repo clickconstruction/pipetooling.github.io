@@ -13,20 +13,21 @@ import { dispatchPayCalendarChanged, loadDevelopmentJobIds, loadPayCalendarJobs,
 import {
   JOB_NO_CALENDAR_WORDS,
   PAY_CALENDAR_CLAUSE_MAX,
-  PAY_CALENDAR_CUTOFF_MAX,
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_WORDS_MAX,
   latenessAgainst,
   latenessWords,
-  ordinalDay,
   payCalendarPreview,
   payCalendarShort,
   payCalendarWords,
+  normalizePayCalendar,
   type PayCalendar,
   type PayCalendarReceipt,
   type PayCalendarRow,
 } from '../../lib/jobs/payCalendar'
 import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
+import PayCalendarFields from './PayCalendarFields'
+import { payCalendarLabelStyle } from './payCalendarFieldStyles'
 
 /**
  * Pay calendar · <payer> (punch list #323): the day bills must be in by, the day they pay, and
@@ -35,6 +36,11 @@ import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
  * payer's measured payments against what is typed: the contract says when a bill is due, the
  * record says when it lands. Opened through `usePayCalendarModal`. The save goes through
  * `set_payer_pay_calendar`, which decides who may and stamps who did.
+ *
+ * Opened with terms an estimator read on a won bid (`initial.calendar`, the owner's call of
+ * 2026-11-13) it starts on those terms and on whose they are, and says where they came from.
+ * From New Job the job is not made yet (`jobToBe`): the window can still be for that job alone,
+ * and hands the calendar back to set with the job instead of saving it.
  *
  * Opened from a job's row it also knows the job (PR 4). A switch at the top picks who the
  * calendar is for: every job the payer pays, or that job alone. A job can carry its own
@@ -45,12 +51,25 @@ export type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 
 type Scope = 'payer' | 'job'
 
-const CUTOFF_DAYS = Array.from({ length: PAY_CALENDAR_CUTOFF_MAX }, (_, i) => i + 1)
-const PAY_DAYS = Array.from({ length: 30 }, (_, i) => i + 1)
-const MONTH_CHOICES = ['the same month', 'the next month', 'the month after that'] as const
+/** What an opener can start the window with when nothing is stored for what it opens on. */
+export type PayCalendarInitial = {
+  clause?: string
+  words?: string
+  /** Terms read elsewhere (an estimator's job draft): the form starts on them, whatever is stored. */
+  calendar?: PayCalendar | null
+  /** Whose those terms are: the scope the window opens on. */
+  scope?: Scope
+  /** Where they came from, in a few words: "Dana Whitfield’s draft". */
+  from?: string | null
+}
 
-const labelStyle = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', margin: '0.8rem 0 4px' } as const
-const fieldStyle = { padding: '0.45rem 0.6rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', fontWeight: 400, minHeight: 36 } as const
+/** A job New Job has not made yet: its name, and where the calendar goes when the office agrees. */
+export type PayCalendarJobToBe = {
+  label: string
+  onUse: (calendar: PayCalendarSave) => void
+}
+
+const labelStyle = payCalendarLabelStyle
 const boxStyle = { margin: '0.75rem 0 0', padding: '0.5rem 0.7rem', borderRadius: 8, fontSize: '0.8125rem' } as const
 
 function setAtWords(row: PayCalendarRow | null): string | null {
@@ -65,6 +84,7 @@ export default function PayCalendarModal({
   payerId,
   payerName,
   job = null,
+  jobToBe = null,
   initial = null,
   zIndex = 1200,
   onClose,
@@ -75,8 +95,10 @@ export default function PayCalendarModal({
   payerName: string
   /** The job the press sat on; absent, the window is the payer's alone. */
   job?: PayCalendarJob | null
-  /** A clause and its words to start from when nothing is stored for what the window opens on (PR 7): the paper the press sat on. */
-  initial?: { clause?: string; words?: string } | null
+  /** A job not made yet (New Job): the window can be for it alone, and hands the calendar back instead of saving. Ignored with a `job`. */
+  jobToBe?: PayCalendarJobToBe | null
+  /** A clause and its words to start from when nothing is stored for what the window opens on (PR 7): the paper the press sat on. Or whole terms read elsewhere. */
+  initial?: PayCalendarInitial | null
   /** The layer to draw at; 1200 unless the opener is itself a window above that. */
   zIndex?: number
   onClose: () => void
@@ -110,8 +132,13 @@ export default function PayCalendarModal({
 
   const jobId = job?.id ?? null
   const developmentId = job?.developmentId ?? null
-  const initialClause = initial?.clause?.trim() || null
-  const initialWords = initial?.words?.trim() || null
+  /** The job the window can be for alone: the one the press sat on, or the one New Job is about to make. */
+  const jobLabel = job?.label ?? jobToBe?.label ?? null
+  const hasJob = jobLabel != null
+  // One string, so an opener that rebuilds the same object each render does not read again.
+  const initialKey = JSON.stringify(initial ?? null)
+  const offered = useMemo(() => normalizePayCalendar((JSON.parse(initialKey) as PayCalendarInitial | null)?.calendar ?? null), [initialKey])
+  const offeredFrom = offered ? (initial?.from ?? '').trim() || null : null
 
   useEffect(() => {
     let cancelled = false
@@ -135,12 +162,17 @@ export default function PayCalendarModal({
             if (!cancelled) setOwnJobFacts(facts)
           })
         }
-        // A job that already carries its own opens on the job; anything else opens on the payer.
-        setScope(forJob ? 'job' : 'payer')
+        const init = JSON.parse(initialKey) as PayCalendarInitial | null
+        const initCalendar = normalizePayCalendar(init?.calendar ?? null)
+        // A job that already carries its own opens on the job; terms read for a job open on it; anything else opens on the payer.
+        setScope(forJob || (initCalendar && init?.scope === 'job' && hasJob) ? 'job' : 'payer')
         setJobOff(forJob?.off === true)
         const stored = forJob?.calendar ?? own?.calendar ?? null
-        // Nothing stored: the paper's clause and words start the form, so they are not typed twice.
-        setForm(stored ?? { ...PAY_CALENDAR_DEFAULT, clause: (initialClause ?? '').slice(0, PAY_CALENDAR_CLAUSE_MAX), words: (initialWords ?? '').slice(0, PAY_CALENDAR_WORDS_MAX) })
+        // Terms read elsewhere start the form. With nothing stored, the paper's clause and words do, so they are not typed twice.
+        setForm(
+          initCalendar ??
+            stored ?? { ...PAY_CALENDAR_DEFAULT, clause: (init?.clause?.trim() ?? '').slice(0, PAY_CALENDAR_CLAUSE_MAX), words: (init?.words?.trim() ?? '').slice(0, PAY_CALENDAR_WORDS_MAX) },
+        )
         setReceipts(paid)
         setOtherJobIds(devJobs.filter((id) => id !== jobId))
       } catch (e) {
@@ -152,7 +184,7 @@ export default function PayCalendarModal({
     return () => {
       cancelled = true
     }
-  }, [payerId, jobId, developmentId, initialClause, initialWords])
+  }, [payerId, jobId, developmentId, initialKey, hasJob])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -164,6 +196,8 @@ export default function PayCalendarModal({
 
   const pickScope = (next: Scope) => {
     setScope(next)
+    // Terms read elsewhere stay as typed: the office is choosing where they go, not which stored calendar to see.
+    if (offered) return
     setForm(next === 'job' ? (jobRow?.calendar ?? payerRow?.calendar ?? PAY_CALENDAR_DEFAULT) : (payerRow?.calendar ?? PAY_CALENDAR_DEFAULT))
   }
 
@@ -171,7 +205,7 @@ export default function PayCalendarModal({
   const preview = useMemo(() => payCalendarPreview(form, todayYmd), [form, todayYmd])
   const lateness = useMemo(() => latenessAgainst(receipts, form), [receipts, form])
   const ready = canSet && loaded && !loadError && !saving
-  const onJob = scope === 'job' && job != null
+  const onJob = scope === 'job' && hasJob
   const editable = ready && !(onJob && jobOff)
   const set = (patch: Partial<PayCalendar>) => setForm((f) => ({ ...f, ...patch }))
   const stored = onJob ? jobRow : payerRow
@@ -188,6 +222,12 @@ export default function PayCalendarModal({
     setSaving(true)
     try {
       const calendar: PayCalendarSave = onJob && jobOff ? { off: true } : { ...form, clause: form.clause.trim(), words: form.words.trim() }
+      if (onJob && !job && jobToBe) {
+        // The job is not made yet: nothing is written here. New Job sets it with the job.
+        jobToBe.onUse(calendar)
+        onClose()
+        return
+      }
       if (!onJob || !job) {
         await savePayCalendar(supabase, { payerId, calendar })
         finish('Pay calendar saved.', 'success')
@@ -298,12 +338,18 @@ export default function PayCalendarModal({
           </p>
         ) : null}
 
-        {job ? (
+        {offered ? (
+          <p data-testid="pay-calendar-offered" style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+            Filled in from {offeredFrom ?? 'a draft'}. Check it, then save.
+          </p>
+        ) : null}
+
+        {hasJob ? (
           <>
             <div style={labelStyle}>This calendar is for</div>
             <div role="radiogroup" aria-label="This calendar is for" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {scopePress('payer', `Every job ${payerName} pays`)}
-              {scopePress('job', `Only ${job.label}`)}
+              {scopePress('job', `Only ${jobLabel}`)}
             </div>
             {onJob ? (
               <>
@@ -319,73 +365,7 @@ export default function PayCalendarModal({
           </>
         ) : null}
 
-        <label style={labelStyle}>
-          Bills must be in by
-          <select
-            aria-label="Bills must be in by"
-            value={form.cutoffDay ?? 'eom'}
-            disabled={!editable}
-            onChange={(e) => set({ cutoffDay: e.target.value === 'eom' ? null : Number(e.target.value) })}
-            style={{ ...fieldStyle, display: 'block', marginTop: 4, maxWidth: '100%' }}
-          >
-            <option value="eom">The last day of the month</option>
-            {CUTOFF_DAYS.map((d) => (
-              <option key={d} value={d}>
-                The {ordinalDay(d)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div style={labelStyle}>They pay on the</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.875rem' }}>
-          <select aria-label="They pay on the" value={form.payDay >= 31 ? 31 : form.payDay} disabled={!editable} onChange={(e) => set({ payDay: Number(e.target.value) })} style={fieldStyle}>
-            {PAY_DAYS.map((d) => (
-              <option key={d} value={d}>
-                {ordinalDay(d)}
-              </option>
-            ))}
-            <option value={31}>last day</option>
-          </select>
-          <span>of</span>
-          <select aria-label="Of which month" value={form.monthsAfter} disabled={!editable} onChange={(e) => set({ monthsAfter: Number(e.target.value) })} style={fieldStyle}>
-            {MONTH_CHOICES.map((words, i) => (
-              <option key={words} value={i}>
-                {words}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: '0.875rem', marginTop: '0.8rem', cursor: editable ? 'pointer' : 'default' }}>
-          <input type="checkbox" checked={form.payWhenPaid} disabled={!editable} onChange={(e) => set({ payWhenPaid: e.target.checked })} style={{ marginTop: 3 }} />
-          <span>
-            They pay when the owner pays them
-            {form.payWhenPaid ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>The due day then reads as no sooner than.</span> : null}
-          </span>
-        </label>
-
-        <div style={labelStyle}>Where the contract says it</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <input
-            type="text"
-            aria-label="Clause number"
-            value={form.clause}
-            disabled={!editable}
-            onChange={(e) => set({ clause: e.target.value.slice(0, PAY_CALENDAR_CLAUSE_MAX) })}
-            placeholder="§ 5.2"
-            style={{ ...fieldStyle, width: 90 }}
-          />
-          <input
-            type="text"
-            aria-label="The clause in a few words"
-            value={form.words}
-            disabled={!editable}
-            onChange={(e) => set({ words: e.target.value.slice(0, PAY_CALENDAR_WORDS_MAX) })}
-            placeholder="Paid the 10th of the month after it is received."
-            style={{ ...fieldStyle, flex: '1 1 200px', minWidth: 0 }}
-          />
-        </div>
+        <PayCalendarFields form={form} onChange={set} disabled={!editable} />
 
         {onJob && jobOff ? (
           <div data-testid="pay-calendar-preview" style={{ ...boxStyle, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
@@ -459,12 +439,12 @@ export default function PayCalendarModal({
               disabled={dead}
               style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, background: dead ? DEAD_PRESS_FILL : '#2563eb', color: dead ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: dead ? 'default' : 'pointer' }}
             >
-              {saving ? 'Saving…' : onJob ? (alsoOthers && others > 0 ? `Save for ${others + 1} jobs` : 'Save for this job') : 'Save pay calendar'}
+              {saving ? 'Saving…' : onJob ? (!job ? 'Use for this job' : alsoOthers && others > 0 ? `Save for ${others + 1} jobs` : 'Save for this job') : 'Save pay calendar'}
             </button>
           ) : null}
         </div>
         <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {canSet ? (onJob ? 'Only this job’s bills read it.' : ownJobRows.length > 0 ? 'Every other bill this payer pays reads it.' : 'Every bill this payer pays reads it.') : 'The office sets this.'}
+          {canSet ? (onJob ? (job ? 'Only this job’s bills read it.' : 'It sets when the job is created. Only this job’s bills read it.') : ownJobRows.length > 0 ? 'Every other bill this payer pays reads it.' : 'Every bill this payer pays reads it.') : 'The office sets this.'}
           {storedWords ? ` ${storedWords}` : ''}
         </p>
       </div>
