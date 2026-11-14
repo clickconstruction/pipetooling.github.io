@@ -2,14 +2,15 @@ import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import { buildLienNoticeBlocks, filingDocHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import { LIEN_HELP_BATCH_ASK_LEAD, LIEN_HELP_FOOT_PAPER_NEXT, STRIPE, esc, foot } from './lienHelpSheet'
 import { describeNoticeMonths } from './lienNoticeDraft'
-import { lienNoticeRecordAsks, lienNoticeRecordDaysBetween, lienNoticeRecordMethodWords, type LienNoticeRecord, type LienNoticeRecordCopy, type LienNoticeRecordLine, type LienNoticeRecordNotice } from './lienNoticeRecord'
+import { LIEN_RECORD_MATCH, lienNoticeRecordAsks, lienNoticeRecordDaysBetween, lienNoticeRecordMethodWords, type LienNoticeRecord, type LienNoticeRecordCopy, type LienNoticeRecordLine, type LienNoticeRecordNotice } from './lienNoticeRecord'
 
 /**
  * The notice record as a printed page (punch list #322). Pure: the words and the HTML, nothing else.
  *
  * It prints with a short-form lien affidavit, in front of the paper, so the signer, the attorney and a teammate who
  * opens the file later can see what the paper's sentences 5 and 6 stand on: each notice mailed, each copy's day, method
- * and mail number, whether every sworn month has a notice on time, and the two sentences read against the record.
+ * and mail number, whether every sworn month has a notice on time, and the two sentences read against the record. A
+ * box at the top says how to read it (`LIEN_RECORD_HOW`): what the paper swears, and that a ✓ is not *on time*.
  * Behind it prints a copy of each notice. The owner saw the first draw, which had a table of the months with each
  * one's last day to mail, and said (2026-11-12): *I don't want to see this section of the notice, I want to see
  * copies of what was sent*. So the table is gone and the copies are here. Three shapes:
@@ -47,6 +48,10 @@ export type LienNoticeRecordHead = {
 export const LIEN_RECORD_STYLES = `
   .lien-record-rows { margin-bottom: 3pt; }
   .lien-record-rows td.lien-record-none { font-weight: 800; }
+  .lien-record-rows td:first-child { white-space: nowrap; }
+  .lien-record-rows tr.lien-help-group td { white-space: normal; }
+  .lien-record-how h3 { font-size: 9pt; margin-bottom: 2pt; }
+  .lien-record-how li { margin-bottom: 0.5pt; }
   .lien-record-h { font-size: 9pt; margin: 5pt 0 2pt; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; }
   .lien-help ul.lien-record-lines { list-style: none; padding: 0; margin: 0; }
   .lien-help ul.lien-record-lines li { display: grid; grid-template-columns: 11pt 1fr; gap: 3pt; margin: 0 0 2pt; }
@@ -122,21 +127,41 @@ export function lienRecordVoidedWords(voided: number): string {
   return voided <= 0 ? '' : voided === 1 ? '1 voided notice on this job is not counted and is not shown.' : `${voided} voided notices on this job are not counted and are not shown.`
 }
 
-const COPY_TO: Record<LienNoticeRecordCopy['recipient'], string> = { owner: 'Owner', original_contractor: 'Original contractor' }
+/**
+ * A copy's row has no column titles above it (the owner, 2026-11-14: the label row sat above the notice's grey band,
+ * apart from the only rows it was about). So each cell says what it is, and reads whole by itself: who the copy went
+ * to, *Mailed* and the day, the method, *No.* and the mail number.
+ */
+const COPY_TO: Record<LienNoticeRecordCopy['recipient'], string> = { owner: 'Copy to the owner', original_contractor: 'Copy to the original contractor' }
+
+/** A copy on record with no day. */
+export const LIEN_RECORD_NO_DAY = 'No day mailed on record'
+
+/** A copy whose method has a mail number, and the record has none. */
+export const LIEN_RECORD_NO_NUMBER = 'No mail number on record'
+
+/** A copy whose number the mail provider has yet to send. */
+export const LIEN_RECORD_NUMBER_COMING = 'Mail number coming from the mail provider'
+
+/** A copy that went by hand or by email with nothing typed beside it: no mail number exists to hold. */
+export const LIEN_RECORD_NUMBER_NONE = 'No mail number for this method'
+
+/** Only a certified letter or a courier's parcel has a number. A copy by hand keeps who signed for it, and an email its id: those print as recorded. */
+const hasMailNumber = (method: string): boolean => method === 'certified_mail' || method === 'traceable_courier'
 
 function numberCell(c: LienNoticeRecordCopy): string {
   const receipt = c.receipt ? '<br/><span class="lien-help-small">Receipt photo on file</span>' : ''
-  if (c.number === 'held') return `${esc(c.tracking)}${receipt}`
-  if (c.number === 'owed') return `<strong>No number on record</strong>${receipt}`
-  if (c.number === 'coming') return `Coming from the mail provider${receipt}`
-  return `None for this method${receipt}`
+  if (c.number === 'held') return `${hasMailNumber(c.method) ? 'No. ' : ''}${esc(c.tracking)}${receipt}`
+  if (c.number === 'owed') return `<strong>${LIEN_RECORD_NO_NUMBER}</strong>${receipt}`
+  if (c.number === 'coming') return `${LIEN_RECORD_NUMBER_COMING}${receipt}`
+  return `${LIEN_RECORD_NUMBER_NONE}${receipt}`
 }
 
 function copyRow(c: LienNoticeRecordCopy): string {
   if (!c.onRecord) return `<tr data-lien-record-copy="${c.recipient}" data-on-record="no"><td>${COPY_TO[c.recipient]}</td><td colspan="3" class="lien-record-none">No copy on record</td></tr>`
   return (
     `<tr data-lien-record-copy="${c.recipient}"><td>${COPY_TO[c.recipient]}</td>` +
-    `<td>${c.sentOn ? esc(lienRecordDay(c.sentOn)) : '<strong>No day on record</strong>'}</td>` +
+    `<td>${c.sentOn ? `Mailed ${esc(lienRecordDay(c.sentOn))}` : `<strong>${LIEN_RECORD_NO_DAY}</strong>`}</td>` +
     `<td>${esc(lienNoticeRecordMethodWords(c.method))}</td>` +
     `<td>${numberCell(c)}</td></tr>`
   )
@@ -182,19 +207,19 @@ function noticesTable(record: LienNoticeRecord): string {
     .map((n) => `<tr class="lien-help-group" data-lien-record-notice="${n.n}"><td colspan="4">Notice ${n.n} · ${esc(lienRecordNoticeWords(n))}</td></tr>${n.copies.map(copyRow).join('')}${savedNoteRow(n)}`)
     .join('')
   return (
-    `<table class="lien-help-rows lien-record-rows" data-lien-record-notices><colgroup><col style="width:22%"/><col style="width:17%"/><col style="width:19%"/><col style="width:42%"/></colgroup>` +
-    `<tr><th>Copy to</th><th>Day mailed</th><th>How</th><th>Mail number</th></tr>${rows}</table>`
+    // No row of column titles: a notice's band is first, its copies sit right under it, and each cell names itself.
+    `<table class="lien-help-rows lien-record-rows" data-lien-record-notices><colgroup><col style="width:29%"/><col style="width:21%"/><col style="width:18%"/><col style="width:32%"/></colgroup>${rows}</table>`
   )
 }
 
 const LINE_MARK: Record<LienNoticeRecordLine['state'], string> = { ok: '✓', ask: '!', note: '•' }
 
+/** One line of the paper against the record, drawn the same on a single page and in a batch block. */
+const lineItem = (l: LienNoticeRecordLine, tail = ''): string =>
+  `<li data-state="${l.state}"><span class="lien-help-mark">${LINE_MARK[l.state]}</span><span><strong>${esc(l.lead)}</strong> ${esc(l.words)}${tail ? ` ${esc(tail)}` : ''}</span></li>`
+
 function linesBox(record: LienNoticeRecord): string {
-  return (
-    `<div class="lien-help-box" data-lien-record-lines style="margin-bottom:0"><h3>The paper against the record</h3><ul class="lien-record-lines">` +
-    record.lines.map((l) => `<li data-state="${l.state}"><span class="lien-help-mark">${LINE_MARK[l.state]}</span><span><strong>${esc(l.lead)}</strong> ${esc(l.words)}</span></li>`).join('') +
-    `</ul></div>`
-  )
+  return `<div class="lien-help-box" data-lien-record-lines style="margin-bottom:0"><h3>The paper against the record</h3><ul class="lien-record-lines">${record.lines.map((l) => lineItem(l)).join('')}</ul></div>`
 }
 
 function gapsBox(record: LienNoticeRecord): string {
@@ -202,24 +227,24 @@ function gapsBox(record: LienNoticeRecord): string {
   const tail = voided ? `<p class="lien-help-small" style="margin-top:3pt" data-lien-record-voided>${esc(voided)}</p>` : ''
   if (record.gaps.length === 0) return `<div class="lien-help-box" data-lien-record-gaps="none" style="margin-bottom:0"><h3>Missing from the record</h3><p>${esc(record.notices.length > 0 ? LIEN_RECORD_WHOLE : LIEN_RECORD_NO_NOTICE)}</p>${tail}</div>`
   return (
-    `<div class="lien-help-box" data-lien-record-gaps style="margin-bottom:0"><h3>Missing from the record</h3><ul>${record.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>` +
+    `<div class="lien-help-box" data-lien-record-gaps style="margin-bottom:0"><h3>Missing from the record</h3><ul>${record.gaps.map((g) => `<li><strong>${esc(g.lead)}</strong> ${esc(g.words)}</li>`).join('')}</ul>` +
     `<p class="lien-help-small" style="margin-top:3pt">${esc(LIEN_RECORD_FIX)}</p>${tail}</div>`
   )
 }
 
-/** Both sentences match and nothing else is said: a batch block says so in one line. */
-export const LIEN_RECORD_MATCH = 'Sentences 5 and 6 match the record.'
+/** After a matching line in a batch block with nothing missing: the block has no box of its own to say so. */
+export const LIEN_RECORD_NOTHING_MISSING = 'Nothing is missing from the record.'
 
-/** A batch block's closing lines: the two sentences in a line when they match, then what is beside them and what is missing. */
+/**
+ * A batch block's closing lines: the paper against the record in the single page's own words (`lineItem` over the
+ * kernel's lines, so the two cannot drift), then what is beside it and what is missing.
+ */
 function compactClose(record: LienNoticeRecord): string {
-  const sentences = record.lines.filter((l) => l.lead.startsWith('Sentence'))
-  const match = sentences.length > 0 && sentences.every((l) => l.state === 'ok')
-  const rest = record.lines.filter((l) => !(match && l.lead.startsWith('Sentence')))
+  const whole = record.gaps.length === 0 && record.notices.length > 0
   const voided = lienRecordVoidedWords(record.voided)
   const items = [
-    ...(match ? [`<li data-state="ok"><span class="lien-help-mark">✓</span><span>${esc(LIEN_RECORD_MATCH)}${record.gaps.length === 0 && record.notices.length > 0 ? ' Nothing is missing from the record.' : ''}</span></li>`] : []),
-    ...rest.map((l) => `<li data-state="${l.state}"><span class="lien-help-mark">${LINE_MARK[l.state]}</span><span><strong>${esc(l.lead)}</strong> ${esc(l.words)}</span></li>`),
-    ...record.gaps.map((g) => `<li data-lien-record-gap><span class="lien-help-mark">○</span><span><strong>Missing.</strong> ${esc(g)}</span></li>`),
+    ...record.lines.map((l) => lineItem(l, l.state === 'ok' && l.lead === LIEN_RECORD_MATCH && whole ? LIEN_RECORD_NOTHING_MISSING : '')),
+    ...record.gaps.map((g) => `<li data-lien-record-gap><span class="lien-help-mark">○</span><span><strong>${esc(g.lead)}</strong> ${esc(g.words)}</span></li>`),
     ...(voided ? [`<li data-lien-record-voided><span class="lien-help-mark">•</span><span>${esc(voided)}</span></li>`] : []),
   ]
   return `<ul class="lien-record-lines lien-help-small" data-lien-record-close style="margin-top:3pt">${items.join('')}</ul>`
@@ -252,6 +277,29 @@ function recordBody(record: LienNoticeRecord, compact = false): string {
   )
 }
 
+/** The head of the box on a batch's pages, and on the page in front of one paper. */
+export const LIEN_RECORD_HOW_BLOCK = 'How to read a block'
+export const LIEN_RECORD_HOW_PAGE = 'How to read this page'
+
+/**
+ * How to read a record, once at the top (the owner, 2026-11-14: a ✓ beside a line did not say what had been checked,
+ * or why it mattered). The paper swears two facts about notice, the table is the mail record behind them, and a ✓ is
+ * agreement between the two. It is not *on time*: the grey box at the foot says that, and is named here by its own
+ * lead so a reader finds it. `**` marks the box's name, drawn bold.
+ */
+export const LIEN_RECORD_HOW: ReadonlyArray<string> = [
+  'Each lien paper swears two facts about notice. One is the months of work. The other is the day each notice was mailed to the owner.',
+  'The table shows the mail record behind those two facts.',
+  'A ✓ means the paper and the record say the same thing.',
+  `A ✓ does not mean the notice was on time. The grey box headed **${LIEN_RECORD_ASK.replace(/\.$/, '')}** says when it was not.`,
+  'Keep the receipts. They are the proof if the lien is ever questioned.',
+]
+
+function howBox(title: string): string {
+  const line = (words: string) => esc(words).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  return `<div class="lien-help-box lien-record-how" data-lien-record-how><h3>${esc(title)}</h3><ul class="lien-help-small">${LIEN_RECORD_HOW.map((l) => `<li>${line(l)}</li>`).join('')}</ul></div>`
+}
+
 /**
  * What the caller hands a record page: a code that opens the job's Lien window, where the saved copies and the
  * receipts are, and how many copies of notices print behind it, so its foot says what the next page is.
@@ -280,6 +328,7 @@ export function lienNoticeRecordSheetHtml(head: LienNoticeRecordHead, record: Li
     `<div><div class="lien-help-k">Original contractor</div><div class="lien-help-v">${esc(head.contractorName.trim() || 'not on the paper')}</div></div>` +
     `<div><div class="lien-help-k">The paper claims</div><div class="lien-help-v">${esc(head.claim)}</div></div>` +
     `</div>` +
+    howBox(LIEN_RECORD_HOW_PAGE) +
     recordBody(record) +
     foot(`Notice record for ${head.jobLabel}`, lienRecordFootNext(extras?.copiesFollow ?? 0)) +
     `</section>`
@@ -289,7 +338,7 @@ export function lienNoticeRecordSheetHtml(head: LienNoticeRecordHead, record: Li
 /** One paper of a batch: its head, and its record; a null record is a job contracted with the owner. */
 export type LienNoticeRecordBatchPaper = { head: LienNoticeRecordHead; record: LienNoticeRecord | null }
 
-/** Under the batch's band: how to read the blocks. */
+/** Under the batch's band: which block is which paper's. How to read one is the box under it (`LIEN_RECORD_HOW`). */
 export const LIEN_RECORD_BATCH_LEAD = 'One block for each paper, in the order of the stack. The number is the paper’s row on the batch sheet.'
 
 /**
@@ -316,6 +365,8 @@ export function lienNoticeRecordBatchHtml(papers: ReadonlyArray<LienNoticeRecord
     STRIPE +
     recordBand('Notice records · do not file these pages', count === 1 ? 'What was mailed before this affidavit' : `What was mailed before each of ${count} affidavits`, [printedOn ? `Printed ${printedOn}` : '', asks === 0 ? '' : asks === 1 ? '1 waits for the attorney' : `${asks} wait for the attorney`]) +
     `<p class="lien-help-small" style="margin-bottom:5pt" data-lien-record-batch-lead>${esc(LIEN_RECORD_BATCH_LEAD)} ${esc(LIEN_RECORD_ENVELOPE)} ${esc(LIEN_RECORD_FIX)}${papers.some((p) => lienRecordHasPaperTotal(p.record)) ? ` <span data-lien-record-total-in-all>${esc(LIEN_RECORD_TOTAL_IN_ALL)}</span>` : ''}</p>` +
+    // A batch of jobs contracted with the owner has no table and no line to read: the box is left off.
+    (papers.some((p) => p.record) ? howBox(LIEN_RECORD_HOW_BLOCK) : '') +
     blocks +
     foot(`Notice records for the batch${printedOn ? ` printed ${printedOn}` : ''}`, copiesFollow ? (count === 1 ? 'Copies of its notices are next, then 1 paper' : `Copies of the notices are next, then ${count} papers`) : count === 1 ? '1 paper follows these pages' : `${count} papers follow these pages`) +
     `</section>`

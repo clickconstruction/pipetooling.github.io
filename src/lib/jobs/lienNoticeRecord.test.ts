@@ -8,6 +8,17 @@ import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckShortLin
 import { lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
 import { describeNoticeMonths } from './lienNoticeDraft'
 import {
+  LIEN_RECORD_ADD_MISSING,
+  LIEN_RECORD_BLANK,
+  LIEN_RECORD_DIFFER,
+  LIEN_RECORD_FIX_BOTH,
+  LIEN_RECORD_FIX_ONE,
+  LIEN_RECORD_GAP_ADD,
+  LIEN_RECORD_GAP_ADD_IF_MAILED,
+  LIEN_RECORD_GAP_CHECK,
+  LIEN_RECORD_GAP_NO_COPY,
+  LIEN_RECORD_GAP_WAITING,
+  LIEN_RECORD_MATCH,
   lienNoticeRecord,
   lienNoticeRecordAsks,
   lienNoticeRecordDaysBetween,
@@ -15,6 +26,7 @@ import {
   lienNoticeRecordMethodWords,
   lienNoticeRecordNotices,
   lienNoticeRecordOwnerSends,
+  lienNoticeRecordPaperLine,
   lienNoticeRecordSpanMonths,
   lienNoticeSnapshot,
   type LienNoticeRecordFiling,
@@ -165,7 +177,7 @@ describe('lienNoticeRecord · each month the paper swears', () => {
     expect(record.flags).toEqual([])
     expect(record.flagsShort).toEqual([])
     expect(record.gaps).toEqual([])
-    expect(record.lines.map((l) => l.state)).toEqual(['ok', 'ok'])
+    expect(record.lines.map((l) => l.state)).toEqual(['ok'])
     expect(lienNoticeRecordAsks(record)).toBe(false)
     expect(record.months.every((m) => m.owner.state === 'on_time' && m.contractor.state === 'on_time')).toBe(true)
   })
@@ -176,39 +188,79 @@ describe('lienNoticeRecord · each month the paper swears', () => {
 })
 
 describe('lienNoticeRecord · the paper against the record', () => {
-  it('sentence 6’s two days are the two notices’ days to the owner, read off the record’s own rows', () => {
+  it('the paper’s two days are the two notices’ days to the owner, read off the record’s own rows', () => {
     const record = recordOf(HARD, HARD_MONTHS)
     expect(lienNoticeRecordOwnerSends(record.notices)).toEqual(lienAffidavitOwnerSends(HARD))
-    expect(record.lines[1]).toEqual({ state: 'ok', lead: 'Sentence 6.', words: 'The paper says certified mail on September 22, 2026 and October 14, 2026. The owner’s copies on record say the same.' })
-    expect(record.lines[0]).toEqual({ state: 'ok', lead: 'Sentence 5.', words: 'The paper names April, May, June, July and August 2026. A notice on record names each of those months.' })
+    // One line for both facts, and it says what the paper swears (the owner, 2026-11-14: "Sentences 5 and 6 match the record" told a reader nothing).
+    expect(record.lines).toEqual([{ state: 'ok', lead: 'The paper matches the record.', words: 'It swears April, May, June, July and August 2026, and certified mail on September 22, 2026 and October 14, 2026.' }])
+    expect(recordOf(CLEAN, ['2026-08']).lines[0]).toEqual({ state: 'ok', lead: LIEN_RECORD_MATCH, words: 'It swears August 2026, and certified mail on October 14, 2026.' })
   })
 
-  it('marks a sentence the record does not back, and says what each holds', () => {
-    const record = recordOf(HARD, HARD_MONTHS, { paperNoticesWords: 'certified mail on October 14, 2026', paperMonthsWords: 'August 2026' })
-    expect(record.lines[0]).toMatchObject({ state: 'ask', words: 'The paper names August 2026. The notices on record name April, May, June, July and August 2026 for this job.' })
-    expect(record.lines[1]).toMatchObject({ state: 'ask', words: 'The paper says certified mail on October 14, 2026. The record shows certified mail on September 22, 2026 and October 14, 2026.' })
+  it('a day that differs is one plain line: the lead, what each says, and one instruction', () => {
+    const record = recordOf(CLEAN, CLEAN_MONTHS, { paperNoticesWords: 'certified mail on October 12, 2026' })
+    expect(record.lines[0]).toEqual({ state: 'ask', lead: 'The paper and the record differ.', words: 'The paper says certified mail on October 12, 2026. The record shows certified mail on October 14, 2026. Fix one before this is signed.' })
     expect(lienNoticeRecordAsks(record)).toBe(true)
   })
 
-  it('a blank on the paper is said as a blank', () => {
+  it('months that differ are said the same way', () => {
+    const record = recordOf(HARD, HARD_MONTHS, { paperMonthsWords: 'August 2026' })
+    expect(record.lines[0]).toEqual({ state: 'ask', lead: LIEN_RECORD_DIFFER, words: `The paper says the work was in August 2026. The record shows April, May, June, July and August 2026. ${LIEN_RECORD_FIX_ONE}` })
+  })
+
+  it('when both differ the lead is said once, and the instruction is for both', () => {
+    const record = recordOf(HARD, HARD_MONTHS, { paperNoticesWords: 'certified mail on October 14, 2026', paperMonthsWords: 'August 2026' })
+    expect(record.lines.filter((l) => l.state !== 'note')).toHaveLength(1)
+    expect(record.lines[0]).toEqual({
+      state: 'ask',
+      lead: LIEN_RECORD_DIFFER,
+      words: `The paper says the work was in August 2026. The record shows April, May, June, July and August 2026. The paper says certified mail on October 14, 2026. The record shows certified mail on September 22, 2026 and October 14, 2026. ${LIEN_RECORD_FIX_BOTH}`,
+    })
+    expect(record.lines[0]!.words.match(/differ/g)).toBeNull()
+    expect(lienNoticeRecordAsks(record)).toBe(true)
+  })
+
+  it('a blank on the paper is said as a blank, never as a difference, when the record has nothing to fill it', () => {
     const record = recordOf([], [], { paperMonthsWords: '', paperNoticesWords: '' })
     expect(record.notices).toEqual([])
-    expect(record.lines.map((l) => [l.state, l.lead])).toEqual([
-      ['ask', 'Sentence 5.'],
-      ['ask', 'Sentence 6.'],
-    ])
+    expect(record.lines).toEqual([{ state: 'ask', lead: LIEN_RECORD_BLANK, words: `The paper names no month. No notice on record names a month of this job’s work. The paper has a blank where the day goes. No copy to the owner is on record with a day. ${LIEN_RECORD_ADD_MISSING}` }])
     expect(lienNoticeRecordAsks(record)).toBe(true)
+    // One blank alone: a notice with its months and no day on the owner's copy.
+    const undated = recordOf([{ ...CLEAN[0]!, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9589 1', sent_on: '' }] }], CLEAN_MONTHS)
+    expect(undated.lines[0]).toEqual({ state: 'ask', lead: 'The paper is not complete.', words: 'The paper has a blank where the day goes. No copy to the owner is on record with a day. Add what is missing before this is signed.' })
+  })
+
+  it('a blank the record could fill is a difference', () => {
+    const record = recordOf(CLEAN, CLEAN_MONTHS, { paperMonthsWords: '', paperNoticesWords: '' })
+    expect(record.lines[0]).toEqual({ state: 'ask', lead: LIEN_RECORD_DIFFER, words: `The paper names no month. The record shows August and September 2026. The paper has a blank where the day goes. The record shows certified mail on October 14, 2026. ${LIEN_RECORD_FIX_BOTH}` })
+  })
+
+  it('a month the paper swears that no notice names is a difference, and the line names the month', () => {
+    const line = lienNoticeRecordPaperLine({ paperMonthsWords: 'August and September 2026', paperNoticesWords: 'certified mail on October 14, 2026', sworn: ['2026-08', '2026-09'], noticed: ['2026-08'], recordNoticesWords: 'certified mail on October 14, 2026' })
+    expect(line).toEqual({ state: 'ask', lead: LIEN_RECORD_DIFFER, words: `The paper says the work was in August and September 2026. No notice on record names September 2026. ${LIEN_RECORD_FIX_ONE}` })
+  })
+
+  it('no line a reader sees names a sentence by its number', () => {
+    const records = [recordOf(HARD, HARD_MONTHS), recordOf(CLEAN, CLEAN_MONTHS), recordOf([], [], { paperMonthsWords: '', paperNoticesWords: '' }), recordOf(HARD, HARD_MONTHS, { paperNoticesWords: 'certified mail on October 14, 2026', paperMonthsWords: 'August 2026' })]
+    for (const r of records) for (const l of r.lines) expect(`${l.lead} ${l.words}`).not.toMatch(/sentence/i)
+  })
+
+  it('the leads and the instructions follow the plain-words rules', () => {
+    for (const s of [LIEN_RECORD_MATCH, LIEN_RECORD_DIFFER, LIEN_RECORD_BLANK, LIEN_RECORD_FIX_ONE, LIEN_RECORD_FIX_BOTH, LIEN_RECORD_ADD_MISSING]) expect(plainWordsFailures(s), s).toEqual([])
   })
 
   it('notes a month the notices name that the paper leaves off, and a month of the job’s work no notice names', () => {
     // The paper swears August alone (the job's own span); the notice also named September, for another job at the property.
     const record = recordOf(CLEAN, ['2026-08'], { workStart: '2026-07-06', workEnd: '2026-08-21' })
-    expect(record.lines.slice(2)).toEqual([
-      { state: 'note', lead: 'Left off the paper.', words: 'The notices also name September 2026. The paper leaves it off, as outside this job’s work dates.' },
+    expect(record.lines.slice(1)).toEqual([
+      // One sentence, so it fits a line of the printed block (the owner, 2026-11-14).
+      { state: 'note', lead: 'Left off the paper.', words: 'September 2026 is on the notice but outside this job’s work dates.' },
       { state: 'note', lead: 'No notice.', words: 'This job’s work dates take in July 2026. No notice on record names it.' },
     ])
     // A note is a fact beside the paper, never a question of its own.
     expect(lienNoticeRecordAsks(record)).toBe(false)
+    // Several months left off read "are", and the line is the owner's own: "{months} are on the notice but outside this job's work dates."
+    const several = recordOf([{ ...CLEAN[0]!, months_covered: ['2026-04', '2026-06', '2026-07', '2026-08'] }], ['2026-08'], { workStart: '2026-08-03', workEnd: '2026-08-21' })
+    expect(several.lines.slice(1)).toEqual([{ state: 'note', lead: 'Left off the paper.', words: 'April, June and July 2026 are on the notice but outside this job’s work dates.' }])
   })
 
   it('counts a voided notice and shows none of it', () => {
@@ -242,13 +294,17 @@ describe('lienNoticeSnapshot · the words a copy is drawn from', () => {
 })
 
 describe('lienNoticeRecordGaps · what the record does not hold', () => {
-  it('names each missing copy, number and saved paper by its notice', () => {
+  it('names each missing copy, number and saved paper by its notice, each under a lead that says what to do', () => {
     expect(recordOf(HARD, HARD_MONTHS).gaps).toEqual([
-      'Notice 1 has no copy to the original contractor on record.',
-      'Notice 1 has no saved copy of the paper.',
-      'Notice 2 has no mail number for the copy to the original contractor.',
+      // "If mailed" is deliberate: the line asks for a copy that really went out, never for a blank to be filled (the owner, 2026-11-14).
+      { lead: 'To add, if mailed.', words: 'The original contractor’s copy of notice 1.' },
+      { lead: 'To add.', words: 'A saved copy of notice 1.' },
+      { lead: 'To add.', words: 'The mail number for the original contractor’s copy of notice 2.' },
     ])
-    expect(recordOf(HARD.map((f) => ({ ...f, fields: {} })), HARD_MONTHS).gaps).toContain('Notice 2 has no record of its words, so no copy of it prints.')
+    expect(recordOf(HARD.map((f) => ({ ...f, fields: {} })), HARD_MONTHS).gaps).toContainEqual({ lead: LIEN_RECORD_GAP_NO_COPY, words: 'Notice 2 has no record of its words.' })
+    // The owner's copy is said the same way.
+    const noOwner = recordOf([{ ...CLEAN[0]!, sends: [{ recipient: 'original_contractor', method: 'certified_mail', tracking: '9589 2', sent_on: '2026-10-14' }] }], CLEAN_MONTHS)
+    expect(noOwner.gaps).toEqual([{ lead: LIEN_RECORD_GAP_ADD_IF_MAILED, words: 'The owner’s copy of notice 1.' }])
   })
 
   it('says when one number was typed on both copies, a day is missing, a number is coming, or no month was named', () => {
@@ -259,11 +315,14 @@ describe('lienNoticeRecordGaps · what the record does not hold', () => {
       ]),
     )
     expect(gaps).toEqual([
-      'Notice 1 names no month of work.',
-      'Notice 1 has no day mailed for the copy to the original contractor.',
-      'Notice 1 has the same mail number on both copies. Each envelope has its own.',
-      'Notice 2 waits on the mail provider for the number of the copy to the owner.',
+      { lead: LIEN_RECORD_GAP_ADD, words: 'The months of work for notice 1.' },
+      { lead: LIEN_RECORD_GAP_ADD, words: 'The day mailed for the original contractor’s copy of notice 1.' },
+      // Not a thing to type in: one of the two numbers is wrong, and the receipts say which.
+      { lead: LIEN_RECORD_GAP_CHECK, words: 'Notice 1 has the same mail number on both copies. Each envelope has its own.' },
+      // Nothing for the office to do but wait.
+      { lead: LIEN_RECORD_GAP_WAITING, words: 'The mail provider has yet to send the number for the owner’s copy of notice 2.' },
     ])
+    expect([LIEN_RECORD_GAP_ADD_IF_MAILED, LIEN_RECORD_GAP_ADD, LIEN_RECORD_GAP_WAITING, LIEN_RECORD_GAP_CHECK, LIEN_RECORD_GAP_NO_COPY]).toEqual(['To add, if mailed.', 'To add.', 'Waiting.', 'To check.', 'No copy prints.'])
   })
 })
 
@@ -292,6 +351,6 @@ describe('the record’s small helpers', () => {
       recordOf([], [], { paperMonthsWords: '', paperNoticesWords: '' }),
       recordOf(HARD, HARD_MONTHS, { paperNoticesWords: 'certified mail on October 14, 2026', paperMonthsWords: 'August 2026' }),
     ]
-    for (const r of records) for (const s of [...r.gaps, ...r.lines.map((l) => l.words)]) expect(plainWordsFailures(s), s).toEqual([])
+    for (const r of records) for (const s of [...r.gaps.map((g) => `${g.lead} ${g.words}`), ...r.lines.map((l) => l.words)]) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
