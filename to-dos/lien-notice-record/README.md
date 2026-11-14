@@ -73,7 +73,9 @@ Mock-up: [`mockup.html`](./mockup.html), drawn by the app's own print code with 
    behind the notice.
 5. **The paper against the record.** Sentence 5's months and sentence 6's days are read against the rows and marked
    ✓ or !, in one line that names no sentence number since v2.7255 (*The paper matches the record.* and what it
-   swears). A box at the top, *How to read a block*, says what the ✓ means and that it is not *on time*. Two notes can sit beside them: a month the notices name that the paper leaves off, and a month of the
+   swears). A box at the top, *How to read a block*, says what the ✓ means and that it is not *on time*. Since
+   v2.7255 the table has no row of column titles (each cell names itself), and a missing line leads with what to
+   do (*To add, if mailed.*, *To add.*). Two notes can sit beside them: a month the notices name that the paper leaves off, and a month of the
    job's work no notice names.
 6. **Missing from the record** lists what the office can add: a copy with no number, no copy to the contractor, no
    saved file, one number typed on both copies. It says where to add it.

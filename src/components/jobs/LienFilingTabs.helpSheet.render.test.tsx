@@ -200,7 +200,7 @@ describe('LienFilingTabs · the notice record and the copies of the notices prin
     expect(html).toContain('Notice 1 · Names August 2026 · Claim $1,900.00 · Entered after the fact Dec 2, 2026 · No saved copy')
     expect(html).toContain('9407 0000 0000 0000 0000 01')
     expect(html).toContain('No copy on record')
-    expect(html).toContain('<strong>No number on record</strong>')
+    expect(html).toContain('<strong>No mail number on record</strong>')
     // The paper's sentence 6 and the record agree, and the page says so.
     expect(html).toContain('6. Notice of the claim was sent to the owner by certified mail on December 1, 2026 and December 9, 2026.')
     expect(html).toMatch(/<strong>The paper matches the record\.<\/strong> It swears [^<]+, and certified mail on December 1, 2026 and December 9, 2026\./)

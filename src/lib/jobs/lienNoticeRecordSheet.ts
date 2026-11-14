@@ -48,6 +48,8 @@ export type LienNoticeRecordHead = {
 export const LIEN_RECORD_STYLES = `
   .lien-record-rows { margin-bottom: 3pt; }
   .lien-record-rows td.lien-record-none { font-weight: 800; }
+  .lien-record-rows td:first-child { white-space: nowrap; }
+  .lien-record-rows tr.lien-help-group td { white-space: normal; }
   .lien-record-how h3 { font-size: 9pt; margin-bottom: 2pt; }
   .lien-record-how li { margin-bottom: 0.5pt; }
   .lien-record-h { font-size: 9pt; margin: 5pt 0 2pt; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; }
@@ -125,21 +127,41 @@ export function lienRecordVoidedWords(voided: number): string {
   return voided <= 0 ? '' : voided === 1 ? '1 voided notice on this job is not counted and is not shown.' : `${voided} voided notices on this job are not counted and are not shown.`
 }
 
-const COPY_TO: Record<LienNoticeRecordCopy['recipient'], string> = { owner: 'Owner', original_contractor: 'Original contractor' }
+/**
+ * A copy's row has no column titles above it (the owner, 2026-11-14: the label row sat above the notice's grey band,
+ * apart from the only rows it was about). So each cell says what it is, and reads whole by itself: who the copy went
+ * to, *Mailed* and the day, the method, *No.* and the mail number.
+ */
+const COPY_TO: Record<LienNoticeRecordCopy['recipient'], string> = { owner: 'Copy to the owner', original_contractor: 'Copy to the original contractor' }
+
+/** A copy on record with no day. */
+export const LIEN_RECORD_NO_DAY = 'No day mailed on record'
+
+/** A copy whose method has a mail number, and the record has none. */
+export const LIEN_RECORD_NO_NUMBER = 'No mail number on record'
+
+/** A copy whose number the mail provider has yet to send. */
+export const LIEN_RECORD_NUMBER_COMING = 'Mail number coming from the mail provider'
+
+/** A copy that went by hand or by email with nothing typed beside it: no mail number exists to hold. */
+export const LIEN_RECORD_NUMBER_NONE = 'No mail number for this method'
+
+/** Only a certified letter or a courier's parcel has a number. A copy by hand keeps who signed for it, and an email its id: those print as recorded. */
+const hasMailNumber = (method: string): boolean => method === 'certified_mail' || method === 'traceable_courier'
 
 function numberCell(c: LienNoticeRecordCopy): string {
   const receipt = c.receipt ? '<br/><span class="lien-help-small">Receipt photo on file</span>' : ''
-  if (c.number === 'held') return `${esc(c.tracking)}${receipt}`
-  if (c.number === 'owed') return `<strong>No number on record</strong>${receipt}`
-  if (c.number === 'coming') return `Coming from the mail provider${receipt}`
-  return `None for this method${receipt}`
+  if (c.number === 'held') return `${hasMailNumber(c.method) ? 'No. ' : ''}${esc(c.tracking)}${receipt}`
+  if (c.number === 'owed') return `<strong>${LIEN_RECORD_NO_NUMBER}</strong>${receipt}`
+  if (c.number === 'coming') return `${LIEN_RECORD_NUMBER_COMING}${receipt}`
+  return `${LIEN_RECORD_NUMBER_NONE}${receipt}`
 }
 
 function copyRow(c: LienNoticeRecordCopy): string {
   if (!c.onRecord) return `<tr data-lien-record-copy="${c.recipient}" data-on-record="no"><td>${COPY_TO[c.recipient]}</td><td colspan="3" class="lien-record-none">No copy on record</td></tr>`
   return (
     `<tr data-lien-record-copy="${c.recipient}"><td>${COPY_TO[c.recipient]}</td>` +
-    `<td>${c.sentOn ? esc(lienRecordDay(c.sentOn)) : '<strong>No day on record</strong>'}</td>` +
+    `<td>${c.sentOn ? `Mailed ${esc(lienRecordDay(c.sentOn))}` : `<strong>${LIEN_RECORD_NO_DAY}</strong>`}</td>` +
     `<td>${esc(lienNoticeRecordMethodWords(c.method))}</td>` +
     `<td>${numberCell(c)}</td></tr>`
   )
@@ -185,8 +207,8 @@ function noticesTable(record: LienNoticeRecord): string {
     .map((n) => `<tr class="lien-help-group" data-lien-record-notice="${n.n}"><td colspan="4">Notice ${n.n} · ${esc(lienRecordNoticeWords(n))}</td></tr>${n.copies.map(copyRow).join('')}${savedNoteRow(n)}`)
     .join('')
   return (
-    `<table class="lien-help-rows lien-record-rows" data-lien-record-notices><colgroup><col style="width:22%"/><col style="width:17%"/><col style="width:19%"/><col style="width:42%"/></colgroup>` +
-    `<tr><th>Copy to</th><th>Day mailed</th><th>How</th><th>Mail number</th></tr>${rows}</table>`
+    // No row of column titles: a notice's band is first, its copies sit right under it, and each cell names itself.
+    `<table class="lien-help-rows lien-record-rows" data-lien-record-notices><colgroup><col style="width:29%"/><col style="width:21%"/><col style="width:18%"/><col style="width:32%"/></colgroup>${rows}</table>`
   )
 }
 
@@ -205,7 +227,7 @@ function gapsBox(record: LienNoticeRecord): string {
   const tail = voided ? `<p class="lien-help-small" style="margin-top:3pt" data-lien-record-voided>${esc(voided)}</p>` : ''
   if (record.gaps.length === 0) return `<div class="lien-help-box" data-lien-record-gaps="none" style="margin-bottom:0"><h3>Missing from the record</h3><p>${esc(record.notices.length > 0 ? LIEN_RECORD_WHOLE : LIEN_RECORD_NO_NOTICE)}</p>${tail}</div>`
   return (
-    `<div class="lien-help-box" data-lien-record-gaps style="margin-bottom:0"><h3>Missing from the record</h3><ul>${record.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>` +
+    `<div class="lien-help-box" data-lien-record-gaps style="margin-bottom:0"><h3>Missing from the record</h3><ul>${record.gaps.map((g) => `<li><strong>${esc(g.lead)}</strong> ${esc(g.words)}</li>`).join('')}</ul>` +
     `<p class="lien-help-small" style="margin-top:3pt">${esc(LIEN_RECORD_FIX)}</p>${tail}</div>`
   )
 }
@@ -222,7 +244,7 @@ function compactClose(record: LienNoticeRecord): string {
   const voided = lienRecordVoidedWords(record.voided)
   const items = [
     ...record.lines.map((l) => lineItem(l, l.state === 'ok' && l.lead === LIEN_RECORD_MATCH && whole ? LIEN_RECORD_NOTHING_MISSING : '')),
-    ...record.gaps.map((g) => `<li data-lien-record-gap><span class="lien-help-mark">○</span><span><strong>Missing.</strong> ${esc(g)}</span></li>`),
+    ...record.gaps.map((g) => `<li data-lien-record-gap><span class="lien-help-mark">○</span><span><strong>${esc(g.lead)}</strong> ${esc(g.words)}</span></li>`),
     ...(voided ? [`<li data-lien-record-voided><span class="lien-help-mark">•</span><span>${esc(voided)}</span></li>`] : []),
   ]
   return `<ul class="lien-record-lines lien-help-small" data-lien-record-close style="margin-top:3pt">${items.join('')}</ul>`

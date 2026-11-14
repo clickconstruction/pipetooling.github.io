@@ -1726,7 +1726,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(html.indexOf('data-lien-help="records"')).toBeLessThan(html.indexOf('<div class="filing-paper'))
     expect(html.match(/data-lien-record-paper="/g)).toHaveLength(2)
     expect(html).toContain('9407 0000 0000 0000 0000 11')
-    expect(html).toContain('<strong>No number on record</strong>')
+    expect(html).toContain('<strong>No mail number on record</strong>')
     expect(html).toContain('data-lien-record-no-notice')
     expect(html).toContain('The notice records are next, then 2 papers')
     expect(html).not.toContain('data-lien-help="notice-copy"')
