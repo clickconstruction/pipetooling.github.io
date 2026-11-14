@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
+import { lienHoursAfterHandDay, lienHoursAfterHandDayWords, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
 import { FinishedDateInput } from '../FinishedDateInput'
 import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
 
@@ -66,6 +66,7 @@ export function LienLastWorkDayLine({
 }) {
   const { showToast } = useToastContext()
   const d = lienLastWorkDay(job)
+  const laterHoursDay = lienHoursAfterHandDay(job)
   const [editing, setEditing] = useState(startEditing)
   const [dayDraft, setDayDraft] = useState(d.day ?? '')
   const [noteDraft, setNoteDraft] = useState(d.note)
@@ -109,6 +110,8 @@ export function LienLastWorkDayLine({
         <strong data-testid="lien-last-work-day">{d.day ? formatYmdMonthDay(d.day) : 'none yet'}</strong>
         <span style={chip(d.source)} data-testid="lien-last-work-source">{lienLastWorkSourceLine(d, setByName)}</span>
         {d.note ? <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }} data-testid="lien-last-work-note">“{d.note}”</span> : null}
+        {/* v2.7193, punch list #335, row 1: hours approved after a day set by hand do not move it, and the line says they are there. */}
+        {laterHoursDay ? <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem', fontWeight: 600 }} data-testid="lien-last-work-later-hours">{lienHoursAfterHandDayWords(laterHoursDay)}</span> : null}
         {canEdit && !editing ? (
           <button type="button" onClick={() => setEditing(true)} data-testid="lien-last-work-change" style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
             Change ›
