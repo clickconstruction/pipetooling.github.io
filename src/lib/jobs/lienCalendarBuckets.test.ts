@@ -42,8 +42,10 @@ const ROWS = [
   job({ jobId: 'f', name: 'Corl Trim', openBalance: 900, r: { lastWorkYmd: '2026-09-10' } }),
   job({ jobId: 'g', name: 'AXO Schertz', openBalance: 1400, r: { lastWorkYmd: '2026-09-10', propertyKind: 'non_residential' } }),
   job({ jobId: 'j', name: 'Filed one', openBalance: 2000, r: { filedYmd: '2026-09-03' } }),
-  // Overdue: July's notice was due Sep 15 and never sent; May's lien window closed Aug 17
+  // A late notice (v2.7198, punch list #335, row 4): July's notice was due Sep 15 and never sent, and the affidavit can still be
+  // filed by Oct 15, so the job is due this month, not overdue.
   job({ jobId: 'h', name: 'Dunmere Mallin', ...RLC, openBalance: 285, r: { lastWorkYmd: '2026-07-10' } }),
+  // Overdue: May's lien window closed Aug 17
   job({ jobId: 'i', name: 'Samantha Coyle', openBalance: 5355, r: { lastWorkYmd: '2026-05-05' } }),
   // nothing open: not on the board
   job({ jobId: 'z', name: 'Paid', openBalance: 0 }),
@@ -58,7 +60,9 @@ describe('each job counted once, at its next date', () => {
     expect(lienNextDate(byId.get('k')!)).toEqual({ ymd: '2026-10-15', what: 'notice' })
     expect(byId.get('k')!.runway.lienByYmd).toBe('2027-01-15')
     expect(lienNextDate(byId.get('e')!)).toEqual({ ymd: '2026-11-16', what: 'lien' })
-    expect(lienNextDate(byId.get('h')!)).toBeNull()
+    // A late notice is due by the lien's own day; it read null, as a closed window, until v2.7198 (punch list #335, row 4).
+    expect(lienNextDate(byId.get('h')!)).toEqual({ ymd: '2026-10-15', what: 'late_notice' })
+    expect(lienNextDate(byId.get('i')!)).toBeNull()
     expect(lienNextDate(byId.get('j')!)).toBeNull()
   })
   it('lands in the month its next date falls in', () => {
@@ -72,7 +76,7 @@ describe('each job counted once, at its next date', () => {
       ['f', 'later'],
       ['g', 'later'],
       ['j', 'later'],
-      ['h', 'overdue'],
+      ['h', 'this_month'],
       ['i', 'overdue'],
       ['z', null],
     ])
@@ -80,7 +84,7 @@ describe('each job counted once, at its next date', () => {
   it('the four buckets add up to the board: no job twice', () => {
     const board = buildLienCalendarBoard(ROWS, '', TODAY)
     expect(board.buckets.map((b) => b.key)).toEqual(['overdue', 'this_month', 'next_month', 'later'])
-    expect(board.buckets.map((b) => b.jobs.length)).toEqual([2, 4, 2, 3])
+    expect(board.buckets.map((b) => b.jobs.length)).toEqual([1, 5, 2, 3])
     expect(board.count).toBe(11)
     expect(board.buckets.reduce((s, b) => s + b.total, 0)).toBe(board.total)
     expect(board.total).toBe(87747)
@@ -93,8 +97,8 @@ describe('what each bucket says', () => {
   const board = buildLienCalendarBoard(ROWS, '', TODAY)
   const [overdue, thisMonth, nextMonth, later] = board.buckets
   it('This month: one date, the days to it, the notices and their GCs, and the door to draft them', () => {
-    expect(thisMonth).toMatchObject({ title: 'This month', dateLabel: 'Oct 15', total: 71733, notices: 4, liens: 0, dates: ['2026-10-15'] })
-    expect(thisMonth!.facts).toBe('by Oct 15 · in 14 days · 4 notices across 3 GCs')
+    expect(thisMonth).toMatchObject({ title: 'This month', dateLabel: 'Oct 15', total: 72018, notices: 4, lateNotices: 1, liens: 0, dates: ['2026-10-15'] })
+    expect(thisMonth!.facts).toBe('by Oct 15 · in 14 days · 4 notices across 3 GCs · 1 late notice')
     // tightest first, then the bigger balance
     expect(thisMonth!.draft).toEqual({ ymd: '2026-10-15', jobIds: ['k', 'c', 'a', 'b'], label: 'Draft the 4' })
     expect(thisMonth!.groups.map((g) => g.name)).toEqual(['Southern Pine Construction', 'RLC · Dunmere Mallin', 'Kestrin Contracting'])
@@ -122,8 +126,8 @@ describe('what each bucket says', () => {
     expect(ids(later!.jobs)).toEqual(['f', 'g', 'j'])
   })
   it('Overdue: the closed windows, one lien-gone group, no door', () => {
-    expect(overdue).toMatchObject({ title: 'Overdue', dateLabel: '', total: 5640, draft: null })
-    expect(overdue!.facts).toBe('2 jobs · nothing left to file · money still owed')
+    expect(overdue).toMatchObject({ title: 'Overdue', dateLabel: '', total: 5355, draft: null, lateNotices: 0 })
+    expect(overdue!.facts).toBe('1 job · nothing left to file · money still owed')
     expect(overdue!.groups.map((g) => g.kind)).toEqual(['gone'])
   })
   it('each bucket covers its stretch of the axis', () => {
@@ -138,12 +142,13 @@ describe('what each bucket says', () => {
     expect(board.kindsUnset).toBe(1)
     const counts = lienNextDateCounts(board.buckets)
     expect([...counts.values()].map((c) => [c.ymd, c.jobs, c.notices, c.liens])).toEqual([
-      ['2026-10-15', 4, 4, 0],
+      // The late notice counts with the notices on its day, which is the lien's own (v2.7198, punch list #335, row 4).
+      ['2026-10-15', 5, 5, 0],
       ['2026-11-16', 2, 1, 1],
       ['2026-12-15', 1, 0, 1],
       ['2027-01-15', 1, 0, 1],
     ])
-    expect(counts.get('2026-10-15')!.total).toBe(71733)
+    expect(counts.get('2026-10-15')!.total).toBe(72018)
   })
   it('search narrows every bucket', () => {
     const kestrin = buildLienCalendarBoard(ROWS, 'kestrin', TODAY)
@@ -159,7 +164,9 @@ describe('a phone row’s line', () => {
   it('says the dates; keeps file first and the day a lien died', () => {
     expect(lienPhoneLine(byId.get('a')!)).toBe('notice by Oct 15 · lien by Nov 16')
     expect(lienPhoneLine(byId.get('e')!)).toBe('pay was due Sep 30 · file lien by Nov 16')
-    expect(lienPhoneLine(byId.get('h')!)).toBe('lien gone · notice window closed Sep 15')
+    // A late notice says its dates like any job with a date ahead; a window closed for good keeps the day the lien died.
+    expect(lienPhoneLine(byId.get('h')!)).toBe('send the late notice by Oct 15')
+    expect(lienPhoneLine(byId.get('i')!)).toBe('lien gone · window closed Aug 17')
     expect(lienPhoneLine(byId.get('j')!)).toBe('lien filed Sep 3')
     const late = job({ jobId: 'ff', r: { expectedPayYmd: '2026-12-01' } })
     expect(lienPhoneLine(late)).toBe('file lien by Nov 16 → pay Dec 1 · file first')
@@ -206,10 +213,11 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
     job({ jobId: 'n2', number: '858', ...RLC, openBalance: 7902, address: '9703 Lenox Hl, San Antonio, TX' }),
     job({ jobId: 'n3', number: '867', ...RLC, openBalance: 1710, address: TARROW }),
     job({ jobId: 'n4', number: '868', ...RLC, openBalance: 2650, address: '1875 Co Rd 777, Devine, TX' }),
-    // Overdue: one at Lenox Hl, two at Tarrow Rd, one at a property with nothing ahead
-    job({ jobId: 'o1', number: '881', ...RLC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-07-10' } }),
+    // Overdue: one at Lenox Hl, two at Tarrow Rd, one at a property with nothing ahead. June's notice was due Aug 17 and
+    // its affidavit Sep 15, both behind us, so the lien is gone (a July job would still owe a late notice by Oct 15).
+    job({ jobId: 'o1', number: '881', ...RLC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-06-10' } }),
     job({ jobId: 'o2', number: '226', ...RLC, openBalance: 650, address: TARROW, r: { lastWorkYmd: '2026-05-05' } }),
-    job({ jobId: 'o3', number: '608', ...RLC, openBalance: 2245, address: '628 Tarrow Rd', r: { lastWorkYmd: '2026-07-10' } }),
+    job({ jobId: 'o3', number: '608', ...RLC, openBalance: 2245, address: '628 Tarrow Rd', r: { lastWorkYmd: '2026-06-10' } }),
     job({ jobId: 'o4', number: '186', ...RLC, openBalance: 6200, address: '574 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
   ]
   const board = buildLienCalendarBoard(rows, '', TODAY)

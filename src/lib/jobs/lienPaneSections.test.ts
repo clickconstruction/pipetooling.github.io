@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_PANE_HEAD_H, lienPaneHeadOffsets, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienPaneHeadOffsets, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
 
 const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -68,5 +68,27 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
     expect(litLienPaneSection(bodies, 1400, 44)).toBe('months')
     expect(litLienPaneSection(bodies, 5000, 0)).toBe('envelope')
     expect(litLienPaneSection([], 0, 0)).toBeNull()
+  })
+})
+
+describe('the pane’s heads on a phone (punch list #352, PR 6)', () => {
+  it('one head pins under the strip, whichever section it is, and none at the bottom', () => {
+    for (const i of [0, 2, 4]) expect(lienPaneHeadOffsets(i, 5, 0, true)).toEqual({ top: 0, bottom: 'auto' })
+    expect(lienPaneHeadOffsets(3, 5, 44, true)).toEqual({ top: 44, bottom: 'auto' })
+    expect(LIEN_PANE_HEAD_H_PHONE).toBe(40)
+  })
+
+  it('a press lands the section under its own head alone', () => {
+    expect(lienPaneSectionScrollTop(800, 2, 44, true)).toBe(800 - 44 - 40)
+    expect(lienPaneSectionScrollTop(800, 2, 44)).toBe(800 - 44 - 3 * LIEN_PANE_HEAD_H)
+    expect(lienPaneSectionScrollTop(20, 0, 0, true)).toBe(0)
+  })
+
+  it('the lit head is the last section that has reached the one pinned head', () => {
+    const bodies = [{ key: 'path' as const, offsetTop: 0 }, { key: 'gates' as const, offsetTop: 400 }, { key: 'months' as const, offsetTop: 1500 }]
+    expect(litLienPaneSection(bodies, 0, 0, true)).toBe('path')
+    expect(litLienPaneSection(bodies, 319, 0, true)).toBe('path')
+    expect(litLienPaneSection(bodies, 320, 0, true)).toBe('gates')
+    expect(litLienPaneSection(bodies, 1420, 0, true)).toBe('months')
   })
 })

@@ -807,6 +807,56 @@ describe('LienDesk', () => {
     }
   })
 
+  it('on a phone a row opens its job as a screen over the desk: the steps, the doors and the row’s press; the way back returns to the list and the press goes where the row’s goes (punch list #352, PR 4)', async () => {
+    // A computer has no such screen: a press on the row acts.
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-next-up-open]')).toBeNull()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onOpenJob = vi.fn()
+      const onOpenLienInstruments = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" onOpenJob={onOpenJob} onOpenLienInstruments={onOpenLienInstruments} />)
+      await settle()
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      const name = document.querySelector<HTMLElement>('[data-lien-next-up-open]')!
+      const rowKey = name.getAttribute('data-lien-next-up-open')!
+      const rowPress = name.closest('[data-lien-next-up-row]')!.querySelector<HTMLElement>('[data-lien-next-up-act]')!.textContent
+      fireEvent.click(name)
+      const jobScreen = document.querySelector<HTMLElement>('[data-lien-job-screen]')!
+      expect(jobScreen.getAttribute('data-lien-job-screen')).toBe(rowKey)
+      // It sits inside the desk's panel, over the header and the list.
+      expect(jobScreen.closest('[data-lien-desk-panel]')).not.toBeNull()
+      expect(jobScreen.style.position).toBe('absolute')
+      expect(within(jobScreen).getAllByTestId('lien-step-card-item')).toHaveLength(4)
+      // The doors open what the row's chip and name opened.
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="job"]')!)
+      expect(onOpenJob).toHaveBeenCalledWith('j650')
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="lien_window"]')!)
+      expect(onOpenLienInstruments).toHaveBeenCalledWith('j650')
+      fireEvent.click(jobScreen.querySelector('[data-lien-job-screen-door="paper"]')!)
+      expect(await screen.findByTestId('lien-paper-preview')).toBeTruthy()
+      fireEvent.keyDown(document, { key: 'Escape' })
+      // The way back closes the screen and the list is still the first view.
+      fireEvent.click(within(document.querySelector<HTMLElement>('[data-lien-job-screen]')!).getByRole('button', { name: 'Back to the list' }))
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      expect(document.querySelector('[data-lien-do-now]')).not.toBeNull()
+      // The pinned press has the row's words and goes where the row's press goes: the notice, with the screen closed behind it.
+      fireEvent.click(document.querySelector<HTMLElement>('[data-lien-next-up-open]')!)
+      const press = document.querySelector<HTMLElement>('[data-lien-job-screen-act]')!
+      expect(press.textContent).toBe(rowPress)
+      fireEvent.click(press)
+      await settle()
+      expect(document.querySelector('[data-lien-job-screen]')).toBeNull()
+      expect(document.querySelector('[data-lien-do-now]')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -1012,6 +1062,93 @@ describe('LienDesk · the demand letter on the panes’ strips (v2.3880, punch l
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
     await settle()
     expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="demand"]')?.textContent).toContain('reply by Sep 22')
+  })
+})
+
+describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
+  const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+
+  it('an open notice has a one-row header, one pinned section title, a column held to the screen and a footer that folds without losing what is in it', async () => {
+    // A computer: the pane beside the list keeps its stacked titles and has no fold.
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="notice" initialJobId="j650" />)
+    await settle()
+    expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-pane]')!.getAttribute('data-lien-pane-phone')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+    const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(wideHeads.length).toBeGreaterThan(1)
+    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 30))
+    expect(wideHeads.every((h) => h.style.height === '')).toBe(true)
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      const onShowList = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} layout="stacked" initialKind="notice" initialJobId="j650" onOpenNotice={() => {}} onShowList={onShowList} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-pane]')).not.toBeNull())
+      // The header says a paper is open, which hides both rows of tabs (`index.css`); its way back is the list.
+      expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBe('notice')
+      expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: '← Back to the list' })).toBeNull()
+      // The pane: one column held to its width, one title pinned at a time, a thumb tall.
+      const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+      expect(pane.getAttribute('data-lien-pane-phone')).toBe('yes')
+      expect(pane.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+      const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+      expect(heads.length).toBe(wideHeads.length)
+      for (const h of heads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+      }
+      // The footer folds to one bar and comes back with its presses, never unmounted.
+      const fold = document.querySelector<HTMLButtonElement>('[data-lien-desk-foot-fold]')!
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+      expect(fold.textContent).toContain('Hide the next step')
+      const footer = fold.nextElementSibling as HTMLElement
+      const footerButtons = footer.querySelectorAll('button').length
+      expect(footerButtons).toBeGreaterThan(0)
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      expect(fold.textContent).toContain('Show the next step')
+      expect((fold.nextElementSibling as HTMLElement).querySelectorAll('button').length).toBe(footerButtons)
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
+  it('an open affidavit has a way back to its list in the header, where it had none', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} layout="stacked" initialKind="affidavit" backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      // The list first: the page's own door, both rows of tabs, no fold.
+      expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
+      expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull()
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /AXO Schertz/ }))
+      await waitFor(() => expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBe('affidavit'))
+      expect(screen.queryByRole('button', { name: '← Pipeline' })).toBeNull()
+      const back = screen.getByRole('button', { name: 'Back to the affidavits' })
+      expect(back.textContent).toContain('Affidavits')
+      expect(back.style.height).toBe('44px')
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull()
+      fireEvent.click(back)
+      await waitFor(() => expect(document.querySelector('.lienDeskTitleBar')!.getAttribute('data-lien-pane-open')).toBeNull())
+      expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /AXO Schertz/ })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
   })
 })
 
@@ -2649,6 +2786,49 @@ describe('LienDesk · an evening stamp keeps its day (v2.4468)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={d} />)
     expect((document.querySelector('[data-lien-claim-carry-strip]') as HTMLElement).textContent).toContain('Carrying Taunya’s correction from Sep 10:')
     expect((document.querySelector('[data-lien-claim-box]') as HTMLElement).textContent).toContain('Taunya · Sep 10 · “GC disputes the 8/14 change order”')
+  })
+})
+
+describe('LienDesk · By paper on a phone (punch list #352, PR 5)', () => {
+  it('a computer stacks the pile titles at both ends; a phone pins one at the top, a thumb tall, and its tabs wrap sooner than slide', async () => {
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+    expect(heads.length).toBeGreaterThanOrEqual(1)
+    // i bars from the top, n-1-i from the bottom, 30 px each (`lienPhoneLists.test.ts` holds a list of five).
+    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 30))
+    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 30))
+    expect(heads.every((h) => h.style.height === '30px')).toBe(true)
+    const wide = document.querySelector<HTMLElement>('[data-lien-desk-paper-kinds] [role="tab"]')!
+    expect(wide.style.whiteSpace).toBe('nowrap')
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} layout="stacked" />)
+      await settle()
+      const phoneHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+      expect(phoneHeads.length).toBe(heads.length)
+      for (const h of phoneHeads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+        expect(h.style.fontSize).toBe('0.75rem')
+      }
+      // Both rows of tabs: a thumb tall, free to shrink, words wrapping in place of a sideways slide.
+      const tabs = [...document.querySelectorAll<HTMLElement>('[data-lien-desk-view], [data-lien-desk-paper-kinds] [role="tab"]')]
+      expect(tabs.length).toBeGreaterThanOrEqual(7)
+      for (const t of tabs) {
+        expect(t.style.minHeight).toBe('44px')
+        expect(t.style.whiteSpace).toBe('normal')
+        expect(t.style.flexShrink).toBe('1')
+        expect(parseFloat(t.style.minWidth)).toBe(0)
+      }
+      expect(screen.getByTestId('lien-desk-find').style.minHeight).toBe('44px')
+    } finally {
+      window.matchMedia = before
+    }
   })
 })
 

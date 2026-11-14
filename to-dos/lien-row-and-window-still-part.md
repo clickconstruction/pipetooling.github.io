@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: ready
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 5 and 6 shipped v2.7193, v2.7187, v2.7184 and v2.7181 · row 4 is left · row 1's migration waits on the owner's named yes to push
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4's Dashboard card is left
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: Push row 1's migration on the owner's yes. Then row 4, the clock's own closed state, as its own PR.
-size: M as six small pieces (S · S · XS · M · S · XS), four shipped
-blocker: none for row 4 · the push of migration 20261113190000 needs the owner's named yes
+next: The Dashboard's closed-window card, as its own PR (the last part of row 4). Then the items under Also seen that wait on the owner's word.
+size: M as six small pieces (S · S · XS · M · S · XS), five shipped
+blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -51,12 +51,21 @@ what still differed. Counts only are given here, since the repo is public.
 3. **A held notice (XS, maybe nothing).** The row reads *Review the hold*, the act. The header reads
    *Held — the Sep notice re-asks Oct 5*, the state. Both are true. Left as it is unless it reads
    wrong in use.
-4. **The clock's own `closed` state (M).** v2.7047 taught the row the late notice by reading past
-   the runway's `closed`. The runway still answers `closed` the day a notice window shuts. So the
-   Lien desk's Deadlines view and the Dashboard's lien card say *lien gone* while a late notice can
-   still go (v2.4708). The phone chip did too until v2.7184, which reads past `closed` as the row
-   does. Moving the rule into the runway touches the calendar's marks
-   and buckets.
+4. ~~**The clock's own `closed` state (M).** v2.7047 taught the row the late notice by reading past
+   the runway's `closed`. The runway still answers `closed` the day a notice window shuts.~~
+   **Shipped v2.7198.** `buildLienPayRunway` answers `late_notice` for a sub job whose notice
+   windows all closed unsent while the affidavit can still be filed, and `closed` only once that day
+   has passed too. The Lien desk's By date view (Deadlines until v2.7207) lists such a job in the month of the affidavit's day with
+   *send the late notice*, counts it as a late notice on the bar and the GC row, and keeps it out
+   of Overdue and Lien gone. The Share message's past-window count leaves it out. The row and the
+   phone chip read the state where they read past `closed`.
+   **Left, as its own PR:** the Dashboard's card *N lien windows closed with nothing recorded … the
+   lien right on that work is gone* still says gone while a late notice can go. It does not read
+   this clock. It reads the Lien desk's summary (`lienDeskMissedSummary` in `lienDesk.ts`), which
+   knows a window closed and not whether the affidavit can still be filed. It touches
+   `summarizeLienDeskForNeedsYou` and its callers (`useLienDeskData`, the Dashboard's inputs), the
+   card's words in `dashboardNeedsYou.ts`, and the Pipeline money card's *the earliest closed Sep
+   15* in `lienDeskMoneyCard.ts`.
 5. ~~**The phone's two-line rows (S).** Their chip comes from the runway (*lien in 4 d*, *file
    first*). It can take the act table's words (`lienActWords.ts`), as the Accounts Receivable chip
    did in v2.7048.~~ **Shipped v2.7184.** The chip reads the step and the days left, *Draft the

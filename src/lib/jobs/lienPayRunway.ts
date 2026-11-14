@@ -21,7 +21,10 @@ import { DATED_FROM_BILL_WORDS, lienStandInMonth, type LienBill } from './lienBi
  * - a sub job (a GC on the job) whose § 53.056 notice for the work month is
  *   not recorded → the notice is the first deadline: a hollow flag ahead of
  *   the lien flag and "send the notice"; a notice window already closed
- *   means the lien for that month is gone (v2.4096). A sub owes one notice
+ *   means the lien for that month is gone (v2.4096) once the affidavit's own
+ *   day has passed too. While that day is ahead a late notice can still go
+ *   (v2.4708): "send the late notice" by the lien date when no notice went
+ *   for any month, and the lien date alone when an earlier month's did. A sub owes one notice
  *   per month worked, so when the work months are known the date is the
  *   earliest month still owed whose window is open (v2.4308); the lien date
  *   and a closed window still follow the last month;
@@ -37,7 +40,14 @@ import { DATED_FROM_BILL_WORDS, lienStandInMonth, type LienBill } from './lienBi
  * Pure: every input is a value another kernel or a row already carries.
  */
 
-export type LienRunwayState = 'none' | 'filed' | 'closed' | 'notice_due' | 'file_first' | 'room' | 'no_pay'
+/**
+ * `late_notice` (v2.7198, punch list #335, row 4): every § 53.056 window on a sub job closed with no notice sent, and the
+ * affidavit's own day is still ahead. A late notice can still go and the affidavit follow it (v2.4708, the owner's
+ * reading of 2026-10-06), so the lien is not gone. Until then the runway answered `closed` the day the notice window
+ * shut, and each reader that knew better read past it (the billed row since v2.7047, the phone chip since v2.7184)
+ * while the By date view and the Share message said *lien gone*.
+ */
+export type LienRunwayState = 'none' | 'filed' | 'closed' | 'late_notice' | 'notice_due' | 'file_first' | 'room' | 'no_pay'
 export type LienRunwayTone = 'green' | 'amber' | 'red' | 'grey'
 
 export type LienRunwayInput = {
@@ -348,8 +358,10 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     (isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : '') +
     (passedMailedWords ? ` The § 53.056 ${passedMailed.length > 1 ? 'notices' : 'notice'} for ${passedMailedWords} ${passedMailed.length > 1 ? 'are' : 'is'} printed and in the mail but not recorded; record the mailing on the Lien desk before the lien is filed.` : '')
 
-  // The last month's window closed unsent: every earlier window closed before it.
-  if (lastNotice?.state === 'closed' && daysToNotice != null) {
+  // The last month's window closed unsent: every earlier window closed before it. The lien is gone only once the
+  // affidavit's own day has passed too; while it is ahead a late notice can still carry it (v2.4708), below.
+  const noticeWindowShut = lastNotice?.state === 'closed' && daysToNotice != null
+  if (noticeWindowShut && daysToLien < 0) {
     return {
       ...NONE,
       state: 'closed',
@@ -413,6 +425,36 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const endLabel = formatYmdMonthDay(addDaysYmd(today, endDays))
   const noticeMark = isSub && daysToNotice != null && daysToNotice >= 0 ? { days: daysToNotice, pct: pct(daysToNotice), done: !noticeOwed } : null
   const payMark = livePay != null ? { days: livePay, pct: pct(livePay) } : null
+
+  // Every notice window closed with none sent, the affidavit's day ahead: the late notice is the step, by the lien's
+  // own day. When an earlier month's notice did go, that one carries the affidavit and the states below read on.
+  if (noticeWindowShut && !noticeMonths.some((m) => m.state === 'sent' || m.state === 'mailed')) {
+    const lines = [`notice window closed ${noticeWords} · lien by ${lienWords}`, `send the late notice · ${daysWords(daysToLien)}`]
+    return {
+      ...NONE,
+      state: 'late_notice',
+      tone: daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber',
+      words: wordsOf(lines),
+      lines,
+      title: `The § 53.056 notice for this work month was due ${noticeWords} and none is recorded. A late notice can still go while the lien affidavit can be filed, by ${lienWords}. Send it from the Lien desk. ${basis}.${kindNote}`,
+      chipLabel: `late notice · ${daysWords(daysToLien)}`,
+      lienByYmd: lienBy,
+      daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
+      kindAssumed,
+      noticeSent,
+      noticeMailed,
+      datedFromCreation,
+      datedByHand,
+      basisYmd,
+      closedBy: null,
+      noticeMonths,
+      endLabel,
+      marks: { endDays, pay: payMark, lien: lienMark, notice: null, gap: null },
+      sortKey: daysToLien,
+    }
+  }
 
   if (noticeOwed) {
     const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, noticeMailed ? `record the mailing · ${daysWords(daysToNotice)}` : `send the notice · ${daysWords(daysToNotice)}`]
@@ -538,7 +580,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
 /** Whether the phone row's one chip should be this runway rather than the softer facts behind it. */
 export function lienRunwayWantsTheChip(r: LienPayRunway | null | undefined): boolean {
   if (!r) return false
-  if (r.state === 'file_first' || r.state === 'closed') return true
+  if (r.state === 'file_first' || r.state === 'closed' || r.state === 'late_notice') return true
   if (r.state === 'notice_due' && r.daysToNotice != null && r.daysToNotice <= LIEN_RUNWAY_AMBER_DAYS) return true
   if ((r.state === 'no_pay' || r.state === 'room') && r.daysToLien != null && r.daysToLien <= LIEN_RUNWAY_AMBER_DAYS) return true
   return false

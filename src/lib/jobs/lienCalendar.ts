@@ -67,7 +67,7 @@ export type LienCalendar = {
   /** Every row that survived the search, tightest first (the phone list). */
   jobs: LienCalendarJob[]
   /** v2.5522: `inTheMail` = jobs whose every notice due is printed and in the mail; they are not in `noticesOwed`. */
-  totals: { jobs: number; open: number; noticesOwed: number; inTheMail: number; gone: number }
+  totals: { jobs: number; open: number; noticesOwed: number; inTheMail: number; gone: number; /** v2.7198, punch list #335, row 4: jobs whose next step is a late notice; they are in neither `noticesOwed` nor `gone`. */ lateNotices: number }
 }
 
 function norm(s: string | null | undefined): string {
@@ -165,12 +165,14 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
     // v2.5522: a notice printed and in the mail is not owed — its number is.
     const owed = list.filter((j) => j.runway.state === 'notice_due' && !j.runway.noticeMailed).length
     const mailed = list.filter((j) => j.runway.state === 'notice_due' && j.runway.noticeMailed).length
+    // v2.7198, punch list #335, row 4: a notice window that closed while the affidavit can still be filed owes a late notice, by name.
+    const late = list.filter((j) => j.runway.state === 'late_notice').length
     const { word, tone } = groupWord(list, 'gc')
     groups.push({
       key: `gc:${gcId}`,
       kind: 'gc',
       name: list[0]?.gcName?.trim() || 'GC',
-      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${mailed ? ` · ${mailed} in the mail` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
+      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${mailed ? ` · ${mailed} in the mail` : ''}${late ? ` · ${late} late ${late === 1 ? 'notice' : 'notices'}` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
       jobs: list,
       total: list.reduce((s, j) => s + j.openBalance, 0),
       word,
@@ -219,6 +221,7 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
       noticesOwed: jobs.filter((j) => j.runway.state === 'notice_due' && !j.runway.noticeMailed).length,
       inTheMail: jobs.filter((j) => j.runway.state === 'notice_due' && j.runway.noticeMailed).length,
       gone: gone.length,
+      lateNotices: jobs.filter((j) => j.runway.state === 'late_notice').length,
     },
   }
 }
