@@ -3,6 +3,7 @@ import type { JobWorkMonths } from './forecastWorkMonths'
 import { buildLienAffidavitFieldsForJob, type LienAffidavitJobFacts, lienAffidavitSwornMonths } from './lienNoticeDraft'
 import { lienWindowLastMonth } from './lienTimelineDesk'
 import type { LienWorkSpanJob } from './lienWorkSpan'
+import type { LienBill } from './lienBillMonths'
 import { lienBilledOpen, type LienClaimInvoice } from './lienBilledOpen'
 import { claimDeltaWords, correctedClaim, correctionSetWords, type CorrectedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { lienNothingBilledWords, lienUnbilled, lienUnbilledWords } from './lienClaimBills'
@@ -16,11 +17,12 @@ import type { BillTruthJob, BillTruthPayment } from '../billing/billTruth'
  * swore its month, and the original contractor's address was never handed over. Now the window gives what it
  * knows (the job row, the forecast's months, the GC's row) and the desk's own recipe
  * (`buildLienAffidavitFieldsForJob`) fills the paper, so the two draws cannot drift again. The last month is the
- * window strip's own (`lienWindowLastMonth`): the creation month when the job has no hours and no day set by hand.
+ * window strip's own (`lienWindowLastMonth`): with no hours and no day set by hand, the month of the job's sent,
+ * unpaid bills (v2.7224), else its creation month.
  */
 export type LienWindowAffidavitFacts = Omit<LienAffidavitJobFacts, 'lastMonth' | 'firstMonth' | 'workDays'> & {
   /** The job row: its creation day and its work days (the fresh last-day read laid over it, when the window has one). */
-  job: LienWorkSpanJob & { created_at?: string | null }
+  job: LienWorkSpanJob & { created_at?: string | null; invoices?: ReadonlyArray<LienBill> | null }
   /** The forecast's months for the job (sessions by month); null for a job with no sessions, or before they are read. */
   workMonths: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null | undefined
 }

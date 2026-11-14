@@ -48,6 +48,8 @@ export type LienGridRow = {
   /** "3 people · 4 days" — '' when the crew evidence is not loaded. */
   crew: string
   fromCreation: boolean
+  /** The stand-in month came from a sent, unpaid bill (v2.7224). */
+  fromBill?: boolean
   /** Sessions await approval and nothing is approved yet — not a work month yet. */
   pendingOnly: boolean
   window: {
@@ -175,6 +177,7 @@ export function buildLienMonthGrid(input: {
         hours,
         crew: e ? `${e.people} ${e.people === 1 ? 'person' : 'people'} · ${e.dayCount} ${e.dayCount === 1 ? 'day' : 'days'}` : '',
         fromCreation: m?.fromCreation ?? false,
+        fromBill: m?.fromBill === true,
         pendingOnly,
         window: {
           state,

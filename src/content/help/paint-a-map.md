@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job
 where: /jobs
 order: 123
 ---
@@ -35,6 +35,16 @@ The map opens on the job's address. Nothing is saved yet.
 A job in a development has two choices under **For**. Press the job's name to paint for that job alone. Press the development's name to paint for every lot.
 
 A map started on a development's page is for every lot. It shows on each job in the development.
+
+### With no job open
+
+Press the search button at the top of the app and type **paint**. Press **Paint a map**.
+
+The sheet opens on no job. Press **Pick the job it is for** and search for the job.
+
+You can also leave it on no job and paint first. Only you and the office can open a map on no job.
+
+Open that map later and press **Put it on a job…** to give it one.
 
 ## Walk or drive the line
 
@@ -175,6 +185,8 @@ The line then reads *612 ft, measured with a wheel*.
 A job with a painted map shows a line under its address. The line has the map's name, its length and how many places it holds. Press it to open the map.
 
 The line shows on every tab of the job's window. It shows on your job card in Job Mode too.
+
+You can open a map from anywhere. Press the search button at the top and type the map's name or the job's name.
 
 Press **On my way** on your job card. The sheet lists the maps painted for the job you picked. Press one to see the way in before you drive.
 

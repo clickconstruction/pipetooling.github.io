@@ -4,6 +4,7 @@ import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling,
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
+import { DATED_FROM_BILL_WORDS } from './lienBillMonths'
 import { lienActFor } from './lienActWords'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
@@ -169,7 +170,9 @@ export type LienTimelineMonthOutcome = 'open' | 'sent' | 'skipped' | 'missed'
 export interface LienTimelineMonth {
   key: string
   deadline: string
+  /** The month is a stand-in (no approved hours, no day set by hand): from a bill when `fromBill` (v2.7224), else the job's creation. */
   fromCreation: boolean
+  fromBill?: boolean
   outcome: LienTimelineMonthOutcome
   /** 'YYYY-MM-DD' in the company calendar: sent: the send day; skipped: when; missed: when it was noted ('' = nobody has). The adapters read each instant's day. */
   at: string
@@ -194,6 +197,8 @@ export interface LienTimelineInput {
   /** 'YYYY-MM' — the last month worked, or the creation month; '' unknown. */
   lastMonth: string
   lastMonthFromCreation: boolean
+  /** The stand-in last month came from a sent, unpaid bill (v2.7224): the node says *dated from the bill*. */
+  lastMonthFromBill?: boolean
   /** The last month is the day set by hand (v2.4676) — the node says so. */
   lastMonthByHand?: boolean
   /** 'YYYY-MM-DD': the last approved clock day when it follows the day set by hand (v2.7193, punch list #335, row 1). The hand day still counts; the node says the later hours do not move it. */
@@ -442,7 +447,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       date: `${input.lastMonth}-01`,
       dateWords: `${workMonthShort(input.lastMonth)} ${input.lastMonth.slice(0, 4)}`,
       state: 'done',
-      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? (input.laterHoursDay ? LAST_DAY_BY_HAND_LATER_HOURS_WORDS : LAST_DAY_SET_BY_HAND_WORDS) : 'clock hours',
+      words: input.lastMonthFromCreation ? (input.lastMonthFromBill ? DATED_FROM_BILL_WORDS : DATED_FROM_CREATION_WORDS) : input.lastMonthByHand ? (input.laterHoursDay ? LAST_DAY_BY_HAND_LATER_HOURS_WORDS : LAST_DAY_SET_BY_HAND_WORDS) : 'clock hours',
       daysLeft: null,
       door: null,
     })
@@ -461,7 +466,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     for (const m of months) {
       const label = `§ 53.056 · ${workMonthShort(m.key)}`
       const base = { kind: 'notice' as const, key: `notice:${m.key}`, cite: '§ 53.056', label, monthKey: m.key, door: null, date: m.deadline, dateWords: lienDateWords(m.deadline, todayYmd), opensOn: lienNoticeOpensOn(m.key), opensWords: '' }
-      const creation = m.fromCreation ? ' · dated from creation' : ''
+      const creation = m.fromCreation ? (m.fromBill ? ' · dated from the bill' : ' · dated from creation') : ''
       if (m.outcome === 'sent') {
         steps.push({ ...base, state: 'done', words: (m.at ? `sent ${lienDateWords(m.at.slice(0, 10), todayYmd)}` : 'sent') + creation, daysLeft: null, dateWords: m.at ? lienDateWords(m.at.slice(0, 10), todayYmd) : base.dateWords })
       } else if (m.outcome === 'skipped') {
@@ -955,7 +960,7 @@ function foldStep(run: LienTimelineStep[]): LienTimelineStep {
   const noted = run.filter((s) => / · noted/.test(s.words)).length
   const unnoted = run.filter((s) => / · not noted/.test(s.words)).length
   const unknown = run.length - noted - unnoted
-  const creation = run.every((s) => s.words.includes('dated from creation')) ? ' · dated from creation' : ''
+  const creation = run.every((s) => s.words.includes('dated from the bill')) ? ' · dated from the bill' : run.every((s) => s.words.includes('dated from creation')) ? ' · dated from creation' : ''
   const words = noted + unnoted === 0 ? 'window closed' + creation : unnoted === 0 ? 'all noted' + creation : `${noted} noted · ${unnoted} to note${creation}`
   return {
     kind: 'notice',

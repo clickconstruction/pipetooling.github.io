@@ -2,7 +2,7 @@
 // `npm run gen:edge-kernels`. The functions that import the copy are IMPORTERS in that script (the schedule's PR 14b).
 /**
  * The last day of work on a job, for the lien clocks (v2.4676, the owner's ask): a billed job
- * with no approved clock hours was dated from the day it was created, and the office remembers
+ * with no approved clock hours was dated from the day it was created (from its bill since v2.7224), and the office remembers
  * the real day but will not touch hours already paid. The day lives on the job
  * (`jobs_ledger.lien_last_work_on`, with who set it, when and why); the four lien readers take
  * its month. Pure: where the day comes from, the words for it, what a typed day may be, and
@@ -10,8 +10,9 @@
  */
 import { formatYmdMonthDay } from './billedExpectedPay.ts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
+import { lienBillMonths, type LienBill } from './lienBillMonths.ts'
 
-export type LienLastWorkSource = 'hand' | 'hours' | 'created'
+export type LienLastWorkSource = 'hand' | 'hours' | 'bill' | 'created'
 
 export type LienLastWorkJob = {
   created_at?: string | null
@@ -21,13 +22,15 @@ export type LienLastWorkJob = {
   lien_last_work_note?: string | null
   lien_last_work_set_at?: string | null
   lien_last_work_set_by?: string | null
+  /** The job's bills, when the caller holds them (v2.7224): with no hand day and no hours, the latest sent, unpaid bill's day stands in before the creation day. */
+  invoices?: ReadonlyArray<LienBill> | null
 }
 
 export type LienLastWorkDay = {
   /** 'YYYY-MM-DD', or null when the job has no day at all. */
   day: string | null
   source: LienLastWorkSource
-  /** "set by hand" · "from clock hours" · "from the job's creation" */
+  /** "set by hand" · "from clock hours" · "from the bill" · "from the job's creation" */
   sourceWords: string
   note: string
   setAt: string | null
@@ -37,13 +40,15 @@ export type LienLastWorkDay = {
 /** The line under a month, and on the timeline's LAST WORK node, when the day was typed (one wording). */
 export const LAST_DAY_SET_BY_HAND_WORDS = 'last day set by hand'
 
-const SOURCE_WORDS: Record<LienLastWorkSource, string> = { hand: 'set by hand', hours: 'from clock hours', created: "from the job's creation" }
+const SOURCE_WORDS: Record<LienLastWorkSource, string> = { hand: 'set by hand', hours: 'from clock hours', bill: 'from the bill', created: "from the job's creation" }
 
 export function lienLastWorkDay(job: LienLastWorkJob | null | undefined): LienLastWorkDay {
   const hand = (job?.lien_last_work_on ?? '').slice(0, 10)
   if (hand) return { day: hand, source: 'hand', sourceWords: SOURCE_WORDS.hand, note: (job?.lien_last_work_note ?? '').trim(), setAt: job?.lien_last_work_set_at ?? null, setBy: job?.lien_last_work_set_by ?? null }
   const hours = (job?.last_work_date ?? '').slice(0, 10)
   if (hours) return { day: hours, source: 'hours', sourceWords: SOURCE_WORDS.hours, note: '', setAt: null, setBy: null }
+  const billed = lienBillMonths(job?.invoices).lastDay
+  if (billed) return { day: billed, source: 'bill', sourceWords: SOURCE_WORDS.bill, note: '', setAt: null, setBy: null }
   const created = job?.created_at ? calendarYmdInAppTzFromIso(job.created_at) : ''
   return { day: created || null, source: 'created', sourceWords: created ? SOURCE_WORDS.created : 'no day yet', note: '', setAt: null, setBy: null }
 }

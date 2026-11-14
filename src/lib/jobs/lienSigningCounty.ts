@@ -21,13 +21,22 @@ export function signingCountyWords(county: string | null | undefined): string {
   return c ? `${c} County` : ''
 }
 
-/** The box beside a print press: *Signed in* `[Travis]` *County*. */
+/** The box beside a print press: *Signed in* `[Travis]` *County*, and a small **?** after it (v2.7209). */
 export const LIEN_SIGNING_COUNTY_LABEL = 'Signed in'
 
-/** Under the box: what the paper will print, and what to do when it is signed somewhere else. */
-export function signingCountyHint(county: string | null | undefined): string {
+/** What the empty box says in grey: with no county typed, the notary writes both county lines by hand. */
+export const LIEN_SIGNING_COUNTY_PLACEHOLDER = 'the notary writes it'
+
+/** The name of the **?** after the box, for a screen reader. */
+export const LIEN_SIGNING_COUNTY_TIP_LABEL = 'About the county it is signed in'
+
+/**
+ * Behind the **?** after the box, and the box's own description: what to do with an empty box (its grey words already
+ * say who writes the lines when it is left alone), and with a county in it what the paper will print.
+ */
+export function signingCountyTip(county: string | null | undefined): string {
   const words = signingCountyWords(county)
   return words
     ? `Both county lines print ${words}. Signing somewhere else? Type that county for this print.`
-    : 'Left blank, the notary writes both county lines by hand. Type the county where it is signed to print it.'
+    : 'Type the county where it is signed to print it on both county lines.'
 }

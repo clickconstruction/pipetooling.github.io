@@ -10,7 +10,7 @@
  * a contract balance, the owner state, the affidavit date, and whether the row
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
-import { monthFromCreation, type LienDeskBatch, type LienDeskItemRow, type LienDeskQueue, type LienNoticeMonthRow } from './lienDesk'
+import { monthFromBill, monthIsStandIn, type LienDeskBatch, type LienDeskItemRow, type LienDeskQueue, type LienNoticeMonthRow } from './lienDesk'
 import { lienTradeWords } from './lienTradeWords'
 import { cleanStoredAddress } from '../displayAddress'
 import { claimSplit, claimSplitWords, correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
@@ -40,8 +40,10 @@ export type GcNoticeMonth = {
   deadline: string
   /** The window has passed: the month's lien right is gone; the owner still learns the balance. */
   closed: boolean
-  /** The month is the job's creation month — no approved hours (v2.3747). */
+  /** The month is a stand-in: no approved hours and no day set by hand (v2.3747). From a bill when `fromBill`, else the job's creation month. */
   fromCreation: boolean
+  /** The stand-in month came from a sent, unpaid bill (v2.7224). */
+  fromBill?: boolean
 }
 
 export type GcNoticeReadiness = 'ready' | 'needs_owner' | 'unconfirmed_owner' | 'public_owner' | 'no_months' | 'already_sent'
@@ -64,8 +66,10 @@ export type GcNoticeJob = {
   claimOver: boolean
   /** Every month with approved hours and no live notice, oldest first — or, for a job with no approved hours, its creation month (v2.3747). */
   months: GcNoticeMonth[]
-  /** The job has no approved clock hours: its one month is the month it was created, and the row says so (v2.3747). */
+  /** The job has no approved clock hours and no day set by hand: its months are stand-ins, and the row says so (v2.3747). */
   datedFromCreation: boolean
+  /** Those stand-in months came from the job's sent, unpaid bills (v2.7224); the row words it. */
+  datedFromBill?: boolean
   /** Months a recorded notice already names. */
   noticedMonths: string[]
   ownerState: GcNoticeOwnerState
@@ -249,7 +253,7 @@ export function buildGcOnNotice(
         continue
       }
       const deadline = (r.deadline ?? '').slice(0, 10)
-      months.push({ key: r.work_month, hours: Number(r.approved_hours) || 0, deadline, closed: Boolean(deadline) && deadline < todayYmd, fromCreation: monthFromCreation(r) })
+      months.push({ key: r.work_month, hours: Number(r.approved_hours) || 0, deadline, closed: Boolean(deadline) && deadline < todayYmd, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) })
     }
     const ownerState = ownerStateOf(jobId)
     const item = itemByJob.get(jobId) ?? null
@@ -270,7 +274,8 @@ export function buildGcOnNotice(
       claimDelta: claimed.delta,
       claimOver: claimed.over,
       months,
-      datedFromCreation: sorted.every(monthFromCreation),
+      datedFromCreation: sorted.every(monthIsStandIn),
+      datedFromBill: sorted.length > 0 && sorted.every(monthFromBill),
       noticedMonths,
       ownerState,
       ownerKey: ownerKeyOf(jobId),

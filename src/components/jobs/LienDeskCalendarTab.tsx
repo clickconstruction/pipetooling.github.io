@@ -192,7 +192,7 @@ function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | '
 function markTitle(m: LienCalendarMark, j: LienCalendarJob, todayYmd?: string): string {
   switch (m.kind) {
     case 'work':
-      return m.fromCreation ? `No approved hours — the board counts from the month the job was created (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — the lien date counts from its month, each notice from its own month`
+      return m.fromCreation ? `No approved hours — the board counts from the month ${m.fromBill ? 'of the bill' : 'the job was created'} (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — the lien date counts from its month, each notice from its own month`
     case 'gone':
       return m.by === 'notice' ? `The § 53.056 notice was due ${labelOf(m.ymd)} and none is recorded — the lien for that work is gone. Nothing can be filed after this day; the money is still owed.` : `The § 53.052 window closed ${labelOf(m.ymd)} with nothing filed — the lien is gone. Nothing can be filed after this day; the money is still owed.`
     case 'pay':

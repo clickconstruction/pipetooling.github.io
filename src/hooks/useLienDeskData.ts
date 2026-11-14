@@ -57,6 +57,8 @@ export type LienDeskJob = {
   first_work_date?: string | null
   /** The day the job was created — the last-day line's fallback when there are no clock hours (v2.4676). */
   created_at?: string | null
+  /** The job's bills with their two days (v2.7224): the last-day line names the latest sent, unpaid one before the creation day. */
+  invoices?: Array<{ status: string | null; billed_at: string | null; sent_to_customer_at: string | null }> | null
   /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
   lien_contract_ended_on?: string | null
   lien_contract_ended_how?: string | null
@@ -73,7 +75,7 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`

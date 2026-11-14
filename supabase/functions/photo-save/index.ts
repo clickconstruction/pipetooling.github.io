@@ -260,8 +260,18 @@ const BOX_SOURCE: WaitingSource = {
   kind: 'boxes',
   table: 'job_box_photos',
   bucket: BOX_PHOTOS_BUCKET,
+  // A photo that has not failed comes before one that has (v2.7252, punch list #344 PR 9). Oldest first alone took
+  // the same twenty every run once twenty had a reason in fail_why, and no newer photo was ever filed. A failed one
+  // is still tried again, with the room a run has left.
   waiting: (admin) =>
-    admin.from('job_box_photos').select('id, job_id, file_name, storage_path').is('filed_at', null).not('storage_path', 'is', null).order('taken_at', { ascending: true }).limit(BOX_PHOTO_BATCH),
+    admin
+      .from('job_box_photos')
+      .select('id, job_id, file_name, storage_path')
+      .is('filed_at', null)
+      .not('storage_path', 'is', null)
+      .order('fail_why', { ascending: true, nullsFirst: true })
+      .order('taken_at', { ascending: true })
+      .limit(BOX_PHOTO_BATCH),
   failWhyColumn: 'fail_why',
   filedAtColumn: 'filed_at',
   driveIdColumn: 'drive_file_id',

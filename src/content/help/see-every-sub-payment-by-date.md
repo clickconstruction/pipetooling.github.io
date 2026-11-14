@@ -16,12 +16,14 @@ Each line has seven facts.
 - **Date sent** is the day the money left.
 - **Paid to** is the sub the sheet belongs to. A teammate's crew sheet carries a {{chip:gray|crew}} chip.
 - **Job** is the job's number and name. Press it to open the sheet.
-- **How paid** is the method picked when the payment was recorded, with its check number or id.
+- **How paid** is the method picked when the payment was recorded, with its check number or id. Lines that were one check share a sending number under it.
 - **Memo** is what was typed when the payment was recorded.
-- **Amount** is the payment. A back-charge is red, with a minus sign and a {{chip:red|Back-charge}} chip.
+- **Amount** is the payment. A back-charge is red, with a minus sign and a {{chip:red|Back-charge}} chip. A green note under it shows any part kept as the sub's credit.
 - **Left on the sheet** is what the sheet still owed after that line. A settled sheet reads {{chip:green|paid in full}}.
 
 Lines sit under their month. The month's row shows how many payments it holds and their total.
+
+A line marked {{chip:gray|From credit}} was paid from the sub's credit. No money left the bank for it, so it is in no paid total.
 
 A payment moved to another sheet leaves a grey line. The line says who moved it and why. A removed payment leaves one too.
 
@@ -58,6 +60,8 @@ Press a name on the By sub list. You can also pick the person in **Paid to**. Th
 
 - **Sheet agreed** adds what the sheet was agreed at.
 - **Payment** and **Back-charge** take away.
+- **Credit kept** takes away too. It is money sent past what the sheets needed.
+- **Credit used** changes nothing. The sheet owes less, and so does their credit.
 - **We owe** is what was owed after each line.
 
 With a period picked, the first row reads *Brought forward*. It holds what was owed before the period began.

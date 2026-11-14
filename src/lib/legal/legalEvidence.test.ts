@@ -35,11 +35,14 @@ describe('one evidence rule for clock sessions', () => {
     // Job 1189: nothing approved — no hours, no work day, the same as the timeline, and the desk is told why.
     expect(ev['1189']).toEqual(expect.objectContaining({ sessions: 0, awaitingApproval: 2, hours: 0, firstWorkYmd: null, lastWorkYmd: null }))
     expect(legalSessionWords(ev['1189']!)).toBe('0 approved · 2 awaiting approval')
-    // No approved session and no last work date: the clock and the Paper tab both run from the creation month, and say so.
-    expect(clock['1189']).toEqual(expect.objectContaining({ lastWorkYmd: '2026-07-01', lastWorkSource: 'created' }))
+    // No approved session and no last work date: the clock and the Paper tab both run from the month of the job's sent,
+    // unpaid bill (v2.7224; its creation month until then), and say so.
+    expect(clock['1189']).toEqual(expect.objectContaining({ lastWorkYmd: '2026-06-20', lastWorkSource: 'bill' }))
     const t1189 = p.paper.timelines.find((t) => t.jobLabel === '1189')
-    expect(t1189).toEqual(expect.objectContaining({ lastWorkYmd: '2026-07-01', lastWorkSource: 'created' }))
-    expect(legalLastWorkWords(t1189!.lastWorkYmd, t1189!.lastWorkSource)).toBe("no work date on file: dated from the job's creation month, 2026-07")
+    expect(t1189).toEqual(expect.objectContaining({ lastWorkYmd: '2026-06-20', lastWorkSource: 'bill' }))
+    expect(legalLastWorkWords(t1189!.lastWorkYmd, t1189!.lastWorkSource)).toBe("no work date on file: dated from the bill's month, 2026-06")
+    // A job with no dated unpaid bill keeps its creation month.
+    expect(legalLastWorkWords('2026-07-01', 'created')).toBe("no work date on file: dated from the job's creation month, 2026-07")
     expect(workMonthsFromSessions('j-b', sessions, { isSub: false, propertyKind: '' })).toBeNull()
     expect(p.account.jobs.find((j) => j.label === '1189')?.swornMissing).toContain('field evidence on the property')
     expect(p.gaps.find((g) => g.key === 'evidence:j-b')?.detail).toMatch(/2 clock sessions are awaiting approval/)

@@ -22,7 +22,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
-import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromCreation } from '../../lib/jobs/lienDesk'
+import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
+import { lienStandInFlag, lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
@@ -204,6 +205,7 @@ export default function LienDeskAffidavitPane({
     return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, filings }), filings })
   }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
   const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
+  const standInFlag = lienStandInFlag(lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill))
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
     [fields, issuer, job, entry.lastMonth, todayYmd],
@@ -434,7 +436,7 @@ export default function LienDeskAffidavitPane({
         ) : null}
       </div>
       <div style={boxStyle}>
-        <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? 'the month the job was created — it has no clock hours' : 'the last month worked'})</div>
+        <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? (entry.lastMonthFromBill ? 'the month of the bill, since the job has no clock hours' : 'the month the job was created — it has no clock hours') : 'the last month worked'})</div>
         <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8125rem' }}>
           {entry.gates.map((g) => (
             <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -447,6 +449,10 @@ export default function LienDeskAffidavitPane({
             </div>
           ))}
         </div>
+        {/* A month from a bill or the job's creation (v2.7224): a flag with the door, never a hold. */}
+        {standInFlag ? (
+          <div data-lien-affidavit-month-stand-in style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{standInFlag}</div>
+        ) : null}
         {noticeCheckLines.length > 0 ? (
           <div data-lien-affidavit-notice-check style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem', display: 'grid', gap: '0.15rem' }}>
             <strong>{LIEN_NOTICE_CHECK_LEAD}</strong>
@@ -493,7 +499,7 @@ export default function LienDeskAffidavitPane({
       {entry.isSub && workMonths && workMonths.months.length ? (() => {
         const rpcMonths = data.rows
           .filter((r) => r.job_id === entry.jobId)
-          .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthFromCreation(r) }))
+          .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) }))
         const rows = affidavitMonthRows(workMonths.months, buildLienMonthHistory(entry.jobId, data.items, rpcMonths))
         const tone = (s: (typeof rows)[number]['status']) => (s === 'lien' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : s === 'open' ? chip('var(--bg-blue-tint)', 'var(--text-blue-800)') : chip('var(--bg-amber-tint)', 'var(--text-amber-800)'))
         const word = (s: (typeof rows)[number]['status']) => (s === 'lien' ? 'on the lien' : s === 'open' ? 'window open' : 'unsecured')

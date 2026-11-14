@@ -49,6 +49,8 @@ import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadQuestionOpen } from '../../lib/customers/homesteadAnswer'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
 import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
+import { lienStandInFlag, lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
+import { lienWindowLastMonth } from '../../lib/jobs/lienTimelineDesk'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { LIEN_AFFIDAVIT_LONG_FORM_WORDS, type LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
 import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
@@ -259,7 +261,7 @@ export default function LienFilingTabs({
       paymentsMade: Number(job.payments_made ?? 0),
       openBalance: claim.openBalance,
       claimAmountOff: claimCorrection?.amountOff,
-      job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null },
+      job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null },
       workMonths,
       todayYmd: todayYmd(),
       noticesRecorded: liveNotices.length > 0,
@@ -370,9 +372,16 @@ export default function LienFilingTabs({
   // The months the paper swears: the notice check and the notice record (punch list #322) both read them.
   const swornMonths = useMemo(() => {
     const days = workDays ?? job
-    return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
+    return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
   }, [workDays, job, workMonths, isSub, live])
   const noticeCheckLines = useMemo(() => lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months: swornMonths, filings: live })), [isSub, property.propertyKind, swornMonths, live])
+  // The paper's month is a stand-in, from a bill or the job's creation (v2.7224): flagged here, on the help sheet and on the notice record, never held.
+  const monthStandIn = useMemo(() => {
+    const days = workDays ?? job
+    const last = lienWindowLastMonth({ workMonths, job: { created_at: job.created_at ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null } })
+    return lienStandInSourceOf(last.fromCreation, last.fromBill)
+  }, [workDays, job, workMonths])
+  const standInFlag = lienStandInFlag(monthStandIn)
   const monthMatchWarning =
     isSub && liveNotices.length > 0 && clock.workMonth && !liveNotices.some((f) => (f.months_covered ?? []).includes(clock.workMonth))
       ? affidavitFields.form === 'short'
@@ -425,12 +434,12 @@ export default function LienFilingTabs({
         claimWords: demandMoney(affidavitFields.unpaidAmount),
         fields: affidavitFields,
         // What the sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
-        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines },
+        checked: { propertyKind: property.propertyKind, homestead: property.homestead, noticeLines: noticeCheckLines, monthStandIn },
         // The clerk as Settings hold it, and who to ask: the job's lien leader, or the dev (changes 9 and 10).
         clerk: lienClerkFor(issuer?.countyClerksText, affidavitFields.county),
         ask: askFor(job.master_user_id ?? null),
       }),
-    [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, issuer?.countyClerksText, askFor],
+    [jobNumber, job.job_name, job.master_user_id, clock.filingDeadline, affidavitFields, property.propertyKind, property.homestead, noticeCheckLines, monthStandIn, issuer?.countyClerksText, askFor],
   )
 
   // The notice's help sheet (punch list #314): the notice's own facts, the two addresses its copies go to, and the last day to mail.
@@ -456,8 +465,8 @@ export default function LienFilingTabs({
   // Null on a job contracted with the owner, which owes no monthly notice.
   const [noticeRecordOn, setNoticeRecordOn] = useLienNoticeRecordChoice()
   const noticeRecord = useMemo(
-    () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd }),
-    [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd],
+    () => lienNoticeRecord({ isSub, propertyKind: property.propertyKind, swornMonths, filings, paperMonthsWords: affidavitFields.workMonthsWords ?? '', paperNoticesWords: affidavitFields.noticesSentWords ?? '', workStart: affidavitFields.workStart, workEnd: affidavitFields.workEnd, monthStandIn }),
+    [isSub, property.propertyKind, swornMonths, filings, affidavitFields.workMonthsWords, affidavitFields.noticesSentWords, affidavitFields.workStart, affidavitFields.workEnd, monthStandIn],
   )
 
   const printDoc = useCallback(() => {
@@ -1172,6 +1181,7 @@ export default function LienFilingTabs({
               </div>
             ))}
             {monthMatchWarning ? <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {monthMatchWarning}</div> : null}
+            {standInFlag ? <div data-lien-window-month-stand-in style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem' }}>⚠ {standInFlag}</div> : null}
             {/* The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold. */}
             {noticeCheckLines.length > 0 ? (
               <div data-lien-window-notice-check style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.3rem', display: 'grid', gap: '0.1rem' }}>

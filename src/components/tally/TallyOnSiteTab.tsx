@@ -31,7 +31,8 @@ import { actIsFresh } from '../../lib/materials/photo'
 import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
-import { countWalkAt, countWalkKeys } from '../../lib/materials/countWalk'
+import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
+import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
@@ -530,7 +531,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </div>
       ) : null}
       {photos.length > 0 ? <BoxPhotos photos={photos} canAct onToast={showToast} /> : null}
-      {ls.some((l) => l.onHand > 0) && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
+      {countWalkKeys(ls).length > 0 && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
       {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
       {ls.map((l) => (
         <div key={l.partKey} style={{ ...card, borderColor: l.cannotFindSinceCount > 0 || (l.lastCountDiff ?? 0) < 0 ? 'var(--text-amber-800)' : 'var(--border)', display: 'grid', gap: '0.5rem' }}>
@@ -672,10 +673,14 @@ function Sheet({ title, sub, children, onClose, footer, fill }: { title: string;
 
 function Stepper({ n, max, onChange }: { n: number; max: number; onChange: (n: number) => void }) {
   const stepBtn: CSSProperties = { ...btn, width: 56, height: 56, padding: 0, fontSize: '1.5rem', borderRadius: 12 }
+  // What is in the field while it is typed in; null when it shows `n`. Clearing the field used to put the 1 back at
+  // once (v2.7252), so 25 could not be typed over it. A press of − or +, a quick number or leaving the field shows `n`.
+  const [typed, setTyped] = useState<string | null>(null)
+  useEffect(() => { setTyped(null) }, [n])
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.9rem' }}>
       <button type="button" aria-label="One fewer" style={{ ...stepBtn, ...dis(n <= 1) }} disabled={n <= 1} onClick={() => onChange(Math.max(1, n - 1))}>−</button>
-      <input type="number" inputMode="numeric" value={n} min={1} max={max} aria-label="How many" onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) onChange(Math.min(max, Math.max(1, Math.round(v)))) }} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56 }} />
+      <input type="number" inputMode="numeric" value={typed ?? n} min={1} max={max} aria-label="How many" onChange={(e) => { setTyped(stepperKeeps(e.target.value, max)); const v = stepperTyped(e.target.value, max); if (v != null) onChange(v) }} onBlur={() => setTyped(null)} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56 }} />
       <button type="button" aria-label="One more" style={{ ...stepBtn, ...dis(n >= max) }} disabled={n >= max} onClick={() => onChange(Math.min(max, n + 1))}>+</button>
     </div>
   )
@@ -836,6 +841,7 @@ function CountWalk({ container, line, index, total, onRight, onSave, onSkip, onG
         <div>
           <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{line.partName}</div>
           <div style={muted}>{line.manufacturer ? `${line.manufacturer} · ` : ''}{container.label}</div>
+          {line.cannotFindSinceCount > 0 ? <div data-testid="count-walk-cant-find" style={{ color: 'var(--text-amber-800)', fontWeight: 600, fontSize: '0.85rem' }}>{countWalkCantFindWords(line.cannotFindSinceCount)}</div> : null}
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 700 }}>The app expects</div>

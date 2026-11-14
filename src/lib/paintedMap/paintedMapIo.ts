@@ -28,6 +28,7 @@ import {
   type PaintedPlace,
 } from './paintedMap'
 import type { PaintedPoint } from './paintedLine'
+import type { PaintedMapSearchRow } from './paintedMapSearch'
 import { PAINTED_MAP_PHOTOS_BUCKET, isPaintedPlacePhotoPath, paintedPlacePhotoPath } from './paintedPlacePhoto'
 
 const MAPS = 'painted_maps' as never
@@ -80,6 +81,60 @@ export async function loadPaintedMapsFor(home: { jobId?: string | null; developm
     return { ok: true, value: await fillMaps((res.data ?? []).map(paintedMapFromRow)) }
   } catch (e) {
     return fail(e, 'The painted maps did not load.')
+  }
+}
+
+/** The most painted maps the header's search holds. Past it the newest are searched, and the count says so nowhere: a company with more has a list problem this box is not for. */
+export const PAINTED_MAP_SEARCH_MAX = 400
+
+/**
+ * Every painted map the caller can read, for the header's search, each with its home in words where
+ * the caller can read the home. A helper cannot read the ledger, so a job's name is simply left
+ * out for them. An empty list when the read fails: the search box must never break on this.
+ */
+export async function loadPaintedMapsForSearch(): Promise<PaintedMapSearchRow[]> {
+  try {
+    const res = (await supabase
+      .from(MAPS)
+      .select('id, name, words, job_id, development_id' as '*')
+      .order('created_at' as never, { ascending: false })
+      .limit(PAINTED_MAP_SEARCH_MAX)) as unknown as Rows<{ id: string; name: string; words: string | null; job_id: string | null; development_id: string | null }>
+    const rows = res.error ? [] : (res.data ?? [])
+    if (rows.length === 0) return []
+    const jobIds = [...new Set(rows.map((r) => r.job_id).filter((id): id is string => !!id))]
+    const siteIds = [...new Set(rows.map((r) => r.development_id).filter((id): id is string => !!id))]
+    const [jobs, sites] = await Promise.all([
+      jobIds.length > 0 ? supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', jobIds) : Promise.resolve({ data: [] }),
+      siteIds.length > 0 ? supabase.from('developments' as never).select('id, name' as '*').in('id' as never, siteIds) : Promise.resolve({ data: [] }),
+    ])
+    const jobLabel = new Map(((jobs.data ?? []) as Array<{ id: string; hcp_number: string | null; job_name: string | null }>).map((j) => [j.id, [j.hcp_number, j.job_name].filter(Boolean).join(' · ')] as const))
+    const siteLabel = new Map(((sites.data ?? []) as unknown as Array<{ id: string; name: string | null }>).map((d) => [d.id, d.name ?? ''] as const))
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      words: r.words ?? '',
+      jobLabel: (r.job_id && jobLabel.get(r.job_id)) || null,
+      developmentLabel: (r.development_id && siteLabel.get(r.development_id)) || null,
+      hasHome: !!(r.job_id || r.development_id),
+    }))
+  } catch {
+    return []
+  }
+}
+
+/** Put a map that is on no job onto one. Its maker's and the office's, and they must be able to open the job. */
+export async function putPaintedMapOnJob(mapId: string, jobId: string): Promise<Landed<PaintedMap>> {
+  try {
+    const res = (await supabase
+      .from(MAPS)
+      .update({ job_id: jobId, development_id: null } as never)
+      .eq('id' as never, mapId)
+      .select(PAINTED_MAP_SELECT as '*')
+      .single()) as unknown as OneRow<PaintedMapRow>
+    if (res.error || !res.data) return fail(res.error, 'The map was not put on the job. Only whoever painted a map, or the office, may move it, and only onto a job they can open.')
+    return { ok: true, value: paintedMapFromRow(res.data) }
+  } catch (e) {
+    return fail(e, 'The map was not put on the job.')
   }
 }
 

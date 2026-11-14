@@ -132,7 +132,7 @@ export function lienMarkCard(m: LienCalendarMark, job: LienCalendarJob, todayYmd
           when: dated('Dated', m.ymd, todayYmd),
           whenTone: 'amber',
           facts: [
-            `The board counts from the month the job was created, ${month}.`,
+            m.fromBill ? `The board counts from the month of the bill, ${month}.` : `The board counts from the month the job was created, ${month}.`,
             'That is a stand-in, not a fact. If the work was done in another month, the flags sit in the wrong place.',
             'Approve the hours or set the last day before a notice goes out.',
           ],

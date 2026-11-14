@@ -5,8 +5,9 @@
  * The window is the pay stubs' Record payment window (People → Pay stubs) on a sub sheet, so a sheet is paid down
  * in parts the same way a pay report is. Two things differ, on purpose:
  *
- * - **An amount past what is left is refused**, with the reason. A pay report sends the excess to an employee
- *   credit; a sub has no such place yet, and what an overpayment to a sub should become is the owner's call.
+ * - **An amount past what is left** was refused here until v2.7235. The owner's answer was a credit, and the
+ *   window now plans the extra through `subSending.ts`. `planSubPayment` stays as the gate for a caller that
+ *   knows nothing about the sub's other sheets.
  * - **The methods are a sub's**: a check and Zelle lead, since that is how subs are paid. The pay stubs' kinds
  *   (`lib/people/paySources.ts`) are shared with SQL functions and stay as they are.
  *
@@ -32,7 +33,11 @@ const METHOD_LABEL: Record<SubPayMethod, string> = {
   other: 'Other',
 }
 
+/** A payment made from the sub's credit (v2.7235): no money left the bank. Stored as a method, never offered as a chip. */
+export const SUB_PAY_FROM_CREDIT = 'credit'
+
 export function subPayMethodLabel(method: SubPayMethod | string | null | undefined): string {
+  if (method === SUB_PAY_FROM_CREDIT) return 'From credit'
   return isSubPayMethod(method) ? METHOD_LABEL[method] : ''
 }
 
