@@ -22,8 +22,8 @@
 // Pure: no env reads, no network; the test runs a recording fake (src/lib/devMcp/devMcpAffidavitDraft.test.ts).
 
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitEntry, type LienAffidavitRow } from './gcKernels/lib/jobs/lienDeskAffidavits.ts'
-import { lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitSwornMonths, type LienAffidavitNoticeRow } from './gcKernels/lib/jobs/lienAffidavitNotices.ts'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from './gcKernels/lib/jobs/lienAffidavitNoticeCheck.ts'
+import { lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitSwornMonths, lienAffidavitWorkMonths, type LienAffidavitNoticeRow } from './gcKernels/lib/jobs/lienAffidavitNotices.ts'
+import { lienAffidavitNoticeCheck, lienNoticeCheckEmptyLines, lienNoticeCheckLines } from './gcKernels/lib/jobs/lienAffidavitNoticeCheck.ts'
 import { describeNoticeMonths } from './gcKernels/lib/jobs/lienNoticeMonthWords.ts'
 import { correctedClaim } from './gcKernels/lib/jobs/lienClaimCorrection.ts'
 import { LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItem } from './gcKernels/lib/jobs/lienAffidavitForm.ts'
@@ -223,10 +223,14 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
     : { kind: 'insert', row: { job_id: job.id, kind: 'affidavit', status: 'drafted', drafted_by: who.userId, months, fields, cover_note: false } }
 
   // What the paper would say today, through the paper's own kernels.
-  const sworn = lienAffidavitSwornMonths({ isSub: entry.isSub, workDays: job, lastMonth: entry.lastMonth, todayYmd, filings: world.filings })
+  const swornFacts = { isSub: entry.isSub, workDays: job, lastMonth: entry.lastMonth, todayYmd }
+  const sworn = lienAffidavitSwornMonths({ ...swornFacts, filings: world.filings })
   const monthsWords = describeNoticeMonths(sworn)
   const noticeWords = lienAffidavitNoticesWords(lienAffidavitOwnerSends(world.filings))
-  const askFirst = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: sworn, filings: world.filings }))
+  // The work months ride along (punch list #356): a paper that swears none while a notice on record names other months says why, in the attorney lines and under no_month.
+  const noticeCheck = lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: sworn, filings: world.filings, work: lienAffidavitWorkMonths(swornFacts) })
+  const askFirst = lienNoticeCheckLines(noticeCheck)
+  const emptyWhy = lienNoticeCheckEmptyLines(noticeCheck).join(' ')
   const claim = cents(claimed.claim)
   const beyondDesk = entry.daysLeft > AFFIDAVIT_DESK_LEAD_DAYS
   // A job with no approved hours is dated from its bill when it has one (v2.7224), else from the day it was made.
@@ -254,7 +258,7 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
         signer: signer || null,
         homestead: property.homestead,
       },
-      ...(entry.isSub && !monthsWords ? { no_month: 'No month a recorded notice names falls inside the job’s work span, so the paper prints a blank where its months go.' } : {}),
+      ...(entry.isSub && !monthsWords ? { no_month: `${emptyWhy ? `${emptyWhy} ` : ''}The paper prints a blank where its months go.` } : {}),
       ...(entry.isSub && !noticeWords ? { no_notice_day: 'No send to the owner is on record with its day, so the paper prints a blank where the notice goes.' } : {}),
       ...(askFirst.length > 0 ? { ask_the_attorney_before_this_is_filed: askFirst } : {}),
       writes: standing ? { refreshes_the_draft: String(standing.id) } : { a_new_draft: true },

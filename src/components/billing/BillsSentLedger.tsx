@@ -40,7 +40,8 @@ import {
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
 import { readBillHandWays, readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
-import { BILL_HAND_WAYS_BUILT_IN, billHandWaysOrBuiltIn, liveBillHandWays, type BillHandWay } from '../../lib/billing/billHandWays'
+import { billHandWaysOrBuiltIn } from '../../lib/billing/billHandWays'
+import { BillHandWayPicker, type BillHandWaysCtl } from './BillHandWays'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -74,7 +75,8 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
  * PR 6: a row of the strip offers **Say how it went…**: how the bill went, to whom and on what day, saved as a
  * record made by hand. The bill then leaves the strip and reads as a line on that day. The ways it offers are the
  * office's own list (`bill_hand_ways`, punch list #340), read once with the page; the four in code stand in when that
- * read is refused.
+ * read is refused. They are chips, one press to pick, with **＋ Add a way** and **Edit list** beside them
+ * (`BillHandWays.tsx`).
  *
  * On a phone (v2.7130): the list comes first. The tiles sit in one row, the chips in one row that slides, the strip
  * folds to one line that opens it, and Print and Download CSV move under the list. A line is three rows and the
@@ -294,13 +296,13 @@ const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '
  * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
  * made by hand; the list reads again and the bill moves from the strip to its day.
  */
-function ByHandForm({ gap, ways, onSaved, onClose }: { gap: BillsSentGap; ways: ReadonlyArray<BillHandWay>; onSaved: () => void; onClose: () => void }) {
+function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; waysCtl: BillHandWaysCtl; onSaved: () => void; onClose: () => void }) {
   const phone = useIsMobile()
   const { showToast } = useToastContext()
   const today = todayYmdInAppTz()
   const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
   const [saving, setSaving] = useState(false)
-  const offered = liveBillHandWays(ways)
+  const ways = waysCtl.ways
   const problem = byHandProblem(draft, today, ways)
   const save = async () => {
     if (problem || saving) return
@@ -317,17 +319,7 @@ function ByHandForm({ gap, ways, onSaved, onClose }: { gap: BillsSentGap; ways: 
   }
   return (
     <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <label style={fieldLabel}>
-        How the bill went
-        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value }))} style={field}>
-          <option value="">Pick one</option>
-          {offered.map((w) => (
-            <option key={w.key} value={w.key}>
-              {w.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <BillHandWayPicker ctl={waysCtl} value={draft.how} onPick={(key) => setDraft((d) => ({ ...d, how: key }))} />
       <label style={fieldLabel}>
         Who it went to
         <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
@@ -358,7 +350,7 @@ function ByHandForm({ gap, ways, onSaved, onClose }: { gap: BillsSentGap; ways: 
   )
 }
 
-function GapRow({ gap, ways, onSaved }: { gap: BillsSentGap; ways: ReadonlyArray<BillHandWay>; onSaved: () => void }) {
+function GapRow({ gap, waysCtl, onSaved }: { gap: BillsSentGap; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
   const phone = useIsMobile()
   const [saying, setSaying] = useState(false)
   return (
@@ -390,7 +382,7 @@ function GapRow({ gap, ways, onSaved }: { gap: BillsSentGap; ways: ReadonlyArray
           </button>
         )}
       </div>
-      {saying ? <ByHandForm gap={gap} ways={ways} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
+      {saying ? <ByHandForm gap={gap} waysCtl={waysCtl} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -399,7 +391,7 @@ function GapRow({ gap, ways, onSaved }: { gap: BillsSentGap; ways: ReadonlyArray
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded, ways, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; ways: ReadonlyArray<BillHandWay>; onSaved: () => void }) {
+function GapStrip({ open, paid, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   if (open.length === 0 && paid.length === 0) return null
@@ -409,7 +401,7 @@ function GapStrip({ open, paid, expanded, ways, onSaved }: { open: BillsSentGap[
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
       {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} ways={ways} onSaved={onSaved} />
+        <GapRow key={g.billId} gap={g} waysCtl={waysCtl} onSaved={onSaved} />
       ))}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
@@ -426,7 +418,7 @@ function GapStrip({ open, paid, expanded, ways, onSaved }: { open: BillsSentGap[
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} ways={ways} onSaved={onSaved} />) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} waysCtl={waysCtl} onSaved={onSaved} />) : null}
     </div>
   )
 }
@@ -521,17 +513,18 @@ export function BillsSentLedger() {
   }, [limit, tries])
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
-  // The list under How the bill went, read once with the page. Until it answers, and when it is refused, the four in code.
-  const [ways, setWays] = useState<ReadonlyArray<BillHandWay>>(BILL_HAND_WAYS_BUILT_IN)
-  useEffect(() => {
-    let cancelled = false
-    void readBillHandWays().then((read) => {
-      if (!cancelled) setWays(billHandWaysOrBuiltIn(read).ways)
-    })
-    return () => {
-      cancelled = true
-    }
+  // The list under How the bill went, read with the page and again after each change to it. Until it answers, and
+  // when it is refused, the four in code, which cannot be changed.
+  const [waysRead, setWaysRead] = useState(() => billHandWaysOrBuiltIn(null))
+  const reloadWays = useCallback(async () => {
+    const read = await readBillHandWays()
+    // A read that fails after the list was shown keeps what is on the screen.
+    setWaysRead((was) => (read == null && was.fromTable ? was : billHandWaysOrBuiltIn(read)))
   }, [])
+  useEffect(() => {
+    void reloadWays()
+  }, [reloadWays])
+  const waysCtl = useMemo<BillHandWaysCtl>(() => ({ ways: waysRead.ways, canEdit: waysRead.fromTable, reload: reloadWays }), [waysRead, reloadWays])
 
   const today = todayYmdInAppTz()
   const lines = useMemo(() => (data ? billsSentLines(data) : []), [data])
@@ -647,7 +640,7 @@ export function BillsSentLedger() {
           </button>
         ) : null
       ) : stripVisible ? (
-        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} ways={ways} onSaved={retry} />
+        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} waysCtl={waysCtl} onSaved={retry} />
       ) : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>

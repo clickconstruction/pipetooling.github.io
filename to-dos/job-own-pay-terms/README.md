@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day · PRs 3 to 5 wait on the owner's calls
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · PRs 3 to 5 wait on the owner's calls
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -16,7 +16,7 @@ next: the owner's calls 2 to 4. Someone sets the first real calendars, since non
 size: M as a train of five (S · S · S · M · M); left: PR 3 (S), PR 4 (M), PR 5 (M)
 blocker: the owner's word. PRs 4 and 5 each carry a migration and wait on calls 3 and 4.
 opinion: build PR 3 next, it is small and keeps a new job's due day honest; hold PRs 4 and 5 until a real contract needs them
-ver: v2.7036 · v2.7039 · v2.7040 · v2.7127
+ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153
 ---
 
 # A job's own pay terms (#341)

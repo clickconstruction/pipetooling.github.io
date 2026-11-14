@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: close
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PR 5 built on his word (v2.7240, #8074), LIVE 2026-11-14 on his yes: the migration pushed, `box-read` deployed, the types in #8083 · PRs 6 to 9 built 2026-11-14 on his word (*Please build PR six and the rest of the PR train*): #8088, #8090, #8092 and #8093; #8090 and #8093 merged the same day and `photo-save` was deployed on his yes (*Yes, deploy it*); #8088 and #8092 are open, brought up to date with main and green, out of the merge queue until he says to put them back
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PR 5 built on his word (v2.7240, #8074), LIVE 2026-11-14 on his yes: the migration pushed, `box-read` deployed, the types in #8083 · PRs 6 to 9 built 2026-11-14 on his word (*Please build PR six and the rest of the PR train*): #8088, #8090, #8092 and #8093; #8090 and #8093 merged the same day and `photo-save` was deployed on his yes (*Yes, deploy it*); #8088 and #8092 merged later the same day once he said to put them back in the queue (*Yes, re-arm both*); all nine are on main
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -12,10 +12,10 @@ summary: >
   file the public box page then streams. Four defects were fixed the same day. This card lists the
   rest as small PRs in the order they would hurt a person in the field or a number the office
   reads.
-next: The owner's word to put #8088 and #8092 back in the merge queue: both left it on a manual request and are up to date with main. His try of a press on a real phone with its radio off, on the ZZ test job, is still owed: it is also the first press to land under PR 5's stamps. Then his look at the desk, and this card retires.
-size: L as a train of nine (M · S · S · S · M · S · S · M · S); all nine are built and seven are live; left: PRs 6 and 8 to merge, and the owner's look
-blocker: The owner's word to re-queue #8088 and #8092. Nothing else.
-opinion: your call — say the word and #8088 and #8092 go back in the queue; then try a press on a phone with the radio off
+next: The owner's try of a press on a real phone with its radio off, on the ZZ test job: it is also the first press to land under PR 5's stamps. Then his look at the desk, and this card retires.
+size: L as a train of nine (M · S · S · S · M · S · S · M · S); all nine are merged and live; left: the owner's look
+blocker: None. The owner's phone try and his look are all that is left.
+opinion: your call — the train is done; try a press on a phone with the radio off, look at the desk, then retire the card
 mockup: not required — PR 1 uses the outbox bar that is already on the phone; no new screen
 ---
 
@@ -212,8 +212,9 @@ that it could be watched against.
 
 #8088 (PR 6) and #8092 (PR 8) left the merge queue on a manual request before they merged. Each met
 one conflict with main in the materials map, where two PRs of the train amend neighbouring lines.
-Main is merged into both with both sentences kept, their suites pass, and they wait on his word to
-go back in the queue, one at a time.
+Main is merged into both with both sentences kept and their suites pass. On his word (*Yes, re-arm
+both*) they went back in the queue one at a time, and both merged on 2026-11-14. All nine PRs of the
+train are on main.
 
 All four went red once on `TallyTeamQueue` and `ReceiptStateTables`, the two tests that fail for the
 hour after midnight Central. A re-run after the hour passed. Another session has that fix.

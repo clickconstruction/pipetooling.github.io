@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienAffidavitMethodWords, lienAffidavitMonthsInSpan, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
+import { lienAffidavitMethodWords, lienAffidavitMonthsInSpan, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitWorkMonths } from './lienAffidavitNotices'
 
 const send = (recipient: string, sent_on: string, method = 'certified_mail') => ({ recipient, method, tracking: '9407', sent_on })
 const notice = (months: string[], sends: unknown, over: Record<string, unknown> = {}) => ({ kind: 'notice_53_056', months_covered: months, sends, voided_at: null, ...over })
@@ -80,5 +80,19 @@ describe('lienAffidavitNoticesWords · what follows “sent to the owner by”',
     expect(lienAffidavitMethodWords('email')).toBe('email')
     expect(lienAffidavitMethodWords('registered_mail')).toBe('registered mail')
     expect(lienAffidavitMethodWords('')).toBe('a method not recorded')
+  })
+})
+
+describe('lienAffidavitWorkMonths · the months of the job’s own work (punch list #356)', () => {
+  it('spans the first clock day through the last, or the hand day', () => {
+    expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-09-02', lien_last_work_on: null }, lastMonth: '2026-09' })).toEqual(['2026-07', '2026-08', '2026-09'])
+    expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-10-02', lien_last_work_on: '2026-08-15' }, lastMonth: '2026-08' })).toEqual(['2026-07', '2026-08'])
+  })
+  it('a job with no clock hours and a day set by hand is that day’s month alone, so a notice naming earlier months leaves the paper blank', () => {
+    expect(lienAffidavitWorkMonths({ isSub: true, workDays: { first_work_date: null, last_work_date: null, lien_last_work_on: '2026-09-11' }, lastMonth: '2026-09' })).toEqual(['2026-09'])
+  })
+  it('none on a job contracted with the owner, or with no day and no month', () => {
+    expect(lienAffidavitWorkMonths({ isSub: false, workDays: { first_work_date: '2026-07-06', last_work_date: '2026-09-02' }, lastMonth: '2026-09' })).toEqual([])
+    expect(lienAffidavitWorkMonths({ isSub: true, workDays: null, lastMonth: '' })).toEqual([])
   })
 })

@@ -12,3 +12,5 @@ Checked before the PR on a local Postgres 15 with the baseline's table, its two 
 Deploy order: none. The client calls nothing this file creates. Since v2.7139 the card is drawn for the owner, whose save passes once this is pushed; until then it is refused, the switch goes back and the card says he has no permission to save.
 
 Rollback: `DROP POLICY IF EXISTS master_or_dev_insert_card_looks_keys ON public.app_settings; DROP POLICY IF EXISTS master_or_dev_update_card_looks_keys ON public.app_settings;`. A dev alone writes the two rows again.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936).

@@ -30,3 +30,5 @@ A job with no approved clock hours and no last day of work set by hand was dated
 **What moves on prod** (read-only count, 2026-11-13, jobs in *Billed* with no approved hours and no day set by hand): 32 jobs, 31 with money open. 18 keep their month. 8 take an earlier month whose filing window has already closed under the app's reading. 6 take a later month: 4 on the desk get a later last day to file, and 2 that had dropped off come back. Two approved affidavits sit on a job whose month changes; neither paper is redrawn or re-approved by this change. Whether a lien right stands is counsel's question.
 
 **Not fixed by this.** The bills of the jobs that prompted it carry the day they were typed in, not the day the earlier system issued them: the app keeps no original bill date. Those jobs read the same month after the push. The existing door, the last day of work set by hand, is what corrects them.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8103.

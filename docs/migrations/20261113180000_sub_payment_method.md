@@ -11,3 +11,5 @@ Additive and idempotent. No table is created, so no fence call is needed. The `A
 **Order.** Push right after the merge. Until then the client's payment read falls back to the row as it was (no sheet reads unpaid), a payment with no method records as before, and a payment with a method is refused by the database. The sub portal names its payment columns and shows neither new one.
 
 **After the push:** `npm run gen-types:linked`, then `node scripts/build-dev-mcp-catalog.mjs` (the dev seat's catalog lists the two columns), in one types PR.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8041.

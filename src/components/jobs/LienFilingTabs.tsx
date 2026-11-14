@@ -48,7 +48,7 @@ import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDes
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadQuestionOpen } from '../../lib/customers/homesteadAnswer'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
-import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths } from '../../lib/jobs/lienWindowAffidavit'
+import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes, lienWindowSwornMonths, lienWindowWorkMonths } from '../../lib/jobs/lienWindowAffidavit'
 import { lienStandInFlag, lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import { lienWindowLastMonth } from '../../lib/jobs/lienTimelineDesk'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
@@ -374,7 +374,12 @@ export default function LienFilingTabs({
     const days = workDays ?? job
     return lienWindowSwornMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null }, workMonths, isSub, todayYmd: todayYmd(), filings: live })
   }, [workDays, job, workMonths, isSub, live])
-  const noticeCheckLines = useMemo(() => lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months: swornMonths, filings: live })), [isSub, property.propertyKind, swornMonths, live])
+  // The job's own work months ride along (punch list #356), so a paper that swears none while a notice is on record says why.
+  const workMonthKeys = useMemo(() => {
+    const days = workDays ?? job
+    return lienWindowWorkMonths({ job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null, invoices: job.invoices ?? null }, workMonths, isSub, todayYmd: todayYmd() })
+  }, [workDays, job, workMonths, isSub])
+  const noticeCheckLines = useMemo(() => lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub, propertyKind: property.propertyKind, months: swornMonths, filings: live, work: workMonthKeys })), [isSub, property.propertyKind, swornMonths, live, workMonthKeys])
   // The paper's month is a stand-in, from a bill or the job's creation (v2.7224): flagged here, on the help sheet and on the notice record, never held.
   const monthStandIn = useMemo(() => {
     const days = workDays ?? job

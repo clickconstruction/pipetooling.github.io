@@ -31,6 +31,7 @@ import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChann
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
+import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { HOMESTEAD_QUESTION_DOOR } from '../../lib/customers/homesteadAnswer'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
@@ -202,7 +203,8 @@ export default function LienDeskAffidavitPane({
   // The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold.
   const noticeCheck = useMemo(() => {
     const filings = data.filingsByJob[entry.jobId] ?? []
-    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, filings }), filings })
+    const facts = { isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd }
+    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: lienAffidavitWorkMonths(facts) })
   }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
   const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
   const standInFlag = lienStandInFlag(lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill))

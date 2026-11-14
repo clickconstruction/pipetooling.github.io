@@ -45,8 +45,11 @@ import {
   type NumberOrder,
   type PunchView,
 } from '../lib/todos/punchListByNumber'
+import { cardMatchesSearch, searchFromAddress, withSearch } from '../lib/todos/punchListSearch'
 import { unpackHistory } from '../lib/todos/punchListHistory'
 import packedHistory from '../lib/todos/punchListHistoryData'
+import { EmptyState } from '../components/EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import board from 'virtual:punch-list'
 
 /**
@@ -71,6 +74,10 @@ import board from 'virtual:punch-list'
  * (`PunchListByNumber`: every card in one list, the highest number first). The address names
  * the view (`?view=number`, `&order=oldest`), the device remembers the last press, and a bare
  * address reads the device (`lib/todos/punchListByNumber.ts`).
+ *
+ * One search field beside the View choice (v2.7263) narrows the cards in both views as the person
+ * types: the number, the name, the summary, the Next line, the shipped versions and the group's
+ * name (`lib/todos/punchListSearch.ts`). The address carries it as `?q=`, the device does not.
  */
 /** The board's history as the build replayed it from git; the burndown reads it. */
 const history = unpackHistory(packedHistory)
@@ -102,6 +109,14 @@ export default function PunchList() {
     setRemembered({ view: nextView, order: nextOrder })
     navigate({ pathname: location.pathname, search: searchFor(location.search, nextView, nextOrder), hash: location.hash }, { replace: true })
   }
+  // The search lives in the address alone (`?q=`), so a link carries it and a cleared field leaves it bare.
+  const query = searchFromAddress(location.search)
+  const setQuery = (next: string) =>
+    navigate({ pathname: location.pathname, search: withSearch(location.search, next), hash: location.hash }, { replace: true })
+  const clearSearch = () => setQuery('')
+  // One rule for both views: the Show filter, the mock-up toggle, then the search.
+  const visible = (it: BoardItem) => rowVisible(it, picks, filter, waitingOnly) && cardMatchesSearch(it, query)
+  const anyVisible = board.items.some(visible)
   const waitingCount = useMemo(() => waitingOnMockupCount(board.items), [])
 
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
@@ -132,6 +147,13 @@ export default function PunchList() {
           .punch-row { grid-template-columns: 6px 3.75rem minmax(0, 1fr); }
           .punch-stripe, .punch-num { grid-row: 1 / span 3; }
           .punch-meta, .punch-act { border-left: 0; border-top: 1px solid var(--border); }
+        }
+        /* The search sits beside the View choice; on a phone it takes its own line under it. */
+        .punch-search { position: relative; display: flex; align-items: center; flex: 1 1 12rem; min-width: 0; max-width: 24rem; }
+        .punch-search input::-webkit-search-cancel-button, .punch-search input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+        @media (max-width: 760px) {
+          .punch-search { flex-basis: 100%; max-width: none; }
+          .punch-divider { display: none; }
         }
       `}</style>
       <header
@@ -199,7 +221,60 @@ export default function PunchList() {
             {VIEW_LABEL[v]}
           </button>
         ))}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
+        <div className="punch-search">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return
+              e.preventDefault()
+              clearSearch()
+            }}
+            placeholder="Search the cards: a number, a name, a word"
+            aria-label="Search the cards"
+            autoComplete="off"
+            enterKeyHint="search"
+            data-testid="punch-search"
+            style={{
+              font: 'inherit',
+              fontSize: '0.85rem',
+              width: '100%',
+              padding: query ? '0.3rem 2rem 0.3rem 0.75rem' : '0.3rem 0.75rem',
+              borderRadius: 999,
+              border: `1px solid ${query ? 'var(--text-strong)' : 'var(--border-strong)'}`,
+              background: 'var(--surface)',
+              color: 'var(--text-base)',
+            }}
+          />
+          {query ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="Clear the search"
+              title="Clear the search (Escape)"
+              style={{
+                position: 'absolute',
+                right: 4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 24,
+                height: 24,
+                border: 0,
+                borderRadius: '50%',
+                background: 'var(--bg-subtle)',
+                color: 'var(--text-muted)',
+                font: 'inherit',
+                fontSize: '0.9rem',
+                lineHeight: 1,
+                cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+        <span className="punch-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
         <span style={eyebrow}>Show</span>
         {PUNCH_FILTERS.map((f) => {
           const n = f === 'all' ? counts.all : counts[f]
@@ -216,7 +291,7 @@ export default function PunchList() {
             </button>
           )
         })}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
+        <span className="punch-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
         <button
           type="button"
           onClick={() => setWaitingOnly((v) => !v)}
@@ -242,7 +317,9 @@ export default function PunchList() {
       {view === 'number' ? (
         <PunchListByNumber
           items={board.items}
-          visible={(it) => rowVisible(it, picks, filter, waitingOnly)}
+          visible={visible}
+          query={query}
+          onClearSearch={clearSearch}
           order={order}
           onFlip={() => choose('number', flipOrder(order))}
           onClearFilters={() => {
@@ -251,15 +328,30 @@ export default function PunchList() {
           }}
           renderCard={(it) => <Row item={it} group={it.group} picks={picks} onSave={save} first anchor={false} />}
         />
+      ) : !anyVisible ? (
+        // The search or the filters left nothing in any group: one sentence names the way out, the search first.
+        <div data-testid="punch-group-empty" style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}>
+          <EmptyState
+            {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'cards', query }), {
+              onPress: () => {
+                if (query) clearSearch()
+                else {
+                  setFilter('all')
+                  setWaitingOnly(false)
+                }
+              },
+            })}
+          />
+        </div>
       ) : (
       <>
       {/* v2.6618 · the Shortlist: every open row by group, smallest first, from the cards' own size words. */}
-      <PunchListShortlist items={board.items} visible={(it) => rowVisible(it, picks, filter, waitingOnly)} />
+      <PunchListShortlist items={board.items} visible={visible} />
 
       {/* v2.4196 · the owner's flagged rows, above every group. */}
       {(() => {
-        const visible = flagged.filter((it) => rowVisible(it, picks, filter, waitingOnly))
-        if (visible.length === 0) return null
+        const shown = flagged.filter(visible)
+        if (shown.length === 0) return null
         return (
           <section data-testid="punch-flagged" style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
@@ -273,7 +365,7 @@ export default function PunchList() {
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', flexBasis: '100%', maxWidth: '72ch' }}>{FLAGGED_BLURB}</p>
             </div>
             <div style={{ border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
-              {visible.map((it, i) => (
+              {shown.map((it, i) => (
                 <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} />
               ))}
             </div>
@@ -282,8 +374,8 @@ export default function PunchList() {
       })()}
 
       {groups.map((g) => {
-        const visible = g.items.filter((it) => rowVisible(it, picks, filter, waitingOnly))
-        if (visible.length === 0) return null
+        const shown = g.items.filter(visible)
+        if (shown.length === 0) return null
         return (
           <section key={g.group} style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
@@ -299,7 +391,7 @@ export default function PunchList() {
               </p>
             </div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
-              {visible.map((it, i) => (
+              {shown.map((it, i) => (
                 <Row key={it.slug} item={it} group={g.group} picks={picks} onSave={save} first={i === 0} />
               ))}
             </div>

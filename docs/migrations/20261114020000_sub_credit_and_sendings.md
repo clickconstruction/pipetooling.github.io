@@ -19,3 +19,5 @@ All functions are `SECURITY INVOKER` except the trigger function, which is `SECU
 **Order.** Push right after the merge. Until then the client's payment read falls back twice (to the row with its method, then to the row before that), the credit and sending reads fail soft, a payment that stays on its sheet is recorded by the plain insert as before, and an amount past the sheet says it is not switched on yet.
 
 **After the push:** `npm run gen-types:linked`, then `node scripts/build-dev-mcp-catalog.mjs`, in one types PR.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); the types regeneration its *After the push* line names is still owed, so `database.ts` on `main` does not yet carry `sub_credit_entries` or `sub_payment_sendings`.

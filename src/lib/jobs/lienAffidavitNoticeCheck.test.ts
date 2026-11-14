@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckFlags, lienNoticeCheckLines, lienNoticeCheckMonths, lienNoticeCheckRowLine, lienNoticeCheckShortLines, noticeMonthsSpanWords } from './lienAffidavitNoticeCheck'
+import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckEmptyLines, lienNoticeCheckFlags, lienNoticeCheckLines, lienNoticeCheckMonths, lienNoticeCheckRowLine, lienNoticeCheckShortLines, noticeMonthsSpanWords } from './lienAffidavitNoticeCheck'
 import { noticeDeadlineForMonth } from './lienDeadlines'
 import { buildLienAffidavitFieldsForJob, lienAffidavitSwornMonths } from './lienNoticeDraft'
 import { plainWordsFailures } from '../plainWords'
@@ -45,7 +45,7 @@ describe('the notice behind each sworn month (punch list #314)', () => {
 
   it('a month with no notice at all is flagged, and a job contracted with the owner has nothing to check', () => {
     expect(check('residential', ['2026-08'], []).ownerLate).toEqual(['2026-08'])
-    expect(check('residential', ['2026-08'], [], false)).toEqual({ months: [], ownerLate: [], contractorMissing: [], contractorLate: [] })
+    expect(check('residential', ['2026-08'], [], false)).toEqual({ months: [], ownerLate: [], contractorMissing: [], contractorLate: [], empty: null })
     expect(check('residential', ['bad', '2026-08', '2026-08'], []).months.map((m) => m.month)).toEqual(['2026-08'])
   })
 
@@ -123,7 +123,7 @@ describe('the check in short sentences that still say which copy, for the notice
     }
   })
   it('keeps the long lines for a check whose months carry no row to read', () => {
-    const bare = { months: [], ownerLate: ['2026-07'], contractorMissing: [], contractorLate: [] }
+    const bare = { months: [], ownerLate: ['2026-07'], contractorMissing: [], contractorLate: [], empty: null }
     expect(lienNoticeCheckShortLines(bare)).toEqual(lienNoticeCheckLines(bare))
   })
   it('follows the plain-words rules, and each sentence is shorter than the line it stands for', () => {
@@ -144,5 +144,41 @@ describe('the months an affidavit swears, as keys', () => {
     expect(lienAffidavitSwornMonths({ ...facts, workDays: days, filings })).toEqual(['2026-07', '2026-08'])
     expect(buildLienAffidavitFieldsForJob({ ...facts, workDays: days, filings }).workMonthsWords).toBe('July and August 2026')
     expect(lienAffidavitSwornMonths({ ...facts, isSub: false, workDays: days, filings })).toEqual([])
+  })
+})
+
+describe('a paper that swears no month while a notice is on record (punch list #356)', () => {
+  const EARLIER = ['2026-04', '2026-06', '2026-07', '2026-08']
+  const onRecord = [notice(EARLIER, [['owner', '2026-09-22']])]
+  const empty = lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: onRecord, work: ['2026-09'] })
+
+  it('names the job’s work months and the months the notice names, side by side', () => {
+    expect(empty.empty).toEqual({ work: ['2026-09'], named: EARLIER })
+    expect(empty.months).toEqual([])
+    expect(lienNoticeCheckFlags(empty)).toBe(true)
+    expect(lienNoticeCheckLines(empty)).toEqual(['No recorded notice names a month this job was worked.', 'Its work was in September 2026.', 'The notice on record names April, June, July and August 2026.'])
+    expect(lienNoticeCheckEmptyLines(empty)).toEqual(lienNoticeCheckLines(empty))
+    expect(lienNoticeCheckRowLine(empty)).toBe('No recorded notice names a month this job was worked.')
+    expect(lienNoticeCheckShortLines(empty)).toEqual(['No recorded notice names a month this job was worked.', 'Its work was in September 2026.', 'The notice on record names April, June, July and August 2026.'])
+  })
+
+  it('reads a run of work months as a span on the short lines', () => {
+    const c = lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: [notice(['2026-01', '2026-02', '2026-03'], [['owner', '2026-04-10']])], work: ['2026-09', '2026-10', '2026-11'] })
+    expect(lienNoticeCheckShortLines(c)).toEqual(['No recorded notice names a month this job was worked.', 'Its work was in September to November 2026.', 'The notice on record names January to March 2026.'])
+  })
+
+  it('is not raised when the paper names a month, when no notice is on record, with no work months, or on a job contracted with the owner', () => {
+    expect(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: ['2026-08'], filings: onRecord, work: ['2026-08'] }).empty).toBeNull()
+    expect(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: [], work: ['2026-09'] }).empty).toBeNull()
+    expect(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: onRecord }).empty).toBeNull()
+    expect(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: onRecord, work: [] }).empty).toBeNull()
+    expect(lienAffidavitNoticeCheck({ isSub: false, propertyKind: 'residential', months: [], filings: onRecord, work: ['2026-09'] }).empty).toBeNull()
+    // A voided notice names nothing.
+    expect(lienAffidavitNoticeCheck({ isSub: true, propertyKind: 'residential', months: [], filings: [notice(EARLIER, [['owner', '2026-09-22']], { voided_at: '2026-10-01T00:00:00Z' })], work: ['2026-09'] }).empty).toBeNull()
+    expect(lienNoticeCheckEmptyLines({ empty: null })).toEqual([])
+  })
+
+  it('says it in plain words', () => {
+    for (const s of [...lienNoticeCheckLines(empty), ...lienNoticeCheckShortLines(empty), lienNoticeCheckRowLine(empty)]) expect(plainWordsFailures(s), s).toEqual([])
   })
 })

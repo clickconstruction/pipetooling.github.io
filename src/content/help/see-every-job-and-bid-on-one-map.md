@@ -70,4 +70,8 @@ While the geocoder is still working, the line reads **Placing 4 addresses…** i
 
 ## Precincts
 
-The office keeps a map of the justice precincts, the courts a small claim is filed in. Tap {{chip:blue|Precincts}} at the end of the chips to draw them. Each precinct shows as a tinted shape with its county and number on hover. With the layer on, a place's card names its justice court, such as **Bexar JP Pct 2**. An address within about a hundred metres of a line names both precincts. The office draws and fixes the precincts in the Court areas mode. See [draw the justice precincts on the map](/help/draw-the-justice-precincts-on-the-map).
+The office keeps a map of the justice precincts, the courts a small claim is filed in. Tap {{chip:blue|Precincts}} near the end of the chips to draw them. Each precinct shows as a tinted shape with its county and number on hover. With the layer on, a place's card names its justice court, such as **Bexar JP Pct 2**. An address within about a hundred metres of a line names both precincts. The office draws and fixes the precincts in the Court areas mode. See [draw the justice precincts on the map](/help/draw-the-justice-precincts-on-the-map).
+
+## Painted maps
+
+The last chip is {{chip:gray|Painted maps}}. Tap it to draw every painted map where it is. Hold the pointer over a line to read its name and length. Tap a line or a dot to open that map. See [paint a map of the way in to a job](/help/paint-a-map).

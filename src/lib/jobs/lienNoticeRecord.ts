@@ -400,7 +400,8 @@ export function lienNoticeRecord(input: {
   if (!input.isSub) return null
   const filings = input.filings ?? []
   const notices = lienNoticeRecordNotices(filings)
-  const check = lienAffidavitNoticeCheck({ isSub: true, propertyKind: input.propertyKind, months: input.swornMonths, filings })
+  // The job's work months ride along (punch list #356), so a paper that swears none while a notice is on record says why on the record's flags too.
+  const check = lienAffidavitNoticeCheck({ isSub: true, propertyKind: input.propertyKind, months: input.swornMonths, filings, work: lienNoticeRecordSpanMonths(input.workStart, input.workEnd) })
   const months = check.months.map((m): LienNoticeRecordMonth => ({
     month: m.month,
     dueOn: m.dueOn,

@@ -117,6 +117,7 @@ import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type Ca
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
+import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
@@ -1737,8 +1738,9 @@ export default function LienDesk({
       // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
-      const swornMonths = lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings })
-      const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings })
+      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd }
+      const swornMonths = lienAffidavitSwornMonths({ ...swornFacts, filings })
+      const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings, work: lienAffidavitWorkMonths(swornFacts) })
       const noticeLines = lienNoticeCheckLines(noticeCheck)
       // A month from a bill or the job's creation (v2.7224) is flagged on both sheets, never held: neither reads On record for it.
       const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)

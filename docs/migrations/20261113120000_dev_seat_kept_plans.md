@@ -34,3 +34,5 @@ It answers `{ kept_id, person, verb, state, waiting }`.
 Held by `npm run test:pg:dev-seat-kept-plans` (`supabase/tests/dev_seat_kept_plans/`, in `scripts/sql-beds.txt`): 36 checks. Before the PR the scenario ran on a local Postgres 15 with stand-in tables and the migration applied twice. Seven mutants were tried: six failed it (keeping a counsel-only plan, a change to a counsel-only document, another person's file, a file's bytes, a table left writable, a door with no dev gate). The seventh, a door that lets a plan be decided twice, still passes, because the table's guard refuses it in the same words.
 
 Deploy order: push this migration. No client reads the table and no function is redeployed.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #7938.

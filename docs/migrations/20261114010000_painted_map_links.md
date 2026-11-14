@@ -33,3 +33,5 @@ The client's Share sheet reads this table and calls the function, so push this m
 
 - **Locally, on a throwaway Postgres 15 with stub tables** (Docker was not available on this Mac): the file applied twice with no change the second time, and the scenario's assertions that do not need the fences passed.
 - **The bed** `supabase/tests/painted_maps/30_links.sql` (run by `npm run test:pg:painted-maps` after the map's own scenario) on the real schema in CI: the fences and the grants; the service role makes a link, counts an open and ends a link; a hash that is not a hash, a hash used twice and a link on no map are refused; the map's maker, a helper on the job's crew, a helper on no crew and someone who left each read what they should; nobody signed in makes, changes or removes a link; a map thrown away takes its links.
+
+**Applied** to prod by 2026-11-14: the dev seat's `check_migration_ledger` read 1291 applied, this version among them, against 1291 files in `supabase/migrations/` (read in the docs pass after #7936); types regenerated in #8073.
