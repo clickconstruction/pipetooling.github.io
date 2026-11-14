@@ -458,6 +458,51 @@ the opened stage; the answering stays on the Job tab's checklist strip.
   reads, but a 13 px version on a phone costs nothing. Documents' *Add a file* picker stays the
   phone's own file sheet, which already offers the camera.
 
+### Every press on Documents, and what it opens (the owner: "should we go through what clicking every button opens?")
+
+Read from the tab's code, 2026-11-14. **Window** is a desk-sized window over the job window; **sheet** rises from
+the foot on a phone; **tab** opens in the phone's browser; **picker** is the phone's own file sheet, which
+offers the camera, the photo library and Files.
+
+| Section | Press | Opens | At 375 px |
+|---|---|---|---|
+| Plans | + New set | The plan set form (a sheet) | fine |
+| Plans | Add our as-built | The picker, PDFs and images, into the Plans folder | fine |
+| Plans | Open ↗ | The set in Drive, a tab | fine |
+| Plans | Keep a paper · We are owed a paper | The paper form (a sheet) · a mark with a note | fine |
+| Pay applications | New application · Open application N | The AIA G702/G703 **window** | a desk window: measure |
+| Pay applications | Open the file | Downloads the workbook as it went out | fine |
+| Bills | the bill's name · PDF | View bill, a window · the invoice in a tab | the window: measure |
+| Contract | Contract window · a signed contract | The Contract **window** · the signed page in a tab | a desk window: measure |
+| Test reports | a sent report · a draft | The PDF in a tab · the Test report **window** | a desk window: measure |
+| Lien paper | Lien window · a release · a notice or letter | The Lien **window** · the signed page · the Lien window | a desk window: measure |
+| Hours statements · Statements of charges | the row · Print | The statement's PDF · the print window | print is a desk act |
+| Stage checklists | a stage · Print the checklists | That stage's read-out in place · the print window | fine · print is a desk act |
+| Sent from this job | Open the file | Downloads the copy | fine |
+| Job folders | the folder's name · Add a file · Make the job's Drive folders | Drive in a tab · the picker, then a panel with *Add it to Plans* · makes the folders | fine, see below |
+| In the folders · Index | a file · Index the folder | Drive in a tab · the index run | fine |
+| Photos | the line | The job's photos window, Add a photo first | fine |
+
+So four presses open a desk window at phone width: the AIA application, View bill, the Contract window, the
+Test report window, the Lien window. None of them was drawn. Each needs a measure of its own before
+H is called done; a window that cannot be used at 375 px gets a phone sheet or a *This opens at a
+desk* line with the one thing a phone can do (read the PDF). The same inventory for Edit, Bill and
+Costs goes into each of E, F and G's fragments as they are built, since every press those tabs
+carry is a door the PR touches.
+
+### The job folders on a phone (the owner: "now that the app manages each, should we make the buttons of upload and then offering the customer to take a photo or upload a file or bring them to the google drive easier?")
+
+Yes. Today a folder row is its name, which opens Drive in a tab, and a small *Add a file*, which
+opens the picker and then a panel; the picker already holds the camera on an iPhone, but nothing
+says so, and a photo taken there is sent as a file with its camera name. The row becomes a 44 px
+row with the folder's name and **Add ▾** at its right, and Add opens a sheet of three 48 px rows:
+**Take a photo** (the camera, as the materials page's Photo press opens it, the shot shrunk and
+named the way the photo sweep names one, *2026-11-14 Robert · Plans.jpg*), **Choose a file** (the
+picker, then the same panel with *Add it to Plans*), and **Open in Google Drive** (the tab). For
+Customer Pictures the sheet's first row is the same camera the photo banner's Add a photo opens,
+so a photo goes into the same place either way. The three choices live in the sheet, not on the
+row: four folders with three presses each is twelve presses on one screen.
+
 ### The questions for the owner, pass 3
 
 1. **D now, as its own small PR?** It is the one change every tab shares and the cheapest.
@@ -465,6 +510,9 @@ the opened stage; the answering stays on the Job tab's checklist strip.
    line items first? The pick above is the money first.
 3. **E's status rail**: off the Edit tab on a phone, since the bar's Status ▾ is the same rail?
 4. **E, F, G, H as one PR each, in that order?**
+5. **The folders' Add ▾ sheet** (Take a photo · Choose a file · Open in Google Drive) as part of H?
+6. **The five desk windows** Documents opens (the AIA application, View bill, Contract, Test report, Lien):
+   measure each at 375 px as its own pass, or leave them to a desk with a *This opens at a desk* line?
 
 ## The plan
 
