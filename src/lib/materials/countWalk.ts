@@ -8,9 +8,19 @@
  */
 import type { ContainerLine } from './onSite'
 
-/** The lines a walk visits, in the box's own order: every line with parts on hand when the walk starts. */
-export function countWalkKeys(lines: ReadonlyArray<Pick<ContainerLine, 'partKey' | 'onHand'>>): string[] {
-  return lines.filter((l) => l.onHand > 0).map((l) => l.partKey)
+/**
+ * The lines a walk visits, in the box's own order: every line with parts on hand when the walk starts, and every
+ * line with a Can't find on it (v2.7252). A line pressed Can't find down to none was drawn in the box with its mark
+ * and left out of the walk, so no count on the phone could clear the mark: only the office's Correct… could. A box
+ * whose only line was such a one had no Count this box at all.
+ */
+export function countWalkKeys(lines: ReadonlyArray<Pick<ContainerLine, 'partKey' | 'onHand' | 'cannotFindSinceCount'>>): string[] {
+  return lines.filter((l) => l.onHand > 0 || l.cannotFindSinceCount > 0).map((l) => l.partKey)
+}
+
+/** What the walk says on a line that carries a Can't find: how many, and that the count is what clears it. Empty when it carries none. */
+export function countWalkCantFindWords(cannotFind: number): string {
+  return cannotFind > 0 ? `${cannotFind} marked can't find. Your count clears the mark.` : ''
 }
 
 /**

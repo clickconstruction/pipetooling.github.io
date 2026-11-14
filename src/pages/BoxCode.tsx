@@ -17,7 +17,7 @@ import { BoxPublicPage } from '../components/materials/BoxPublicPage'
 import { useAuth } from '../hooks/useAuth'
 import { boxCodeWords, normalizeBoxCode } from '../lib/materials/labels'
 import { resolveBoxCode } from '../lib/materials/onSiteStore'
-import { blankStickerTitle, lostStickerDetail, lostStickerTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
+import { blankStickerTitle, lostStickerDetail, lostStickerTitle, NO_BOX_DETAIL, noBoxTitle, outOfReachStickerTitle, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 export default function BoxCode() {
@@ -49,8 +49,8 @@ function wordsFor(found: CodeLookup, words: string, wanted: string, error: strin
       return { title: outOfReachStickerTitle(found.sticker.number), detail: 'Ask the office to add you to that job.' }
     default:
       return {
-        title: wanted ? `${words} is not a box on any job` : 'That is not a box code',
-        detail: 'The label may be from a box that was retired. Open On site and find the box by its stencil.',
+        title: wanted ? noBoxTitle(words) : 'That is not a box code',
+        detail: wanted ? NO_BOX_DETAIL : 'Open On site and find the box by its stencil.',
       }
   }
 }

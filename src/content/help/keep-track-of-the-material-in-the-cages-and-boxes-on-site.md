@@ -50,7 +50,7 @@ Every press but Short is one row in the ledger. A wrong press gets a new press. 
 
 ## Count a box
 
-A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time.
+A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
 
 Tap **25 is right** when the number matches. Type the number when it does not. Tap **Skip this line** to leave a line as it is. Tap **Not in A1 any more** when the part is gone from the box.
 

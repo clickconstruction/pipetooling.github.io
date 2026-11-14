@@ -312,3 +312,16 @@ describe('the function, the server and the docs', () => {
     expect(MAP).toContain('refile_box_photos')
   })
 })
+
+describe('the box photo sweep takes what has not failed first (v2.7252)', () => {
+  it('orders the waiting rows by no reason first, then oldest, so twenty stuck photos never hold a newer one', () => {
+    const at = FUNCTION.indexOf("table: 'job_box_photos',")
+    const source = FUNCTION.slice(at, FUNCTION.indexOf("failWhyColumn: 'fail_why'", at))
+    const byReason = source.indexOf(".order('fail_why', { ascending: true, nullsFirst: true })")
+    const byAge = source.indexOf(".order('taken_at', { ascending: true })")
+    expect(byReason).toBeGreaterThan(-1)
+    expect(byAge).toBeGreaterThan(byReason)
+    expect(source).toContain('.limit(BOX_PHOTO_BATCH)')
+    expect(EDGE).toContain('v2.7252')
+  })
+})
