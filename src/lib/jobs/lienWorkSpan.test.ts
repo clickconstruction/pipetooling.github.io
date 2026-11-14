@@ -7,9 +7,12 @@ describe('lienWorkSpan (v2.6061) — the affidavit’s paragraph 5 swears the re
     // The desk's month beside the days changes nothing once the days are known.
     expect(lienWorkSpan({ first_work_date: '2026-05-04', last_work_date: '2026-07-17' }, { lastMonth: '2026-08', todayYmd: '2026-10-29' })).toMatchObject({ workStart: '2026-05-04', workEnd: '2026-07-17' })
   })
-  it('a last day set by hand ends the span when it is the later; the hours end it when they are', () => {
+  it('a last day set by hand ends the span, also when approved hours come after it (v2.7193, punch list #335, row 1)', () => {
     expect(lienWorkSpan({ first_work_date: '2026-05-04', last_work_date: '2026-07-17', lien_last_work_on: '2026-08-14' })).toEqual({ workStart: '2026-05-04', workEnd: '2026-08-14', startSource: 'hours', endSource: 'hand' })
-    expect(lienWorkSpan({ first_work_date: '2026-05-04', last_work_date: '2026-07-17', lien_last_work_on: '2026-06-01' })).toMatchObject({ workEnd: '2026-07-17', endSource: 'hours' })
+    // Hours approved after the hand day: the day set by hand counts. It read through Jul 17, the later hours.
+    expect(lienWorkSpan({ first_work_date: '2026-05-04', last_work_date: '2026-07-17', lien_last_work_on: '2026-06-01' })).toEqual({ workStart: '2026-05-04', workEnd: '2026-06-01', startSource: 'hours', endSource: 'hand' })
+    // Every approved hour is after the hand day: the span folds to the hand day's own month.
+    expect(lienWorkSpan({ first_work_date: '2026-07-02', last_work_date: '2026-07-17', lien_last_work_on: '2026-06-12' })).toEqual({ workStart: '2026-06-01', workEnd: '2026-06-12', startSource: 'month', endSource: 'hand' })
     expect(lienWorkSpan({ first_work_date: '2026-05-04', last_work_date: '2026-07-17', lien_last_work_on: '2026-07-17' })).toMatchObject({ workEnd: '2026-07-17', endSource: 'hand' })
   })
   it('a job with a by-hand last day and no sessions: the first of that month through the day', () => {

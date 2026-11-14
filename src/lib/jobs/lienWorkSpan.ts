@@ -2,10 +2,14 @@
  * The span of the work on a job, for the § 53.054 affidavit's paragraph 5 (v2.6061): the day the
  * work began through the day it ended, as the sworn paper states it. Until v2.6061 the draft swore
  * one day, the 28th of the last month worked, as both ends. Pure. The days come from the job in the
- * order the Lien desk trusts them: the approved clock sessions (`jobs_ledger.first_work_date` and
- * `last_work_date`, trigger-kept), the last day set by hand (`lien_last_work_on`, v2.4676) when it
- * is the later, and only then the months the desk knows, the first to the last day of them, never
- * one day. A month still running ends today on the paper, never on a day that has not come.
+ * order the Lien desk trusts them: the last day set by hand (`lien_last_work_on`, v2.4676) ends the
+ * span when there is one, else the approved clock sessions do (`jobs_ledger.first_work_date` and
+ * `last_work_date`, trigger-kept), and only then the months the desk knows, the first to the last day
+ * of them, never one day. A month still running ends today on the paper, never on a day that has not come.
+ *
+ * Until v2.7193 (punch list #335, row 1) the hand day ended the span only when it was the later of the two, so
+ * hours approved after it moved the period the paper swears. The owner's reading of 2026-11-13: the day
+ * set by hand counts (`lienClockMonths` in `lienLastWorkDay.ts` is the rule for the months).
  */
 
 export type LienWorkSpanJob = {
@@ -13,7 +17,7 @@ export type LienWorkSpanJob = {
   first_work_date?: string | null
   /** 'YYYY-MM-DD' — the last approved clock day (`jobs_ledger.last_work_date`). */
   last_work_date?: string | null
-  /** The last day of work set by hand (v2.4676); the later of it and the clock hours ends the span. */
+  /** The last day of work set by hand (v2.4676); when set it ends the span, whatever the clock hours say after it. */
   lien_last_work_on?: string | null
 }
 
@@ -69,11 +73,11 @@ export function lienWorkSpan(job: LienWorkSpanJob | null | undefined, months: Li
   const hours = dayOf(job?.last_work_date)
   const hand = dayOf(job?.lien_last_work_on)
 
-  // The end: the later of the day set by hand and the clock hours' last day (the desk's rule — the RPC takes the
-  // later month, and a typed day may never be earlier than the hours), else the last day of the last month known.
+  // The end: the day set by hand when there is one (the owner's reading: hours approved after it do not move it),
+  // else the clock hours' last day, else the last day of the last month known.
   let workEnd = ''
   let endSource: LienWorkSpanEndSource = 'none'
-  if (hand && (!hours || hand >= hours)) {
+  if (hand) {
     workEnd = hand
     endSource = 'hand'
   } else if (hours) {
