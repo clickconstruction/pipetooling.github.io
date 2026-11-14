@@ -229,7 +229,8 @@ export function affidavitDraftDryRun(p: AffidavitDraftPayload, world: AffidavitD
   const askFirst = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: sworn, filings: world.filings }))
   const claim = cents(claimed.claim)
   const beyondDesk = entry.daysLeft > AFFIDAVIT_DESK_LEAD_DAYS
-  const monthSource = entry.lastMonthByHand ? 'the last day of work set by hand' : entry.lastMonthFromCreation ? 'the month the job was made, since it has no approved hours' : 'the approved clock hours'
+  // A job with no approved hours is dated from its bill when it has one (v2.7224), else from the day it was made.
+  const monthSource = entry.lastMonthByHand ? 'the last day of work set by hand' : entry.lastMonthFromBill ? 'the job’s bill, since it has no approved hours' : entry.lastMonthFromCreation ? 'the month the job was made, since it has no approved hours' : 'the approved clock hours'
   return {
     ok: true,
     write,

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent, SubPaymentExtras } from '../types/laborJob'
+import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent, SubPaymentExtras, SubSendingInput, SubSendingResult } from '../types/laborJob'
+import { formatErrorMessage } from '../utils/errorHandling'
 import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
@@ -45,6 +46,8 @@ export function useSubLaborLedger({
    */
   const [laborJobsLoadedOnce, setLaborJobsLoadedOnce] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
+  /** v2.7235: each roster person's credit, the sum of their `sub_credit_entries`. Empty until that table exists. */
+  const [subCreditByPersonId, setSubCreditByPersonId] = useState<Map<string, number>>(new Map())
 
   async function loadLaborJobs() {
     if (!authUserId) return
@@ -88,7 +91,14 @@ export function useSubLaborLedger({
         // v2.7176: `method` and `method_ref` come from migration 20261113180000. Until that is pushed the database
         // refuses their names, and a refused read here would draw every sheet as unpaid. So a refusal reads the row
         // as it was before the two columns: the payments still load, and only the method is missing.
+        // v2.7235: `sending_id` comes from migration 20261114020000, and is asked for first by the same rule.
         (async () => {
+          const withSending = await supabase
+            .from('people_labor_job_payments')
+            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref, sending_id' as 'id, job_id, amount, memo, created_at, payment_date')
+            .in('job_id', jobIds)
+            .order('sequence_order', { ascending: true })
+          if (!withSending.error) return withSending
           const withMethod = await supabase
             .from('people_labor_job_payments')
             .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref' as 'id, job_id, amount, memo, created_at, payment_date')
@@ -174,10 +184,40 @@ export function useSubLaborLedger({
           eventsByJob.get(sheetId)!.push(ev)
         }
       }
+      type PaymentRead = { job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null; method?: string | null; method_ref?: string | null; sending_id?: string | null }
+      const paymentRows = (paymentsData ?? []) as unknown as PaymentRead[]
+      // v2.7235: each sending's number and each person's credit. Both tables come from migration 20261114020000,
+      // so a refused read means it is not pushed yet: no numbers, no credit, and every payment still loads.
+      const sendingIds = [...new Set(paymentRows.map((p) => p.sending_id ?? '').filter(Boolean))]
+      const [sendingsRes, creditsRes] = await Promise.all([
+        sendingIds.length > 0 ? supabase.from('sub_payment_sendings' as never).select('id, number').in('id', sendingIds) : Promise.resolve({ data: [] as unknown[], error: null }),
+        supabase.from('sub_credit_entries' as never).select('person_id, amount, payment_id'),
+      ])
+      const sendingNoById = new Map<string, number>()
+      for (const r of ((sendingsRes as { data: unknown[] | null }).data ?? []) as Array<{ id: string; number: number | string }>) sendingNoById.set(r.id, Number(r.number))
+      const creditKeptByPayment = new Map<string, number>()
+      const creditByPerson = new Map<string, number>()
+      for (const r of ((creditsRes as { data: unknown[] | null }).data ?? []) as Array<{ person_id: string; amount: number | string; payment_id: string | null }>) {
+        const amount = Number(r.amount) || 0
+        creditByPerson.set(r.person_id, Math.round(((creditByPerson.get(r.person_id) ?? 0) + amount) * 100) / 100)
+        if (amount > 0 && r.payment_id) creditKeptByPayment.set(r.payment_id, amount)
+      }
+      setSubCreditByPersonId(creditByPerson)
       const paymentsByJob = new Map<string, LaborJobPayment[]>()
-      for (const p of (paymentsData ?? []) as unknown as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null; method?: string | null; method_ref?: string | null }>) {
+      for (const p of paymentRows) {
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
-        paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date, method: p.method ?? null, method_ref: p.method_ref ?? null })
+        paymentsByJob.get(p.job_id)!.push({
+          id: p.id,
+          amount: Number(p.amount),
+          memo: p.memo,
+          created_at: p.created_at,
+          payment_date: p.payment_date,
+          method: p.method ?? null,
+          method_ref: p.method_ref ?? null,
+          sending_id: p.sending_id ?? null,
+          sending_no: p.sending_id ? (sendingNoById.get(p.sending_id) ?? null) : null,
+          credit_kept: creditKeptByPayment.get(p.id) ?? null,
+        })
       }
       setLaborJobNamesByJobId(buildLaborJobNamesById((ledgerJobs ?? []) as Array<{ id: string; job_name: string | null }>))
       // Resolve project names for anchored sheets (display only, fail-soft).
@@ -361,7 +401,43 @@ export function useSubLaborLedger({
     return true
   }
 
+  /** A write that leans on migration 20261114020000: PostgREST answers PGRST202 for a function it does not have yet. */
+  const sendingRefusal = (err: { code?: string; message?: string }): SubSendingResult => ({ ok: false, missing: err.code === 'PGRST202', message: formatErrorMessage(err, 'That could not be saved.') })
+
+  /**
+   * v2.7235: record one sending. A payment row per sheet, all under one number that is never reused, and whatever
+   * was sent past those sheets kept as the person's credit, in one statement (`record_sub_sending`).
+   */
+  async function recordSubSending(input: SubSendingInput): Promise<SubSendingResult> {
+    setError(null)
+    const { error: err } = await supabase.rpc('record_sub_sending' as never, {
+      p_person_id: input.personId,
+      p_lines: input.lines.map((l) => ({ job_id: l.jobId, amount: l.amount })),
+      p_credit: input.credit,
+      p_payment_date: input.paymentDate?.trim() || null,
+      p_method: input.method,
+      p_method_ref: input.methodRef?.trim() || null,
+      p_memo: input.memo?.trim() || null,
+      p_hidden_from_sub: input.hiddenFromSub,
+    } as never)
+    if (err) return sendingRefusal(err)
+    await loadLaborJobs()
+    return { ok: true }
+  }
+
+  /** v2.7235: pay a sheet from a person's credit. No money leaves: the row's method is `credit` (`apply_sub_credit`). */
+  async function applySubCredit(personId: string, jobId: string, amount: number, paymentDate: string | null): Promise<SubSendingResult> {
+    setError(null)
+    const { error: err } = await supabase.rpc('apply_sub_credit' as never, { p_person_id: personId, p_job_id: jobId, p_amount: amount, p_payment_date: paymentDate?.trim() || null, p_memo: null } as never)
+    if (err) return sendingRefusal(err)
+    await loadLaborJobs()
+    return { ok: true }
+  }
+
   return {
+    subCreditByPersonId,
+    recordSubSending,
+    applySubCredit,
     laborJobs,
     setLaborJobs,
     laborJobNamesByJobId,

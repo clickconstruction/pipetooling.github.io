@@ -4,7 +4,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { daysBetweenYmd } from './billedExpectedPay.ts'
 import { LIEN_DESK_SENT_DAYS, PUBLIC_OWNER_DESK_SENTENCE, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk.ts'
 import { ownerKind } from './ownerConfirm.ts'
-import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienDesk.ts'
+import { monthFromBill, monthIsStandIn, type LienMonthSource, monthSetByHand } from './lienDesk.ts'
 import { HOMESTEAD_QUESTION_GATE_LABEL, homesteadAnsweredOnRow, homesteadQuestionOpen } from '../customers/homesteadAnswer.ts'
 
 /**
@@ -163,6 +163,8 @@ export type LienAffidavitEntry = {
   lastMonth: string
   /** last_month is the job's creation month — no approved hours (v2.3747). */
   lastMonthFromCreation: boolean
+  /** That stand-in month came from a sent, unpaid bill (v2.7224), not the job's creation. */
+  lastMonthFromBill?: boolean
   /** last_month is the last day of work set by hand (v2.4676). */
   lastMonthByHand?: boolean
   deadline: string
@@ -244,7 +246,8 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
       jobId: r.job_id,
       isSub: r.is_sub,
       lastMonth: r.last_month,
-      lastMonthFromCreation: monthFromCreation(r),
+      lastMonthFromCreation: monthIsStandIn(r),
+      lastMonthFromBill: monthFromBill(r),
       lastMonthByHand: monthSetByHand(r),
       deadline: r.deadline,
       daysLeft,

@@ -1,3 +1,4 @@
+import type { LienBill } from '../lib/jobs/lienBillMonths'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useForecastWorkMonths } from './useForecastWorkMonths'
@@ -18,7 +19,7 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
  * never disagree. Null until the reads land; `hasPaper` says whether anything is out.
  */
 export function useJobLienTimeline(
-  job: { id: string; gc_customer_id: string | null; customer_address_id: string | null; created_at: string | null; last_work_date: string | null; lien_last_work_on?: string | null; lien_contract_ended_on?: string | null; revenue?: number | null; payments_made?: number | null } | null,
+  job: { id: string; gc_customer_id: string | null; customer_address_id: string | null; created_at: string | null; last_work_date: string | null; lien_last_work_on?: string | null; lien_contract_ended_on?: string | null; invoices?: ReadonlyArray<LienBill> | null; revenue?: number | null; payments_made?: number | null } | null,
   enabled: boolean,
 ): { timeline: LienTimeline | null; hasPaper: boolean; loading: boolean } {
   const [filings, setFilings] = useState<JobLienFilingRow[] | null>(null)
@@ -90,7 +91,7 @@ export function useJobLienTimeline(
       workMonths: byJob?.[job.id] ?? null,
       filings,
       // v2.7193: the day set by hand reaches this strip too (it read the clock hours and the creation day only), and it counts (punch list #335, row 1).
-      job: { id: job.id, created_at: job.created_at ?? null, last_work_date: job.last_work_date ?? null, lien_last_work_on: job.lien_last_work_on ?? null, lien_contract_ended_on: job.lien_contract_ended_on ?? null },
+      job: { id: job.id, created_at: job.created_at ?? null, last_work_date: job.last_work_date ?? null, lien_last_work_on: job.lien_last_work_on ?? null, lien_contract_ended_on: job.lien_contract_ended_on ?? null, invoices: job.invoices ?? null },
       isSub: Boolean(job.gc_customer_id),
       propertyKind,
       openBalance: jobOpenBalance(job),

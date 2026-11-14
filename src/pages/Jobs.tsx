@@ -332,6 +332,9 @@ export default function Jobs() {
     moveLaborJobPayment,
     removeLaborJobPayment,
     restoreLaborJobPayment,
+    recordSubSending,
+    applySubCredit,
+    subCreditByPersonId,
   } = useSubLaborLedger({
     authUserId: authUser?.id,
     authUserName: authProfileName,
@@ -2300,6 +2303,12 @@ export default function Jobs() {
         deleteLaborJobPayment={deleteLaborJobPayment}
         updateLaborJobPayment={updateLaborJobPayment}
         onRequestRemove={(payment) => subLaborPaymentMoveRemoveRef.current?.openRemove(payment)}
+        recordSubSending={recordSubSending}
+        applySubCredit={applySubCredit}
+        laborJobs={laborJobs}
+        laborJobAssigneesByJobId={laborJobAssigneesByJobId}
+        laborJobNamesByJobId={laborJobNamesByJobId}
+        subCreditByPersonId={subCreditByPersonId}
       />
       <SubLaborPaymentMoveRemoveModals
         ref={subLaborPaymentMoveRemoveRef}

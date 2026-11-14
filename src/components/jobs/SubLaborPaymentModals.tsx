@@ -1,11 +1,15 @@
-import { forwardRef, useImperativeHandle, useState, type ForwardedRef } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useState, type ForwardedRef } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import type { SubLaborBackchargeTarget, SubLaborPaymentTarget, SubPaymentExtras } from '../../types/laborJob'
+import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget, SubPaymentExtras, SubSendingInput, SubSendingResult } from '../../types/laborJob'
 import { AmountPaidField, PaidDateField, PayMethodPicker, PaymentNoteField, RecordPaymentFooter, RecordPaymentHelp, RecordPaymentShell, RecordPaymentSummary } from '../pay/RecordPaymentPieces'
-import { isSubPayMethod, planSubPayment, subPayMethodRefField, subPayMethodWrite, subPaymentAfterWords, subPaymentAmountDefault, subPaymentSummaryWords, SUB_PAY_METHOD_OPTIONS, type SubPayMethod } from '../../lib/subWorkOrders/subPaymentWindow'
+import { isSubPayMethod, planSubPayment, subPayMethodRefField, subPayMethodWrite, subPaymentAmountDefault, subPaymentSummaryWords, SUB_PAY_FROM_CREDIT, SUB_PAY_METHOD_OPTIONS, type SubPayMethod } from '../../lib/subWorkOrders/subPaymentWindow'
+import { creditOfferWords, creditUsableOn, planSubSending, sendingAfterWords, sendingContext, sendingSpillLines, type SendingPlan } from '../../lib/subWorkOrders/subSending'
+import { sendingSheetsFrom } from '../../lib/subWorkOrders/sendingSheets'
+import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
+import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -64,6 +68,26 @@ export type SubLaborPaymentModalsProps = {
   updateLaborJobPayment: (paymentId: string, amount: number, memo: string | null, isBackcharge: boolean, paymentDate: string | null, extras?: SubPaymentExtras) => Promise<void>
   /** v2.3562: when set, the Edit dialog's Remove hands the row to the reason dialog instead of deleting on a confirm. */
   onRequestRemove?: (payment: EditingPaymentTarget) => void
+  /**
+   * v2.7235: with these the Record payment window plans a sending. An amount past the sheet fills the sub's other
+   * open sheets, then becomes their credit, and a credit they hold is offered first. Left out, an amount past the
+   * sheet is refused as it was.
+   */
+  recordSubSending?: (input: SubSendingInput) => Promise<SubSendingResult>
+  applySubCredit?: (personId: string, jobId: string, amount: number, paymentDate: string | null) => Promise<SubSendingResult>
+  laborJobs?: readonly LaborJob[]
+  laborJobAssigneesByJobId?: ReadonlyMap<string, readonly SubLaborSheetAssignee[]>
+  laborJobNamesByJobId?: Record<string, string>
+  subCreditByPersonId?: ReadonlyMap<string, number>
+}
+
+const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/** The gate a caller with no sendings uses, in the planner's shape. */
+function legacyPlan(amountText: string, sheet: { id: string; label: string; remaining: number }): SendingPlan {
+  const plan = planSubPayment(amountText, sheet.remaining)
+  if (!plan.ok) return { ok: false, reason: plan.reason, error: plan.error }
+  return { ok: true, sent: plan.amount, lines: [{ jobId: sheet.id, label: sheet.label, amount: plan.amount, settles: plan.settles }], credit: 0, leaves: plan.leaves, spills: false }
 }
 
 function SubLaborPaymentModalsInner(
@@ -73,6 +97,12 @@ function SubLaborPaymentModalsInner(
     deleteLaborJobPayment,
     updateLaborJobPayment,
     onRequestRemove,
+    recordSubSending,
+    applySubCredit,
+    laborJobs,
+    laborJobAssigneesByJobId,
+    laborJobNamesByJobId,
+    subCreditByPersonId,
   }: SubLaborPaymentModalsProps,
   ref: ForwardedRef<SubLaborPaymentModalsHandle>,
 ) {
@@ -86,6 +116,15 @@ function SubLaborPaymentModalsInner(
   const [makePaymentMethod, setMakePaymentMethod] = useState<SubPayMethod | null>(null)
   const [makePaymentMethodRef, setMakePaymentMethodRef] = useState('')
   const [makePaymentHideMemo, setMakePaymentHideMemo] = useState(false)
+  // v2.7235: the extra past the sheet fills their other open sheets unless this is switched off, and a refusal from the server shows here.
+  const [makePaymentSpill, setMakePaymentSpill] = useState(true)
+  const [makePaymentError, setMakePaymentError] = useState<string | null>(null)
+  // Whose each sheet is needs the roster. It is read only while the window is open.
+  const { roster } = useRosterSubKinds(!!makePaymentLaborJob && !!recordSubSending)
+  const sendingSheets = useMemo(
+    () => (makePaymentLaborJob && recordSubSending && laborJobs ? sendingSheetsFrom(laborJobs, laborJobAssigneesByJobId ?? new Map(), laborJobNamesByJobId ?? {}, roster) : null),
+    [makePaymentLaborJob, recordSubSending, laborJobs, laborJobAssigneesByJobId, laborJobNamesByJobId, roster],
+  )
   const [backchargeLaborJob, setBackchargeLaborJob] = useState<SubLaborBackchargeTarget | null>(null)
   const [backchargeAmount, setBackchargeAmount] = useState('')
   const [backchargeMemo, setBackchargeMemo] = useState('')
@@ -126,6 +165,8 @@ function SubLaborPaymentModalsInner(
       setMakePaymentMethod(null)
       setMakePaymentMethodRef('')
       setMakePaymentHideMemo(false)
+      setMakePaymentSpill(true)
+      setMakePaymentError(null)
       setMakePaymentLaborJob(target)
     },
     openBackcharge: (target) => {
@@ -153,36 +194,98 @@ function SubLaborPaymentModalsInner(
         (() => {
           const target = makePaymentLaborJob
           const remaining = Math.max(0, target.outstanding)
-          const plan = planSubPayment(makePaymentAmount, remaining)
+const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
+          // The roster is still loading on the first paint: until it lands the sheet's sub is not known, so nothing is planned past the sheet.
+          const ctx = sendingSheets && roster.length > 0 ? sendingContext(target.id, sendingSheets, subCreditByPersonId) : null
+          const plan = recordSubSending ? planSubSending(makePaymentAmount, sheet, ctx, { spill: makePaymentSpill }) : legacyPlan(makePaymentAmount, sheet)
           const refField = subPayMethodRefField(makePaymentMethod)
+          const creditToUse = ctx?.personId && applySubCredit ? creditUsableOn(ctx.credit, remaining) : 0
           const close = () => {
             setMakePaymentLaborJob(null)
             setMakePaymentAmount('')
             setMakePaymentMemo('')
+            setMakePaymentError(null)
           }
           const record = async () => {
             if (!plan.ok) return
             setMakePaymentSaving(true)
-            await recordLaborJobPayment(target.id, plan.amount, makePaymentMemo.trim() || null, makePaymentDate.trim() || null, { ...subPayMethodWrite(makePaymentMethod, makePaymentMethodRef), hidden_from_sub: makePaymentHideMemo && !!makePaymentMemo.trim() })
+            setMakePaymentError(null)
+            const how = subPayMethodWrite(makePaymentMethod, makePaymentMethodRef)
+            const memo = makePaymentMemo.trim() || null
+            const date = makePaymentDate.trim() || null
+            const hidden = makePaymentHideMemo && !!memo
+            const plainInsert = () => recordLaborJobPayment(target.id, plan.sent, memo, date, { ...how, hidden_from_sub: hidden })
+            if (!recordSubSending) await plainInsert()
+            else {
+              const res = await recordSubSending({ personId: ctx?.personId ?? null, lines: plan.lines.map((l) => ({ jobId: l.jobId, amount: l.amount })), credit: plan.credit, paymentDate: date, method: how.method, methodRef: how.method_ref, memo, hiddenFromSub: hidden })
+              if (!res.ok) {
+                // The database does not have sendings yet. A payment that stays on its sheet is recorded as it always was.
+                if (res.missing && !plan.spills) await plainInsert()
+                else {
+                  setMakePaymentError(res.missing ? `Paying past one sheet is not switched on yet. Record up to ${usd(remaining)} on this sheet for now.` : res.message)
+                  setMakePaymentSaving(false)
+                  return
+                }
+              }
+            }
             setMakePaymentSaving(false)
             close()
           }
+          const payFromCredit = async () => {
+            if (!ctx?.personId || !applySubCredit || creditToUse <= 0) return
+            setMakePaymentSaving(true)
+            setMakePaymentError(null)
+            const res = await applySubCredit(ctx.personId, target.id, creditToUse, todayYmd())
+            setMakePaymentSaving(false)
+            if (res.ok) close()
+            else setMakePaymentError(res.missing ? 'Using a credit is not switched on yet.' : res.message)
+          }
+          const spillLines = sendingSpillLines(plan)
           return (
             <RecordPaymentShell title="Record payment" zIndex={760} testId="sub-record-payment">
               <RecordPaymentSummary>{subPaymentSummaryWords(target)}</RecordPaymentSummary>
+              {creditToUse > 0 ? (
+                <div data-sub-credit-offer style={{ margin: '0 0 0.9rem', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', lineHeight: 1.4, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{creditOfferWords(target.contractor, ctx?.credit ?? 0)}</span>
+                  <button type="button" disabled={makePaymentSaving} onClick={() => void payFromCredit()} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.3rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: makePaymentSaving ? 'default' : 'pointer' }}>
+                    Use {usd(creditToUse)} on this sheet
+                  </button>
+                </div>
+              ) : null}
               <AmountPaidField value={makePaymentAmount} onChange={setMakePaymentAmount} disabled={makePaymentSaving} />
               <RecordPaymentHelp>
                 <strong>Record payment</strong> records this amount on the sheet. A part payment is fine: what is left stays due, and the sheet reads Paid once nothing is left.
+                {recordSubSending ? ' An amount past the sheet goes to their other open sheets, and the rest is kept as their credit.' : ''}
               </RecordPaymentHelp>
-              {plan.ok ? (
-                <p data-sub-payment-after style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: plan.settles ? 'var(--text-green-700)' : 'var(--text-700)' }}>
-                  {subPaymentAfterWords(plan)}
+              {plan.ok && plan.spills ? (
+                <div data-sub-sending-plan style={{ margin: '-0.35rem 0 0.75rem', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', lineHeight: 1.45, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{usd(plan.sent)} is more than this sheet needs. It is recorded as one sending:</div>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
+                    {spillLines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  {ctx && ctx.others.length > 0 ? (
+                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: 6, color: 'var(--text-700)' }}>
+                      <input type="checkbox" checked={makePaymentSpill} disabled={makePaymentSaving} onChange={(e) => setMakePaymentSpill(e.target.checked)} />
+                      Put the extra on their other open sheets, oldest first
+                    </label>
+                  ) : null}
+                </div>
+              ) : plan.ok ? (
+                <p data-sub-payment-after style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: plan.leaves <= 0 ? 'var(--text-green-700)' : 'var(--text-700)' }}>
+                  {sendingAfterWords(plan)}
                 </p>
               ) : plan.reason === 'blank' ? null : (
                 <p role="alert" data-sub-payment-refusal={plan.reason} style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 6 }}>
                   {plan.error}
                 </p>
               )}
+              {makePaymentError ? (
+                <p role="alert" data-sub-payment-error style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                  {makePaymentError}
+                </p>
+              ) : null}
               <PaidDateField value={makePaymentDate} onChange={setMakePaymentDate} disabled={makePaymentSaving} />
               <PayMethodPicker
                 options={SUB_PAY_METHOD_OPTIONS}
@@ -252,6 +355,7 @@ function SubLaborPaymentModalsInner(
                 step={0.01}
                 value={editPaymentAmount}
                 onChange={(e) => setEditPaymentAmount(e.target.value)}
+                disabled={editingPayment.method === SUB_PAY_FROM_CREDIT}
                 placeholder="0"
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
@@ -265,7 +369,11 @@ function SubLaborPaymentModalsInner(
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
-            {editingPayment.isBackcharge ? null : (
+            {editingPayment.method === SUB_PAY_FROM_CREDIT ? (
+              <p data-sub-payment-from-credit style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                This payment was made from their credit, so no money left the bank. Its amount is fixed. Remove it to put the credit back.
+              </p>
+            ) : editingPayment.isBackcharge ? null : (
               <PayMethodPicker
                 options={SUB_PAY_METHOD_OPTIONS}
                 value={editPaymentMethod}
@@ -299,7 +407,7 @@ function SubLaborPaymentModalsInner(
               <button type="button" disabled={editPaymentSaving} onClick={async () => { if (editingPayment && onRequestRemove) { const p = editingPayment; setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); onRequestRemove(p); return } if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? DEAD_PRESS_FILL : 'var(--bg-red-100)', color: editPaymentSaving ? DEAD_PRESS_TEXT : '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null, editingPayment.isBackcharge ? undefined : subPayMethodWrite(editPaymentMethod, editPaymentMethodRef)); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_FILL : '#059669', color: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
+                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null, editingPayment.isBackcharge || editingPayment.method === SUB_PAY_FROM_CREDIT ? undefined : subPayMethodWrite(editPaymentMethod, editPaymentMethodRef)); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_FILL : '#059669', color: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
               </div>
             </div>
           </div>

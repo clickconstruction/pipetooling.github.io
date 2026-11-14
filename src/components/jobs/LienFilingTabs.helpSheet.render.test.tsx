@@ -102,6 +102,13 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     // The box opens on the county Settings hold.
     const county = document.querySelector('[data-lien-signing-county] input') as HTMLInputElement
     expect(county.value).toBe('Alder')
+    // One line with a ? after it (v2.7209): with a county from Settings nothing more is said until the ? is asked, and its words are the box's description.
+    const tip = document.querySelector('[data-lien-signing-county-hint]') as HTMLElement
+    expect(tip.hidden).toBe(true)
+    expect(county.getAttribute('aria-describedby')).toBe(tip.id)
+    expect(tip.textContent).toBe('Both county lines print Alder County. Signing somewhere else? Type that county for this print.')
+    fireEvent.focus(screen.getByRole('button', { name: 'About the county it is signed in' }))
+    expect(tip.hidden).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Print for notarization' }))
     let html = openPrintMock.mock.calls[0]![0]
     // On the paper itself, behind the help sheet (whose small picture of the paper names the county too).

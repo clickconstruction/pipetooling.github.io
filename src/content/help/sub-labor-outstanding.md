@@ -66,7 +66,9 @@ Each row keeps ***Agreed · Paid · Due*** and the rail. See [where the sheet st
 
 The ⋯ on a row holds **Payment…** while money is due, **Back-charge…**, **Edit sheet**, **Print**, **Story…** and **Lien waiver…**. Expanding a row shows Payment…, Back-charge…, **Edit**, Print and Lien waiver…. The expanded row also shows the sheet date, the invoice link, the line items and every payment and back-charge. The sheet date saves when it is finished. Pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved. The tiles and rows update the moment a payment or back-charge is saved.
 
-**Payment…** opens the **Record payment** window. Its grey line shows the sheet's total, what is paid and what remains. **Amount paid** starts on what remains. Type less to record a part payment. The window says what stays due, and the sheet stays in the pay run until nothing is left. An amount past what remains is refused, and the window says by how much.
+**Payment…** opens the **Record payment** window. Its grey line shows the sheet's total, what is paid and what remains. **Amount paid** starts on what remains. Type less to record a part payment. The window says what stays due, and the sheet stays in the pay run until nothing is left.
+
+An amount past what remains is one check that covers more than this sheet. See [pay a sub with one check across several sheets](/help/pay-a-sub-across-sheets-or-keep-a-credit).
 
 **How it was sent** is a row of chips. They are {{chip:gray|Check}}, {{chip:gray|Zelle}}, {{chip:gray|Mercury}}, {{chip:gray|Cash App}}, {{chip:gray|Apple Pay}}, {{chip:gray|Cash}}, {{chip:gray|Client direct}} and {{chip:gray|Other}}. A check opens a box for its number. The method shows beside the payment in the Payments list. The sub does not see it on their portal.
 

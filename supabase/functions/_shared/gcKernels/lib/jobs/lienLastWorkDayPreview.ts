@@ -19,7 +19,7 @@ export type LienLastWorkPreviewInput = {
   candidate: string
   /** The day the job reads today, and where it comes from. */
   currentDay: string | null
-  currentSource: 'hand' | 'hours' | 'created'
+  currentSource: 'hand' | 'hours' | 'bill' | 'created'
   /** The last approved clock day; the one floor a hand-set day cannot go under. */
   lastSessionDay: string | null
   /** The months with approved hours, YYYY-MM. Empty on a job with none. */
@@ -110,7 +110,7 @@ export function lienLastWorkPreview(i: LienLastWorkPreviewInput): LienLastWorkPr
   const hours = (i.lastSessionDay ?? '').slice(0, 10) || null
   const anchor = hours ?? i.currentDay
   const w = (d: string) => lienLastWorkDayWords(d, i.todayYmd)
-  const anchorWords = hours ? `the clock hours say (${w(hours)})` : i.currentSource === 'created' && i.currentDay ? `the job's creation (${w(i.currentDay)})` : i.currentDay ? `the day on the job (${w(i.currentDay)})` : 'today'
+  const anchorWords = hours ? `the clock hours say (${w(hours)})` : i.currentSource === 'created' && i.currentDay ? `the job's creation (${w(i.currentDay)})` : i.currentSource === 'bill' && i.currentDay ? `the bill (${w(i.currentDay)})` : i.currentDay ? `the day on the job (${w(i.currentDay)})` : 'today'
   const problem = lienLastWorkDayProblem(i.candidate, hours, i.todayYmd)
   const dayWords = YMD.test(i.candidate) ? w(i.candidate) : '—'
   const delta = anchor && YMD.test(i.candidate) ? daysBetween(anchor, i.candidate) : 0
@@ -147,7 +147,7 @@ export function lienLastWorkPreview(i: LienLastWorkPreviewInput): LienLastWorkPr
   const closedNew = newMonths.filter((m) => noticeDeadlineForMonth(`${m}-01`, kind) < i.todayYmd)
   const lastWords = (d: LienLastWorkPreviewDates) => (d.lastMonth ? `${workMonthLabel(d.lastMonth)} · mail by ${w(d.noticeDue)}` : '—')
   const rows: LienLastWorkPreviewRow[] = [
-    { what: 'Last day of work', before: before.day ? `${w(before.day)} · ${i.currentSource === 'hand' ? 'set by hand' : i.currentSource === 'hours' ? 'clock hours' : "the job's creation"}` : 'none yet', after: verdict === 'refused' ? '' : `${dayWords} · set by hand` },
+    { what: 'Last day of work', before: before.day ? `${w(before.day)} · ${i.currentSource === 'hand' ? 'set by hand' : i.currentSource === 'hours' ? 'clock hours' : i.currentSource === 'bill' ? 'the bill' : "the job's creation"}` : 'none yet', after: verdict === 'refused' ? '' : `${dayWords} · set by hand` },
     { what: 'Months the notice names', before: monthsWords(before.months), after: monthsWords(after.months) },
     { what: '§ 53.056 for the last month', before: lastWords(before), after: `${lastWords(after)}${closedNew.includes(after.lastMonth ?? '') ? ' · window closed, would read as missed' : ''}` },
     { what: '§ 53.052 affidavit', before: before.affidavitDue ? `file by ${w(before.affidavitDue)}` : '—', after: after.affidavitDue ? `file by ${w(after.affidavitDue)}` : '—' },

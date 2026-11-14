@@ -33,8 +33,10 @@ export type OwnerToConfirmRow = {
   firstWorkMonth: string
   /** 'YYYY-MM-DD' — the § 53.056 date for that month; null when the month could not be dated. */
   firstDeadline: string | null
-  /** first_work_month is the job's creation month — the job has no approved hours (v2.3747). */
+  /** first_work_month is a stand-in: the job has no approved hours and no day set by hand (v2.3747). */
   firstMonthFromCreation: boolean
+  /** That stand-in came from a sent, unpaid bill (v2.7224), not the job's creation. */
+  firstMonthFromBill?: boolean
 }
 
 function str(v: unknown): string {
@@ -69,7 +71,8 @@ export function parseOwnerToConfirmRows(raw: unknown): OwnerToConfirmRow[] {
       propertyKind: str(o.property_kind),
       firstWorkMonth: str(o.first_work_month),
       firstDeadline: typeof o.first_deadline === 'string' && /^\d{4}-\d{2}-\d{2}/.test(o.first_deadline) ? o.first_deadline.slice(0, 10) : null,
-      firstMonthFromCreation: o.month_source === 'job_created',
+      firstMonthFromCreation: o.month_source === 'job_created' || o.month_source === 'bill',
+      firstMonthFromBill: o.month_source === 'bill',
     })
   }
   return out
@@ -181,8 +184,10 @@ export type OwnerConfirmProperty = {
   firstDeadline: string | null
   /** The work month behind that deadline ('YYYY-MM'). */
   firstWorkMonth: string
-  /** That month is the job's creation month — the job has no approved hours (v2.3747). */
+  /** That month is a stand-in: the job has no approved hours and no day set by hand (v2.3747). */
   firstMonthFromCreation: boolean
+  /** The stand-in came from a sent, unpaid bill (v2.7224). */
+  firstMonthFromBill?: boolean
   /** That first month's notice window has already closed (deadline before today). */
   windowClosed: boolean
   /** "due Sep 15" · "March's window closed · later months live" · "" when undated. */
@@ -227,6 +232,7 @@ export function groupByProperty(rows: OwnerToConfirmRow[], todayYmd: string): Ow
       p.firstDeadline = r.firstDeadline
       p.firstWorkMonth = r.firstWorkMonth
       p.firstMonthFromCreation = r.firstMonthFromCreation
+      p.firstMonthFromBill = r.firstMonthFromBill === true
     }
   }
   const out = [...byKey.values()]
@@ -234,11 +240,12 @@ export function groupByProperty(rows: OwnerToConfirmRow[], todayYmd: string): Ow
     p.jobs.sort((a, b) => (a.hcpNumber || a.clickNumber).localeCompare(b.hcpNumber || b.clickNumber, undefined, { numeric: true }))
     if (p.firstDeadline) {
       p.windowClosed = p.firstDeadline < todayYmd
-      // A job with no clock hours has one month, its creation month (v2.3747): there are no later months to promise.
+      // A job with no clock hours has a stand-in month, from its bill (v2.7224) or its creation (v2.3747): there are no later months to promise.
+      const standIn = p.firstMonthFromBill ? 'dated from the bill' : 'dated from the job’s creation'
       p.noticeLabel = p.firstMonthFromCreation
         ? p.windowClosed
-          ? `${monthName(p.firstWorkMonth)}'s window closed · dated from the job’s creation`
-          : `due ${shortDay(p.firstDeadline)} · dated from the job’s creation`
+          ? `${monthName(p.firstWorkMonth)}'s window closed · ${standIn}`
+          : `due ${shortDay(p.firstDeadline)} · ${standIn}`
         : p.windowClosed
           ? `${monthName(p.firstWorkMonth)}'s window closed · later months live`
           : `due ${shortDay(p.firstDeadline)}`

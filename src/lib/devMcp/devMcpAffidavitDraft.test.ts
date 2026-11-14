@@ -228,6 +228,10 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     expect(insertedFields(made.write).monthsDatedFromCreation).toBe(true)
     expect((made.reply.desk as Record<string, unknown>).last_work_month_from).toContain('the month the job was made')
     expect(made.reply.not_on_the_desk_yet).toBeUndefined()
+    // A job with no hours and a bill is dated from the bill (v2.7224): the draft carries the same mark, and the plan says which.
+    const billed = planned(world({ row: windowRow({ month_source: 'bill', last_month: '2026-08', deadline: '2026-11-16' }), job: { ...world().job!, first_work_date: null, last_work_date: null, lien_last_work_on: null } }))
+    expect(insertedFields(billed.write).monthsDatedFromCreation).toBe(true)
+    expect((billed.reply.desk as Record<string, unknown>).last_work_month_from).toContain('the job’s bill')
     const blank = planned(world({ filings: [{ ...NOTICE, months_covered: ['2026-10'] }] }))
     expect((blank.reply.paper_today as Record<string, unknown>).months_it_names).toBeNull()
     expect(String(blank.reply.no_month)).toContain('prints a blank')

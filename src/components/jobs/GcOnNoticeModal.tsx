@@ -13,7 +13,8 @@ import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { lienSupplierLetterParagraphFor } from '../../lib/jobs/lienJobSuppliers'
 import { legalRpc } from '../../hooks/useLegalMatters'
-import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
+import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry } from '../../lib/jobs/lienDesk'
+import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import {
   GC_NOTICE_REASONS,
   daysUntil,
@@ -968,7 +969,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       })}
                                     </div>
                                   )}
-                                  {j.datedFromCreation ? <div style={{ ...faint, marginTop: 4 }} data-testid="gc-notice-dated-from-creation">{DATED_FROM_CREATION_WORDS}</div> : null}
+                                  {j.datedFromCreation ? <div style={{ ...faint, marginTop: 4 }} data-testid="gc-notice-dated-from-creation">{lienStandInWords(j.datedFromBill === true)}</div> : null}
                                 </td>
                                 <td style={{ ...td, color: 'var(--text-muted)' }} data-testid="gc-notice-closed-months">
                                   {split.closed.length === 0 ? '—' : split.closed.map((m, i) => (
