@@ -1382,6 +1382,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "legal_statement_update": [{"args":{"p_affiant?":"Json","p_body?":"string","p_clear_incident_to?":"boolean","p_clear_venue_county?":"boolean","p_entry_id":"string","p_form?":"string","p_incident_to?":"string","p_on?":"string","p_source?":"string","p_title?":"string","p_venue_county?":"string"},"returns":"Json"}],
   "legal_void_entry": [{"args":{"p_entry_id":"string","p_reason":"string"},"returns":"Json"}],
   "license_expiry_notices_sweep": [{"args":{},"returns":"Json"}],
+  "lien_bill_months": [{"args":{"p_job_id":"string"},"returns":"{ work_month: string }[]"}],
   "lien_billed_open": [{"args":{"p_job_id":"string","p_payments_made":"number","p_revenue":"number","p_status":"string"},"returns":"number"}],
   "lien_fallback_month": [{"args":{"p_created_at":"string"},"returns":"string"}],
   "lien_filing_deadline": [{"args":{"p_month":"string","p_property_kind":"string"},"returns":"string"}],
