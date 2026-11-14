@@ -1,8 +1,8 @@
 ---
 name: "Bill Customer says what the customer will get: who, by which channel, the real email and text in place, and a press that names its act"
 number: 343
-group: ready
-status: the owner said build it all, 2026-11-13; PR 1 (the words) built as v2.7157, PR 2 (the faces) as v2.7158; left: PR 3 one press
+group: close
+status: the owner said build it all, 2026-11-13; all three built: the words v2.7157, the faces v2.7158, one press v2.7163; left: the owner's own walk on a ZZ Test job, with one real press in Stripe test mode
 summary: >
   The owner asked whether it is clear, when the assistant sends a bill, what the customer is
   receiving. It is not. On the default tab the press reads Create Stripe invoice. It makes the
@@ -12,10 +12,10 @@ summary: >
   send on record that day. The card adds a caption per channel, a Send to line with the name and
   the phone, the real email and text drawn in place, a When you press box, and a press named for
   its act.
-next: PR 3, one press that makes the bill and emails it
-size: M as a train of three (XS · S · M); left: PR 3 (M)
-blocker: none
-opinion: build in the card's order; PR 3 is the one that stops a bill being made and never sent
+next: the owner's walk: on a ZZ Test job in Stripe test mode, press Make the bill and email, read the made-bill screen and the test email that comes to the sender, then delete this card
+size: M as a train of three (XS · S · M), all built; left: the owner's walk (XS)
+blocker: a live press; the build pressed nothing that sends
+opinion: your call — the code is built and tested; the one real press is yours
 ---
 
 # Bill Customer says what the customer will get (#343)
@@ -187,4 +187,18 @@ The owner's word on the mock-up, 2026-11-13: *build it all*. That is his yes to 
   time its face is opened and writes nothing. A customer with no contact yet reads *Their number is
   read on the next screen*, since only the next screen makes the contact. The bill's box is headed
   *On the bill*.
-- **PR 3**: not built yet.
+- **PR 3, one press, v2.7163**: the Stripe tab has two presses. **Make the bill and email Dana**
+  makes the bill and then makes the call **Send Email invoice** makes, once. **Make the bill, send
+  later** is the old press under a truer name. The box above them says the email goes now, and
+  what the quiet press is for. With a copy ticked the main press reads *Make the bill and email 2
+  people*. In the dev's Stripe test mode the box says the email comes to the sender. The
+  made-bill screen leads with *Bill email sent to …* and then offers the text. A send that fails
+  or times out leaves the bill made, and the screen says the email did not go, with the reason
+  and the press that sends it. There is no second question before the one press: the box is
+  right above it, as on the Physical tab. The send itself moved to
+  `src/lib/billing/sendStripeBillEmail.ts`, shared with the Send Email invoice button.
+
+**Not done by the build**: no press that sends was made on the live app, by the look or by the
+build. The one press is covered by render tests with the two edge calls answered in the test,
+and by a walk of the built window on a ZZ test job up to the press. The first real press, in
+Stripe test mode on a ZZ Test job, is the owner's or the office's.

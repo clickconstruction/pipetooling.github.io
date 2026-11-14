@@ -1,22 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import { customerJourneys } from '../customerJourneys'
-import { BILL_CHANNEL_CAPTION, MAKE_STRIPE_BILL_PRESS, billSampleHref, theyWillGet } from './billCustomerTheyWillGet'
+import { BILL_CHANNEL_CAPTION, MAKE_BILL_SEND_LATER_PRESS, billSampleHref, theyWillGet } from './billCustomerTheyWillGet'
 
 const dana = { name: 'Dana Whitfield', email: 'dana@example.com' }
 
 describe('theyWillGet · the Stripe bill tab (punch list #343)', () => {
-  it('names the press for its act and says nothing goes yet', () => {
+  it('the main press makes the bill and emails it, and the box says so (PR 3)', () => {
     const w = theyWillGet({ channel: 'stripe', ...dana, phone: '5125550142', copyEmails: [] })
-    expect(w.press).toBe('Make the Stripe bill')
-    expect(w.press).toBe(MAKE_STRIPE_BILL_PRESS)
-    expect(w.pressTitle).toBe('When you press Make the Stripe bill')
-    expect(w.pressLines).toEqual([
-      'The bill is made and marked billed.',
-      'Nothing goes to Dana Whitfield yet. The next screen sends it by email or by text.',
-      'Every send is kept in Bills sent.',
-    ])
+    expect(w.press).toBe('Make the bill and email Dana')
+    expect(w.pressTitle).toBe('When you press Make the bill and email Dana')
+    expect(w.pressLines).toEqual(['The bill is made and marked billed.', 'The bill email goes now to dana@example.com.', 'A text is your choice on the next screen.', 'Every send is kept in Bills sent.'])
     expect(w.caption).toBe(BILL_CHANNEL_CAPTION.stripe)
     expect(w.who).toBe('Dana Whitfield')
+  })
+
+  it('the quiet press keeps the old way: the bill is made and nothing goes', () => {
+    const w = theyWillGet({ channel: 'stripe', ...dana, copyEmails: [] })
+    expect(w.later).toEqual({ press: 'Make the bill, send later', line: 'Make the bill, send later makes the bill and sends nothing. Use it for a bill you hand over or text.' })
+    expect(w.later?.press).toBe(MAKE_BILL_SEND_LATER_PRESS)
+    expect(theyWillGet({ channel: 'physical', ...dana, copyEmails: [] }).later).toBeNull()
+  })
+
+  it('with copies the press counts every address and the box says each copy is their own', () => {
+    const one = theyWillGet({ channel: 'stripe', ...dana, copyEmails: ['ap@ridgeway.example'] })
+    expect(one.press).toBe('Make the bill and email 2 people')
+    expect(one.pressLines).toContain('1 more person gets a copy of their own.')
+    const two = theyWillGet({ channel: 'stripe', ...dana, copyEmails: ['a@x.example', 'b@x.example'] })
+    expect(two.press).toBe('Make the bill and email 3 people')
+    expect(two.pressLines).toContain('2 more people get a copy of their own.')
+  })
+
+  it('test mode says the email comes to the sender', () => {
+    const w = theyWillGet({ channel: 'stripe', ...dana, copyEmails: ['ap@ridgeway.example'], testMode: true })
+    expect(w.pressLines[1]).toBe('Test mode: the bill email comes to you, not to dana@example.com.')
+    expect(w.pressLines[2]).toBe('One copy comes to you too. Nobody ticked gets one.')
+  })
+
+  it('no email: the box says what is missing, and a job with no name still gets a press that names its act', () => {
+    expect(theyWillGet({ channel: 'stripe', name: 'Dana Whitfield', email: '', copyEmails: [] }).pressLines).toEqual(['A Stripe bill goes by email. Add an email above first.'])
+    expect(theyWillGet({ channel: 'stripe', name: null, email: 'x@example.com', copyEmails: [] }).press).toBe('Make the bill and email it')
   })
 
   it('shows the phone on the job, formatted, and what it allows', () => {
@@ -32,10 +54,8 @@ describe('theyWillGet · the Stripe bill tab (punch list #343)', () => {
     expect(theyWillGet({ channel: 'stripe', ...dana, copyEmails: [] }).phoneLine).toBeNull()
   })
 
-  it('reads the customer when the job has no name', () => {
-    const w = theyWillGet({ channel: 'stripe', name: ' ', email: 'x@example.com', phone: null, copyEmails: [] })
-    expect(w.who).toBeNull()
-    expect(w.pressLines[1]).toBe('Nothing goes to the customer yet. The next screen sends it by email or by text.')
+  it('reads no name when the job has none', () => {
+    expect(theyWillGet({ channel: 'stripe', name: ' ', email: 'x@example.com', phone: null, copyEmails: [] }).who).toBeNull()
   })
 
   it('the helper says what a copy is and names no press', () => {

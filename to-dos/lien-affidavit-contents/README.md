@@ -217,5 +217,5 @@ clicktooling.com.
   now make the call, the pane's **Send for approval ▸** and the list's **Send N for approval…**
   (`tellLeaderOfLienAffidavits`). `notify-lien-approval` writes an affidavit's own words, the job
   and the last day to file, and a batch of twelve is one message that names the count. The
-  function is owed a redeploy: until then the paper is still sent, and the desk says he was not
-  told and why.
+  function was redeployed 2026-11-13 on the owner's yes. A tell that fails never blocks the
+  send: the desk says he was not told and why.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { POST_LOGIN_REDIRECT_KEY } from '../lib/iosPwa'
+import { browserReturnAddressStore, keepReturnAddress } from '../lib/signInReturnAddress'
 import { FILE_OPEN_WORDS, fileRouteOf } from '../lib/files/fileRoute'
 import { fileTarget, goToFile } from '../lib/files/fileOpenIo'
 
@@ -26,11 +26,7 @@ export default function FileOpen() {
       return
     }
     if (!userId) {
-      try {
-        localStorage.setItem(POST_LOGIN_REDIRECT_KEY, pathname)
-      } catch {
-        /* ignore */
-      }
+      keepReturnAddress(browserReturnAddressStore(), pathname)
       setShown('signIn')
       return
     }
