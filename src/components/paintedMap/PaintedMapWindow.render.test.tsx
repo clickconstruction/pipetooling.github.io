@@ -81,6 +81,16 @@ vi.mock('./PaintedMapCanvas', async () => {
   }
 })
 
+/** The share sheet, stood in for: it says which map it was opened for. */
+vi.mock('./PaintedMapShareSheet', () => ({
+  PaintedMapShareSheet: (props: { mapId: string; mapName: string; onClose: () => void }) => (
+    <div data-testid="share-sheet">
+      share:{props.mapId}:{props.mapName}
+      <button type="button" onClick={props.onClose}>close the sheet</button>
+    </div>
+  ),
+}))
+
 import { PaintedMapWindow } from './PaintedMapWindow'
 
 const MAP: PaintedMap = { id: 'm1', name: 'The way in for deliveries', words: 'Start at the truck gate.', jobId: 'j1', developmentId: null, createdBy: 'dana', createdAt: '2026-11-13T15:00:00Z' }
@@ -293,6 +303,38 @@ describe('a saved map', () => {
     io.whole = null
     render(<PaintedMapWindow ask={{ mapId: 'gone' }} onClose={() => {}} />)
     expect(await screen.findByText('This painted map is gone, or it is not yours to open.')).toBeTruthy()
+  })
+})
+
+describe('sharing a map', () => {
+  it('offers Share to whoever painted the map, and opens the sheet for that map', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Share' }))
+    expect(screen.getByTestId('share-sheet').textContent).toContain('share:m1:The way in for deliveries')
+    fireEvent.click(screen.getByRole('button', { name: 'close the sheet' }))
+    expect(screen.queryByTestId('share-sheet')).toBeNull()
+  })
+
+  it('offers Share to the office on anyone\'s map', async () => {
+    auth.value = { user: { id: 'me' }, role: 'assistant' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    expect(await screen.findByRole('button', { name: 'Share' })).toBeTruthy()
+  })
+
+  it('does not offer Share on someone else\'s map to a teammate who is not the office', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
+  })
+
+  it('does not offer Share on a map with nothing on it', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
   })
 })
 
