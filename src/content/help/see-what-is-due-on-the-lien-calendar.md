@@ -2,7 +2,7 @@
 title: see what is due on the lien calendar
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien calendar, by date, deadlines, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark
+keywords: lien calendar, by date, deadlines, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark, days since billed, billed, no hours, direct to owner
 ---
 The By date tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
@@ -26,23 +26,40 @@ Press a pill to see only that month. Press it again to see every month.
 
 ## Read a month
 
-With **All** picked, each month is a section with a bar on top. The bar says the date, the days left and what falls due. **Overdue** starts folded at the top. Press its bar to open it.
+With **All** picked, each month is a section with a coloured band on top. Overdue is red, This month is amber, Next month is blue and Later is grey. The band says the date in a small pill, then what falls due. Its job count and its money are at the right. **Overdue** and **Later** start folded. Press a band to open it.
 
-An overdue job is listed with its property when that property has a date still ahead. It sits under the property's address, greyed, after the jobs that are still on the clock. Its amount reads *still owed*. So one property reads in one place. The Overdue bar says how many of its jobs are listed that way. The Overdue count and its dollars do not change. Press the {{chip:red|Overdue}} pill to see every overdue job in one list.
+An overdue job is listed with its property when that property has a date still ahead. It sits under the property's address, greyed, after the jobs that are still on the clock. Its amount reads *still owed*. So one property reads in one place. The Overdue band says how many of its jobs are listed that way. The Overdue count and its dollars do not change. Press the {{chip:red|Overdue}} pill to see every overdue job in one list.
 
 A property with an overdue job says its money in two piles on its heading. The heading reads like *Lien open on 5 jobs · $13,439 · lien gone on 3 · $4,608 · $18,047 owed here*. The first pile is what a lien can still cover. The second pile is owed, and no lien covers it. The GC's total counts the first pile only.
 
 Sometimes the app is the one that is wrong. The work may have run later than the day the app holds. Press **Worked later? ›** on the greyed row. The job's Lien window opens with the last day of work ready to change. Set the day and press {{button:blue|Save the day}}. Every window is counted from that day, so a later day can put the job back on the lien.
 
-:::example the bar on top of this month
-This month by Oct 15, in 14 days. 24 notices across 9 GCs.
+:::example the band on top of this month
+This month, by Oct 15 in 14 days. 24 notices across 9 GCs. 31 jobs.
 :::
 
-Inside a month, each job sits under its GC. The GC row says how many notices to send. Jobs with no GC sit together under one heading. A notice the desk printed but has not recorded reads differently. The bar counts it as *in the mail*. The GC row says *record the mailing* when every notice it owes is printed.
+Inside a month, each job sits under its GC. The GC's name is one small line above its jobs. The line counts its jobs and the notices owed, and says how many to send. Jobs with no GC sit together under *Direct to owner*. Press a line to fold its jobs away.
+
+A notice the desk printed but has not recorded reads differently. The band counts it as *in the mail*. The GC's line says *record the mailing* when every notice it owes is printed.
+
+A job with no approved hours has a small amber chip beside its name, like *Sep · no hours*. That job's dates count from a stand-in month, not from clock hours. Rest the pointer on the chip to read why. Office users can press the chip to set the last day of work.
+
+## Read Later
+
+Later holds the jobs with nothing due for two months or more. Later starts folded, so only its band shows. Press the band to open it.
+
+Later is a list with one line for each job. The list has no time line. Each line has four parts.
+
+- **Job** is the number and the name. After the name comes the GC, or *direct* for a job with no GC.
+- **Billed** is how long ago the job's oldest open bill went out, like *39 d ago*. A short bar beside it grows with the age. The bar is full at 90 days.
+- **Lien by** is the last day to file the lien, with the days left. A notice due before that day is named beside it.
+- **Open** is the money still owed.
+
+The oldest bill is first. The age is grey under 30 days, amber from 30 days and red from 60 days. Press a line to open the job's Lien window.
 
 ## Draft the notices
 
-When a month's notices can go out, its bar shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Monthly notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The bar offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
+When a month's notices can go out, its band shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Monthly notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The band offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
 
 ## Use the date row
 
@@ -60,7 +77,7 @@ Office users on a computer can press it. Everyone else sees the count.
 
 Rest the pointer on any mark and a card opens under it. The card says what the mark is, its date and how many days away that is. It says the money owed on the job. It ends on a button for the next move, such as {{button:amber|Draft the notice ›}} or {{button:amber|Record the mailing ›}}.
 
-Marks that touch share one card, with a column for each mark in the same order. Rest on a GC row's flag to see every job behind its count. Each job shows its month and its money. The card's button acts on exactly those jobs. A card wider than the board scrolls sideways.
+Marks that touch share one card, with a column for each mark in the same order. A card wider than the board scrolls sideways. A GC's line has no marks of its own. The line's counts are in its words, and each job under the line carries its own marks.
 
 Press Esc to close a card, or move the pointer away. Pressing a mark still does what it did before.
 
@@ -70,12 +87,12 @@ The key runs along the bottom of the By date tab. Press a mark to read what it m
 
 ## On a phone
 
-A phone shows the same pills with their counts only, and the months without the time line. Press the magnifier to search. Each job shows its dates under its name.
+A phone shows the same pills with their counts only, and the months without the time line. Press the magnifier to search. Each job shows its dates under its name. Later starts folded on a phone too. Later's jobs are listed oldest bill first, and each one says how long ago it was billed.
 
 ## Good to know
 
 - Press a job's row to open its Lien window.
 - Press the job's number to open the job itself. That window has its history, its bills and **Edit**. Close it and you are back on the desk.
-- Office users can press a pay dot to record when they said they will pay.
+- Office users can press a pay dot to record when they said they will pay. On a GC's line, **Record what they said ›** records one pay date for all of its jobs.
 - A storefront on a row means a supply house is still owed on that job. Press the storefront button beside the search box to see only those jobs. See [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).

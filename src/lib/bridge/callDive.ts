@@ -34,6 +34,7 @@ import { chargeCell } from './pctFacts'
  *
  * It also says what we are charging, or that the job has no price, and the last day it was worked, by whom, and
  * whether that day is a clocked one or a scheduled one (v2.7221; `pctFacts.ts`). The percent window carries the rest.
+ * The last day worked leads with how long ago it was, and the people sit under it in soft words (v2.7245).
  * Under its name it says where it is, street and city (v2.7232), and so does a job with no price (v2.7243).
  *
  * Nothing is counted here. Every list is handed in from what the page has already read, in the order it is given.
@@ -62,7 +63,7 @@ export type DiveTarget =
  * One cell of a line drawn as a table row. `text` is the cell under its column's heading; `phone` is the same fact
  * with its unit, for a phone where there is no heading over it.
  */
-export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean; /** A cell that opens its own detail, and what a screen reader hears on it. */ target?: DiveTarget; label?: string }
+export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean; /** Soft words under the cell's own: who worked a job, under the day it was last worked (v2.7245). */ sub?: string; /** A cell that opens its own detail, and what a screen reader hears on it. */ target?: DiveTarget; label?: string }
 /** A line's cells: two short figures and one run of words, under `DiveColumns`. */
 export type DiveRow = { a?: DiveCell; b?: DiveCell; text?: DiveCell }
 /** The headings over a move's lines. An empty heading is a column the move does not use. */
@@ -137,7 +138,7 @@ export type DiveFacts = {
     /** The same as cells: the hours as a figure, with its unit for a phone, and the people. */
     hoursCell?: { text: string; phone: string; by: string } | null
     /** The last day worked, which reading it is, and who (`lastWorkedCell`). Absent until read: the line keeps its people. */
-    lastWorked?: { text: string; phone: string; muted: boolean } | null
+    lastWorked?: { text: string; phone: string; muted: boolean; /** Who has worked the job, in soft words under the day (v2.7245). */ sub?: string } | null
     /** Where the job is, as its street and city (`streetAndCity`). Absent until read, or when the job has none. */
     address?: string | null
   }>
@@ -229,7 +230,7 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
           b: charge.warn ? { text: charge.text, phone: charge.phone, warn: true } : { text: charge.text, phone: charge.phone, muted: true },
           // A percent set on this visit says so where the people were. Else the last day worked, and until that is
           // read, the people with hours.
-          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.lastWorked ? { text: { text: j.lastWorked.text, phone: j.lastWorked.phone, ...(j.lastWorked.muted ? { muted: true } : {}) } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
+          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.lastWorked ? { text: { text: j.lastWorked.text, phone: j.lastWorked.phone, ...(j.lastWorked.sub ? { sub: j.lastWorked.sub } : {}), ...(j.lastWorked.muted ? { muted: true } : {}) } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
         }
         // The place under the name: the owner knows a job by where it is.
         return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row, ...(j.address ? { sub: j.address } : {}) }

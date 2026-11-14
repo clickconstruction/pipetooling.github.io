@@ -93,6 +93,10 @@ export type LienCalendarBucket = {
   dateLabel: string
   /** The section bar's one line of facts. */
   facts: string
+  /** The band's date pill (v2.7254): "by Nov 16 · in 2 days", "Dec 15 to Jan 15", "Jan 15 and after"; '' on Overdue and when empty. */
+  datePill: string
+  /** The band's short summary, the facts with the date and the job count left out: the pill and the right side say those. */
+  summary: string
   /** The words under the bar when the bucket is picked and holds nothing. */
   empty: string
   /** Draft the N: the bucket's notices the desk already lists (inside its 30-day lead). */
@@ -104,7 +108,7 @@ export type LienCalendarBucket = {
   /** Overdue only: how many of its jobs are listed with their property under a later bucket (`groups` leaves them out). */
   away: number
   /** Overdue only, when some are away: every one of its jobs and the plain facts, for when Overdue is shown on its own. */
-  whole: { groups: LienCalendarGroup[]; facts: string } | null
+  whole: { groups: LienCalendarGroup[]; facts: string; summary: string } | null
   /** The later buckets: how many Overdue jobs are listed here, under their property. */
   guests: number
 }
@@ -160,14 +164,21 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
   const gcs = new Map<string, string>()
   for (const j of noticeJobs) if (j.gcId) gcs.set(j.gcId, j.gcName?.trim() || 'the GC')
 
+  // The facts in three parts (v2.7254): the job count, the date and the rest. The bar's one line is all three; the band draws
+  // the date as a pill and the count at its right, so its summary is the rest alone.
+  const lead: string[] = []
+  const pill: string[] = []
   const facts: string[] = []
   if (key === 'overdue') {
-    if (sorted.length) facts.push(plural(sorted.length, 'job', 'jobs'), 'nothing left to file', 'money still owed')
+    if (sorted.length) {
+      lead.push(plural(sorted.length, 'job', 'jobs'))
+      facts.push('nothing left to file', 'money still owed')
+    }
   } else {
     const first = dates[0]
     const last = dates[dates.length - 1]
-    if (first && dates.length === 1) facts.push(`by ${formatYmdMonthDay(first)}`, inDays(todayYmd, first))
-    else if (first && last) facts.push(key === 'later' ? `${formatYmdMonthDay(first)} and after` : `${formatYmdMonthDay(first)} to ${formatYmdMonthDay(last)}`)
+    if (first && dates.length === 1) pill.push(`by ${formatYmdMonthDay(first)}`, inDays(todayYmd, first))
+    else if (first && last) pill.push(key === 'later' ? `${formatYmdMonthDay(first)} and after` : `${formatYmdMonthDay(first)} to ${formatYmdMonthDay(last)}`)
     if (noticeJobs.length) {
       const to = gcs.size === 1 ? ` to ${[...gcs.values()][0]}` : gcs.size > 1 ? ` across ${gcs.size} GCs` : ''
       facts.push(`${plural(noticeJobs.length, 'notice', 'notices')}${to}`)
@@ -219,7 +230,9 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
     filed,
     dates,
     dateLabel: key === 'overdue' || !dates[0] ? '' : key === 'later' && dates.length > 1 ? `${formatYmdMonthDay(dates[0])} +` : formatYmdMonthDay(dates[0]),
-    facts: facts.join(' · '),
+    facts: [...lead, ...pill, ...facts].join(' · '),
+    datePill: pill.join(' · '),
+    summary: facts.join(' · '),
     empty,
     draft,
     record,
@@ -306,8 +319,9 @@ export function placeOverdueWithProperty(buckets: ReadonlyArray<LienCalendarBuck
         ...b,
         groups: bucketOf('overdue', here, todayYmd).groups,
         facts: [plural(b.jobs.length, 'job', 'jobs'), `${here.length} listed here`, `${away.size} ${away.size === 1 ? 'is' : 'are'} ${whereWords}`].join(' · '),
+        summary: [`${here.length} listed here`, `${away.size} ${away.size === 1 ? 'is' : 'are'} ${whereWords}`].join(' · '),
         away: away.size,
-        whole: { groups: b.groups, facts: b.facts },
+        whole: { groups: b.groups, facts: b.facts, summary: b.summary },
       }
     }
     const byGroup = placed.get(bucket)
