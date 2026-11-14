@@ -116,7 +116,7 @@ looks." Three things were off in the drawing: two titles in a row (*The thread*,
 note, three shapes in three rows; and a summary that said the last word was Robert's while the feed
 showed the customer's text from yesterday. So the section takes the shape of What's happening: three
 labelled rows that are the live summary's own lines (`threadSummary.ts`: **Last word** *Theirs, by
-text, yesterday · Nobody has answered yet*, **Their word**, **Our word**), then the newest two
+text, yesterday · Nobody has answered yet*, **They promised**, **We owe them**), then the newest two
 messages with the customer as bubbles, theirs at the left on amber and ours at the right, each with
 who, the channel and when, then *Open the thread · 56 ›*. Crew stamps and office notes are not
 messages; they stay under Work and time and the Activity door. The presses are **Reply by text**
@@ -158,6 +158,19 @@ Also on pass 2: "I think we should move the paint a map plus button to the cente
 left." So the *＋ Paint a map* press is centred in its dashed box, in A under the maps as today and in
 B under the Where rows as a 40 px press rather than a quiet line, and PR A centres the live press's
 words under `phonePane`.
+
+Also on pass 2: "Regarding their word, no day of theirs is written down, I don't think this has a lot
+of context and could be better presented." The live card's second and third lines are *Their word*
+(the customer's newest written promise whose day has not passed: a check by Friday, an answer by
+Monday, a day given on the call) and *Our word* (the newest open thing we owe them: a call back, a
+price, a date). Empty, they read *No day of theirs is written down* and *Nothing we owe is written
+down*, which name the mechanism, not the meaning. So the rows are **They promised** · *Nothing yet*,
+with *A day they give for a payment or an answer lands here, from the call or text it was said in*
+under it, and **We owe them** · *Nothing open*, with *A call back, a price or a date we said we would
+give*. Filled, they read *They promised · A check by Friday · said Tuesday on the call* and *We owe
+them · A price for the trim change · marked Nov 11*. PR B renames `SUMMARY_WORDS.theirs` and `.ours`
+and the two empty sentences in `threadSummary.ts`, on every screen, since the desk's card reads the
+same lines.
 
 ## What the phone draws today, measured
 
@@ -240,7 +253,7 @@ moves; the bar is as today.
 Street View banner first, then the address with a Directions press, the painted map), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
-plain label and its answer), then the thread (Last word, Their word and Our word as labelled rows, the newest two
+plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the newest two
 messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
