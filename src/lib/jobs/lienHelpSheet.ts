@@ -512,7 +512,7 @@ export const LIEN_HELP_NOTICE_ASK_FIRST = 'Do not mail this one yet. Ask about t
 
 /**
  * The steps from the printer to the mail and back to the app. The Lien window prints one notice, so the sheet says to
- * make the second set. The numbers from the two green slips have a line each, since the app asks for both.
+ * make the second set. The numbers from the two certified labels have a line each, since the app asks for both.
  */
 export function lienHelpNoticeSteps(n: Pick<LienHelpNotice, 'signer' | 'mailBy' | 'mailByPassed'>, hasCode = false): string[] {
   const signer = n.signer.trim()
@@ -522,12 +522,12 @@ export function lienHelpNoticeSteps(n: Pick<LienHelpNotice, 'signer' | 'mailBy' 
     `${signer ? esc(signer) : 'The signer'} signs the notice in each set, in ink.`,
     'Put each set in its own envelope. The two addresses are on this sheet.',
     `Send both by certified mail with a return receipt. ${day && !n.mailByPassed ? `Mail by <strong>${esc(day)}</strong>.` : 'The app shows the last day to mail.'}`,
-    `Write the number from each green slip. Owner ${WRITE} Contractor ${WRITE}`,
+    `Write the number from each certified label. Owner ${WRITE} Contractor ${WRITE}`,
     hasCode
       ? 'The same day, scan the code with a phone. On a computer, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.'
       : 'The same day, open the job’s Lien window on the <strong style="white-space:nowrap">§ 53.056 notice</strong> tab.',
     'Press <strong>Save &amp; record sends…</strong> and type both numbers. Then press <strong>Record both sends</strong>.',
-    'Keep the green slips and the return receipts with the job.',
+    'Keep the certified labels and the return receipts with the job.',
   ]
 }
 

@@ -162,7 +162,7 @@ export function runSheetHtml(i: RunSheetInput): string {
     mailBy.intro,
     certified ? 'Every envelope goes certified mail with a return receipt.' : 'The method is under each name.',
     'Each envelope has a divider page in front of it with the same number as this list.',
-    'Write the number from the certified slip in the box under its row.',
+    'Write the number from the certified label in the box under its row.',
     'Back at the desk, type the numbers into Send the run › Record the mailing. The run checks each one as you type.',
     mailing.held.length ? `<b>${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back</b> and marked in red: the run did not print ${mailing.held.length === 1 ? 'it' : 'them'}, and the reason is beside each one.` : '',
   ]
@@ -183,9 +183,9 @@ export function runSheetHtml(i: RunSheetInput): string {
       byWords +
       `</td>` +
       `<td class="in">${why ? `<b>Held</b><br>${esc(inside)}` : `<b>${esc(docs!.words.replace(/ · .*$/, ''))}</b> · ${esc(docs!.words.replace(/^[^·]*· /, ''))}<br>${env.contents.length > 1 ? `<b>${env.contents.length} notices</b> · ` : ''}${esc(inside)}`}</td>` +
-      `<td class="done">${why ? '—' : '<span>☐ stuffed</span><span>☐ slip on</span><span>☐ mailed</span>'}</td>` +
+      `<td class="done">${why ? '—' : '<span>☐ stuffed</span><span>☐ label on</span><span>☐ mailed</span>'}</td>` +
       `</tr>` +
-      (why ? '' : `<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the green slip' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div></td></tr>`)
+      (why ? '' : `<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div></td></tr>`)
     )
   }
   return (
@@ -229,8 +229,8 @@ export function runDividerHtml(env: RunEnvelope, mailedCount: number, issuer: Ph
     `<div class="big"><span class="num">${env.n}</span><span class="of">of ${mailedCount} ${mailedCount === 1 ? 'envelope' : 'envelopes'}</span></div>` +
     `<div class="meta"><div><b>${docs.count} ${docs.count === 1 ? 'document follows' : 'documents follow'} this page</b> · ${esc(docs.words.replace(/^[^·]*· /, ''))}. ${env.n === mailedCount ? 'This is the last envelope.' : `The next divider is envelope ${env.n + 1}.`}</div>` +
     `<div>Inside: ${env.contents.length > 1 ? `<b>${env.contents.length} notices</b> · ` : ''}${esc(inside)}</div></div>` +
-    `<div class="ticks"><span>☐ ${docs.count} ${docs.count === 1 ? 'document' : 'documents'} counted</span><span>☐ sealed · slip on</span><span>☐ mailed</span></div>` +
-    `<div class="trkline"><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the green slip' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div>` +
+    `<div class="ticks"><span>☐ ${docs.count} ${docs.count === 1 ? 'document' : 'documents'} counted</span><span>☐ sealed · label on</span><span>☐ mailed</span></div>` +
+    `<div class="trkline"><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div>` +
     `<div class="divfoot">Pull this page out before you seal. The face above is the envelope as the printer prints it, so you match them by eye. Pin this page to the sheet when the number is on it.</div>` +
     `<div class="runfoot"><span>Divider · envelope ${env.n} of ${mailedCount} · ${esc(env.name)}</span><span>stays on the desk</span></div>` +
     `</div>`
