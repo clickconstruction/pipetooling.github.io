@@ -3,6 +3,7 @@ import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepName, lienStepTiles, type 
 import { lienReminderRungWords, type LienReminderBrief } from '../../lib/jobs/lienReminders'
 import { LIEN_REMINDER_SCHEDULE, LIEN_SCHEDULE_AXIS_DAYS, LIEN_SCHEDULE_TAIL, lienScheduleMarks, lienSchedulePct, lienScheduleWords } from '../../lib/jobs/lienReminderSchedule'
 import type { LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
+import { lienStepFoldWords, lienStepRailsShown } from '../../lib/jobs/lienStepFold'
 import { LienNoticeTimeline } from './LienNoticeTimeline'
 
 /**
@@ -51,9 +52,30 @@ export function LienStepRail({
   /** Sent notices past day 7 waiting for reminders week of the lien's month (punch list #235, PR 4): on the first rung, not in its count. */
   reminderScheduled?: number
 }) {
+  // On a phone the rails are one row that unfolds in place (punch list #352, PR 2); a pressed step keeps them open.
+  const [unfolded, setUnfolded] = useState(false)
+  const shown = lienStepRailsShown({ isMobile, unfolded, stepPressed: on != null })
+  const fold = lienStepFoldWords(ladders.map((key) => LIEN_STEP_LADDERS.find((l) => l.key === key)!.label), shown)
   return (
-    <div data-testid="lien-step-rails" style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
-      {ladders.map((key) => {
+    <div data-testid="lien-step-rails" data-folded={isMobile ? (shown ? 'no' : 'yes') : undefined} style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
+      {isMobile ? (
+        <button
+          type="button"
+          data-testid="lien-step-rails-fold"
+          aria-expanded={shown}
+          onClick={() => {
+            // Hiding the steps also lets go of a pressed one, or the rails would stay open on it.
+            if (shown && on != null) onPick(null)
+            setUnfolded(!shown)
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}
+        >
+          <span style={{ flex: 'none' }}>{fold.label}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>{fold.hint}</span>
+          <span aria-hidden style={{ flex: 'none', color: 'var(--text-muted)' }}>{shown ? '▴' : '▾'}</span>
+        </button>
+      ) : null}
+      {!shown ? null : ladders.map((key) => {
         const ladder = LIEN_STEP_LADDERS.find((l) => l.key === key)!
         const tone = LADDER_TONE[key]
         return (
