@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer
 where: /jobs
 order: 123
 ---
@@ -261,6 +261,15 @@ Pick your printer, or pick Save as PDF in the print window.
 Make a link first, and the page carries a code to scan. The code opens the map as it is today.
 
 The app keeps a copy of every page you print. The office finds it on the job's **Documents** tab.
+
+### A file for another map
+
+An engineer or a surveyor may keep a map of their own. Two presses make a file for it.
+
+- **A .kml file** opens in Google Earth and Google My Maps.
+- **A .gpx file** opens in a hiking app or a handheld.
+
+A file holds the lines and the places with their words. It holds no photos.
 
 ## When the picture is old
 

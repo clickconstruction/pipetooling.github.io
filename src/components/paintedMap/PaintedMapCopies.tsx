@@ -16,6 +16,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
 import { lineHowWords, lineLengthWords, mapSummaryWords, type NumberedPlace, type PaintedLine } from '../../lib/paintedMap/paintedMap'
 import { paintedPlacePhotoUrls } from '../../lib/paintedMap/paintedMapIo'
+import { paintedMapFile, PAINTED_MAP_FILE_WORDS, type PaintedMapFileKind } from '../../lib/paintedMap/paintedMapFiles'
 import { linkEndsWords } from '../../lib/paintedMap/paintedMapLink'
 import { copyMadeWords, pictureFileName, PAINTED_MAP_COPY_WORDS } from '../../lib/paintedMap/paintedMapPicture'
 import { blobToDataUrl, drawPaintedMapPicture, photoThumbDataUrl, type PictureInput } from '../../lib/paintedMap/paintedMapPictureIo'
@@ -169,6 +170,34 @@ export function PaintedMapCopies({ map, lines, places, link, io = liveIo }: Prop
     }
   }
 
+  // A file for another map: the lines and the places with their words, and nothing else.
+  const handFile = async (kind: PaintedMapFileKind) => {
+    setError(null)
+    setSaid(null)
+    try {
+      const built = paintedMapFile(kind, {
+        name: map.name,
+        words: map.words,
+        lines: lines.map((l) => {
+          const w = lineLengthWords(l)
+          return { points: l.points, label: l.label, lengthWords: `${w.lead}${w.tail ? `, ${w.tail}` : ''}` }
+        }),
+        places: picturePlaces,
+        company,
+        madeWords: made,
+      })
+      const file = new File([built.text], built.name, { type: built.type })
+      if (io.canShare(file)) {
+        if (await io.share(file, map.name)) setSaid('The file was handed to your phone to send.')
+      } else {
+        io.download(file)
+        setSaid(`Saved as ${file.name}, where this browser keeps its downloads.`)
+      }
+    } catch (e) {
+      setError(formatErrorMessage(e, 'The file was not made.'))
+    }
+  }
+
   const shares = picture ? io.canShare(picture.file) : false
 
   return (
@@ -202,6 +231,20 @@ export function PaintedMapCopies({ map, lines, places, link, io = liveIo }: Prop
         {printing ? 'Making the page…' : 'Print, or save as a PDF'}
         <span style={sub}>{link ? 'One page with the map, the places and a code to scan. A copy is kept with the job.' : 'One page with the map and the places. Make a link first and the page carries its code.'}</span>
       </button>
+
+      <div data-painted-files style={{ display: 'grid', gap: '0.4rem' }}>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+          <b>A file for another map.</b> The lines and the places with their words. No photos.
+        </span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem' }}>
+          {(['kml', 'gpx'] as const).map((kind) => (
+            <button key={kind} type="button" data-painted-file={kind} style={rowPress} onClick={() => void handFile(kind)}>
+              {PAINTED_MAP_FILE_WORDS[kind].press}
+              <span style={sub}>{PAINTED_MAP_FILE_WORDS[kind].forWhat}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

@@ -38,6 +38,7 @@ import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
 import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
 import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
+import { withJobLastWork, withJobsLastWork } from '../lib/jobs/lienLastWorkJobs'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -82,7 +83,7 @@ export default function LienDeskPage() {
   // The By date rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
   // filter's board, the page takes the Pipeline's own scoped first load for that one scope (a scope fetch alone is a no-op
   // until a board snapshot exists); on a warm cache it asks for the scope the way the Pipeline's doors did.
-  const { jobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
+  const { jobs, setJobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
   const billedScope = scopeForStagesSection('billed')
   const userId = user?.id ?? null
   const cacheWarm = userId != null && jobsListDataKey === buildJobsListCacheKey(userId, null)
@@ -141,6 +142,13 @@ export default function LienDeskPage() {
   // The By date rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
   // (v2.4153) re-reads what it wrote: a promise the pay dates, a kind or a last day the clocks.
   const [clocksRefresh, setClocksRefresh] = useState(0)
+  // v2.7208: a last day set on the desk's own line (the Notices pane) comes back in the desk's read of its jobs. A By date row
+  // counts from the day on the jobs list this page holds, so the fresh day is written there; the list is left as it is
+  // when nothing differs, and the rows stay mounted either way.
+  useEffect(() => {
+    if (!data) return
+    setJobs((prev) => withJobsLastWork(prev, Object.values(data.jobsById)))
+  }, [data, setJobs])
   const { rows: calendarRows, reloadPromises } = useLienCalendarRows(jobs, { role, billedLoaded: mergedScopes.has(billedScope), todayYmd, refreshKey: clocksRefresh })
 
   // Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask.
@@ -331,8 +339,10 @@ export default function LienDeskPage() {
         // v2.7187, punch list #335, row 2: and the step an affidavit is on.
         deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
-        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read.
-        onLastWorkSaved={() => {
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read. v2.7208: the row counts from
+        // the day on the jobs list this page holds, so the day is written there too; it kept its old dates until a reload.
+        onLastWorkSaved={(jobId, facts) => {
+          setJobs((prev) => withJobLastWork(prev, jobId, facts))
           setClocksRefresh((k) => k + 1)
           refetch()
         }}
@@ -344,6 +354,8 @@ export default function LienDeskPage() {
           navigate(lienDeskHref({ kind: deskKind, job: deskKind === 'notice' ? jobId : null }), { replace: true, state: location.state })
         }}
         onRecorded={() => {
+          // v2.7208: the row behind the window reads its notice, its filing and its service off the lien clocks: read them again.
+          setClocksRefresh((k) => k + 1)
           // A recorded notice that names the desk item's months sends the item (v2.3405).
           const jobId = lienWindow?.job.id
           if (jobId) void syncLienDeskAfterRecord(jobId).finally(refetch)

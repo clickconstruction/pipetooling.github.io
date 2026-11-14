@@ -150,6 +150,37 @@ describe('PaintedMapCopies', () => {
     expect((await screen.findByRole('status')).textContent).toBe('The page opened to print. A copy is kept in Documents.')
   })
 
+  it('saves a .kml file of the lines and places, named after the map', async () => {
+    const io = fake()
+    const files: File[] = []
+    io.download = (file) => void files.push(file)
+    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE()]} link={null} io={io} />)
+    expect(screen.getByText(/The lines and the places with their words\. No photos\./)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /A \.kml file/ }))
+    await waitFor(() => expect(files).toHaveLength(1))
+    expect(files[0]!.name).toBe('the-way-in-for-deliveries.kml')
+    expect(files[0]!.type).toBe('application/vnd.google-earth.kml+xml')
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsText(files[0]!)
+    })
+    expect(text).toContain('<coordinates>-98.200000,29.500000,0 -98.200000,29.501000,0</coordinates>')
+    expect(text).toContain('<name>1. Truck gate</name>')
+    expect(text).toContain('About 870 ft, give or take 30 ft')
+    expect(text).not.toContain('gate.jpg')
+    expect(screen.getByRole('status').textContent).toBe('Saved as the-way-in-for-deliveries.kml, where this browser keeps its downloads.')
+  })
+
+  it('hands a .gpx file to the phone\'s share sheet where it takes files', async () => {
+    const io = fake()
+    io.phone = true
+    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    fireEvent.click(screen.getByRole('button', { name: /A \.gpx file/ }))
+    await waitFor(() => expect(io.shared).toEqual(['the-way-in-for-deliveries.gpx']))
+    expect(screen.getByRole('status').textContent).toBe('The file was handed to your phone to send.')
+  })
+
   it('says what to do when the print window was blocked', async () => {
     const io = fake()
     io.popup = false

@@ -2039,6 +2039,28 @@ export default function Jobs() {
                   setSearchParams((p) => {
                     const next = new URLSearchParams(p)
                     next.set('view', 'pay')
+                    next.delete('by')
+                    next.delete('sub')
+                    return next
+                  })
+                }
+                // v2.7231: the grouping and the person whose statement is open live in the address
+                // (`?view=ledger&by=sub&sub=<people id>`), so one sub's statement can be linked to.
+                by={searchParams.get('by') === 'sub' ? 'sub' : 'date'}
+                onByChange={(by) =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    if (by === 'sub') next.set('by', 'sub')
+                    else next.delete('by')
+                    return next
+                  })
+                }
+                sub={searchParams.get('sub')}
+                onSubChange={(sub) =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    if (sub) next.set('sub', sub)
+                    else next.delete('sub')
                     return next
                   })
                 }

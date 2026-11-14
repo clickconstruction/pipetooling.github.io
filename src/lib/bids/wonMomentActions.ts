@@ -55,6 +55,11 @@ export function wonHandoffMode(role: string | null | undefined): WonHandoffMode 
 export type WonMomentActionKey = 'open_existing' | 'create' | 'create_another' | 'ask_dispatch' | 'send_draft'
 export type WonMomentAction = { key: WonMomentActionKey; label: string; primary: boolean }
 
+/** The doors that start a job from the bid, or ask Dispatch to: every one but opening the job the bid already has. */
+export function startsOrHandsOffAJob(key: WonMomentActionKey): boolean {
+  return key !== 'open_existing'
+}
+
 /**
  * Which buttons a Won moment renders.
  * - a job exists and the role can open Jobs → "Open the job" (primary) + "Create another job" (quiet)
@@ -63,8 +68,11 @@ export type WonMomentAction = { key: WonMomentActionKey; label: string; primary:
  * - an open Dispatch to-do already exists (`dispatchAsked`) → no ask button; the caller shows the chip
  * - no job yet and the role drafts (estimator, v2.5659) → "Send to Dispatch" (primary), which opens the draft sheet
  * - superintendent (read-only board) / sub / helper → nothing
+ * - the caller is still asking whether the bid has a job (`jobsLoaded: false`) → no door that starts a job or hands
+ *   one to Dispatch: until the answer lands `hasJob` is a guess, and a press on that guess starts a second job
  */
-export function wonMomentActions(args: { hasJob: boolean; role: string | null | undefined; canCreateJobs?: boolean; dispatchAsked?: boolean }): WonMomentAction[] {
+export function wonMomentActions(args: { hasJob: boolean; role: string | null | undefined; canCreateJobs?: boolean; dispatchAsked?: boolean; jobsLoaded?: boolean }): WonMomentAction[] {
+  if (args.jobsLoaded === false) return wonMomentActions({ ...args, jobsLoaded: true }).filter((a) => !startsOrHandsOffAJob(a.key))
   const canCreate = args.canCreateJobs ?? canCreateJobFromBid(args.role)
   const out: WonMomentAction[] = []
   if (args.hasJob && canSeeBidBoardJobLinks(args.role)) out.push({ key: 'open_existing', label: 'Open the job', primary: true })
