@@ -147,7 +147,7 @@ describe('the plan-part verbs mirror the Plans section (v2.6317, punch list #239
     expect(alreadyApplied('apply_paper', { target: PART, at: null })).toContain('action: came')
     // The server: its own read of the part is the dry run, its table writes go through restRows and nowhere else, 0.14.0 (0.23.0 with the file index, v2.6367, get_person_file, the evidence verbs, the clock session verbs, the hours statement, the report verbs, get_job's paged reads and its card rule behind it).
     expect(SERVER).toContain("const SERVER_VERSION = '0.87.0'")
-    expect(SERVER).toContain('Writes are one hundred and five verbs and nothing else')
+    expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else')
     expect(SERVER).toContain('const world = await readPlanPartWorld(reads, p)')
     expect(SERVER).toContain('const dry = planPartDryRun(p, world, todayYmdInAppTz())')
     expect(SERVER).toContain('await planPartApply(writes, p, dry.reply, { userId: who.userId }, new Date().toISOString())')

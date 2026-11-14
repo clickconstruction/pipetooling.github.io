@@ -123,13 +123,13 @@ describe('the grammar', () => {
 
   it('is on the server and in the README', () => {
     expect(SERVER).toContain("const SERVER_VERSION = '0.87.0'")
-    expect(SERVER).toContain('Writes are one hundred and five verbs and nothing else:')
+    expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     for (const v of [...SUBMITTAL_VERBS, 'get_submittals']) expect(SERVER).toContain(`name: '${v}'`)
     expect(SERVER).toContain("case 'get_submittals':")
     expect(README).toContain('`get_submittals(bid)`')
     expect(README).toContain('`plan_submittal_rows(submittal)` · `apply_submittal_rows(submittal, plan_hash)`')
     expect(README).toContain('`plan_submittal_log(log)` · `apply_submittal_log(log, plan_hash)`')
-    expect(README).toContain('one hundred and five `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and nine `plan_` / `apply_` / `revert_` verbs')
   })
 
   it('writes the tables the tab writes', () => {
