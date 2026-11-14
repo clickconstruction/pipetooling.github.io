@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxAddress, boxAddressWords, boxClipboardWords, boxCode, boxCodeWords, boxUrl, copiedLabelWords, dashedCode, labelRows, normalizeBoxCode } from './labels'
+import { boxAddress, boxAddressWords, boxClipboardWords, boxCode, boxCodeWords, boxUrl, copiedLabelWords, dashedCode, labelPlate, labelPrintName, labelPrintNames, labelRows, normalizeBoxCode, shortenedLabelsNote } from './labels'
 
 const ID = '7d759246-8476-4a37-884f-ed1562d5663f'
 
@@ -62,5 +62,57 @@ describe('labelRows', () => {
 
   it('is ten blank rows on an empty box', () => {
     expect(labelRows([])).toEqual(Array.from({ length: 10 }, () => null))
+  })
+})
+
+describe('what a label prints in large type (v2.7195)', () => {
+  const b = (id: string, label: string, retiredAt: string | null = null) => ({ id, label, retiredAt })
+
+  it('reads the letters and number a name starts with', () => {
+    expect(labelPlate('R74 3/4 PEX')).toBe('R74')
+    expect(labelPlate('r70 no container')).toBe('R70')
+    expect(labelPlate('R12')).toBe('R12')
+    expect(labelPlate('  AB7  toilets')).toBe('AB7')
+    expect(labelPlate('T8678')).toBe('T8678')
+  })
+
+  it('keeps one letter after the number, since R24 and R24B are two boxes', () => {
+    expect(labelPlate('R24B')).toBe('R24B')
+    expect(labelPlate('R24B PUMPS')).toBe('R24B')
+  })
+
+  it('finds none in a name of words, or one that runs on past the number', () => {
+    expect(labelPlate('CONCRETE MIX')).toBeNull()
+    expect(labelPlate('PVC COUNT')).toBeNull()
+    expect(labelPlate('3/4 PEX')).toBeNull()
+    expect(labelPlate('R74PEX')).toBeNull()
+    expect(labelPlate('Unsorted')).toBeNull()
+  })
+
+  it('prints the letters and number alone, and a name of words whole', () => {
+    const names = labelPrintNames([b('1', 'R74 3/4 PEX'), b('2', 'R12'), b('3', 'CONCRETE MIX'), b('4', 'R24B')])
+    expect([...names.values()]).toEqual(['R74', 'R12', 'CONCRETE MIX', 'R24B'])
+  })
+
+  it('prints both names whole when two live boxes would read the same', () => {
+    const names = labelPrintNames([b('1', 'R74 3/4 PEX'), b('2', 'R74'), b('3', 'R76 TOILETS'), b('4', 'R76 SINKS')])
+    expect([...names.values()]).toEqual(['R74 3/4 PEX', 'R74', 'R76 TOILETS', 'R76 SINKS'])
+  })
+
+  it('does not let a retired box hold a short name', () => {
+    const names = labelPrintNames([b('1', 'R74 3/4 PEX'), b('2', 'R74', '2026-11-02T00:00:00Z')])
+    expect(names.get('1')).toBe('R74')
+  })
+
+  it('falls back to the whole name for a box that is not in the list', () => {
+    expect(labelPrintName(new Map(), { id: 'x', label: 'R74 3/4 PEX' })).toBe('R74 3/4 PEX')
+  })
+
+  it('says under the pick which labels print shorter, and nothing when none does', () => {
+    const all = [b('1', 'R74 3/4 PEX'), b('2', 'R12'), b('3', 'R76 TOILETS'), b('4', 'CONCRETE MIX')]
+    const names = labelPrintNames(all)
+    expect(shortenedLabelsNote(all, names)).toBe('R74 3/4 PEX prints as R74, and 1 more like it. A label carries the letter and number alone.')
+    expect(shortenedLabelsNote([all[0]!], names)).toBe('R74 3/4 PEX prints as R74. A label carries the letter and number alone.')
+    expect(shortenedLabelsNote([all[1]!, all[3]!], names)).toBeNull()
   })
 })

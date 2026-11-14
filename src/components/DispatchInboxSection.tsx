@@ -20,6 +20,9 @@ import { StageCheckWindow, type StageCheckWindowIo } from './stageChecklists/Sta
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 import { canCreateJobFromBid } from '../lib/bids/wonMomentActions'
 import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
+import { draftPayTermsFromPayload } from '../lib/jobs/draftPayTerms'
+import { PAY_TERMS_FROM_BID_ACTION } from '../lib/jobs/draftPayTermsIo'
+import PayTermsRequestActions from './jobs/PayTermsRequestActions'
 import { CustomerWaitingRequestCard } from './CustomerWaitingRequestCard'
 import { RequestPrioritySheet } from './RequestPrioritySheet'
 import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
@@ -415,6 +418,12 @@ export function DispatchInboxSection({
                     Open the job
                   </button>
                 ) : null
+                // Pay terms an estimator sent on their own (punch list #323): the office opens the pay calendar filled in, or says it is not one.
+                const payTerms = !isClosed && req.pending_action === PAY_TERMS_FROM_BID_ACTION && req.bid_id ? draftPayTermsFromPayload(req.pending_payload) : null
+                const payTermsBtns =
+                  payTerms && req.bid_id ? (
+                    <PayTermsRequestActions requestId={req.id} bidId={req.bid_id} terms={payTerms} from={fromLabel} role={role} onCloseRequestWithNote={onCloseRequestWithNote} />
+                  ) : null
                 // The row's two doors, Open the job and Open the check, on an open stage check whose payload names the check.
                 const stageCheckJobId = stageCheck && !isClosed && jobDetailModal ? req.job_ledger_id : null
                 const stageCheckBtnStyle = {
@@ -872,6 +881,7 @@ export function DispatchInboxSection({
                         }
                       >
                         {openJobFromBidBtn}
+                        {payTermsBtns}
                         {openStageCheckBtn}
                         {openStageCheckJobBtn}
                         {linkJobPicturesBtn}
