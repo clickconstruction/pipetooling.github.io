@@ -2,7 +2,7 @@
 name: "Sub payments as a ledger: every payment made to a sub, by date, on Jobs → Subs and People → Subs"
 number: 347
 group: ready
-status: asked 2026-11-13 · PR 1 to PR 4 and the credit with sendings are built (dates on the Pay rows, the Ledger by date and by sub, the Record payment window, v2.7235 the credit, v2.7237 the check mark) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
+status: asked 2026-11-13 · all five PRs and the credit are built the same day (v2.7172 dates, v2.7174 by date, v2.7176 the window, v2.7231 by sub, v2.7235 the credit and sendings, v2.7237 the check mark, v2.7239 the match to Mercury) · the owner 2026-11-13: an overpayment becomes a credit, and "build it all"
 mockup: to-dos/subs-payments-ledger/mockup.html
 summary: >
   The owner wants to reconcile the payments made to subs and cannot see them by date. The Pay
@@ -15,10 +15,10 @@ summary: >
   PRs read what the Pay view already loads and need no migration. A check mark against the bank
   and a How paid field are the first step that stores anything, and matching a payment to a
   bank line waits on how subs are paid.
-next: PR 5, the match to Mercury
+next: the owner's look once the three migrations are pushed; then the residue under *Not built*
 size: M as a train of six (XS · S · S · S · S · M)
-blocker: none; PR 5 carries a migration that is pushed right after its merge
-opinion: PR 5 offers the bank line and a person presses Match; nothing ticks itself without a press
+blocker: none
+opinion: use it for a month's statement before building more; the first real sitting will say whether hand placement or the Banking side is worth it
 ---
 
 # Sub payments as a ledger (#347)
@@ -96,7 +96,7 @@ Neither card edits the other's kernel. #346's is `subOwedBreakdown` (sub → job
 2. **The Ledger on Jobs → Subs, by date** (S). The kernel's lines and month groups, `?view=ledger` on `JobsSubsTab`, the desk table and the phone cards, periods, Paid to, search, the tiles, Print and CSV, with no ✓ column. A new guide, *see every payment made to subs by date*. `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `docs/JOBS_TABS_ARCHITECTURE.md` gain the view. No migration.
 3. **By sub, and People → Subs** (S). **Built, v2.7231.** The by-sub rows, one sub's statement with its running balance and the check against Balance due, the statement's print, the **Roster | Ledger** switch on `PeopleSubsTab` (`/people?tab=subs&view=ledger`, and `&sub=<id>` for one sub). `docs/PEOPLE_TABS_ARCHITECTURE.md`, guide `review-your-subs`. No migration.
 4. **The check mark** (S, a migration). **Built, v2.7237**, migration `20261114030000_sub_payment_checked.sql`: a tick is on the sending, so every row of one check goes together. On `people_labor_job_payments`: `checked_at timestamptz`, `checked_by uuid`. A definer RPC `set_sub_payment_checked(p_payment_id, p_checked)` for office staff, and a trigger that clears the tick when `amount` or `payment_date` changes. The ✓ column, the *Not checked* chip, the tile, a How paid filter and a Method column on the ledger. **How paid itself shipped with PR 2b**: `method` and `method_ref` are on the row since migration 20261113180000. A back-charge gets a date field. The client reads columns only the migration creates, so it is a *push right after the merge* PR.
-5. **Match to the bank** (M, the owner's yes to call 2). A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
+5. **Match to the bank** (M, the owner's yes to call 2). **Built, v2.7239**, migration `20261114040000_sub_payment_bank_matches.sql`, on the ledger's side only. A link table from a Mercury transaction to a sub payment, a pure matcher (same amount, within three days, the payee's name as a tiebreak), **Match** on a ledger line and the same from the Banking side. Built only if most sub money leaves Mercury.
 
 ## PR 2b, added the same day: the payment window
 
@@ -138,3 +138,18 @@ Built with this card's edit, between PR 2 and PR 3:
 - **Where it shows:** the Pay row's payment, the Ledger by date (a green note, a *From credit* chip, the sending's number), the Ledger by sub, a statement (*Credit kept*, *Credit used*), and under Balance due on People → Subs.
 - **It cannot drift.** A payment that carries a credit stays on its sheet. One made from a credit keeps its amount. Removing a use puts the credit back, and removing a payment whose credit was already used is refused.
 - **Not built:** placing a sending's lines by hand (card #350's ask 2 wanted the fill as the start and the hand as the override), and turning a sheet that is already paid past its total into a credit. One sheet is in that state today.
+
+## The match to Mercury, built 2026-11-13 (v2.7239)
+
+- **Find bank lines** on the by-date list reads the money that left Mercury from just before the earliest payment shown. It is read on demand, since a year of the bank is thousands of rows.
+- **A payment is offered** the bank lines with the same amount to the cent within three days, closest day first, a payee that reads like the sub breaking a tie. A bank line another payment took is offered to nobody else.
+- **A press matches.** Nothing is matched by itself. A match ticks the payment, and clearing the tick clears the match, so a matched payment is always a checked one.
+- **One check is one match.** The lines of a sending are matched together, against what was sent. Payments typed one per sheet before sendings can share a bank line, and what sits on one line can never add up to more than it.
+
+## Not built
+
+- **The Banking side.** A bank line on Banking does not say it paid a sub, and has no Match press. The link table is there for it.
+- **Placing a sending's lines by hand.** The fill is oldest first, on or off.
+- **A sheet already paid past its total** becoming a credit. One sheet is in that state.
+- **The dev seat's** `plan_sub_labor_payment` records one row with no sending and no method.
+- **Old payments typed one per sheet** are not gathered into sendings. They are ticked and matched row by row.

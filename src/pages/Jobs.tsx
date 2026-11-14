@@ -2060,6 +2060,7 @@ export default function Jobs() {
                   })
                 }
                 onSetChecked={setSubPaymentChecked}
+                onBankChanged={() => loadLaborJobs()}
                 sub={searchParams.get('sub')}
                 onSubChange={(sub) =>
                   setSearchParams((p) => {
