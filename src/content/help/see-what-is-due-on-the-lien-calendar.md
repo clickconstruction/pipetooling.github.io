@@ -2,13 +2,13 @@
 title: see what is due on the lien calendar
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark
+keywords: lien calendar, by date, deadlines, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark
 ---
-The Deadlines tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
+The By date tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
-## Open Deadlines
+## Open the By date tab
 
-Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|Deadlines}} tab, beside Do now. Every billed job with money still owed is on it.
+Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|By date}} tab, beside **To do**. Every billed job with money still owed is on it.
 
 ## Read the pills
 
@@ -66,7 +66,7 @@ Press Esc to close a card, or move the pointer away. Pressing a mark still does 
 
 ## Read the key
 
-The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
+The key runs along the bottom of the By date tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
 
 ## On a phone
 

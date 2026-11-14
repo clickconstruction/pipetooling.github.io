@@ -162,7 +162,7 @@ export default function LienInstrumentsModal({
   onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage' | 'affidavit') => void
   /** *Waivers on the bills* (punch list #82): the Release of Lien window for this job, opened over this one. */
   onOpenRelease?: (job: JobWithDetails) => void
-  /** Open with the last day of work's line already editing (v2.4735): the Deadlines grid's last-day label. */
+  /** Open with the last day of work's line already editing (v2.4735): the By date grid's last-day label. */
   openLastWork?: boolean
   /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
   onLastWorkSaved?: () => void
@@ -216,7 +216,7 @@ export default function LienInstrumentsModal({
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
   // The courtesy notices sent on the job (punch list #231), off the sent notice's desk item, for the strip's node.
   const [courtesyRows, setCourtesyRows] = useState<LienTimelineCourtesy[]>([])
-  // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
+  // The last day of work (v2.4735): the timeline's *change ›* opens the By paper line here; a save re-reads the job's five columns.
   const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
   const [lastWorkPatch, setLastWorkPatch] = useState<Partial<Pick<JobWithDetails, 'last_work_date' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>> | null>(null)
   useEffect(() => {
@@ -1193,7 +1193,7 @@ export default function LienInstrumentsModal({
             </div>
           ) : null}
           {lastWorkOpen && lastWorkJob && property ? (
-            // The All filings line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
+            // The By paper line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
             <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
               <LienLastWorkDayLine
                 jobId={lastWorkJob.id}

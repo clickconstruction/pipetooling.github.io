@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/painted_maps against a throwaway copy of the WHOLE schema (v2.7202, punch list #345 PR 1: Paint a
-# map; migration *_painted_maps).
+# map; migration *_painted_maps; and v2.7223, PR 4: the link; migration *_painted_map_links).
 #
 #   npm run test:pg:painted-maps
 #
@@ -13,7 +13,9 @@
 # and adds nothing; the office reads every map and may change another's stroke; the bucket's objects follow the map
 # from the path's first folder; an account in training and a twin write nothing; someone who left reads nothing; a map
 # whose job is gone stays with its maker and the office, and a map thrown away takes its lines and places. It raises on
-# its first failed assertion and ends with "painted_maps PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
+# its first failed assertion and ends with "painted_maps PASSED". A second scenario, 30_links.sql, holds the link's
+# table: read by whoever reads the map, written by nobody signed in, a hash and never a code, gone with its map; it
+# ends with "painted_map_links PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -21,7 +23,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55619}"
 NAME="pgtest-painted-maps"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_painted_maps.sql)"
+WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -39,8 +41,13 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: the tables stand, every policy is remade the same, the bucket is already there.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+for f in $WRITES; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/painted_maps/20_scenario.sql 2>&1 || true)"
 if ! grep -q "painted_maps PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/painted_maps/30_links.sql 2>&1 || true)"
+if ! grep -q "painted_map_links PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "painted-maps bed ok"

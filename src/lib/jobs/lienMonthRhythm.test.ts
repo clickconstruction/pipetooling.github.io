@@ -214,7 +214,7 @@ describe('buildLienMonth — the five zones over the desk’s book', () => {
     expect(rem.breakdown).toBe('1 to send, 1 before day 7')
   })
 
-  it('knows which Do now rows are a zone’s work', () => {
+  it('knows which To do rows are a zone’s work', () => {
     const m = buildLienMonth({ ...book, todayYmd: '2026-11-11' })
     const [rem, not, lie, catchUp, quiet] = m.zones
     expect(lienMonthZoneHasRow(rem!, { kind: 'notice', jobId: 'a', action: 'courtesy' })).toBe(true)
