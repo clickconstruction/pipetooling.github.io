@@ -61,6 +61,16 @@ take* under it and the press **Set the hours**, and PR A renames the live line's
 same way (the kernel's `head`, `detail` and `press`, on every screen, since the words are the same
 on a desk).
 
+Also on pass 2: "Instead of share with a supply house, should we say request job account from
+supply house?" and then "Or supply house colon request job account." Yes: the press requests a job
+account, and the packet is the request. The ⋯ sheet's row reads **Supply house: Request job
+account**, the place first and the act after it, with the quiet word *none yet*, or *Ferguson ·
+Nov 3* once one has gone out. PR A renames the live press the same way wherever it is named: the icon's
+label and tip on the Job tab, the window's own title, the legend's row, the Dispatch errand's
+*Open Share with supply house* press, and the guide's title (*request a job account from a supply
+house*, with the old slug kept in `helpGuideFormerSlugs.ts`). The press count keeps its old row's
+name until then, so the before and after can be told apart.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -130,8 +140,8 @@ kind, and two 44 px presses at the right, ⋯ and ✕. The seven tabs run on one
 sideways under it, 40 px tall, the active one kept in view, a fade at the edge. The title row and
 the strip scroll away with the page; a small ✕ floats at the corner the whole way down, and a
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
-Calendar first, since they are the two anyone pressed; the supply house with its *none yet*; money
-story; the paid email; send as a task; write up a change; the ? card last). The three money tiles
+Calendar first, since they are the two anyone pressed; Supply house: Request job account with
+*none yet*; money story; the paid email; send as a task; write up a change; the ? card last). The three money tiles
 and the job accounts chips fold to one line each. The tabs join the press count. Nothing below
 moves; the bar is as today.
 
