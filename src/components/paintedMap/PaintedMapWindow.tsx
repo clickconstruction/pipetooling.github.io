@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { useAuth } from '../../hooks/useAuth'
+import { usePaintedWalk, writeKeptWalk } from '../../hooks/usePaintedWalk'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -68,23 +69,32 @@ import {
   type PaintedMapWhole,
 } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedPoint, SnapTarget } from '../../lib/paintedMap/paintedLine'
-import { strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { clockWords, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { walkHasLine, walkPause, walkPaintedMs, walkStrokes, type WalkState, type WalkStroke } from '../../lib/paintedMap/paintedWalk'
+import { lineLengthMeters } from '../../lib/paintedMap/paintedLine'
 import { haversineMeters } from '../../lib/jobTravelEstimate'
 import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasDot, PaintedCanvasDraft } from './PaintedMapCanvas'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
+import { PaintedWalkPanel } from './PaintedWalkPanel'
+import { PaintedWalkReview } from './PaintedWalkReview'
 import { PAINT_SWATCH } from './paintedMapLook'
 
 const PaintedMapCanvasLazy = lazy(() => import('./PaintedMapCanvas'))
 
 /** A map that is about to be made: named on the start sheet, saved with its first line. */
-export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line (the default) or a place. */ first?: 'line' | 'place' }
+export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line drawn by hand (the default), a place, or a walk. */ first?: 'line' | 'place' | 'walk' }
+
+/** What is kept on the phone beside a walk, so its window can open again after a reload. */
+export type KeptPaintedWalk = { mapId: string; start: PaintedMapToStart | null; address: string | null; pending: WalkStroke[] }
 
 type Props = {
   /** A saved map by its id, or a new one from the start sheet. */
   ask: { mapId: string } | { start: PaintedMapToStart }
+  /** A walk found on the phone from before, for this map: it opens paused, with the lines already looked over. */
+  kept?: { state: WalkState | null; pending: WalkStroke[] } | null
   /** The job's or the site's address. Looked up only when the map has nothing on it to open on. */
   address?: string | null
   /** Where the map opens when nothing is on it, for a caller that already knows the point. */
@@ -105,6 +115,18 @@ const MEASURED_CHIPS: ReadonlyArray<{ how: PaintedMeasuredHow; label: string }> 
   { how: 'other', label: 'Another way' },
 ]
 
+/** What each confirm asks, and the press that names its act. */
+const CONFIRM_WORDS: Record<'line' | 'place' | 'map' | 'leave' | 'stop' | 'walk' | 'leaveWalk' | 'leaveOut', { title: string; body: string; confirm: string; cancel: string }> = {
+  line: { title: 'Remove this line?', body: 'The line comes off the map for everyone. This cannot be undone.', confirm: 'Remove the line', cancel: 'Cancel' },
+  place: { title: 'Remove this place?', body: 'The place and its photo come off the map for everyone. This cannot be undone.', confirm: 'Remove the place', cancel: 'Cancel' },
+  map: { title: 'Throw this map away?', body: 'The map, its lines and its places go for everyone. This cannot be undone.', confirm: 'Throw the map away', cancel: 'Cancel' },
+  leave: { title: 'Stop without saving?', body: 'The line you are drawing is not saved yet.', confirm: 'Stop, and lose the line', cancel: 'Keep drawing' },
+  stop: { title: 'Stop without saving?', body: 'The line you are drawing is not saved yet.', confirm: 'Stop, and lose the line', cancel: 'Keep drawing' },
+  walk: { title: 'Throw the walk away?', body: 'What you painted goes from this phone. Nothing was sent anywhere, so nothing is left behind.', confirm: 'Throw the walk away', cancel: 'Keep it' },
+  leaveWalk: { title: 'Close the map?', body: 'The walk is not saved. It stays on this phone for a day, paused, and the app offers it back when you open it.', confirm: 'Close, and keep the walk on this phone', cancel: 'Stay' },
+  leaveOut: { title: 'Leave this line out?', body: 'The line goes from this phone. It was not saved, so it cannot be brought back.', confirm: 'Leave the line out', cancel: 'Keep it' },
+}
+
 /** A dot dragged further than this from the phone's reading is the painter's own call: about 10 ft. */
 const OFF_READING_METERS = 3
 
@@ -120,7 +142,7 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, address = null, center: givenCenter = null, onClose }: Props) {
+export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
@@ -135,7 +157,20 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
   const [names, setNames] = useState<Map<string, string>>(() => new Map())
   // A new map opens on what the painter chose to start with. A place needs somewhere to put its dot, and waits for one.
   const placeFirst = starting?.first === 'place'
-  const [mode, setMode] = useState<'view' | 'draw' | 'place'>(!starting ? 'view' : !placeFirst ? 'draw' : givenCenter ? 'place' : 'view')
+  const walkFirst = starting?.first === 'walk' || !!kept
+  const [mode, setMode] = useState<'view' | 'draw' | 'place' | 'walk' | 'review'>(kept && !kept.state ? 'review' : walkFirst ? 'walk' : !starting ? 'view' : !placeFirst ? 'draw' : givenCenter ? 'place' : 'view')
+  const walk = usePaintedWalk()
+  // The lines a walk made, looked over and not yet saved. They live on the phone until Save.
+  const [pending, setPending] = useState<WalkStroke[]>(() => kept?.pending ?? [])
+  // The line of those being set right by hand, by its place in the list.
+  const [fixing, setFixing] = useState<number | null>(null)
+  // Where a place goes back to when it is done: the map, or the walk it was added during.
+  const [placeReturn, setPlaceReturn] = useState<'view' | 'walk'>('view')
+  // This window has had a walk of its own: only then is what the phone keeps this window's to write or clear.
+  const ownsWalk = useRef(walkFirst)
+  // Bumped when a walk ends: the map followed the walker, and Look it over frames the whole of it.
+  const [refit, setRefit] = useState(0)
+  const began = useRef(false)
   const [placing, setPlacing] = useState<Placing | null>(() => (placeFirst && givenCenter ? { place: null, point: givenCenter, fix: null } : null))
   const openedOnPlace = useRef(placeFirst && !!givenCenter)
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(() => new Map())
@@ -153,7 +188,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
   const [finding, setFinding] = useState(false)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
-  const [confirm, setConfirm] = useState<{ kind: 'line'; line: PaintedLine } | { kind: 'place'; place: PaintedPlace } | { kind: 'map' } | { kind: 'leave' } | { kind: 'stop' } | null>(null)
+  const [confirm, setConfirm] = useState<{ kind: 'line'; line: PaintedLine } | { kind: 'place'; place: PaintedPlace } | { kind: 'map' } | { kind: 'leave' } | { kind: 'stop' } | { kind: 'walk' } | { kind: 'leaveWalk' } | { kind: 'leaveOut'; index: number } | null>(null)
 
   // Somewhere to open: only a map with nothing on it needs the address looked up. A saved map with a line or a place
   // frames itself, and its window asks the geocoder nothing.
@@ -208,10 +243,22 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
   }, [askedId, load])
 
   const dirty = mode === 'draw' && canUndoDraftLine(draft)
+  const walkOpen = !!walk.state || pending.length > 0
   const leave = useCallback(() => {
-    if (dirty) setConfirm({ kind: 'leave' })
+    if (walkOpen) setConfirm({ kind: 'leaveWalk' })
+    else if (dirty) setConfirm({ kind: 'leave' })
     else onClose()
-  }, [dirty, onClose])
+  }, [walkOpen, dirty, onClose])
+
+  // A map that starts with a walk begins reading once, when the window opens. A kept walk comes back paused.
+  useEffect(() => {
+    if (began.current) return
+    began.current = true
+    if (kept?.state) walk.restore(kept.state)
+    else if (!kept && starting?.first === 'walk') walk.start()
+    // Once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -257,6 +304,75 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     [mode, draft.points, draft.picked, targets],
   )
 
+  // The walk is kept on the phone as it goes, so a reload or the camera does not lose it. It is cleared when the
+  // lines are saved or thrown away. Readings carry their time here, and here only: what is saved has none.
+  const liveStrokes = useMemo(() => (walk.state ? walkStrokes(walk.state) : []), [walk.state])
+  const keptKey = `${walk.state?.status ?? 'none'}:${walk.state?.pausedWhy ?? ''}:${walk.state?.strokes.length ?? 0}:${walk.state?.current.length ?? 0}`
+  useEffect(() => {
+    if (!user?.id || !map || !ownsWalk.current) return
+    if (!walk.state && pending.length === 0) {
+      writeKeptWalk(user.id, null)
+      return
+    }
+    const keptMap: KeptPaintedWalk = { mapId: map.id, start: saved ? null : { id: map.id, name: map.name, words: map.words, home: starting?.home ?? { jobId: map.jobId, developmentId: map.developmentId }, first: 'walk' }, address, pending }
+    writeKeptWalk(user.id, { savedAtMs: Date.now(), map: keptMap, state: walk.state })
+    // keptKey stands for the walk's state: a reading that was not a step changes nothing worth keeping.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keptKey, pending, saved, user?.id])
+
+  const startWalking = () => {
+    setError(null)
+    ownsWalk.current = true
+    walk.start()
+    setMode('walk')
+  }
+  /** The walk is over: its lines join the ones already looked over, and the phone stops being read. */
+  const walkDone = () => {
+    if (walk.state) setPending((p) => [...p, ...walkStrokes(walk.state!)])
+    walk.clear()
+    setMode('review')
+    setRefit((n) => n + 1)
+  }
+  const fixPending = (index: number) => {
+    const stroke = pending[index]
+    if (!stroke) return
+    setError(null)
+    setReshaping(null)
+    setFixing(index)
+    setDraft(emptyDraftLine(stroke.points))
+    setMode('draw')
+  }
+  const saveWalk = async () => {
+    if (!map || !user?.id || pending.length === 0 || busy) return
+    setBusy(true)
+    setError(null)
+    const current = await ensureSaved()
+    if (!current) {
+      setBusy(false)
+      return
+    }
+    const landed: PaintedLine[] = []
+    let failed: string | null = null
+    for (const stroke of pending) {
+      const res = await addPaintedLine(map.id, stroke, user.id)
+      if (!res.ok) {
+        failed = res.error
+        break
+      }
+      landed.push(res.value)
+    }
+    setBusy(false)
+    setWhole({ ...current, lines: [...current.lines, ...landed] })
+    setPending((p) => p.slice(landed.length))
+    if (landed.length > 0) paintedMapsChanged()
+    if (failed) {
+      setError(`${failed} The line is kept on this phone. Press Save again when you have signal.`)
+      return
+    }
+    if (!names.has(user.id)) setNames(await loadPainterNames([user.id, ...names.keys()]))
+    setMode('view')
+  }
+
   const startDrawing = () => {
     setError(null)
     setReshaping(null)
@@ -270,7 +386,9 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     setMode('draw')
   }
   const stopDrawing = () => {
-    setMode('view')
+    // A line of a walk being set right goes back to the walk's own look-over.
+    setMode(fixing != null ? 'review' : 'view')
+    setFixing(null)
     setReshaping(null)
     setDraft(emptyDraftLine())
     setGlass(null)
@@ -293,6 +411,17 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
 
   const saveLine = async () => {
     if (!map || !user?.id || !canSaveDraftLine(draft) || busy) return
+    if (fixing != null) {
+      // Nothing is sent: the line is still on the phone. Set right by hand, it has no faint part left.
+      const was = pending[fixing]
+      if (was) {
+        const lengthM = lineLengthMeters(draft.points)
+        const fixed: WalkStroke = { ...was, points: draft.points, poorParts: [], fixedByHand: true, lengthM, marginM: strokeMarginMeters({ how: was.how, lengthM }) }
+        setPending((p) => p.map((s, i) => (i === fixing ? fixed : s)))
+      }
+      stopDrawing()
+      return
+    }
     setBusy(true)
     setError(null)
     const current = await ensureSaved()
@@ -315,6 +444,16 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     stopDrawing()
   }
 
+  /** A place added during a walk: the dot starts where the phone last was, with how sure it was. The walk keeps painting. */
+  const placeOnWalk = () => {
+    const last = walk.state?.last
+    const at = last ? { lat: last.lat, lng: last.lng } : viewCenter.current
+    if (!at) return
+    setError(null)
+    setPlaceReturn('walk')
+    setPlacing({ place: null, point: at, fix: last ? { lat: last.lat, lng: last.lng, accuracyM: last.accuracyM } : null })
+    setMode('place')
+  }
   const startPlace = () => {
     const at = viewCenter.current ?? center ?? mapStart(lines, whole?.places ?? [])
     if (!at) {
@@ -331,7 +470,8 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     setMode('place')
   }
   const stopPlacing = () => {
-    setMode('view')
+    setMode(placeReturn)
+    setPlaceReturn('view')
     setPlacing(null)
     setGlass(null)
   }
@@ -452,6 +592,27 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
       stopDrawing()
       return
     }
+    if (what.kind === 'leaveOut') {
+      setPending((p) => p.filter((_, i) => i !== what.index))
+      return
+    }
+    if (what.kind === 'walk') {
+      // Thrown away: the readings and the lines go from the phone, and nothing was ever sent.
+      walk.clear()
+      setPending([])
+      setMode('view')
+      return
+    }
+    if (what.kind === 'leaveWalk') {
+      // The phone stops being read now. The walk stays on this phone, paused, for a day.
+      if (user?.id && map && walk.state) {
+        const keptMap: KeptPaintedWalk = { mapId: map.id, start: saved ? null : { id: map.id, name: map.name, words: map.words, home: starting?.home ?? { jobId: map.jobId, developmentId: map.developmentId }, first: 'walk' }, address, pending }
+        writeKeptWalk(user.id, { savedAtMs: Date.now(), map: keptMap, state: walkPause(walk.state, Date.now()) })
+      }
+      walk.pause()
+      onClose()
+      return
+    }
     setBusy(true)
     setError(null)
     if (what.kind === 'place') {
@@ -504,6 +665,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     )
   }
 
+  const canWalk = typeof navigator !== 'undefined' && 'geolocation' in navigator
   const start = map ? mapStart(lines, whole?.places ?? []) : null
   const directions = start ? directionsUrlForPoint(start.lat, start.lng) : null
   const summary = mapSummaryWords(lines, places.length)
@@ -522,7 +684,18 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     viewCenter.current = c
   }, [])
 
-  const canvasLines = useMemo(() => lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how })), [lines, reshaping])
+  const canvasLines = useMemo(
+    () => [
+      ...lines.filter((l) => !(reshaping && l.id === reshaping.id)).map((l) => ({ id: l.id, points: l.points, poorParts: l.poorParts, how: l.how })),
+      // The lines of a walk, looked over and waiting, and the one being painted now.
+      ...pending.map((s, i) => ({ id: `pending-${i}`, points: s.points.slice(), poorParts: s.poorParts ?? [], how: s.how })).filter((_, i) => i !== fixing),
+      ...liveStrokes.map((s, i) => ({ id: `walk-${i}`, points: s.points.slice(), poorParts: s.poorParts ?? [], how: s.how })),
+    ],
+    [lines, reshaping, pending, fixing, liveStrokes],
+  )
+  const painting = walk.state?.status === 'painting'
+  const walkMe = mode === 'walk' && walk.state?.last ? { lat: walk.state.last.lat, lng: walk.state.last.lng, accuracyM: walk.state.last.accuracyM } : null
+  const walkLengthM = pending.reduce((sum, s) => sum + s.lengthM, 0) + liveStrokes.reduce((sum, s) => sum + s.lengthM, 0)
 
   return createPortal(
     <>
@@ -542,12 +715,24 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
         onClick={(e) => e.stopPropagation()}
         style={{ background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', maxWidth: 1080, display: 'flex', flexDirection: 'column', minHeight: 0, borderRadius: phone ? '14px 14px 0 0' : 14, overflow: 'hidden' }}
       >
+        {mode === 'walk' && walk.state ? (
+          // The bar is red for every second the phone is being read, and at no other time.
+          <div data-painted-bar={painting ? 'painting' : 'paused'} role="status" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: painting ? '#b91c1c' : '#4b5563', color: '#fff', fontWeight: 700 }}>
+            <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 0 4px rgba(255,255,255,.3)', flex: 'none' }} />
+            <span>{painting ? 'Painting' : 'Paused'} · {clockWords(walkPaintedMs(walk.state, walk.nowMs))}</span>
+            <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: '0.8125rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{painting ? title : 'The phone is not being read'}</span>
+            <button type="button" onClick={leave} aria-label="Close the painted map" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+              Close
+            </button>
+          </div>
+        ) : (
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mode === 'draw' ? (reshaping ? 'Move the corners' : 'Draw it by hand') : mode === 'place' ? (placing?.place ? 'Change this place' : 'A place on the map') : title}</h2>
+          <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mode === 'draw' ? (fixing != null ? 'Fix the line by hand' : reshaping ? 'Move the corners' : 'Draw it by hand') : mode === 'place' ? (placing?.place ? 'Change this place' : 'A place on the map') : mode === 'review' ? 'Look it over' : title}</h2>
           <button type="button" onClick={leave} aria-label="Close the painted map" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem' }}>
             Close
           </button>
         </div>
+        )}
 
         {loading ? (
           <p style={{ margin: '1rem', color: 'var(--text-muted)' }}>Loading the map…</p>
@@ -562,7 +747,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} />
               </Suspense>
               {mode === 'place' ? (
                 <div style={{ position: 'absolute', left: 8, right: 8, bottom: 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
@@ -582,7 +767,29 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
               {mapFailed ? <p role="status" style={note}>The picture did not load. There may be no signal here. The line still draws.</p> : null}
               {error ? <p role="alert" data-painted-error style={note}>{error}</p> : null}
 
-              {mode === 'place' && placing ? (
+              {mode === 'walk' && walk.state ? (
+                <PaintedWalkPanel
+                  state={walk.state}
+                  refusal={walk.refusal}
+                  awake={walk.awake}
+                  lengthM={walkLengthM}
+                  placeCount={places.length}
+                  hasLine={pending.length > 0 || walkHasLine(walk.state)}
+                  onPlace={placeOnWalk}
+                  onPause={walk.pause}
+                  onResume={walk.resume}
+                  onTryAgain={() => (walk.state && walk.state.status === 'paused' ? walk.resume(false) : walk.start())}
+                  onDone={walkDone}
+                  onDrawInstead={() => {
+                    // What was painted so far is kept to look over. The rest is drawn by hand.
+                    if (walk.state && walkHasLine(walk.state)) setPending((p) => [...p, ...walkStrokes(walk.state!)])
+                    walk.clear()
+                    startDrawing()
+                  }}
+                />
+              ) : mode === 'review' ? (
+                <PaintedWalkReview strokes={pending} busy={busy} mapSaved={saved} onFix={fixPending} onRemove={(index) => setConfirm({ kind: 'leaveOut', index })} onSave={() => void saveWalk()} onKeepPainting={startWalking} onThrowAway={() => setConfirm({ kind: 'walk' })} />
+              ) : mode === 'place' && placing ? (
                 <PaintedPlacePanel
                   key={placing.place?.id ?? 'new'}
                   place={placing.place}
@@ -633,9 +840,13 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
                     </button>
                   </div>
                   <button type="button" data-painted-save style={canSaveDraftLine(draft) && !busy ? { ...bluePress, minHeight: 52 } : { ...deadPress, minHeight: 52 }} disabled={!canSaveDraftLine(draft) || busy} onClick={() => void saveLine()}>
-                    {busy ? 'Saving…' : reshaping ? 'Save the line' : saved ? 'Save the line' : 'Save the map'}
+                    {busy ? 'Saving…' : fixing != null ? 'Use this line' : reshaping ? 'Save the line' : saved ? 'Save the line' : 'Save the map'}
                   </button>
-                  {!saved ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>The map is saved when you press Save the map, and not before.</p> : null}
+                  {fixing != null ? (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Drag a corner onto the right spot, or press one and remove it. The line is still on this phone alone.</p>
+                  ) : !saved ? (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>The map is saved when you press Save the map, and not before.</p>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -664,6 +875,7 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <button type="button" data-painted-draw style={bluePress} onClick={startDrawing}>Draw a line</button>
+                    {canWalk ? <button type="button" data-painted-walk-start style={press} onClick={startWalking}>Walk or drive a line</button> : null}
                     <button type="button" data-painted-place style={press} onClick={startPlace}>＋ Place</button>
                     {directions ? (
                       <button type="button" style={press} onClick={() => openInExternalBrowser(directions)}>Directions to the start</button>
@@ -780,10 +992,10 @@ export function PaintedMapWindow({ ask, address = null, center: givenCenter = nu
     {confirm ? (
       <ConfirmDialog
         zIndex={PAINTED_MAP_SHEET_Z + 60}
-        title={confirm.kind === 'line' ? 'Remove this line?' : confirm.kind === 'place' ? 'Remove this place?' : confirm.kind === 'map' ? 'Throw this map away?' : 'Stop without saving?'}
-        body={confirm.kind === 'line' ? 'The line comes off the map for everyone. This cannot be undone.' : confirm.kind === 'place' ? 'The place and its photo come off the map for everyone. This cannot be undone.' : confirm.kind === 'map' ? 'The map, its lines and its places go for everyone. This cannot be undone.' : 'The line you are drawing is not saved yet.'}
-        confirmLabel={confirm.kind === 'line' ? 'Remove the line' : confirm.kind === 'place' ? 'Remove the place' : confirm.kind === 'map' ? 'Throw the map away' : 'Stop, and lose the line'}
-        cancelLabel={confirm.kind === 'leave' || confirm.kind === 'stop' ? 'Keep drawing' : 'Cancel'}
+        title={CONFIRM_WORDS[confirm.kind].title}
+        body={CONFIRM_WORDS[confirm.kind].body}
+        confirmLabel={CONFIRM_WORDS[confirm.kind].confirm}
+        cancelLabel={CONFIRM_WORDS[confirm.kind].cancel}
         onConfirm={() => void confirmed()}
         onCancel={() => setConfirm(null)}
       />

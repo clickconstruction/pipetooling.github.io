@@ -94,6 +94,7 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
+import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
@@ -1764,6 +1765,8 @@ export default function LienDesk({
     else if (key === 'share') setShareOpen(true)
     else if (key === 'owner_records') onOpenOwnerRecords?.()
   }
+  // What each row's job still owes, for a phone's rows and its days' totals (punch list #352, PR 3): the open balance each list already draws.
+  const phoneAmountFor = isMobile && data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
   // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
@@ -3963,7 +3966,7 @@ export default function LienDesk({
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
             {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={pickMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} due={isMobile ? lienMonthLineDue(lienMonth, nextUpRows) : null} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp scrolls={doNow.listScrolls} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
