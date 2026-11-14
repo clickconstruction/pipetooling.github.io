@@ -41,6 +41,11 @@ Also on pass 2, the section's name: *the thread* was renamed *Communication with
 word and put back on his next: "Actually, I don't like the new name. Bring it back." It stays
 **the thread**.
 
+Also on pass 2: "As a user scrolls down, I would like for the header to scroll up and away out of
+the page so the user can see more." So the title row and the tab strip are part of the page that
+scrolls, not a fixed band: a flick gives the whole screen to the job, a small ✕ floats at the
+corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -106,9 +111,10 @@ each a scrolling 375 px phone. Every name, address and number on it is invented.
 
 **A · The top in the right order** (one PR, the first step). A title row like the desk's since
 v2.6539 comes first: the name and the status, a quiet line with the number, the customer and the
-kind, and two 44 px presses fixed at the right, ⋯ and ✕, so the ✕ never moves again. The seven
-tabs run on one line that scrolls sideways under it, 40 px tall, the active one kept in view, a
-fade at the edge. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
+kind, and two 44 px presses at the right, ⋯ and ✕. The seven tabs run on one line that scrolls
+sideways under it, 40 px tall, the active one kept in view, a fade at the edge. The title row and
+the strip scroll away with the page; a small ✕ floats at the corner the whole way down, and a
+scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
 Calendar first, since they are the two anyone pressed; the supply house with its *none yet*; money
 story; the paid email; send as a task; write up a change; the ? card last). The three money tiles
 and the job accounts chips fold to one line each. The tabs join the press count. Nothing below
@@ -138,9 +144,9 @@ Pass 1 asked seven. The count answered three (the icons go behind ⋯, the bar s
 the desk's own title row answers one (the kind chip reads on the quiet line). Three are left; the
 pick after each is the drawing's own.
 
-1. **A as drawn?** The name first with ⋯ and ✕ fixed at the right, the seven tabs on one line
-   that scrolls under it, every door in the ⋯ sheet, money and job accounts as one line each,
-   nothing below moved. *Yes, as the first PR.*
+1. **A as drawn?** The name first with ⋯ and ✕ at the right, the seven tabs on one line that
+   scrolls under it, both scrolling away with the page under a floating ✕, every door in the ⋯
+   sheet, money and job accounts as one line each, nothing below moved. *Yes, as the first PR.*
 2. **The tabs that do not fit.** A scrolling strip hides the last tab or two until a thumb slides
    it; three tabs and a More ▾ hide them behind a press instead. *Scroll for now, count the tab
    presses for a month, then move the tabs nobody presses on a phone behind More ▾ in B.*
@@ -154,7 +160,9 @@ pick after each is the drawing's own.
   desk's title row (`!phone` today: name · status · quiet line) on the phone too, first, with ⋯
   and ✕ at its right, hides the pane's own title (`paneTitleHidden`), and has the strip scroll
   under it (`overflowX: auto`, the active tab scrolled into view on change, `data-navtrack` on
-  the strip so each tab press is counted).
+  the strip so each tab press is counted). Both move into `.job-window-body`'s scroll on a phone,
+  with a floating ✕ over the corner and the strip drawn again at the top when the scroll turns
+  upward (a `scroll` listener on the body, the strip `position: sticky` while scrolling up).
 - `src/components/jobs/DetailJobModal.tsx`: the action row (dossier D5, the eight presses with
   `data-navtrack="job-window"`), the phone-pane tiles and `JobAccountsStrip` in the top band
   (D7). A hides the action row under `phonePane` and hands its doors to the window's ⋯ sheet
@@ -186,7 +194,8 @@ pick after each is the drawing's own.
 
 Open any job from the Pipeline at the 375 px preset (Jobs → Pipeline, Mobile cards on), or on a
 phone: the name is the first line with ⋯ and ✕ at its right, the tab row under it is one line
-that slides, the ⋯ sheet names every door, and the Job tab's first screen reads the address and
+that slides, a flick down takes both off the screen and leaves a floating ✕, a flick up brings
+the tabs back, the ⋯ sheet names every door, and the Job tab's first screen reads the address and
 the customer. Then `ui_nav_clicks` on prod a week later shows rows named by the tabs. The
 ZZ test job `ZZ TEST Riders Walk` has stages, a checklist, plans and an activity feed to scroll.
 Then the same window on a desk at 760 px, unchanged.

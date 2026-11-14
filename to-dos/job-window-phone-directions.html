@@ -67,6 +67,11 @@
   .head .pin { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; color: var(--muted); flex-shrink: 0; border-radius: 10px; }
   .head .pin.dots { font-size: 20px; letter-spacing: 1px; }
 
+  /* The header scrolls away (the owner's word, pass 2e): only a small ✕ floats at the corner. */
+  .floatx { position: absolute; top: 32px; right: 10px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.88); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 18px; color: var(--muted); z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .scroll > .head, .scroll > .tabs { flex-shrink: 0; }
+  .scroll > .head .pin.x { visibility: hidden; }
+
   /* Body */
   .body { padding: 8px 14px 16px; }
   .title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 4px 0 6px; }
@@ -170,7 +175,7 @@
     <p class="eyebrow">Punch list #355 · the job window at 375 px · pass 2</p>
     <h1>The job window on a phone: today, and three ways forward</h1>
   </div>
-  <div class="stamp">drawn 2026-11-14 · pass 2 the same day · the owner's word on the number and the email, pass 2b<br>measured on the dev server, iPhone preset<br>presses read from prod, 2026-10-26 to 11-14<br>every name and number here is made up</div>
+  <div class="stamp">drawn 2026-11-14 · pass 2 the same day · the owner's words on the number and the email, the thread's name and the header that scrolls away<br>measured on the dev server, iPhone preset<br>presses read from prod, 2026-10-26 to 11-14<br>every name and number here is made up</div>
 </header>
 <p class="lede">The owner opened a job on his iPhone and said: <b>the top line wraps into two, throughout it is not easy to follow, and the buttons are not easy to press.</b> The measured window bears him out: the tab row takes two lines, the title block has eight presses between 20 and 31 px tall, the Job tab runs <b>4,350 px</b> (six and a half screens) before the bar, and the only presses a thumb can land on without care are the bar's three and <b>Paint a map</b>. Pass 2 adds what prod says people press on this window, and redraws the top from it. Each phone below scrolls. The first screen is what matters.</p>
 
@@ -261,16 +266,18 @@
     <div class="cap"><span>A · The top in the right order</span><span class="tag a">one PR · the first step</span></div>
     <div class="phone">
       <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
       <div class="head">
         <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Kind not set</div></div>
-        <span class="pin dots">⋯</span><span class="pin">✕</span>
-        <span class="mark ok" style="top:4px;right:100px">the name first · ✕ fixed</span>
+        <span class="pin dots">⋯</span><span class="pin x">✕</span>
+        <span class="mark ok" style="top:4px;right:100px">the name first · scrolls away</span>
       </div>
       <div class="tabs strip">
         <div class="rail"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span><span class="tab">Materials</span></div>
         <span class="mark ok" style="top:16px">one line · scrolls · 40 px</span>
       </div>
-      <div class="scroll">
+
         <div class="body">
           <a class="addr" style="margin-top:4px">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
@@ -310,8 +317,9 @@
     </div>
     <div class="verdict"><b>What changes</b>
       <ul>
-        <li><b>The name comes first.</b> A title row like the desk's since v2.6539: the name and the status, a quiet line with the number, the customer and the kind, and two 44 px presses fixed at the right: <b>⋯</b> and <b>✕</b>. The ✕ never moves again.</li>
+        <li><b>The name comes first.</b> A title row like the desk's since v2.6539: the name and the status, a quiet line with the number, the customer and the kind, and two 44 px presses at the right: <b>⋯</b> and <b>✕</b>.</li>
         <li>The seven tabs run on <b>one line that scrolls sideways</b> under it, 40 px tall, the active one kept in view, a fade at the edge saying there is more.</li>
+        <li><b>The header scrolls away.</b> The title row and the tab strip go up with the page, so a thumb's first flick gives the whole screen to the job. A small <b>✕</b> floats at the corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays put.</li>
         <li>The icon row is gone. Every door is a named 48 px row in the <b>⋯</b> sheet, Share and Calendar first since they are the two anyone pressed, with the <b>?</b> card as its last row.</li>
         <li>The three money tiles and the job accounts fold to <b>one line each</b>; a tap opens the Bill tab or the accounts sheet.</li>
         <li>The tabs join the press count, so the second PR's tab question is answered by data.</li>
@@ -325,14 +333,16 @@
     <div class="cap"><span>B · The job on one screen</span><span class="tag b">A, then a second PR</span></div>
     <div class="phone">
       <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
       <div class="head">
         <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Kind not set</div></div>
-        <span class="pin dots">⋯</span><span class="pin">✕</span>
+        <span class="pin dots">⋯</span><span class="pin x">✕</span>
       </div>
       <div class="tabs strip">
         <div class="rail"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span><span class="tab">Materials</span></div>
       </div>
-      <div class="scroll">
+
         <div class="body">
           <div class="sect" style="margin-top:4px">Where</div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
@@ -387,15 +397,17 @@
     <div class="cap"><span>C · The crew lead's window</span><span class="tag c">not recommended now</span></div>
     <div class="phone">
       <div class="status"><span>10:53</span><span>●●● 42</span></div>
+      <span class="floatx">✕</span>
+      <div class="scroll">
       <div class="head">
         <div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Saturday 8:00–12:00</div></div>
-        <span class="pin dots">⋯</span><span class="pin">✕</span>
+        <span class="pin dots">⋯</span><span class="pin x">✕</span>
       </div>
       <div class="tabs strip four">
         <div class="rail"><span class="tab on">Job</span><span class="tab">Materials</span><span class="tab">Documents</span><span class="tab more">More ▾</span></div>
         <span class="mark ok" style="top:16px">the crew lead's three</span>
       </div>
-      <div class="scroll">
+
         <div class="body">
           <div class="sect" style="margin-top:4px">Where</div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
