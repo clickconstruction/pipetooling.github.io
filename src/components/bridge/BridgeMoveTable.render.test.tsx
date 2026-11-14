@@ -177,6 +177,14 @@ describe('BridgeMoveTable, a job’s address (v2.7232)', () => {
     expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
   })
 
+  it('says it under the name of a job with no price too (v2.7243)', () => {
+    const price = moveDive({ key: 'price', title: 'Price the jobs.', door: null }, { ...facts, noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk', address: '7 Willow Walk, Cedar Falls' }, { id: 'j402', label: '402 · Alder Yard' }] })!
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={price} narrow={false} />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-sub').textContent).toBe('7 Willow Walk, Cedar Falls')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+
   it('says it under the name on a phone, free to wrap', () => {
     renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={placed} narrow />)
     const rows = screen.getAllByTestId('bridge-week-dive-item')

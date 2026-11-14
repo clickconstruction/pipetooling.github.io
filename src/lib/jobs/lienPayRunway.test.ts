@@ -239,9 +239,28 @@ describe('a sub job: the § 53.056 notice comes first (v2.4096)', () => {
     expect(buildLienPayRunway(sub({ noticedMonths: ['2026-07'] })).state).toBe('notice_due')
   })
 
-  it('notice window closed unsent: the lien for that month is gone', () => {
-    const r = buildLienPayRunway(sub({ lastWorkYmd: '2026-07-20' })) // notice was due Sep 15
+  it('notice window closed unsent, the affidavit’s day ahead: a late notice can still go, so the lien is not gone (v2.7198, punch list #335, row 4)', () => {
+    // July's notice was due Sep 15; the affidavit can be filed until Oct 15. Until v2.7198 the clock answered `closed` here.
+    const r = buildLienPayRunway(sub({ lastWorkYmd: '2026-07-20', todayYmd: '2026-09-28' }))
+    expect(r.state).toBe('late_notice')
+    expect(r.tone).toBe('amber')
+    expect(r.lines).toEqual(['notice window closed Sep 15 · lien by Oct 15', 'send the late notice · 17 d'])
+    expect(r.chipLabel).toBe('late notice · 17 d')
+    expect(r.title).toBe('The § 53.056 notice for this work month was due Sep 15 and none is recorded. A late notice can still go while the lien affidavit can be filed, by Oct 15. Send it from the Lien desk. Counts from the last work month (July 2026, approved hours) · residential: the 15th of the 3rd month after (§ 53.052).')
+    expect(r).toMatchObject({ closedBy: null, noticeByYmd: '2026-09-15', daysToNotice: -13, lienByYmd: '2026-10-15', daysToLien: 17, sortKey: 17 })
+    // The lien flag is on the track; the notice date behind us draws no mark.
+    expect(r.marks).toMatchObject({ lien: { days: 17 }, notice: null, pay: null, gap: null })
+    expect(lienRunwayWantsTheChip(r)).toBe(true)
+    // Inside the red week it is red, and a live pay date still rides the track.
+    const red = buildLienPayRunway(sub({ lastWorkYmd: '2026-07-20', todayYmd: '2026-10-10', expectedPayYmd: '2026-10-30' }))
+    expect(red).toMatchObject({ state: 'late_notice', tone: 'red', chipLabel: 'late notice · 5 d' })
+    expect(red.marks!.pay).toMatchObject({ days: 20 })
+  })
+
+  it('past the affidavit’s own day too: the lien is gone', () => {
+    const r = buildLienPayRunway(sub({ lastWorkYmd: '2026-07-20', todayYmd: '2026-10-20' }))
     expect(r.state).toBe('closed')
+    expect(r.closedBy).toBe('notice')
     expect(r.lines).toEqual(['lien gone', 'notice window closed Sep 15'])
     expect(r.chipLabel).toBe('lien gone')
     expect(r.title).toContain('§ 53.056 notice')
@@ -345,11 +364,25 @@ describe('every work month: the notice that counts is the earliest one still owe
     expect(r.noticeByYmd).toBe('2026-10-15')
   })
 
-  it('the last month closed unsent: the lien is gone, whatever came before it', () => {
+  it('the last month closed unsent: a late notice while the affidavit’s day is ahead, gone after it (v2.7198, punch list #335, row 4)', () => {
+    // May's and June's windows are closed on Oct 1; the affidavit can be filed until Oct 15.
     const r = buildLienPayRunway(seguin({ lastWorkYmd: '2026-06-20', workMonths: ['2026-05', '2026-06'] }))
-    expect(r.state).toBe('closed')
-    expect(r.closedBy).toBe('notice')
+    expect(r.state).toBe('late_notice')
+    expect(r.closedBy).toBeNull()
     expect(r.noticeByYmd).toBe('2026-09-15')
+    expect(r.lienByYmd).toBe('2026-10-15')
+    const gone = buildLienPayRunway(seguin({ todayYmd: '2026-10-16', lastWorkYmd: '2026-06-20', workMonths: ['2026-05', '2026-06'] }))
+    expect(gone.state).toBe('closed')
+    expect(gone.closedBy).toBe('notice')
+    expect(gone.noticeByYmd).toBe('2026-09-15')
+  })
+
+  it('the last month closed unsent, an earlier month’s notice sent: that notice carries the affidavit, so the clock reads on to the lien’s day', () => {
+    const r = buildLienPayRunway(seguin({ lastWorkYmd: '2026-06-20', workMonths: ['2026-05', '2026-06'], noticedMonths: ['2026-05'] }))
+    expect(r.state).toBe('no_pay')
+    expect(r.chipLabel).toBe('lien in 14 d')
+    expect(r.noticeMonths.map((m) => m.state)).toEqual(['sent', 'closed'])
+    expect(r.marks!.notice).toBeNull()
   })
 
   it('a direct job has no notice months', () => {
@@ -383,7 +416,9 @@ describe('the basis and the closed window (v2.4265)', () => {
   })
   it('closedBy says which window shut', () => {
     expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-03-01' }).closedBy).toBe('lien')
-    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-07-20', isSub: true }).closedBy).toBe('notice')
+    // A notice window shut with the affidavit's day ahead is not closed (v2.7198, punch list #335, row 4); past that day it is, by the notice.
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-07-20', isSub: true }).closedBy).toBeNull()
+    expect(buildLienPayRunway({ ...base, todayYmd: '2026-10-20', lastWorkYmd: '2026-07-20', isSub: true }).closedBy).toBe('notice')
     expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12' }).closedBy).toBeNull()
   })
 })

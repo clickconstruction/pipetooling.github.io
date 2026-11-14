@@ -7,7 +7,7 @@
  * covered job on one packet, and words the difference between the paper's
  * claim and the app's. Pure; the IO writes the rows and moves the desk items.
  */
-import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import type { LienNoticeFields } from '../jobsDocuments/lienNoticeFieldsType'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { propertyKey } from './ownerConfirm'
 

@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: ready
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PRs 5 to 9 not built
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PR 5 built on his word (v2.7240, #8074), LIVE 2026-11-14 on his yes: the migration pushed, `box-read` deployed, the types in #8083 · PRs 6 to 9 not built
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -12,10 +12,10 @@ summary: >
   file the public box page then streams. Four defects were fixed the same day. This card lists the
   rest as small PRs in the order they would hurt a person in the field or a number the office
   reads.
-next: The owner's try of a press on a real phone with its radio off, on the ZZ test job: the box shows the new number, the line at the top counts it, and it lands once when the signal is back. PR 5, what a teammate may change, is next on his word; it carries a migration.
-size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 4 are built; left: PRs 5 to 9 (M · S · S · M · S)
-blocker: None for what is built. The owner's word for PR 5, which carries a migration and needs someone at hand to push it.
-opinion: your call — the four that a crew with poor signal waited on are built; try a press on a phone with the radio off, then say the word on PR 5
+next: The owner's try of a press on a real phone with its radio off, on the ZZ test job: it is also the first press to land under PR 5's stamps. PR 6, missing with no price, is next on his word.
+size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 5 are built; left: PRs 6 to 9 (S · S · M · S)
+blocker: None for what is built. The owner's word for PR 6.
+opinion: your call — PRs 1 to 5 are live; try a press on a phone with the radio off, then say the word on PR 6
 mockup: not required — PR 1 uses the outbox bar that is already on the phone; no new screen
 ---
 
@@ -72,7 +72,7 @@ Each row is one PR. *Read* means found in the code and not walked. Line numbers 
 
 | PR | What is wrong | How a person meets it | Size |
 |---|---|---|---|
-| 5 · what a teammate may change, a migration | `job_box_photos_update_own` lets the taker change any column, `drive_file_id` among them, and `box-read` streams whatever file that id names to a signed-out caller through the service account. `job_containers_update` pins no column, so a box's `job_id` can be changed by hand, which is the split v2.6808 closed. The ledger's `by_user_id`, `by_name` and `at` are whatever the phone sends, where `box_sticker_events` stamps them in a trigger. `box-read`'s guess lock turns a miss into a 429 and still answers a hit. | A helper on any job could publish a Drive file whose id they know, or post a backdated count in a teammate's name. None of this is on a screen. It is what the tables allow. | M |
+| ~~5 · what a teammate may change, a migration~~ built, v2.7240 | `job_box_photos_update_own` lets the taker change any column, `drive_file_id` among them, and `box-read` streams whatever file that id names to a signed-out caller through the service account. `job_containers_update` pins no column, so a box's `job_id` can be changed by hand, which is the split v2.6808 closed. The ledger's `by_user_id`, `by_name` and `at` are whatever the phone sends, where `box_sticker_events` stamps them in a trigger. `box-read`'s guess lock turns a miss into a 429 and still answers a hit. | A helper on any job could publish a Drive file whose id they know, or post a backdated count in a teammate's name. None of this is on a screen. It is what the tables allow. | M |
 | 6 · missing with no price | The desk's **Missing this week** is money alone (`onSiteSummary.ts` 30). A short count of a part with no price adds $0.00, is not amber and sorts last. On the real site 3 of 116 lines have a price. | A job that lost 200 fittings reads $0.00 on the desk. #342 raises the cover; this PR shows the count of short lines beside the money, as the Needs you line already does. | S |
 | 7 · the price and the fold | `pickBookPrice` refuses only a price under zero, so a 0 or the book's 999,999 stand-in counts as a known price (`bookPrice.ts` 56). `sameWordsKey` joins two fittings when a word sits between their sizes: `1/2 pex x 3/4 mip` and `3/4 pex x 1/2 mip` are one row, as are `4 to 2 reducer` and `2 to 4` (`siteRollup.ts` 103). *Shown by running the kernels.* | Worth reads far too high, or two different adapters share a total on the screen and the paper. | S |
 | 8 · the Deliveries panel | The pasted-text reader drops `1,000 EA …`, reads `2 1/2" x 10 PVC pipe` as 2 of a half inch, and takes a line total for a unit price (`manifest.ts` 38). **Add N lines** sends lines the press did not count, toasts before any answer and has no guard on the same invoice twice. The office has landed no delivery on prod yet. *Shown by running the reader.* | The first real invoice lands wrong quantities. | M |
@@ -144,6 +144,17 @@ what was wrong; this is what each PR did.
 2026-11-13, night: all four are on main, with #8017, the Print labels *Which job?* window made 640
 wide so a long job name cannot push it into a sideways scroll. PR 1's store test waited a fixed
 30 ms for a send and failed under a loaded runner; #8026 made it wait on the sender.
+
+2026-11-13, PR 5 (v2.7240), on his word: four triggers, one helper and one nullable column
+(`20261114013000_on_site_teammate_guards.sql`), and `box-read` refusing a locked source a right
+guess too. A ledger row and a box move are stamped with the caller and the server's time where the
+phone's is ahead, `recorded_at` keeps when a row reached the office, a box photo's Drive columns
+are the sweep's and its place in the bucket is its own, and a box keeps its job. Proved on a
+scratch Postgres with each trigger switched off in turn; the bed over the whole schema is CI's.
+**Live 2026-11-14** on his yes (*Yes, push and deploy*): `supabase db push` applied this one file (the dry run named no other), `box-read` was deployed, and the types are #8083. `check:migration-drift` and `check:edge-drift` read clean. Read only after: the new column reads on prod, null on the rows from before; the box page refuses a malformed code and opens the ZZ test cage. No press was made, so the first real press is what shows the stamps on prod. The check this card asked for first came back
+clean for today's teams: the primary on the site's main job and a helper on its second each read
+their job's boxes. A superintendent or an estimator on a team is still let in only once clocked
+onto the job; none is on a team that holds boxes.
 
 **Not checked by any of the four:** a real phone with its radio off, a real camera, and what the
 database answers a resent row. The last is read from Postgres' own rule, a duplicate on the primary

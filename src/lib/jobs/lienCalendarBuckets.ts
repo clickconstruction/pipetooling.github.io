@@ -30,13 +30,18 @@ export const LIEN_CALENDAR_BUCKET_KEYS: ReadonlyArray<LienCalendarBucketKey> = [
 
 const TITLES: Record<LienCalendarBucketKey, string> = { overdue: 'Overdue', this_month: 'This month', next_month: 'Next month', later: 'Later' }
 
-/** A job's next date on the lien clock: the notice it owes, else its lien date; null once the window closed or the lien is filed. */
-export type LienNextDate = { ymd: string; what: 'notice' | 'lien' }
+/**
+ * A job's next date on the lien clock: the notice it owes, else its lien date; null once the window closed or the lien
+ * is filed. A late notice (v2.7198, punch list #335, row 4) is due by the lien's own day: its notice window closed with none
+ * sent and the affidavit can still be filed, so the job has a date ahead and is not overdue.
+ */
+export type LienNextDate = { ymd: string; what: 'notice' | 'late_notice' | 'lien' }
 
 export function lienNextDate(job: Pick<LienCalendarJob, 'runway'>): LienNextDate | null {
   const r = job.runway
   if (r.state === 'none' || r.state === 'closed' || r.state === 'filed') return null
   if (r.state === 'notice_due' && r.noticeByYmd) return { ymd: r.noticeByYmd, what: 'notice' }
+  if (r.state === 'late_notice') return r.lienByYmd ? { ymd: r.lienByYmd, what: 'late_notice' } : null
   return r.lienByYmd ? { ymd: r.lienByYmd, what: 'lien' } : null
 }
 
@@ -78,6 +83,8 @@ export type LienCalendarBucket = {
   /** Jobs whose next date is a notice, and jobs whose next date is the lien. */
   notices: number
   liens: number
+  /** Jobs whose next step is a late notice (v2.7198, punch list #335, row 4): the notice window closed, the lien's day is ahead. They are not drafted by the bucket's door. */
+  lateNotices: number
   /** Liens on file: nothing left on their clock, so they wait in Later. */
   filed: number
   /** The distinct next dates, oldest first. */
@@ -148,6 +155,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
   const barDate = key !== 'overdue' && dates.length === 1 ? dates[0]! : null
   const noticeJobs = sorted.filter((_, i) => nexts[i]?.what === 'notice')
   const liens = nexts.filter((n) => n?.what === 'lien').length
+  const lateNotices = nexts.filter((n) => n?.what === 'late_notice').length
   const filed = sorted.filter((j) => j.runway.state === 'filed').length
   const gcs = new Map<string, string>()
   for (const j of noticeJobs) if (j.gcId) gcs.set(j.gcId, j.gcName?.trim() || 'the GC')
@@ -167,6 +175,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
       const mailed = noticeJobs.filter((j) => j.runway.noticeMailed).length
       if (mailed) facts.push(`${mailed} in the mail`)
     }
+    if (lateNotices) facts.push(plural(lateNotices, 'late notice', 'late notices'))
     if (liens) facts.push(`${plural(liens, 'lien', 'liens')} to file`)
     if (filed) facts.push(`${plural(filed, 'lien', 'liens')} filed`)
   }
@@ -206,6 +215,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
     total: sorted.reduce((s, j) => s + j.openBalance, 0),
     notices: noticeJobs.length,
     liens,
+    lateNotices,
     filed,
     dates,
     dateLabel: key === 'overdue' || !dates[0] ? '' : key === 'later' && dates.length > 1 ? `${formatYmdMonthDay(dates[0])} +` : formatYmdMonthDay(dates[0]),
@@ -412,7 +422,8 @@ export function lienNextDateCounts(buckets: ReadonlyArray<Pick<LienCalendarBucke
       if (!next) continue
       const c = out.get(next.ymd) ?? { ymd: next.ymd, jobs: 0, notices: 0, liens: 0, total: 0 }
       c.jobs += 1
-      c[next.what === 'notice' ? 'notices' : 'liens'] += 1
+      // A late notice is a notice to send by that day, though the day is the lien's own.
+      c[next.what === 'lien' ? 'liens' : 'notices'] += 1
       c.total += j.openBalance
       out.set(next.ymd, c)
     }
@@ -423,10 +434,11 @@ export function lienNextDateCounts(buckets: ReadonlyArray<Pick<LienCalendarBucke
 /**
  * A phone row's one line under its money: the dates ("notice by Oct 15 · lien by Nov 16"), since the
  * bar above already says when and how many. A verdict that changes what to do stays: "file first",
- * and the day a lien died.
+ * the day a lien died, and a late notice with the day it has to go by (v2.7198, punch list #335, row 4).
  */
 export function lienPhoneLine(job: Pick<LienCalendarJob, 'runway'>): string {
   const r = job.runway
+  if (r.state === 'late_notice') return `send the late notice by ${formatYmdMonthDay(r.lienByYmd)}`
   if (r.state === 'closed' || r.state === 'file_first') return r.lines.join(' · ')
   return r.lines[0] ?? r.words
 }

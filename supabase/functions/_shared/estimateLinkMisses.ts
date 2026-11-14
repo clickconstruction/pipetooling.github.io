@@ -78,3 +78,45 @@ export async function recordEstimateLinkMiss(
     return { misses: 0, locked: false }
   }
 }
+
+/** The little of a Supabase client the lock's read uses, so a test hands a fake. */
+export interface EstimateMissReader {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): { maybeSingle(): PromiseLike<{ data: unknown; error: unknown }> }
+      }
+    }
+  }
+}
+
+/** The hour a miss is counted under, as the database truncates it: the top of the UTC hour. */
+export function estimateLinkMissHour(now: Date): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours())).toISOString()
+}
+
+/**
+ * Whether this source is locked this hour, read without counting anything (v2.7240, punch list #344 PR 5). An
+ * estimate's link is ten letters, so its lock sits on misses alone and a right link always opens. A box's code is
+ * eight characters of hex: a lock that still answers a right guess holds nothing, so `box-read` asks this before it
+ * answers a hit and refuses a locked source either way. Fail open, as the count is: a read that fails is no lock.
+ */
+export async function readEstimateLinkLock(
+  admin: EstimateMissReader,
+  req: { headers: { get(name: string): string | null } },
+  fn: string,
+  now: Date = new Date(),
+): Promise<EstimateLinkMiss> {
+  try {
+    const sourceHash = await sha256Hex(estimateLinkSource(req.headers))
+    const r = await admin.from('estimate_link_misses').select('misses').eq('hour', estimateLinkMissHour(now)).eq('source_hash', sourceHash).maybeSingle()
+    if (r.error) {
+      console.warn(JSON.stringify({ tag: 'estimate_link_lock', fn, failed: String((r.error as { message?: unknown })?.message ?? r.error) }))
+      return { misses: 0, locked: false }
+    }
+    return estimateLinkMissDecision((r.data as { misses?: unknown } | null)?.misses)
+  } catch (e) {
+    console.warn(JSON.stringify({ tag: 'estimate_link_lock', fn, failed: String(e) }))
+    return { misses: 0, locked: false }
+  }
+}

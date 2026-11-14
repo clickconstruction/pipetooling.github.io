@@ -18,10 +18,17 @@ type AddressRow = { id: string; job_address: string | null }
 
 const chunks = <T,>(arr: ReadonlyArray<T>, n: number): T[][] => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
-export async function loadPctFacts(db: SupabaseClient<Database>, jobIds: ReadonlyArray<string>, ymdOf: (iso: string) => string): Promise<PctFactsRead> {
+export async function loadPctFacts(
+  db: SupabaseClient<Database>,
+  jobIds: ReadonlyArray<string>,
+  ymdOf: (iso: string) => string,
+  /** Jobs whose address alone is wanted: the ones on *Price the jobs with no price* (v2.7243). Any also in `jobIds` are read once. */
+  addressOnlyIds: ReadonlyArray<string> = [],
+): Promise<PctFactsRead> {
   const ids = [...new Set(jobIds)]
   const out: PctFactsRead = { lines: [], blocks: [], invoices: [], events: [], addresses: [] }
-  if (ids.length === 0) return out
+  const extra = [...new Set(addressOnlyIds)].filter((id) => !ids.includes(id))
+  if (ids.length === 0 && extra.length === 0) return out
   // One paged read: every page goes through the app's retry, and a failure throws with its reason.
   const paged = <T,>(label: string, page: (from: number, to: number) => PromiseLike<SupabaseClientResult<unknown>>): Promise<T[]> =>
     fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => page(from, to), label)) as T[] | null, error: null }), label)
@@ -39,6 +46,10 @@ export async function loadPctFacts(db: SupabaseClient<Database>, jobIds: Readonl
     for (const a of addressRows) out.addresses.push({ jobId: a.id, address: a.job_address })
     for (const i of invoiceRows) out.invoices.push({ jobId: i.job_id, id: i.id, usd: Number(i.amount ?? 0), status: i.status })
     for (const e of eventRows) if (e.pct != null) out.events.push({ jobId: e.job_id, pct: Number(e.pct), at: e.changed_at, ymd: ymdOf(e.changed_at) })
+  }
+  for (const part of chunks(extra, SUPABASE_IN_CHUNK_SIZE)) {
+    const rows = await paged<AddressRow>('bridge job addresses', (from, to) => db.from('jobs_ledger').select('id, job_address').in('id', part).order('id').range(from, to))
+    for (const a of rows) out.addresses.push({ jobId: a.id, address: a.job_address })
   }
   // The people on the schedule, by name: one read for everyone the blocks name.
   const names = new Map<string, string>()

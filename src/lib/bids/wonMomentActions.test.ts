@@ -6,6 +6,7 @@ import {
   sendsJobDraft,
   wonHandoffMode,
   secondConversionMessage,
+  startsOrHandsOffAJob,
   wonMomentActions,
 } from './wonMomentActions'
 
@@ -48,6 +49,28 @@ describe('wonMomentActions (Tier-1 #8)', () => {
   it('canCreateJobs overrides the role rule both ways', () => {
     expect(wonMomentActions({ hasJob: false, role: 'superintendent', canCreateJobs: true }).map((a) => a.key)).toEqual(['create', 'ask_dispatch'])
     expect(wonMomentActions({ hasJob: false, role: 'dev', canCreateJobs: false })).toEqual([])
+  })
+  it('while the caller is still asking whether the bid has a job, no door starts a job or hands one off', () => {
+    // Every role, with and without an open hand-off: the guess "no job" draws nothing.
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'estimator', 'superintendent', null]) {
+      expect(wonMomentActions({ hasJob: false, role, jobsLoaded: false })).toEqual([])
+      expect(wonMomentActions({ hasJob: false, role, dispatchAsked: true, jobsLoaded: false })).toEqual([])
+    }
+    expect(wonMomentActions({ hasJob: false, role: 'superintendent', canCreateJobs: true, jobsLoaded: false })).toEqual([])
+    // A job the caller already holds keeps its own door, and only that one.
+    expect(wonMomentActions({ hasJob: true, role: 'assistant', jobsLoaded: false })).toEqual([{ key: 'open_existing', label: 'Open the job', primary: true }])
+    expect(wonMomentActions({ hasJob: true, role: 'estimator', jobsLoaded: false })).toEqual([])
+  })
+  it('once the lookup answers, the doors are the ones drawn with no word about loading', () => {
+    for (const role of ['dev', 'assistant', 'primary', 'estimator', 'superintendent']) {
+      for (const hasJob of [false, true]) {
+        expect(wonMomentActions({ hasJob, role, jobsLoaded: true })).toEqual(wonMomentActions({ hasJob, role }))
+      }
+    }
+  })
+  it('startsOrHandsOffAJob names every door but the one that opens the job the bid has', () => {
+    expect((['create', 'create_another', 'ask_dispatch', 'send_draft'] as const).every(startsOrHandsOffAJob)).toBe(true)
+    expect(startsOrHandsOffAJob('open_existing')).toBe(false)
   })
   it('canCreateJobFromBid mirrors the create set', () => {
     // v2.5659: an estimator may not insert a job row (the live walk found Save refused), so they draft one instead.

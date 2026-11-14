@@ -38,6 +38,7 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
+import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
@@ -201,6 +202,11 @@ export const WRITE_VERBS = {
   // the job run through the window's own kernels (devMcpLastWorkDay.ts).
   plan_last_work_day: { rpc: null, step: 'plan' },
   apply_last_work_day: { rpc: null, step: 'apply' },
+  // v2.7229 / 0.85.0: a § 53.056 notice that already went out, recorded as the Lien desk's Already mailed? Record it…
+  // records it — one job_lien_filings row a covered job on one packet, each job's live desk item marked sent; rpc is
+  // null, the dry run the server's read run through the form's own kernel (devMcpNoticeByHand.ts).
+  plan_notice_by_hand: { rpc: null, step: 'plan' },
+  apply_notice_by_hand: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -394,6 +400,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobMarkVerb(verb)) {
     // v2.6795: the shape check is devMcpJobMarks'; the dry run is the server's read of the job.
     const built = jobMarkInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isNoticeByHandVerb(verb)) {
+    // v2.7229: the shape check is devMcpNoticeByHand's; the dry run is the server's read of the jobs, the desk and the notices on record.
+    const built = noticeByHandInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }

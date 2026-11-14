@@ -7,8 +7,11 @@
  * written. A job's name opens the sheet, where a payment's Date sent and memo are edited.
  *
  * At a desk it is a table. On a phone each line is a card and Print and the file move under the list.
+ *
+ * PR 3: the same lines **By sub**. One row per person, and a name (or the Paid to picker) opens that person's
+ * statement with what we owed after each line. People → Subs mounts this too, opening on By sub.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 import type { LaborJob } from '../../types/laborJob'
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { sheetLabel } from '../../lib/jobs/subPaymentMoveRemove'
@@ -16,8 +19,20 @@ import { buildSheetPartiesLookup, sheetParties } from '../../lib/subWorkOrders/s
 import {
   buildLedgerLines,
   buildLedgerTraces,
+  buildSubStatement,
   filterLedger,
+  ledgerBySub,
+  ledgerBySubTotals,
   ledgerDayWords,
+  ledgerHowPaidWords,
+  ledgerSubKeyFromParam,
+  ledgerSubParam,
+  overPaidWords,
+  statementCheckWords,
+  subStatementCsv,
+  subStatementCsvFileName,
+  subStatementHtml,
+  weOweWords,
   ledgerMonths,
   ledgerPaidToOptions,
   ledgerPaidWords,
@@ -38,9 +53,13 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
-import { formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
+import { SubLedgerPeople, SubLedgerStatement } from './SubLedgerBySub'
+import { chip, field, jobLink, outPress, pill, td, th, tile, tileLabel, tileSub } from './subLedgerStyles'
+
+export type LedgerGrouping = 'date' | 'sub'
 
 export type SubPaymentsLedgerProps = {
   error?: string | null
@@ -52,38 +71,16 @@ export type SubPaymentsLedgerProps = {
   onOpenSheet: (job: LaborJob) => void
   /** The Pay view, where a payment is recorded: the empty ledger's way out. */
   onOpenPay: () => void
+  /** Which grouping shows. Left out, the ledger keeps its own and opens on `initialBy` (By date). */
+  by?: LedgerGrouping
+  onByChange?: (by: LedgerGrouping) => void
+  initialBy?: LedgerGrouping
+  /** The person whose statement is open, as the address carries them (`ledgerSubParam`). Left out, the ledger keeps its own. */
+  sub?: string | null
+  onSubChange?: (sub: string | null) => void
+  /** People → Subs' Balance due by person id, for the statement's check. Left out, the foot says what we owe and checks nothing. */
+  balanceDueByPersonId?: ReadonlyMap<string, number>
 }
-
-const chip = (on: boolean): CSSProperties => ({
-  font: 'inherit',
-  fontSize: '0.78rem',
-  fontWeight: 600,
-  padding: '0.25rem 0.7rem',
-  borderRadius: 999,
-  border: `1px solid ${on ? 'var(--text-strong)' : 'var(--border-strong)'}`,
-  background: on ? 'var(--text-strong)' : 'var(--surface)',
-  color: on ? 'var(--surface)' : 'var(--text-700)',
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-})
-const outPress: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
-const field: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', minWidth: 0 }
-const tile: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', minWidth: 0 }
-const tileLabel: CSSProperties = { display: 'block', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
-const tileSub: CSSProperties = { display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }
-const th: CSSProperties = { padding: '0.55rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', whiteSpace: 'nowrap' }
-const td: CSSProperties = { padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
-const pill = (tone: 'red' | 'green' | 'amber' | 'gray'): CSSProperties => ({
-  display: 'inline-block',
-  fontSize: '0.68rem',
-  fontWeight: 700,
-  padding: '1px 8px',
-  borderRadius: 999,
-  whiteSpace: 'nowrap',
-  background: tone === 'red' ? 'var(--bg-red-tint)' : tone === 'green' ? 'var(--bg-green-tint)' : tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
-  color: tone === 'red' ? 'var(--text-red-700)' : tone === 'green' ? 'var(--text-green-700)' : tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-700)',
-})
-const jobLink: CSSProperties = { font: 'inherit', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }
 
 /** The amount cell: a payment plain, a back-charge red with its minus sign. */
 function Amount({ line }: { line: LedgerLine }) {
@@ -104,7 +101,7 @@ function Left({ line }: { line: LedgerLine }) {
   return <AmountSmallCents value={line.leftOnSheet} />
 }
 
-export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay }: SubPaymentsLedgerProps) {
+export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay, by: byProp, onByChange, initialBy, sub: subProp, onSubChange, balanceDueByPersonId }: SubPaymentsLedgerProps) {
   const narrow = useIsNarrowScreen()
   const { showToast } = useToastContext()
   const { roster } = useRosterSubKinds()
@@ -112,8 +109,14 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const [period, setPeriod] = useState<LedgerPeriodKey>('month')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [paidToKey, setPaidToKey] = useState('')
+  const [ownPaidToKey, setOwnPaidToKey] = useState('')
   const [search, setSearch] = useState('')
+  const [ownBy, setOwnBy] = useState<LedgerGrouping>(initialBy ?? 'date')
+  const by = byProp ?? ownBy
+  const setBy = (next: LedgerGrouping) => {
+    setOwnBy(next)
+    onByChange?.(next)
+  }
 
   /** Every sheet as the ledger reads it: whose it is by the Pay view's rule, which job, what was agreed. */
   const sheets = useMemo<LedgerSheet[]>(() => {
@@ -128,6 +131,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
         job: sheetLabel(job, laborJobNamesByJobId),
         address: (job.address ?? '').trim(),
         agreed: subLaborJobBalance(job).totalCost,
+        day: (job.job_date ?? '').slice(0, 10) || (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : ''),
         payments: job.payments ?? [],
         events: job.payment_events ?? [],
       }
@@ -137,12 +141,29 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
 
   const allLines = useMemo(() => buildLedgerLines(sheets), [sheets])
   const allTraces = useMemo(() => buildLedgerTraces(sheets), [sheets])
+  /** Everyone a sheet is for, paid yet or not: the Paid to picker and the statement's address read this. */
+  const paidToOptions = useMemo(() => ledgerPaidToOptions(sheets.map((s) => ({ paidToKey: s.paidToKey, paidTo: s.paidTo, crew: s.crew }))), [sheets])
+  // The person picked. With an address handed in (`sub`), that is the truth, so a link to one sub's statement opens it.
+  const paidToKey = subProp !== undefined ? ledgerSubKeyFromParam(subProp, paidToOptions.map((o) => o.key)) : ownPaidToKey
+  const setPaidToKey = (key: string) => {
+    setOwnPaidToKey(key)
+    onSubChange?.(key ? ledgerSubParam(key) : null)
+  }
   const range = useMemo(() => ledgerPeriodRange(period, today, { from, to }), [period, today, from, to])
   const shownLines = useMemo(() => filterLedger(allLines, { ...range, paidToKey, search }), [allLines, range, paidToKey, search])
   const shownTraces = useMemo(() => filterLedger(allTraces, { ...range, paidToKey, search }), [allTraces, range, paidToKey, search])
   const months = useMemo(() => ledgerMonths([...shownLines, ...shownTraces] as LedgerRow[]), [shownLines, shownTraces])
   const totals = useMemo(() => ledgerTotals(shownLines), [shownLines])
-  const paidToOptions = useMemo(() => ledgerPaidToOptions(allLines), [allLines])
+  const subRows = useMemo(() => ledgerBySub(sheets, shownLines, { paidToKey, search }), [sheets, shownLines, paidToKey, search])
+  const subTotals = useMemo(() => ledgerBySubTotals(subRows), [subRows])
+  /** By sub with a person picked is that person's statement. It reads the period and never the search: a line left out would break the running figure. */
+  const statement = useMemo(() => (by === 'sub' && paidToKey ? buildSubStatement(sheets, paidToKey, range) : null), [by, paidToKey, sheets, range])
+  const statementCheck = useMemo(() => {
+    if (!statement) return null
+    const personId = statement.key.startsWith('id:') ? statement.key.slice(3) : ''
+    const known = balanceDueByPersonId && personId && !statement.crew ? (balanceDueByPersonId.get(personId) ?? null) : null
+    return statementCheckWords(statement, known)
+  }, [statement, balanceDueByPersonId])
   /** The lines in the screen's order, for the file. */
   const orderedLines = useMemo(() => months.flatMap((m) => m.rows).filter((r): r is LedgerLine => r.kind !== 'trace'), [months])
 
@@ -151,9 +172,17 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const shownWords = [`${periodLabel}.`, paidToLabel ? `Paid to ${paidToLabel}.` : '', search.trim() ? `Search “${search.trim()}”.` : ''].filter(Boolean).join(' ')
 
   const printList = () => {
-    if (!openHtmlPrintWindow(subPaymentsLedgerHtml(months, totals, { shownWords, printedWords: formatDenverDateTimeShort(Date.now()) }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+    const html = statement
+      ? subStatementHtml(statement, { periodWords: `${periodLabel}.`, checkWords: statementCheck?.words ?? '', printedWords: formatDenverDateTimeShort(Date.now()) })
+      : subPaymentsLedgerHtml(months, totals, { shownWords, printedWords: formatDenverDateTimeShort(Date.now()) })
+    if (!openHtmlPrintWindow(html)) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
   }
-  const saveCsv = () => saveBlobAs(new Blob(['﻿', subPaymentsCsv(orderedLines)], { type: 'text/csv;charset=utf-8' }), subPaymentsCsvFileName(today))
+  const saveCsv = () =>
+    statement
+      ? saveBlobAs(new Blob(['﻿', subStatementCsv(statement)], { type: 'text/csv;charset=utf-8' }), subStatementCsvFileName(statement.name, today))
+      : saveBlobAs(new Blob(['﻿', subPaymentsCsv(orderedLines)], { type: 'text/csv;charset=utf-8' }), subPaymentsCsvFileName(today))
+  const nothingToSend = statement ? statement.entries.length === 0 : orderedLines.length === 0
+  const withYear = period === 'all' || period === 'custom'
 
   const openSheet = (sheetId: string) => {
     const job = jobById.get(sheetId)
@@ -174,10 +203,10 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
 
   const outPresses = (
     <span style={{ display: 'inline-flex', gap: 8 }}>
-      <button type="button" onClick={printList} disabled={orderedLines.length === 0} style={outPress}>
-        Print
+      <button type="button" onClick={printList} disabled={nothingToSend} style={outPress}>
+        {statement ? 'Print the statement' : 'Print'}
       </button>
-      <button type="button" onClick={saveCsv} disabled={orderedLines.length === 0} style={outPress}>
+      <button type="button" onClick={saveCsv} disabled={nothingToSend} style={outPress}>
         Download CSV
       </button>
     </span>
@@ -198,7 +227,25 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
     <div data-sub-payments-ledger>
       {error ? <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p> : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a sub, a job, a memo, an amount…" aria-label="Search the ledger" style={{ ...field, flex: '1 1 220px' }} />
+        <span role="group" aria-label="Group the ledger" style={{ display: 'inline-flex', gap: 4 }}>
+          <button type="button" aria-pressed={by === 'date'} onClick={() => setBy('date')} style={chip(by === 'date')}>
+            By date
+          </button>
+          <button type="button" aria-pressed={by === 'sub'} onClick={() => setBy('sub')} style={chip(by === 'sub')}>
+            By sub
+          </button>
+        </span>
+        {statement ? (
+          <span data-statement-head style={{ flex: '1 1 220px', minWidth: 0, display: 'inline-flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => setPaidToKey('')} style={{ ...jobLink, fontSize: '0.8125rem' }}>
+              ‹ Everyone
+            </button>
+            <strong style={{ fontSize: '1rem', color: 'var(--text-strong)' }}>{statement.name || 'Statement'}</strong>
+            {statement.crew ? <span style={pill('gray')}>crew</span> : null}
+          </span>
+        ) : (
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a sub, a job, a memo, an amount…" aria-label="Search the ledger" style={{ ...field, flex: '1 1 220px' }} />
+        )}
         {narrow ? null : outPresses}
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
@@ -238,15 +285,43 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           </strong>
           <span style={tileSub}>{totals.backcharges === 1 ? '1 back-charge' : `${totals.backcharges} back-charges`}</span>
         </div>
-        <div style={tile} data-ledger-tile="undated">
-          <span style={tileLabel}>Without a date sent</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{totals.undated}</strong>
-          <span style={tileSub}>{totals.undated ? 'shown by the day recorded' : 'every payment has its date'}</span>
-        </div>
+        {by === 'sub' ? (
+          <div style={tile} data-ledger-tile="owed">
+            <span style={tileLabel}>We owe today</span>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{statement ? weOweWords(statement.owedToday) : <AmountSmallCents value={subTotals.weOwe} />}</strong>
+            <span style={tileSub}>{statement ? (statement.crew ? 'crew pay runs through payroll' : 'every sheet of theirs, whatever the period') : subTotals.over ? `still open on sheets · ${overPaidWords(subTotals.over)}` : 'still open on sheets, whatever the period'}</span>
+          </div>
+        ) : (
+          <div style={tile} data-ledger-tile="undated">
+            <span style={tileLabel}>Without a date sent</span>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{totals.undated}</strong>
+            <span style={tileSub}>{totals.undated ? 'shown by the day recorded' : 'every payment has its date'}</span>
+          </div>
+        )}
       </div>
 
       {laborJobsLoading && laborJobs.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading the ledger…</p>
+      ) : statement && statementCheck ? (
+        <>
+          {statement.entries.length === 0 && !statement.from ? (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+              <EmptyState main={`Nothing was agreed or paid for ${statement.name || 'them'} in this period.`} next={{ label: 'Show all dates', onPress: () => setPeriod('all') }} />
+            </div>
+          ) : (
+            <SubLedgerStatement statement={statement} check={statementCheck} narrow={narrow} withYear={withYear} onOpenSheet={openSheet} />
+          )}
+          {narrow ? <div style={{ marginTop: 10 }}>{outPresses}</div> : null}
+        </>
+      ) : by === 'sub' ? (
+        subRows.length === 0 ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>{empty}</div>
+        ) : (
+          <>
+            <SubLedgerPeople rows={subRows} totals={subTotals} periodLabel={periodLabel} narrow={narrow} withYear={withYear} onOpen={setPaidToKey} />
+            {narrow ? <div style={{ marginTop: 10 }}>{outPresses}</div> : null}
+          </>
+        )
       ) : months.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>{empty}</div>
       ) : narrow ? (
@@ -276,6 +351,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                     <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
                       {r.job}
                       {r.kind === 'backcharge' ? ' · Back-charge' : ''}
+                      {ledgerHowPaidWords(r) ? ` · ${ledgerHowPaidWords(r)}` : ''}
                       {r.memo ? ` · ${r.memo}` : ''}
                     </span>
                   </button>
@@ -287,12 +363,13 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
         </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--surface)' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 860 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 960 }}>
             <thead>
               <tr>
                 <th style={th}>Date sent</th>
                 <th style={th}>Paid to</th>
                 <th style={th}>Job</th>
+                <th style={th}>How paid</th>
                 <th style={th}>Memo</th>
                 <th style={{ ...th, textAlign: 'right' }}>Amount</th>
                 <th style={{ ...th, textAlign: 'right' }}>Left on the sheet</th>
@@ -301,7 +378,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             {months.map((m) => (
               <tbody key={m.ym || 'undated'} data-ledger-month={m.ym || 'undated'}>
                 <tr>
-                  <td colSpan={4} style={{ ...td, background: 'var(--bg-muted)', fontWeight: 700, color: 'var(--text-strong)' }}>
+                  <td colSpan={5} style={{ ...td, background: 'var(--bg-muted)', fontWeight: 700, color: 'var(--text-strong)' }}>
                     {m.label}
                     <span style={{ fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>{m.words}</span>
                   </td>
@@ -314,7 +391,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                   r.kind === 'trace' ? (
                     <tr key={r.id} data-ledger-trace={r.id}>
                       <td style={{ ...td, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{ledgerDayWords(r.ymd)}</td>
-                      <td colSpan={5} style={{ ...td, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      <td colSpan={6} style={{ ...td, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {r.text}
                       </td>
                     </tr>
@@ -330,6 +407,9 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                           {r.job}
                         </button>
                         {r.address && !r.job.includes(r.address) ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.address}</div> : null}
+                      </td>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }} data-ledger-how={r.id}>
+                        {ledgerHowPaidWords(r) || <span style={{ color: 'var(--text-faint)' }}>—</span>}
                       </td>
                       <td style={td}>
                         {r.kind === 'backcharge' ? <span style={{ ...pill('red'), marginRight: 6 }}>Back-charge</span> : null}
@@ -348,7 +428,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             ))}
             <tfoot>
               <tr data-ledger-foot>
-                <td colSpan={4} style={{ ...td, borderBottom: 'none', background: 'var(--bg-subtle)', fontWeight: 700, color: 'var(--text-strong)' }}>
+                <td colSpan={5} style={{ ...td, borderBottom: 'none', background: 'var(--bg-subtle)', fontWeight: 700, color: 'var(--text-strong)' }}>
                   {periodLabel} · {ledgerPaidWords(totals)}
                   {totals.backcharges ? `, less ${totals.backcharges === 1 ? '1 back-charge' : `${totals.backcharges} back-charges`}` : ''}
                 </td>

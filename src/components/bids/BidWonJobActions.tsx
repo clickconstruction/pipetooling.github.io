@@ -8,6 +8,8 @@
  * Who sees which button is `wonMomentActions` — nothing here reads `bid_versions.outcome`. An estimator gets
  * **Send to Dispatch** in place of New Job (v2.5659): the draft sheet (`JobDraftSheet`), then "Sent to Dispatch Oct 20 ·
  * waiting", then the job's chip, read through `list_bid_jobs_opened` since they read no job row.
+ * While the block's own lookup is out, no door that starts a job or hands one off is drawn (v2.7244): the lookup is
+ * how the block learns a job exists, and a press before it answers started a second job.
  */
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -94,7 +96,9 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
   const newest = jobs[0] ?? null
   // v2.3143: the open "open the job" to-do, if any (full variant only — the board's compact link stays one query per bid).
   const handoff = useOpenJobFromBidRequest(compact ? null : bidId)
-  const actions = wonMomentActions({ hasJob: newest != null, role, dispatchAsked: !compact && handoff.request != null })
+  // Until the block's own lookup answers, "no job" is a guess: no door that starts a job or hands one off is drawn on it.
+  const jobsLoaded = knownJob !== undefined || lookup.loaded
+  const actions = wonMomentActions({ hasJob: newest != null, role, dispatchAsked: !compact && handoff.request != null, jobsLoaded })
   // An estimator's Send to Dispatch (v2.5659): the draft sheet, over the block.
   const [drafting, setDrafting] = useState(false)
   const draftSheet = drafting ? <JobDraftSheet bidId={bidId} onClose={() => setDrafting(false)} onSent={() => handoff.refetch()} /> : null

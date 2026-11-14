@@ -2789,6 +2789,49 @@ describe('LienDesk · an evening stamp keeps its day (v2.4468)', () => {
   })
 })
 
+describe('LienDesk · By paper on a phone (punch list #352, PR 5)', () => {
+  it('a computer stacks the pile titles at both ends; a phone pins one at the top, a thumb tall, and its tabs wrap sooner than slide', async () => {
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+    expect(heads.length).toBeGreaterThanOrEqual(1)
+    // i bars from the top, n-1-i from the bottom, 30 px each (`lienPhoneLists.test.ts` holds a list of five).
+    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 30))
+    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 30))
+    expect(heads.every((h) => h.style.height === '30px')).toBe(true)
+    const wide = document.querySelector<HTMLElement>('[data-lien-desk-paper-kinds] [role="tab"]')!
+    expect(wide.style.whiteSpace).toBe('nowrap')
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} layout="stacked" />)
+      await settle()
+      const phoneHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
+      expect(phoneHeads.length).toBe(heads.length)
+      for (const h of phoneHeads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+        expect(h.style.fontSize).toBe('0.75rem')
+      }
+      // Both rows of tabs: a thumb tall, free to shrink, words wrapping in place of a sideways slide.
+      const tabs = [...document.querySelectorAll<HTMLElement>('[data-lien-desk-view], [data-lien-desk-paper-kinds] [role="tab"]')]
+      expect(tabs.length).toBeGreaterThanOrEqual(7)
+      for (const t of tabs) {
+        expect(t.style.minHeight).toBe('44px')
+        expect(t.style.whiteSpace).toBe('normal')
+        expect(t.style.flexShrink).toBe('1')
+        expect(parseFloat(t.style.minWidth)).toBe(0)
+      }
+      expect(screen.getByTestId('lien-desk-find').style.minHeight).toBe('44px')
+    } finally {
+      window.matchMedia = before
+    }
+  })
+})
+
 describe('LienDesk · the pile titles stack (v2.4672)', () => {
   it('draws a sticky title per pile with its count and its place, no chip row; a press scrolls the list and lights the title', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
