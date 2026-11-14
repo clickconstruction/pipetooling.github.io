@@ -2754,6 +2754,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
+      // Punch list #335, row 5: the desk's next act for the job, so the chip names the step the billed row names.
+      lienDesk: (() => {
+        if (stage !== 'billed' && stage !== 'collections') return null
+        const chip = lienStateFor(job.id)
+        return chip ? { act: chip.act, paper: chip.paper, dueOn: chip.dueOn } : null
+      })(),
     }
   }
   const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
@@ -2771,7 +2777,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
         else if (chip.action === 'payments') openPaymentsReceived(job)
         else if (chip.action === 'contract' && openJobContract) openJobContract(job)
-        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null })
+        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null, initialTab: chip.lienTab ?? undefined })
         else openStagesDetailJobModal(job)
       },
       onShowAll: () => setPhoneRowFilter('all'),

@@ -6,6 +6,8 @@ import { isStagesOfficeRole } from '../../lib/jobs/stagesRoleGates'
 import { loadPayerPayCalendars, onPayCalendarChanged } from '../../lib/jobs/payCalendarIo'
 import { calendarSourceFor, indexPayCalendars, jobPayCalendarWords, payCalendarShort, payCalendarWords, type PayCalendarRow } from '../../lib/jobs/payCalendar'
 import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
+import { draftPayTermsFromWords, draftPayTermsOffered } from '../../lib/jobs/draftPayTerms'
+import type { DraftPayTermsOffer } from '../../lib/jobs/draftPayTermsIo'
 
 /**
  * One line of small words that names a payer's pay calendar and opens its window (punch list
@@ -18,8 +20,25 @@ import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
  * (*Follows Larkfield Construction*, *This job's own*, *No pay calendar on this job*) and
  * opens the window on the job, so one job's own calendar is a press from where the job is
  * named. `variant="row"` is the job window's fact row, at the row's own size.
+ *
+ * With an `offer` (punch list #323) the job's line also carries the pay terms an estimator read
+ * on the bid, until the office answers them: *From Dana Whitfield's draft · In by the 25th, paid
+ * the 10th · Check and use*, which opens the window filled in.
  */
-export default function PayCalendarLine({ payerId, payerName, job = null, variant = 'small' }: { payerId: string; payerName: string; job?: PayCalendarJob | null; variant?: 'small' | 'row' }) {
+export default function PayCalendarLine({
+  payerId,
+  payerName,
+  job = null,
+  variant = 'small',
+  offer = null,
+}: {
+  payerId: string
+  payerName: string
+  job?: PayCalendarJob | null
+  variant?: 'small' | 'row'
+  /** Pay terms an estimator's job draft carried for this job; drawn only with a `job`, for a reader who may set a calendar. */
+  offer?: DraftPayTermsOffer | null
+}) {
   const opener = usePayCalendarModal()
   const role = useOptionalAuth()?.role ?? null
   const canSet = isStagesOfficeRole(role)
@@ -48,7 +67,32 @@ export default function PayCalendarLine({ payerId, payerName, job = null, varian
   const style = variant === 'row' ? undefined : ({ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 } as const)
 
   if (job) {
-    const words = jobPayCalendarWords(calendarSourceFor(indexPayCalendars(rows), { payerId, jobId: job.id }), payerName, canSet)
+    const source = calendarSourceFor(indexPayCalendars(rows), { payerId, jobId: job.id })
+    const words = jobPayCalendarWords(source, payerName, canSet)
+    const offered = canSet && offer && draftPayTermsOffered(offer.terms, source.from) ? offer : null
+    if (offered) {
+      const from = draftPayTermsFromWords(offered.from)
+      const openOffer = () => opener.openPayCalendar({ id: payerId, name: payerName }, { onSaved, job, initial: { calendar: offered.terms.calendar, scope: offered.terms.scope, from } })
+      return (
+        <span data-testid="pay-calendar-line" style={style}>
+          {/* A job that follows its payer still says so: the draft's terms are an offer beside it, never in its place. */}
+          {words && source.from !== 'none' ? (
+            <span style={{ display: 'block' }}>
+              {words.lead ? <span data-testid="pay-calendar-line-lead">{words.lead} · </span> : null}
+              <button type="button" className="payCalendarPress" data-testid="pay-calendar-line-press" title={words.title} onClick={open}>
+                {words.press}
+              </button>
+            </span>
+          ) : null}
+          <span data-testid="pay-calendar-line-offer">
+            From {from.replace(/^The draft$/, 'the draft')} · <span title={payCalendarWords(offered.terms.calendar)}>{payCalendarShort(offered.terms.calendar)}</span> ·{' '}
+            <button type="button" className="payCalendarPress" data-testid="pay-calendar-line-offer-press" title="Opens the pay calendar filled in, with their record against it" onClick={openOffer}>
+              Check and use
+            </button>
+          </span>
+        </span>
+      )
+    }
     if (!words) return null
     return (
       <span data-testid="pay-calendar-line" style={style}>

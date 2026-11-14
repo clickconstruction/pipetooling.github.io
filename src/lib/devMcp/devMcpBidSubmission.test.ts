@@ -29,6 +29,7 @@ import {
   readDriveFolder,
   submissionFilingRefusal,
   submissionFolderHold,
+  submissionLinkAfter,
   submissionLinkWrite,
   submissionNoteRow,
   submissionNoteText,
@@ -205,8 +206,12 @@ describe('devMcpBidSubmission — the verbs on the server', () => {
     expect(Object.keys(WRITE_VERBS)).toHaveLength(99)
     expect(SERVER.match(/^ {4}name: '/gm)?.length).toBe(145)
   })
-  it('0.82.0: the server, its instructions, the README and the function docs name all three', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.82.0'")
+  it('the server, its instructions, the README and the function docs name all three; 0.83.0 says which link', () => {
+    expect(SERVER).toContain("const SERVER_VERSION = '0.83.0'")
+    expect(SERVER).toContain('since 0.83.0, the Sent by us folder once the folder holds more')
+    expect(SERVER).toContain('WHICH LINK (since 0.83.0)')
+    expect(README).toContain('**Which link** (v2.7186 / 0.83.0')
+    expect(EDGE).toContain('**v2.7186 (server 0.83.0)')
     expect(SERVER).toContain('Writes are ninety-nine verbs and nothing else:')
     expect(SERVER).toContain('plan_bid_submission → apply_bid_submission files the paper that was sent onto its bid')
     expect(SERVER).toContain('read_drive_folder lists a Drive folder or reads one file')
@@ -525,15 +530,45 @@ describe('plan_bid_submission — the happy path', () => {
     expect(twin).toMatchObject({ how: 'already_there', already_filed_as: OTHER, link: { after: linkOf(OTHER) } })
     expect(String(twin.how_words)).toContain(`the same bytes are already in Team only › Sent by us of ZZ Test as ${OTHER}`)
   })
-  it('several papers on one bid: the column holds one link, the newest filed keeps it, and a same-name file is warned of', async () => {
+  it('several papers on one bid: the link is the Sent by us folder, and a same-name file is warned of', async () => {
     const sent = [{ id: OTHER, name: 'ZZ Test Proposal.pdf', size: '999', md5Checksum: 'f'.repeat(32), modifiedTime: '2026-03-01T00:00:00.000Z' }, { id: 'zzThirdPaper0000000001', name: 'ZZ Test Option B.pdf', size: '5', md5Checksum: 'e'.repeat(32), modifiedTime: '2026-02-01T00:00:00.000Z' }]
-    const r = await reply(driveWorld({ children: { [SENT]: sent } }), tables(bidRow({ bid_submission_link: linkOf(OTHER) })), { replace: true })
+    // The bid's link is one of its own papers in Sent by us: it moves to the folder with no replace asked.
+    const r = await reply(driveWorld({ children: { [SENT]: sent } }), tables(bidRow({ bid_submission_link: linkOf(OTHER) })))
     expect(r.how).toBe('copy')
     expect(r.sent_by_us).toMatchObject({ exists: true, holds: 2, papers: [{ id: OTHER, name: 'ZZ Test Proposal.pdf', modified_time: '2026-03-01T00:00:00.000Z' }, { id: 'zzThirdPaper0000000001' }] })
-    expect(String((r.sent_by_us as Json).one_link)).toContain('holds one link and the folder holds 2 other papers. This paper, the newest filed, becomes the link')
-    expect(r.link).toMatchObject({ before: linkOf(OTHER), replaces: true })
-    expect((r.warnings as string[])[0]).toContain(`already holds a file named ZZ Test Proposal.pdf with other bytes (${OTHER})`)
-    expect((r.note as Json).text).toBe(`Sent paper filed from Drive: “ZZ Test Proposal.pdf” is in Team only › Sent by us of the bid’s project folder and is the bid’s submission link. It takes the place of ${linkOf(OTHER)}.`)
+    expect(String((r.sent_by_us as Json).one_link)).toBe("bids.bid_submission_link holds one link and the folder holds 2 other papers, so the link is the Team only › Sent by us folder itself, where every paper sent is a click away. The folder is the app's home for everything sent on this bid, and on a job that shares its folder.")
+    expect(r.link).toMatchObject({ before: linkOf(OTHER), is: 'folder', after: folderLink(SENT), changes: true, replaces: false })
+    expect((r.warnings as string[])[0]).toBe(`Team only › Sent by us already holds a file named ZZ Test Proposal.pdf with other bytes (${OTHER}): Drive keeps both under the one name.`)
+    expect((r.note as Json).text).toBe('Sent paper filed from Drive: “ZZ Test Proposal.pdf” is in Team only › Sent by us of the bid’s project folder, beside 2 other papers. The bid’s submission link is that folder.')
+    expect(submissionLinkAfter(r, 'zzTheNewCopy0000000001')).toEqual({ is: 'folder', url: folderLink(SENT) })
+  })
+  it('the link is the paper while Sent by us holds it alone, and the folder from the second paper on', async () => {
+    const alone = await reply()
+    expect(alone.link).toMatchObject({ is: 'paper', changes: true, replaces: false })
+    expect((alone.sent_by_us as Json).one_link).toBeUndefined()
+    expect(submissionLinkAfter(alone, 'zzTheNewCopy0000000001')).toEqual({ is: 'paper', url: linkOf('zzTheNewCopy0000000001') })
+    expect(submissionNoteText('a.pdf', null)).toBe('Sent paper filed from Drive: “a.pdf” is in Team only › Sent by us of the bid’s project folder and is the bid’s submission link.')
+    const second = await reply(driveWorld({ children: { [SENT]: [{ id: OTHER, name: 'ZZ Test Option B.pdf', size: '5', md5Checksum: 'e'.repeat(32) }] } }))
+    expect(second.link).toMatchObject({ before: null, is: 'folder', after: folderLink(SENT), changes: true, replaces: false })
+    expect((second.note as Json).text).toBe('Sent paper filed from Drive: “ZZ Test Proposal.pdf” is in Team only › Sent by us of the bid’s project folder, beside one other paper. The bid’s submission link is that folder.')
+    // A folder too long to read whole is several papers whatever was listed.
+    const long = await world(driveWorld({ nextPage: { [SENT]: 'more' } }))
+    const capped = bidSubmissionDryRun(input(), { ...long, sent: { ...long.sent, capped: true } }, { serviceAccount: SA })
+    expect(capped.ok && (capped.reply.link as Json).is).toBe('folder')
+  })
+  it('a bid that already carries its folder takes another paper with no write to its row', async () => {
+    const sent = [{ id: OTHER, name: 'ZZ Test Option B.pdf', size: '5', md5Checksum: 'e'.repeat(32) }]
+    // The link as a person pasted it, with a query on the end: the same folder all the same.
+    const r = await reply(driveWorld({ children: { [SENT]: sent } }), tables(bidRow({ bid_submission_link: `${folderLink(SENT)}?usp=sharing` })))
+    expect(r.how).toBe('copy')
+    expect(r.link).toMatchObject({ before: `${folderLink(SENT)}?usp=sharing`, is: 'folder', after: folderLink(SENT), changes: false, replaces: false })
+    // And a paper already in the folder, on a bid still linked to one paper (how 0.82.0 left it): only the link moves.
+    const there = driveWorld({ files: { [PAPER]: paper({ parents: [SENT] }) }, children: { [SENT]: [{ id: PAPER, name: 'ZZ Test Proposal.pdf', size: '204800', md5Checksum: MD5 }, ...sent] } })
+    const moved = await reply(there, tables(bidRow({ bid_submission_link: linkOf(PAPER) })))
+    expect(moved).toMatchObject({ how: 'already_there', already_filed_as: PAPER, link: { before: linkOf(PAPER), is: 'folder', after: folderLink(SENT), changes: true, replaces: false } })
+    expect(await refusal(there, tables(bidRow({ bid_submission_link: folderLink(SENT) })))).toBe(
+      `BP398 already carries its Team only › Sent by us folder as its submission link (${folderLink(SENT)}), and this paper is in it. There is nothing to file or to link.`,
+    )
   })
 })
 
@@ -573,13 +608,22 @@ describe('plan_bid_submission — each refusal in its own words', () => {
       'This bid has no project folder, and the jobs root to make one under is not set yet. Set it on Documents → Where files go, or paste the bid’s folder on the bid under Files & links; then plan again.',
     )
   })
-  it('a bid that already has a link, unless the plan says replace; and a bid already linked to this paper', async () => {
-    const linked = tables(bidRow({ bid_submission_link: `  ${linkOf(OTHER)} ` }))
+  it('a bid whose link points outside its own Sent by us, unless the plan says replace; and a bid already linked to this paper', async () => {
+    const ELSEWHERE = 'zzSomewhereElse0000001'
+    const linked = tables(bidRow({ bid_submission_link: `  ${linkOf(ELSEWHERE)} ` }))
     expect(await refusal(driveWorld(), linked)).toBe(
-      `BP398 already has a submission link: ${linkOf(OTHER)}. The column holds one link. Plan again with replace: true to make ZZ Test Proposal.pdf the link in its place; the paper it points to now stays where it is in Drive.`,
+      `BP398 already has a submission link: ${linkOf(ELSEWHERE)}. The column holds one link, and this one points outside the bid's Team only › Sent by us folder. Plan again with replace: true to put ZZ Test Proposal.pdf in its place; what it points to now stays where it is in Drive.`,
     )
-    expect((await reply(driveWorld(), linked, { replace: true })).link).toMatchObject({ before: linkOf(OTHER), replaces: true })
-    // A link to the very file that sits in Sent by us, in any of Drive's link forms: nothing to do, replace or not.
+    const replaced = await reply(driveWorld(), linked, { replace: true })
+    expect(replaced.link).toMatchObject({ before: linkOf(ELSEWHERE), is: 'paper', replaces: true })
+    expect((replaced.note as Json).text).toBe(`Sent paper filed from Drive: “ZZ Test Proposal.pdf” is in Team only › Sent by us of the bid’s project folder and is the bid’s submission link. It takes the place of ${linkOf(ELSEWHERE)}.`)
+    // With papers in the folder already, the refusal names the folder as what would take the link's place.
+    const withOthers = driveWorld({ children: { [SENT]: [{ id: OTHER, name: 'ZZ Test Option B.pdf', size: '5', md5Checksum: 'e'.repeat(32) }] } })
+    expect(await refusal(withOthers, linked)).toContain('Plan again with replace: true to put the folder in its place')
+    expect(((await reply(withOthers, linked, { replace: true })).note as Json).text).toBe(
+      `Sent paper filed from Drive: “ZZ Test Proposal.pdf” is in Team only › Sent by us of the bid’s project folder, beside one other paper. The bid’s submission link is that folder. It takes the place of ${linkOf(ELSEWHERE)}.`,
+    )
+    // A link to the very file that sits alone in Sent by us, in any of Drive's link forms: nothing to do, replace or not.
     const same = driveWorld({ files: { [PAPER]: paper({ parents: [SENT] }) }, children: { [SENT]: [{ id: PAPER, name: 'ZZ Test Proposal.pdf', size: '204800', md5Checksum: MD5 }] } })
     for (const replace of [false, true]) {
       expect(await refusal(same, tables(bidRow({ bid_submission_link: `https://drive.google.com/open?id=${PAPER}` })), { replace })).toBe(
@@ -588,6 +632,8 @@ describe('plan_bid_submission — each refusal in its own words', () => {
     }
     const noLink = await reply(driveWorld(), tables(), { replace: true })
     expect(noLink.warnings).toEqual(['replace was given and the bid carries no submission link: nothing is replaced.'])
+    const own = await reply(driveWorld({ children: { [SENT]: [{ id: OTHER, name: 'ZZ Test Option B.pdf', size: '5', md5Checksum: 'e'.repeat(32) }] } }), tables(bidRow({ bid_submission_link: linkOf(OTHER) })), { replace: true })
+    expect(own.warnings).toEqual(["replace was given and the bid's link already points into its own Team only › Sent by us folder: nothing is replaced."])
   })
   it('a paper outside the Shared Drive that is too big, empty, or that Drive will not hand over; and a copy Drive forbids', async () => {
     const outside = (over: Json) => driveWorld({ files: { [PAPER]: paper({ driveId: undefined, ...over }) } })
@@ -688,7 +734,7 @@ describe('apply_bid_submission — the writes and the words', () => {
   it('the reply names each step: filed and linked, filed but not linked, a note that failed', async () => {
     const r = await reply()
     const filed = { id: OTHER, url: linkOf(OTHER), how: 'copy' as const, md5: MD5 }
-    const done = bidSubmissionAppliedWords(r, { filed, folder: { made: false, url: folderLink(PROJECT) }, link: { set: true, before: null, after: linkOf(OTHER) }, note: { saved: true, id: 'n1' } })
+    const done = bidSubmissionAppliedWords(r, { filed, folder: { made: false, url: folderLink(PROJECT) }, link: { set: true, before: null, after: linkOf(OTHER), is: 'paper' }, note: { saved: true, id: 'n1' } })
     expect(done).toMatchObject({
       filed: "ZZ Test Proposal.pdf is in Team only › Sent by us of ZZ Test (Drive's own copy).",
       drive_file_id: OTHER,
@@ -700,14 +746,26 @@ describe('apply_bid_submission — the writes and the words', () => {
     })
     expect(done.warnings).toBeUndefined()
     expect(String(done.next)).toContain(`read_drive_folder { file: "${OTHER}" }`)
-    const unlinked = bidSubmissionAppliedWords(r, { filed, folder: { made: true, url: folderLink(PROJECT) }, link: { set: false, before: null, after: linkOf(OTHER), why: 'the write matched no row' }, note: { saved: false } })
+    const unlinked = bidSubmissionAppliedWords(r, { filed, folder: { made: true, url: folderLink(PROJECT) }, link: { set: false, before: null, after: linkOf(OTHER), is: 'paper', why: 'the write matched no row' }, note: { saved: false } })
     expect(unlinked.link).toMatchObject({ set: false, after: null })
     expect((unlinked.warnings as string[])[0]).toBe(`The paper is filed and the link was NOT set: the write matched no row. plan_bid_update { update: { bid_id: "${BID}", set: { bid_submission_link: "${linkOf(OTHER)}" } } } sets it.`)
-    const noNote = bidSubmissionAppliedWords(r, { filed: { ...filed, md5: 'c'.repeat(32) }, folder: { made: false, url: null }, link: { set: true, before: null, after: linkOf(OTHER) }, note: { saved: false, why: 'answered 403' } })
+    const noNote = bidSubmissionAppliedWords(r, { filed: { ...filed, md5: 'c'.repeat(32) }, folder: { made: false, url: null }, link: { set: true, before: null, after: linkOf(OTHER), is: 'paper' }, note: { saved: false, why: 'answered 403' } })
     expect((noNote.warnings as string[]).join(' ')).toContain("The copy's md5")
     expect((noNote.warnings as string[]).join(' ')).toContain('The note did not save (answered 403); the paper is filed and linked.')
-    const there = bidSubmissionAppliedWords({ ...r, how: 'already_there' }, { filed: { ...filed, how: 'already_there', md5: null }, folder: { made: false, url: null }, link: { set: true, before: null, after: linkOf(OTHER) }, note: { saved: true } })
+    const there = bidSubmissionAppliedWords({ ...r, how: 'already_there' }, { filed: { ...filed, how: 'already_there', md5: null }, folder: { made: false, url: null }, link: { set: true, before: null, after: linkOf(OTHER), is: 'paper' }, note: { saved: true } })
     expect(there.filed).toBe('ZZ Test Proposal.pdf was already in Team only › Sent by us of ZZ Test; nothing was copied.')
+  })
+  it('the reply says when the link is the folder, and when the bid already carried it', async () => {
+    const r = await reply()
+    const filed = { id: OTHER, url: linkOf(OTHER), how: 'copy' as const, md5: MD5 }
+    const moved = bidSubmissionAppliedWords(r, { filed, folder: { made: false, url: null }, link: { set: true, before: linkOf(PAPER), after: folderLink(SENT), is: 'folder' }, note: { saved: true } })
+    expect(moved.link).toEqual({ column: 'bid_submission_link', before: linkOf(PAPER), after: folderLink(SENT), is: 'folder', set: true })
+    expect(moved.drive_file_id).toBe(OTHER)
+    const kept = bidSubmissionAppliedWords(r, { filed, folder: { made: false, url: null }, link: { set: true, before: folderLink(SENT), after: folderLink(SENT), is: 'folder', unchanged: true }, note: { saved: true } })
+    expect(kept.link).toMatchObject({ before: folderLink(SENT), after: folderLink(SENT), is: 'folder', set: true, unchanged: "the bid already carried its Team only › Sent by us folder as the link, so the bid's row was not written" })
+    const branch = SERVER.slice(SERVER.indexOf("case 'plan_bid_submission':"), SERVER.indexOf("    case 'plan_submittal_rows':"))
+    expect(branch).toContain("const res = unchanged ? null : await restRows(session, 'PATCH', 'bids', write.query, write.body, 'return=representation')")
+    expect(branch).toContain('const linkTo = submissionLinkAfter(dry.reply, filed.id)')
   })
   it('a second apply of a plan that landed is refused in its own words', () => {
     expect(alreadyApplied('apply_bid_submission', { target: BID, at: '2026-11-13T16:00:00Z' })).toBe(

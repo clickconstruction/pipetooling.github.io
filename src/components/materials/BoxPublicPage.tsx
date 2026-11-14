@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { POST_LOGIN_REDIRECT_KEY } from '../../lib/iosPwa'
+import { browserReturnAddressStore, keepReturnAddress } from '../../lib/signInReturnAddress'
 import { publicFunctionHeaders } from '../../lib/customerSampleMode'
 import { BOX_PAGE_FIND_MAX, BOX_SCAN_PATH, boxPageCallHref, boxPageCannotFindWords, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageFindPath, boxPageFindView, boxPageFoundWords, boxPageNoun, boxPagePartsWords, boxPagePath, boxPageTextHref, boxPageTextWords, boxPageView, type BoxPageFindView, type BoxPageView } from '../../lib/materials/boxPage'
 import { readLastBox, rememberLastBox } from '../../lib/materials/boxPageMemory'
@@ -52,11 +52,8 @@ const DUE_WORDS_AMBER = '#8a5a00'
 
 /** The sign-in press's work, apart from the page: remember the box, then go to the sign-in. */
 function rememberBoxForSignIn(code: string): void {
-  try {
-    localStorage.setItem(POST_LOGIN_REDIRECT_KEY, boxPagePath(code))
-  } catch {
-    /* the sign-in still works; the person opens the box from On site */
-  }
+  // Storage that refuses is swallowed inside: the sign-in still works, and the person opens the box from On site.
+  keepReturnAddress(browserReturnAddressStore(), boxPagePath(code))
 }
 
 export function BoxPublicPage({ code }: { code: string }) {
