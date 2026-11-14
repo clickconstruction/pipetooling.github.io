@@ -15,7 +15,7 @@ Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blu
 The pills sit at the top of the tab. Each one shows how many jobs it holds and the money owed on them.
 
 - {{chip:gray|All}} shows every job.
-- {{chip:red|Overdue}} holds the jobs whose notice or lien window has closed. Nothing can be filed on them, but the money is still owed.
+- {{chip:red|Overdue}} holds the jobs whose lien is gone. Nothing can be filed on them, but the money is still owed. A job whose notice window closed is not here while its affidavit can still be filed. That job owes a late notice. It sits in the month of the affidavit's last day, and its row reads *send the late notice*.
 - {{chip:yellow|This month}} holds the jobs whose next date falls this month.
 - {{chip:blue|Next month}} holds the jobs whose next date falls next month.
 - {{chip:gray|Later}} holds every job after that.

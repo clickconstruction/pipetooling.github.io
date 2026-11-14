@@ -126,6 +126,10 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
   it('reads kinds not set and windows already gone from the Calendar rows', () => {
     expect(p.kindsUnset).toBe(2)
     expect(p.pastWindow).toEqual({ jobs: 2, owed: 11555 })
+    // v2.7198, punch list #335, row 4: a notice window that closed while the affidavit can still be filed owes a late notice.
+    // The clock no longer calls it closed, so it is not counted as past its window.
+    const withLate = buildLienStatusPayload({ data, calendarRows: [...calendarRows, cal(700, GC.RLC, 900, 'late_notice')], todayYmd: TODAY, nowIso: NOW, scope: 'all' })
+    expect(withLate.pastWindow).toEqual({ jobs: 2, owed: 11555 })
   })
 
   it('says the Dashboard’s number when nothing is approved or held', () => {
