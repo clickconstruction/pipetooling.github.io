@@ -608,6 +608,8 @@ export function JobWindowModal({
               paneBodyHidden={tab !== 'job'}
               paneTitleHidden
               onPhoneDoorsChange={setPaneDoors}
+              phoneVerb={verb}
+              onPhoneVerb={onVerb}
               onClose={onClose}
               jobId={jobId}
               scheduleContext={scheduleContext}
