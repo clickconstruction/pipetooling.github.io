@@ -225,6 +225,14 @@ words." So the dashed box goes: *＋ Paint a map* is centred blue words straight
 maps, with the row above's gap closed, the same shape as every other act on the screen. The tap
 target stays 40 px tall around the words.
 
+Also on pass 2, from a crop of Waiting on: "What if we made the 'bill it' text in the top right
+clickable, removing the need for the Bill it in the bottom left?" Yes: the verb is already in the
+headline, so it is the door. The row reads **Waiting on** · *The office, to* **bill it** · *Nothing has
+happened for 6 days.*, the blue words inside the sentence and nothing after it. The rule for the
+rows: when the act is already a word of the headline, that word is the door; otherwise the door is
+the blue words at the end. *The customer, to* **pay** then ends in *Remind them* at the end, since
+paying is theirs and the nudge is ours.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
