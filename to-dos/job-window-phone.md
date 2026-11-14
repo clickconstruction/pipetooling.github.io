@@ -207,6 +207,11 @@ the blue words opening the supply-house request, and the row the accounts sheet;
 reads *Ferguson · Nov 3. Add another*. A does the same to its two one-liners, since they are the same
 rows one PR earlier.
 
+Also on pass 2, from a crop of the title row: "Should we move this button here to offer more space
+for the title and stage?", the ⋯ drawn under the ✕. Yes: the two 44 px presses stack at the right, ✕
+on the name's line and ⋯ on the quiet line under it, so the name and the status chip have the whole
+first line and a long name wraps later. The floating ✕ on scroll is unchanged.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -273,7 +278,7 @@ each a scrolling 375 px phone. Every name, address and number on it is invented.
 
 **A · The top in the right order** (one PR, the first step). A title row like the desk's since
 v2.6539 comes first: the name and the status, a quiet line with the number, the customer and the
-kind, and two 44 px presses at the right, ⋯ and ✕. The seven tabs run on one line that scrolls
+kind, and two 44 px presses stacked at the right, ✕ on the name's line and ⋯ under it. The seven tabs run on one line that scrolls
 sideways under it, 40 px tall, the active one kept in view, a fade at the edge. The title row and
 the strip scroll away with the page; a small ✕ floats at the corner the whole way down, and a
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
