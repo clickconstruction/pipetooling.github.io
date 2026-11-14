@@ -198,6 +198,15 @@ blue words that open the thread at the reply box on the last word's channel. The
 and *Note* presses under the bubbles go: Reply lives on the row, and Note is on the bar at the foot of
 every screen already. The thread's acts are then the three rows' blue words and the bar.
 
+Also on pass 2: "Should we make the following actionable as well: 'Job total $56,000 · nothing billed
+· accounts none yet'?" Yes, and the line held two different acts, so it is two rows. **Money** · *Job
+total $56,000 · nothing billed yet. Bill it*, where *Bill it* is the job's next money move in blue, the
+same verb the bar carries (`tabbedJobWindowBar`: Bill it, Send bill…, Mark paid, or nothing when no
+money move is ready), and the row opens the Bill tab. **Job accounts** · *None yet. Add job account*,
+the blue words opening the supply-house request, and the row the accounts sheet; with accounts it
+reads *Ferguson · Nov 3. Add another*. A does the same to its two one-liners, since they are the same
+rows one PR earlier.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -270,7 +279,7 @@ the strip scroll away with the page; a small ✕ floats at the corner the whole 
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
 Calendar first, since they are the two anyone pressed; Add job account with
 *none yet*; money story; Email the paid-in-full report; send as a task; Make change order; the ? card last). The three money tiles
-and the job accounts chips fold to one line each. The Street View banner draws under the strip on every tab, Edit
+and the job accounts chips fold to one line each, each ending in its act as blue words (Bill it, Add job account). The Street View banner draws under the strip on every tab, Edit
 included, as on a desk, and the *street view ▸* fold goes. The photos strip becomes the banner: Add a photo
 first, then the photos, flicked sideways. The tabs join the press count. Nothing below
 moves; the bar is as today.
