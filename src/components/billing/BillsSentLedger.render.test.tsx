@@ -377,7 +377,7 @@ describe('BillsSentLedger', () => {
     expect(gone.textContent).toContain('Taken off by Marcus on Mon, Nov 9')
     // Bring back: Mailed returns to the list and to the form, at the place it had.
     fireEvent.click(within(gone).getByRole('button', { name: 'Bring Mailed back' }))
-    await waitFor(() => expect(io.wayCalls.at(-1)).toEqual(['on', 'w2', true]))
+    await waitFor(() => expect(io.wayCalls[io.wayCalls.length - 1]).toEqual(['on', 'w2', true]))
     await waitFor(() => expect(chips(picker)).toEqual(['Uploaded to the builder\u2019s pay portal', 'Mailed', '＋ Add a way', 'Edit list']))
     // Done only closes the window.
     const calls = io.wayCalls.length
