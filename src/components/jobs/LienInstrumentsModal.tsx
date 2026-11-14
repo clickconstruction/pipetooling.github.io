@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type UIEvent } from 'react'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import type { PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { ActionPhaseButton } from '../ActionPhaseButton'
@@ -56,6 +56,7 @@ import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from '../../lib/jobs/lienWi
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { lienWindowHeadFoldWords, lienWindowHeadFolded, lienWindowHeadStartsFolded, lienWindowScrollIsPaper } from '../../lib/jobs/lienPhoneWindows'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
@@ -780,6 +781,36 @@ export default function LienInstrumentsModal({
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
   const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
   const papersBar = useScrollEdgeFade<HTMLDivElement>()
+  // A phone (punch list #352, PR 7): the header folds to its title line once the paper under it is scrolled, and comes back at the paper's top.
+  const headRef = useRef<HTMLDivElement | null>(null)
+  const [headFolded, setHeadFolded] = useState(false)
+  // Folded because the screen is too small for the header, or by its own press: a scroll does not bring it back.
+  const headHeld = useRef(false)
+  // The reader pressed the fold on this paper: the window stops deciding for them.
+  const headTouched = useRef(false)
+  useLayoutEffect(() => {
+    headHeld.current = false
+    headTouched.current = false
+    setHeadFolded(false)
+  }, [activeTab, isMobile])
+  // The header grows as the job's facts arrive, so the room is read after every draw until the reader presses the fold: a paper left under 140 px folds the header.
+  useLayoutEffect(() => {
+    if (!isMobile || headFolded || headTouched.current) return
+    const head = headRef.current
+    const card = head?.parentElement
+    const paper = card ? [...card.children].find((c): c is HTMLElement => c !== head && c instanceof HTMLElement && /auto|scroll/.test(getComputedStyle(c).overflowY)) : undefined
+    if (!card || !paper || !lienWindowHeadStartsFolded({ card: card.clientHeight, paper: paper.clientHeight })) return
+    headHeld.current = true
+    setHeadFolded(true)
+  })
+  const onPaperScroll = (ev: UIEvent<HTMLDivElement>) => {
+    const t = ev.target
+    const head = headRef.current
+    if (!(t instanceof HTMLElement) || !head) return
+    if (!lienWindowScrollIsPaper({ scrollHeight: t.scrollHeight, clientHeight: t.clientHeight, insideHead: head.contains(t) })) return
+    const titleLine = head.firstElementChild instanceof HTMLElement ? head.firstElementChild.offsetHeight : 0
+    setHeadFolded((folded) => lienWindowHeadFolded({ folded, held: headHeld.current, scrollTop: t.scrollTop, scrollHeight: t.scrollHeight, clientHeight: t.clientHeight, foldable: folded ? 0 : Math.max(0, head.offsetHeight - titleLine) }))
+  }
   // The opener's word on the notice (v2.7077), read by value so a fresh object each render does not rebuild the path.
   const deskNoticeState = deskNotice?.state ?? ''
   const deskHoldUntil = deskNotice?.holdUntil ?? null
@@ -1110,17 +1141,18 @@ export default function LienInstrumentsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+        // A phone's window is the whole screen (punch list #352, PR 7): the 1rem all round was 58 px of height and 32 of width.
+        padding: isMobile ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
       <div
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
+          borderRadius: isMobile ? 0 : 8,
           maxWidth: 920,
           width: '100%',
-          maxHeight: 'min(92vh, 100%)',
+          maxHeight: isMobile ? '100%' : 'min(92vh, 100%)',
           // A phone's record sheet is drawn over the card (v2.4414); index.css keeps the card at its full height while one is up.
           position: 'relative',
           display: 'flex',
@@ -1128,6 +1160,7 @@ export default function LienInstrumentsModal({
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
+        onScrollCapture={isMobile ? onPaperScroll : undefined}
         data-lien-window-card
       >
         {recordSheetOpen ? (
@@ -1149,12 +1182,26 @@ export default function LienInstrumentsModal({
           />
         ) : null}
         {/* The title bar. On a phone (v2.4398) the title, § Rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
-        <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+        <div ref={headRef} data-lien-window-head data-folded={isMobile && headFolded ? 'yes' : undefined} style={{ position: 'relative', padding: isMobile ? (headFolded ? '0.35rem 1rem 0.2rem' : '0.35rem 1rem 0.65rem') : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           {isMobile ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
                 Liens on job {jobNumber}
               </h2>
+              <button
+                type="button"
+                data-lien-window-head-fold
+                aria-expanded={!headFolded}
+                aria-label={lienWindowHeadFoldWords(headFolded).label}
+                onClick={() => {
+                  headTouched.current = true
+                  headHeld.current = !headFolded
+                  setHeadFolded(!headFolded)
+                }}
+                style={{ flexShrink: 0, width: 44, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: 'var(--text-muted)' }}
+              >
+                <span aria-hidden="true">{lienWindowHeadFoldWords(headFolded).mark}</span>
+              </button>
               <LienRulesDoor where={rulesWhere} job={rulesJob} todayYmd={todayYmdLocal()} style={{ minHeight: 34, padding: '0 0.65rem' }} />
               <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
             </div>
