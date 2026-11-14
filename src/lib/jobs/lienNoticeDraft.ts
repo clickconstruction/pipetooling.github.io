@@ -258,6 +258,8 @@ export type LienAffidavitJobFacts = {
   workDays?: LienWorkSpanJob | null
   /** Today, 'YYYY-MM-DD' — a month still running ends today on the paper. */
   todayYmd?: string | null
+  /** The months set by hand on the job (v2.7270, punch list #356): when any, paragraph 5 names these in place of the record's months. */
+  monthsByHand?: ReadonlyArray<string> | null
   noticesRecorded: boolean
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null

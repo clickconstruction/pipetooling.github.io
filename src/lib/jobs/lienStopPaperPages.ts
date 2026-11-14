@@ -62,6 +62,7 @@ export function lienDeskAffidavitFieldsFor({ data, jobId, issuer, signerNameFor,
     // A paper keeps the form it was drafted on (punch list #305); the short form reads the job's recorded notices.
     form: lienAffidavitFormForItem(entry.item),
     filings: data.filingsByJob[jobId] ?? [],
+    monthsByHand: data.affidavitMonthsByJob?.[jobId]?.months ?? null,
     homestead: property.homestead,
   })
 }

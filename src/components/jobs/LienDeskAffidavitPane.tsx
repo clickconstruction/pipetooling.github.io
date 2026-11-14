@@ -32,7 +32,9 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
-import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue } from '../../lib/jobs/lienNoticeOwed'
+import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue, lienNoticeNamedMonths } from '../../lib/jobs/lienNoticeOwed'
+import { clearLienAffidavitMonthsByHand, saveLienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHandIo'
+import LienAffidavitMonthsByHandEditor from './LienAffidavitMonthsByHandEditor'
 import { HOMESTEAD_QUESTION_DOOR } from '../../lib/customers/homesteadAnswer'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
@@ -177,6 +179,8 @@ export default function LienDeskAffidavitPane({
   // The claim set by hand (v2.3682) carries to the affidavit: it swears to the app's balance less the correction.
   const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
   const claimed = correctedClaim(entry.openBalance, correction)
+  // The months set by hand (v2.7270, punch list #356 part 2): the paper names these in place of the record's.
+  const byHand = data.affidavitMonthsByJob[entry.jobId] ?? null
   // A paper keeps the form it was drafted on (punch list #305): an affidavit drafted before the short form stays on the earlier one until someone redraws it.
   const form = lienAffidavitFormForItem(entry.item)
 
@@ -198,15 +202,19 @@ export default function LienDeskAffidavitPane({
         form,
         filings: data.filingsByJob[entry.jobId] ?? [],
         homestead: property.homestead,
+        monthsByHand: byHand?.months ?? null,
       }),
-    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob],
+    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd, form, data.filingsByJob, byHand],
   )
+  // The job's own work months and the notice's (punch list #356): what the editor offers, and what the check reads.
+  const workMonthKeys = useMemo(() => lienAffidavitWorkMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd }), [entry.isSub, job, entry.lastMonth, todayYmd])
+  const namedMonthKeys = useMemo(() => lienNoticeNamedMonths(data.filingsByJob[entry.jobId] ?? []), [data.filingsByJob, entry.jobId])
   // The notice behind each sworn month (punch list #314): a flag for the attorney, never a hold.
   const noticeCheck = useMemo(() => {
     const filings = data.filingsByJob[entry.jobId] ?? []
-    const facts = { isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd }
-    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: lienAffidavitWorkMonths(facts) })
-  }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
+    const facts = { isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, monthsByHand: byHand?.months ?? null }
+    return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: workMonthKeys })
+  }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd, byHand, workMonthKeys])
   const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
   // The last work month's own § 53.056 notice still due and not recorded (punch list #353, part 2): said above Send for approval.
   const noticeDue = useMemo(() => lienLastMonthNoticeDue({ isSub: entry.isSub, lastMonth: entry.lastMonth, propertyKind: entry.propertyKind, filings: data.filingsByJob[entry.jobId] ?? [], todayYmd }), [entry.isSub, entry.lastMonth, entry.propertyKind, data.filingsByJob, entry.jobId, todayYmd])
@@ -541,6 +549,19 @@ export default function LienDeskAffidavitPane({
                   ))}
                 </div>
               </div>
+            ) : null}
+            {/* The months set by hand (v2.7270): the line that says what is set, or the press that opens the editor; a sub job only. */}
+            {entry.isSub ? (
+              <LienAffidavitMonthsByHandEditor
+                key={byHand ? `${byHand.setAt}:${byHand.months.join(',')}` : 'none'}
+                current={byHand}
+                work={workMonthKeys}
+                named={namedMonthKeys}
+                canEdit={office}
+                busy={busy}
+                onSave={(input) => run('Set the months by hand', async () => void (await saveLienAffidavitMonthsByHand({ jobId: entry.jobId, months: input.months, reason: input.reason, userId: authUserId, userName: authName })), 'The paper names the months set by hand.')}
+                onClear={() => run('Clear the months set by hand', async () => void (await clearLienAffidavitMonthsByHand(entry.jobId)), 'Back to the months the record names.')}
+              />
             ) : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {affidavitMonthsSentence(rows, workMonthLabel)}

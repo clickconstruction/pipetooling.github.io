@@ -104,7 +104,7 @@ function deskData(): LienDeskData {
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
     gcsHeldBefore: new Set(),
-    claimCorrectionsByJob: {},
+    claimCorrectionsByJob: {}, affidavitMonthsByJob: {},
     filingsByJob: {},
   }
 }

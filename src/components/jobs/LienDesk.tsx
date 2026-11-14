@@ -119,6 +119,7 @@ import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
+import { lienAffidavitMonthsByHandCheck } from '../../lib/jobs/lienAffidavitMonthsByHand'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
@@ -946,7 +947,7 @@ export default function LienDesk({
       const filledKeys = new Set(filledGaps.map((g) => g.key))
       if (kind === 'affidavit') {
         const e = data.affidavits.entries.find((x) => x.jobId === jobId)
-        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd, form: lienAffidavitFormForItem(e?.item), filings: data.filingsByJob[jobId] ?? [], homestead: prop.homestead })
+        const fields = buildLienDeskAffidavitFields({ job: rowJob, entry: e, gc: rowGc, ownerName: f.ownerName, ownerAddress: f.ownerAddress, county: prop.county, legalDescription: prop.legalDescription, correction, contactPerson: f.contactPerson, issuer, todayYmd, form: lienAffidavitFormForItem(e?.item), filings: data.filingsByJob[jobId] ?? [], homestead: prop.homestead, monthsByHand: data.affidavitMonthsByJob[jobId]?.months ?? null })
         const html = paintGaps(filingDocHtml(buildLienAffidavitBlocks(withGapTokens(withFreshMarks(fields, filledGaps), gaps), { letterhead, refItems: [`Job #${jobNo}`, e ? `Last work month ${e.lastMonth}` : '', demandDate(todayYmd)].filter(Boolean) })), gaps)
         return { key: row.key, title: row.title, kind, deadline: lienStepDueWords(row), envelope: null, html, gaps, next, button: row.action === 'fix_property' ? row.button : null, filled }
       }
@@ -1775,7 +1776,9 @@ export default function LienDesk({
       // What the help sheet says the app checked: the property record's own marks, and the notice behind each sworn month.
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
-      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd }
+      // The months set by hand (v2.7270) stand in for the record's on the paper, the check and the sheet's row.
+      const byHand = data.affidavitMonthsByJob[e.jobId] ?? null
+      const swornFacts = { isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, monthsByHand: byHand?.months ?? null }
       const swornMonths = lienAffidavitSwornMonths({ ...swornFacts, filings })
       const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings, work: lienAffidavitWorkMonths(swornFacts) })
       const noticeLines = lienNoticeCheckLines(noticeCheck)
@@ -1783,7 +1786,7 @@ export default function LienDesk({
       const monthStandIn = lienStandInSourceOf(e.lastMonthFromCreation, e.lastMonthFromBill)
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
       const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd, monthStandIn })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn }
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
