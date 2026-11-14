@@ -2,10 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ESTIMATE_LINK_MISS_LIMIT,
   estimateLinkMissDecision,
+  estimateLinkMissHour,
   estimateLinkSource,
+  readEstimateLinkLock,
   recordEstimateLinkMiss,
   sha256Hex,
   type EstimateMissClient,
+  type EstimateMissReader,
 } from '../../supabase/functions/_shared/estimateLinkMisses'
 
 const headers = (fwd?: string) => ({ get: (name: string) => (name === 'x-forwarded-for' ? fwd ?? null : null) })
@@ -71,5 +74,61 @@ describe('the guard on guessing an estimate link (#281 PR 2)', () => {
     expect(await recordEstimateLinkMiss(fake(true), { headers: headers('203.0.113.9') }, 'accept-estimate')).toEqual({ misses: 0, locked: false })
     const throwing: EstimateMissClient = { rpc: () => { throw new Error('lost signal') } }
     expect(await recordEstimateLinkMiss(throwing, { headers: headers() }, 'log-estimate-option-view')).toEqual({ misses: 0, locked: false })
+  })
+})
+
+describe('reading the lock without counting (punch list #344 PR 5)', () => {
+  const NOW = new Date('2026-11-13T15:42:10.000Z')
+  /** A reader over one row per hour and source, recording what it was asked. */
+  function reader(rows: Array<{ hour: string; source_hash: string; misses: number }>, fail: 'error' | 'throw' | null = null): EstimateMissReader & { asked: string[] } {
+    const asked: string[] = []
+    return {
+      asked,
+      from(table) {
+        if (fail === 'throw') throw new Error('lost signal')
+        return {
+          select: (columns) => ({
+            eq: (c1, v1) => ({
+              eq: (c2, v2) => ({
+                maybeSingle: () => {
+                  asked.push(`${table} ${columns} ${c1}=${v1} ${c2}=${v2}`)
+                  if (fail === 'error') return Promise.resolve({ data: null, error: { message: 'permission denied' } })
+                  const want: Record<string, string> = { [c1]: v1, [c2]: v2 }
+                  return Promise.resolve({ data: rows.find((r) => r.hour === want.hour && r.source_hash === want.source_hash) ?? null, error: null })
+                },
+              }),
+            }),
+          }),
+        }
+      },
+    }
+  }
+
+  it('the hour is the top of the UTC hour, as the database truncates it', () => {
+    expect(estimateLinkMissHour(NOW)).toBe('2026-11-13T15:00:00.000Z')
+    expect(estimateLinkMissHour(new Date('2026-12-31T23:59:59.999Z'))).toBe('2026-12-31T23:00:00.000Z')
+  })
+
+  it('a source past the limit this hour is locked, and one at the limit is not', async () => {
+    const hash = await sha256Hex('203.0.113.9')
+    const over = reader([{ hour: '2026-11-13T15:00:00.000Z', source_hash: hash, misses: ESTIMATE_LINK_MISS_LIMIT + 1 }])
+    expect(await readEstimateLinkLock(over, { headers: headers('203.0.113.9') }, 'box-read', NOW)).toEqual({ misses: ESTIMATE_LINK_MISS_LIMIT + 1, locked: true })
+    expect(over.asked).toEqual([`estimate_link_misses misses hour=2026-11-13T15:00:00.000Z source_hash=${hash}`])
+    const at = reader([{ hour: '2026-11-13T15:00:00.000Z', source_hash: hash, misses: ESTIMATE_LINK_MISS_LIMIT }])
+    expect(await readEstimateLinkLock(at, { headers: headers('203.0.113.9') }, 'box-read', NOW)).toEqual({ misses: ESTIMATE_LINK_MISS_LIMIT, locked: false })
+  })
+
+  it('last hour’s misses and another source’s are not this source’s lock', async () => {
+    const hash = await sha256Hex('203.0.113.9')
+    const rows = [
+      { hour: '2026-11-13T14:00:00.000Z', source_hash: hash, misses: 500 },
+      { hour: '2026-11-13T15:00:00.000Z', source_hash: await sha256Hex('198.51.100.4'), misses: 500 },
+    ]
+    expect(await readEstimateLinkLock(reader(rows), { headers: headers('203.0.113.9') }, 'box-read', NOW)).toEqual({ misses: 0, locked: false })
+  })
+
+  it('a read that fails is no lock, so a label still opens', async () => {
+    expect(await readEstimateLinkLock(reader([], 'error'), { headers: headers('203.0.113.9') }, 'box-read', NOW)).toEqual({ misses: 0, locked: false })
+    expect(await readEstimateLinkLock(reader([], 'throw'), { headers: headers() }, 'box-read', NOW)).toEqual({ misses: 0, locked: false })
   })
 })
