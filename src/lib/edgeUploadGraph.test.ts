@@ -87,6 +87,15 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(edgeUpload('supabase/functions/quo-send/index.ts').via('supabase/functions/_shared/gcKernels/lib/quo/send.ts')).not.toBeNull()
   })
 
+  it('dev-mcp uploads no overhead parts reads: the accounting buckets take the line’s shape from overheadPartsDetailLine.ts (punch list #359, PR 4)', () => {
+    const reads = 'supabase/functions/_shared/gcKernels/lib/overheadOfficePartsReads.ts'
+    const u = edgeUpload('supabase/functions/dev-mcp/index.ts')
+    expect(u.via(reads)).toBeNull()
+    expect(u.via('src/lib/overheadPartsDetailLine.ts')?.slice(-2)).toEqual(['supabase/functions/_shared/gcKernels/lib/overheadPartsAccountingBuckets.ts', 'src/lib/overheadPartsDetailLine.ts'])
+    // The Bridge's email reads the overhead by day, so it keeps the reads.
+    expect(edgeUpload('supabase/functions/bridge-weekly-sheet/index.ts').via(reads)).not.toBeNull()
+  })
+
   it('legal-portal uploads neither the sample fixtures, the kernel copy’s index nor the generated types', () => {
     const u = edgeUpload('supabase/functions/legal-portal/index.ts')
     expect(u.via('supabase/functions/_shared/customerSampleFixtures.ts')).toBeNull()

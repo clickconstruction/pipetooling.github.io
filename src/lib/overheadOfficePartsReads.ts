@@ -11,30 +11,10 @@ import { withSupabaseRetry, type SupabaseClientResult } from '../utils/errorHand
 import { fetchAllRows } from './supabasePaging'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
 import { IN_KIND_COST_SELECT, inKindCostLabel, inKindCostLines } from './inKind/inKindCost'
+import type { OverheadPartsDetailLine } from './overheadPartsDetailLine'
 
-export type OverheadPartsSource = 'mercury' | 'supply' | 'tally' | 'in_kind'
-
-export type OverheadPartsDetailLine = {
-  source: OverheadPartsSource
-  amountUsd: number
-  label: string
-  sortKey: string
-  /**
-   * Mercury debit card UUID (lowercase, hyphenated) when this line came
-   * from a Mercury allocation whose transaction `raw` JSON exposed a
-   * debit-card-info object. `null` for non-Mercury lines or when no
-   * debit card was used (e.g. ACH/wire/check). UI layers can resolve it
-   * to a nickname via `useMercuryLedgerNicknames().nicknameByDebitCard`.
-   */
-  mercuryDebitCardId?: string | null
-  /**
-   * Underlying `mercury_transactions.id` for Mercury allocation lines.
-   * `null` for supply / tally lines. UI layers use this to look up the
-   * transaction's Banking → Accounting drag-sort label assignment and
-   * bucket the line accordingly.
-   */
-  mercuryTransactionId?: string | null
-}
+// The line's shape lives in overheadPartsDetailLine.ts (punch list #359), so the buckets take it without these reads; re-exported here.
+export type { OverheadPartsDetailLine, OverheadPartsSource } from './overheadPartsDetailLine'
 
 export type OverheadOfficePartsByDayResult = {
   partsUsdByDay: Map<string, number>

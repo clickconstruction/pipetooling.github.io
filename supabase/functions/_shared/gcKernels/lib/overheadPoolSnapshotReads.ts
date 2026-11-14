@@ -18,7 +18,7 @@ import {
 } from './overheadDailyLabor.ts'
 import { readOfficePartsUsdByDayExcludingInternalTransfer } from './overheadPartsBucketReads.ts'
 import type { OverheadPartsAccountingBucketKey } from './overheadPartsAccountingBuckets.ts'
-import type { OverheadPartsDetailLine } from './overheadOfficePartsReads.ts'
+import type { OverheadPartsDetailLine } from '../../../../../src/lib/overheadPartsDetailLine.ts'
 import { buildOverheadHygieneSummary, type OverheadHygieneSummary } from './overheadHygiene.ts'
 import { bucketInvoiceRevenueByAppTzDay, computeOverheadTrailingAverages } from './overheadAvgDailyCost.ts'
 import { computeOverheadRateMethods, type OverheadRateMethods } from './overheadRateMethods.ts'

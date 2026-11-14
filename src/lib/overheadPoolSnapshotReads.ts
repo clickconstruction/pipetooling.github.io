@@ -16,7 +16,7 @@ import {
 } from './overheadDailyLabor'
 import { readOfficePartsUsdByDayExcludingInternalTransfer } from './overheadPartsBucketReads'
 import type { OverheadPartsAccountingBucketKey } from './overheadPartsAccountingBuckets'
-import type { OverheadPartsDetailLine } from './overheadOfficePartsReads'
+import type { OverheadPartsDetailLine } from './overheadPartsDetailLine'
 import { buildOverheadHygieneSummary, type OverheadHygieneSummary } from './overheadHygiene'
 import { bucketInvoiceRevenueByAppTzDay, computeOverheadTrailingAverages } from './overheadAvgDailyCost'
 import { computeOverheadRateMethods, type OverheadRateMethods } from './overheadRateMethods'
