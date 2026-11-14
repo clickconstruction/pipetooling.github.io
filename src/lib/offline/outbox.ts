@@ -98,6 +98,11 @@ export interface OutboxRefusal {
   /** The server's reason, already a sentence. */
   message: string
   code: string | null
+  /**
+   * A press whose rows stand alone, answered row by row (an on-site delivery's lines, v2.7267): the ids that landed
+   * and each refused row's reason. For the screen that pressed; the kept copy holds the message and the code alone.
+   */
+  rows?: { landed: string[]; refused: Array<{ id: string; message: string; code: string | null }> }
 }
 
 export interface ClockInPayload {
@@ -277,6 +282,8 @@ export interface OnSitePressPayload {
   jobId: string
   what: string
   writes: ReadonlyArray<{ table: string; op: 'insert' | 'update'; id: string; row: Record<string, unknown> }>
+  /** True when no row builds on another (a delivery's lines, v2.7267): a refused row is kept with its reason and the rest still land. */
+  rowsStandAlone?: boolean
 }
 
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'

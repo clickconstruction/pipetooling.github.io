@@ -14,6 +14,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useOnSiteDeskJobs, type OnSiteDeskJobRow } from '../../hooks/useOnSiteDeskJobs'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { boxKindWords } from '../../lib/materials/editBox'
 import { boxOnSiteLink } from '../../lib/materials/boxSearch'
 import { onSiteJobHref } from '../../lib/materials/materialsGroups'
 import { groupDeskBySite } from '../../lib/materials/siteRollup'
@@ -136,7 +137,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
                 return (
                   <tr key={`${h.container.id}:${h.line?.partKey ?? ''}`}>
                     <td style={td}>{h.line ? <>{h.line.partName}{h.line.manufacturer ? <span style={muted}> · {h.line.manufacturer}</span> : null}</> : <span style={muted}>the box itself</span>}</td>
-                    <td style={td}><strong>{h.container.label}</strong> <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : h.container.kind}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span></td>
+                    <td style={td}><strong>{h.container.label}</strong> <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : boxKindWords(h.container.kind).toLowerCase()}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span></td>
                     <td style={td}>{h.jobLabel}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{h.line ? h.line.onHand : ''}</td>
                     <td style={td}>{h.container.kind === 'unsorted' ? '' : due ? <span style={amber}>{lastCountWords(last, now)}</span> : <span style={muted}>{lastCountWords(last, now)}</span>}</td>

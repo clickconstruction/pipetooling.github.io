@@ -123,7 +123,7 @@ import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
-import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords } from '../../lib/jobs/lienAffidavitBatch'
+import { lienAffidavitClerkOrder, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetPapers, lienAffidavitShownEntries, type LienAffidavitShown, type LienAffidavitPrintPaper, LIEN_HELP_EARLIER_FORM_REASON, lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffidavitBatchNoticeCopyCount, lienAffidavitBatchNoticeRecords } from '../../lib/jobs/lienAffidavitBatch'
 import { useLienHelpSheetChoice, useLienNoticeCopiesBatchChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
 import { LienSigningCountyBox } from './LienSigningCountyBox'
@@ -1682,12 +1682,17 @@ export default function LienDesk({
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
   // Print every ready affidavit on the short form for the notary (v2.6918): what the press takes, and what it leaves with the reason.
-  const affPrintPlan = lienAffidavitPrintPlan(affEntries)
+  const affPrintPlanAll = lienAffidavitPrintPlan(affEntries)
   // The held papers alone (v2.7209): only while a gate holds one, so the list never narrows to nothing when the last one clears.
-  const affHeldJobIds = new Set(affPrintPlan.gated.map((g) => g.entry.jobId))
+  const affHeldJobIds = new Set(affPrintPlanAll.gated.map((g) => g.entry.jobId))
   const affHeldOnly = affHeldOnlyPicked && affHeldJobIds.size > 0
   const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
+  // While a find is typed (punch list #353, part 1) both batch presses take only the rows the list shows, and say so; with nothing typed they take every paper as before.
+  const affShownKey = finding ? affVisible.map((e) => e.jobId).join('\n') : null
+  const affShown = useMemo((): LienAffidavitShown | null => (affShownKey == null ? null : { jobIds: new Set(affShownKey.split('\n').filter(Boolean)) }), [affShownKey])
+  const affBatchEntries = lienAffidavitShownEntries(affEntries, affShown)
+  const affPrintPlan = affShown ? lienAffidavitPrintPlan(affBatchEntries) : affPrintPlanAll
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   // Redraw every ready affidavit on the short form (punch list #305): the ready earlier-form papers, the ones left in other piles, and the words.
   const redrawPlan = lienAffidavitRedrawPlan(affEntries)
@@ -1708,14 +1713,16 @@ export default function LienDesk({
     }
   }
   // Send every drafted affidavit for approval (v2.6918): each goes where its GC's rule takes it, as the pane's own press sends it.
-  const affSendPlan = lienAffidavitSendPlan(affEntries, {
-    policyFor: (gcId) => (gcId ? data?.gcsById[gcId]?.policy : undefined) ?? 'ask',
-    promiseYmdFor: (jobId) => data?.promisesByJob[jobId]?.promisedYmd ?? null,
-    gcHasPriorNotice: (gcId) => Boolean(data?.gcsWithPriorNotice.has(gcId)),
-    gcHeldBefore: (gcId) => Boolean(data?.gcsHeldBefore.has(gcId)),
+  const affSendContext = {
+    policyFor: (gcId: string | null) => (gcId ? data?.gcsById[gcId]?.policy : undefined) ?? 'ask',
+    promiseYmdFor: (jobId: string) => data?.promisesByJob[jobId]?.promisedYmd ?? null,
+    gcHasPriorNotice: (gcId: string) => Boolean(data?.gcsWithPriorNotice.has(gcId)),
+    gcHeldBefore: (gcId: string) => Boolean(data?.gcsHeldBefore.has(gcId)),
     todayYmd,
-  })
-  const affSendWords = lienAffidavitSendWords(affSendPlan)
+  }
+  const affSendPlanAll = lienAffidavitSendPlan(affEntries, affSendContext)
+  const affSendPlan = affShown ? lienAffidavitSendPlan(affBatchEntries, affSendContext) : affSendPlanAll
+  const affSendWords = lienAffidavitSendWords(affSendPlan, affShown ? { hiddenReady: affSendPlanAll.ready.length - affSendPlan.ready.length } : null)
   const sendDraftedAffidavits = async () => {
     if (affSendBusy || affSendWords.dead) return
     if (!(await confirmDialog({ title: affSendWords.title, message: affSendWords.message, confirmLabel: affSendWords.confirmLabel }))) return
@@ -1740,7 +1747,7 @@ export default function LienDesk({
   const [affNoticeRecord, setAffNoticeRecord] = useLienNoticeRecordChoice()
   // A copy of each notice behind the records: off until someone ticks it, since a batch has many notices behind it.
   const [affNoticeCopies, setAffNoticeCopies] = useLienNoticeCopiesBatchChoice()
-  const affPrintWords = lienAffidavitPrintWords(affPrintPlan)
+  const affPrintWords = lienAffidavitPrintWords(affPrintPlan, affShown ? { hiddenReady: affPrintPlanAll.ready.length - affPrintPlan.ready.length } : null)
   // The bar's status line and its amber press (v2.7209).
   const affPrintStatus = lienAffidavitPrintBarStatus({ ready: affPrintPlan.ready.length, gated: affPrintPlan.gated.length })
   const affHeldStrip = useRef<HTMLDivElement>(null)
@@ -1759,7 +1766,8 @@ export default function LienDesk({
   const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
     if (!data) return []
     // In clerk order (change 7): each county clerk's papers print together, and the help sheet's rows count them as they lie in the stack.
-    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(data.affidavits.entries).ready.flatMap((e): LienAffidavitPrintPaper[] => {
+    // The shown rows alone while a find is typed (punch list #353): a paper the find hides is not printed and not listed as held, since nobody held it.
+    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(lienAffidavitShownEntries(data.affidavits.entries, affShown)).ready.flatMap((e): LienAffidavitPrintPaper[] => {
       const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer: affPrintIssuer, signerNameFor, todayYmd })
       const job = data.jobsById[e.jobId]
       if (!fields) return []
@@ -1777,7 +1785,7 @@ export default function LienDesk({
       const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
-  }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
+  }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
@@ -2994,6 +3002,7 @@ export default function LienDesk({
                 {affSendBusy ? 'Sending…' : affSendWords.button}
               </button>
               {affSendWords.foot ? <span data-lien-affidavit-send-all-foot>{affSendWords.foot}</span> : null}
+              {affSendWords.hidden ? <span data-lien-affidavit-send-all-hidden>{affSendWords.hidden}</span> : null}
             </>
           ) : null}
           {affSendFailed.length > 0 ? (
@@ -3054,6 +3063,7 @@ export default function LienDesk({
           <LienSigningCountyBox id="lien-affidavit-signing-county" county={affSigning.county} onChange={affSigning.setCounty} />
           <LienAffidavitSheetFlags papers={affSheetPapers} labelFor={(jobId) => jobLabel(data?.jobsById[jobId], jobId)} onOpen={(jobId) => { setAffSelectedJobId(jobId); setMobileListShown(false) }} />
           {affPrintWords.foot ? <span data-lien-affidavit-print-all-foot>{affPrintWords.foot}</span> : null}
+          {affPrintWords.hidden ? <span data-lien-affidavit-print-all-hidden>{affPrintWords.hidden}</span> : null}
         </div>
       ) : null}
       {/* The list narrowed to the held papers (v2.7209): how many, that each row says why, and the way back. */}
