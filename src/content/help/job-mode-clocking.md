@@ -212,7 +212,7 @@ With Job Mode on, a tab bar pins to the bottom of the screen. Everything on it i
 
 ## Extra work the customer asked for
 
-You may have switched **Write up a change from the field** on in Settings. Then a **Write up a change** press sits under the day's list on the card. The press opens the write-up already on the job you are clocked into. See *write up a change order from the field*.
+You may have switched **Make change order from the field** on in Settings. Then a **Make change order** press sits under the day's list on the card. The press opens the write-up already on the job you are clocked into. See *write up a change order from the field*.
 
 ## The customer signs on your phone
 

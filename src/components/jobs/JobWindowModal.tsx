@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { JobWindowActionBar, JobWindowStatusSheet } from './JobWindowActionBar'
@@ -8,6 +8,9 @@ import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { jobWindowVerb, tabbedJobWindowBar } from '../../lib/jobs/jobWindowBar'
+import { headerScrollState, jobWindowSheetRows, type HeaderScrollState, type JobWindowSheetKey } from '../../lib/jobs/jobWindowPhone'
+import { JobWindowMoreSheet } from './JobWindowMoreSheet'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -20,6 +23,7 @@ import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
   type JobPanePhoneBar,
+  type JobPanePhoneDoors,
 } from './DetailJobModal'
 import JobKindChip from './JobKindChip'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
@@ -73,17 +77,41 @@ const ProjectsJobHistoryTabLazy = lazy(() =>
   import('../projects/ProjectsJobHistoryTab').then((m) => ({ default: m.ProjectsJobHistoryTab })),
 )
 
-/** The phone's tabs: pills that wrap (v2.3231). */
+/**
+ * The phone's tabs: pills on one line that scrolls sideways (punch list #355, v2.7271; they wrapped onto two lines
+ * from v2.3231), each 40 px tall for a thumb.
+ */
 const tabButtonStyle = (active: boolean): CSSProperties => ({
-  padding: '0.3rem 0.85rem',
-  fontSize: '0.875rem',
+  padding: '0 0.85rem',
+  minHeight: 40,
+  fontSize: '0.9375rem',
   fontWeight: 600,
   border: 'none',
   borderRadius: 999,
   cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  flex: 'none',
   background: active ? '#2563eb' : 'transparent',
   color: active ? '#fff' : 'var(--text-muted)',
 })
+
+/** The phone's ⋯ and ✕, stacked at the title row's right: a thumb's square each. */
+const phonePinStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-muted)',
+  fontSize: '1.3rem',
+  lineHeight: 1,
+  borderRadius: 10,
+  flexShrink: 0,
+}
 
 /** The desktop's tabs (v2.6539): a full-width strip under the title row, the one that stands underlined, like the Jobs page's own. */
 const tabStripStyle = (active: boolean): CSSProperties => ({
@@ -172,6 +200,17 @@ export function JobWindowModal({
   onSaved,
 }: Props) {
   const [tab, setTab] = useState<JobWindowTab>(initialTab)
+  // The phone's strip scrolls the active tab into view when it changes (a press on Costs card lands on Costs).
+  useEffect(() => {
+    const rail = stripRef.current
+    if (!rail) return
+    const on = rail.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!on) return
+    const railBox = rail.getBoundingClientRect()
+    const box = on.getBoundingClientRect()
+    if (box.left < railBox.left) rail.scrollLeft += box.left - railBox.left - 12
+    else if (box.right > railBox.right) rail.scrollLeft += box.right - railBox.right + 12
+  }, [tab])
   const [historyMounted, setHistoryMounted] = useState(initialTab === 'history')
   // The Documents pane reads the job's pay applications on first visit; while its AIA window is
   // open, Escape belongs to that window.
@@ -192,6 +231,32 @@ export function JobWindowModal({
   const phone = useNarrowViewport640()
   // The ? and its card (punch list #187 PR 3): what each tab holds, at the end of the tab bar.
   const [legendOpen, setLegendOpen] = useState(false)
+  // Punch list #355 (v2.7271): on a phone the ⋯ sheet holds every door the icon row held; the pane reports which
+  // doors are open and answers the press. The title row and the strip scroll away with the page: the body's scroll
+  // says when the head is gone (the ✕ floats) and when the reader is coming back up (the strip is drawn again).
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [paneDoors, setPaneDoors] = useState<JobPanePhoneDoors | null>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLDivElement>(null)
+  const stripRef = useRef<HTMLDivElement>(null)
+  const lastTopRef = useRef(0)
+  const pinnedRef = useRef(false)
+  const [headState, setHeadState] = useState<HeaderScrollState>({ headGone: false, stripPinned: false })
+  const onBodyScroll = useCallback(() => {
+    const body = bodyRef.current
+    const head = headRef.current
+    const strip = stripRef.current
+    if (!body || !head || !strip) return
+    const top = body.scrollTop
+    // Measured from the title row, which never moves: a sticky strip reports its shifted offset, and reading that
+    // would unpin it on the next scroll event and pin it again on the one after. The last top and the pin live in
+    // refs, read outside the updater, since React runs an updater twice in development.
+    const headBottom = head.offsetTop + head.offsetHeight + strip.offsetHeight
+    const next = headerScrollState({ top, lastTop: lastTopRef.current, headBottom, wasPinned: pinnedRef.current })
+    lastTopRef.current = top
+    pinnedRef.current = next.stripPinned
+    setHeadState((prev) => (prev.headGone === next.headGone && prev.stripPinned === next.stripPinned ? prev : next))
+  }, [])
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
   // Who pays in kind (punch list #301): the chip beside the customer's name, and the strip on a job the deal does not pay yet.
   const inKindStandings = useInKindStandings(isOfficeRole(authRole))
@@ -265,24 +330,53 @@ export function JobWindowModal({
       onClick={requestClose}
       title={phone ? 'Close' : 'Close · esc'}
       aria-label="Close job window"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '0.3rem 0.5rem',
-        border: 'none',
-        background: 'none',
-        cursor: 'pointer',
-        color: 'var(--text-muted)',
-        fontSize: '1.15rem',
-        lineHeight: 1,
-        borderRadius: 4,
-        flexShrink: 0,
-      }}
+      style={
+        phone
+          ? phonePinStyle
+          : {
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.3rem 0.5rem',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              fontSize: '1.15rem',
+              lineHeight: 1,
+              borderRadius: 4,
+              flexShrink: 0,
+            }
+      }
     >
       ✕
     </button>
   )
+  const tabButtons = (styleFor: (active: boolean) => CSSProperties) =>
+    (Object.keys(TAB_LABELS) as JobWindowTab[]).map((t) => (
+      <button
+        key={t}
+        className="job-window-tab"
+        type="button"
+        role="tab"
+        aria-selected={tab === t}
+        onClick={() => {
+          setTab(t)
+          if (t === 'history') setHistoryMounted(true)
+          if (t === 'documents') setDocumentsMounted(true)
+          if (t === 'costs') setCostMoveMounted(true)
+        }}
+        style={styleFor(tab === t)}
+      >
+        {TAB_LABELS[t]}
+      </button>
+    ))
+  const sheetRows = useMemo(() => (paneDoors ? jobWindowSheetRows(paneDoors.doors) : []), [paneDoors])
+  const onSheetPress = (key: JobWindowSheetKey) => {
+    if (key === 'legend') setLegendOpen(true)
+    else paneDoors?.press(key)
+  }
+  const phoneQuiet = [[headNumber, paneDoors?.trade ?? null].filter(Boolean).join(' ') || null, ...quietParts.filter((p) => p !== headNumber)].filter((p): p is string => !!p)
 
   return (
     <div
@@ -305,8 +399,10 @@ export function JobWindowModal({
       {/* Phones (v2.3231): the five tabs + "esc to close" + ✕ ran 437px wide inside a
           343px dialog, so the ✕ sat off-screen behind overflow: hidden and the window
           could not be closed by touch (Taunya, 2026-09-10). Same treatment as the bid
-          window: full-bleed sheet, tabs wrap and shrink, the ✕ pins to the right of the
-          first row. The esc hint left the desktop too in v2.6539: it lives in the ✕'s tip. */}
+          window: a full-bleed sheet. Since v2.7271 (punch list #355) the name comes first
+          with ⋯ and ✕ stacked at its right, the tabs run on one line that scrolls, and the
+          whole header scrolls away with the page. The esc hint left the desktop too in
+          v2.6539: it lives in the ✕'s tip. */}
       <style>{`
         @media (max-width: 640px) {
           .job-window-overlay {
@@ -319,31 +415,20 @@ export function JobWindowModal({
             max-height: 100% !important;
             border-radius: 0 !important;
           }
-          .job-window-tabs {
-            flex-wrap: wrap !important;
-            gap: 0.25rem !important;
-            padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.6rem 0.5rem !important;
-          }
-          .job-window-tab {
-            padding: 0.3rem 0.6rem !important;
-            font-size: 0.8rem !important;
-          }
-          .job-window-close {
-            margin-left: auto !important;
-            padding: 0.45rem 0.7rem !important;
-            font-size: 1.3rem !important;
+          .job-window-tabs::-webkit-scrollbar {
+            display: none;
           }
           .job-window-body {
-            padding: 0.5rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+            padding: 0 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
           }
         }
       `}</style>
       <div
         className="job-window-dialog"
         role="dialog"
-        aria-label={phone ? 'Job window' : undefined}
-        aria-labelledby={phone ? undefined : titleId}
+        aria-labelledby={titleId}
         style={{
+          position: 'relative',
           background: 'var(--surface)',
           borderRadius: 8,
           // 560 on every screen from v2.1675 to v2.6538 (the Bill tab was drawn to it, v2.4293); 760 at desktop
@@ -391,61 +476,118 @@ export function JobWindowModal({
             </div>
           </div>
         ) : null}
-        <div
-          className="job-window-tabs"
-          role="tablist"
-          aria-label="Job window tabs"
-          style={
-            phone
-              ? {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.6rem 0.9rem',
-                  borderBottom: '1px solid var(--border)',
-                  flexShrink: 0,
-                }
-              : {
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: '0.15rem',
-                  padding: '0.55rem 1.25rem 0',
-                  borderBottom: '1px solid var(--border)',
-                  flexShrink: 0,
-                  overflowX: 'auto',
-                }
-          }
-        >
-          {(Object.keys(TAB_LABELS) as JobWindowTab[]).map((t) => (
-            <button
-              key={t}
-              className="job-window-tab"
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => {
-                setTab(t)
-                if (t === 'history') setHistoryMounted(true)
-                if (t === 'documents') setDocumentsMounted(true)
-                if (t === 'costs') setCostMoveMounted(true)
-              }}
-              style={phone ? tabButtonStyle(tab === t) : tabStripStyle(tab === t)}
-            >
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-          {phone ? (
-            <>
-              <LegendButton legend={JOB_WINDOW_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ marginLeft: 'auto' }} />
-              {closeButton}
-            </>
-          ) : null}
-        </div>
-        {legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone={phone} onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0.9rem 0', flexShrink: 0 }} /> : null}
+        {!phone ? (
+          <div
+            className="job-window-tabs"
+            role="tablist"
+            aria-label="Job window tabs"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: '0.15rem',
+              padding: '0.55rem 1.25rem 0',
+              borderBottom: '1px solid var(--border)',
+              flexShrink: 0,
+              overflowX: 'auto',
+            }}
+          >
+            {tabButtons(tabStripStyle)}
+          </div>
+        ) : null}
+        {!phone && legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0.9rem 0', flexShrink: 0 }} /> : null}
+        {/* The phone's ✕ floats where the ✕ sat, one press down from the corner, once the header has scrolled away. */}
+        {phone && headState.headGone ? (
+          <button
+            type="button"
+            onClick={requestClose}
+            title="Close"
+            aria-label="Close job window"
+            data-testid="job-window-float-close"
+            style={{
+              ...phonePinStyle,
+              position: 'absolute',
+              top: 'calc(52px + env(safe-area-inset-top, 0px))',
+              right: 10,
+              width: 38,
+              height: 38,
+              borderRadius: '50%',
+              background: 'var(--surface)',
+              border: '1px solid var(--border-strong)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+              zIndex: 3,
+            }}
+          >
+            ✕
+          </button>
+        ) : null}
 
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
-        <div className="job-window-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}>
+        <div
+          ref={bodyRef}
+          onScroll={phone ? onBodyScroll : undefined}
+          className="job-window-body"
+          style={{ position: 'relative', flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}
+        >
+          {phone ? (
+            <div ref={headRef} className="job-window-head" data-testid="job-window-head" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', padding: 'calc(0.5rem + env(safe-area-inset-top, 0px)) 0 0.25rem' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingTop: '0.45rem' }}>
+                <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 0.5rem', minWidth: 0 }}>
+                  <span style={{ wordBreak: 'break-word', minWidth: 0 }}>{titleParts.name}</span>
+                  {headStatus ? (
+                    <span style={{ ...headStatusChip, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderColor: 'transparent' }} data-testid="job-window-status">
+                      {headStatus}
+                    </span>
+                  ) : null}
+                </h2>
+                {headJob ? (
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.2rem 0.5rem', marginTop: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="job-window-quiet-line">
+                    {phoneQuiet.map((p, i) => (
+                      <span key={`${i}-${p}`}>{i ? `· ${p}` : p}</span>
+                    ))}
+                    <JobKindChip read={jobKindOfRow(headJob)} size="sm" />
+                    {headStanding ? <InKindChip standing={headStanding} form="short" plain /> : null}
+                  </div>
+                ) : null}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                <button type="button" onClick={() => setSheetOpen(true)} title="More on this job" aria-label="More on this job" aria-haspopup="dialog" style={{ ...phonePinStyle, fontSize: '1.5rem', letterSpacing: 1 }}>
+                  ⋯
+                </button>
+                {closeButton}
+              </div>
+            </div>
+          ) : null}
+          {phone ? (
+            <div
+              ref={stripRef}
+              className="job-window-tabs"
+              role="tablist"
+              aria-label="Job window tabs"
+              data-navtrack="job-window"
+              data-navbuttons=""
+              onClickCapture={recordViewerNavClick}
+              data-pinned={headState.stripPinned ? '' : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.15rem',
+                margin: '0 -0.9rem',
+                padding: '0.25rem 0.9rem',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--surface)',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
+                maskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
+                // Drawn again at the top while the reader scrolls back up past it: sticky pulls it into view.
+                ...(headState.stripPinned ? { position: 'sticky', top: 0, zIndex: 2 } : {}),
+              }}
+            >
+              {tabButtons(tabButtonStyle)}
+            </div>
+          ) : null}
+          {phone && legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0 0', flexShrink: 0 }} /> : null}
           {headJob && payerStanding && jobIsOffTheDeal(headJob, payerStanding) ? (
             <JobInKindStrip
               jobId={headJob.id}
@@ -464,7 +606,8 @@ export function JobWindowModal({
               open
               paneMode
               paneBodyHidden={tab !== 'job'}
-              paneTitleHidden={!phone}
+              paneTitleHidden
+              onPhoneDoorsChange={setPaneDoors}
               onClose={onClose}
               jobId={jobId}
               scheduleContext={scheduleContext}
@@ -594,6 +737,7 @@ export function JobWindowModal({
             />
           </>
         ) : null}
+        {phone && sheetOpen ? <JobWindowMoreSheet title={titleParts.name} rows={sheetRows} onPress={onSheetPress} onClose={() => setSheetOpen(false)} /> : null}
       </div>
     </div>
   )

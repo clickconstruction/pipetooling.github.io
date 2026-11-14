@@ -513,8 +513,8 @@ export function DispatchInboxSection({
                         onOpenSupplyHouseShare(req.job_ledger_id)
                       }
                     }}
-                    title="Open Job Detail with the Share-with-supply-house modal — fill the owner and send"
-                    aria-label="Open Share with supply house"
+                    title="Open Job Detail with the Add job account email — fill the owner and send"
+                    aria-label="Open Add job account"
                     style={{
                       padding: '0.35rem 0.75rem',
                       background: 'var(--surface)',
@@ -527,7 +527,7 @@ export function DispatchInboxSection({
                       flexShrink: 0,
                     }}
                   >
-                    Open Share with supply house
+                    Open Add job account
                   </button>
                 ) : null
                 // Job accounts at the counter (v2.3424): the field's ask — one row per
@@ -587,7 +587,7 @@ export function DispatchInboxSection({
                                   e.stopPropagation()
                                   if (req.job_ledger_id) onOpenSupplyHouseShare(req.job_ledger_id)
                                 }}
-                                title="Open Job Detail with the Share-with-supply-house modal — the setup packet"
+                                title="Open Job Detail with the Add job account email — the setup packet"
                                 style={jobAccountBtnStyle}
                               >
                                 Send the packet

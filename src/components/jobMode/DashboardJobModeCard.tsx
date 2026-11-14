@@ -1234,14 +1234,14 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         <button
           type="button"
           style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-          aria-label="Write up a change"
-          title={held ? READING_AGAIN_WORDS : 'Write up a change on this job — extra work the customer asked for'}
+          aria-label="Make change order"
+          title={held ? READING_AGAIN_WORDS : 'Make change order on this job — extra work the customer asked for'}
           disabled={held}
           className={held ? 'keptPress' : undefined}
           onClick={() => setWriteUpChangeOpen(true)}
         >
           <WriteUpChangeGlyph size={16} />
-          Write up a change
+          Make change order
         </button>
       ) : null}
       {dayOnScreen && handPhoneDoor ? (

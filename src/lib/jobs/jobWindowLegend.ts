@@ -15,8 +15,8 @@ export const JOB_WINDOW_LEGEND: DeskLegend = {
     { key: 'costs', label: 'Costs', accent: '#dc2626', note: 'Money out, told straight. Four numbers first, then where the money went.' },
     { key: 'history', label: 'History', note: 'One row per day worked, and the lien timeline while money is still owed.' },
     { key: 'documents', label: 'Documents', note: "The job's pay applications, bills, contract, test reports, stage checklists, lien paper and folders." },
-    { key: 'icons', label: 'The icons', where: 'desk', note: 'Share, supply house, send as task, calendar, mail and the gear work from any tab.' },
-    { key: 'bar', label: 'The bar', where: 'phone', note: "Status opens the status rail. The middle button is the job's next move. Note jumps to the note box." },
+    { key: 'icons', label: 'The icons', where: 'desk', note: 'Share, Add job account, the paid-in-full report, send as task, calendar and Make change order work from any tab.' },
+    { key: 'bar', label: 'The bar and the ⋯', where: 'phone', note: "Status opens the status rail. The middle button is the job's next move. Note opens the note box. The ⋯ by the name holds every other door." },
   ],
   guide: { slug: 'job-window-tabs', title: "move between a job's Job, Edit, Bill, and Costs tabs" },
 }

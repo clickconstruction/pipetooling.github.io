@@ -905,7 +905,7 @@ export function QuickEstimateWizard({
         if (e.target === e.currentTarget) closeAndKeep()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Write up a change" style={sheetStyle}>
+      <div role="dialog" aria-modal="true" aria-label="Make change order" style={sheetStyle}>
         <div
           style={{
             display: 'flex',
@@ -916,7 +916,7 @@ export function QuickEstimateWizard({
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <strong style={{ fontSize: '0.95rem' }}>Write up a change</strong>
+          <strong style={{ fontSize: '0.95rem' }}>Make change order</strong>
           <button
             type="button"
             aria-label="Save and close"

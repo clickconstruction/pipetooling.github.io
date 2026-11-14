@@ -40,14 +40,14 @@ describe('DetailJobModal Write up a change (v2.4057)', () => {
     doorOn = true
     renderModal()
     await settle()
-    fireEvent.click(screen.getByLabelText('Write up a change'))
-    expect(screen.getByRole('dialog', { name: 'Write up a change' })).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Make change order'))
+    expect(screen.getByRole('dialog', { name: 'Make change order' })).toBeTruthy()
   })
 
   it('no icon when the person has not switched the door on', async () => {
     doorOn = false
     renderModal()
     await settle()
-    expect(screen.queryByLabelText('Write up a change')).toBeNull()
+    expect(screen.queryByLabelText('Make change order')).toBeNull()
   })
 })

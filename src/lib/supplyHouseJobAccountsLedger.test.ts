@@ -75,7 +75,7 @@ describe('shareSendMethodLabel (v2.1820)', () => {
 describe('jobAccountShareIconTitle', () => {
   const fmt = (iso: string) => iso.slice(0, 10)
   it('is the setup affordance when nothing was shared', () => {
-    expect(jobAccountShareIconTitle([], fmt)).toBe('Share with supply house — set up a job account')
+    expect(jobAccountShareIconTitle([], fmt)).toBe('Add job account — set one up at a supply house')
   })
   it('names the newest send and collapses the rest once a packet is on record', () => {
     expect(

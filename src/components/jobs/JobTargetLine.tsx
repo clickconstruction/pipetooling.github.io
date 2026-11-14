@@ -7,9 +7,9 @@ import { fetchJobTargetBudget, type JobTargetBudget } from '../../lib/jobs/jobTa
 
 /**
  * The job's Target line on the job window's Job tab (punch list #255, v2.6585): the open expected hours
- * (`job_expected_hours`, v2.6321), else the labor budget's hours, else *No target yet*. The leader and the office
- * press **Set a target** or **Change the target** (hours and why, through `set_job_expected_hours`) and **Back to the
- * budget** (`clear_job_expected_hours`); everyone who opens the window reads it. The project board keeps its slider;
+ * (`job_expected_hours`, v2.6321), else the labor budget's hours, else *Hours target · none yet* (named the hours
+ * target since v2.7271, punch list #355). The leader and the office press **Set the hours** or **Change the hours**
+ * (hours and why, through `set_job_expected_hours`) and **Back to the budget** (`clear_job_expected_hours`); everyone who opens the window reads it. The project board keeps its slider;
  * this is the door a service job never had, so the crew's hours against the target can be counted on any job.
  */
 
@@ -71,7 +71,7 @@ export function JobTargetLine({ jobId, api: apiIn, readBudget = fetchJobTargetBu
   return (
     <div style={ROW} data-testid="job-target-line" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>🎯 {words.head}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>⏱ {words.head}</span>
         {canEdit && !editing ? (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {words.clearable ? (

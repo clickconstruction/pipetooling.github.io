@@ -1,8 +1,8 @@
 ---
-title: share a job with a supply house
+title: add a job account at a supply house
 category: Office
 roles: assistant, master_technician
-keywords: supply house, job account, share, email, ferguson, morrison, account setup, building owner, homeowner
+keywords: supply house, job account, add job account, share, email, ferguson, morrison, account setup, building owner, homeowner
 order: 88
 ---
 
@@ -12,7 +12,7 @@ A job account is an account the house opens for one property. The packet holds t
 
 ## Where it is
 
-Open any job's **Job Detail** and look at the icon row in the header. The small **storefront icon** sits next to the share button. The icon's name is "Share with supply house". Office roles only.
+Open any job's **Job Detail** and look at the icon row in the header. The small **storefront icon** sits next to the share button. The icon's name is "Add job account". On a phone it is the **Add job account** row of the **⋯** sheet by the job's name. Office roles only.
 
 ## Filling the packet
 
@@ -24,7 +24,7 @@ The icon opens a window with three sections:
 
 Owner info is **remembered for the job**. Enter it once, and every resend fills it in, even from another desk.
 
-Don't know the owner? Hit ***Send to Dispatch — find the owner***. The errand lands in the Dispatch inbox. The errand comes with a one-click **Open Share with supply house** button that brings them right back to this screen. Once they fill the owner and send, the dispatch request closes itself. The window shows {{chip:blue|Dispatch is on it}} while the request is open, so nobody files it twice.
+Don't know the owner? Hit ***Send to Dispatch — find the owner***. The errand lands in the Dispatch inbox. The errand comes with a one-click **Open Add job account** button that brings them right back to this screen. Once they fill the owner and send, the dispatch request closes itself. The window shows {{chip:blue|Dispatch is on it}} while the request is open, so nobody files it twice.
 
 **Optional but worth doing**: tap the supply house chips under **Send to** *before* hitting the dispatch button. Your pick rides along with the errand. The inbox request names the supply house, as in *"…send the job account to Ferguson — Central desk"*. When Dispatch opens this screen to finish, those chips are already selected. Skip it and the flow works exactly as before. Dispatch just chooses the supply house themselves.
 

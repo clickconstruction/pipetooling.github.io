@@ -1,8 +1,8 @@
 ---
 name: "The job window on a phone"
 number: 355
-group: waiting
-status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR
+group: ready
+status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
   lines, the top is eight small icons, and the Job tab runs six and a half screens before the bar.
@@ -15,10 +15,10 @@ summary: >
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
   the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: The owner's three picks (in the mock-up and below). Then A as one PR, with its release note, fragment, the tabs added to the press count and the guide's phone section rewritten.
+next: PR B, the Job tab's sections on a phone (Where · Photos · Who · What's happening · the thread · More on this job), on A once it merges.
 size: L as a train (S for A · M for B · L for C); the first step is S
-blocker: The owner's three picks.
-opinion: build A now — one day, nothing below the top moves, it answers his first complaint, and it starts counting the tabs; then B, which is the one that makes the window easy to follow
+blocker: none
+opinion: A is built (v2.7271); B next, the one that makes the window easy to follow
 mockup: job-window-phone-directions.html
 ---
 
@@ -387,9 +387,11 @@ pick after each is the drawing's own.
 
 ## The plan
 
-1. **A** (S): the title row first with ⋯ and ✕, the strip that scrolls, the ⋯ sheet, money and
-   job accounts as one line each, the tabs counted; a kernel for the sheet's rows and the money
-   line with tests; a render smoke at 375 px; the guide's phone section; release note and fragment.
+1. **A** (S): **built, v2.7271** (`docs/recent-features/v2.7271.md`): the title row first with ⋯ over ✕,
+   the strip that scrolls, the header scrolling away behind a floating ✕, the ⋯ sheet, money and
+   job accounts as one line each ending in their act, the photo banner, the Street View banner on a
+   phone, Paint a map centred, the hours-target words, the three renames on every screen, the tabs
+   counted; `jobWindowPhone.ts` with tests; a render smoke at 375 px; the guide; release note and fragment.
 2. **B** (M): the phone's top band in Where · Who · Now · the thread order, the folds with counts
    remembered per device (`localStorage`, as the Pipeline's Overview does); a kernel for the fold
    list and its counts; the guide.
