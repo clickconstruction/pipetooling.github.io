@@ -11,6 +11,8 @@ export type JobMaterialsSummary = {
   containers: number
   onSiteLines: number
   missingLines: number
+  /** Of `missingLines`, how many have no price (v2.7246): the money leaves them out, so it is a floor when this is above zero. */
+  missingUnpricedLines: number
   missingMoneyWeek: number
   stale: Container[]
   credits: number
@@ -25,17 +27,18 @@ export function jobMaterialsSummary(containers: Container[], movements: Movement
   const cannot = movements.filter((m) => m.reason === 'cannot_find' && m.at >= weekAgo)
   let missingMoneyWeek = 0
   let missingLines = 0
-  for (const d of diffs) {
+  let missingUnpricedLines = 0
+  const add = (qty: number, key: string) => {
     missingLines += 1
-    missingMoneyWeek += missingMoney(d.diff, priceOf(d.partKey)) ?? 0
+    const money = missingMoney(qty, priceOf(key))
+    if (money == null) missingUnpricedLines += 1
+    else missingMoneyWeek += money
   }
-  for (const m of cannot) {
-    missingLines += 1
-    missingMoneyWeek += missingMoney(-m.quantity, priceOf(partKey(m.partId, m.partName))) ?? 0
-  }
+  for (const d of diffs) add(d.diff, d.partKey)
+  for (const m of cannot) add(-m.quantity, partKey(m.partId, m.partName))
   const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now))
   const credits = movements.filter((m) => m.reason === 'returned').length
-  return { containers: live.length, onSiteLines: onSite.length, missingLines, missingMoneyWeek, stale, credits }
+  return { containers: live.length, onSiteLines: onSite.length, missingLines, missingUnpricedLines, missingMoneyWeek, stale, credits }
 }
 
 /**

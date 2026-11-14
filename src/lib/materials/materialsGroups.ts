@@ -1,4 +1,5 @@
 import { isMaterialsOfficeRole, materialsTabsFor, type MaterialsTab } from './materialsTabs'
+import { shortLinesBadgeWords } from './missingWeekWords'
 
 /**
  * The Materials page's strip in three named groups (punch list #304, the owner's idea of
@@ -77,12 +78,15 @@ export type MaterialsBadge = { text: string; tone: 'amber' | 'red' }
  * What the third group's caption wears, and only when a hand is needed: the boxes due a count for
  * everyone, and for the office what walked away this week. Nothing while the desk has not loaded.
  */
-export function trackBadges(needs: { staleBoxes: number; missingMoneyWeek: number } | null, role: string | null | undefined): MaterialsBadge[] {
+export function trackBadges(needs: { staleBoxes: number; missingMoneyWeek: number; missingLines?: number } | null, role: string | null | undefined): MaterialsBadge[] {
   if (!needs) return []
   const out: MaterialsBadge[] = []
   if (needs.staleBoxes > 0) out.push({ text: `${needs.staleBoxes} due a count`, tone: 'amber' })
   if (isMaterialsOfficeRole(role) && needs.missingMoneyWeek > 0) {
     out.push({ text: `$${needs.missingMoneyWeek.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} walked away`, tone: 'red' })
+  } else if (isMaterialsOfficeRole(role) && (needs.missingLines ?? 0) > 0) {
+    // Lines came up short and none has a price (v2.7246): there is no money to name, and silence read as nothing missing.
+    out.push({ text: shortLinesBadgeWords(needs.missingLines ?? 0), tone: 'amber' })
   }
   return out
 }

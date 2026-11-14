@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
-const data = vi.hoisted(() => ({ failed: {} as Record<string, string>, reread: [] as string[], raw: null as unknown }))
+const data = vi.hoisted(() => ({ failed: {} as Record<string, string>, reread: [] as string[], raw: null as unknown, movements: {} as Record<string, unknown[]>, prices: {} as Record<string, number> }))
 const box = (id: string, jobId: string, label: string) => ({ id, jobId, label, kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' })
 const containers: Record<string, unknown[]> = { ja: [box('r12', 'ja', 'R12')], jb: [box('p1', 'jb', 'P1')] }
 
@@ -17,12 +17,13 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   jobIdsWithData: () => ['ja', 'jb'],
   // A job whose read failed holds nothing in the cache, which is what used to draw as zeros.
   listContainers: (id: string) => (data.failed[id] ? [] : containers[id] ?? []),
-  listMovements: () => [],
+  listMovements: (id: string) => data.movements[id] ?? [],
   listPlaces: () => [],
   listPhotos: () => [],
   serverSummary: () => null,
   jobLedgerCapped: () => false,
   priceOf: () => null,
+  priceOfJob: (_jobId: string, key: string) => data.prices[key] ?? null,
   priceFor: () => null,
   bookPricesState: () => ({ error: null, loading: false }),
   retryBookPrices: async () => {},
@@ -62,6 +63,8 @@ afterEach(() => {
   data.failed = {}
   data.reread.length = 0
   data.raw = null
+  data.movements = {}
+  data.prices = {}
 })
 
 describe('the materials desk, a job whose read failed', () => {
@@ -94,5 +97,36 @@ describe('the materials desk, a job whose read failed', () => {
     const row = document.querySelector('[data-job-not-loaded="jb"]')!
     expect(row.textContent).toContain('Did not load. No connection, so this could not load. Nothing was lost. It loads again when the signal is back.')
     expect(row.textContent).not.toContain('nothing was saved')
+  })
+})
+
+describe('the materials desk, a short count of a part with no price (v2.7246)', () => {
+  const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
+  const mv = (over: Record<string, unknown>) => ({ id: String(Math.random()), jobId: 'ja', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity: 0, reason: 'delivered', fromContainerId: null, toContainerId: null, note: '', byUserId: null, byName: 'Sam', at: ago(1), source: null, itemId: null, ...over })
+  // Ten came in two days ago, and yesterday's count found seven: three short, of a typed name.
+  const short = [mv({ quantity: 10, reason: 'delivered', toContainerId: 'r12', at: ago(48) }), mv({ quantity: 7, reason: 'counted', fromContainerId: 'r12', at: ago(24) })]
+  const render = () => renderWithProviders(<JobsMaterialsTab jobs={jobs} byUserId="u1" byName="Sam" onOpenJobDetail={() => {}} driveBackfill={false} />, { route: '/materials?tab=on-site' })
+  const rowOf = (label: string) => [...document.querySelectorAll('tr')].find((tr) => tr.textContent?.includes(label))!
+
+  it('says the line came up short and has no price, beside a $0.00 that would read as nothing missing', () => {
+    data.movements = { ja: short }
+    render()
+    const row = rowOf('224 · ZZ Test phase 2')
+    expect(row.textContent).toContain('$0.00')
+    expect(row.querySelector('[data-missing-note]')!.textContent).toBe('1 line, with no price')
+    // The job is amber and its site's row carries the same note, though no money moved.
+    expect(row.getAttribute('style') ?? '').toContain('--bg-amber-100')
+    expect(document.querySelector('[data-site-row="dev1"] [data-missing-note]')!.textContent).toBe('1 line, with no price')
+    // The other job has nothing short, and says nothing.
+    expect(rowOf('1091 · ZZ Test pump house').querySelector('[data-missing-note]')).toBeNull()
+  })
+
+  it('counts the line plainly when it has a price, with the money beside it', () => {
+    data.movements = { ja: short }
+    data.prices = { 'text:zz test elbow': 2.5 }
+    render()
+    const row = rowOf('224 · ZZ Test phase 2')
+    expect(row.textContent).toContain('$7.50')
+    expect(row.querySelector('[data-missing-note]')!.textContent).toBe('1 line')
   })
 })

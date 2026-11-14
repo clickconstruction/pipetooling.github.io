@@ -17,6 +17,7 @@ import { usePartTies } from '../../hooks/usePartTies'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { TIES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
+import { missingWeekIsPartial, missingWeekNote } from '../../lib/materials/missingWeekWords'
 import { usePriceOffers } from '../../hooks/usePriceOffers'
 import { BookPartPicker } from './BookPartPicker'
 import { SitePricingWindow, type PricingAnswer, type TiePair } from './SitePricingWindow'
@@ -130,8 +131,8 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   const flow = siteWeekFlow(movements, now)
   const week = jobs.reduce((sum, j) => {
     const s = jobMaterialsSummaryFor(j.id, now)
-    return { lines: sum.lines + s.missingLines, money: sum.money + s.missingMoneyWeek }
-  }, { lines: 0, money: 0 })
+    return { lines: sum.lines + s.missingLines, unpriced: sum.unpriced + s.missingUnpricedLines, money: sum.money + s.missingMoneyWeek }
+  }, { lines: 0, unpriced: 0, money: 0 })
 
   // A typed name tied to the parts book (PR 4) is a row of that book part: it takes the book's name and price.
   const bookNames = new Map<string, string>()
@@ -309,7 +310,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
         <Tile label="Due a count" big={glance.dueNow.toLocaleString('en-US')} small={glance.dueSoon > 0 ? `${glance.dueSoon.toLocaleString('en-US')} more this week` : 'none more this week'} tone={glance.dueNow > 0 ? 'amber' : undefined} on={filter === 'due'} onPress={() => toggleFilter('due')} />
         <Tile label="Can't find" big={glance.cannotFindLines.toLocaleString('en-US')} small={glance.cannotFindLines === 1 ? 'line since its count' : 'lines since their count'} tone={glance.cannotFindLines > 0 ? 'amber' : undefined} on={filter === 'cannot'} onPress={() => toggleFilter('cannot')} />
         <Tile label="Short at a count" big={glance.shortLines.toLocaleString('en-US')} small={glance.shortLines === 1 ? 'line at its last count' : 'lines at their last count'} tone={glance.shortLines > 0 ? 'amber' : undefined} on={filter === 'short'} onPress={() => toggleFilter('short')} />
-        <Tile label="Missing this week" big={showMoney ? money(week.money) : week.lines.toLocaleString('en-US')} small={showMoney ? count(week.lines, 'line', 'lines') : week.lines === 1 ? 'line' : 'lines'} />
+        <Tile label="Missing this week" big={showMoney ? money(week.money) : week.lines.toLocaleString('en-US')} small={showMoney ? missingWeekNote(week.lines, week.unpriced) || count(week.lines, 'line', 'lines') : week.lines === 1 ? 'line' : 'lines'} tone={showMoney && missingWeekIsPartial(week.lines, week.unpriced) ? 'amber' : undefined} />
         <Tile label="This week" big={`${flow.cameIn.toLocaleString('en-US')} in`} small={`${flow.used.toLocaleString('en-US')} used${flow.invoices > 0 ? ` · ${count(flow.invoices, 'invoice', 'invoices')}` : ''}`} />
         {worth ? (
           <Tile

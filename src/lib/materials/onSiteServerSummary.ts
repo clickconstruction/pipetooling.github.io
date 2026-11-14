@@ -95,16 +95,21 @@ export function jobMaterialsSummaryFromServer(containers: ReadonlyArray<Containe
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString()
   let missingMoneyWeek = 0
   let missingLines = 0
+  let missingUnpricedLines = 0
+  const add = (qty: number, key: string) => {
+    missingLines += 1
+    const money = missingMoney(qty, priceOf(key))
+    if (money == null) missingUnpricedLines += 1
+    else missingMoneyWeek += money
+  }
   for (const d of s.diffs) {
     if (d.at < weekAgo || d.counted - d.expected >= 0) continue
-    missingLines += 1
-    missingMoneyWeek += missingMoney(d.counted - d.expected, priceOf(d.part_key)) ?? 0
+    add(d.counted - d.expected, d.part_key)
   }
   for (const m of s.cannot_find) {
     if (m.at < weekAgo) continue
-    missingLines += 1
-    missingMoneyWeek += missingMoney(-m.quantity, priceOf(m.part_key)) ?? 0
+    add(-m.quantity, m.part_key)
   }
   const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(serverLastCountedAt(s, c.id), now))
-  return { containers: live.length, onSiteLines: onSite.length, missingLines, missingMoneyWeek, stale, credits: s.credits }
+  return { containers: live.length, onSiteLines: onSite.length, missingLines, missingUnpricedLines, missingMoneyWeek, stale, credits: s.credits }
 }

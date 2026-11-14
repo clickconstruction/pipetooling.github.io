@@ -58,10 +58,15 @@ describe('onSiteServerSummary · the database’s sums in the kernel’s shapes 
   it('the summary from the server is the summary from the rows: the week’s short line and Can’t find press with the money, the box due, the credit', () => {
     const containers = [box('a2'), box('b1'), box('unsorted', 'unsorted')]
     const priceOf = (key: string) => (key === 'text:3/4" copper 90' ? 2.5 : null)
-    const fromRows = jobMaterialsSummary(containers, rows, NOW)
+    const fromRows = jobMaterialsSummary(containers, rows, NOW, priceOf)
     const fromServer = jobMaterialsSummaryFromServer(containers, server, NOW, priceOf)
-    expect(fromServer).toEqual({ ...fromRows, missingMoneyWeek: 7.5 })
-    expect(fromServer).toMatchObject({ containers: 3, onSiteLines: 2, missingLines: 2, credits: 1 })
+    expect(fromServer).toEqual(fromRows)
+    // The short count and the Can't find press are of one part, and it has a price: the money is whole, nothing is left out.
+    expect(fromServer).toMatchObject({ containers: 3, onSiteLines: 2, missingLines: 2, missingUnpricedLines: 0, missingMoneyWeek: 7.5, credits: 1 })
+    // With no price anywhere the money is nothing and every short line is said to have none, on both sides.
+    const none = () => null
+    expect(jobMaterialsSummaryFromServer(containers, server, NOW, none)).toMatchObject({ missingLines: 2, missingUnpricedLines: 2, missingMoneyWeek: 0 })
+    expect(jobMaterialsSummary(containers, rows, NOW, none)).toMatchObject({ missingLines: 2, missingUnpricedLines: 2, missingMoneyWeek: 0 })
     expect(fromServer.stale.map((c) => c.id)).toEqual(['b1'])
   })
 })

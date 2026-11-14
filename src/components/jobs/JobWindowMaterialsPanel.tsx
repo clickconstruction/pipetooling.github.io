@@ -41,7 +41,7 @@ export default function JobWindowMaterialsPanel({ jobId, onBeforeNavigate }: { j
             <span style={chip('dim')}>{sum.containers} {sum.containers === 1 ? 'container' : 'containers'}</span>
             <span style={chip('dim')}>{sum.onSiteLines} lines on site</span>
             {sum.stale.length ? <span style={chip('amber')}>{staleWords(sum.stale)}</span> : <span style={chip('green')}>counts fresh</span>}
-            {sum.missingLines ? <span style={chip('red')}>{sum.missingLines} missing this week · {money(sum.missingMoneyWeek)}</span> : <span style={chip('green')}>nothing missing this week</span>}
+            {sum.missingLines ? <span style={chip('red')}>{sum.missingLines} missing this week · {money(sum.missingMoneyWeek)}{sum.missingUnpricedLines > 0 ? ` · ${sum.missingUnpricedLines} with no price` : ''}</span> : <span style={chip('green')}>nothing missing this week</span>}
             {sum.credits ? <span style={chip('blue')}>{sum.credits} credit{sum.credits === 1 ? '' : 's'} due</span> : null}
           </div>
           {last ? (
