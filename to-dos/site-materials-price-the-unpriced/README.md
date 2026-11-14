@@ -1,10 +1,10 @@
 ---
 name: "A site's materials: press the Worth, see everything with no price, and price it fast"
 number: 342
-group: ready
-status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge)
+group: close
+status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge) · PR 3 the end and the old prices v2.7165 · all three LIVE 2026-11-13 and walked on clicktooling.com, read only · migration 20261113160000 pushed on the owner's yes · left: the owner's look on the real site and his first answers
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
-ver: v2.7156 · 7159
+ver: v2.7156 · 7159 · 7165
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -16,10 +16,10 @@ summary: >
   book where the book has the part, and otherwise a price kept for the site in one new table that
   every on-site money figure reads through the one price rule. Three drawings: the list priced in
   place, one name at a time, and a table grouped by where the price comes from.
-next: PR 2's migration is pushed right after its merge. Then PR 3, the end and the old prices.
-size: M · M · S as a train of three (the window and its offers · a price of the site's own · the end and the old prices)
-blocker: None.
-opinion: build — the owner said build the whole train; the walk on the real site after PR 1 shows how often the first offer is right
+next: The owner opens the site (Materials → On site → the site's name), presses Worth and prices the rows in the window. He says what the first offers got wrong. Then the folder is deleted.
+size: M · M · S as a train of three, shipped; left: the owner's look and the first answers (XS)
+blocker: None. The owner's look.
+opinion: your call — the train is built as you picked it; price the real site's rows and say what the first offers got wrong
 ---
 
 # A site's materials: price what has no price (#342)
@@ -304,7 +304,33 @@ then said *build the entire PR train*. So calls 2 to 9 stand on their recommende
   roles, tighter than the ties: a price is money. The job page's Missing table, its flow and the
   desk read the same price. The migration was applied twice to a throwaway Postgres and tried as
   three made-up people. Before the push the window shows bills to read and no box.
-- **PR 3**: not built yet.
+  Merged as #7983 and **pushed to prod 2026-11-13** on the owner's yes: the dry run listed this
+  migration alone and the drift check read every file applied. CI caught one thing first: the
+  day's default was the UTC session's and is now the app's own today.
+- **PR 3, the end and the old prices (v2.7165).** Built. A press on Worth shows three chips, **No
+  price**, **An old price** and **Left out**. **Check N old prices one at a time** walks the rows
+  on a price older than 90 days against newer bills. Every list says so when it is empty.
+
+**Live and walked.** All three PRs were on main by 2026-11-13 (#7967, #7983, #7997) and the
+migration was pushed right after #7983. clicktooling.com was walked as the dev at 1400 and 375
+wide with every write to a table refused. Worth read its cover with *48 rows have an offer*. The
+chips read *No price · 96*, *An old price · 3* and *Left out · 0*. **Price 96 rows one at a time**
+opened on row 1 of 96 with three numbered answers, the price box and **Not a part**. **Check 3 old
+prices one at a time** opened on the price the first row reads now. The app's read of
+`on_site_prices` answered. No page error and no sideways scroll.
+
+**The generated types** name the new table in the types PR that was open at the time (#8011).
+`sitePricesIo.ts` reads it through an untyped cast, which the next pass over that file can drop.
+
+**What no walk did, because each is a write and prod is the only database:** an answer pressed in
+the window, its Undo, and Bring back. Render tests hold each of them end to end. The first real
+answers are the owner's to give on the real site.
+
+**The owner's calls, as built:** 1 B, one at a time. 2 any bill of the company. 3 an offer never
+counts in *known*. 4 **Not a part** leaves the cover, which says how many were left out. 5 a typed
+or bill price is flagged past 90 days. 6 a price belongs to the site. 7 the roles that tie, and
+read is held to them too. 8 the job's Missing table and the desk read the same price. 9 Worth
+lists the rows, and one press opens the window.
 
 ## How to verify (when it is built)
 

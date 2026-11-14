@@ -207,3 +207,148 @@ export function lienWaiverCodeUsedPush(input: LienWaiverCodeUsedPushInput): Lien
   const url = input.bidId ? `/bids?tab=lien-release&bidId=${encodeURIComponent(input.bidId)}` : '/jobs?tab=stages'
   return { title, body, url, tag: `lien-waiver-code-${input.bidId ?? input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
 }
+
+// ---------- an affidavit sent for approval (punch list #305, v2.7180) ----------
+
+export type LienAffidavitApprovalPaper = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The last day the affidavit can be filed, YYYY-MM-DD; null when the client did not say. */
+  fileByYmd: string | null
+}
+
+export type LienAffidavitApprovalPushInput = {
+  /** Every paper this leader is asked about in one press: one for the pane's own send, many for the list's. */
+  papers: ReadonlyArray<LienAffidavitApprovalPaper>
+  /** Today in the app's time zone, YYYY-MM-DD. */
+  todayYmd: string
+  /** Who sent them for approval; null when unknown. */
+  senderName: string | null
+}
+
+/** The door that exists: the desk's Affidavits list, opened on the job when the push is about one paper. */
+export function lienAffidavitApprovalUrl(jobId: string | null): string {
+  return jobId ? `/lien-desk?tab=affidavits&job=${encodeURIComponent(jobId)}` : '/lien-desk?tab=affidavits'
+}
+
+/** The papers with the soonest day first; a paper with no day goes last, and a tie keeps the order given. */
+function soonestFirst(papers: ReadonlyArray<LienAffidavitApprovalPaper>): LienAffidavitApprovalPaper[] {
+  const key = (p: LienAffidavitApprovalPaper) => (shortDay(p.fileByYmd) ? (p.fileByYmd as string) : '9999-99-99')
+  return papers.map((paper, i) => ({ paper, i })).sort((a, b) => key(a.paper).localeCompare(key(b.paper)) || a.i - b.i).map((x) => x.paper)
+}
+
+/**
+ * The words the leader gets when the office sends an affidavit for his approval: the job, the last day to file, and
+ * what he is asked to do. A notice's words name its claim and its mail-by day (`lienApprovalPush`); an affidavit is
+ * filed with the county, so its day is the day to file by, after which the lien right ends.
+ *
+ * The batch rule: every paper of one press is one message. Twelve papers are one push that names the count, with the
+ * soonest day, and the email lists each job beside its own day. A day that has passed is named without a count.
+ */
+export function lienAffidavitApprovalPush(input: LienAffidavitApprovalPushInput): LienApprovalPush {
+  const who = (input.senderName ?? '').trim().split(/\s+/)[0] || 'The office'
+  const papers = soonestFirst(input.papers)
+  const head = papers[0] ?? { jobLabel: 'A job', jobId: '', fileByYmd: null }
+  const day = shortDay(head.fileByYmd)
+  const left = day ? daysUntil(head.fileByYmd, input.todayYmd) : null
+  const short = left == null || left < 0 ? null : left === 0 ? 'today' : `${left} ${left === 1 ? 'day' : 'days'}`
+  const long = left == null || left < 0 ? '.' : left === 0 ? '. That is today.' : `, ${short} from now.`
+  if (papers.length <= 1) {
+    const title = 'Approve a lien affidavit'
+    const lines = [
+      `${who} sent a lien affidavit for your approval.`,
+      '',
+      head.jobLabel,
+      day ? `File by ${day}${long}` : null,
+      day ? 'The lien right ends after that day.' : null,
+      '',
+      'Open the Lien desk to approve it or hold it.',
+    ].filter((l) => l !== null) as string[]
+    return {
+      title,
+      body: [head.jobLabel, day ? `file by ${day}` : null, short].filter(Boolean).join(' · '),
+      url: lienAffidavitApprovalUrl(head.jobId || null),
+      tag: `lien-affidavit-approval-${head.jobId}`,
+      subject: `${title} · ${head.jobLabel}`,
+      emailText: lines.join('\n'),
+    }
+  }
+  const n = papers.length
+  const title = `Approve ${n} lien affidavits`
+  const lines = [
+    `${who} sent ${n} lien affidavits for your approval.`,
+    '',
+    ...papers.map((p) => {
+      const d = shortDay(p.fileByYmd)
+      return d ? `${p.jobLabel} · file by ${d}` : p.jobLabel
+    }),
+    '',
+    day ? `The first must be filed by ${day}${long}` : null,
+    day ? 'The lien right on a job ends after its day.' : null,
+    day ? '' : null,
+    'Open the Lien desk to approve each one or hold it.',
+  ].filter((l) => l !== null) as string[]
+  return {
+    title,
+    body: [`${n} jobs`, day ? `first to file by ${day}` : null, short].filter(Boolean).join(' · '),
+    url: lienAffidavitApprovalUrl(null),
+    // One press, one message: a later press is its own message and never replaces this one.
+    tag: `lien-affidavit-approval-${n}-${head.jobId}`,
+    subject: title,
+    emailText: lines.join('\n'),
+  }
+}
+
+/**
+ * One message for each leader, whatever the count: the papers of one press, grouped by who is asked. A job's leader
+ * is asked about that job's paper; a job with no leader of its own asks every leader. Leaders come out in the order
+ * they are first named, each with his papers in the order given.
+ */
+export function lienAffidavitTellsByLeader<P>(papers: ReadonlyArray<{ paper: P; leaderIds: ReadonlyArray<string> }>): Array<{ leaderId: string; papers: P[] }> {
+  const byLeader = new Map<string, P[]>()
+  for (const { paper, leaderIds } of papers) {
+    for (const id of new Set(leaderIds)) {
+      const list = byLeader.get(id)
+      if (list) list.push(paper)
+      else byLeader.set(id, [paper])
+    }
+  }
+  return [...byLeader.entries()].map(([leaderId, list]) => ({ leaderId, papers: list }))
+}
+
+/** How many papers one press may name; a request over it is cut to the first of them. */
+export const LIEN_AFFIDAVIT_ASK_MAX = 100
+
+/**
+ * The papers a request names: `items: [{ item_id, due_ymd }]`. Each id once, a day kept only when it is a date, and
+ * anything that is not a paper left out. The day is the only thing a caller may say about a paper.
+ */
+export function lienAffidavitAskItems(raw: unknown): Array<{ itemId: string; fileByYmd: string | null }> {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: Array<{ itemId: string; fileByYmd: string | null }> = []
+  for (const r of raw) {
+    const o = (r && typeof r === 'object' ? r : {}) as { item_id?: unknown; due_ymd?: unknown }
+    const itemId = typeof o.item_id === 'string' ? o.item_id.trim() : ''
+    if (!itemId || seen.has(itemId)) continue
+    seen.add(itemId)
+    out.push({ itemId, fileByYmd: typeof o.due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.due_ymd) ? o.due_ymd : null })
+    if (out.length >= LIEN_AFFIDAVIT_ASK_MAX) break
+  }
+  return out
+}
+
+/** How long after the send for approval the leader may be told of it: the press's own call, never a later one. */
+export const LIEN_AFFIDAVIT_ASK_FRESH_MS = 15 * 60_000
+
+/**
+ * Whether the leader is told of this row: an affidavit on the desk, waiting for his approval, sent for it in the last
+ * fifteen minutes. A paper a standing rule approved or held, a notice, a voided row and an old send are all left out,
+ * so the call can only repeat what the desk just did.
+ */
+export function lienAffidavitAskable(row: { kind?: string | null; status?: string | null; voided_at?: string | null; submitted_at?: string | null } | null | undefined, nowMs: number): boolean {
+  if (!row || row.kind !== 'affidavit' || row.status !== 'awaiting_approval' || row.voided_at) return false
+  const sent = Date.parse(row.submitted_at ?? '')
+  return Number.isFinite(sent) && nowMs - sent <= LIEN_AFFIDAVIT_ASK_FRESH_MS && sent - nowMs <= LIEN_AFFIDAVIT_ASK_FRESH_MS
+}

@@ -108,6 +108,24 @@ describe('PhoneSheet on a phone', () => {
     expect(panel.firstElementChild?.getAttribute('aria-hidden')).toBe('true')
   })
 
+  it('starts where the page has slid to, so its foot stays on the keyboard (punch list #348)', () => {
+    // An iPhone slides the visual viewport down the page under a field that sits where the keyboard will be.
+    const heard = new Set<() => void>()
+    const vv = { height: 812, offsetTop: 0, addEventListener: (_type: string, f: () => void) => heard.add(f), removeEventListener: (_type: string, f: () => void) => heard.delete(f) }
+    Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true })
+    render(<Thread onClose={vi.fn()} />)
+    const [sheet] = sheets()
+    expect([sheet?.style.top, sheet?.style.height]).toEqual(['0px', '812px'])
+    vv.height = 377
+    vv.offsetTop = 253
+    act(() => heard.forEach((f) => f()))
+    expect([sheet?.style.top, sheet?.style.height]).toEqual(['253px', '377px'])
+    vv.height = 812
+    vv.offsetTop = 0
+    act(() => heard.forEach((f) => f()))
+    expect([sheet?.style.top, sheet?.style.height]).toEqual(['0px', '812px'])
+  })
+
   it('opens a window inside the sheet with the keyboard up, keeps both above it as it moves, and closes only the top one', () => {
     const keyboard = viewport(420)
     const threadClosed = vi.fn()

@@ -101,9 +101,11 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
 const signMock = vi.fn()
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
+// An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
+const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
+  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -446,6 +448,43 @@ describe('LienDesk', () => {
     expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
   })
 
+  it('Do now on a computer pins the month and scrolls the list; stacked, the month and the list scroll as one page and a pressed zone brings its rows up (punch list #352, PR 0)', async () => {
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    const frame = () => document.querySelector('[data-lien-do-now]') as HTMLElement
+    const list = () => document.querySelector('[data-lien-next-up="list"]') as HTMLElement
+    expect(frame().getAttribute('data-lien-do-now')).toBe('pinned')
+    expect(frame().style.gridTemplateRows).toBe('auto auto minmax(0, 1fr)')
+    expect(list().getAttribute('data-scrolls')).toBe('yes')
+    // The month, the find box and the list are all inside the one frame.
+    expect(frame().contains(list())).toBe(true)
+    view.unmount()
+
+    const brought: Element[] = []
+    const before = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) { brought.push(this) }
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" />)
+      await settle()
+      expect(frame().getAttribute('data-lien-do-now')).toBe('one-page')
+      expect(frame().style.overflowY).toBe('auto')
+      expect(frame().style.gridTemplateRows).toBe('')
+      expect(list().getAttribute('data-scrolls')).toBe('no')
+      expect(list().style.overflowY).toBe('visible')
+      expect(frame().contains(list())).toBe(true)
+      // Opening the desk brings no rows up (the view tabs bring their own picked tab into view); a pressed zone does.
+      const rowsBrought = () => brought.filter((el) => el.matches('[data-lien-next-up-group], [data-lien-next-up="empty"]'))
+      expect(rowsBrought()).toHaveLength(0)
+      const zone = frame().querySelector('[data-testid="lien-month-bar"] button[data-testid^="lien-month-zone-"]') as HTMLButtonElement
+      fireEvent.click(zone)
+      await settle()
+      expect(rowsBrought()).toHaveLength(1)
+      expect(frame().contains(rowsBrought()[0]!)).toBe(true)
+    } finally {
+      Element.prototype.scrollIntoView = before
+    }
+  })
+
   it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
@@ -642,6 +681,54 @@ describe('LienDesk', () => {
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
+  })
+
+  it('a phone\u2019s header is one row with More; the doors it held are rows of the sheet and open what they open on a computer (punch list #352, PR 1)', { timeout: 30000 }, async () => {
+    // A computer keeps its header: the doors are in the bar and there is no More.
+    const onOpenOwnerRecords = vi.fn()
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" onOpenOwnerRecords={onOpenOwnerRecords} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-more="door"]')).toBeNull()
+    expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
+    expect(screen.getByTestId('lien-owner-records-door')).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" onOpenOwnerRecords={onOpenOwnerRecords} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
+      const more = bar.querySelector('[data-lien-desk-more="door"]') as HTMLButtonElement
+      expect(more.getAttribute('aria-label')).toBe('More')
+      expect(more.style.height).toBe('44px')
+      // None of the doors is in the bar any more.
+      expect(within(bar).queryByTestId('lien-rules-door')).toBeNull()
+      expect(within(bar).queryByTestId('lien-owner-records-door')).toBeNull()
+      expect(bar.querySelector('[data-lien-desk-share]')).toBeNull()
+      expect(bar.querySelector('[data-lien-caller-door]')).toBeNull()
+      expect(bar.querySelector('[data-lien-desk-run]')).toBeNull()
+      // The three views are a thumb tall and share the width.
+      for (const tab of bar.querySelectorAll('[data-lien-desk-view]')) expect((tab as HTMLElement).style.minHeight).toBe('44px')
+
+      fireEvent.click(more)
+      const sheet = screen.getByRole('dialog', { name: 'More on the Lien desk' })
+      expect([...sheet.querySelectorAll('[data-lien-desk-more-row]')].map((r) => r.getAttribute('data-lien-desk-more-row'))).toEqual(['rules', 'caller', 'legend', 'share', 'owner_records'])
+
+      // A row closes the sheet and opens its door.
+      fireEvent.click(within(sheet).getByRole('button', { name: /An owner asked for records/ }))
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('dialog', { name: 'More on the Lien desk' })).toBeNull()
+
+      fireEvent.click(more)
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'More on the Lien desk' })).getByRole('button', { name: /§ Rules/ }))
+      expect(screen.queryByRole('dialog', { name: 'More on the Lien desk' })).toBeNull()
+      // The window is a lazy chunk that carries every help guide; give its first import room.
+      expect(await screen.findByTestId('lien-rules-modal', undefined, { timeout: 15000 })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
   })
 
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
@@ -1227,6 +1314,100 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     const failed = document.querySelector('[data-lien-affidavit-send-all-failed]') as HTMLElement
     expect(failed.textContent).toContain('1 affidavit did not send. It stays here with the reason.')
     expect(failed.textContent).toContain('The affidavit could not be sent for approval.')
+  })
+
+  // The same three jobs with no standing rule: every paper goes to the leader.
+  const threeAsked = (items: LienDeskItemRow[]) => {
+    const d = three(items)
+    d.gcsById = { lowbeck: { ...d.gcsById.lowbeck!, policy: 'ask' } }
+    return d
+  }
+  const draftedAff = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id, status: 'drafted', approval_mode: null }) as LienDeskItemRow
+
+  it('a batch sent for approval tells the leader once, with every paper that waits for him and its day to file (punch list #305, v2.7180)', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    expect(await screen.findByText('2 go to the leader for approval.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval' }))
+    // One call for the two papers, never one each.
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0].map((p) => [p.itemId, p.dueYmd])).toEqual([['aff1', '2026-11-16'], ['aff2', '2026-11-16']])
+    expect(await screen.findByText("Sent 2 affidavits. Malachi's phone has the 2 that wait for approval in one message.")).toBeTruthy()
+  })
+
+  it('a batch a standing rule approves tells nobody: nothing waits for the leader', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    expect(await screen.findByText('Sent 2 affidavits.')).toBeTruthy()
+    expect(tellAffMock).not.toHaveBeenCalled()
+  })
+
+  it('a tell that fails never blocks the send: the papers are sent, and the toast says he was not told and why', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    // The function as it was before it learned the affidavit refuses the request until it is redeployed.
+    tellAffMock.mockImplementationOnce(async () => ({ ok: false, reason: 'Missing item_id' }))
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} onChanged={onChanged} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    expect(await screen.findByText('Sent 2 affidavits. The leader was not told of the 2 that wait for approval. The part of the app that tells the leader is waiting for its update. The Dashboard shows them.')).toBeTruthy()
+    expect(submitManyMock).toHaveBeenCalledTimes(1)
+    expect(onChanged).toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-affidavit-send-all-failed]')).toBeNull()
+  })
+
+  it('a paper whose send failed is not in the tell', async () => {
+    submitManyMock.mockClear()
+    tellAffMock.mockClear()
+    submitManyMock.mockImplementationOnce(async () => ({ done: ['j651'], failed: [{ jobId: 'j650', reason: 'The affidavit could not be sent for approval.' }] }))
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([draftedAff('aff1', 'j650'), draftedAff('aff2', 'j651')])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 for approval…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 for approval' }))
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0].map((p) => p.itemId)).toEqual(['aff2'])
+    expect(await screen.findByText("Sent 1 affidavit. 1 did not send. Malachi's phone has the 1 that waits for approval.")).toBeTruthy()
+  })
+
+  it('the pane’s own Send for approval tells the leader of that one paper, as a notice does', async () => {
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect((submitMock.mock.calls[0] as unknown as [string, { status: string }])[1].status).toBe('awaiting_approval')
+    await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
+    expect(tellAffMock.mock.calls[0]![0]).toEqual([{ itemId: 'it-new', dueYmd: '2026-11-16' }])
+    expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
+  })
+
+  it('the pane’s send that a standing rule approves tells nobody', async () => {
+    submitMock.mockClear()
+    tellAffMock.mockClear()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([])} initialKind="affidavit" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    expect(await screen.findByText('Approved by the standing rule — ready to file.')).toBeTruthy()
+    expect(tellAffMock).not.toHaveBeenCalled()
+  })
+
+  it('the address names the affidavit to open on: the leader’s push for one paper lands on it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={threeAsked([])} initialKind="affidavit" initialJobId="j651" />)
+    await settle()
+    const current = Array.from(document.querySelectorAll('button[aria-current="true"]')).map((b) => b.textContent ?? '')
+    expect(current.some((t) => t.includes('651'))).toBe(true)
+    expect(current.some((t) => t.includes('650'))).toBe(false)
   })
 
   it('the list prints every ready short-form affidavit in one press: one window, each paper on its own sheet, and each job files its own copy (v2.6918)', async () => {

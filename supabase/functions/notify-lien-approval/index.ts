@@ -11,6 +11,10 @@
 // A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the
 // leaders on and holds one outside their Push me hours, writing the row as `held` and sending nothing; the Needs you
 // card carries the notice. The email fallback is unchanged: a leader on with no device gets the words by email.
+//
+// An affidavit (punch list #305, v2.7180): `{ kind: 'affidavit', items: [{ item_id, due_ymd }] }` tells the leader that
+// one affidavit, or every affidavit of one press, waits for his approval. The caller is the office, each row must be an
+// affidavit sent for approval in the last fifteen minutes, and each leader gets ONE message whatever the count.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -18,7 +22,19 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush, signedYmdOf } from '../_shared/lienApprovalPush.ts'
+import {
+  lienAffidavitApprovalPush,
+  lienAffidavitAskable,
+  lienAffidavitAskItems,
+  lienAffidavitTellsByLeader,
+  lienApprovalPush,
+  lienCodeUsedPush,
+  lienPenRecordedPush,
+  lienWaiverCodeUsedPush,
+  signedYmdOf,
+  type LienAffidavitApprovalPaper,
+  type LienApprovalPush,
+} from '../_shared/lienApprovalPush.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // v2.5924: the waiver push names the form; the titles mirror lienWaiverTitle (src/lib/jobsDocuments/lienWaiverRelease.ts).
@@ -40,6 +56,59 @@ function json(body: unknown, status = 200): Response {
 }
 
 const LEADER_ROLES = ['dev', 'master_technician']
+// The office: who may send a paper for approval. Mirrors isLienOffice (src/lib/jobs/lienDesk.ts).
+const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
+
+type Leader = { id: string; name: string | null; email: string | null }
+// The service-role client, as the shared senders take it (`_shared/pushHoursSend.ts`).
+// deno-lint-ignore no-explicit-any
+type Admin = any
+
+/**
+ * Tell these leaders these words: a push through each one's hours, the same words by email to a leader on with no
+ * device, and a row in notification_history for each one reached. Shared by every kind the function tells.
+ */
+async function tellLeaders(admin: Admin, leaders: Leader[], words: LienApprovalPush, templateType: string, linkLabel: string): Promise<{ pushSent: number; emailSent: number; held: number }> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+
+  // Through each leader's hours (#141 PR 5): the leaders on are pushed, one off is held with a row and no push, and
+  // never emailed for it. The record of the push or the email is written here, so the helper keeps none.
+  const pushed = await sendPushHonouringHours(
+    admin,
+    { userIds: leaders.map((l) => l.id), title: words.title, body: words.body, url: words.url, tag: words.tag, templateType },
+    webPushSender(admin, 'notify-lien-approval'),
+    { record: 'none' },
+  )
+  const heldIds = new Set(pushed.held.map((h) => h.userId))
+
+  let emailSent = 0
+  for (const leader of leaders) {
+    if (heldIds.has(leader.id)) continue
+    const sentToThisOne = pushed.sent.includes(leader.id) ? 1 : 0
+    let channel: 'push' | 'email' | null = sentToThisOne > 0 ? 'push' : null
+    // No device registered: the same words by email, to our own leader (no sent copy — not a paper, not outside).
+    if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
+      const link = `${appOrigin}${words.url}`
+      const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">${linkLabel}</a></p>`
+      const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: templateType })
+      if (mail.success) {
+        emailSent++
+        channel = 'email'
+      } else console.error('notify-lien-approval email error', mail.error)
+    }
+    if (channel) {
+      await admin.from('notification_history').insert({
+        recipient_user_id: leader.id,
+        template_type: templateType,
+        title: words.title,
+        body_preview: words.body.substring(0, 200),
+        channel,
+      })
+    }
+  }
+  return { pushSent: pushed.devices, emailSent, held: heldIds.size }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -54,7 +123,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const { item_id, due_ymd, kind, release_id } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string; release_id?: string }
+    const { item_id, due_ymd, kind, release_id, items } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string; release_id?: string; items?: unknown }
     const dueYmd = typeof due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due_ymd) ? due_ymd : null
     // The pen train (PR 3): `kind: 'pen_recorded'` tells the leader the office wrote down his pen signature. The caller is the recorder, the leader is the signer.
     const penRecorded = kind === 'pen_recorded'
@@ -62,11 +131,61 @@ serve(async (req) => {
     const codeUsed = kind === 'code_used'
     // v2.5924: `kind: 'waiver_code_used'` + release_id — the same sentence for a lien WAIVER signed by code in the Release of Lien window.
     const waiverCodeUsed = kind === 'waiver_code_used'
-    if (waiverCodeUsed ? !release_id : !item_id) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
+    // Punch list #305 (v2.7180): `kind: 'affidavit'` + items tells the leader of one affidavit, or of every affidavit of one press.
+    const affidavitAsk = kind === 'affidavit'
+    const asked = affidavitAsk ? lienAffidavitAskItems(items) : []
+    if (affidavitAsk && asked.length === 0) return json({ error: 'Missing items' }, 400)
+    if (!affidavitAsk && (waiverCodeUsed ? !release_id : !item_id)) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
     if (archivedRefusal) return archivedRefusal
+
+    if (affidavitAsk) {
+      const { data: caller } = await admin.from('users').select('name, role, archived_at').eq('id', user.id).maybeSingle()
+      if (!caller || caller.archived_at || !OFFICE_ROLES.includes(String(caller.role))) return json({ error: 'Not the office' }, 403)
+      const { data: rows } = await admin
+        .from('job_lien_desk_items')
+        .select('id, job_id, kind, status, submitted_at, voided_at')
+        .in('id', asked.map((a) => a.itemId))
+      const nowMs = Date.now()
+      const waiting = (rows ?? []).filter((r) => r.job_id && lienAffidavitAskable(r, nowMs))
+      const nothing = { success: true, push_sent: 0, email_sent: false, held: 0, told: 0, leader_name: null }
+      if (waiting.length === 0) return json({ ...nothing, message: 'Not awaiting approval' })
+      const [{ data: jobs }, { data: roster }] = await Promise.all([
+        admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id').in('id', [...new Set(waiting.map((r) => r.job_id as string))]),
+        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null),
+      ])
+      const leaderById = new Map((roster ?? []).map((u) => [u.id as string, u as Leader]))
+      const jobById = new Map((jobs ?? []).map((j) => [j.id as string, j]))
+      const dayById = new Map(asked.map((a) => [a.itemId, a.fileByYmd]))
+      // The leader of a paper: the job's master when he is one, else every leader on the roster but the caller, as for a notice.
+      const papers = waiting.flatMap((r) => {
+        const job = jobById.get(r.job_id as string)
+        if (!job) return []
+        const number = String(job.hcp_number ?? '').trim() || String(job.click_number ?? '').trim()
+        const paper: LienAffidavitApprovalPaper = { jobLabel: [number, String(job.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'A job', jobId: job.id as string, fileByYmd: dayById.get(r.id as string) ?? null }
+        const master = job.master_user_id ? leaderById.get(job.master_user_id as string) : undefined
+        return [{ paper, leaderIds: master ? [master.id] : [...leaderById.keys()].filter((id) => id !== user.id) }]
+      })
+      // One message for each leader, whatever the count: twelve papers buzz him once.
+      const tells = lienAffidavitTellsByLeader(papers)
+      if (tells.length === 0) return json({ ...nothing, message: 'No leader to tell' })
+      const todayYmd = todayYmdInAppTz(new Date())
+      let pushSent = 0
+      let emailSent = 0
+      let held = 0
+      for (const t of tells) {
+        const leader = leaderById.get(t.leaderId)
+        if (!leader) continue
+        const sent = await tellLeaders(admin, [leader], lienAffidavitApprovalPush({ papers: t.papers, todayYmd, senderName: caller.name ?? null }), 'lien_affidavit_approval_ask', 'Open the Lien desk')
+        pushSent += sent.pushSent
+        emailSent += sent.emailSent
+        held += sent.held
+      }
+      return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, held, told: papers.length, leader_name: tells.length === 1 ? (leaderById.get(tells[0]!.leaderId)?.name ?? null) : null })
+    }
+
     let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null; signed_witness_how?: string | null }
     let waiverAmount: number | null = null
     let waiverFormType = ''
@@ -119,7 +238,7 @@ serve(async (req) => {
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
       job?.gc_customer_id ? admin.from('customers').select('name').eq('id', job.gc_customer_id).maybeSingle() : Promise.resolve({ data: null }),
     ])
-    let leaders: Array<{ id: string; name: string | null; email: string | null }> = []
+    let leaders: Leader[] = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
     else if (!penRecorded && !codeUsed && !waiverCodeUsed) {
       const { data: all } = await admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
@@ -173,48 +292,10 @@ serve(async (req) => {
           senderName: sender?.name ?? null,
         })
 
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
     const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask'
+    const sent = await tellLeaders(admin, leaders, words, templateType, waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk')
 
-    // Through each leader's hours (#141 PR 5): the leaders on are pushed, one off is held with a row and no push, and
-    // never emailed for it. The record of the push or the email is written here, so the helper keeps none.
-    const pushed = await sendPushHonouringHours(
-      admin,
-      { userIds: leaders.map((l) => l.id), title: words.title, body: words.body, url: words.url, tag: words.tag, templateType },
-      webPushSender(admin, 'notify-lien-approval'),
-      { record: 'none' },
-    )
-    const heldIds = new Set(pushed.held.map((h) => h.userId))
-
-    const pushSent = pushed.devices
-    let emailSent = 0
-    for (const leader of leaders) {
-      if (heldIds.has(leader.id)) continue
-      const sentToThisOne = pushed.sent.includes(leader.id) ? 1 : 0
-      let channel: 'push' | 'email' | null = sentToThisOne > 0 ? 'push' : null
-      // No device registered: the same words by email, to our own leader (no sent copy — not a paper, not outside).
-      if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
-        const link = `${appOrigin}${words.url}`
-        const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">${waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk'}</a></p>`
-        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
-        if (mail.success) {
-          emailSent++
-          channel = 'email'
-        } else console.error('notify-lien-approval email error', mail.error)
-      }
-      if (channel) {
-        await admin.from('notification_history').insert({
-          recipient_user_id: leader.id,
-          template_type: templateType,
-          title: words.title,
-          body_preview: words.body.substring(0, 200),
-          channel,
-        })
-      }
-    }
-
-    return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, held: heldIds.size, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
+    return json({ success: true, push_sent: sent.pushSent, email_sent: sent.emailSent > 0, held: sent.held, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
   } catch (error) {
     console.error('Error in notify-lien-approval:', error)
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)

@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { CardChargeCostAmount } from './CardChargeCostAmount'
 import type { Json } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { elementToLikelyCsv, sanitizeFilenameSegment } from '../../lib/domTableToCsv'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { ReceiptStateChip } from '../tickets/ReceiptStateChip'
+import { useReceiptStates } from '../../hooks/useReceiptStates'
+import { receiptStateChargeIds } from '../../lib/tickets/receiptState'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -214,6 +217,9 @@ export function JobSummaryDrilldownMercuryTable({
   onReassignJob,
 }: MercuryTableProps) {
   const showActions = Boolean(canEditAllocations && onReassignJob)
+  // The receipt's state on each charge (punch list #299, PR 3): the recent ones, read apart from the cost rows.
+  const receiptChargeIds = useMemo(() => receiptStateChargeIds(rows.map((r) => ({ id: r.mercury_transaction_id, at: r.mercury_transactions?.posted_at })), Date.now()), [rows])
+  const receiptStates = useReceiptStates(receiptChargeIds)
   if (rows.length === 0) {
     return <p style={{ margin: 0, color: 'var(--text-muted)' }}>No card allocation lines for this selection.</p>
   }
@@ -227,6 +233,7 @@ export function JobSummaryDrilldownMercuryTable({
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Debit card</th>
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>Allocated</th>
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Note</th>
+          {receiptStates.size > 0 ? <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Receipt</th> : null}
           {showActions ? (
             <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Actions</th>
           ) : null}
@@ -251,6 +258,11 @@ export function JobSummaryDrilldownMercuryTable({
               <td style={{ padding: '0.3rem 0.45rem', color: 'var(--text-600)' }}>
                 {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
               </td>
+              {receiptStates.size > 0 ? (
+                <td style={{ padding: '0.3rem 0.45rem' }}>
+                  <ReceiptStateChip state={receiptStates.get(row.mercury_transaction_id)} />
+                </td>
+              ) : null}
               {showActions ? (
                 <td style={{ padding: '0.3rem 0.45rem', verticalAlign: 'top' }}>
                   <button

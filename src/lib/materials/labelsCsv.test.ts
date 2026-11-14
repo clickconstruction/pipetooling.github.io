@@ -29,6 +29,11 @@ describe('the labels as a CSV (v2.6800)', () => {
     expect(lines[4]).toBe('')
   })
 
+  it('the Stencil cell is what the label prints: the letters and number alone (v2.7195)', () => {
+    const rows = labelsCsvRows([box('eeee5555-0000-4000-8000-000000000000', 'R74 3/4 PEX', 'cage'), box('ffff6666-0000-4000-8000-000000000000', 'CONCRETE MIX', 'loose'), box('cccc3333-0000-4000-8000-000000000000', 'Unsorted', 'unsorted')], [])
+    expect(rows.map((r) => r.stencil)).toEqual(['CONCRETE MIX', 'R74'])
+  })
+
   it('names the file by the job and the day', () => {
     expect(labelsCsvFileName('Oak Hollow Apartments · Building C', '2026-11-09')).toBe('labels-oak-hollow-apartments-building-c-2026-11-09.csv')
     expect(labelsCsvFileName('', '2026-11-09')).toBe('labels-2026-11-09.csv')

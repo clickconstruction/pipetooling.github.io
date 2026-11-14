@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { abbreviateTimeSince, advanceConsequence, jobNextLine, phoneRowPasses, type JobNextLineInput } from './jobNextLine'
 import { buildLienPayRunway } from './lienPayRunway'
+import { lienActFor } from './lienActWords'
 import type { ProgressPaymentView } from './progressPaymentCell'
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { JobCrewPosition } from './jobCrewPosition'
@@ -83,6 +84,21 @@ describe('jobNextLine — the chip, first match wins', () => {
     const chip = jobNextLine(base({ stage: 'billed', quietDays: 9, lienRunway: runway })).chip
     expect(chip).toMatchObject({ label: 'file first', tone: 'red', action: 'lien' })
     expect(chip?.title).toContain('Tap to open the Lien window.')
+  })
+
+  it('the lien chip names the step the Lien desk names, and opens the window on that paper (punch list #335, row 5)', () => {
+    // A commercial sub job last worked in August, four days before the affidavit's last day, its notice sent.
+    const today = '2026-12-11'
+    const runway = buildLienPayRunway({ todayYmd: today, openBalance: 8200, lastWorkYmd: '2026-08-14', propertyKind: 'non_residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null, isSub: true, noticedMonths: ['2026-08'] })
+    const bare = jobNextLine(base({ stage: 'billed', todayYmd: today, quietDays: 9, lienRunway: runway })).chip
+    expect(bare).toMatchObject({ label: 'lien in 4 d', tone: 'red', action: 'lien', lienTab: 'affidavit' })
+    const act = lienActFor({ paper: 'affidavit', action: 'draft' })
+    const chip = jobNextLine(base({ stage: 'billed', todayYmd: today, quietDays: 9, lienRunway: runway, lienDesk: { act, paper: 'affidavit', dueOn: '2026-12-15' } })).chip
+    expect(chip).toMatchObject({ label: 'Draft the affidavit · 4 d', tone: 'red', action: 'lien', lienTab: 'affidavit' })
+    expect(chip?.title).toBe('The affidavit is not drafted yet. The last day is Dec 15. Tap to open the Lien window.')
+    // The clock still decides whether the lien takes the chip at all: a far flag leaves it to the older facts, act or no act.
+    const far = buildLienPayRunway({ todayYmd: '2026-09-23', openBalance: 8200, lastWorkYmd: '2026-08-14', propertyKind: 'non_residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null, isSub: true, noticedMonths: ['2026-08'] })
+    expect(jobNextLine(base({ stage: 'billed', quietDays: 9, lienRunway: far, lienDesk: { act, paper: 'affidavit', dueOn: '2026-12-15' } })).chip?.label).toBe('quiet 9 d')
   })
 
   it('a far lien flag leaves the chip to the older facts', () => {
