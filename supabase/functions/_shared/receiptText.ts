@@ -13,13 +13,14 @@ import { APP_CALENDAR_TZ, todayYmdInAppTz } from './appTimeZone.ts'
 // Where a link points.
 
 /**
- * The host a receipt link rides. Null until the short host's Worker (`portal-link-shell`, the Cloudflare dashboard)
- * answers `my.clickplumbing.com/r/<code>` with a 301 to the app's `/r/:code`, as it does for `/e/` and `/pay/`; until
- * then the link is the app's own address.
+ * The host a receipt link rides: the short host, since its Worker (`portal-link-shell`, the Cloudflare dashboard,
+ * mirrored in `scripts/cloudflare/portal-link-shell.worker.js`) answers `my.clickplumbing.com/r/<code>` with a 301
+ * to the app's `/r/:code`, as it does for `/e/` and `/pay/` (v2.7286, punch list #299). Null would make the link the
+ * app's own address again.
  */
-export const RECEIPT_SHORT_ORIGIN: string | null = null
+export const RECEIPT_SHORT_ORIGIN: string | null = 'https://my.clickplumbing.com'
 
-/** `https://clicktooling.com/r/<code>`, or the short host's once it forwards. */
+/** `https://my.clickplumbing.com/r/<code>`, the short host's; the app's own address when the origin is null. */
 export function receiptLinkUrl(code: string, origin: string = RECEIPT_SHORT_ORIGIN ?? 'https://clicktooling.com'): string {
   return `${origin.replace(/\/$/, '')}/r/${encodeURIComponent(code.trim().toLowerCase())}`
 }

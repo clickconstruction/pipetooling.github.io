@@ -214,7 +214,7 @@ describe('a charge that posts', () => {
     expect(await runReceiptSweep(w.doors)).toMatchObject({ state: 'on', made: 1, texted: 1, reminded: 0, held: 0 })
     expect(w.sent).toHaveLength(1)
     expect(w.sent[0]!.to).toBe('+15125550100')
-    expect(w.sent[0]!.body).toMatch(/^Hi Jordan, this is Click Plumbing\. \$228\.58 at Ridgeway Supply posted to your card today\. Snap the receipt here: https:\/\/clicktooling\.com\/r\/[2-9a-z]{10}$/)
+    expect(w.sent[0]!.body).toMatch(/^Hi Jordan, this is Click Plumbing\. \$228\.58 at Ridgeway Supply posted to your card today\. Snap the receipt here: https:\/\/my\.clickplumbing\.com\/r\/[2-9a-z]{10}$/)
     expect(w.requests()[0]).toMatchObject({ cell: '+15125550100', texted_at: new Date(NOW).toISOString(), no_text_why: null })
     expect(w.links()).toHaveLength(1)
     expect(w.links()[0]).toMatchObject({ made_for: 'text', request_ids: ['req-c1'] })
@@ -405,7 +405,7 @@ describe('the one reminder', () => {
   it('goes once, the next evening, on its own link that closes with the request', async () => {
     const w = world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z')], requests: [texted('c1')], now: EVENING })
     expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 1, texted: 0 })
-    expect(w.sent[0]!.body).toMatch(/^Still no receipt for \$228\.58 at Ridgeway Supply\. Snap it here: https:\/\/clicktooling\.com\/r\/[2-9a-z]{10}$/)
+    expect(w.sent[0]!.body).toMatch(/^Still no receipt for \$228\.58 at Ridgeway Supply\. Snap it here: https:\/\/my\.clickplumbing\.com\/r\/[2-9a-z]{10}$/)
     expect(w.links()[0]).toMatchObject({ made_for: 'reminder', request_ids: ['req-c1'], expires_at: '2026-11-18T00:14:00.000Z' })
     expect(w.requests()[0]!.reminded_at).toBe('2026-11-05T00:30:00.000Z')
     expect(await runReceiptSweep(w.doors)).toMatchObject({ reminded: 0 })
