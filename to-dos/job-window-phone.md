@@ -433,6 +433,26 @@ cost rows…* and draws nothing of its empty rows until opened.
 the title at the left, its press at the right (*Plans · + New set*, *Pay applications · New
 application*). A section with something keeps its list, its presses 40 px. The order stays.
 
+### What is lost, and what the drawing missed (the owner: "is this the best we can do, are we losing anything?")
+
+- **D, E, G, H lose nothing worth keeping.** D moves nothing off the app, only off five tabs it was
+  never asked for. E's status rail is the same stepper the bar's Status ▾ opens, Collections switch
+  included. G folds the chart, which is unreadable at this width anyway; the numbers it plots stay in
+  the four cards. H keeps every press, one per row.
+- **F loses two things, on purpose, and the second can be kept.** The desk's order (lines first) is
+  not the phone's order, so a person who knows the desk looks twice the first time. And a line item
+  drawn as a card with ⋯ makes a price change two taps instead of one. The count and the price can
+  stay live fields on the card's second line, with only Remove and Move behind ⋯; the drawing should
+  say so. Add ▾ must carry everything the desk's title row carries: a line, a discount, the Stripe
+  preview, the Multiple Segment Generator, the hazmat rider.
+- **Measured, not drawn: every field is under 16 px.** Edit's fields are 14 px, Bill's 13 px, Costs'
+  12 to 14 px. An iPhone zooms the page into any field under 16 px when it gets focus, which is the
+  lurch the owner feels typing a price. E, F and G each set their tab's fields to 16 px on a phone,
+  as the Note sheet already does (`JOB_WINDOW_BAR_MIN_HEIGHT`'s box at 1 rem).
+- **Not in the drawing, and worth it:** the lien path card on History sets its words at 11 px; it
+  reads, but a 13 px version on a phone costs nothing. Documents' *Add a file* picker stays the
+  phone's own file sheet, which already offers the camera.
+
 ### The questions for the owner, pass 3
 
 1. **D now, as its own small PR?** It is the one change every tab shares and the cheapest.
