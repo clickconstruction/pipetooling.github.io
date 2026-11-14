@@ -116,7 +116,7 @@ On the **mobile cards** view, the card's foot keeps just the **phone icon** and 
 
 ## Getting to Ready to bill
 
-A job usually reaches Ready to bill one of two ways:
+A job usually reaches Ready to bill one of three ways:
 
 - A tech files a **Job Complete** report at 100%. The app offers the move right there:
 
@@ -126,6 +126,8 @@ A job usually reaches Ready to bill one of two ways:
 
 {{button:outline|Not yet}} &nbsp; {{button:green|Move to Ready to Bill}}
 :::
+
+- Someone sets the job to 100% in the **% done** sheet and ticks **Also move to Ready to Bill**. Save moves the job along with the percent. The same sheet opens from a schedule card and from the Bridge.
 
 - Or the office moves it manually from the Jobs Pipeline board.
 
