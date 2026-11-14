@@ -9,7 +9,7 @@ import { resendDocsmitPiece, resolveDocsmitPiece } from '../../lib/mail/runDocsm
  * footer's line for a returned, unclaimed or refused piece, the office answers it one of three ways. A plain copy
  * goes First Class to the same address through Docsmit; another address takes a name and a one-line address, split
  * as the run splits one, and mails the same letter again; handled by hand records a courier or a visit in a few
- * words. Each marks the piece answered, so Do now stops asking. Drawn on the Lien desk's Sent footer only.
+ * words. Each marks the piece answered, so To do stops asking. Drawn on the Lien desk's Sent footer only.
  */
 export default function LienMailPieceDoors({ piece, jobNumber, onChanged }: { piece: LienMailPieceRow; jobNumber?: string | null; onChanged: () => void }) {
   const { showToast } = useToastContext()

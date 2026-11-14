@@ -1,5 +1,6 @@
 import { hoursPeopleWords, jobHoursLine, type JobHours } from './jobHours'
 import { shortK } from './headline'
+import { cleanStoredAddress } from '../displayAddress'
 
 /**
  * What a percent is judged from, for each job on the list *Set a percent on the jobs without one* (v2.7221).
@@ -16,6 +17,10 @@ import { shortK } from './headline'
  * that the schedule had someone on it. A day both name is a clocked day. A day still to come is never *last worked*:
  * it is the next scheduled day.
  *
+ * The address came a day later (v2.7232). The owner: "I also need the address ... The address is actually the most
+ * important part", and "I don't need the state and zip code in the address though." A job's number and name do not
+ * say where it is, and the place is how he knows the job. So each job says its street and city (`streetAndCity`).
+ *
  * Pure: no React, no Supabase (`pctFactsIo.ts` reads). The hours are `jobHours.ts`'s, which the page has already read.
  */
 
@@ -28,12 +33,17 @@ export type PctFactsInvoiceRow = { jobId: string; id: string; usd: number; statu
 /** One percent written down on a job (`job_pct_events`), with the day it was written. */
 export type PctFactsEventRow = { jobId: string; pct: number; at: string; ymd: string }
 
-export type PctFactsRead = { lines: PctFactsLineRow[]; blocks: PctFactsBlockRow[]; invoices: PctFactsInvoiceRow[]; events: PctFactsEventRow[] }
+/** A job's address as it is stored (`jobs_ledger.job_address`). */
+export type PctFactsAddressRow = { jobId: string; address: string | null }
+
+export type PctFactsRead = { lines: PctFactsLineRow[]; blocks: PctFactsBlockRow[]; invoices: PctFactsInvoiceRow[]; events: PctFactsEventRow[]; addresses: PctFactsAddressRow[] }
 
 export type PctFactsLine = { key: string; name: string; /** Null for a line with no price on it. */ usd: number | null; /** On a bill that has gone out. */ billed: boolean }
 export type PctFactsDay = { ymd: string; source: 'clocked' | 'scheduled'; people: string[] }
 
 export type PctJobFacts = {
+  /** Where the job is: its street and city, with no state and no zip. Empty when the job has no address. */
+  address: string
   /** The job's total. Null when the job has no price. */
   chargeUsd: number | null
   lines: PctFactsLine[]
@@ -58,6 +68,27 @@ export function lineUsd(line: Pick<PctFactsLineRow, 'count' | 'unitPrice' | 'lin
   const c = Number(line.count)
   const qty = line.lineKind === 'discount' ? 1 : Number.isFinite(c) && c > 0 ? c : 1
   return round2(qty * line.unitPrice)
+}
+
+const STATE_CODES = new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '))
+
+/**
+ * A stored address as its street and city: *230 Terrell Road, San Antonio, TX 78209* reads *230 Terrell Road, San
+ * Antonio*. The country, the zip and the state come off the end, in that order. A state after a comma always goes. A
+ * state after a space goes only when a zip stood behind it, so *12 Main St NE* keeps its quarter of town. An address
+ * that is nothing but a state or a zip comes back as it is stored.
+ */
+export function streetAndCity(address: string | null | undefined): string {
+  const base = cleanStoredAddress(address)
+  if (base === '') return ''
+  let a = base.replace(/[\s,]+(USA|U\.S\.A\.|United States(?: of America)?)\s*$/i, '')
+  const noZip = a.replace(/[\s,]+\d{5}(-\d{4})?\s*$/, '')
+  const hadZip = noZip !== a
+  a = noZip
+  const state = a.match(/([\s,]+)([A-Za-z]{2}|Texas)\s*$/)
+  if (state && (state[2]!.toLowerCase() === 'texas' ? state[1]!.includes(',') : STATE_CODES.has(state[2]!.toUpperCase()) && (state[1]!.includes(',') || (hadZip && state[2] === state[2]!.toUpperCase())))) a = a.slice(0, state.index)
+  a = a.replace(/[\s,]+$/, '').trim()
+  return a === '' || STATE_CODES.has(a.toUpperCase()) ? base : a
 }
 
 const push = <T>(map: Map<string, T[]>, key: string, row: T): void => {
@@ -113,6 +144,7 @@ export function buildPctFacts(input: {
   for (const b of input.read.blocks) push(blocks, b.jobId, b)
   for (const i of input.read.invoices) push(invoices, i.jobId, i)
   for (const e of input.read.events) push(events, e.jobId, e)
+  const addresses = new Map(input.read.addresses.map((a) => [a.jobId, a.address] as const))
   const out = new Map<string, PctJobFacts>()
   for (const job of input.jobs) {
     const jobInvoices = invoices.get(job.id) ?? []
@@ -121,6 +153,7 @@ export function buildPctFacts(input: {
     const jobHours = input.hours?.get(job.id) ?? null
     const newest = (events.get(job.id) ?? []).reduce<PctFactsEventRow | null>((m, e) => (m == null || e.at > m.at ? e : m), null)
     out.set(job.id, {
+      address: streetAndCity(addresses.get(job.id)),
       chargeUsd: job.revenueUsd != null && Number.isFinite(job.revenueUsd) && job.revenueUsd > 0 ? job.revenueUsd : null,
       // A line with no name is not a line of the job (`revenueDollarsFromFixtures` leaves it out of the total too).
       lines: (lines.get(job.id) ?? [])
@@ -164,11 +197,12 @@ export function chargeCell(f: Pick<PctJobFacts, 'chargeUsd'>): { text: string; p
 /** The move a job with no price is also on, as the card names it. */
 export const PRICE_MOVE_WORDS = 'Price the jobs with no price'
 
-export type PctFactsRow = { key: 'charge' | 'billed' | 'worked' | 'next' | 'hours' | 'last-pct'; label: string; words: string; warn?: boolean }
+export type PctFactsRow = { key: 'address' | 'charge' | 'billed' | 'worked' | 'next' | 'hours' | 'last-pct'; label: string; words: string; warn?: boolean }
 
-/** The facts beside the percent control, a row a fact, in the order a percent is judged: the money, then the work. */
+/** The facts beside the percent control, a row a fact, in the order a percent is judged: the place, the money, then the work. */
 export function pctFactsRows(f: PctJobFacts, todayYmd: string, dayLabel: (ymd: string) => string): PctFactsRow[] {
   const rows: PctFactsRow[] = []
+  rows.push(f.address ? { key: 'address', label: 'Address', words: f.address } : { key: 'address', label: 'Address', words: 'The job has no address yet.', warn: true })
   rows.push(f.chargeUsd != null ? { key: 'charge', label: 'We are charging', words: usdWords(f.chargeUsd) } : { key: 'charge', label: 'We are charging', words: `No price yet. It is also on the list “${PRICE_MOVE_WORDS}”.`, warn: true })
   if (f.billedUsd > 0) rows.push({ key: 'billed', label: 'Billed so far', words: f.chargeUsd != null ? `${usdWords(f.billedUsd)} of ${usdWords(f.chargeUsd)}` : usdWords(f.billedUsd) })
   const w = f.lastWorked

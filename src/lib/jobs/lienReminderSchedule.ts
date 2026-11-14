@@ -7,7 +7,7 @@ import { LIEN_MONTH_RULE } from './lienMonthRhythm'
  * to know something is overdue from day ten — where do we present that schedule?"). Until now the
  * days lived in the clocks' constants and in sentences on a notice's footer; § Rules held the law's
  * dates alone. This is the one home for the path from the packet to the affidavit's day, drawn as a
- * strip at the top of a pressed rung's step brief on Do now and under *Our schedule after a notice*
+ * strip at the top of a pressed rung's step brief on To do and under *Our schedule after a notice*
  * in § Rules. Every day here is read from the clock that enforces it, so the strip follows a rule
  * when it changes. Pure; nothing here reads or writes.
  */

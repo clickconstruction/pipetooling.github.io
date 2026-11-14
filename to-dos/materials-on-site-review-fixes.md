@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: ready
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built the same day: PR 1 #7986 and PR 2 #7990 merged, PR 3 #7988 and PR 4 (v2.7177) open and armed · PRs 5 to 9 not built
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PRs 5 to 9 not built
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -12,9 +12,9 @@ summary: >
   file the public box page then streams. Four defects were fixed the same day. This card lists the
   rest as small PRs in the order they would hurt a person in the field or a number the office
   reads.
-next: See PRs 1 to 4 through the queue, then the owner's look at a press made with a real phone's radio off. PR 5, what a teammate may change, is next on his word; it carries a migration.
+next: The owner's try of a press on a real phone with its radio off, on the ZZ test job: the box shows the new number, the line at the top counts it, and it lands once when the signal is back. PR 5, what a teammate may change, is next on his word; it carries a migration.
 size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 4 are built; left: PRs 5 to 9 (M · S · S · M · S)
-blocker: None for PRs 1 to 4 beyond the merge queue. The owner's word for PR 5, which carries a migration and needs someone at hand to push it.
+blocker: None for what is built. The owner's word for PR 5, which carries a migration and needs someone at hand to push it.
 opinion: your call — the four that a crew with poor signal waited on are built; try a press on a phone with the radio off, then say the word on PR 5
 mockup: not required — PR 1 uses the outbox bar that is already on the phone; no new screen
 ---
@@ -140,6 +140,10 @@ what was wrong; this is what each PR did.
   signal returns and every five minutes, and the phone when a box is opened. The read is quiet,
   and a kept press stays on the screen through it. It sat on PR 1's store, so it opened once
   #7986 had merged.
+
+2026-11-13, night: all four are on main, with #8017, the Print labels *Which job?* window made 640
+wide so a long job name cannot push it into a sideways scroll. PR 1's store test waited a fixed
+30 ms for a send and failed under a loaded runner; #8026 made it wait on the sender.
 
 **Not checked by any of the four:** a real phone with its radio off, a real camera, and what the
 database answers a resent row. The last is read from Postgres' own rule, a duplicate on the primary

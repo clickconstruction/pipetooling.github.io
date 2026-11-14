@@ -249,6 +249,7 @@ when_to_read:
    - [pay-link](#pay-link)
    - [box-read](#box-read)
    - [first-look](#first-look)
+   - [painted-map-link](#painted-map-link)
    - [receipt-link](#receipt-link)
    - [receipt-request](#receipt-request)
    - [sync-mercury-transactions](#sync-mercury-transactions)
@@ -5912,6 +5913,26 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the desk caller's own client), `QUO_COMPANY_PHONE` (the office number when Settings names no team line; optional).
 
 **Implementation**: [`supabase/functions/first-look/index.ts`](../supabase/functions/first-look/index.ts); the pure part — the code, the caps, the first-bytes check, a look's state, every word — in [`_shared/firstLook.ts`](../supabase/functions/_shared/firstLook.ts), re-exported by [`src/lib/firstLook/look.ts`](../src/lib/firstLook/look.ts) and tested from `src/lib/firstLook/look.test.ts`. The tables and the bucket are `docs/migrations/20261112060000_first_looks.md`. **Deploy**: `supabase functions deploy first-look` after the migration is pushed.
+
+### painted-map-link
+
+**Purpose** (punch list #345, PR 4, **v2.7223**): a link to a painted map. The page at `/way/<code>` ([`src/pages/PaintedWay.tsx`](../src/pages/PaintedWay.tsx)) opens one map with no sign-in: its name, its lines and its places. This function is the page's only door and the only thing that writes a `painted_map_links` row. `verify_jwt = false`: the page's asks carry the link's ten-letter code, which is the capability, and the app's asks carry a JWT the function checks itself. It sends no text and no email.
+
+**The page's asks** (no sign-in):
+- `GET ?code=<ten letters>` → `{ ok, map, company, endsOn }`. `map` is what `sharedPaintedMap` builds, field by field: `name`, `words`, each line's `how`, `points`, `poorParts`, `fixedByHand`, its length with its give or take and a measured length, and each place's `id`, `number`, `name`, `words`, `lat`, `lng` and whether it has a photo. It carries no job, no development, no address, nobody's name, no date and no storage path. `company` is the name and phone on the portal's letterhead. Each open adds one to the link's `open_count` and stamps `last_opened_at` (not with `&preview=1`). **404** `gone` for a code that opens nothing, a link that was ended and a link past its day, all three alike, each counted as a miss through the estimate link's guard (`recordEstimateLinkMiss`); **429** `locked` past 20 misses in the hour.
+- `GET ?code=<code>&photo=<place id>` → the bytes of that place's photo, only for a place on the link's map, from the private `painted-map-photos` bucket, `Cache-Control: private, max-age=300`.
+
+The reader's own position (**Show where I am** on the page) is never sent here or anywhere: the page draws it on the phone.
+
+**The app's asks** (signed in; the caller must read the map under their own RLS and be its maker or pass `is_office_staff()`; an archived account, an account in training and a digital twin are refused, **403**):
+- `POST { action: "desk.mint", mapId }` → `{ ok, code, endsOn }`: ten letters from `23456789abcdefghjkmnpqrstuvwxyz`, no letter likelier than another, handed out once with only the SHA-256 kept, good for ninety days, three tries on a clash. An earlier link stays open until its own day. **409** for a map with nothing on it, and past twenty open links on one map.
+- `POST { action: "desk.end", mapId, linkId? }` → `{ ok, ended }`: ends one link, or every open link of the map.
+
+**Rate limit**: 60 calls a minute per client address and 600 across the isolate, in memory, best effort → 429.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the caller's own client).
+
+**Implementation**: [`supabase/functions/painted-map-link/index.ts`](../supabase/functions/painted-map-link/index.ts); the pure part — the code, the link's day, whether a link is open, what the page is told, the refusals' words — in [`_shared/paintedMapLink.ts`](../supabase/functions/_shared/paintedMapLink.ts), re-exported by [`src/lib/paintedMap/paintedMapLink.ts`](../src/lib/paintedMap/paintedMapLink.ts) and tested from `src/lib/paintedMap/paintedMapLink.test.ts`. The table is `docs/migrations/20261114010000_painted_map_links.md`. **Deploy**: `supabase functions deploy painted-map-link` after the migration is pushed.
 
 ### receipt-link
 

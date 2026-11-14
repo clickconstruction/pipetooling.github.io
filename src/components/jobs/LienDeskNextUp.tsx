@@ -11,7 +11,7 @@ import { LienStepBrief, LienStepCardView, LienStepMark, LienStepRail, useLienSte
 import { lienTimelineWhyChips, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
 
 /**
- * The Lien desk's Do now tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
+ * The Lien desk's To do tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
  * in deadline order, one button a row. The list is `lienNextUp.ts`; this draws it. A button
  * (or a press on the row) hands the row back to the desk, which opens the pane that already
  * does the work. Nothing is written here.
@@ -139,7 +139,7 @@ export default function LienDeskNextUp({
   if (byDay.length === 0) {
     return (
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-        Nothing needs you right now. Every lien paper is sent, filed or waiting on its day. The Deadlines tab shows what is coming.
+        Nothing needs you right now. Every lien paper is sent, filed or waiting on its day. The By date tab shows what is coming.
       </div>
     )
   }

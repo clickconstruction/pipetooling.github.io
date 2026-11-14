@@ -385,7 +385,7 @@ export function lienMonthZoneLine(zone: LienMonthZone): { head: string; sub: str
   return { head: `${zone.slipped} slipped · ${zone.done} ${v.done}`, sub: first ? first.title : '', tone: 'slipped' }
 }
 
-/** The zone's one press, which opens Do now on that work; null when there is nothing to open. */
+/** The zone's one press, which opens To do on that work; null when there is nothing to open. */
 export function lienMonthZonePress(zone: LienMonthZone): string | null {
   if (zone.key === 'quiet') return null
   // Catch-up's `left` already holds its slips and the copies; a working zone's slips sit beside its `left`.
@@ -397,7 +397,7 @@ export function lienMonthZonePress(zone: LienMonthZone): string | null {
   return countedLabel('Show', n, ['lien', 'liens'])
 }
 
-/** Whether a Do now row is the zone's work: its job is one the zone counts and the row is that zone's kind of paper. */
+/** Whether a To do row is the zone's work: its job is one the zone counts and the row is that zone's kind of paper. */
 export function lienMonthZoneHasRow(zone: LienMonthZone, row: Pick<LienNextUpRow, 'kind' | 'jobId' | 'action'>): boolean {
   if (zone.key === 'quiet' || !row.jobId) return false
   const open = new Set(zone.jobs.filter((j) => j.state !== 'done').map((j) => j.jobId))

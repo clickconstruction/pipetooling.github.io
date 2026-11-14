@@ -1,5 +1,5 @@
 /**
- * What a lien paper is still missing (v2.4632, the owner's ask): the Do now chip opens the
+ * What a lien paper is still missing (v2.4632, the owner's ask): the To do chip opens the
  * paper as it stands today, and every blank the statute needs is numbered on the page and
  * listed beside it with the button that fills it. Pure: the gaps come from the property
  * record, the owner lookup, the GC and the issuer the desk already holds; the marks ride
