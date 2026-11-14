@@ -26,12 +26,15 @@ import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, S
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
-import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
+import { invoiceNumber, landableLines, landedFromInvoice, linePrice, manifestComparison, readInvoiceText, SAMPLE_INVOICE_TEXT, type LoneFigureIs, type ParsedLine } from '../../lib/materials/manifest'
+import { deliveryAgainWords, deliveryOutcomeWords, notReadHead, LONE_FIGURE_WORDS } from '../../lib/materials/deliveryWords'
+import { countedLabel } from '../../lib/batchWords'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -436,6 +439,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [invoiceText, setInvoiceText] = useState('')
   const [invoiceNo, setInvoiceNo] = useState('')
   const [parsed, setParsed] = useState<ParsedLine[] | null>(null)
+  /** The pasted lines that hold a number and a word and did not read: listed, never dropped in silence. */
+  const [notRead, setNotRead] = useState<string[]>([])
+  /** What the one figure on a line is, for this paste: the office says, the reader does not guess. */
+  const [loneIs, setLoneIs] = useState<LoneFigureIs | null>(null)
+  const [landing, setLanding] = useState(false)
+  const confirmDialog = useConfirmDialog()
   const [pasteOpen, setPasteOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
   /** The job's Drive folder: where the invoice goes, as every job file does (#164). The app reads it from there. */
@@ -477,17 +486,34 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
     return [...by.values()].sort((a, b) => (a.at < b.at ? 1 : -1))
   })()
   const walkedMoney = comparison.reduce((s, r) => s + (r.money ?? 0), 0)
-  const readLines = () => { setParsed(parseInvoiceText(invoiceText)); const no = invoiceNumber(invoiceText); if (no && !invoiceNo.trim()) setInvoiceNo(no) }
-  const landLines = () => {
-    if (!parsed || parsed.length === 0) return
-    const un = unsortedContainer(jobId)
+  const readLines = () => { const read = readInvoiceText(invoiceText); setParsed(read.lines); setNotRead(read.notRead); setLoneIs(null); const no = invoiceNumber(invoiceText); if (no && !invoiceNo.trim()) setInvoiceNo(no) }
+  /** What the press sends: the lines its button counts, no others (a line at 0 or with no name went too, before v2.7250). */
+  const ready = parsed ? landableLines(parsed) : []
+  const landedBefore = landedFromInvoice(movements, invoiceNo)
+  const landLines = async () => {
+    if (ready.length === 0 || landing) return
     const source = invoiceNo.trim() || 'invoice'
-    for (const l of parsed) {
-      addMovement({ jobId, partId: null, partName: l.name, manufacturer: null, quantity: l.quantity, reason: 'delivered', fromContainerId: null, toContainerId: un.id, note: l.unit ? `${l.unit.toLowerCase()}` : '', byUserId, byName, source })
-      if (l.unitPrice != null) rememberPrice(partKey(null, l.name), l.unitPrice)
+    // The same invoice twice doubles what the job is said to hold, and a count then reads the half as walked away.
+    const again = landedBefore ? deliveryAgainWords(source, landedBefore.lines, ready.length) : null
+    if (again && !(await confirmDialog({ message: again.message, confirmLabel: again.confirmLabel }))) return
+    setLanding(true)
+    const un = unsortedContainer(jobId)
+    const outcome = await addDelivery({ jobId, toContainerId: un.id, source, byUserId, byName, lines: ready.map((l) => ({ partName: l.name, quantity: l.quantity, note: l.unit ? `${l.unit.toLowerCase()}` : '' })) })
+    setLanding(false)
+    // A refusal is said by the store with its reason, and the lines stay here to send again.
+    const words = deliveryOutcomeWords(outcome.kind, ready.length, source)
+    if (!words) return
+    for (const l of ready) {
+      const price = linePrice(l, loneIs)
+      if (price != null) rememberPrice(partKey(null, l.name), price)
     }
-    showToast(`${parsed.length} ${parsed.length === 1 ? 'line' : 'lines'} from ${source} landed in Unsorted as a delivery.`, 'success')
-    setParsed(null)
+    showToast(words.line, words.tone)
+    // A line with no count or no name did not go: it stays, with the invoice's number, for the office to finish.
+    const left = (parsed ?? []).filter((l) => !(l.quantity > 0 && l.name.trim()))
+    setParsed(left.length > 0 ? left : null)
+    setLoneIs(null)
+    if (left.length > 0) return
+    setNotRead([])
     setInvoiceText('')
     setInvoiceNo('')
   }
@@ -750,11 +776,24 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   {madeWords.hold ? <span style={{ display: 'block', color: 'var(--text-amber-800)', fontWeight: 600 }}>{madeWords.hold}</span> : null}
                 </p>
               ) : null}
-              {pasteOpen ? <textarea value={invoiceText} onChange={(e) => { setInvoiceText(e.target.value); setParsed(null) }} rows={7} placeholder={'25  EA  3/4" copper 90   4.70   117.50\n4   EA  3/4" ball valve  18.60   74.40'} aria-label="The invoice’s text" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0.5rem 0.7rem', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }} /> : null}
+              {pasteOpen ? <textarea value={invoiceText} onChange={(e) => { setInvoiceText(e.target.value); setParsed(null); setNotRead([]) }} rows={7} placeholder={'25  EA  3/4" copper 90   4.70   117.50\n4   EA  3/4" ball valve  18.60   74.40'} aria-label="The invoice’s text" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0.5rem 0.7rem', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }} /> : null}
               {pasteOpen ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button type="button" style={{ ...btnPrimary, ...(invoiceText.trim() ? {} : { opacity: 0.45 }) }} disabled={!invoiceText.trim()} onClick={readLines}>Read the lines</button>
-                  <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => { setInvoiceText(SAMPLE_INVOICE_TEXT); setParsed(null) }}>Try a sample invoice</button>
+                  <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => { setInvoiceText(SAMPLE_INVOICE_TEXT); setParsed(null); setNotRead([]) }}>Try a sample invoice</button>
+                </div>
+              ) : null}
+              {parsed && notRead.length > 0 ? (
+                <div data-testid="delivery-not-read" style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-amber-100)', borderRadius: 8, padding: '0.5rem 0.7rem' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>{notReadHead(notRead.length)}</div>
+                  <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem' }}>
+                    {notRead.map((l, i) => (
+                      <li key={i}>
+                        {l}{' '}
+                        <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontFamily: 'inherit', cursor: 'pointer' }} onClick={() => { setParsed([...(parsed ?? []), { quantity: 0, name: l, unit: null, unitPrice: null, raw: l }]); setNotRead(notRead.filter((_, j) => j !== i)) }}>Add it as a line</button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
               {parsed ? (
@@ -773,15 +812,25 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                             <td style={{ ...td, ...num }}><input type="number" value={l.quantity} aria-label="Quantity" onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, quantity: Math.max(0, Math.round(Number(e.target.value))) } : x)))} style={{ width: 64, minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
                             <td style={{ ...td, ...muted }}>{l.unit ?? ''}</td>
                             <td style={td}><input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} /></td>
-                            <td style={{ ...td, ...num }}>{l.unitPrice != null ? money(l.unitPrice) : <span style={muted}>—</span>}</td>
+                            <td style={{ ...td, ...num }}>{linePrice(l, loneIs) != null ? money(linePrice(l, loneIs)!) : l.loneFigure != null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }} title={LONE_FIGURE_WORDS.title}>{money(l.loneFigure)}?</span> : <span style={muted}>—</span>}</td>
                             <td style={{ ...td, ...num }}><button type="button" aria-label="Leave this line out" title="Leave this line out" style={{ ...btn, minHeight: 30, minWidth: 30, padding: 0, fontWeight: 500 }} onClick={() => setParsed(parsed.filter((_, j) => j !== i))}>×</button></td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    {parsed.some((l) => l.unitPrice == null && l.loneFigure != null) ? (
+                      <div data-testid="delivery-lone-figure" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{LONE_FIGURE_WORDS.ask}</span>
+                        {(['each', 'total'] as const).map((k) => (
+                          <button key={k} type="button" aria-pressed={loneIs === k} style={{ ...btn, minHeight: 32, fontWeight: loneIs === k ? 700 : 500, ...(loneIs === k ? { borderColor: 'var(--text-link)', color: 'var(--text-link)' } : {}) }} onClick={() => setLoneIs(loneIs === k ? null : k)}>{LONE_FIGURE_WORDS[k]}</button>
+                        ))}
+                        {loneIs == null ? <span style={muted}>{LONE_FIGURE_WORDS.unsaid}</span> : null}
+                      </div>
+                    ) : null}
+                    {landedBefore ? <p data-testid="delivery-landed-before" style={{ margin: 0, color: 'var(--text-amber-800)', fontWeight: 600 }}>{deliveryAgainWords(invoiceNo.trim(), landedBefore.lines, ready.length).note}</p> : null}
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button type="button" style={{ ...btnPrimary, minHeight: 40 }} disabled={parsed.filter((l) => l.quantity > 0 && l.name.trim()).length === 0} onClick={landLines}>Add {parsed.filter((l) => l.quantity > 0 && l.name.trim()).length} {parsed.length === 1 ? 'line' : 'lines'} to Unsorted as a delivery</button>
-                      <span style={muted}>Each line becomes a Delivered row with the invoice as its source. A crew puts them in cages from Unsorted.</span>
+                      <button type="button" style={{ ...btnPrimary, minHeight: 40, ...(ready.length === 0 || landing ? { opacity: 0.45 } : {}) }} disabled={ready.length === 0 || landing} onClick={() => void landLines()}>{countedLabel('Add', ready.length, ['line', 'lines'])} to Unsorted as a delivery</button>
+                      <span style={muted}>Each line becomes a Delivered row with the invoice as its source. A crew puts them in cages from Unsorted.{parsed.length > ready.length ? ` ${parsed.length - ready.length === 1 ? '1 line has' : `${parsed.length - ready.length} lines have`} no count or no name and ${parsed.length - ready.length === 1 ? 'stays' : 'stay'} here.` : ''}</span>
                     </div>
                   </>
                 )

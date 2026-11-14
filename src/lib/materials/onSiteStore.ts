@@ -16,7 +16,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { outbox } from '../offline/outboxState'
 import { applyOnSiteWrites, parseOnSiteWrites, type OnSiteRows, type OnSiteWrite } from './onSiteWrites'
-import { isPendingOnSitePress, onSiteSender, pendingOnSitePresses } from './onSiteSend'
+import { isPendingOnSitePress, onSiteSender, pendingOnSitePresses, type OnSiteSendOutcome } from './onSiteSend'
 import { ON_SITE_REFRESH_AFTER_MS, readIsStale } from './onSiteFresh'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
@@ -413,21 +413,27 @@ export function setOnSiteErrorHandler(cb: (message: string, tone: 'error' | 'inf
  * reason is said and the job is read again.
  */
 function commit(jobId: string, what: string, writes: OnSiteWrite[]): void {
+  void commitAnswered(jobId, what, writes)
+}
+
+/** `commit` with its answer handed back, for a press whose screen says what became of it (a delivery's lines, v2.7250). */
+function commitAnswered(jobId: string, what: string, writes: OnSiteWrite[]): Promise<OnSiteSendOutcome> {
   const c = cacheOf(jobId)
   const pressedAt = Date.now()
   Object.assign(c, applyOnSiteWrites(c, writes, jobId, new Date(pressedAt).toISOString()))
   bump()
-  void onSiteSender()
+  return onSiteSender()
     .send({ jobId, what, writes, pressedAt })
     .then((outcome) => {
-      if (outcome.kind === 'landed') return
+      if (outcome.kind === 'landed') return outcome
       if (outcome.kind === 'queued') {
         // Said once, when the first press starts to wait; the bar on the strip counts the rest.
         if (outcome.first) onError(ON_SITE_KEPT_WORDS, 'info')
-        return
+        return outcome
       }
       onError(`${what} did not save: ${outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error)}`, 'error')
       void loadJob(jobId, { force: true })
+      return outcome
     })
 }
 
@@ -586,6 +592,21 @@ export function addMovement(input: AddMovementInput): Movement {
   ])
   if (input.partId) void loadBookPrices([input.partId])
   return c.movements.find((m) => m.id === id)!
+}
+
+/**
+ * A delivery off an invoice (v2.7250, punch list #344 PR 8): every line a Delivered row into one box, as **one
+ * press**. The lines land, wait or are refused together and the caller hears which, so the panel says one sentence
+ * after the answer where it said *landed* before any and then one failure a line. The rows are drawn at once, like
+ * any press.
+ */
+export function addDelivery(input: { jobId: string; toContainerId: string; source: string; byUserId: string | null; byName: string; lines: ReadonlyArray<{ partName: string; quantity: number; note?: string }> }): Promise<OnSiteSendOutcome> {
+  const at = new Date().toISOString()
+  const writes: OnSiteWrite[] = input.lines.map((l) => {
+    const id = newId()
+    return { table: 'job_material_movements', op: 'insert', id, row: { id, job_id: input.jobId, part_id: null, part_name: l.partName.trim(), manufacturer: null, quantity: Math.max(0, Math.round(l.quantity)), reason: 'delivered', from_container_id: null, to_container_id: input.toContainerId, note: l.note ?? '', source: input.source, by_user_id: input.byUserId, by_name: input.byName, at } }
+  })
+  return commitAnswered(input.jobId, `${writes.length} ${writes.length === 1 ? 'line' : 'lines'} from ${input.source}`, writes)
 }
 
 /** A photo's note: the picture went to the bucket (or stayed on the phone); the sweep files it and writes the rest. */

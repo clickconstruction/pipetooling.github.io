@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { invoiceNumber, manifestComparison, parseInvoiceLine, parseInvoiceText, SAMPLE_INVOICE_TEXT } from './manifest'
+import { invoiceNumber, landableLines, landedFromInvoice, linePrice, manifestComparison, parseInvoiceLine, parseInvoiceText, readInvoiceText, SAMPLE_INVOICE_TEXT } from './manifest'
 import type { Movement } from './onSite'
 
 describe('parseInvoiceLine', () => {
@@ -10,6 +10,65 @@ describe('parseInvoiceLine', () => {
   })
   it('reads name-first lines', () => {
     expect(parseInvoiceLine('3/4 COPPER 90 ELBOW 25 EA 4.70 117.50')).toMatchObject({ quantity: 25, name: '3/4 COPPER 90 ELBOW', unit: 'EA', unitPrice: 4.7 })
+  })
+  it('reads a count with a comma, which dropped the whole line (v2.7250)', () => {
+    expect(parseInvoiceLine('1,000 EA 1/2" PEX pipe 0.42 420.00')).toMatchObject({ quantity: 1000, name: '1/2" PEX pipe', unit: 'EA', unitPrice: 0.42 })
+    expect(parseInvoiceLine('PEX pipe 1,000 FT 0.42 420.00')).toMatchObject({ quantity: 1000, name: 'PEX pipe', unit: 'FT', unitPrice: 0.42 })
+    // With no unit a number that big is a street number, as before.
+    expect(parseInvoiceLine('1,000 PEX fittings')).toBeNull()
+  })
+  it('never takes the whole number of a mixed size for the count', () => {
+    // It read as 2 of a half inch pipe. With no unit and no ×, nobody can say, so it is not read.
+    expect(parseInvoiceLine('2 1/2" x 10 PVC pipe')).toBeNull()
+    // The count is at the end with its unit: 25, of an inch and a half. It read as 1.
+    expect(parseInvoiceLine('1 1/2" PVC 90 25 EA 4.70 117.50')).toMatchObject({ quantity: 25, name: '1 1/2" PVC 90', unit: 'EA', unitPrice: 4.7 })
+    // A unit or a × says the first number is the count, and a count past 3 is never half of a size.
+    expect(parseInvoiceLine('2 EA 1/2" coupling')).toMatchObject({ quantity: 2, name: '1/2" coupling' })
+    expect(parseInvoiceLine('2 x 1/2" coupling')).toMatchObject({ quantity: 2, name: '1/2" coupling' })
+    expect(parseInvoiceLine('12 3/4 copper 90')).toMatchObject({ quantity: 12, name: '3/4 copper 90' })
+  })
+  it('never takes a part that ends in ST for a street', () => {
+    expect(parseInvoiceLine('10 EA 2" PVC 90 ST')).toMatchObject({ quantity: 10, name: '2" PVC 90 ST', unit: 'EA' })
+    expect(parseInvoiceLine('10 2" PVC 90 ST')).toMatchObject({ quantity: 10, name: '2" PVC 90 ST' })
+    for (const l of ['500 Oak Dr', '4410 Pecan Creek Rd', 'Round Rock, TX 78664']) expect(parseInvoiceLine(l), l).toBeNull()
+  })
+  it('reads the unit price off two figures whichever comes first, and off one figure only on a line of one', () => {
+    expect(parseInvoiceLine('25 EA elbow 4.70 117.50')).toMatchObject({ unitPrice: 4.7 })
+    expect(parseInvoiceLine('25 EA elbow 117.50 4.70')).toMatchObject({ unitPrice: 4.7 })
+    // A discount moved the total: the first figure, as printed.
+    expect(parseInvoiceLine('25 EA elbow 4.70 110.00')).toMatchObject({ unitPrice: 4.7 })
+    expect(parseInvoiceLine('1 EA water heater 184.00')).toMatchObject({ unitPrice: 184 })
+    // One figure on a line of 25: each, or the line? It was taken for each, so a line total priced every piece at the lot.
+    const lone = parseInvoiceLine('25 EA 3/4 COPPER 90 ELBOW 117.50')!
+    expect(lone).toMatchObject({ quantity: 25, unitPrice: null, loneFigure: 117.5 })
+    expect(linePrice(lone, null)).toBeNull()
+    expect(linePrice(lone, 'each')).toBe(117.5)
+    expect(linePrice(lone, 'total')).toBe(4.7)
+    // The office's answer never moves a price the line itself gave, and a count typed down to nothing has no price.
+    expect(linePrice(parseInvoiceLine('25 EA elbow 4.70 117.50')!, 'total')).toBe(4.7)
+    expect(linePrice({ ...lone, quantity: 0 }, 'total')).toBeNull()
+    // A no-charge line lands with no price, never a price of nothing.
+    expect(parseInvoiceLine('4 EA sample 0.00 0.00')).toMatchObject({ quantity: 4, unitPrice: null })
+  })
+  it('lists the lines that did not read, and no header, total, address or blank among them', () => {
+    const read = readInvoiceText(`${SAMPLE_INVOICE_TEXT}\n2 1/2" x 10 PVC pipe\n1,000 PEX fittings\n\nThank you`)
+    expect(read.lines).toHaveLength(6)
+    expect(read.notRead).toEqual(['2 1/2" x 10 PVC pipe', '1,000 PEX fittings'])
+    expect(readInvoiceText(SAMPLE_INVOICE_TEXT).notRead).toEqual([])
+  })
+  it('lands only a line with a count and a name, trimmed, and finds an invoice that landed before', () => {
+    const line = (quantity: number, name: string) => ({ quantity, name, unit: null, unitPrice: null, raw: '' })
+    expect(landableLines([line(4, '  Wax   ring '), line(0, 'Elbow'), line(3, '   ')]).map((l) => [l.quantity, l.name])).toEqual([[4, 'Wax ring']])
+    const rows = [
+      { reason: 'delivered' as const, source: 'INV-48812', at: '2026-11-03T15:00:00Z' },
+      { reason: 'delivered' as const, source: 'inv-48812 ', at: '2026-11-04T15:00:00Z' },
+      { reason: 'delivered' as const, source: 'INV-9', at: '2026-11-05T15:00:00Z' },
+      { reason: 'used' as const, source: 'INV-48812', at: '2026-11-06T15:00:00Z' },
+      { reason: 'delivered' as const, source: null, at: '2026-11-07T15:00:00Z' },
+    ]
+    expect(landedFromInvoice(rows, ' inv-48812')).toEqual({ lines: 2, lastAt: '2026-11-04T15:00:00Z' })
+    expect(landedFromInvoice(rows, 'INV-1')).toBeNull()
+    expect(landedFromInvoice(rows, '  ')).toBeNull()
   })
   it('leaves out headers, totals and addresses', () => {
     for (const l of ['QTY   UNIT  DESCRIPTION', 'SUBTOTAL 1597.10', 'TOTAL 1728.86', 'Invoice 48812', 'Ship to: Oak Hollow Bldg C, 4410 Pecan Creek Rd', '', '4410 Pecan Creek Rd']) expect(parseInvoiceLine(l)).toBeNull()
