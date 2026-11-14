@@ -124,6 +124,12 @@ messages; they stay under Work and time and the Activity door. The presses are *
 Email as bare presses are gone from here; Who already carries them beside the number and the
 address.
 
+Also on pass 2, on the photo banner: "Moving the photos five open all to the right hand side of the
+photos title line is the right move." So the count and the door sit at the right end of the section's
+title line, *Photos ····· 5 open all ›*, and the banner starts straight under it with no label row of
+its own. In A, which has no section titles, the label line *Photos · 5* carries *open all ›* at its
+right the same way.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -255,8 +261,7 @@ pick after each is the drawing's own.
   thumbnails and a *+ N* tile) becomes the banner's row kernel (Add a photo first, then every photo
   newest first, each with its day), drawn as one `overflowX: auto` row of 72 px tiles on every screen;
   the first tile reuses `JobPhotosWindow`'s add door (the camera for the field roles on a phone, the
-  picker at a desk) and the viewer opens at the tapped photo. The *Photos · N* door stays as the
-  label's *open all*.
+  picker at a desk) and the viewer opens at the tapped photo. The *Photos · N* door is the count and *open all ›* at the right of the title line.
 - `src/lib/jobs/jobWindowBar.ts`: `jobWindowTiles` stays; A adds a kernel for the one-line money
   words (*Job total $56,000 · nothing billed*) and the ⋯ sheet's rows (which doors, in which
   order, with which quiet word, by role). C adds the role's tabs and the role's bar there.

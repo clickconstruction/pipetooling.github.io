@@ -142,6 +142,8 @@
   .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
   /* Section titles (the owner's word, pass 2f): Where, Who, What's happening and the thread stand out as sections, not labels. */
   .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 18px -14px 8px; padding: 10px 14px 6px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect .right { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--link); }
+  .sect .right .n { color: var(--muted); margin-right: 6px; }
   .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
   .sect:first-child, .body > .sect:first-of-type { border-top: none; margin-top: 2px; }
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
@@ -305,7 +307,7 @@
           <a class="addr" style="margin-top:4px">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="paint">＋ Paint a map</div>
-          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="label" style="display:flex;align-items:center">Photos · 5<span style="margin-left:auto;color:var(--link);font-weight:600">open all ›</span></div>
           <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="cust"><span><b>Ridgeway Builders</b> <span style="color:var(--blue)">🌐 💬</span></span><span class="icons">▲ 🖼</span></div>
           <div><span class="pill">📞 (512) 555-0142</span></div>
@@ -373,8 +375,7 @@
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="quiet" style="margin:0 0 4px">＋ Paint a map · street view ▸</div>
 
-          <div class="sect">Photos</div>
-          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
           <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">🌐 ▲ 🖼</span></div>
@@ -443,8 +444,7 @@
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
 
-          <div class="sect">Photos</div>
-          <div class="label">Photos · 5 <span style="color:var(--link);font-weight:600">open all ›</span></div>
+          <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
           <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">📸</span></div>
