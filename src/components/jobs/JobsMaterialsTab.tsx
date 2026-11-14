@@ -40,6 +40,8 @@ import { tieCanon } from '../../lib/materials/partTies'
 import { usePartTies } from '../../hooks/usePartTies'
 import { onHandNames, onHandNameWords } from '../../lib/materials/onSiteNames'
 import { useOnSiteSites } from '../../hooks/useOnSiteSites'
+import { usePaintedMapsLayer } from '../../hooks/usePaintedMapsLayer'
+import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import SiteMaterialsView from '../materials/SiteMaterialsView'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
@@ -495,6 +497,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const geocodeAsk = useMemo(() => (addr ? [{ key: normalizeAddressForGeocodeKey(addr), display: addr }] : []), [addr])
   const { coords: jobCoords } = useAddressGeocodeCoords(geocodeAsk, addr.length > 0, 'on-site map')
   const jobCenter = addr ? (jobCoords.get(normalizeAddressForGeocodeKey(addr)) ?? null) : null
+  // The job's painted maps (#345), under the boxes: read only while the map is the view.
+  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, section === 'onsite' && onSiteView === 'map')
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now) ? 'amber' : 'ok' }))
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
@@ -881,7 +885,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         <div style={{ ...sec, padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
           <p style={{ margin: 0, ...muted }}>{mapPins.length ? `${mapPins.length} of ${containers.filter((c) => c.kind !== 'unsorted').length} boxes pinned by the crew. Amber pins are due a count.` : 'No box is pinned yet. A crew pins a box from its screen on the phone, where they stand.'}</p>
           <Suspense fallback={<p style={muted}>Loading the map…</p>}>
-            <OnSiteMapLazy center={jobCenter} pins={mapPins} height={560} />
+            <OnSiteMapLazy center={jobCenter} pins={mapPins} height={560} painted={painted.maps} onPaintedTap={(id) => openPaintedMap(id)} />
           </Suspense>
         </div>
       ) : null}

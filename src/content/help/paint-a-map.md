@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -187,6 +187,14 @@ A job with a painted map shows a line under its address. The line has the map's 
 The line shows on every tab of the job's window. It shows on your job card in Job Mode too.
 
 You can open a map from anywhere. Press the search button at the top and type the map's name or the job's name.
+
+### On other maps
+
+The **Map** page has a chip named {{chip:gray|Painted maps}}. Press it to draw every painted map where it is.
+
+Hold the pointer over a line to read its map's name and length. Press the line to open the map.
+
+A job's painted maps also show on its own site map, under the boxes. Open the job's **Materials** tab and press **Map**.
 
 Press **On my way** on your job card. The sheet lists the maps painted for the job you picked. Press one to see the way in before you drive.
 

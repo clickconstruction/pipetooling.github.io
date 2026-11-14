@@ -32,6 +32,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { useAuth } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { CourtAreasLayer } from './CourtAreasLayer'
+import { PaintedMapsLayer } from '../paintedMap/PaintedMapsLayer'
+import { PAINT_COLOR } from '../paintedMap/paintedMapLook'
+import { usePaintedMapsLayer } from '../../hooks/usePaintedMapsLayer'
+import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { CourtAreasPanel, type CourtAreaListed } from './CourtAreasPanel'
 import { courtCoverage, type CourtAreaDraft } from '../../lib/legal/courtAreasDraft'
 import { classifyCourtPoint, courtClassificationWords, type CourtAreaPolygon } from '../../lib/legal/courtAreas'
@@ -393,6 +397,9 @@ export function MapPageView() {
     if (courtMode || precinctsOn) void reloadCourtAreas()
   }, [courtMode, precinctsOn, reloadCourtAreas])
   const precinctsShown = courtMode || precinctsOn
+  // Painted maps as a layer (#345): every map the reader can open, drawn where it is. Off until asked for, so the page reads nothing it does not show.
+  const [paintedOn, setPaintedOn] = useState(false)
+  const paintedLayer = usePaintedMapsLayer('every', paintedOn)
   // The place card's county and precinct, from the layer when it is on screen (v2.4807).
   const precinctWords = useCallback(
     (place: { lat: number; lng: number }) => (precinctsShown && courtAreasLoaded ? courtClassificationWords(classifyCourtPoint(place, courtAreas)) : null),
@@ -623,6 +630,14 @@ export function MapPageView() {
               title={precinctsShown ? 'Hide the justice precincts' : 'Draw the justice precincts the office filed — a place card then names its county and precinct'}
               onToggle={() => setPrecinctsOn((v) => !v)}
             />
+            <SectionChip
+              label="Painted maps"
+              color={PAINT_COLOR}
+              count={paintedLayer.loaded ? paintedLayer.maps.length : undefined}
+              active={paintedOn}
+              title={paintedOn ? 'Hide the painted maps' : 'Draw the painted maps: the way in to a job, and what is where. Press a line to open its map'}
+              onToggle={() => setPaintedOn((v) => !v)}
+            />
           </div>
         )}
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
@@ -749,6 +764,7 @@ export function MapPageView() {
               <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
               <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
               {precinctsShown ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
+              {paintedOn && !courtMode ? <PaintedMapsLayer maps={paintedLayer.maps} onOpen={(id) => openPaintedMap(id)} /> : null}
             </PinsMapCanvas>
           </Suspense>
         </div>
