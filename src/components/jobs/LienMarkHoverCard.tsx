@@ -4,7 +4,7 @@ import type { LienMarkCard, LienMarkCardDoor } from '../../lib/jobs/lienMarkCard
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 
 /**
- * The hover card over a Deadlines mark (v2.5531): one column per card, side by side in the
+ * The hover card over a By date mark (v2.5531): one column per card, side by side in the
  * marks' own order, each with its glyph, its title, its dated line, its facts, the jobs behind a
  * GC row's count and the board's own door. The card keeps inside its track: it slides left
  * when the mark is near the right edge, opens above the row when the list has no room below,

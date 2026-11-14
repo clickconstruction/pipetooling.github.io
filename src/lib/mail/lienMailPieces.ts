@@ -123,7 +123,7 @@ export function filingMailCostWords(pieces: ReadonlyArray<LienMailPieceRow>): st
 }
 
 /**
- * The Do now rows for the envelopes that want a person (6b, the Deliveries filter): one per piece the fold put in
+ * The To do rows for the envelopes that want a person (6b, the Deliveries filter): one per piece the fold put in
  * `mailPiecesNeedingYou`, keyed to its job through the filings it holds. `filingsByJob` is the desk's own read.
  */
 export function mailNeedsYouRows(filingsByJob: Readonly<Record<string, ReadonlyArray<{ id: string }>>>, piecesByFiling: Readonly<Record<string, ReadonlyArray<LienMailPieceRow>>>, fmt: (ymd: string) => string = (d) => d): Array<{ jobId: string; pieceId: string; who: string; words: string }> {

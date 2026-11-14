@@ -26,7 +26,7 @@ function billedJob(id: string, extra: Record<string, unknown> = {}) {
   })
 }
 
-describe('lienCalendarRows (punch list #182: the Deadlines rows, one kernel for the Pipeline and the page)', () => {
+describe('lienCalendarRows (punch list #182: the By date rows, one kernel for the Pipeline and the page)', () => {
   it('reads the clocks for the billed jobs alone, never one given up on', () => {
     const jobs = [billedJob('j1'), billedJob('j2', { collections_at: '2026-08-20T15:00:00Z', uncollectible_at: '2026-09-01T00:00:00Z' }), makeJob({ id: 'j3', status: 'working' })]
     expect(billedLienClockJobsOf(jobs)).toEqual([{ id: 'j1', customer_address_id: 'addr-1', gc_customer_id: 'gc-1' }])
@@ -43,7 +43,7 @@ describe('lienCalendarRows (punch list #182: the Deadlines rows, one kernel for 
     expect(runway!.noticeByYmd).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
-  it('shapes a Deadlines row from a billed job, skipping the paid, the given up on and the runway that says nothing', () => {
+  it('shapes a By date row from a billed job, skipping the paid, the given up on and the runway that says nothing', () => {
     // Paid in full: the bill is paid, so the runway has nothing to say.
     const paid = billedJob('j4', { revenue: 9000, payments_made: 9000, invoices: [makeInvoice({ id: 'inv-j4', job_id: 'j4', amount: 9000, status: 'paid', billed_at: '2026-08-01T12:00:00Z' })] })
     const jobs = [billedJob('j1'), billedJob('j2', { collections_at: '2026-08-20T15:00:00Z', uncollectible_at: '2026-09-01T00:00:00Z' }), makeJob({ id: 'j3', status: 'working' }), paid]

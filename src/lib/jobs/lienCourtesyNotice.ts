@@ -300,7 +300,7 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   return { ...base, state: 'due', words: `day ${day} · nothing since the packet`, reason: '' }
 }
 
-/** The states the office acts on: the Do now row and the amber footer. */
+/** The states the office acts on: the To do row and the amber footer. */
 export function courtesyIsDue(s: Pick<CourtesyStatus, 'state'>): boolean {
   return s.state === 'due'
 }

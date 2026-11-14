@@ -843,7 +843,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'lien-retainage',
           label: 'Retainage notice (§ 53.057)',
-          sublabel: 'for money the builder holds back · Lien desk → All filings → Retainage',
+          sublabel: 'for money the builder holds back · Lien desk → By paper → Retainage',
           when: 'Beside the order · 30 days after our contract ends',
           customerCan: 'Read that retainage is unpaid, and hold it back from the builder.',
           guide: 'send-lien-notices-from-the-lien-desk',
