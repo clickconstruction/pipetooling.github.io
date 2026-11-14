@@ -271,7 +271,7 @@ export function LienStepBrief({ on, brief, count, marks, timeline, whyChips, isM
 }
 
 /** The four dots and the fraction a row wears; hover, focus or a tap opens the card. */
-export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide }: { at: LienStepAt | null; ladder: LienStepLadder; card: LienStepCard; isMobile: boolean; onShow: (el: HTMLElement, card: LienStepCard) => void; onHide: () => void }) {
+export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide, compact = false }: { at: LienStepAt | null; ladder: LienStepLadder; card: LienStepCard; isMobile: boolean; onShow: (el: HTMLElement, card: LienStepCard) => void; onHide: () => void; /** The dots alone, with no fraction beside them: a phone's row, where the press beside them needs the room (punch list #352, PR 3). */ compact?: boolean }) {
   const tone = LADDER_TONE[ladder]
   const step = at?.step ?? 0
   return (
@@ -288,14 +288,14 @@ export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide }: { a
         e.stopPropagation()
         onShow(e.currentTarget, card)
       }}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: '2px 4px', margin: '-2px -4px', borderRadius: 5, font: 'inherit', color: tone.fg, cursor: 'default', minHeight: isMobile ? 28 : undefined }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: '2px 4px', margin: '-2px -4px', borderRadius: 5, font: 'inherit', color: tone.fg, cursor: 'default', minHeight: isMobile ? 40 : undefined }}
     >
       <span aria-hidden style={{ display: 'inline-flex', gap: 4 }}>
         {[1, 2, 3, 4].map((n) => (
           <i key={n} style={{ width: 7, height: 7, borderRadius: 999, display: 'inline-block', background: n <= step ? tone.fg : 'var(--border-strong)' }} />
         ))}
       </span>
-      <span style={{ fontSize: '0.72rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{at ? `${step}/4` : '—'}</span>
+      {compact && at ? null : <span style={{ fontSize: '0.72rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{at ? `${step}/4` : '—'}</span>}
     </button>
   )
 }

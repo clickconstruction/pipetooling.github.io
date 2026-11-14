@@ -18,6 +18,20 @@ describe('lienWindowNextStep', () => {
     expect(lienWindowNextStep(next({ kind: 'release' }), null).button).toEqual({ label: 'Go to the release of record', door: { to: 'tab', tab: 'release_record' } })
   })
 
+  it('an affidavit not drafted, waiting on approval or on hold is worked on the Lien desk; one held by a fact stays on the tab (v2.7187, punch list #335, row 2)', () => {
+    const desk = { label: 'Open it on the Lien desk', door: { to: 'desk', kind: 'affidavit' } }
+    const tab = { label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } }
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'to_draft' }), null).button).toEqual(desk)
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'awaiting' }), null).button).toEqual(desk)
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'held' }), null).button).toEqual(desk)
+    // The tab lists the facts with their doors, and it is where an approved affidavit is printed and recorded.
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'needs_property' }), null).button).toEqual(tab)
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'ready' }), null).button).toEqual(tab)
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: '' }), null).button).toEqual(tab)
+    // No lien attaches to public property: no day, so no countdown beside the step.
+    expect(lienWindowNextStep(next({ kind: 'affidavit', affidavitState: 'needs_property', date: '', daysLeft: null }), null).daysWords).toBe('')
+  })
+
   it('counsel’s step and a finished path have no button; a finished path shows no countdown', () => {
     expect(lienWindowNextStep(next({ kind: 'suit' }), null).button).toBeNull()
     const gone = lienWindowNextStep(next({ kind: 'lien_gone', daysLeft: -30 }), null)
