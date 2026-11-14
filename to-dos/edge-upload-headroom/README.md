@@ -2,7 +2,7 @@
 name: "Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom"
 number: 359
 group: ready
-status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · next SendPurpose off quo/send
+status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · next OverheadPartsDetailLine off overheadOfficePartsReads
 summary: >
   v2.7256 took the whole database types file out of every edge upload: dev-mcp went from 5.02 MB,
   which the deploy refused, to 4.03 MB, and the eight portals from about 4.1 MB to about 3.0 MB.
@@ -15,7 +15,7 @@ summary: >
   translations (portalI18n, 125 KB) through customerLang for one constant, and
   devMcpAffidavitDraft reaches the slim types through lienProperty for a type. The fix is to cut
   those chains, not to re-export less.
-next: PR 3 SendPurpose off quo/send.ts (−84 KB), PR 4 OverheadPartsDetailLine off overheadOfficePartsReads (−74 KB), PR 5 the two small _shared slivers (FormValues off formSchema, GC_CUSTOMER_EMAIL_FROM_NAME off gcCustomerEmails). Then, on the owner's yes, the slim types behind narrow generator-written row files (−315 KB on dev-mcp and the portals). Step 3 (the descriptions and the catalog) only if dev-mcp is still over 3.5 MB after those.
+next: PR 4 OverheadPartsDetailLine off overheadOfficePartsReads (−74 KB), PR 5 the two small _shared slivers (FormValues off formSchema, GC_CUSTOMER_EMAIL_FROM_NAME off gcCustomerEmails). Then, on the owner's yes, the slim types behind narrow generator-written row files (−315 KB on dev-mcp and the portals). Step 3 (the descriptions and the catalog) only if dev-mcp is still over 3.5 MB after those.
 size: S to read · S per cut, two or three cuts · M for the descriptions and the catalog if it comes to that
 blocker: none; it waits on dev-mcp's growth, so that a cut lands before the ceiling and not after a refused deploy
 opinion: cut the chains, never raise the ceiling, since the wall at 5 MB is Supabase's; the portals get the same cuts for free

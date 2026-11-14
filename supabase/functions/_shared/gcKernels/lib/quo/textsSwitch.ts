@@ -11,7 +11,7 @@
  * not catch. Each answers the person's own keyword, and the carriers' rules expect it. Pure, and copied to the edge
  * (`scripts/edge-kernels.mjs`).
  */
-import type { SendPurpose } from './send.ts'
+import type { SendPurpose } from '../../../../../../src/lib/quo/sendPurpose.ts'
 
 /** The `app_settings` key, as `APP_SETTINGS_KEY_MESSAGES_TEXTS_ON_V1` names it for the app. */
 export const TEXTS_SWITCH_KEY = 'messages_texts_on_v1'
