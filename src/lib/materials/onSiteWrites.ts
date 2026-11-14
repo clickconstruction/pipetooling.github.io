@@ -162,6 +162,34 @@ export function insertAlreadyLanded(error: { code?: string | null; message?: str
   return /^Key \(id\)=/.test((error.details ?? '').trim())
 }
 
+/**
+ * How a press whose rows stand alone was answered (v2.7267): the ids that landed and each refused row with the
+ * office's reason. A delivery's lines are such rows, each a Delivered row into Unsorted that owes nothing to the line
+ * before it, so a refused line never holds the lines after it. A press whose rows build on one another (a new box,
+ * then the part put in it) is still answered whole: its first refusal stops it.
+ */
+export type OnSiteRowRefusal = { id: string; message: string; code: string | null }
+export type OnSiteLanding = { rows: number; landed: string[]; refused: OnSiteRowRefusal[] }
+
+/** A landing with nothing refused: the press landed whole. */
+export function landedWhole(landing: OnSiteLanding): boolean {
+  return landing.refused.length === 0
+}
+
+/**
+ * The sentence the queue shows for a press answered row by row and not all landed: how many landed, how many were
+ * refused and the reason, once when every refused row gives the same one.
+ */
+export function onSiteLandingWords(landing: OnSiteLanding): string {
+  const n = landing.rows
+  const refused = landing.refused.length
+  const reasons = [...new Set(landing.refused.map((r) => r.message.trim()).filter(Boolean))]
+  const head = `${landing.landed.length} of ${n} landed. ${refused === 1 ? '1 was' : `${refused} were`} refused`
+  if (reasons.length === 0) return `${head}.`
+  if (reasons.length === 1) return `${head}: ${reasons[0]}`
+  return `${head}, each with its reason. The first: ${reasons[0]}`
+}
+
 /** The words a kept press goes by where the queue lists it: what was pressed, as the screen said it. */
 export function onSitePressAbout(what: string): string {
   return what.trim().replace(/\s+/g, ' ').slice(0, 120)

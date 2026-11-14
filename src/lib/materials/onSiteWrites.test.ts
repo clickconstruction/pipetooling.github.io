@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOnSiteWrites, insertAlreadyLanded, parseOnSiteWrites, type OnSiteRows, type OnSiteWrite } from './onSiteWrites'
+import { applyOnSiteWrites, insertAlreadyLanded, landedWhole, onSiteLandingWords, parseOnSiteWrites, type OnSiteRows, type OnSiteWrite } from './onSiteWrites'
 
 const empty = (): OnSiteRows => ({ places: [], containers: [], moves: [], movements: [], photos: [] })
 const AT = '2026-11-13T15:00:00.000Z'
@@ -102,5 +102,18 @@ describe('insertAlreadyLanded', () => {
   it('a refusal or no error is not a landing', () => {
     expect(insertAlreadyLanded({ code: '42501', message: 'new row violates row-level security policy' }, 'job_containers')).toBe(false)
     expect(insertAlreadyLanded(null, 'job_containers')).toBe(false)
+  })
+})
+
+describe('a press answered row by row (v2.7267)', () => {
+  it('landed whole when nothing was refused', () => {
+    expect(landedWhole({ rows: 3, landed: ['a', 'b', 'c'], refused: [] })).toBe(true)
+    expect(landedWhole({ rows: 3, landed: ['a', 'c'], refused: [{ id: 'b', message: 'no', code: '23514' }] })).toBe(false)
+  })
+  it('the queue’s sentence counts what landed and gives the reason, once when it is the same', () => {
+    expect(onSiteLandingWords({ rows: 3, landed: ['a', 'c'], refused: [{ id: 'b', message: 'new row violates check constraint "job_material_movements_quantity_check"', code: '23514' }] })).toBe('2 of 3 landed. 1 was refused: new row violates check constraint "job_material_movements_quantity_check"')
+    expect(onSiteLandingWords({ rows: 3, landed: [], refused: [{ id: 'a', message: 'Only this job’s team may add to it.', code: '42501' }, { id: 'b', message: 'Only this job’s team may add to it.', code: '42501' }, { id: 'c', message: 'Only this job’s team may add to it.', code: '42501' }] })).toBe('0 of 3 landed. 3 were refused: Only this job’s team may add to it.')
+    expect(onSiteLandingWords({ rows: 3, landed: ['a'], refused: [{ id: 'b', message: 'one reason', code: null }, { id: 'c', message: 'another', code: null }] })).toBe('1 of 3 landed. 2 were refused, each with its reason. The first: one reason')
+    expect(onSiteLandingWords({ rows: 2, landed: ['a'], refused: [{ id: 'b', message: '', code: null }] })).toBe('1 of 2 landed. 1 was refused.')
   })
 })

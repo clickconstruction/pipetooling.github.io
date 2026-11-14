@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal, flushSync } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { boxKindWords } from '../../lib/materials/editBox'
 import { boxAddressWords, boxCodeWords, boxUrl, labelPrintName, labelPrintNames, labelRows, shortenedLabelsNote } from '../../lib/materials/labels'
 import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/materials/labelsCsv'
 import { readLabelFormat, readTapeCopies, readTapePrintedDay, readTapeWidth, writeLabelFormat, writeTapeCopies, writeTapePrintedDay, writeTapeWidth } from '../../lib/materials/labelPrefs'
@@ -355,7 +356,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '3.4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '0.02em' }}>{labelPrintName(printNames, c)}</div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.4rem' }}>{jl}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{c.kind}{place ? ` · ${place}` : ''}{c.where ? ` · ${c.where}` : ''}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{boxKindWords(c.kind).toLowerCase()}{place ? ` · ${place}` : ''}{c.where ? ` · ${c.where}` : ''}</div>
                   </div>
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
                     <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />

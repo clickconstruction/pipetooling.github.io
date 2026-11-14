@@ -39,7 +39,7 @@ import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWord
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
-import { editBoxTitle } from '../../lib/materials/editBox'
+import { boxKindWords, editBoxTitle } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
@@ -161,6 +161,16 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [flowFilter, setFlowFilter] = useState<'none' | 'used' | 'due'>('none')
   /** The last thing done to a box on this screen, so the Photo press turns blue for a few minutes and the picture is named "A1 after Put in" (#209). */
   const [lastAct, setLastAct] = useState<{ containerId: string; what: string; at: number } | null>(null)
+  // The walk's line vanished under it (a fresh read dropped it, or the box lost its lines): the walk ends from an
+  // effect, never while the screen is drawn, which React refuses as a state change inside a render.
+  useEffect(() => {
+    if (view.kind !== 'count') return
+    const c = containers.find((x) => x.id === view.id)
+    if (!c || countWalkAt(view.keys, view.index, linesOf(lines, c.id))) return
+    showToast(`${c.label} counted. ${view.keys.length} ${view.keys.length === 1 ? 'line' : 'lines'}, ${view.corrected} corrected.`, 'success')
+    setLastAct({ containerId: c.id, what: 'Count', at: Date.now() })
+    setView({ kind: 'container', id: c.id })
+  }, [view, containers, lines, showToast])
   // The site map opens on the job's address, placed through the app's geocode cache, until a box is pinned.
   const addr = job?.job_address?.trim() ?? ''
   const geocodeAsk = useMemo(() => (addr ? [{ key: normalizeAddressForGeocodeKey(addr), display: addr }] : []), [addr])
@@ -262,8 +272,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       setQuery('')
       onPickJob(h.jobId)
     }
+    // `minmax(0, 1fr)` on the one track: a plain `1fr` grows to its widest child's min-content, and the place chips' row
+    // once pushed the whole column 28 px past a 375 px phone.
     return (
-      <div style={{ display: 'grid', gap: '0.75rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem' }}>
         {jobButton}
         {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
         <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-phone" idempotent />
@@ -320,7 +332,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                 {boxHits.slice(0, 8).map((c) => (
                   <button key={c.id} type="button" onClick={() => { setQuery(''); setView({ kind: 'container', id: c.id }) }} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', font: 'inherit', textAlign: 'left', minHeight: TOUCH_MIN, color: 'var(--text-strong)', padding: '0.5rem 0.75rem' }}>
                     <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span>
-                    <span style={muted}>{c.kind} · {placeName(places, c.locationId)}</span>
+                    <span style={muted}>{boxKindWords(c.kind).toLowerCase()} · {placeName(places, c.locationId)}</span>
                     <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>
                   </button>
                 ))}
@@ -343,7 +355,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                     return (
                       <button key={l.containerId} type="button" onClick={() => { setQuery(''); setView({ kind: 'container', id: c.id }) }} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', font: 'inherit', textAlign: 'left', minHeight: TOUCH_MIN, color: 'var(--text-strong)' }}>
                         <span style={{ fontSize: '1.35rem', fontWeight: 800 }}>{c.label}</span>
-                        <span style={muted}>{c.kind === 'unsorted' ? 'delivered' : c.kind}{c.where ? ` · ${c.where}` : ''}</span>
+                        <span style={muted}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}{c.where ? ` · ${c.where}` : ''}</span>
                         <span style={{ marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 800 }}>{l.onHand}</span>
                       </button>
                     )
@@ -361,7 +373,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                     <span style={{ fontSize: '1.35rem', fontWeight: 800 }}>{h.container.label}</span>
                     <span style={{ display: 'grid', minWidth: 0 }}>
                       <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.line ? h.line.partName : 'The box itself'}</span>
-                      <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : h.container.kind}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span>
+                      <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : boxKindWords(h.container.kind).toLowerCase()}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span>
                     </span>
                     {h.line ? <span style={{ marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 800 }}>{h.line.onHand}</span> : <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '1.3rem', lineHeight: 1 }}>›</span>}
                   </button>
@@ -405,7 +417,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                     <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.02em' }}>{c.label}</span>
-                      <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : c.kind}</span>
+                      <span style={{ ...muted, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>{c.kind === 'unsorted' ? 'delivered' : boxKindWords(c.kind).toLowerCase()}</span>
                       {c.where ? <span style={muted}>{c.where}</span> : null}
                     </div>
                     <div style={{ ...muted, marginTop: '0.15rem' }}>
@@ -502,10 +514,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       setLastAct({ containerId: container.id, what: 'Count', at: Date.now() })
       setView({ kind: 'container', id: container.id })
     }
-    if (!at) {
-      done(view.corrected)
-      return null
-    }
+    if (!at) return null
     const { line, index: idx } = at
     const advance = (corrected: boolean) => {
       const sum = view.corrected + (corrected ? 1 : 0)
@@ -896,7 +905,7 @@ function PickBoxSheet({ containers, places, onClose, onPick }: { containers: Con
         {matches.slice(0, 40).map((c) => (
           <button key={c.id} type="button" onClick={() => onPick(c)} style={{ ...btn, ...btnBlock, justifyContent: 'flex-start', gap: '0.6rem', fontWeight: 500 }}>
             <span style={{ fontSize: '1.15rem', fontWeight: 800 }}>{c.label}</span>
-            <span style={muted}>{c.kind} · {placeName(places, c.locationId)}</span>
+            <span style={muted}>{boxKindWords(c.kind).toLowerCase()} · {placeName(places, c.locationId)}</span>
             {c.lat != null ? <span style={{ marginLeft: 'auto', ...muted, fontWeight: 600 }}>pinned</span> : null}
           </button>
         ))}

@@ -2,16 +2,21 @@
 /**
  * A job's Deliveries panel (punch list #344, PR 8, v2.7250): the press sends the lines its button counts, as one
  * delivery, and says one sentence after the answer. A line that did not read is listed. A line with one figure asks
- * what the figure is. An invoice that landed before is asked about before it lands again.
+ * what the figure is. An invoice that landed before is asked about before it lands again. Since v2.7267 a delivery
+ * the office answered line by line keeps each refused line with its reason and sends it again under its own id.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
+type SentLine = { id: string; partName: string; quantity: number; note?: string }
+type Outcome = { kind: string; first?: boolean; message?: string; rows?: { landed: string[]; refused: Array<{ id: string; message: string; code: string | null }> } }
 const data = vi.hoisted(() => ({
   movements: [] as unknown[],
-  outcome: { kind: 'landed' } as { kind: string; first?: boolean; message?: string },
-  deliveries: [] as Array<{ source: string; lines: Array<{ partName: string; quantity: number; note?: string }> }>,
+  outcome: { kind: 'landed' } as Outcome,
+  /** An answer that reads the lines sent, for the line-by-line case; null answers with `outcome`. */
+  answer: null as null | ((lines: SentLine[]) => Outcome),
+  deliveries: [] as Array<{ source: string; lines: SentLine[] }>,
   prices: [] as Array<[string, number]>,
 }))
 const unsorted = { id: 'un', jobId: 'ja', label: 'Unsorted', kind: 'unsorted', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' }
@@ -30,9 +35,9 @@ vi.mock('../../lib/materials/onSiteStore', async (importOriginal) => ({
   loadBookPrices: async () => {},
   jobLoadState: () => ({ loaded: true, loading: false, error: null, raw: null }),
   rememberPrice: (key: string, price: number) => void data.prices.push([key, price]),
-  addDelivery: (input: { source: string; lines: Array<{ partName: string; quantity: number; note?: string }> }) => {
+  addDelivery: (input: { source: string; lines: SentLine[] }) => {
     data.deliveries.push({ source: input.source, lines: [...input.lines] })
-    return Promise.resolve(data.outcome)
+    return Promise.resolve(data.answer ? data.answer([...input.lines]) : data.outcome)
   },
 }))
 vi.mock('../../hooks/useOnSiteStore', () => ({
@@ -55,6 +60,7 @@ afterEach(() => {
   cleanup()
   data.movements = []
   data.outcome = { kind: 'landed' }
+  data.answer = null
   data.deliveries.length = 0
   data.prices.length = 0
 })
@@ -77,7 +83,9 @@ describe('a job’s Deliveries panel', () => {
     expect(addButton().textContent).toBe('Add 2 lines to Unsorted as a delivery')
     fireEvent.click(addButton())
     await waitFor(() => expect(data.deliveries).toHaveLength(1))
-    expect(data.deliveries[0]).toEqual({ source: 'INV-ZZ1', lines: [{ partName: 'ZZ test elbow', quantity: 25, note: 'ea' }, { partName: 'ZZ test wax ring', quantity: 12, note: 'ea' }] })
+    expect(data.deliveries[0]).toMatchObject({ source: 'INV-ZZ1', lines: [{ partName: 'ZZ test elbow', quantity: 25, note: 'ea' }, { partName: 'ZZ test wax ring', quantity: 12, note: 'ea' }] })
+    // Each line goes under an id of its own, minted when the lines were read (v2.7267).
+    expect(data.deliveries[0]!.lines.map((l) => typeof l.id === 'string' && l.id.length > 0)).toEqual([true, true])
     expect(await screen.findByText('2 lines from INV-ZZ1 landed in Unsorted as a delivery.')).toBeTruthy()
     expect(data.prices).toEqual([['text:zz test elbow', 4.7], ['text:zz test wax ring', 2.1]])
     // The line that did not go stays, to finish or to leave out.
@@ -135,5 +143,35 @@ describe('a job’s Deliveries panel', () => {
     expect(data.deliveries).toEqual([])
     fireEvent.click(again)
     await waitFor(() => expect(data.deliveries).toHaveLength(1))
+  })
+
+  it('refused part way, keeps the refused line with its reason and sends it again under its own id, never the landed ones (v2.7267)', async () => {
+    const CHECK = 'new row violates check constraint "job_material_movements_quantity_check"'
+    data.answer = (lines) => ({ kind: 'refused', message: `2 of 3 landed. 1 was refused: ${CHECK}`, rows: { landed: [lines[0]!.id, lines[2]!.id], refused: [{ id: lines[1]!.id, message: CHECK, code: '23514' }] } })
+    paste('Invoice ZZ1\n25 EA ZZ test elbow 4.70 117.50\n4 EA ZZ test tee 1.90 7.60\n12 EA ZZ test wax ring 2.10 25.20')
+    fireEvent.click(addButton())
+    await waitFor(() => expect(data.deliveries).toHaveLength(1))
+    const sent = data.deliveries[0]!.lines
+    const box = await screen.findByTestId('delivery-part')
+    expect(box.textContent).toContain('2 lines from INV-ZZ1 landed in Unsorted as a delivery. 1 line did not save.')
+    expect(box.textContent).toContain('It stays below with its reason. Press Add 1 line to Unsorted as a delivery to send it again. The lines that landed are not sent again.')
+    expect(screen.getByTestId('delivery-line-refused').textContent).toBe(`Did not save: ${CHECK}`)
+    // The landed lines left the table with their prices kept; the refused one stays, with no word of landing.
+    expect(screen.getAllByLabelText('Part').map((i) => (i as HTMLInputElement).value)).toEqual(['ZZ test tee'])
+    expect(addButton().textContent).toBe('Add 1 line to Unsorted as a delivery')
+    expect(data.prices).toEqual([['text:zz test elbow', 4.7], ['text:zz test wax ring', 2.1]])
+    expect(screen.queryByText(/landed in Unsorted as a delivery\.$/)).toBeNull()
+    // The job now holds the two landed rows under this press's ids: that is not a landing "before", so nothing is asked.
+    data.movements = [sent[0]!.id, sent[2]!.id].map((id) => ({ id, jobId: 'ja', partId: null, partName: 'x', manufacturer: null, quantity: 1, reason: 'delivered', fromContainerId: null, toContainerId: 'un', note: '', byUserId: 'u1', byName: 'Sam', at: '2026-11-14T15:00:00Z', source: 'INV-ZZ1', itemId: null }))
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '5' } })
+    expect(screen.queryByTestId('delivery-landed-before')).toBeNull()
+    // The second press sends the mended line alone, under the id it had, and the table clears on the landing.
+    data.answer = () => ({ kind: 'landed' })
+    fireEvent.click(addButton())
+    await waitFor(() => expect(data.deliveries).toHaveLength(2))
+    expect(data.deliveries[1]!.lines).toEqual([{ id: sent[1]!.id, partName: 'ZZ test tee', quantity: 5, note: 'ea' }])
+    expect(await screen.findByText('1 line from INV-ZZ1 landed in Unsorted as a delivery.')).toBeTruthy()
+    expect(screen.queryByTestId('delivery-part')).toBeNull()
+    expect(screen.queryAllByLabelText('Part')).toEqual([])
   })
 })

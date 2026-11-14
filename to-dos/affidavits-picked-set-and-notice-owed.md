@@ -2,7 +2,7 @@
 name: "Affidavits: print a picked set, and say why a job with a recorded notice still owes one"
 number: 353
 group: ready
-status: written 2026-11-14 from a Lien desk session · the owner picked all three doors for part 2 the same day · nothing built
+status: written 2026-11-14 from a Lien desk session · the owner picked all three doors for part 2 the same day · part 1 built 2026-11-14 as v2.7268 · part 2 next
 summary: >
   Two gaps the office hit on one property's jobs on 2026-11-14. First, the Affidavits list's two
   batch presses take every paper in their pile. Print N for notarization prints every approved
