@@ -113,8 +113,11 @@ export function lienHelpChecks(f: {
   contractorName: string
   /** The paper's month is a stand-in, from a bill or the job's creation (v2.7224): the sheet asks, on a sub job and on a job contracted with the owner alike. */
   monthStandIn?: LienStandInSource | null
+  /** The months set by hand (v2.7270, `lienAffidavitMonthsByHandCheck`): the sheet names them with the reason, and the notice check still reads each against the record. */
+  monthsByHand?: { lead: string; words: string; row: string } | null
 }): LienHelpCheck[] {
   const checks: LienHelpCheck[] = []
+  if (f.monthsByHand) checks.push({ state: 'ask', lead: f.monthsByHand.lead, words: f.monthsByHand.words, row: f.monthsByHand.row })
   const owner = f.ownerName.trim()
   checks.push({ state: 'ok', lead: 'Owner.', words: `${owner ? `${owner}. ` : ''}A private owner, not a city, a county, a school or the State.` })
   if ((f.propertyKind ?? '').trim() !== 'non_residential') {
@@ -766,7 +769,7 @@ export function lienHelpPaperFromFields(input: {
   claimWords: string
   fields: { county: string; propertyAddress: string; claimantPersonName: string; ownerName: string; ownerAddress: string; originalContractorName: string; originalContractorAddress: string; isSub?: boolean; workMonthsWords?: string; signingCounty?: string }
   /** What the desk knows of the property and the notices, for the checks; absent, the sheet keeps its list of warnings. */
-  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; noticeRow?: string; monthStandIn?: LienStandInSource | null }
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; noticeRow?: string; monthStandIn?: LienStandInSource | null; monthsByHand?: { lead: string; words: string; row: string } | null }
   /** The property's county clerk as Settings hold it; absent, the sheet names the clerk and no more. */
   clerk?: LienHelpClerk
   /** Who to ask about this job (`lienAskFor`). */
@@ -777,7 +780,7 @@ export function lienHelpPaperFromFields(input: {
   const signingCounty = signingCountyWords(f.signingCounty)
   return {
     ...(input.checked
-      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, ...(input.checked.noticeRow ? { noticeRow: input.checked.noticeRow } : {}), contractorName: f.originalContractorName, monthStandIn: input.checked.monthStandIn }) }
+      ? { checks: lienHelpChecks({ ownerName: f.ownerName, propertyKind: input.checked.propertyKind, homestead: input.checked.homestead, isSub: sub, monthsWords: f.workMonthsWords ?? '', noticeLines: input.checked.noticeLines, ...(input.checked.noticeRow ? { noticeRow: input.checked.noticeRow } : {}), contractorName: f.originalContractorName, monthStandIn: input.checked.monthStandIn, monthsByHand: input.checked.monthsByHand ?? null }) }
       : {}),
     ...(signingCounty ? { signingCounty } : {}),
     ...(input.clerk ? { clerk: input.clerk } : {}),

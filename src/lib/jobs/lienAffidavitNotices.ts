@@ -44,15 +44,20 @@ export type LienAffidavitSwornFacts = {
   lastMonth: string
   todayYmd?: string | null
   filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
+  /** The months set by hand on the job (v2.7270, `job_lien_affidavit_months`): when any, the paper swears these in place of the record's. */
+  monthsByHand?: ReadonlyArray<string> | null
 }
 
 /**
  * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the months its recorded § 53.056 notices name
  * that fall inside the job's own work span. The short form prints them in words; the notice check reads them as they
- * are (punch list #314). None on a job contracted with the owner.
+ * are (punch list #314). None on a job contracted with the owner. Months set by hand (v2.7270) stand in for the
+ * record's whole, with counsel's reason on the row that holds them.
  */
 export function lienAffidavitSwornMonths(f: LienAffidavitSwornFacts): string[] {
   if (!f.isSub) return []
+  const byHand = [...new Set((f.monthsByHand ?? []).filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort()
+  if (byHand.length > 0) return byHand
   const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
   return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
 }

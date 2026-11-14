@@ -14,7 +14,9 @@ const month = (jobId: string) => ({
 const RPC: Record<string, unknown[]> = {
   list_lien_notice_months: [month('A'), month('Z')],
   list_lien_affidavit_windows: [
-    { job_id: 'Y', last_month: '2026-08', deadline: '2026-11-15', is_sub: true, noticed: false, filed: false, open_balance: 300, customer_id: 'c1', gc_customer_id: 'gc-1', property_kind: 'commercial', has_owner: true },
+    // Inside the desk's 30-day lead from the test's 2026-10-09: since v2.7261 the desk reads 180 days and keeps a later
+    // row only on a job with a started paper, so a Nov 15 day with no draft is rightly left off.
+    { job_id: 'Y', last_month: '2026-07', deadline: '2026-10-15', is_sub: true, noticed: false, filed: false, open_balance: 300, customer_id: 'c1', gc_customer_id: 'gc-1', property_kind: 'commercial', has_owner: true },
   ],
   list_lien_retainage_windows: [
     { job_id: 'Z', retainage_held: 100, contract_ended_on: null, contract_ended_how: null, deadline: null, noticed: false, open_balance: 100, customer_id: 'c1', gc_customer_id: 'gc-1', property_kind: 'commercial', has_owner: true },
