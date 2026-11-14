@@ -98,12 +98,17 @@ Also on pass 2: "What does the now section mean to represent?" and "I don't love
 because it does not feel intuitive to a user. How can we make it more intuitive to a user?" *Now*
 was this card's own word, and its three cards each asked the reader to know what they were. So the
 section is **What's happening**, and it is three labelled rows, each a plain label at the left and
-its answer at the right: **Next on site** (the next block, who is on it), **Waiting on** (what the
+its answer at the right: **Next on site** (the day, the hours on their own line, who is on it), **Waiting on** (what the
 job waits for and from whom, in a sentence: *The office, to bill it. Nothing has happened for 6
 days.*, which is the Pipeline row's line and the bar's press said the other way round), and **Hours**
 (*No target set*, what the target is, the Set the hours press). The label says what the answer is
 before the eye reaches it, the way a form reads, and the Waiting on row names the person as well
 as the gap. The crew's window (C) drops the Hours row, since the crew do not set it.
+
+Also on pass 2, on the Next on site row: "I always want the eight a.m. to twelve p.m. to be on the
+second line." So the row is three lines, never one that wraps where it likes: the day (*Saturday,
+November 14*), then the hours on a line of their own (*8:00 AM – 12:00 PM*), then who is on it. The
+kernel hands the three lines apart; the screen never joins them with a dot.
 
 ## What the phone draws today, measured
 
