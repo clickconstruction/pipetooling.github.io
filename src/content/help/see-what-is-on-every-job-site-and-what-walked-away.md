@@ -69,6 +69,12 @@ To change an answer later, press the row on the list to open it. **Priced here**
 
 A price you accept here belongs to this site. Every device reads it, and so does the job's **Missing** table. A price older than 90 days stays and turns amber, as a parts-book price does.
 
+A press on **Worth** shows three chips over the list. **No price** lists the rows that still need one. **An old price** lists the rows on a price older than 90 days. **Left out** lists the rows set aside as not a part. Each chip shows its count.
+
+To refresh old prices, press **An old price** and then {{button:blue|Check 9 old prices one at a time}}. The window shows the price each row reads now. The window offers a bill only when the bill is newer than that price. Press the bill, or type today's price for one piece. For a parts-book part, **Open the Parts Book** leads to where the book's own price is checked.
+
+When **No price** is empty the list says *Nothing waiting on a price on this site*. Press **Show every row** to see the whole site again.
+
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
 Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
@@ -80,6 +86,8 @@ Press **Print the material location report** at the top to print the site. The [
 ## Read the row
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
+
+The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.
 
 A very large job can pass 5,000 rows in its ledger. Then History and the boxes show the newest 5,000 rows. The totals come from the database, and a line under the job's name says so.
 

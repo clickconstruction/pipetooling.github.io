@@ -43,7 +43,7 @@ export default function JobContractStrip({
   quiet = false,
 }: {
   job: JobWithDetails | null
-  /** strip = boxed line (bill modals); inline = chip + buttons only (fact row value); row = one row of View bill's paperwork card (v2.4299). */
+  /** strip = boxed line (bill modals); inline = chip + small outlined presses, the Drive link folded behind Paste a link… (the job window's fact row); row = one row of View bill's paperwork card (v2.4299). */
   variant?: 'strip' | 'inline' | 'row'
   /** Row only: another row of the card holds the move that matters, so Send contract is drawn plain. */
   quiet?: boolean
@@ -55,6 +55,8 @@ export default function JobContractStrip({
   /** The contract field (refresh, docs/recent-features/v2.3669.md): a customer who already has a contract with us — paste where it lives in Drive. */
   const [link, setLink] = useState('')
   const [filingLink, setFilingLink] = useState(false)
+  /** The job window's row keeps the field folded behind Paste a link… until it is asked for, so the row stays one line of small presses. */
+  const [linkOpen, setLinkOpen] = useState(false)
   /** v2.4301: Add the contract — file a signed paper for this job and any other job of theirs it names. */
   const [sheetOpen, setSheetOpen] = useState(false)
   /** v2.6698 (punch list #173): their paper — a contract on their form that we signed and they did not countersign. */
@@ -74,6 +76,7 @@ export default function JobContractStrip({
       const { row } = await fileSignedJobContract({ jobId: job.id, existingDraft: existing, basePayload: null, signerName: signer, signedOn: '', link, file: null, authUserId: authUser?.id ?? null })
       if (!row) throw new Error('The contract was not recorded.')
       setLink('')
+      setLinkOpen(false)
       dispatchJobContractChanged()
       await reload()
       showToast('Contract filed — the job reads signed, and nothing was sent to the customer.', 'success')
@@ -89,31 +92,52 @@ export default function JobContractStrip({
   const openPrimary = () => (coverage.kind === 'their_paper' ? setTheirOpen(true) : setModalOpen(true))
   const theirPaper = coverage.kind === 'their_paper' ? coverage.record : null
   const canRecordTheirs = coverage.kind === 'none' || coverage.kind === 'draft' || coverage.kind === 'not_needed'
-  const controls = (
-    <>
-      {variant === 'row' ? null : <JobContractChip coverage={coverage} onClick={openPrimary} />}
-      {(coverage.kind === 'signed' || coverage.kind === 'their_paper') && coverage.documentUrl ? (
-        <a href={coverage.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="contract-open-link">
-          {coverage.kind === 'their_paper' ? 'Open the paper ↗' : 'Open the contract ↗'}
-        </a>
-      ) : null}
-      {variant === 'inline' && field.show ? (
-        <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flex: '1 1 260px', minWidth: 0 }} data-testid="contract-link-field">
+  const inline = variant === 'inline'
+  // The job window's row (the owner's pick, Draft C): every press small and outlined, the main one first, nothing filled in a list of facts.
+  const mainPress =
+    coverage.kind === 'none' || coverage.kind === 'draft' ? (
+      <button type="button" style={quiet || inline ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }} onClick={() => setModalOpen(true)}>
+        {inline ? 'Send contract' : 'Send one to sign'}
+      </button>
+    ) : coverage.kind === 'sent' ? (
+      <button type="button" style={btn} onClick={() => setModalOpen(true)}>
+        Resend / manage
+      </button>
+    ) : coverage.kind === 'signed' ? (
+      <button type="button" style={btn} onClick={() => setModalOpen(true)}>
+        View record
+      </button>
+    ) : null
+  const linkPress =
+    inline && field.show ? (
+      linkOpen ? (
+        // A set width, not a growing one: the row sizes itself to its presses, and a box that grew past that pushed the press after it onto a second line.
+        <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flex: '0 1 240px', width: 240, maxWidth: '100%', minWidth: 0 }} data-testid="contract-link-field">
           <input
             type="url"
             inputMode="url"
+            autoFocus
             value={link}
             disabled={filingLink}
             onChange={(e) => setLink(e.target.value)}
+            onBlur={() => {
+              // Left empty, the box folds back into its button.
+              if (!link.trim() && !filingLink) setLinkOpen(false)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
                 void fileLink()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                e.stopPropagation()
+                setLink('')
+                setLinkOpen(false)
               }
             }}
-            placeholder="Already have their contract? Paste the Drive link…"
+            placeholder="Paste the Drive link…"
             aria-label="Link to the signed contract in Google Drive"
-            title={field.hint ?? undefined}
+            title={field.hint ?? 'Already have their contract? In Drive, Share → Copy link, then paste it here.'}
             style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: 6, border: `1px solid ${field.invalid ? 'var(--text-red-700)' : 'var(--border-strong)'}`, background: 'var(--surface)', color: 'inherit' }}
           />
           {link.trim() ? (
@@ -122,8 +146,23 @@ export default function JobContractStrip({
             </button>
           ) : null}
         </span>
+      ) : (
+        <button type="button" style={btn} onClick={() => setLinkOpen(true)} data-testid="contract-link-open" title="Already have their contract? Paste where it lives in Google Drive and the job reads signed. Nothing is sent to the customer.">
+          Paste a link…
+        </button>
+      )
+    ) : null
+  const controls = (
+    <>
+      {variant === 'row' ? null : <JobContractChip coverage={coverage} onClick={openPrimary} />}
+      {(coverage.kind === 'signed' || coverage.kind === 'their_paper') && coverage.documentUrl ? (
+        <a href={coverage.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="contract-open-link">
+          {coverage.kind === 'their_paper' ? 'Open the paper ↗' : 'Open the contract ↗'}
+        </a>
       ) : null}
-      {(coverage.kind === 'none' || coverage.kind === 'draft') && variant !== 'inline' ? (
+      {inline ? mainPress : null}
+      {linkPress}
+      {(coverage.kind === 'none' || coverage.kind === 'draft') && !inline ? (
         <button type="button" style={quiet ? btn : { ...btn, borderColor: 'var(--text-link)', color: 'var(--text-link)' }} onClick={() => setSheetOpen(true)} data-testid="contract-add-button">
           Add the contract
         </button>
@@ -138,19 +177,7 @@ export default function JobContractStrip({
           Edit the record
         </button>
       ) : null}
-      {coverage.kind === 'none' || coverage.kind === 'draft' ? (
-        <button type="button" style={quiet ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }} onClick={() => setModalOpen(true)}>
-          {variant === 'inline' ? 'Send contract' : 'Send one to sign'}
-        </button>
-      ) : coverage.kind === 'sent' ? (
-        <button type="button" style={btn} onClick={() => setModalOpen(true)}>
-          Resend / manage
-        </button>
-      ) : coverage.kind === 'signed' ? (
-        <button type="button" style={btn} onClick={() => setModalOpen(true)}>
-          View record
-        </button>
-      ) : null}
+      {inline ? null : mainPress}
       <JobContractModal
         open={modalOpen}
         onClose={() => {
@@ -187,7 +214,7 @@ export default function JobContractStrip({
       ) : null}
     </>
   )
-  if (variant === 'inline') return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>
+  if (inline) return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>
   // v2.4301: a paper filed for several jobs names them; a job with nothing on file hears of the paper its sibling jobs share.
   const myPaper = coverage.kind === 'signed' && coverage.source === 'paper' ? papers.find((pp) => pp.jobIds.includes(job.id)) : undefined
   const coversLine = myPaper ? contractCoversLine(myPaper.jobIds.map((id) => numById.get(id) ?? '')) : null

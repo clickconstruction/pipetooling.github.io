@@ -187,7 +187,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
     expect(screen.getByTestId('owner-line-marker').getAttribute('data-job')).toBe('job-978')
   })
 
-  it('saving the missing email in the banner keeps the bill amount: Make the Stripe bill gets past both checks (v2.4880)', async () => {
+  it('saving the missing email in the banner keeps the bill amount: Make the bill, send later gets past both checks (v2.4880)', async () => {
     calls.writes = []
     renderWithProviders(
       <SendRecordInvoiceModal
@@ -212,7 +212,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       expect(screen.queryByRole('group', { name: 'Customer email missing' })).toBeNull()
     })
     expect(calls.writes).toContain('jobs_ledger.update')
-    fireEvent.click(screen.getByRole('button', { name: 'Make the Stripe bill' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Make the bill, send later' }))
     // Past the amount and email checks, the stub's missing session is the first thing to stop it.
     await waitFor(() => {
       expect(screen.getByText('Not signed in')).toBeTruthy()
@@ -236,14 +236,15 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
     await waitFor(() => {
       expect(screen.getByText('Send to')).toBeTruthy()
     })
-    // The Stripe tab: the channel's caption, who is billed with their phone, and a press that says nothing goes yet.
+    // The Stripe tab: the channel's caption, who is billed with their phone, and the two presses named for their acts.
     expect(screen.getByTestId('bill-customer-channel-caption').textContent).toBe('An email with a Pay now button. They pay by card or bank on Stripe’s page.')
     expect(screen.getByTestId('bill-customer-send-to-name').textContent?.trim()).toBe('Kestrin Contracting')
     expect(screen.getByTestId('bill-customer-send-to-phone').textContent).toBe('Phone (512) 555-0142. A text can follow on the next screen.')
     const stripeBox = screen.getByTestId('bill-customer-press-box')
-    expect(within(stripeBox).getByText('When you press Make the Stripe bill')).toBeTruthy()
-    expect(within(stripeBox).getByText('Nothing goes to Kestrin Contracting yet. The next screen sends it by email or by text.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Make the Stripe bill' })).toBeTruthy()
+    expect(within(stripeBox).getByText('When you press Make the bill and email Kestrin')).toBeTruthy()
+    expect(within(stripeBox).getByText('The bill email goes now to ap@kestrin.test.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Make the bill and email Kestrin' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Make the bill, send later' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Create Stripe invoice' })).toBeNull()
 
     // The Physical tab: no pay link, one email now, and the press names who it goes to.

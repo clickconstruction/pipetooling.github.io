@@ -66,6 +66,9 @@ describe('checklistEmptyWords', () => {
     press(search)
     expect(clearSearch).toHaveBeenCalledTimes(1)
     expect(checklistManageEmptyWords({ total: 4, shown: 2, query: 'gate', forPerson: false, newTask, clearSearch })).toBeNull()
+    // A list that did not load is not an empty list (punch list #348): the error has the page, and no empty line draws.
+    expect(checklistManageEmptyWords({ total: 0, shown: 0, query: '', forPerson: false, loadFailed: true, newTask, clearSearch })).toBeNull()
+    expect(checklistManageEmptyWords({ total: 0, shown: 0, query: '', forPerson: true, loadFailed: true, newTask, clearSearch })).toBeNull()
   })
 
   it('the roadmap: Create first roadmap for an editor, the add row named for a group, Clear the search in Links', () => {

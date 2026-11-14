@@ -9,6 +9,8 @@ import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { LIEN_AFFIDAVIT_SHORT_FORM_MARK, lienAffidavitFormForItems, type LienAffidavitForm, type LienAffidavitFormItem } from './lienAffidavitForm'
+import type { LienLeaderTellResult } from './lienAffidavitApprovalTell'
+import { readEdgeFunctionErrorBody } from '../readEdgeFunctionErrorBody'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -89,6 +91,27 @@ export function leaderToldWords(result: { pushSent: number; emailSent: boolean; 
   if (result.pushSent > 0) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)}'s phone has it.`
   if (result.emailSent) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} has it by email.`
   return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} will see it on the Dashboard.`
+}
+
+/**
+ * Tell the leader of affidavits sent for his approval (punch list #305, v2.7180): one call for every paper of one
+ * press, so a batch buzzes him once with the count. The function writes the words; the client hands it each item and
+ * the last day to file. Best effort and never thrown: the papers are already sent, so a tell that fails comes back as
+ * its reason for the office to read (`lienAffidavitToldWords`). The body carries no `item_id`, so the function as it
+ * was before it learned the affidavit refuses it outright and never words an affidavit as a notice.
+ */
+export async function tellLeaderOfLienAffidavits(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>): Promise<LienLeaderTellResult | null> {
+  if (papers.length === 0) return null
+  try {
+    const { data, error } = await supabase.functions.invoke('notify-lien-approval', {
+      body: { kind: 'affidavit', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })) },
+    })
+    if (error) return { ok: false, reason: (await readEdgeFunctionErrorBody(error)) ?? formatErrorMessage(error, 'The message could not be sent.') }
+    const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null }
+    return { ok: true, told: { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null } }
+  } catch (e) {
+    return { ok: false, reason: formatErrorMessage(e, 'The message could not be sent.') }
+  }
 }
 
 /** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */

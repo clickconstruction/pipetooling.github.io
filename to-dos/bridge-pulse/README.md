@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: close
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · PRs 1 to 8 merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105 and v2.7109), each walked on clicktooling.com, read only · PR 2's migration is pushed · a final walk of the whole page found one fault of the train's own, fixed in v2.7137 · PRs 9 to 12 are built and open
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · `bridge-weekly-sheet` is redeployed and current · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,9 +12,9 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: PRs 9 to 12 in order, the bottom PR armed alone: the check on every line, the hours on a job with no percent, the Monday email without the call, the to-do's tag as its own column. Each migration is pushed right after its merge, and each PR is walked on the live site.
+next: A read of Monday 2026-11-16's email, the first the app has ever sent and the first without the call. Then the owner's first presses, each of which records. The generated types catch up with #8011, for the tag's column.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
-blocker: None. #7873, from the new task window's train, #331, changed the same window as PR 9. It merged first, and PR 9 has taken it in.
+blocker: None. The code is all on `main` and nothing is owed on the live database or the functions.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
 mockup: not required — every part was built on a spike and walked by the owner on the live page, 2026-11-12
 ---
@@ -165,6 +165,9 @@ A merge deploys the client and nothing else. These are owed by hand, each after 
 Each one follows the migration rules in `CLAUDE.md`. It opens with the lock timeout and carries a claimed
 filename. It has a page under `docs/migrations/`. It is applied with `supabase db push` from `main` alone.
 
+All three are applied, as of 2026-11-13. The column `checklist_items.source_tag` answers on the live
+database.
+
 ### Function redeploys
 
 Several Bridge kernels are copied to the edge functions. A PR that edits one runs `npm run gen:edge-kernels`
@@ -175,7 +178,9 @@ in the same PR. After its merge, `npm run check:edge-drift` names what to redepl
 - **PR 4**: the two won-rate kernels now return which bids and estimates sit behind each count.
 - **PR 7**: the kernel that names who holds a move loses half of itself.
 - **PR 11**: `bridge-weekly-sheet` again, without its call section. Dry-run it and read the mail before the
-  redeploy.
+  redeploy. It was redeployed on 2026-11-13 at 19:38 UTC, two minutes after PR 11 merged, and
+  `check:edge-drift` reads it as current. That build also carries v2.7141, which leaves out of the mail what
+  the page leaves out.
 
 ### The guide and the docs
 
@@ -227,8 +232,8 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
   office's.
 - **The pay date window and the percent window write too.** Each was opened on the spike and nothing was
   saved.
-- **Until PR 12, the check finds its to-do by a tag in the card's first link.** A person who deletes that
-  link loses the check on that line.
+- **Before PR 12, the check found its to-do by a tag in the card's first link.** A person who deleted that
+  link lost the check on that line. A card made since carries the tag in its own column.
 - **Opening the to-do from a blue check was not walked.** It needs a real tagged card, and none exists yet.
 - **Long job names are cut short in the table at narrow desk widths.** The full name is the cell's title.
 - **Other trains are near PR 8.** The pay calendar, #323, and Bills sent, #327, touch pay days and bills.
@@ -237,8 +242,9 @@ The owner was not asked about these. Each is the builder's reading. Say so if on
 
 ## Found while building, not built
 
-Two faults turned up while PRs 2 and 3 were built, and two more on the final walk of the live site. Each is
-bigger than a fix on the way or belongs to another part of the app, so each waits here.
+Two faults turned up while PRs 2 and 3 were built, two more on the final walk of the live site, and two
+more on the walk of PRs 9 to 12. Each is bigger than a fix on the way or belongs to another part of the
+app, so each waits here.
 
 - **A dev who shows ZZ test jobs loses some of them once the left-out list names anything.** Every read on
   the page takes one set of job ids. With no list, this dev's reads get no set, and every ZZ job stays. With
@@ -257,6 +263,13 @@ bigger than a fix on the way or belongs to another part of the app, so each wait
 - **The pay date window does not close with Escape.** *Write down their word* closes by its own *Cancel*
   alone. The other windows on the Bridge close with Escape. It is the app's own window and is used beyond
   the Bridge, so the fix belongs to it.
+- **New task did not close on one press of Escape when a grey check opened it.** Its own *Cancel* closed
+  it. The *Done when…* box holds the focus when the window opens this way, which may be why. It is the
+  app's own window, from #331, so the fix belongs to it.
+- **The Monday email's tiles are not the page's.** The mail still leads with *Made*, *Cash low point, 8
+  weeks* and *Slowest step*. The page has shown the cash and accrual balances with their runway since PR 6.
+  The default above kept the rest of the email as it was. Whether the mail follows the page is the owner's
+  call.
 
 ## Where it stands
 
@@ -270,17 +283,48 @@ page matches what the owner approved on the spike, short of PRs 9 and 10. It fou
 own, fixed in v2.7137: on a phone the name that leads each line was a press only 16 px tall. It found two
 more that belong elsewhere, listed under *Found while building, not built*.
 
-PRs 9 to 12 are built and open, each on the one before it. PR 9 has taken in #7873, which changed the same
-window and merged first. PR 11's migration drops the two functions behind the old Needs you line. PR 12's adds the tag's column. Each
-is pushed right after its merge, and PR 11's comes with a small PR that takes the two functions out of the
-generated types.
+PRs 9 to 12 reached `main` the same day, one at a time, each merged with `main` and armed alone: v2.7112
+(9), v2.7113 (10), v2.7115 (11) and v2.7117 (12). So did v2.7137.
+
+The four were walked on the live site that evening, read only, at 1400 px in light and dark and at 375 px.
+Every write the page tried was refused in the walk's browser, and nothing was sent or saved. No fault was
+found.
+
+- **The check.** Every line on the card has a grey check, 36 px at a desk and 44 px on a phone. A press
+  opens New task already written: the title for that one thing, one link, its *Done when…* line, and no
+  photo asked. It was closed with nothing sent.
+- **The check's colours.** The to-do reads were answered with made-up cards in the walk's browser. Blue,
+  amber and the finished line drew right in light, in dark and on a phone. A blue check opens its window,
+  which closes with Escape.
+- **The hours.** Each job with no percent shows its hours and who worked them. The press opens the window by
+  person and by day, with *Set the percent* at its foot. It fits on a phone.
+- **The Monday email.** A dry run of `bridge-weekly-sheet` answered with nothing unread. The mail shows
+  *What to do now* with the page's own lead, line and moves, one button, and the left-out line. It says
+  nothing of a call. Its cash low point equals the page's.
+- **The tag.** The page's reads by `source_tag` answer on the live database.
+
+The walk also saw two things that are not faults of these PRs, listed under *Found while building, not
+built*.
+
+PR 11 landed after v2.7141, which makes the Monday email leave out what the page leaves out. The two met
+in the email's reads, and PR 11 was resolved over it. The email shows *What to do now* and still reads the
+left-out list, and its tests hold both.
+
+PR 11's migration is pushed: the two functions behind the old Needs you line are gone from the live
+database. PR 12's is pushed too, so a new to-do carries its tag in its own column. `bridge-weekly-sheet` is
+redeployed, and `check:edge-drift` reads every function as current. The generated types no longer list the
+two dropped functions, since #7989. The tag's column reaches them with #8011.
 
 Not walked on purpose, because each one records. The first of each is the owner's or the office's:
 
 - The first save of the left-out list.
 - The first *Mark paid* on a supply house's bill.
 - The first pay date or percent saved from *What to do now*.
-- The first to-do handed out from a grey check, once PR 9 is live.
+- The first to-do handed out from a grey check. PR 9 is live, so this can be pressed now. It is also the
+  first write of the tag into its own column. Opening that to-do from its blue check has never been walked
+  either, since no tagged card exists until then.
+- The first percent saved from the hours window's *Set the percent*.
+- The Monday email's first send. The switch is on and no send is on record, so 2026-11-16 is the first.
 
 Still open, and not the builder's to answer:
 

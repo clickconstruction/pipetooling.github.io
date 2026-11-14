@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
-import PayCalendarModal, { type PayCalendarJob } from '../components/customers/PayCalendarModal'
+import PayCalendarModal, { type PayCalendarInitial, type PayCalendarJob, type PayCalendarJobToBe } from '../components/customers/PayCalendarModal'
 
 /**
  * App-level opener for the Pay calendar window (punch list #323), the
@@ -21,8 +21,10 @@ export type PayCalendarOpenOptions = {
   onSaved?: () => void
   /** The job the press sits on (PR 4), so the window can set a calendar for that job alone. */
   job?: PayCalendarJob | null
-  /** A clause and its words to start the form with when nothing is stored yet (PR 7): the paper the press sat on. */
-  initial?: { clause?: string; words?: string } | null
+  /** A job New Job has not made yet: the window can be for it alone and hands the calendar back instead of saving. */
+  jobToBe?: PayCalendarJobToBe | null
+  /** A clause and its words to start the form with when nothing is stored yet (PR 7): the paper the press sat on. Or whole terms an estimator read. */
+  initial?: PayCalendarInitial | null
   /** The layer to draw at, for an opener that is itself a window above the usual one (PR 7). */
   zIndex?: number
 }
@@ -30,12 +32,12 @@ export type PayCalendarOpenOptions = {
 const PayCalendarModalContext = createContext<PayCalendarModalContextValue | null>(null)
 
 export function PayCalendarModalProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState<{ id: string; name: string; job: PayCalendarJob | null; initial: PayCalendarOpenOptions['initial']; zIndex: number | undefined; instanceKey: number } | null>(null)
+  const [open, setOpen] = useState<{ id: string; name: string; job: PayCalendarJob | null; jobToBe: PayCalendarJobToBe | null; initial: PayCalendarOpenOptions['initial']; zIndex: number | undefined; instanceKey: number } | null>(null)
   const onSavedRef = useRef<(() => void) | undefined>(undefined)
 
   const openPayCalendar = useCallback((payer: { id: string; name: string }, options?: PayCalendarOpenOptions) => {
     onSavedRef.current = options?.onSaved
-    setOpen((prev) => ({ id: payer.id, name: payer.name, job: options?.job ?? null, initial: options?.initial ?? null, zIndex: options?.zIndex, instanceKey: (prev?.instanceKey ?? 0) + 1 }))
+    setOpen((prev) => ({ id: payer.id, name: payer.name, job: options?.job ?? null, jobToBe: options?.jobToBe ?? null, initial: options?.initial ?? null, zIndex: options?.zIndex, instanceKey: (prev?.instanceKey ?? 0) + 1 }))
   }, [])
 
   const closePayCalendar = useCallback(() => {
@@ -52,6 +54,7 @@ export function PayCalendarModalProvider({ children }: { children: ReactNode }) 
           payerId={open.id}
           payerName={open.name}
           job={open.job}
+          jobToBe={open.jobToBe}
           initial={open.initial}
           zIndex={open.zIndex}
           onClose={closePayCalendar}

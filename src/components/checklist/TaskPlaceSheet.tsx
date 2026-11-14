@@ -1,6 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { useVisualViewportBox } from '../../hooks/useVisualViewportBox'
+import { visibleBand } from '../../lib/visibleBand'
 import { requestMyLocation, type MyFix } from '../../lib/materials/myLocation'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ADD_TASK_PICKER_Z } from '../../lib/windowLayers'
@@ -41,6 +43,9 @@ type Props = {
  * asks for the ring instead of being taken (`taskPlaceFixWords`).
  */
 export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TASK_PICKER_Z }: Props) {
+  // The sheet fills the part of the page that shows (punch list #348): with the keyboard on the place's name an iPhone
+  // slides the page, and a sheet pinned to the page lost its title and Cancel off the top of the screen.
+  const shows = visibleBand(useVisualViewportBox())
   const [ring, setRing] = useState<TaskPlacePoint | null>(null)
   const [fly, setFly] = useState<TaskPlacePoint | null>(null)
   const [fix, setFix] = useState<MyFix | null>(null)
@@ -103,7 +108,7 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
   return createPortal(
     <div
       data-task-place-sheet
-      style={{ position: 'fixed', inset: 0, zIndex, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
+      style={{ position: 'fixed', ...(shows ? { top: shows.top, left: 0, right: 0, height: shows.height } : { inset: 0 }), zIndex, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
       onClick={(e) => {
         // The Add window sits behind: this press closes the sheet alone.
         e.stopPropagation()
@@ -123,7 +128,8 @@ export function TaskPlaceSheet({ start, initial, onUse, onClose, zIndex = ADD_TA
             Cancel
           </button>
         </div>
-        <div style={{ flex: '1 1 auto', minHeight: 220 }}>
+        {/* The map asks for 220 px and gives way down to 60 when the keyboard leaves less, so the name and Use this place stay on screen. */}
+        <div style={{ flex: '1 1 220px', minHeight: 60 }}>
           <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
             <OnSiteMapLazy
               center={mapStart}
