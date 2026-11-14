@@ -5,6 +5,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
 import { PAINTED_MAP_NAME_MAX, PAINTED_MAP_UNNAMED, PAINTED_MAP_WORDS_MAX, cleanPaintedText } from '../../lib/paintedMap/paintedMap'
 import { WALK_ASK_WORDS, WALK_BEFORE_WORDS } from '../../lib/paintedMap/paintedWalkWords'
 import type { PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
@@ -25,9 +26,15 @@ const chipOn: CSSProperties = { ...chip, background: '#2563eb', borderColor: '#2
 const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%' }
 const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }
 
+const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32, textAlign: 'left' }
 const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
-export function PaintAMapStartSheet({ home, onStart, onClose }: Props) {
+export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
+  // Opened from the header's search there is no job yet: the painter may pick one here, or paint first and put it on a job later.
+  const homeless = !given.jobId && !given.developmentId
+  const [picked, setPicked] = useState<{ jobId: string; label: string; address: string | null } | null>(null)
+  const [picking, setPicking] = useState(false)
+  const home: PaintedMapHome = picked ? { ...given, jobId: picked.jobId, label: picked.label, address: picked.address } : given
   const [name, setName] = useState('')
   const [words, setWords] = useState('')
   // A job in a development: the map is for the job unless the painter says it is for the whole site.
@@ -108,6 +115,34 @@ export function PaintAMapStartSheet({ home, onStart, onClose }: Props) {
             ) : (
               <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>It is on no job yet. It stays yours and the office’s until it is put on one.</span>
             )}
+            {homeless ? (
+              picking ? (
+                <div data-paint-a-map-job-pick style={{ display: 'grid', gap: '0.4rem' }}>
+                  <CostBatchJobPicker
+                    title="Which job is it for?"
+                    autoFocus
+                    onPick={(job) => {
+                      setPicked({ jobId: job.id, label: [job.hcp_number, job.job_name].filter(Boolean).join(' · ') || 'The job', address: job.job_address || null })
+                      setPicking(false)
+                    }}
+                  />
+                  <button type="button" style={quietPress} onClick={() => setPicking(false)}>
+                    Leave it on no job
+                  </button>
+                </div>
+              ) : (
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem' }}>
+                  <button type="button" data-paint-a-map-pick-job style={quietPress} onClick={() => setPicking(true)}>
+                    {picked ? 'Pick another job' : 'Pick the job it is for'}
+                  </button>
+                  {picked ? (
+                    <button type="button" style={quietPress} onClick={() => setPicked(null)}>
+                      Leave it on no job
+                    </button>
+                  ) : null}
+                </span>
+              )
+            ) : null}
             {both && forSite ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>It will show on every job in the development.</span> : null}
           </div>
           {canWalk ? (

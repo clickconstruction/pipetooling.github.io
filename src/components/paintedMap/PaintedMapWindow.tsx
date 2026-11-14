@@ -63,6 +63,7 @@ import {
   removePaintedPlacePhotoFile,
   savePaintedLineMeasure,
   savePaintedLineShape,
+  putPaintedMapOnJob,
   savePaintedMapWords,
   savePaintedPlace,
   uploadPaintedPlacePhoto,
@@ -77,6 +78,7 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasDot, PaintedCanvasDraft } from './PaintedMapCanvas'
+import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
@@ -190,6 +192,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [finding, setFinding] = useState(false)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
+  // A map on no job is found only by its name: its maker or the office can put it on a job.
+  const [homing, setHoming] = useState(false)
   const [confirm, setConfirm] = useState<{ kind: 'line'; line: PaintedLine } | { kind: 'place'; place: PaintedPlace } | { kind: 'map' } | { kind: 'leave' } | { kind: 'stop' } | { kind: 'walk' } | { kind: 'leaveWalk' } | { kind: 'leaveOut'; index: number } | null>(null)
 
   // Somewhere to open: only a map with nothing on it needs the address looked up. A saved map with a line or a place
@@ -579,6 +583,21 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     }
     setWhole((w) => (w ? { ...w, map: res.value } : w))
     setRenaming(null)
+    paintedMapsChanged()
+  }
+
+  const putOnJob = async (jobId: string) => {
+    if (!map || busy) return
+    setBusy(true)
+    setError(null)
+    const res = await putPaintedMapOnJob(map.id, jobId)
+    setBusy(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setWhole((w) => (w ? { ...w, map: res.value } : w))
+    setHoming(false)
     paintedMapsChanged()
   }
 
@@ -978,6 +997,20 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                           </div>
                         )
                       })}
+                    </div>
+                  ) : null}
+
+                  {canChangeMap && saved && !map.jobId && !map.developmentId ? (
+                    <div data-painted-no-home style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+                      <span>This map is on no job. Only you and the office can open it.</span>
+                      {homing ? (
+                        <>
+                          <CostBatchJobPicker title="Which job is it for?" autoFocus onPick={(job) => void putOnJob(job.id)} />
+                          <button type="button" style={quiet} onClick={() => setHoming(false)}>Leave it on no job</button>
+                        </>
+                      ) : (
+                        <button type="button" data-painted-put-on-job style={{ ...quiet, justifySelf: 'start' }} disabled={busy} onClick={() => setHoming(true)}>Put it on a job…</button>
+                      )}
                     </div>
                   ) : null}
 
