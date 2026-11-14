@@ -4276,6 +4276,15 @@ body.my-time-boundary-dragging {
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
 /* The Lien window on a phone (v2.4422): a record sheet is drawn over the card, so the card holds its full height while one is up, however short the paper under it. */
 [data-lien-window-card]:has([data-lien-record-sheet]) { height: min(92vh, 100%); }
+/* A phone (punch list #352, PR 7): once the paper is scrolled the Lien window's header keeps its title line alone (`lienWindowHeadFolded`); the rest is hidden, not unmounted. */
+[data-lien-window-head][data-folded="yes"] > :not(:first-child) { display: none !important; }
+/* …and the run window fills the screen, with presses a thumb tall and fields in 16 px words, the size at which an iPhone leaves the page unzoomed. */
+@media (max-width: 640px) {
+  .lienRunWindow { width: 100vw !important; max-height: calc(100dvh - var(--app-top-chrome, 0px)) !important; border-radius: 0 !important; }
+  .lienRunWindow button { min-height: 40px; }
+  .lienRunWindow button[data-testid="run-explainer-toggle"] { min-width: 40px; }
+  .lienRunWindow input:not([type="checkbox"]):not([type="radio"]), .lienRunWindow select, .lienRunWindow textarea { font-size: 16px !important; min-height: 40px; }
+}
 /* The Lien desk's card does the same for its Already mailed sheet (v2.4446); its own max-height still caps it. */
 [data-lien-desk-panel]:has([data-lien-record-sheet]) { height: 100%; }
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
