@@ -92,7 +92,7 @@
   .press.green { background: var(--green); border-color: var(--green); color: #fff; }
   .press.amber { background: var(--amber-bg); border-color: #F59E0B; color: var(--amber-ink); }
   .who { display: grid; gap: 6px; margin-top: 6px; }
-  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
   .who .press { justify-content: flex-start; min-width: 0; }
   .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
   .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
@@ -380,7 +380,7 @@
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span></div>
           <div class="who">
-            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span></div>
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
             <div class="row"><span class="press">✉ <span class="v">office@ridgewaybuilders.example</span><span class="verb">EMAIL</span></span><span class="press sq">⧉</span></div>
           </div>
           <div class="pressrow" style="margin:6px 0 0"><span class="press" style="color:var(--link)">🌐 Portal</span><span class="press" style="color:var(--link)">▲ Files</span><span class="press" style="color:var(--muted)">🖼 Photos<span style="font-size:11px;font-weight:600">· set</span></span></div>
@@ -415,7 +415,7 @@
     </div>
     <div class="verdict"><b>What changes, on top of A</b>
       <ul>
-        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside them, so a glance says whether it is the right person, then the customer's three links as presses with their words: Portal, Files, Photos), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours), then <b>the thread</b>: three labelled rows (Last word, Their word, Our word, the live summary's own lines), the newest two messages with the customer as bubbles, theirs left and ours right, the door to the whole thread, and Reply by text and Note.</li>
+        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside the number and Copy beside the address, so a glance says whether it is the right person, then the customer's three links as presses with their words: Portal, Files, Photos), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours), then <b>the thread</b>: three labelled rows (Last word, Their word, Our word, the live summary's own lines), the newest two messages with the customer as bubbles, theirs left and ours right, the door to the whole thread, and Reply by text and Note.</li>
         <li>Each part is a <b>section with a title of its own</b>: Where, Photos, Who, What's happening, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
         <li><b>Photos</b> is a section of its own right after Where, the banner from A under its title, so the pictures are the second thing a thumb meets. Everything else folds under More on this job, each with its count: Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
         <li>The first screen is one screen. The scroll ends near 1,300 px with every fold closed.</li>
@@ -450,7 +450,7 @@
           <div class="sect">Who</div>
           <div class="cust" style="margin-top:2px"><span><b>Ridgeway Builders</b></span><span class="icons">📸</span></div>
           <div class="who">
-            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span></div>
+            <div class="row"><span class="press">📞 <span class="v">(512) 555-0142</span><span class="verb">CALL</span></span><span class="press sq">💬</span><span class="press sq">⧉</span></div>
             <div class="row"><span class="press">✉ <span class="v">office@ridgewaybuilders.example</span><span class="verb">EMAIL</span></span><span class="press sq">⧉</span></div>
           </div>
 
