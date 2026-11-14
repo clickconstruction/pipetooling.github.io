@@ -1175,6 +1175,9 @@ export default function DetailJobModal({
   // Punch list #30, PR 2b: the tabbed window on a phone — status chip in the title, the three
   // tiles under the customer, the street view folded behind a link, Arrived / Leaving to the crew.
   const phonePane = paneMode && narrowViewport
+  // Punch list #355 D (v2.7281): on a phone, every tab but Job draws the band as the Street View banner alone, 90 px;
+  // Paint a map, the photo banner and the checklist strip stay on the Job tab's Where and Photos.
+  const bandSlim = phonePane && paneBodyHidden
   // Punch list #189, PR 4: the crew's plain window on a phone — the dialog becomes a column whose
   // body scrolls under a bar (Arrived or Leaving · Leave report · Note). In either window on a phone
   // the composer's Arrived / Leaving chips move onto the bar (the tabbed window's, for a viewer on
@@ -2277,7 +2280,8 @@ export default function DetailJobModal({
             style={{
               position: 'relative',
               width: '100%',
-              height: 110,
+              height: bandSlim ? 90 : 110,
+              marginBottom: bandSlim ? '0.6rem' : 0,
               marginTop: '0.75rem',
               borderRadius: 6,
               border: '1px solid var(--border)',
@@ -2389,7 +2393,7 @@ export default function DetailJobModal({
         {/* Painted maps (punch list #345): the way in and what is where, as lines under the address. A painted map is the
             address, continued, so it sits in this band and shows on every tab. */}
         {open && jobId ? (
-          <div style={{ marginTop: '0.6rem' }}>
+          <div style={bandSlim ? { display: 'none' } : { marginTop: '0.6rem' }}>
             <JobPaintedMapsStrip
               jobId={jobId}
               addCentred={phonePane}
@@ -2404,7 +2408,7 @@ export default function DetailJobModal({
         {/* A job's Drive photos (punch list #164, PR 5): the strip under the address, read from the customer's folder and
             never copied out; a job with no folder link says so with the door to set it. */}
         {open && jobId ? (
-          <div style={{ marginTop: '0.75rem' }}>
+          <div style={bandSlim ? { display: 'none' } : { marginTop: '0.75rem' }}>
             <JobPhotosStrip
               jobId={jobId}
               banner={phonePane}
@@ -2427,7 +2431,7 @@ export default function DetailJobModal({
         {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, under the address, each
             opening its sheet. Nothing is drawn until the office types the questions. */}
         {open && jobId ? (
-          <div style={{ marginTop: '0.75rem' }}>
+          <div style={bandSlim ? { display: 'none' } : { marginTop: '0.75rem' }}>
             <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} openStage={openStageChecklist} />
           </div>
         ) : null}
