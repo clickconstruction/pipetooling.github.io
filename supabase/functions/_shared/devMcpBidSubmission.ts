@@ -19,6 +19,12 @@
 // and the note is the row plan_activity_note writes. One step has no door: a file already in the company's Shared Drive
 // is copied with Drive's own copy by the service account, so a large paper never passes through the function.
 //
+// Which link (0.83.0, v2.7186; the owner, 2026-11-13: "Use the folder"): the column holds one link and a bid can hold
+// several papers, a revision or a second option. While Sent by us holds this paper alone, the link is the paper. Once
+// it holds more, the link is the Sent by us folder itself, where every paper sent is a click away. A link that already
+// points into the bid's own Sent by us, a paper there or the folder, moves without replace: true, since nothing is
+// lost; a link to anywhere else still needs it.
+//
 // The plan commits to the bid, the link it carries, the folder as it stands, the file's name, size and Drive's own
 // checksums, and what Sent by us already holds; never to a clock. Pure but for the reads, which come in through two
 // small interfaces (the seat's Reader, as the dev under RLS, and DriveGet over the service account's token), so the
@@ -618,6 +624,9 @@ function linkedFileId(link: string | null): string | null {
 
 export type DryRun = { ok: true; reply: Json } | { ok: false; refused: string }
 
+/** What the link points at: the paper while Sent by us holds it alone, the Sent by us folder once it holds more. */
+export type SubmissionLinkIs = 'paper' | 'folder'
+
 /**
  * What the plan says and what the hash commits to: the bid and the link it carries, the paper's facts as Drive states
  * them, the folder as it stands, how the paper reaches Sent by us, what is there already, the link after and the line
@@ -654,33 +663,46 @@ export function bidSubmissionDryRun(p: BidSubmissionPayload, world: SubmissionWo
     if (f.size < 1) return refuse(`${f.name} is empty in Drive (0 bytes); there is no paper in it to file.`)
   }
 
-  // The link: one column, one link.
+  // The link: one column, one link. The paper while Sent by us holds it alone, the folder once it holds more (0.83.0).
   const filedId = inSent ? f.id : (twin?.id ?? null)
+  const others = world.sent.papers.filter((s) => s.id !== filedId)
+  const several = others.length > 0 || world.sent.capped
+  const linkIs: SubmissionLinkIs = several ? 'folder' : 'paper'
+  const after = several ? driveViewUrl(world.sent.id!, DRIVE_FOLDER_MIME) : filedId ? driveViewUrl(filedId) : null
   const before = world.bid.link
   const beforeId = linkedFileId(before)
-  if (filedId && beforeId === filedId) return refuse(`${world.bid.label} already carries this paper as its submission link (${before}), and the file is in ${SUBMISSION_LANDING_WORDS} of its project folder. There is nothing to file or to link.`)
-  if (before && !p.replace) return refuse(`${world.bid.label} already has a submission link: ${before}. The column holds one link. Plan again with replace: true to make ${f.name} the link in its place; the paper it points to now stays where it is in Drive.`)
+  // A link into the bid's own Sent by us, a paper there or the folder: moving it loses nothing, so it asks for no replace.
+  const ours = beforeId != null && (beforeId === world.sent.id || world.sent.papers.some((s) => s.id === beforeId))
+  if (how === 'already_there' && before && after && beforeId === linkedFileId(after)) {
+    return refuse(
+      several
+        ? `${world.bid.label} already carries its ${SUBMISSION_LANDING_WORDS} folder as its submission link (${before}), and this paper is in it. There is nothing to file or to link.`
+        : `${world.bid.label} already carries this paper as its submission link (${before}), and the file is in ${SUBMISSION_LANDING_WORDS} of its project folder. There is nothing to file or to link.`,
+    )
+  }
+  if (before && !ours && !p.replace) return refuse(`${world.bid.label} already has a submission link: ${before}. The column holds one link, and this one points outside the bid's ${SUBMISSION_LANDING_WORDS} folder. Plan again with replace: true to put ${several ? 'the folder' : f.name} in its place; what it points to now stays where it is in Drive.`)
+  const replaces = Boolean(before) && !ours
+  // The bid carries the link already (its folder, with another paper going in): the bid's row is not written.
+  const sameLink = after != null && beforeId != null && beforeId === linkedFileId(after)
 
   const folderName = folder.name || 'the bid’s project folder'
   const lands = `${SUBMISSION_LANDING_WORDS} of ${folderName}`
-  const others = world.sent.papers.filter((s) => s.id !== filedId)
   const sameName = others.filter((s) => s.name === f.name)
   const warnings: string[] = []
-  if (how !== 'already_there' && sameName.length) warnings.push(`${SUBMISSION_LANDING_WORDS} already holds ${sameName.length === 1 ? 'a file' : `${sameName.length} files`} named ${f.name} with other bytes (${sameName.map((s) => s.id).join(', ')}): Drive keeps both under the one name, and this one becomes the link.`)
+  if (how !== 'already_there' && sameName.length) warnings.push(`${SUBMISSION_LANDING_WORDS} already holds ${sameName.length === 1 ? 'a file' : `${sameName.length} files`} named ${f.name} with other bytes (${sameName.map((s) => s.id).join(', ')}): Drive keeps both under the one name.`)
   if (world.sent.capped) warnings.push(`${SUBMISSION_LANDING_WORDS} holds more than the ${world.sent.papers.length} papers read; a paper past them with the same bytes would not be seen as already filed.`)
-  if (p.replace && !before) warnings.push('replace was given and the bid carries no submission link: nothing is replaced.')
+  if (p.replace && !replaces) warnings.push(before ? `replace was given and the bid's link already points into its own ${SUBMISSION_LANDING_WORDS} folder: nothing is replaced.` : 'replace was given and the bid carries no submission link: nothing is replaced.')
   if (how === 'upload') warnings.push(`${f.name} is not in the company's Shared Drive, so the copy is a read on the server and an upload through drive-link's put, ${SUBMISSION_UPLOAD_MAX_BYTES / 1024 / 1024} MB at most; the copy's modified time is the apply's, not the paper's.`)
 
   const howWords =
     how === 'already_there'
       ? inSent
         ? `Nothing is copied: ${f.name} is already in ${lands}. Only the link and the note are written.`
-        : `Nothing is copied: the same bytes are already in ${lands} as ${twin!.id} (the same name, size and md5). That file becomes the link.`
+        : `Nothing is copied: the same bytes are already in ${lands} as ${twin!.id} (the same name, size and md5). Only the link and the note are written.`
       : how === 'copy'
         ? `Drive's own copy: ${f.name} (${f.mime}, ${sizeWords(f.size)}) is in the company's Shared Drive, so the service account copies it into ${lands} and no byte passes through the server. The original stays where it is.`
         : `Read and uploaded: the server reads ${f.name} (${f.mime}, ${sizeWords(f.size)}) from Drive, checks the bytes against what this plan saw, and uploads them into ${lands} through drive-link's put as you. The original stays where it is.`
-  const after = filedId ? driveViewUrl(filedId) : null
-  const note = submissionNoteText(f.name, before && p.replace ? before : null)
+  const note = submissionNoteText(f.name, replaces ? before : null, several ? others.length : 0)
 
   const reply: Json = {
     action: 'file',
@@ -699,13 +721,16 @@ export function bidSubmissionDryRun(p: BidSubmissionPayload, world: SubmissionWo
       exists: world.sent.id != null,
       holds: others.length,
       papers: others.slice(0, SUBMISSION_SENT_LISTED).map((s) => ({ id: s.id, name: s.name, modified_time: s.modified })),
-      ...(others.length ? { one_link: `bids.${SUBMISSION_LINK_COLUMN} holds one link and the folder holds ${others.length === 1 ? 'another paper' : `${others.length} other papers`}. This paper, the newest filed, becomes the link; the rest stay in the folder, a click away from it.` } : {}),
+      ...(several ? { one_link: `bids.${SUBMISSION_LINK_COLUMN} holds one link and the folder holds ${others.length === 1 ? 'another paper' : `${world.sent.capped ? 'more than ' : ''}${others.length} other papers`}, so the link is the ${SUBMISSION_LANDING_WORDS} folder itself, where every paper sent is a click away. The folder is the app's home for everything sent on this bid, and on a job that shares its folder.` } : {}),
     },
     link: {
       column: SUBMISSION_LINK_COLUMN,
       before,
+      // 'paper' while Sent by us holds this paper alone, 'folder' once it holds more.
+      is: linkIs,
       after: after ?? 'the filed copy’s link (https://drive.google.com/file/d/<its id>/view), known once the apply has filed it',
-      replaces: Boolean(before),
+      changes: !sameLink,
+      replaces,
       reads: 'the Bid Board’s Submission chip and the Files window’s Submission link, as a pasted link reads',
     },
     note: { lands: `Bids → Bid Board → ${world.bid.label}'s Notes, as a note by you, stamped when the apply writes it`, text: note },
@@ -720,9 +745,14 @@ export function bidSubmissionDryRun(p: BidSubmissionPayload, world: SubmissionWo
   return { ok: true, reply }
 }
 
-/** The line the bid's Notes get, as plan_activity_note writes one. No clock and no id of the copy: the plan shows it whole. */
-export function submissionNoteText(fileName: string, replaced: string | null): string {
-  return `Sent paper filed from Drive: “${fileName}” is in ${SUBMISSION_LANDING_WORDS} of the bid’s project folder and is the bid’s submission link.${replaced ? ` It takes the place of ${replaced}.` : ''}`
+/**
+ * The line the bid's Notes get, as plan_activity_note writes one. No clock and no id of the copy: the plan shows it whole.
+ * `others` is how many other papers Sent by us holds: with any, the link is the folder and the line says so.
+ */
+export function submissionNoteText(fileName: string, replaced: string | null, others = 0): string {
+  const where = `Sent paper filed from Drive: “${fileName}” is in ${SUBMISSION_LANDING_WORDS} of the bid’s project folder`
+  const link = others > 0 ? `, beside ${others === 1 ? 'one other paper' : `${others} other papers`}. The bid’s submission link is that folder.` : ' and is the bid’s submission link.'
+  return `${where}${link}${replaced ? ` It takes the place of ${replaced}.` : ''}`
 }
 
 /** The row the note's insert sends: plan_activity_note's own for a bid (the Bid Board's Notes popover, no contact method). `now` is the apply's clock. */
@@ -738,6 +768,12 @@ export function submissionNoteRow(bidId: string, text: string, me: { userId: str
 export function submissionLinkWrite(bidId: string, before: string | null, after: string): { query: string; body: Json } {
   const guard = before && before.trim() ? `${SUBMISSION_LINK_COLUMN}=eq.${encodeURIComponent(before)}` : `or=(${SUBMISSION_LINK_COLUMN}.is.null,${SUBMISSION_LINK_COLUMN}.eq.)`
   return { query: `id=eq.${bidId}&${guard}&select=id,${SUBMISSION_LINK_COLUMN}`, body: { [SUBMISSION_LINK_COLUMN]: after } }
+}
+
+/** The link the apply writes: the plan's own for the folder, the filed copy's for a lone paper. */
+export function submissionLinkAfter(reply: Json, filedId: string): { is: SubmissionLinkIs; url: string } {
+  const link = obj(reply.link) ?? {}
+  return link.is === 'folder' ? { is: 'folder', url: str(link.after) } : { is: 'paper', url: driveViewUrl(filedId) }
 }
 
 /** Why bytes read at the apply are not the paper the plan saw, or null when they are. */
@@ -762,7 +798,8 @@ export type SubmissionOutcome = {
   filed: { id: string; url: string; how: SubmissionHow; md5: string | null }
   /** The project folder: made by this apply, with its link, or there before. */
   folder: { made: boolean; url: string | null }
-  link: { set: boolean; before: string | null; after: string; why?: string | null }
+  /** `unchanged`: the bid already carried this link (its Sent by us folder), so nothing was written to the bid. */
+  link: { set: boolean; before: string | null; after: string; is: SubmissionLinkIs; unchanged?: boolean; why?: string | null }
   note: { saved: boolean; id?: string | null; why?: string | null }
 }
 
@@ -783,7 +820,14 @@ export function bidSubmissionAppliedWords(reply: Json, outcome: SubmissionOutcom
     drive_file_id: outcome.filed.id,
     url: outcome.filed.url,
     project_folder: { made: outcome.folder.made, url: outcome.folder.url },
-    link: { column: SUBMISSION_LINK_COLUMN, before: outcome.link.before, after: outcome.link.set ? outcome.link.after : outcome.link.before, set: outcome.link.set },
+    link: {
+      column: SUBMISSION_LINK_COLUMN,
+      before: outcome.link.before,
+      after: outcome.link.set ? outcome.link.after : outcome.link.before,
+      is: outcome.link.is,
+      set: outcome.link.set,
+      ...(outcome.link.unchanged ? { unchanged: `the bid already carried its ${SUBMISSION_LANDING_WORDS} folder as the link, so the bid's row was not written` } : {}),
+    },
     note: outcome.note.saved ? { saved: true, id: outcome.note.id ?? null } : { saved: false },
     bid: { id: str(bid.id), label },
     ...(warnings.length ? { warnings } : {}),

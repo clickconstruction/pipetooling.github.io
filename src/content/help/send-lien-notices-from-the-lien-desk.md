@@ -45,6 +45,8 @@ Each zone reads its counts. The zone today is in says how many are left and how 
 
 Press a zone and the list under the bar shows only that zone's rows. The bar says how many it is showing. Press the zone again or {{button:outline|Show all}} to see every row. The bar never sends, files or moves anything. A window closing with work unsent is a red count in Catch-up, and that is the whole nudge. The days sit in {{button:outline|§ Rules}} under **The lien month**.
 
+On a phone the zones stand one over the other as cards. The cards, the find box and the rows scroll as one page. Press a card and its rows come to the top of the screen. Scroll up to see the cards again.
+
 ## The three views
 
 The top of the desk has three tabs.
@@ -54,6 +56,24 @@ The top of the desk has three tabs.
 - **All filings** holds every paper by its state. A second row of tabs appears under it. They are **Notices**, **Affidavits**, **Retainage** and **Timeline**.
 
 All filings reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All filings.
+
+## The desk on a phone
+
+On a phone the top of the desk is one row. It holds the way back, the desk's name and {{button:outline|⋯}}. The three tabs sit under it, each as tall as a thumb.
+
+Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
+
+- **Record the mailing** or **Send the run**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
+- **Put a GC on notice…** shows while **Notices** is open.
+- **§ Rules** opens the Texas lien rules.
+- **An owner is calling** opens what to say.
+- **What this desk holds** names each part of the desk.
+- **Share where the liens stand** makes a message for a teammate.
+- **An owner asked for records** opens the packet for a property.
+
+Press a row and More closes. The door opens as it does on a computer.
+
+On **Affidavits** and **Retainage** the pile chips sit at the top of the list. They slide sideways and scroll away with the list.
 
 ## Look ahead on the Deadlines
 

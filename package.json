@@ -152,6 +152,7 @@
     "test:pg:in-kind": "bash scripts/pgtest-in-kind.sh",
     "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
     "test:pg:bid-photos": "bash scripts/pgtest-bid-photos.sh",
+    "test:pg:painted-maps": "bash scripts/pgtest-painted-maps.sh",
     "test:pg:license-expiry-sweep": "bash scripts/pgtest-license-expiry-sweep.sh",
     "test:pg:pipeline-customer-lines": "bash scripts/pgtest-pipeline-customer-lines.sh",
     "test:pg:bill-lines-sweep": "bash scripts/pgtest-bill-lines-sweep.sh",

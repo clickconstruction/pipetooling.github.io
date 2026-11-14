@@ -50,10 +50,13 @@ An estimator cannot open a job. Their Job block shows {{button:green|Send to Dis
 
 1. Check the **Job name** and the **Address**.
 2. On a bid sent to more than one GC, pick the GC that won it.
-3. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
-4. Pick the **Trade**.
-5. Add a **Wanted by** day and **A note for Dispatch** if they help.
-6. Press **Send to Dispatch**.
+3. Press *+ Add their pay terms* if the GC pays on a set day of the month.
+4. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
+5. Pick the **Trade**.
+6. Add a **Wanted by** day and **A note for Dispatch** if they help.
+7. Press **Send to Dispatch**.
+
+The pay terms are one small line under the GC. Most drafts leave the line alone. The office checks the terms and sets the pay calendar. See [Pay terms an estimator read on a won bid](/help/set-a-payers-pay-calendar#pay-terms-an-estimator-read-on-a-won-bid).
 
 :::example What the estimator sees next
 The Job block reads {{chip:yellow|Sent to Dispatch Oct 20 · waiting}}. Once Dispatch opens the job, it reads {{chip:green|J878 opened from this bid}}, with the money line under it.
