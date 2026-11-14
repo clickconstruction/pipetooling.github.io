@@ -10,7 +10,7 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The Dashboard's closed-window card, as its own PR (the last part of row 4). Then the items under Also seen that wait on the owner's word.
+next: The Dashboard's closed-window card, as its own PR (the last part of row 4). Then the two Also seen items the owner answered on 2026-11-14, an earlier hand day allowed and an approved affidavit moving to Held when a gate closes, each its own PR.
 size: M as six small pieces (S · S · XS · M · S · XS), five shipped
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
@@ -81,7 +81,8 @@ what still differed. Counts only are given here, since the repo is public.
 - The rule that refuses a typed last day earlier than the clock hours (`lienLastWorkDayProblem`)
   sits oddly beside row 1's answer. A hand day that later hours follow counts, yet once those hours
   are approved the office can only clear the day or set a later one. It cannot type or correct an
-  earlier day. Whether the box should allow it is the owner's call.
+  earlier day. **The owner's call, 2026-11-14: allow it.** The box takes an earlier day with the
+  reason still required, and says the later hours do not move it.
 - The Legal desk and the firm's page never read the last day set by hand (`legalLastWorkBasis` in
   `legalLienPaper.ts`, `legalPacket.ts`, the `legal-portal` function's job columns). They date a job
   from its approved hours, else its last work date, else its creation. So counsel's page can show a
@@ -98,8 +99,9 @@ what still differed. Counts only are given here, since the repo is public.
   fact and draws no paper. The walk of 2026-11-13 found three live jobs this way, each three days
   from its last day: one with the homestead question unanswered, one marked a homestead, one on
   public property. The Lien desk's Share message already counts them as held (v2.7138). Card #305
-  says a hold changes which pile a paper sits in. Whether an approved paper leaves Ready is the
-  owner's call, since it takes papers off the list the office files from.
+  says a hold changes which pile a paper sits in. **The owner's call, 2026-11-14: a closed gate
+  moves an approved paper to Held, with the gate's reason**, so the pile follows the gates as the
+  print bar already does.
 - The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
   *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.
 - One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
