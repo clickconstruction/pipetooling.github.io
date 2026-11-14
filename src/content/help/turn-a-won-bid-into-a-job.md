@@ -66,7 +66,7 @@ Dispatch's row shows the draft in one line, like *Wendi's draft: GC Southern Pin
 
 ## The bid shows its job
 
-Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}}. {{button:green|Open the job}} sits beside it and opens the job window. **Create another job** sits beside that. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself.
+Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}}. {{button:green|Open the job}} sits beside it and opens the job window. **Create another job** sits beside that. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself. The Job block checks the bid for a job first. Its buttons appear once it has the answer.
 
 And the job shows on the bid. The moment a job carries the bid, the bid's outcome moves to **Started / Complete** by itself. On the Bid Board the row moves to the *Started or Complete* section. A toast names the bid for about five seconds as the job saves. A toast is a small message that pops up. The outcome moves whichever door you came through: this button, **New Job → Import**, or a signed estimate. Bids that already had a job were caught up. Clearing the link later never clears the outcome. Changing the outcome stays a human call.
 
