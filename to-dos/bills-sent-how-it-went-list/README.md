@@ -13,7 +13,7 @@ summary: >
   the form itself. I suggest the chips.
 next: PR 3, the chips with ＋ Add a way and Edit list, and the window. Then the owner's calls 6 to 8 on the form's own fixes.
 size: M as a train of three (S · M · M), then up to three small ones for the form's own fixes (S each)
-blocker: None to build. PR 2's migration `20261113170000` is pushed right after its merge; until then the form offers the four ways kept in code.
+blocker: None to build. PR 2's migration `20261114060000` is pushed right after its merge; until then the form offers the four ways kept in code.
 opinion: build PR 3 as drawn — the calls are answered and the list's table is in
 ver: v2.7145 · v2.7166
 ---
@@ -117,7 +117,7 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 | PR | What | Size | Migration |
 |---|---|---|---|
 | 1 | **A record keeps its words.** `byHandFiling` writes `how_label`. `billsSentLines` reads it first (`byHandWordsOf`). Kernel tests. **Built, v2.7145** | S | none |
-| 2 | **The list in the database.** `20261113170000_bill_hand_ways.sql`: the table, its policies and guard, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readBillHandWays` with the fall-back to the four in code. The form reads the live list. **Built, v2.7166** | M | one |
+| 2 | **The list in the database.** `20261114060000_bill_hand_ways.sql`: the table, its policies and guard, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readBillHandWays` with the fall-back to the four in code. The form reads the live list. **Built, v2.7166** | M | one |
 | 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, a render smoke, the guide's new section, the glossary line | M | none |
 | 4 to 6 | R1, R2, R3, each alone, in the order he wants them | S each | none |
 

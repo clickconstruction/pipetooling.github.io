@@ -1,7 +1,7 @@
 /**
  * The ways a bill can go when the app did not send it (punch list #340): the list under *How the bill went* in
  * **Say how it went…** on Bills sent. The owner asked that the people who open the page can add to the list and
- * edit it, so the list is rows of `bill_hand_ways` (migration `20261113170000`) and no longer four choices in code.
+ * edit it, so the list is rows of `bill_hand_ways` (migration `20261114060000`) and no longer four choices in code.
  *
  * The rules, pure. The reads and writes are `billsSentIo.ts`, the form `components/billing/BillsSentLedger.tsx`.
  *
