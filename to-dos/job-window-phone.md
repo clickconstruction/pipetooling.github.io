@@ -1,7 +1,7 @@
 ---
 name: "The job window on a phone"
 number: 355
-group: waiting
+group: ready
 status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
@@ -15,9 +15,9 @@ summary: >
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
   the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: the owner's four picks on pass 3 (the six other tabs); D as the first small PR.
+next: build D, H, E, F, G in that order, each its own PR on the one before, verified at 375 and 768 before it opens; tell the owner when each is live.
 size: L as a train (S for A · M for B · L for C); the first step is S
-blocker: the owner's picks on pass 3
+blocker: none
 opinion: A and B are built (v2.7271, v2.7278); C waits for the count
 mockup: job-window-phone-directions.html
 ---
@@ -502,6 +502,38 @@ picker, then the same panel with *Add it to Plans*), and **Open in Google Drive*
 Customer Pictures the sheet's first row is the same camera the photo banner's Add a photo opens,
 so a photo goes into the same place either way. The three choices live in the sheet, not on the
 row: four folders with three presses each is twelve presses on one screen.
+
+### The five desk windows, measured at 375 px
+
+| Window | What it does at 375 px | What H does |
+|---|---|---|
+| AIA G702/G703 | Already a full-screen sheet, nothing past the edge; 33 of its fields are under 16 px, 5 presses under 32 | Fields to 16 px on a phone |
+| Contract | A full-screen sheet; reads whole, the paper's chips and the agreement in order | Nothing |
+| Test report | A full-screen sheet, but 51 elements run past the right edge (the duration field, the PASS and FAIL cards, the notes box); 14 presses under 32, 3 fields under 16 | The result cards stack, the duration wraps under the date, fields to 16 px |
+| Lien | Not measured: the ZZ job's press did not open it in the pane; measured in H on a job with paper | Measured in H |
+| View bill | Not measured: the ZZ job has no bill; measured in H on a job with one | Measured in H |
+
+### The plan to build it all (the owner, 2026-11-14: "I like it now, come up with a plan to build it all to the spec, and then build it")
+
+Five PRs, each with its kernel and tests, a render smoke at 375 px, the guide's words, a release note and a
+fragment, verified in the pane at 375 and 768 before it opens, and before each opens a last look against the
+measure: screens, presses under 32 px, fields under 16 px, and the question *is this the best we can do?*
+answered in the fragment. Each PR stacks on the one before and opens with auto-merge; the queue takes them in
+order.
+
+1. **D** (S): on every tab but Job the band is the Street View banner alone, 90 px; Paint a map, the photo
+   banner and the checklist strip stay on Job. The pass-3 card and mock-up ride with it.
+2. **H** (M): Documents on a phone: an empty section one 44 px row with its press; presses 40 px; Stage
+   checklists one row per stage with its standing; the folders' Add ▾ sheet (Take a photo · Choose a file ·
+   Open in Google Drive); the AIA and Test report windows' fields 16 px and the Test report's cards stacked;
+   the Lien window and View bill measured on a job with paper and a bill, fixed in the same PR when small.
+3. **E** (M): Edit on a phone: the stages as rows; the status rail off the tab; the fact rows 44 px, the
+   whole row the press, grouped under The people, The paper, The folders, Charging the customer; fields 16 px.
+4. **F** (M): Bill on a phone: the money first, Make a bill, the bills and payments, the line items last as
+   cards with the count and the price live and Remove and Move behind ⋯; Add ▾ carrying the desk's title row;
+   fields 16 px. The desk's order stays.
+5. **G** (M): Costs on a phone: the four numbers first, the chart folded, Where the money went as rows with a
+   bar each, the dev's cost-move panel folded; fields 16 px.
 
 ### The questions for the owner, pass 3
 
