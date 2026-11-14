@@ -431,7 +431,12 @@ cost rows…* and draws nothing of its empty rows until opened.
 
 **H · Documents as one line per empty section** (S). A section with nothing in it is one 44 px row:
 the title at the left, its press at the right (*Plans · + New set*, *Pay applications · New
-application*). A section with something keeps its list, its presses 40 px. The order stays.
+application*). A section with something keeps its list, its presses 40 px. The order stays. Stage
+checklists is one row per stage, never one row for the three (the owner, pass 3: "should this be
+expanded?"): each row carries the stage's standing as the section already words it, *Filed ·
+CL-1042-1*, *Ready · 4 of 4*, *Not ready · 2 of 5*, and a tap opens that stage's read-out in place,
+as the section's phone fold does today. Print stays at the title's right; Add a check stays inside
+the opened stage; the answering stays on the Job tab's checklist strip.
 
 ### What is lost, and what the drawing missed (the owner: "is this the best we can do, are we losing anything?")
 
