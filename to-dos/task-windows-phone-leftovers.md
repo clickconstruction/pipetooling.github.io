@@ -1,8 +1,8 @@
 ---
 name: "Tasks on a phone: what the New task walk left"
 number: 348
-group: gated
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 open as #8003, #8008, #8009 and #8012 · two rows of PR 4 wait on a pick
+group: close
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 open as #8003, #8008, #8009 and #8012 · rows 9 and 10 built in v2.7203 on the owner's word *Yes, build both* · left: a walk of two sheets on a phone, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,12 +11,12 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The four PRs merge. Then the owner picks for rows 9 and 10, the Done when… hint and Pick a day's four weeks, and Grace's two notes wait on her word.
-size: M as four small PRs (S · S · XS · S), built; left: two rows after a pick (S)
-blocker: a pick for rows 9 and 10, which change what a row shows.
-ver: v2.7155
-opinion: your call on rows 9 and 10 — I would shorten the hint to one line and keep the four weeks for a task that repeats, since the iPhone's own calendar already opens from the date
-mockup: not required — each row is a fix to a screen that exists, found on a walk; PR 4's rows get a before and after when they are picked
+next: The five PRs merge. Then someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
+size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
+blocker: a person at a phone for the walk, and Grace's word for her two notes.
+ver: v2.7155 · v2.7203
+opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
+mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
 
 # Tasks on a phone: what the New task walk left (#348)
@@ -123,10 +123,10 @@ Built 2026-11-13 on the owner's word *build the leftovers*. Each PR carries its 
 | #8008 | 4, 5 | Where is it?, `PhoneSheet` and the dispatch job picker fill the part of the page that shows. The place sheet's map gives way so the name and **Use this place** stay above the keyboard. | Where is it? walked in the iPhone simulator with the keyboard up. The other two are covered by tests and were not walked. |
 | #8009 | 6, 7 | The roadmap sentence closes a stage name once. Edit task shows its line about days to come only on a task that repeats. | Tests. |
 | #8012 | 8, 11 | The Someone else search box goes to the top of the rows when it takes the keyboard. The When bar's words tighten on a narrow screen. | Both walked in the iPhone simulator, the bar at 125% text. |
+| v2.7203 | 9, 10 | The Done when… hint is one line in each window. On a phone the four weeks draw only for a task that repeats. | Measured on the local app at phone size: with Done when… open the window no longer scrolls, and Pick a day shows the date box alone. |
 
 **Left.**
 
-- **Rows 9 and 10** wait on a pick. Row 9: a shorter Done when… hint, or the hint behind a press. Row 10: on a phone, the four weeks only for a task that repeats, or as they are.
 - **Row 5** wants a walk of `PhoneSheet` and the dispatch job picker on a phone. Reaching them means a real person's thread or Dispatch mode, so it was left for someone at a phone.
 - **Rows 12 and 13** are left alone, as written.
 - **Grace's two notes** below still wait on her word.

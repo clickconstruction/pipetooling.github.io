@@ -6,6 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { LienMonthBar } from './LienMonthBar'
 import { buildLienMonth } from '../../lib/jobs/lienMonthRhythm'
 import type { LienDeskEntry } from '../../lib/jobs/lienDesk'
@@ -88,12 +89,51 @@ describe('LienMonthBar', () => {
     expect(screen.getByTestId('lien-month-zone-liens').getAttribute('data-state')).toBe('now')
   })
 
-  it('at 375 wide the zones stack as rows, the zone today is in says so, and there is no today mark', () => {
+  it('on a phone the month is one line with the day’s headline; no zone is drawn until the line is pressed (punch list #352, PR 2)', () => {
     render(<LienMonthBar month={month('2026-11-03')} on={null} onPick={() => {}} isMobile />)
-    const group = screen.getByRole('group', { name: 'The lien month’s five zones' })
-    expect(group.style.gridTemplateColumns).toBe('1fr')
+    const bar = screen.getByTestId('lien-month-bar')
+    expect(bar.getAttribute('data-layout')).toBe('line')
+    const line = screen.getByTestId('lien-month-line') as HTMLButtonElement
+    expect(parseInt(line.style.minHeight, 10)).toBeGreaterThanOrEqual(44)
+    expect(screen.getByTestId('lien-month-line-head').textContent).toMatch(/reminders? to send$/)
+    expect(screen.getByTestId('lien-month-line-sub').textContent).toContain('November, day 3 · reminders week')
     expect(screen.queryByTestId('lien-month-today')).toBeNull()
+    expect(screen.queryByTestId('lien-month-zone-reminders')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // No due day handed over: no chip.
+    expect(screen.queryByTestId('lien-month-line-chip')).toBeNull()
+  })
+
+  it('on a phone the line says by when and how long is left, when the desk hands over the first due day', () => {
+    render(<LienMonthBar month={month('2026-11-03')} on={null} onPick={() => {}} isMobile due={{ ymd: '2026-11-05', daysLeft: 2 }} />)
+    expect(screen.getByTestId('lien-month-line-head').textContent).toMatch(/to send by Thu Nov 5$/)
+    expect(screen.getByTestId('lien-month-line-chip').textContent).toBe('2 days')
+  })
+
+  it('on a phone a press on the line opens the five zones as cards in a sheet; a card narrows the list and closes the sheet', () => {
+    const onPick = vi.fn()
+    // The sheet is the app's PhoneSheet, which asks the window how wide it is.
+    renderWithProviders(<LienMonthBar month={month('2026-11-03')} on={null} onPick={onPick} isMobile />)
+    fireEvent.click(screen.getByTestId('lien-month-line'))
+    const sheet = screen.getByRole('dialog', { name: 'The lien month' })
+    const group = screen.getByRole('group', { name: 'The lien month’s five zones' })
+    expect(sheet.contains(group)).toBe(true)
+    expect(group.style.gridTemplateColumns).toBe('1fr')
+    expect(group.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(5)
     expect(screen.getByTestId('lien-month-zone-reminders').textContent).toContain('today · 1 to 5')
     expect(screen.getByTestId('lien-month-zone-notices').textContent).not.toContain('today')
+    fireEvent.click(screen.getByTestId('lien-month-zone-reminders'))
+    expect(onPick).toHaveBeenCalledWith('reminders')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('on a phone a pressed zone shows under the line with how many rows it holds and a thumb-tall Show all', () => {
+    const onPick = vi.fn()
+    render(<LienMonthBar month={month('2026-11-03')} on="reminders" onPick={onPick} isMobile shown={1} total={4} />)
+    expect(screen.getByTestId('lien-month-showing').textContent).toContain('Showing 1 of 4 · Reminders, days 1 to 5')
+    const all = screen.getByTestId('lien-month-show-all') as HTMLButtonElement
+    expect(all.style.minHeight).toBe('44px')
+    fireEvent.click(all)
+    expect(onPick).toHaveBeenCalledWith(null)
   })
 })

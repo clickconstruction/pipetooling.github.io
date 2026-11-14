@@ -83,6 +83,18 @@ export const LIEN_RECORD_ASK = 'Ask the attorney before this is signed.'
 /** Under the notices: what the record cannot say. */
 export const LIEN_RECORD_ENVELOPE = 'The app keeps who each copy went to. It does not keep the address on the envelope.'
 
+/**
+ * Beside a notice whose paper claimed more than this job's amount (punch list #322): whose figure the total is. The
+ * row cannot say why the two differ. One paper may have covered other jobs at the property, or money came in after it
+ * went. So the line says what the total is and what an affidavit claims, and no more.
+ */
+export const LIEN_RECORD_TOTAL_IN_ALL = 'A total “in all” is what the mailed notice claimed. It can cover other jobs at the property. An affidavit claims its own job’s amount.'
+
+/** Whether a record holds a notice whose paper total is not this job's amount: the page then says whose figure the total is. */
+export function lienRecordHasPaperTotal(record: LienNoticeRecord | null | undefined): boolean {
+  return (record?.notices ?? []).some((n) => n.claim !== null && n.printedClaim !== null)
+}
+
 /** Under the list of what is missing: where it is added. */
 export const LIEN_RECORD_FIX = 'Add what is missing in the job’s Lien window, under Filings on this job.'
 
@@ -126,10 +138,24 @@ export const LIEN_RECORD_SAVED_NOTE = 'Note on the saved copy'
 /** A notice whose saved copy is a note alone, with no file behind it. */
 export const LIEN_RECORD_NOTE_ONLY = 'A note, no saved file'
 
+/**
+ * A notice's amount in its own line. Where the paper's total is more than this job's amount, the total is named as the
+ * notice's and the job's part as a part of it, so nobody reads the total as an affidavit's claim (the owner,
+ * 2026-11-13: a batch page showed a total that matched no paper in the stack). A paper total under the job's amount is
+ * a figure set by hand: the two are said apart.
+ */
+export function lienRecordClaimWords(n: Pick<LienNoticeRecordNotice, 'claim' | 'printedClaim'>): string {
+  if (n.claim === null) return ''
+  const job = demandMoney(n.claim.toFixed(2))
+  if (n.printedClaim === null) return `Claim ${job}`
+  const paper = demandMoney(n.printedClaim.toFixed(2))
+  return n.printedClaim > n.claim ? `The notice claimed ${paper} in all, ${job} of it for this job` : `The notice claimed ${paper}, and this job’s amount on record is ${job}`
+}
+
 /** A notice's own line above its copies: the months it named, its amount, when it was entered, and the saved copy. Its note has a row of its own. */
 export function lienRecordNoticeWords(n: LienNoticeRecordNotice): string {
   const months = n.months.length > 0 ? `Names ${describeNoticeMonths(n.months)}` : 'Names no month'
-  const claim = n.claim === null ? '' : n.printedClaim !== null ? `Claim ${demandMoney(n.printedClaim.toFixed(2))} on the paper, ${demandMoney(n.claim.toFixed(2))} for this job` : `Claim ${demandMoney(n.claim.toFixed(2))}`
+  const claim = lienRecordClaimWords(n)
   const entered = n.recordedOn ? `${n.byHand ? 'Entered after the fact' : 'Entered'} ${lienRecordDay(n.recordedOn)}` : n.byHand ? 'Entered after the fact' : ''
   const saved = n.savedCopy ? 'Saved copy on file' : n.savedNote ? LIEN_RECORD_NOTE_ONLY : 'No saved copy'
   return [months, claim, entered, saved].filter(Boolean).join(' · ')
@@ -208,7 +234,7 @@ function recordBody(record: LienNoticeRecord, compact = false): string {
     verdict(record) +
     `<div class="lien-record-h" style="margin-top:0">The notices on record</div>` +
     noticesTable(record) +
-    (record.notices.length > 0 ? `<p class="lien-help-small">${esc(LIEN_RECORD_ENVELOPE)}</p>` : '') +
+    (record.notices.length > 0 ? `<p class="lien-help-small">${esc(LIEN_RECORD_ENVELOPE)}${lienRecordHasPaperTotal(record) ? ` <span data-lien-record-total-in-all>${esc(LIEN_RECORD_TOTAL_IN_ALL)}</span>` : ''}</p>` : '') +
     `<div class="lien-help-two" style="margin-top:5pt">${linesBox(record)}${gapsBox(record)}</div>`
   )
 }
@@ -276,7 +302,7 @@ export function lienNoticeRecordBatchHtml(papers: ReadonlyArray<LienNoticeRecord
     `<section class="lien-help" data-lien-help="records">` +
     STRIPE +
     recordBand('Notice records · do not file these pages', count === 1 ? 'What was mailed before this affidavit' : `What was mailed before each of ${count} affidavits`, [printedOn ? `Printed ${printedOn}` : '', asks === 0 ? '' : asks === 1 ? '1 with a question: ask first' : `${asks} with a question: ask first`]) +
-    `<p class="lien-help-small" style="margin-bottom:5pt" data-lien-record-batch-lead>${esc(LIEN_RECORD_BATCH_LEAD)} ${esc(LIEN_RECORD_ENVELOPE)} ${esc(LIEN_RECORD_FIX)}</p>` +
+    `<p class="lien-help-small" style="margin-bottom:5pt" data-lien-record-batch-lead>${esc(LIEN_RECORD_BATCH_LEAD)} ${esc(LIEN_RECORD_ENVELOPE)} ${esc(LIEN_RECORD_FIX)}${papers.some((p) => lienRecordHasPaperTotal(p.record)) ? ` <span data-lien-record-total-in-all>${esc(LIEN_RECORD_TOTAL_IN_ALL)}</span>` : ''}</p>` +
     blocks +
     foot(`Notice records for the batch${printedOn ? ` printed ${printedOn}` : ''}`, copiesFollow ? (count === 1 ? 'Copies of its notices are next, then 1 paper' : `Copies of the notices are next, then ${count} papers`) : count === 1 ? '1 paper follows these pages' : `${count} papers follow these pages`) +
     `</section>`

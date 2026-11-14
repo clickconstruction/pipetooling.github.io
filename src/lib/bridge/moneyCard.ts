@@ -23,7 +23,8 @@ import { firstDayUnderFloor, whenWords, type WeekTone } from './weekCall'
  *   forecast already spends (`payrollWeeklyEstUsd`, `dailyDrainUsd`). Overhead here is the pool's spending that is
  *   not labor, so office pay is counted once, under payroll. Supply bills and sub labor are not in the burn.
  *
- * Kept apart from `weekCall.ts`, which is copied to the edge functions: the weekly email does not draw this card.
+ * Copied to the edge functions since v2.7214: the weekly email draws these balances too (`weekMail.ts`), from the
+ * same figures (`sheetBuild.ts`).
  *
  * Pure.
  */

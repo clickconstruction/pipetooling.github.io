@@ -731,6 +731,35 @@ describe('LienDesk', () => {
     }
   })
 
+  it('on a phone the lien month is one line and the step rails one folded row; a computer keeps the bar and the rails (punch list #352, PR 2)', async () => {
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
+    await settle()
+    expect(screen.getByTestId('lien-month-bar').getAttribute('data-layout')).toBeNull()
+    expect(screen.queryByTestId('lien-month-line')).toBeNull()
+    expect(document.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(5)
+    expect(screen.queryByTestId('lien-step-rails-fold')).toBeNull()
+    expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBeNull()
+    desk.unmount()
+
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" />)
+      await settle()
+      expect(screen.getByTestId('lien-month-bar').getAttribute('data-layout')).toBe('line')
+      const line = screen.getByTestId('lien-month-line')
+      expect(screen.getByTestId('lien-month-line-head').textContent!.length).toBeGreaterThan(0)
+      // No zone card is drawn until the line is pressed; then all five are, in a sheet.
+      expect(document.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(0)
+      expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBe('yes')
+      fireEvent.click(line)
+      const sheet = screen.getByRole('dialog', { name: 'The lien month' })
+      expect(sheet.querySelectorAll('[data-testid^="lien-month-zone-"][data-state]')).toHaveLength(5)
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -1533,7 +1562,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // On the two papers, behind the help sheet (whose small picture of the paper names the county too).
     expect(html.slice(html.lastIndexOf('</section>')).match(/COUNTY OF TRAVIS/g)).toHaveLength(4)
     expect(html).not.toContain('where signed')
-    expect(html).toContain('Each paper has four things to write')
+    expect(html).toContain('Each paper has three things to write')
     expect(html).toContain('data-lien-help-batch-checks')
     expect(html).toMatch(/\d clear to sign\./)
     expect(html).toContain('1 not printed.')
