@@ -32,6 +32,11 @@ buttons aren't easy to press."
 
 The same day, on pass 1: "Is this the best we can do?"
 
+On pass 2: "I still want to see the phone number and I want to see the email so that a user can
+quickly identify if they're calling the right person or if they're seeing the right email." So the
+Who section never hides them behind a bare Call or Email press: the number is the Call press and
+the address is the Email press, each written out.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -81,7 +86,7 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | The tab strip | Everyone: which part of the job. The office moves between Job, Edit and Bill; a crew lead between Job, Materials and Documents | The frame | The tab, 40 px; the ✕ |
 | Name, number, status | Everyone: the right job, and where it stands | 1 | None |
 | The address and the painted map | The crew lead: where to drive and park. The office: which house | 2 (crew) · 3 (office) | Directions, the map row |
-| The customer | The crew lead: who to call at the gate. The office: who to text or email | 3 (crew) · 2 (office) | Call · Text · Email |
+| The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy |
 | The next block, the target, the Pipeline line | Everyone: what is happening now, what the job waits on | 4 | Set a target |
 | Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
@@ -106,8 +111,9 @@ and the job accounts chips fold to one line each. The tabs join the press count.
 moves; the bar is as today.
 
 **B · The job on one screen** (a second PR on A). The Job tab under 640 px reads Where (the
-address with a Directions press, the painted map, the street view folded), Who (the customer with
-Call, Text and Email as three 44 px presses), Now (the next block, the target, the Pipeline row's
+address with a Directions press, the painted map, the street view folded), Who (the customer, then
+the phone number and the email address written out, each a 44 px press that calls or emails, with
+Text and Copy beside them), Now (the next block, the target, the Pipeline row's
 own line), then the thread (Where it stands, the customer's newest word, the newest three events
 with *All 56 ›*, Note, Text, Email). The rest folds under headings with counts: Photos, Questions,
 Money, Plans and papers, Work and time, Their journey. With every fold closed the scroll ends near
@@ -134,8 +140,8 @@ pick after each is the drawing's own.
 2. **The tabs that do not fit.** A scrolling strip hides the last tab or two until a thumb slides
    it; three tabs and a More ▾ hide them behind a press instead. *Scroll for now, count the tab
    presses for a month, then move the tabs nobody presses on a phone behind More ▾ in B.*
-3. **B as the second PR?** Where · Who · Now · the thread first, the newest three events shown,
-   the rest folded under counted headings. *Yes, once A has been on phones for a week.*
+3. **B as the second PR?** Where · Who (the number and the email written out) · Now · the thread
+   first, the newest three events shown, the rest folded under counted headings. *Yes, once A has been on phones for a week.*
 
 ## Where it plugs in
 
