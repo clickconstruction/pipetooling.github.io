@@ -51,6 +51,16 @@ should all be more defined as titles or sections." So Where, Who, Now, the threa
 job are sections with a title of their own, in the body's own type and weight with a band between
 them, not the small grey labels pass 2 drew.
 
+Also on pass 2: "No target yet is unclear. What kind of target are we referring to?" It is the
+job's **target in hours** (punch list #255, v2.6585, `JobTargetLine` over `jobTargetWords` in
+`src/lib/jobs/jobTarget.ts`): how many hours the job should take, set by the leader or the office
+with a reason, else read from the labor budget, and the crew's hours are counted against it. The
+live line says *No target yet* when there is none, and the owner himself could not tell what it
+meant, so the mock-up now reads **Hours target · none yet** with *How many hours the job should
+take* under it and the press **Set the hours**, and PR A renames the live line's empty words the
+same way (the kernel's `head`, `detail` and `press`, on every screen, since the words are the same
+on a desk).
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -101,7 +111,7 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | Name, number, status | Everyone: the right job, and where it stands | 1 | None |
 | The address and the painted map | The crew lead: where to drive and park. The office: which house | 2 (crew) · 3 (office) | Directions, the map row |
 | The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy |
-| The next block, the target, the Pipeline line | Everyone: what is happening now, what the job waits on | 4 | Set a target |
+| The next block, the hours target, the Pipeline line | Everyone: what is happening now, how many hours the job should take, what it waits on | 4 | Set the hours |
 | Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
 | Money tiles and job accounts | The office, rarely on a phone; the Bill tab holds the work | Folded | One line that opens Bill |
@@ -129,7 +139,7 @@ moves; the bar is as today.
 address with a Directions press, the painted map, the street view folded), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside them), Now (the next block, the target, the Pipeline row's
-own line), then the thread (Where it stands, the customer's newest word, the newest three events
+own line; the target is the job's target in hours, named as such), then the thread (Where it stands, the customer's newest word, the newest three events
 with *All 56 ›*, Note, Text, Email). Each is a section with a title of its own, with a band between
 them. The rest folds under More on this job, each with its count: Photos, Questions, Money, Plans
 and papers, Work and time, Their journey. With every fold closed the scroll ends near
@@ -180,6 +190,10 @@ pick after each is the drawing's own.
   order, with which quiet word, by role). C adds the role's tabs and the role's bar there.
 - `src/components/jobs/JobWindowActionBar.tsx`: unchanged by A and B; C's crew bar is
   `crewJobWindowBar` already drawn for the plain window (punch list #189).
+- `src/lib/jobs/jobTarget.ts`: `jobTargetWords`'s empty case reads *No target yet* today; A makes it
+  *Hours target · none yet*, *How many hours the job should take. The crew's hours are counted
+  against it once it is set.* and **Set the hours**, with its test; the guide that names the line
+  (punch list #255) follows.
 - The guide `src/content/help/job-window-tabs.md`, *On a phone: the bar at the bottom*, is
   rewritten with A; `src/lib/jobs/jobWindowLegend.ts`'s phone row names the press row.
 - No table, migration or edge function in any of the three.
