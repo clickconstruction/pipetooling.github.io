@@ -346,6 +346,53 @@ describe('LienDesk', () => {
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
   })
 
+  it('in a window of 1,500 px or more the tools end the title line, and only All filings keeps a second line (v2.7213)', async () => {
+    const before = window.matchMedia
+    // A wide computer: the one-line query matches, the phone's does not.
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1500px)', media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    const shape = () => {
+      const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
+      return Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-run') ? 'run' : el.hasAttribute('data-lien-desk-tools') ? 'tools' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-paper-kinds') ? 'papers' : el.hasAttribute('data-lien-desk-right') ? 'right' : null)).filter(Boolean)
+    }
+    try {
+      const onOpenOwnerRecords = vi.fn()
+      // Deadlines, the owner's screenshot: one line, the five tools at its end in their order, no break and no empty span after them.
+      const deadlines = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools'])
+      const tools = document.querySelector('[data-lien-desk-tools]') as HTMLElement
+      expect(tools.style.marginLeft).toBe('auto')
+      const names = Array.from(tools.querySelectorAll('button')).map((b) => b.getAttribute('aria-label') ?? b.textContent)
+      expect(names).toEqual(['An owner asked for records ›', '§ Rules', 'An owner is calling', 'What this desk holds', 'Share'])
+      expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
+      fireEvent.click(screen.getByTestId('lien-owner-records-door'))
+      expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
+      // Share still opens from the title line.
+      fireEvent.click(document.querySelector('[data-lien-desk-share]') as HTMLElement)
+      expect(screen.getByRole('dialog', { name: 'Share where the liens stand' })).toBeTruthy()
+      deadlines.unmount()
+      // Do now: the same line.
+      const now = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" onOpenOwnerRecords={onOpenOwnerRecords} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools'])
+      now.unmount()
+      // All filings: the tools stay on the title line, before the break; the paper tabs lead the second line.
+      const affidavits = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" onOpenOwnerRecords={onOpenOwnerRecords} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools', 'break', 'papers'])
+      affidavits.unmount()
+      // The leader has no owner-records door and no caller's door: § Rules, ? and Share end his title line.
+      renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650)} initialKind="calendar" />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools'])
+      expect(document.querySelector('[data-lien-desk-tools] [data-testid="lien-rules-door"]')).toBeTruthy()
+      expect(document.querySelector('[data-lien-desk-tools] [data-lien-desk-share]')).toBeTruthy()
+      expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
     await settle()
@@ -1042,7 +1089,9 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
-    expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    // v2.7187: the desk's own timeline names the step the paper is on, as its Do now row does (*the property record is not complete*).
+    expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    expect(timeline.textContent).toContain('the property record to be completed')
     // The kind is not set: the timeline says residential dates are shown, the earlier ones (v2.5031).
     expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()

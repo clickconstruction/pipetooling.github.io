@@ -13,6 +13,7 @@ const moves: ContainerMove[] = [{ id: 'm1', jobId: 'j1', containerId: C1, fromLo
 const row = (id: string, reason: Movement['reason'], quantity: number, at: string): Movement => ({ id, jobId: 'j1', partId: null, partName: 'Pex rolls', manufacturer: null, quantity, reason, fromContainerId: reason === 'delivered' ? null : C1, toContainerId: reason === 'delivered' ? C1 : null, note: '', byUserId: null, byName: 'Marcus', at, source: null, itemId: null })
 const ledger = [row('a', 'delivered', 16, '2026-11-01T10:00:00Z'), row('b', 'counted', 16, '2026-11-01T10:01:00Z'), row('c', 'used', 6, '2026-11-06T08:00:00Z')]
 
+const loadJob = vi.fn(async (..._a: unknown[]) => {})
 vi.mock('../../lib/materials/onSiteStore', () => ({
   editContainer: vi.fn(),
   moveContainer: vi.fn(),
@@ -20,14 +21,18 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   listContainerMoves: () => moves,
   listMovements: () => ledger,
   jobLedgerCapped: () => false,
+  loadJob: (...a: unknown[]) => loadJob(...a),
 }))
+const renamePart = vi.fn()
+const undoPartRename = vi.fn()
+vi.mock('../../lib/materials/partRenameIo', () => ({ renamePart: (...a: unknown[]) => renamePart(...a), undoPartRename: (...a: unknown[]) => undoPartRename(...a) }))
 vi.mock('../../hooks/useAuth', async () => (await import('../../test/renderSmokeMocks')).useAuthModuleMock())
 const fetchBoxNames = vi.fn()
 vi.mock('../../lib/materials/boxHistoryIo', () => ({ fetchBoxNames: (id: string) => fetchBoxNames(id) }))
 
 import BoxTabs, { BoxWindow } from './BoxTabs'
 
-afterEach(() => { cleanup(); fetchBoxNames.mockReset() })
+afterEach(() => { cleanup(); fetchBoxNames.mockReset(); renamePart.mockReset(); undoPartRename.mockReset(); loadJob.mockClear() })
 
 const box: Container = { id: C1, jobId: 'j1', label: 'R70', kind: 'loose', where: '', locationId: 'p2', lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T09:59:00Z' }
 const places: Place[] = [{ id: 'p1', jobId: 'j1', name: 'Arena', createdAt: '' }, { id: 'p2', jobId: 'j1', name: 'Yard', createdAt: '' }]
@@ -69,6 +74,43 @@ describe('BoxTabs', () => {
     await waitFor(() => expect(screen.getByTestId('box-tabs-history').textContent).toMatch(/did not load|permission denied/))
     fireEvent.click(screen.getByRole('tab', { name: 'Contents' }))
     expect(document.querySelector('[data-empty-state]')?.textContent).toContain('Nothing in R70 yet.')
+  })
+})
+
+describe('Fix the name', () => {
+  const book: ContainerLine = { ...lines[0]!, partKey: 'id:p9', partId: 'p9', partName: 'Wax ring' }
+
+  it('renames a typed part, reads the job again and offers its undo; a book part has no such press', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    renamePart.mockResolvedValue({ id: 'r1', rows: 3 })
+    undoPartRename.mockResolvedValue({ id: 'r2', rows: 3 })
+    renderWithProviders(<BoxTabs {...props} lines={[...lines, book]} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Contents · 2' }))
+    expect(screen.getAllByRole('button', { name: /^Fix the name of / })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Fix the name of Pex rolls' }))
+    const press = () => screen.getByTestId('box-tabs-fix-name').querySelector('button[type=submit]') as HTMLButtonElement
+    expect(press().disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('The name of Pex rolls'), { target: { value: ' Pex  rolls, red ' } })
+    expect(press().textContent).toBe('Rename to Pex rolls, red')
+    fireEvent.click(press())
+    await waitFor(() => expect(renamePart).toHaveBeenCalledWith('j1', 'Pex rolls', 'Pex rolls, red'))
+    await waitFor(() => expect(screen.getByTestId('box-tabs-renamed').textContent).toContain('Pex rolls is now Pex rolls, red.'))
+    expect(loadJob).toHaveBeenCalledWith('j1', { force: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the rename' }))
+    await waitFor(() => expect(undoPartRename).toHaveBeenCalledWith('j1', 'r1'))
+    await waitFor(() => expect(screen.queryByTestId('box-tabs-renamed')).toBeNull())
+  })
+
+  it('says why when the database refuses', async () => {
+    fetchBoxNames.mockResolvedValue([])
+    renamePart.mockRejectedValue({ message: 'No typed part named Pex rolls is on this job.', code: 'P0PRN' })
+    renderWithProviders(<BoxTabs {...props} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Contents · 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fix the name of Pex rolls' }))
+    fireEvent.change(screen.getByLabelText('The name of Pex rolls'), { target: { value: 'Pex' } })
+    fireEvent.submit(screen.getByTestId('box-tabs-fix-name'))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('The name did not change: No typed part named Pex rolls is on this job.'))
+    expect(screen.queryByTestId('box-tabs-renamed')).toBeNull()
   })
 })
 

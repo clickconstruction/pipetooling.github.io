@@ -88,3 +88,60 @@ export function lienNoticeCheckLines(check: LienNoticeCheck): string[] {
   if (check.contractorLate.length > 0) lines.push(`The original contractor's copy went after its date for ${describeNoticeMonths(check.contractorLate)}.`)
   return lines
 }
+
+/** The months the record raises a question about, each once, the oldest first. */
+export function lienNoticeCheckMonths(check: LienNoticeCheck): string[] {
+  return [...new Set([...check.ownerLate, ...check.contractorMissing, ...check.contractorLate])].sort()
+}
+
+/**
+ * Months in the fewest words: three or more in a row read as a span (`April to July 2026`, `November 2026 to January
+ * 2027`), anything else as `describeNoticeMonths` lists it. '' for none.
+ */
+export function noticeMonthsSpanWords(months: ReadonlyArray<string>): string {
+  const sorted = [...new Set(months.filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort()
+  const at = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7))
+  const inARow = sorted.every((m, i) => i === 0 || at(m) === at(sorted[i - 1] as string) + 1)
+  if (sorted.length < 3 || !inARow) return describeNoticeMonths(sorted)
+  const first = describeNoticeMonths([sorted[0] as string])
+  const last = describeNoticeMonths([sorted[sorted.length - 1] as string])
+  return first.slice(-4) === last.slice(-4) ? `${first.replace(/ \d{4}$/, '')} to ${last}` : `${first} to ${last}`
+}
+
+/**
+ * The check in one sentence, for a row with no room for the lines (the batch help sheet, the owner 2026-11-13: the
+ * two long sentences are more than the row needs). It keeps the months and drops who and which: the notice record and
+ * the Lien window say those. '' when the record raises no question.
+ */
+export function lienNoticeCheckRowLine(check: LienNoticeCheck): string {
+  const months = lienNoticeCheckMonths(check)
+  if (months.length === 0) return ''
+  return months.length === 1 ? `The notice for ${noticeMonthsSpanWords(months)} went late or is not on record.` : `Notices for ${noticeMonthsSpanWords(months)} went late or are not on record.`
+}
+
+/**
+ * The check in the fewest sentences that still say which copy, for the box that closes a notice record (the owner,
+ * 2026-11-13, on that box with the lines above in it: *this sentence looks like it is too long*). The same months as
+ * `lienNoticeCheckLines`, said shorter three ways: the months read as a span, two copies with one answer share a
+ * sentence (*Both copies went late for April to July 2026.*), and the owner's copy is said as late or as not on
+ * record, never both, because each month's row says which. A check whose months carry no row keeps the long lines.
+ */
+export function lienNoticeCheckShortLines(check: LienNoticeCheck): string[] {
+  const by = new Map(check.months.map((m) => [m.month, m]))
+  if ([...check.ownerLate, ...check.contractorMissing, ...check.contractorLate].some((m) => !by.has(m))) return lienNoticeCheckLines(check)
+  const ownerMissing = check.ownerLate.filter((m) => by.get(m)?.ownerSentOn === null)
+  const ownerLate = check.ownerLate.filter((m) => !ownerMissing.includes(m))
+  const same = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) => a.length > 0 && [...new Set(a)].sort().join() === [...new Set(b)].sort().join()
+  const lines: string[] = []
+  if (same(ownerLate, check.contractorLate)) lines.push(`Both copies went late for ${noticeMonthsSpanWords(ownerLate)}.`)
+  else {
+    if (ownerLate.length > 0) lines.push(`The owner's copy went late for ${noticeMonthsSpanWords(ownerLate)}.`)
+    if (check.contractorLate.length > 0) lines.push(`The original contractor's copy went late for ${noticeMonthsSpanWords(check.contractorLate)}.`)
+  }
+  if (same(ownerMissing, check.contractorMissing)) lines.push(`No copy is on record for ${noticeMonthsSpanWords(ownerMissing)}.`)
+  else {
+    if (ownerMissing.length > 0) lines.push(`No copy to the owner is on record for ${noticeMonthsSpanWords(ownerMissing)}.`)
+    if (check.contractorMissing.length > 0) lines.push(`No copy to the original contractor is on record for ${noticeMonthsSpanWords(check.contractorMissing)}.`)
+  }
+  return lines
+}

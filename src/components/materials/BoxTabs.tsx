@@ -6,6 +6,9 @@
  * - **Contents**: each part in it with how many, when it first came in and where the box stood then, and that
  *   part's history in this box under a fold.
  *
+ * Since v2.7212 a typed part's name is fixed from its line on Contents: **Fix the name**, with what the rename
+ * touches said before the press and **Undo the rename** after it (`partRename.ts`).
+ *
  * The histories are readings of rows the app already keeps (`boxHistory.ts`). The phone's box screen hosts the
  * tabs in its own sheet; the office page hosts them in `BoxWindow` below.
  */
@@ -20,10 +23,15 @@ import { editBoxTitle } from '../../lib/materials/editBox'
 import { boxHistory, contentsTabWords, historyFoldWords, lineAdded, lineAddedWords, lineHistory, placeAt, type BoxNameChange, type HistoryEvent } from '../../lib/materials/boxHistory'
 import { fetchBoxNames } from '../../lib/materials/boxHistoryIo'
 import { boxAddressWords, boxCodeWords } from '../../lib/materials/labels'
-import { jobLedgerCapped, listContainerMoves, listMovements } from '../../lib/materials/onSiteStore'
+import { jobLedgerCapped, listContainerMoves, listMovements, loadJob } from '../../lib/materials/onSiteStore'
+import { FIX_PART_NAME_LABEL, PART_NAME_MAX, UNDO_PART_RENAME_LABEL, partRenameMergeNote, partRenamePressLabel, partRenameScopeNote, partRenameVerdict, renamedPartWords, undonePartWords } from '../../lib/materials/partRename'
+import { renamePart, undoPartRename } from '../../lib/materials/partRenameIo'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 const head: CSSProperties = { margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, minHeight: 32, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.85rem', cursor: 'pointer' }
 const tabStyle = (on: boolean, h: number): CSSProperties => ({ minHeight: h, padding: '0 0.9rem', border: 'none', borderBottom: `2px solid ${on ? 'var(--text-strong)' : 'transparent'}`, background: 'none', color: on ? 'var(--text-strong)' : 'var(--text-muted)', font: 'inherit', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' })
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -69,6 +77,43 @@ export default function BoxTabs({ container, containers, places, lines, byName, 
   }, [container.id])
   useEffect(() => { void readNames() }, [readNames])
 
+  // Fix the name (v2.7212): one line at a time, the rename's own id kept for its Undo while the window is open.
+  const { showToast } = useToastContext()
+  const [fixing, setFixing] = useState<{ key: string; value: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [slip, setSlip] = useState<string | null>(null)
+  const [last, setLast] = useState<{ id: string; from: string; to: string } | null>(null)
+  const rename = async (from: string, to: string) => {
+    setBusy(true)
+    setSlip(null)
+    try {
+      const done = await renamePart(container.jobId, from, to)
+      setLast({ id: done.id, from, to })
+      setFixing(null)
+      showToast(renamedPartWords(from, to), 'success')
+      await loadJob(container.jobId, { force: true })
+    } catch (e) {
+      setSlip(`The name did not change: ${formatErrorMessage(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const undo = async () => {
+    if (!last) return
+    setBusy(true)
+    setSlip(null)
+    try {
+      await undoPartRename(container.jobId, last.id)
+      showToast(undonePartWords(last.from), 'success')
+      setLast(null)
+      await loadJob(container.jobId, { force: true })
+    } catch (e) {
+      setSlip(`The rename was not undone: ${formatErrorMessage(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const moves = listContainerMoves(container.jobId)
   const movements = listMovements(container.jobId)
   const mine = linesOf(lines, container.id)
@@ -98,6 +143,13 @@ export default function BoxTabs({ container, containers, places, lines, byName, 
         <div role="tabpanel" aria-label="Contents" style={{ display: 'grid', gap: '0.6rem' }}>
           {mine.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} tail="Add a part on the box itself." /> : null}
           {jobLedgerCapped(container.jobId) ? <p style={{ ...muted, margin: 0 }}>This job’s ledger is long, so a history here may start part way.</p> : null}
+          {last ? (
+            <p style={{ margin: 0, fontSize: '0.9rem', display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="box-tabs-renamed">
+              <span>{renamedPartWords(last.from, last.to)}</span>
+              <button type="button" disabled={busy} style={{ ...quietPress, ...(busy ? { opacity: 0.45, cursor: 'default' } : {}) }} onClick={() => void undo()}>{UNDO_PART_RENAME_LABEL}</button>
+            </p>
+          ) : null}
+          {slip ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{slip}</p> : null}
           {mine.map((l) => {
             const added = lineAdded(movements, container.id, l.partKey)
             const events = lineHistory(movements, container.id, l.partKey, nameOf)
@@ -108,6 +160,26 @@ export default function BoxTabs({ container, containers, places, lines, byName, 
                   <span style={{ marginLeft: 'auto', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{l.onHand.toLocaleString('en-US')}</span>
                 </div>
                 {added ? <div style={muted}>{lineAddedWords(day(added.at), added.by, placeAt(container, places, moves, added.at))}</div> : null}
+                {/* A typed name alone: a parts-book part reads its name from the book. */}
+                {!l.partId && fixing?.key !== l.partKey ? <div><button type="button" style={quietPress} aria-label={`${FIX_PART_NAME_LABEL} of ${l.partName}`} onClick={() => { setSlip(null); setFixing({ key: l.partKey, value: l.partName }) }}>{FIX_PART_NAME_LABEL}</button></div> : null}
+                {!l.partId && fixing?.key === l.partKey ? (() => {
+                  const v = partRenameVerdict(l, fixing.value, lines, nameOf)
+                  const scope = v.ok ? partRenameScopeNote(v) : null
+                  const merge = v.ok ? partRenameMergeNote(v) : null
+                  const dead = !v.ok || busy
+                  return (
+                    <form onSubmit={(e) => { e.preventDefault(); if (v.ok && !busy) void rename(v.from, v.to) }} style={{ display: 'grid', gap: '0.4rem', paddingTop: '0.2rem' }} data-testid="box-tabs-fix-name">
+                      <input type="text" value={fixing.value} maxLength={PART_NAME_MAX + 20} autoFocus onChange={(e) => setFixing({ key: l.partKey, value: e.target.value })} aria-label={`The name of ${l.partName}`} style={{ width: '100%', minHeight: touch ? 48 : 38, padding: '0.4rem 0.75rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                      {scope ? <p style={{ ...muted, margin: 0 }}>{scope}</p> : null}
+                      {merge ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>{merge}</p> : null}
+                      {!v.ok && v.words ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{v.words}</p> : null}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="submit" disabled={dead} style={{ minHeight: touch ? 48 : 36, padding: '0 0.9rem', borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: 'pointer', ...(dead ? { opacity: 0.45, cursor: 'default' } : {}) }}>{partRenamePressLabel(fixing.value)}</button>
+                        <button type="button" style={{ minHeight: touch ? 48 : 36, padding: '0 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }} onClick={() => setFixing(null)}>Cancel</button>
+                      </div>
+                    </form>
+                  )
+                })() : null}
                 {events.length > 0 ? (
                   <details>
                     <summary style={{ ...muted, cursor: 'pointer', minHeight: touch ? 36 : undefined }}>{historyFoldWords(events.length)}</summary>
