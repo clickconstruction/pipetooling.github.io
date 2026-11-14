@@ -53,6 +53,7 @@ import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LienDeskPile } from '../lib/jobs/lienDesk'
+import { lienDeskRowFromState, lienDeskStateForView, lienDeskStateWithRow } from '../lib/jobs/lienPhoneJobScreen'
 
 /** The same people the Jobs page hands the desk: the office and the field, and a dev's fellow devs. */
 const DESK_USER_ROLES = ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
@@ -175,10 +176,17 @@ export default function LienDeskPage() {
   const onAddressChange = useCallback(
     (next: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => {
       const href = lienDeskHref(next)
-      if (href !== here) navigate(href, { replace: true, state: location.state })
+      // A job's own screen belongs to the first view (punch list #352, PR 4): another view drops the open row from the entry.
+      if (href !== here) navigate(href, { replace: true, state: lienDeskStateForView(location.state, next.kind) })
     },
     [here, navigate, location.state],
   )
+
+  // A phone: a row's job opens as its own screen, as a history entry of its own at the same address, so the phone's Back
+  // closes it and the list is where it was (punch list #352, PR 4).
+  const openRowKey = lienDeskRowFromState(location.state)
+  const onOpenRow = useCallback((rowKey: string) => navigate(here, { state: lienDeskStateWithRow(location.state, rowKey) }), [here, navigate, location.state])
+  const onCloseRow = useCallback(() => navigate(-1), [navigate])
 
   // A phone (punch list #182, PR 3): the Notices list, then one notice at a time. Opening a notice is a new entry, so Back
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
@@ -269,6 +277,9 @@ export default function LienDeskPage() {
         onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}
+        openRowKey={openRowKey}
+        onOpenRow={onOpenRow}
+        onCloseRow={onCloseRow}
         data={data}
         loading={loading}
         todayYmd={todayYmd}

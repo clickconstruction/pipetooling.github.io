@@ -95,7 +95,8 @@ import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../.
 import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LienMonthBar } from './LienMonthBar'
-import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
+import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
+import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
 import { LienStepRow } from './LienDeskSteps'
 import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
 import LienPaperPropertyWindow from './LienPaperPropertyWindow'
@@ -148,6 +149,7 @@ import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
 import LienDeskMoreSheet from './LienDeskMoreSheet'
+import LienDeskJobScreen from './LienDeskJobScreen'
 import { lienDeskMoreButton, lienDeskMoreRows, type LienDeskMoreKey } from '../../lib/jobs/lienDeskPhoneMore'
 import { LIEN_DESK_ONE_LINE_QUERY, lienDeskTitleBarLayout } from '../../lib/jobs/lienDeskTitleBar'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -266,6 +268,10 @@ export type LienDeskProps = {
   backDoor?: ReactNode
   /** The page's address follows the desk: the view, and on Monthly notices the open notice and the pile (never from an empty desk). */
   onAddressChange?: (address: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => void
+  /** A phone: the row whose job is open as its own screen (punch list #352, PR 4). The page keeps it in the history entry, so the phone's Back closes the screen; without the two handlers the desk keeps it itself. */
+  openRowKey?: string | null
+  onOpenRow?: (rowKey: string) => void
+  onCloseRow?: () => void
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
@@ -386,6 +392,9 @@ export default function LienDesk({
   onShowList,
   backDoor = null,
   onAddressChange,
+  openRowKey,
+  onOpenRow,
+  onCloseRow,
 }: LienDeskProps) {
   const stacked = layout === 'stacked'
   const isMobile = useIsMobile()
@@ -583,6 +592,8 @@ export default function LienDesk({
   // A phone's header is one row (punch list #352, PR 1): the doors it held are rows of the More sheet, and § Rules,
   // whose window the door itself holds on a computer, is held here so the sheet can close behind it.
   const [moreOpen, setMoreOpen] = useState(false)
+  // The row open as its own screen when no page keeps it (punch list #352, PR 4).
+  const [rowLocal, setRowLocal] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
@@ -3768,6 +3779,11 @@ export default function LienDesk({
   )
   // The frame (punch list #182, PR 3: the window's overlay, ✕ and full-screen toggle are gone): the panel is the whole screen under
   // the app's chrome, a named region; the desk's own sheets and windows stand where they are.
+  // A job as its own screen on a phone (punch list #352, PR 4): the first view's row, opened over the panel. It belongs to that view alone.
+  const jobScreenKey = onOpenRow ? (openRowKey ?? null) : rowLocal
+  const jobScreenRow = isMobile && kind === 'next' && jobScreenKey ? (nextUpRows.find((r) => r.key === jobScreenKey) ?? null) : null
+  const openJobScreen = (row: LienNextUpRow) => (onOpenRow ? onOpenRow(row.key) : setRowLocal(row.key))
+  const closeJobScreen = () => (onCloseRow ? onCloseRow() : setRowLocal(null))
   const panelStyle: React.CSSProperties = { position: 'relative', background: 'var(--surface)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
   // Stacked, an open notice is the whole desk: its door back is the list, in the page door's place (punch list #182 PR 3).
   const noticeOpenStacked = stacked && kind === 'notice' && !mobileListShown && selected != null
@@ -3962,7 +3978,7 @@ export default function LienDesk({
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
             {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={pickMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} due={isMobile ? lienMonthLineDue(lienMonth, nextUpRows) : null} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
@@ -4028,6 +4044,33 @@ export default function LienDesk({
         {kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" /> : null}
         {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
+        {jobScreenRow ? (() => {
+          const row = jobScreenRow
+          const card = lienStepCard(row, stepFactsFor(row))
+          const screen = lienJobScreen(row, card, { amount: phoneAmountFor?.(row) ?? null, gaps: paperGapCount(row), can: { paper: true, lienWindow: true, job: Boolean(onOpenJob) } })
+          // The press is the row's button: the desk goes where it always went. A run or the Lien window opens over this screen, which stays behind it.
+          const act = (r: LienNextUpRow) => {
+            if (!onOpenRow && lienJobScreenClosesOnAct(r.target)) setRowLocal(null)
+            actOnNextUp(r)
+          }
+          return (
+            <LienDeskJobScreen
+              row={row}
+              screen={screen}
+              card={card}
+              onClose={closeJobScreen}
+              onAct={() => act(row)}
+              onSecondary={row.secondary ? () => act({ ...row, target: row.secondary!.target }) : undefined}
+              onDoor={(key) => {
+                if (!row.jobId) return
+                if (key === 'paper') setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))
+                else if (key === 'lien_window') onOpenLienInstruments(row.jobId)
+                else onOpenJob?.(row.jobId)
+              }}
+              onOpenJob={onOpenJob}
+            />
+          )
+        })() : null}
       </div>
       {(() => {
         // The owner called (v2.3767 · v2.3854): from the Sent footer on the selected job, or from ☎ Someone's calling on any job with a sent notice.

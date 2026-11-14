@@ -209,6 +209,32 @@ describe('LienDeskPage (/lien-desk)', () => {
     await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
   })
 
+  it('on a phone a row’s job opens as a history entry of its own at the same address: Back closes it, and its press opens the notice with Back returning to the job (punch list #352, PR 4)', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/lien-desk" />)
+    await settle()
+    await waitFor(() => expect(container.querySelector('[data-lien-next-up-open]')).not.toBeNull())
+    fireEvent.click(container.querySelector('[data-lien-next-up-open]')!)
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).not.toBeNull())
+    // The address did not move: the open row rides in the entry's state.
+    expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the list' }))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
+    expect(container.querySelector('[data-lien-do-now]')).not.toBeNull()
+    // Open it again and press: the notice is a new entry, and its way back lands on the job's screen.
+    fireEvent.click(container.querySelector('[data-lien-next-up-open]')!)
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen-act]')).not.toBeNull())
+    fireEvent.click(container.querySelector('[data-lien-job-screen-act]')!)
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toContain('tab=notices&job=j650'))
+    expect(container.querySelector('[data-lien-job-screen]')).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to the notices' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).not.toBeNull())
+    // A view press from there drops the open row, so coming back to the first view shows the list.
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the list' }))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
+  })
+
   it('on a phone, a notice reached by a link goes to the list in its own place', async () => {
     screenSize.phone = true
     const { container } = renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650&pile=to_draft" />)

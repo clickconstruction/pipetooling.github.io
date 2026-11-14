@@ -27,9 +27,10 @@ Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **
 - A violet rail named **Reminders** sits between Notices and Affidavits once a notice has been sent. The rail's four steps are Reminder due, Reminder sent, The attorney’s letter and Closed. Reminder due counts the sent notices with nothing since the packet whose reminders week has opened. The count says beside it how many notices are still before day 7, and how many wait for reminders week. Reminder sent counts the notices a courtesy notice went to. The attorney’s letter counts the second letters drafting, waiting on the leader, in the run or sent. Closed counts the notices that are paid, answered, called about, okayed by the GC or filed on. Press a step and its brief opens, with the schedule of days across the top. The brief draws one notice's dated timeline, with today on it and every payment as a row. Press **Show another** to see a different notice. A step whose notices have no row on the list names them under the rail. Each name has {{button:outline|Open}}, which opens that notice. The strip's own guide is [read the reminders ladder on the Lien desk](/help/read-the-reminders-ladder-on-the-lien-desk).
 - The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail.
 - On a phone the rows are grouped by the day they are due, soonest first. Each heading says the day, how long is left and the money its jobs still owe. A heading reads red inside three days and amber inside a week. The groups that say whose move it is keep their names, like **Only you can approve** and **Reminders**.
-- A phone row has three lines. The first is the job and what it still owes. The second says where the paper stands. The third has the paper's chip, four dots and the row's button. Tap the dots to see the card. A row with no button for you says whose step it is beside the dots, like *Approve · leader*.
+- A phone row has three lines. The first is the job and what it still owes. The second says where the paper stands. The third has the paper's chip, four dots and the row's button. A row with no button for you says whose step it is beside the dots, like *Approve · leader*.
+- Tap a phone row to open that job as its own screen. A tap on the job's name or on the dots does the same. [The desk on a phone](#the-desk-on-a-phone) says what the screen holds.
 - The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. {{button:blue|Fix the property}} opens the property record in a window above the paper. The lookup fills the county, the legal description and the owner when it can. {{button:blue|Pick the GC}} sets the job's original contractor the same way. Press {{button:blue|Done}} and the paper fills in behind it. Each filled detail turns green in the list and shows what it reads now. The arrow keys walk the rows. Esc closes the paper.
-- Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
+- Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots to open the job's screen.
 
 When nothing needs anyone, the tab says so and points you at the **By date** tab.
 
@@ -75,6 +76,18 @@ Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in 
 - **An owner asked for records** opens the packet for a property.
 
 Press a row and More closes. The door opens as it does on a computer.
+
+**A job as its own screen.** On the desk's first tab, tap a row. The job opens as a screen of its own over the desk.
+
+- The top line holds {{button:outline|‹}}, the job and what it still owes.
+- A band under it says when the paper is due and how many days are left. The band is red inside three days.
+- **Where it stands** lists the paper's four steps. Done steps are ticked. The step it is on now is ringed.
+- **Open the notice as it stands** shows the paper as it would print today. The door says how many details are missing. An affidavit's door reads **Open the affidavit as it stands**.
+- **Open the Lien window** shows every lien paper on the job.
+- **Open the job** shows its history, its bills and Edit.
+- The row's button is at the foot of the screen, where your thumb rests. The button keeps its words, like {{button:blue|File the affidavit}}. The button opens what it opens on the list.
+
+Press {{button:outline|‹}} to go back to the list. Your phone's Back does the same. A run's row lists its jobs on the screen, and each one opens its job.
 
 On **Lien affidavits** and **Retainage notices** the pile chips sit at the top of the list. They slide sideways and scroll away with the list.
 
