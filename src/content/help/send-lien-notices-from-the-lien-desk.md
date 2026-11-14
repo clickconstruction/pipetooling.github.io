@@ -61,7 +61,7 @@ All filings reopens on the tab you last used there. This guide names those four 
 
 ## The desk on a phone
 
-On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The three tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper under **All filings** wrap the same way, so neither row slides sideways.
+On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The three tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper wrap the same way, so neither row of tabs slides sideways.
 
 Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
 
@@ -102,7 +102,7 @@ A find box sits at the top of every list. On a phone the box is as tall as a thu
 
 ## The piles
 
-The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. On a phone one title stays at the top, the title of the pile you are reading. The other titles scroll with their rows. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from Do now can open the list on one pile. The pile's title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
+The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from Do now can open the list on one pile. Its title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
 
 - {{chip:yellow|Needs the owner}} means no owner of record with a mailing address is on file. The notice goes to the owner, so this comes first. The pane looks the property up on the county appraisal roll as it opens. It shows the answer under gate 1, laid out the way the envelope will read. A note below flags anything unusual, like a landlord or a public owner. {{button:blue|Use this owner}} saves it on the property record, and the row moves to To draft. {{button:outline|Find the owner ›}} opens Edit Job. Edit Job's Property record has the paste box. Use it when the roll cannot place the address.
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
