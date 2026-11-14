@@ -154,6 +154,11 @@ the header; in B at the top of Where. The fold goes. The two places that open th
 without the window (the customer's Agreements card and Dispatch Mode's schedule), have no header and
 no banner today; that stays as it is unless he asks.
 
+Also on pass 2: "I think we should move the paint a map plus button to the center, instead of to the
+left." So the *＋ Paint a map* press is centred in its dashed box, in A under the maps as today and in
+B under the Where rows as a 40 px press rather than a quiet line, and PR A centres the live press's
+words under `phonePane`.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
