@@ -26,6 +26,7 @@ import { isOfficeRole } from '../lib/doorRoles'
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { CustomerPermitNamesCard } from '../components/customers/CustomerPermitNamesCard'
 import CustomerInKindCard from '../components/inKind/CustomerInKindCard'
+import GcDifficultyCard from '../components/customers/GcDifficultyCard'
 import InKindChip from '../components/inKind/InKindChip'
 import { useInKindStandings } from '../hooks/useInKindStandings'
 import { collectedInKindWords, openBalanceInKindChip, openIsAllInKind, paysInInKindWords } from '../lib/inKind/customerInKindStrip'
@@ -561,6 +562,11 @@ export default function CustomerDetail() {
           {/* v2.6829: Pays in kind — the deal, how far along it is and what is left (punch list #301). The office only. */}
           {isOfficeRole(myRole) && customerId && authUser ? (
             <CustomerInKindCard customerId={customerId} customerName={data.customer.name ?? ''} userId={authUser.id} canSetUp={stats.openBalance > 0.005} onChanged={load} />
+          ) : null}
+
+          {/* v2.7279: How they are to work with — the GC's difficulty rating (punch list #357 PR 2). The office rates, estimators read; a commercial customer, or any with a bid or a GC job. */}
+          {customerId && (isOfficeRole(myRole) || myRole === 'estimator') && (data.customer.customer_type === 'commercial' || data.bids.length > 0 || data.gcJobCount > 0) ? (
+            <GcDifficultyCard customerId={customerId} customerName={data.customer.name ?? ''} role={myRole} />
           ) : null}
 
           {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}

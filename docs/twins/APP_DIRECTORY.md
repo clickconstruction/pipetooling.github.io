@@ -339,7 +339,7 @@ The same page for the teammate it belongs to, once the office pressed **Show …
 Roles: any signed-in teammate the office has shown it to.
 
 ### /customers — Customers · /customers/:id — Customer Hub
-All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); a customer who pays in kind carries the **In kind** chip beside the name, the total and *Owes money* count money only, and **In kind (N)** lists them (v2.6845, guide `keep-track-of-work-paid-in-kind`); the Hub is one customer's money strip, jobs, bids, contacts, for the office the **Pays in kind** card and, since v2.6886, for the office and estimators the **Names on permits** card, which ties the names a city lists to the customer (**Find their names on permits**).
+All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); a customer who pays in kind carries the **In kind** chip beside the name, the total and *Owes money* count money only, and **In kind (N)** lists them (v2.6845, guide `keep-track-of-work-paid-in-kind`); the Hub is one customer's money strip, jobs, bids, contacts, for the office the **Pays in kind** card, since v2.7279 for the office and estimators the **How they are to work with** card (the GC's difficulty rating: a pick per scale, what happened, **Save N points**; the office rates, estimators read; guide `rate-how-a-gc-is-to-work-with`) and, since v2.6886, for the office and estimators the **Names on permits** card, which ties the names a city lists to the customer (**Find their names on permits**).
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /developments/:id — Development page
