@@ -4,7 +4,7 @@
  * its node, the done ticks, and the fill as wide as the done nodes reach.
  */
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienRunJourney from './LienRunJourney'
 import type { RunJourney } from '../../lib/jobs/runJourney'
@@ -32,5 +32,30 @@ describe('LienRunJourney', () => {
     expect(screen.getByTestId('run-journey-delivered').textContent).toBe('6Delivered0 of 3')
     const fill = screen.getByTestId('run-journey').querySelector('.lienRunJourneyFill') as HTMLElement
     expect(fill.style.width).toBe('20%')
+  })
+
+  it('on a phone the six nodes are one line, the step the run stands on, and a press unfolds them (punch list #352, PR 7)', () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienRunJourney journey={journey} />)
+      const line = screen.getByTestId('run-journey-line')
+      expect(line.getAttribute('aria-expanded')).toBe('false')
+      expect(line.style.minHeight).toBe('44px')
+      expect(line.getAttribute('data-warn')).toBe('yes')
+      expect(screen.getByTestId('run-journey-line-head').textContent).toBe('Step 2 of 6 · Signed')
+      expect(screen.getByTestId('run-journey-line-count').textContent).toBe('1 of 3 · 2 wait on Robert')
+      // Folded: no node is drawn.
+      expect(screen.queryByTestId('run-journey')).toBeNull()
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+      fireEvent.click(line)
+      expect(line.getAttribute('aria-expanded')).toBe('true')
+      expect(screen.getAllByRole('listitem')).toHaveLength(6)
+      expect(screen.getByTestId('run-journey-signed').textContent).toBe('2Signed1 of 3 · 2 wait on Robert')
+      fireEvent.click(line)
+      expect(screen.queryByTestId('run-journey')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
   })
 })

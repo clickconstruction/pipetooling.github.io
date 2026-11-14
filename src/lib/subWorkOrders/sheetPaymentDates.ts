@@ -7,7 +7,8 @@
  * A payment's date is its Date sent (`payment_date`). A row with none shows the day it was recorded, in the app's
  * timezone, and says so. A back-charge (an amount below zero) is not a payment and is left out.
  */
-import { calendarYmdInAppTzFromIso, formatWorkDateYmdFriendly, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { formatWorkDateYmdFriendly, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { paymentDay } from './subPaymentsLedger'
 
 export type SheetPaymentLike = { amount: number | string; payment_date?: string | null; created_at?: string | null }
 
@@ -27,16 +28,8 @@ export type SheetPaymentDates = {
   last: SheetPaymentDate | null
 }
 
-const YMD = /^\d{4}-\d{2}-\d{2}/
-
-function dayOf(p: SheetPaymentLike): SheetPaymentDate | null {
-  const sent = (p.payment_date ?? '').trim()
-  if (YMD.test(sent)) return { ymd: sent.slice(0, 10), recorded: false }
-  const made = (p.created_at ?? '').trim()
-  if (!made) return null
-  const ymd = calendarYmdInAppTzFromIso(made)
-  return YMD.test(ymd) ? { ymd: ymd.slice(0, 10), recorded: true } : null
-}
+/** One payment's day, by the ledger's own rule (`paymentDay`): the two used to be separate copies. */
+const dayOf = (p: SheetPaymentLike): SheetPaymentDate | null => paymentDay(p)
 
 export function sheetPaymentDates(payments: readonly SheetPaymentLike[] | null | undefined): SheetPaymentDates {
   const paid = (payments ?? []).filter((p) => Number(p.amount) > 0)

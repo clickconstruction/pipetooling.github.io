@@ -45,12 +45,12 @@ export type LienLineStep = {
 }
 
 /**
- * A notice window that closed with the affidavit's own day still ahead (v2.7047): the Lien window and
- * the desk read v2.4708's rule, that a late notice can still carry the lien. The runway keeps its own
- * `closed`; its readers look past it here.
+ * A notice window that closed with none sent and the affidavit's own day still ahead: the Lien window and the desk
+ * read v2.4708's rule, that a late notice can still carry the lien. The clock says so itself since v2.7198 (punch
+ * list #335, row 4: `late_notice`). From v2.7047 until then it answered `closed` and its readers looked past it here.
  */
 export function lienLateNoticeOpen(runway: LienPayRunway | null | undefined): boolean {
-  return !!runway && runway.state === 'closed' && runway.closedBy === 'notice' && runway.daysToLien != null && runway.daysToLien >= 0 && runway.lienByYmd !== ''
+  return !!runway && runway.state === 'late_notice' && runway.daysToLien != null && runway.daysToLien >= 0 && runway.lienByYmd !== ''
 }
 
 /**
@@ -59,12 +59,12 @@ export function lienLateNoticeOpen(runway: LienPayRunway | null | undefined): bo
  */
 export function lienLineStep(todayYmd: string, runway: LienPayRunway | null | undefined, desk: LienLineDeskState | null | undefined): LienLineStep | null {
   if (!runway || runway.state === 'none' || runway.state === 'filed') return null
-  const lateOpen = lienLateNoticeOpen(runway)
-  if (runway.state === 'closed' && !lateOpen) return null
+  if (runway.state === 'closed') return null
   const act = desk?.act ?? null
   const noticeFirst = runway.state === 'notice_due' && runway.daysToNotice != null && runway.noticeByYmd !== ''
-  // No notice went for any month: the late notice is the step. One that did go carries the affidavit, as the desk's gate reads it.
-  const lateNotice = lateOpen && !runway.noticeMonths.some((m) => m.state === 'sent' || m.state === 'mailed')
+  // No notice went for any month: the late notice is the step. One that did go carries the affidavit, as the desk's gate
+  // reads it, and the clock reads on to the lien's own states for that job.
+  const lateNotice = lienLateNoticeOpen(runway)
   const clockYmd = noticeFirst ? runway.noticeByYmd : runway.lienByYmd
   const clockDays = noticeFirst ? runway.daysToNotice : runway.daysToLien
   // A retainage notice due before the clock's own day is the nearest paper: it takes the line, with its own day.

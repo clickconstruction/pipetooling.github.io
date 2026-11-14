@@ -261,6 +261,13 @@ export const ENTRIES = {
   // The index exports nothing of them: the seat imports each file by its path.
   'lib/jobs/lienLastWorkDay.ts': { values: [], types: [] },
   'lib/jobs/lienLastWorkDayPreview.ts': { values: [], types: [] },
+  // The dev seat's notice recorded by hand (v2.7229): the app's own rule for the rows one mailed paper becomes, the day a
+  // desk item marked sent after the fact says it went, the nine values a notice's record keeps and who signs it.
+  // The index exports nothing of them: the seat imports each file by its path.
+  'lib/jobs/lienNoticeByHand.ts': { values: [], types: [] },
+  'lib/jobs/lienSentAt.ts': { values: [], types: [] },
+  'lib/jobs/lienNoticeJobFields.ts': { values: [], types: [] },
+  'lib/jobs/lienSigner.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
   'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },

@@ -117,6 +117,11 @@ describe('what the index does not carry', () => {
       // The dev seat's plan_last_work_day (v2.7206): the Lien window's rule for a day set by hand and its table of dates.
       'lib/jobs/lienLastWorkDay.ts',
       'lib/jobs/lienLastWorkDayPreview.ts',
+      // The dev seat's plan_notice_by_hand (v2.7229): the rows one mailed paper becomes, the item's day, the nine values and the signer.
+      'lib/jobs/lienNoticeByHand.ts',
+      'lib/jobs/lienSentAt.ts',
+      'lib/jobs/lienNoticeJobFields.ts',
+      'lib/jobs/lienSigner.ts',
       // The dev seat's plan_bid_update (v2.6945): the outcome line, the loss categories and the Board's sections.
       'lib/outcomeChangeBidNote.ts',
       'lib/bidLossCategories.ts',

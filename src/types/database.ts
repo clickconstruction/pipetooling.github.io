@@ -28962,6 +28962,70 @@ export type Database = {
           },
         ]
       }
+      painted_map_links: {
+        Row: {
+          code_hash: string
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          id: string
+          last_opened_at: string | null
+          made_at: string
+          made_by: string | null
+          map_id: string
+          open_count: number
+          opened_at: string | null
+        }
+        Insert: {
+          code_hash: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at: string
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          map_id: string
+          open_count?: number
+          opened_at?: string | null
+        }
+        Update: {
+          code_hash?: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          map_id?: string
+          open_count?: number
+          opened_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_links_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_links_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_links_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       painted_map_places: {
         Row: {
           accuracy_m: number | null

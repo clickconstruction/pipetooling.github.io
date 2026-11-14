@@ -138,3 +138,90 @@ describe('SubPaymentsLedger · on a phone', () => {
     expect(p.onOpenSheet).toHaveBeenCalledWith(expect.objectContaining({ id: 'tile' }))
   })
 })
+
+describe('SubPaymentsLedger · by sub (PR 3)', () => {
+  const bySub = () => fireEvent.click(screen.getByRole('button', { name: 'By sub' }))
+  const subKeys = () => [...document.querySelectorAll('[data-ledger-sub]')].map((e) => e.getAttribute('data-ledger-sub'))
+
+  it('a line says how it was sent, with its check number', async () => {
+    narrow.on = false
+    const withCheck = makeLaborJob({ id: 'chk', assigned_to_name: 'Harlow Drywall', job_number: 'S-2200', address: '3 Juniper Way' })
+    withCheck.payments = [{ id: 'p-how', amount: 10, memo: 'draw', created_at: '2025-11-03T17:00:00Z', payment_date: '2025-11-03', method: 'check', method_ref: '1042' }]
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [withCheck, rough] })} />)
+    await settle()
+    showAll()
+    expect(document.querySelector('[data-ledger-how="p-how"]')!.textContent).toBe('Check 1042')
+    expect(document.querySelector('[data-ledger-how="p-check"]')!.textContent).toBe('—')
+  })
+
+  it('By sub is one row per person with what was paid and what we owe today', async () => {
+    narrow.on = false
+    renderWithProviders(<SubPaymentsLedger {...props()} />)
+    await settle()
+    showAll()
+    bySub()
+    expect(lineIds()).toEqual([])
+    expect(subKeys()).toHaveLength(2)
+    const rows = [...document.querySelectorAll('[data-ledger-sub]')].map((e) => e.textContent ?? '')
+    expect(rows[0]).toContain('Brightline Electric')
+    expect(rows[0]).toContain('1 payment')
+    expect(rows[1]).toContain('Calloway Tile')
+    expect(rows[1]).toContain('2 payments')
+    expect(rows[1]).toContain('settled')
+    expect(document.querySelector('[data-ledger-tile="owed"]')!.textContent).toContain('We owe today')
+    expect(document.querySelector('[data-ledger-people-foot]')!.textContent).toContain('2 people · 3 payments')
+  })
+
+  it('a name opens that person’s statement, oldest first, ending on what we owe, and Everyone goes back', async () => {
+    narrow.on = false
+    const onSubChange = vi.fn()
+    renderWithProviders(<SubPaymentsLedger {...props({ initialBy: 'sub', onSubChange })} />)
+    await settle()
+    showAll()
+    fireEvent.click(screen.getByRole('button', { name: 'Calloway Tile' }))
+    const statement = document.querySelector('[data-ledger-statement]')!
+    const ids = [...statement.querySelectorAll('[data-statement-line]')].map((e) => e.getAttribute('data-statement-line'))
+    expect(ids).toEqual(['sheet:tile', 'p-oct', 'p-nov'])
+    expect(statement.querySelector('[data-statement-foot]')!.textContent).toContain('We owe today')
+    expect(statement.querySelector('[data-statement-foot]')!.textContent).toContain('settled')
+    // No roster figure was handed in, so the foot says what we owe and checks nothing.
+    expect(statement.querySelector('[data-statement-check]')!.getAttribute('data-statement-check')).toBe('unknown')
+    expect(onSubChange).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Print the statement' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '‹ Everyone' }))
+    expect(document.querySelector('[data-ledger-statement]')).toBeNull()
+    expect(subKeys()).toHaveLength(2)
+  })
+
+  it('the address can open one person’s statement, and the roster’s Balance due is checked at its foot', async () => {
+    narrow.on = false
+    const assignees = new Map([['rough', [{ personId: 'p-bright', personName: 'Brightline Electric' }]]])
+    const owed = subLaborJobBalance(rough).balance
+    renderWithProviders(<SubPaymentsLedger {...props({ by: 'sub', sub: 'p-bright', laborJobAssigneesByJobId: assignees, balanceDueByPersonId: new Map([['p-bright', owed]]) })} />)
+    await settle()
+    showAll()
+    const statement = document.querySelector('[data-ledger-statement="id:p-bright"]')!
+    expect(statement.querySelector('[data-statement-check]')!.getAttribute('data-statement-check')).toBe('agrees')
+    expect(statement.querySelector('[data-statement-check]')!.textContent).toContain('Agrees with People → Subs')
+    cleanup()
+    renderWithProviders(<SubPaymentsLedger {...props({ by: 'sub', sub: 'p-bright', laborJobAssigneesByJobId: assignees, balanceDueByPersonId: new Map([['p-bright', owed + 50]]) })} />)
+    await settle()
+    expect(document.querySelector('[data-statement-check]')!.getAttribute('data-statement-check')).toBe('differs')
+  })
+
+  it('a statement line opens its sheet, and on a phone both views are cards', async () => {
+    narrow.on = true
+    const onOpenSheet = vi.fn()
+    renderWithProviders(<SubPaymentsLedger {...props({ initialBy: 'sub', onOpenSheet })} />)
+    await settle()
+    showAll()
+    expect(document.querySelector('[data-ledger-people-phone]')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-ledger-sub]') as HTMLElement)
+    const line = document.querySelector('[data-statement-line="p-check"]') as HTMLElement
+    expect(line.tagName).toBe('BUTTON')
+    fireEvent.click(line)
+    expect(onOpenSheet).toHaveBeenCalledWith(rough)
+    narrow.on = false
+  })
+})

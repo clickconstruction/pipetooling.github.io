@@ -3,6 +3,20 @@ import type { LaborJobPayment, LaborJobPaymentEvent } from '../../types/laborJob
 import {
   buildLedgerLines,
   buildLedgerTraces,
+  buildSubStatement,
+  ledgerBySub,
+  ledgerBySubTotals,
+  ledgerHowPaidWords,
+  ledgerSpanWords,
+  ledgerSubKeyFromParam,
+  ledgerSubParam,
+  overPaidWords,
+  statementCheckWords,
+  subStatementCsv,
+  subStatementCsvFileName,
+  subStatementHtml,
+  SUB_STATEMENT_CSV_HEAD,
+  weOweWords,
   filterLedger,
   ledgerDayWords,
   ledgerMonths,
@@ -205,8 +219,8 @@ describe('out of the app', () => {
     const rows = subPaymentsCsv(shown).trimEnd().split('\r\n')
     expect(rows[0]).toBe(SUB_PAYMENTS_CSV_HEAD.join(','))
     expect(rows).toHaveLength(9)
-    expect(rows[1]).toBe('2026-11-12,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Zelle · final on tile,2400.00,0.00')
-    expect(rows.find((r) => r.includes('Broken vanity top'))).toBe('2026-11-06,day recorded,Marco Estrada,no,2090 Pinecrest Remodel,7 Pinecrest Ct,Back-charge,Broken vanity top,-150.00,0.00')
+    expect(rows[1]).toBe('2026-11-12,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,,,Zelle · final on tile,2400.00,0.00')
+    expect(rows.find((r) => r.includes('Broken vanity top'))).toBe('2026-11-06,day recorded,Marco Estrada,no,2090 Pinecrest Remodel,7 Pinecrest Ct,Back-charge,,,Broken vanity top,-150.00,0.00')
     expect(subPaymentsCsvFileName('2026-11-13')).toBe('sub-payments-2026-11-13.csv')
   })
 
@@ -232,5 +246,156 @@ describe('out of the app', () => {
     expect(ledgerDayWords('2026-11-12')).toBe('Nov 12')
     expect(ledgerDayWords('2025-12-03', true)).toBe('Dec 3, 2025')
     expect(ledgerDayWords('')).toBe('undated')
+  })
+})
+
+describe('how a line was sent', () => {
+  const checked = buildLedgerLines([
+    sheet({ agreed: 900, payments: [{ ...pay('k1', 400, '2026-11-02', '2026-11-02T15:00:00Z', 'draw'), method: 'check', method_ref: ' 1187 ' }, { ...pay('k2', 100, '2026-11-03', '2026-11-03T15:00:00Z'), method: 'zelle', method_ref: null }, { ...pay('k3', 50, '2026-11-04', '2026-11-04T15:00:00Z'), method: 'wire', method_ref: 'x' }] }),
+  ])
+  it('a line carries its method as the chip reads and its reference, and a method off the list reads as none', () => {
+    expect(checked.map((l) => ledgerHowPaidWords(l))).toEqual(['Check 1187', 'Zelle', ''])
+    expect(checked[2]).toMatchObject({ method: '', methodRef: '' })
+  })
+  it('the search finds a check by its number, and the CSV has a column for each', () => {
+    expect(filterLedger(checked, { search: '1187' }).map((l) => l.id)).toEqual(['k1'])
+    expect(filterLedger(checked, { search: 'zelle' }).map((l) => l.id)).toEqual(['k2'])
+    expect(subPaymentsCsv(checked).split('\r\n')[1]).toBe('2026-11-02,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Check,1187,draw,400.00,500.00')
+  })
+})
+
+describe('ledgerBySub', () => {
+  it('gives one row per person: the period’s payments, their first and last day, and what we owe today', () => {
+    const rows = ledgerBySub(ALL, lines)
+    expect(rows.map((r) => r.name)).toEqual(['Brightline Electric LLC', 'Calloway Tile', 'Luis Ortega', 'Marco Estrada'])
+    expect(rows.find((r) => r.key === 'id:brightline')).toMatchObject({ sheets: 1, payments: 2, firstYmd: '2026-10-21', lastYmd: '2026-11-10', paid: 4500, backcharged: 0, weOwe: 1500 })
+    expect(rows.find((r) => r.key === 'id:marco')).toMatchObject({ payments: 2, paid: 1350, backcharges: 1, backcharged: 150, weOwe: 0 })
+    // A payment with no Date sent counts on the day it was recorded.
+    expect(rows.find((r) => r.key === 'id:calloway')).toMatchObject({ firstYmd: '2026-10-28', lastYmd: '2026-11-12', weOwe: 0 })
+  })
+
+  it('crew pay has a row and no We owe, and the foot leaves it out', () => {
+    const rows = ledgerBySub(ALL, lines)
+    expect(rows.find((r) => r.key === 'id:luis')).toMatchObject({ crew: true, paid: 600, weOwe: null })
+    expect(ledgerBySubTotals(rows)).toEqual({ people: 4, payments: 7, paid: 10050, backcharged: 150, weOwe: 1500, over: 0 })
+  })
+
+  it('We owe reads every sheet to today, whatever the period shows', () => {
+    const november = filterLedger(lines, { from: '2026-11-01', to: '2026-11-31' })
+    const rows = ledgerBySub(ALL, november)
+    expect(rows.find((r) => r.key === 'id:brightline')).toMatchObject({ payments: 1, paid: 3000, firstYmd: '2026-11-10', lastYmd: '2026-11-10', weOwe: 1500 })
+  })
+
+  it('a person with nothing paid in the period keeps a row while we owe them, and drops out once settled', () => {
+    const unpaid = sheet({ id: 'new', paidTo: 'Harlow Drywall', paidToKey: 'id:harlow', agreed: 800 })
+    const none = ledgerBySub([...ALL, unpaid], filterLedger(lines, { from: '2027-01-01', to: '2027-01-31' }))
+    expect(none.map((r) => [r.name, r.payments, r.weOwe])).toEqual([['Brightline Electric LLC', 0, 1500], ['Harlow Drywall', 0, 800]])
+    // A search that names nobody owed leaves only the people it found lines for.
+    expect(ledgerBySub([...ALL, unpaid], filterLedger(lines, { search: 'zelle' }), { search: 'zelle' }).map((r) => r.name)).toEqual(['Calloway Tile', 'Luis Ortega', 'Marco Estrada'])
+    expect(ledgerBySub([...ALL, unpaid], [], { search: 'harlow' }).map((r) => r.name)).toEqual(['Harlow Drywall'])
+    expect(ledgerBySub([...ALL, unpaid], lines, { paidToKey: 'id:marco' }).map((r) => r.name)).toEqual(['Marco Estrada'])
+  })
+
+  it('a sheet paid past its total is kept apart: We owe is what is still open, as the Pay view counts it', () => {
+    const open = sheet({ id: 'o1', paidTo: 'Harlow Drywall', paidToKey: 'id:harlow', agreed: 500 })
+    const over = sheet({ id: 'o2', paidTo: 'Harlow Drywall', paidToKey: 'id:harlow', agreed: 300, payments: [pay('h1', 320, '2026-11-02', '2026-11-02T15:00:00Z')] })
+    const rows = ledgerBySub([open, over], buildLedgerLines([open, over]))
+    expect(rows[0]).toMatchObject({ weOwe: 500, over: 20 })
+    expect(ledgerBySubTotals(rows)).toMatchObject({ weOwe: 500, over: 20 })
+    expect(overPaidWords(20)).toBe('over by $20.00 on a sheet')
+    expect(overPaidWords(0)).toBe('')
+  })
+
+  it('says a span of days and what is owed in words', () => {
+    expect(ledgerSpanWords('2026-10-21', '2026-11-10')).toBe('Oct 21 to Nov 10')
+    expect(ledgerSpanWords('2026-11-10', '2026-11-10')).toBe('Nov 10')
+    expect(ledgerSpanWords('', '')).toBe('')
+    expect([weOweWords(1500), weOweWords(0), weOweWords(-20)]).toEqual(['$1,500.00', 'settled', 'over by $20.00'])
+  })
+
+  it('a statement’s address is the person’s own id, read back against the people the ledger knows', () => {
+    expect(ledgerSubParam('id:marco')).toBe('marco')
+    expect(ledgerSubParam('two subs')).toBe('two subs')
+    const keys = ['id:marco', 'two subs']
+    expect(ledgerSubKeyFromParam('marco', keys)).toBe('id:marco')
+    expect(ledgerSubKeyFromParam('two subs', keys)).toBe('two subs')
+    expect(ledgerSubKeyFromParam('nobody', keys)).toBe('')
+    expect(ledgerSubKeyFromParam(null, keys)).toBe('')
+  })
+})
+
+describe('buildSubStatement', () => {
+  const second = sheet({ id: 'trim2', paidTo: 'Marco Estrada', paidToKey: 'id:marco', job: '2131 Juniper Flats', address: '12 Juniper Way', agreed: 2000, day: '2026-11-08', payments: [pay('m4', 700, '2026-11-11', '2026-11-11T15:00:00Z', 'Zelle')] })
+  const marcoSheets = [{ ...trim, day: '2026-10-20' }, second]
+
+  it('runs oldest first: a sheet adds what was agreed, a payment and a back-charge take away', () => {
+    const st = buildSubStatement(marcoSheets, 'id:marco')
+    expect(st.entries.map((e) => [e.ymd, e.kind, e.amount, e.owed])).toEqual([
+      // The sheet is dated Oct 20 and its first payment went out Oct 14, so the sheet leads on the 14th.
+      ['2026-10-14', 'sheet', 1500, 1500],
+      ['2026-10-14', 'payment', 500, 1000],
+      ['2026-11-05', 'payment', 850, 150],
+      ['2026-11-06', 'backcharge', 150, 0],
+      ['2026-11-08', 'sheet', 2000, 2000],
+      ['2026-11-11', 'payment', 700, 1300],
+    ])
+    expect(st).toMatchObject({ name: 'Marco Estrada', opening: 0, agreed: 3500, paid: 2050, payments: 3, backcharged: 150, closing: 1300, owedToday: 1300, openOnSheets: 1300, overPaid: 0, endsToday: true })
+  })
+
+  it('ends on what the sheets owe, for every person and every date', () => {
+    for (const s of [...ALL, second]) {
+      const mine = [...ALL, second].filter((x) => x.paidToKey === s.paidToKey)
+      const owed = mine.reduce((sum, x) => sum + x.agreed - x.payments.reduce((p, y) => p + Math.abs(Number(y.amount)), 0), 0)
+      const st = buildSubStatement([...ALL, second], s.paidToKey)
+      expect(st.closing).toBe(owed)
+      expect(st.owedToday).toBe(owed)
+    }
+  })
+
+  it('a period brings forward what was owed before it and stops at its last day', () => {
+    const st = buildSubStatement(marcoSheets, 'id:marco', { from: '2026-11-01', to: '2026-11-09' })
+    expect(st.opening).toBe(1000)
+    expect(st.entries.map((e) => e.id)).toEqual(['m2', 'm3', 'sheet:trim2'])
+    expect(st).toMatchObject({ agreed: 2000, paid: 850, backcharged: 150, closing: 2000, owedToday: 1300, endsToday: false })
+  })
+
+  it('a sheet paid past its total is told apart from what is still open', () => {
+    const over = sheet({ id: 'over', paidTo: 'Marco Estrada', paidToKey: 'id:marco', job: '2140 Cedar', agreed: 300, day: '2026-11-01', payments: [pay('o1', 320, '2026-11-02', '2026-11-02T15:00:00Z')] })
+    const st = buildSubStatement([...marcoSheets, over], 'id:marco')
+    expect(st).toMatchObject({ owedToday: 1280, openOnSheets: 1300, overPaid: 20 })
+    expect(statementCheckWords(st, 1300)).toEqual({ agrees: true, words: 'Agrees with People → Subs, where Balance due reads $1,300.00. $1,300.00 is still open on sheets and $20.00 was paid past a sheet\'s total.' })
+  })
+
+  it('the foot checks the roster’s Balance due, and says so when it differs or is not known', () => {
+    const st = buildSubStatement(marcoSheets, 'id:marco')
+    expect(statementCheckWords(st, 1300)).toEqual({ agrees: true, words: 'Agrees with People → Subs, where Balance due reads $1,300.00.' })
+    const off = statementCheckWords(st, 900)
+    expect(off.agrees).toBe(false)
+    expect(off.words).toContain('People → Subs reads $900.00 for Balance due and these sheets come to $1,300.00.')
+    expect(statementCheckWords(st, undefined)).toEqual({ agrees: null, words: 'We owe Marco Estrada $1,300.00 today.' })
+  })
+
+  it('a person the ledger does not know gets an empty statement', () => {
+    expect(buildSubStatement(ALL, 'id:nobody')).toMatchObject({ name: '', entries: [], closing: 0, owedToday: 0 })
+  })
+
+  it('goes out as a spreadsheet and as a page, with text made safe', () => {
+    const st = buildSubStatement(marcoSheets, 'id:marco', { from: '2026-11-01' })
+    const rows = subStatementCsv(st).trimEnd().split('\r\n')
+    expect(rows[0]).toBe(SUB_STATEMENT_CSV_HEAD.join(','))
+    expect(rows[1]).toBe('2026-11-01,Brought forward,,,,,,,1000.00')
+    expect(rows[2]).toBe('2026-11-05,Payment,2090 Pinecrest Remodel,,,Cash App,,850.00,150.00')
+    expect(rows[4]).toBe('2026-11-08,Sheet agreed,2131 Juniper Flats,,,,2000.00,,2000.00')
+    expect(subStatementCsvFileName('Marco Estrada', '2026-11-13')).toBe('sub-statement-marco-estrada-2026-11-13.csv')
+    expect(subStatementCsvFileName('  ', '2026-11-13')).toBe('sub-statement-sub-2026-11-13.csv')
+    const html = subStatementHtml(st, { periodWords: 'From Nov 1, 2026.', checkWords: 'Agrees.', printedWords: 'Nov 13, 2026' })
+    expect(html).toContain('<h1>Marco Estrada</h1>')
+    expect(html).toContain('Brought forward')
+    expect(html).toContain('<b>Back-charge</b> · Broken vanity top')
+    expect(html).toContain('We owe today')
+    expect(html).toContain('$1,300.00')
+    const unsafe = subStatementHtml(buildSubStatement([sheet({ paidTo: '<i>x</i>', job: '<script>', agreed: 5 })], 'id:calloway'), { periodWords: '', checkWords: '', printedWords: '' })
+    expect(unsafe).not.toContain('<script>')
+    expect(unsafe).toContain('&lt;i&gt;x&lt;/i&gt;')
   })
 })

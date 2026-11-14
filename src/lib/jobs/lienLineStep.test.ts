@@ -37,7 +37,8 @@ describe('lienLineStep — the step a billed job’s lien line stands on (punch 
 
   it('a notice window closed with the affidavit’s day ahead is a step, the late notice; closed for good is none', () => {
     const late = buildLienPayRunway(runwayInput({ todayYmd: '2026-11-20' }))
-    expect(late).toMatchObject({ state: 'closed', closedBy: 'notice' })
+    // The clock says so itself since v2.7198 (punch list #335, row 4); it answered `closed` by the notice before.
+    expect(late).toMatchObject({ state: 'late_notice', closedBy: null })
     expect(lienLateNoticeOpen(late)).toBe(true)
     expect(lienLineStep('2026-11-20', late, null)!).toMatchObject({ lateNotice: true, rowPaper: 'affidavit', deadlineYmd: '2026-12-15', deadlineDays: 25, tab: 'notice' })
     const gone = buildLienPayRunway(runwayInput({ todayYmd: '2026-12-20' }))
@@ -82,7 +83,7 @@ describe('lienPhoneChipWords — the phone row’s lien chip says the step (punc
 
   it('a late notice that can still go is the step, never lien gone', () => {
     const runway = buildLienPayRunway(runwayInput({ todayYmd: '2026-11-20' }))
-    expect(runway.chipLabel).toBe('lien gone')
+    expect(runway.chipLabel).toBe('late notice · 25 d')
     expect(lienPhoneChipWords('2026-11-20', runway, null)).toMatchObject({ label: 'Send the late notice · 25 d', tab: 'notice', step: true })
     expect(lienPhoneChipWords('2026-11-20', runway, desk('notice', lienActFor({ paper: 'notice', action: 'draft_late' }))).label).toBe('Draft the late notice · 25 d')
   })

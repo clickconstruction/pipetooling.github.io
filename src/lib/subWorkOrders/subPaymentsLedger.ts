@@ -8,16 +8,21 @@
  *
  * A line's day is the payment's Date sent; a row with none takes the day it was recorded, flagged (`paymentDay`).
  * A back-charge is a payment row below zero and has no Date sent, so its day is always the recorded one.
+ *
+ * PR 3 adds the other grouping: one row per person (`ledgerBySub`) and one person's statement with what we owed
+ * after each line (`buildSubStatement`). Both read the same sheets. A statement that covers every date ends on
+ * what `subLaborJobBalance` says is owed across that person's sheets.
  */
 import type { LaborJobPayment, LaborJobPaymentEvent } from '../../types/laborJob'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { escapeCsvField } from '../domTableToCsv'
+import { subPayMethodLabel } from './subPaymentWindow'
 
 const YMD = /^\d{4}-\d{2}-\d{2}/
 
 /**
  * One payment's day: its Date sent, else the day the row was recorded in the app's timezone (flagged), else null.
- * The Pay row's dates (`sheetPaymentDates.ts`, v2.7172) read a payment the same way; PR 3 folds the two into this one.
+ * The Pay row's dates (`sheetPaymentDates.ts`) read a payment through this too.
  */
 export function paymentDay(p: { payment_date?: string | null; created_at?: string | null }): { ymd: string; recorded: boolean } | null {
   const sent = (p.payment_date ?? '').trim()
@@ -41,6 +46,8 @@ export type LedgerSheet = {
   address: string
   /** `subLaborJobBalance(sheet).totalCost`. */
   agreed: number
+  /** The day the sheet is dated: its job date, else the day it was made. '' when it has neither. */
+  day?: string
   payments: readonly LaborJobPayment[]
   events: readonly LaborJobPaymentEvent[]
 }
@@ -61,6 +68,10 @@ export type LedgerLine = {
   job: string
   address: string
   memo: string
+  /** How it was sent, as the window's chip reads (`Check`), or '' when none was picked. */
+  method: string
+  /** The check number, the id or the confirmation typed beside the method. */
+  methodRef: string
   /** As stored: above zero for a payment, below for a back-charge. */
   amount: number
   /** What the sheet still owed after this line: agreed, less every payment and back-charge up to it. Below zero is over-paid. */
@@ -108,6 +119,8 @@ export function buildLedgerLines(sheets: readonly LedgerSheet[]): LedgerLine[] {
         job: s.job,
         address: s.address,
         memo: (p.memo ?? '').trim(),
+        method: subPayMethodLabel(p.method),
+        methodRef: subPayMethodLabel(p.method) ? (p.method_ref ?? '').trim() : '',
         amount,
         leftOnSheet: left,
       })
@@ -173,7 +186,7 @@ export type LedgerFilter = { from?: string | null; to?: string | null; paidToKey
 function haystack(r: LedgerRow): string {
   if (r.kind === 'trace') return r.text.toLowerCase()
   const plain = Math.abs(r.amount).toFixed(2)
-  return [r.paidTo, r.job, r.address, r.memo, plain, money(r.amount), r.kind === 'backcharge' ? 'back-charge backcharge' : 'payment', r.crew ? 'crew' : ''].join(' ').toLowerCase()
+  return [r.paidTo, r.job, r.address, r.memo, r.method, r.methodRef, plain, money(r.amount), r.kind === 'backcharge' ? 'back-charge backcharge' : 'payment', r.crew ? 'crew' : ''].join(' ').toLowerCase()
 }
 
 /** The rows a period, a person and a search leave. A row with no day shows only when the period is open at both ends. */
@@ -259,8 +272,8 @@ export function ledgerMonths(rows: readonly LedgerRow[]): LedgerMonth[] {
   })
 }
 
-/** Who the lines went to, by name, for the Paid to picker. */
-export function ledgerPaidToOptions(lines: readonly LedgerLine[]): Array<{ key: string; label: string; crew: boolean }> {
+/** Who the lines went to (or whose the sheets are), by name, for the Paid to picker. */
+export function ledgerPaidToOptions(lines: ReadonlyArray<Pick<LedgerLine, 'paidToKey' | 'paidTo' | 'crew'>>): Array<{ key: string; label: string; crew: boolean }> {
   const by = new Map<string, { key: string; label: string; crew: boolean }>()
   for (const l of lines) if (l.paidToKey && !by.has(l.paidToKey)) by.set(l.paidToKey, { key: l.paidToKey, label: l.paidTo, crew: l.crew })
   return [...by.values()].sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }))
@@ -272,12 +285,17 @@ export function leftOnSheetWords(left: number): string {
   return left < 0 ? `over by ${money(left)}` : money(left)
 }
 
+/** `Check 1187` · `Zelle` · '': how a line was sent, with its reference. */
+export function ledgerHowPaidWords(l: Pick<LedgerLine, 'method' | 'methodRef'>): string {
+  return l.method ? [l.method, l.methodRef].filter(Boolean).join(' ') : ''
+}
+
 /** A cell a spreadsheet will not run: text that opens like a formula is led with an apostrophe. */
 const csvCell = (v: string): string => escapeCsvField(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v)
 /** A number cell: left as it is so a column of them adds, and a back-charge keeps its minus sign. */
 const csvNumber = (n: number): string => n.toFixed(2)
 
-export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'Memo', 'Amount', 'Left on the sheet']
+export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'How paid', 'Reference', 'Memo', 'Amount', 'Left on the sheet']
 
 /** The lines as a spreadsheet, in the order given. Amounts are plain numbers; a back-charge is below zero. */
 export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
@@ -292,6 +310,8 @@ export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
         csvCell(l.job),
         csvCell(l.address),
         csvCell(l.kind === 'backcharge' ? 'Back-charge' : 'Payment'),
+        csvCell(l.method),
+        csvCell(l.methodRef),
         csvCell(l.memo),
         csvNumber(l.amount),
         csvNumber(l.leftOnSheet),
@@ -321,7 +341,8 @@ export function ledgerDayWords(ymd: string, withYear = false): string {
 export function subPaymentsLedgerHtml(months: readonly LedgerMonth[], totals: LedgerTotals, opts: { shownWords: string; printedWords: string }): string {
   const row = (r: LedgerRow): string => {
     if (r.kind === 'trace') return `<tr class="trace"><td class="when">${esc(ledgerDayWords(r.ymd, true))}</td><td colspan="4">${esc(r.text)}</td></tr>`
-    const what = r.kind === 'backcharge' ? `<b>Back-charge</b>${r.memo ? ` · ${esc(r.memo)}` : ''}` : esc(r.memo)
+    const how = ledgerHowPaidWords(r)
+    const what = r.kind === 'backcharge' ? `<b>Back-charge</b>${r.memo ? ` · ${esc(r.memo)}` : ''}` : [how ? `<b>${esc(how)}</b>` : '', esc(r.memo)].filter(Boolean).join(' · ')
     return `<tr><td class="when">${esc(ledgerDayWords(r.ymd, true))}${r.recorded ? '<br><span>recorded</span>' : ''}</td><td><b>${esc(r.paidTo)}</b>${r.crew ? ' <span>crew</span>' : ''}</td><td>${esc(r.job)}${r.address ? `<br><span>${esc(r.address)}</span>` : ''}</td><td>${what}</td><td class="amt">${r.amount < 0 ? '−' : ''}${esc(money(r.amount))}</td></tr>`
   }
   const block = (m: LedgerMonth): string =>
@@ -339,5 +360,329 @@ tr{break-inside:avoid}
 <p>${esc(opts.shownWords)} Newest first. ${esc(sum)}.</p>
 ${months.length ? `<table>${months.map(block).join('')}</table>` : '<p>Nothing was paid in this period.</p>'}
 <p style="margin-top:14px">A date marked recorded is the day the payment was entered, where no Date sent was given. Printed ${esc(opts.printedWords)}.</p>
+</body></html>`
+}
+
+// ── By sub (PR 3) ────────────────────────────────────────────────────────────────────────────────────────────
+
+/** What a sheet still owes: agreed, less every payment and back-charge. The same sum as `subLaborJobBalance`. */
+function sheetOwed(s: LedgerSheet): number {
+  let left = s.agreed
+  for (const p of s.payments) {
+    const amount = Number(p.amount)
+    if (Number.isFinite(amount)) left -= Math.abs(amount)
+  }
+  return cents(left)
+}
+
+export type LedgerSubRow = {
+  key: string
+  name: string
+  crew: boolean
+  /** How many sheets are theirs, paid or not. */
+  sheets: number
+  /** Payments in the period shown. */
+  payments: number
+  /** The first and the last day a payment went out in the period. '' when none did. */
+  firstYmd: string
+  lastYmd: string
+  paid: number
+  backcharges: number
+  backcharged: number
+  /**
+   * What is still open on their sheets today, whatever the period: the Pay view's *owed* and People → Subs'
+   * Balance due. Null on crew pay, which runs through payroll.
+   */
+  weOwe: number | null
+  /** Paid past a sheet's total, summed. It is not taken off `weOwe`: nothing moves it to another sheet today. */
+  over: number
+}
+
+/**
+ * One row per person. The period's figures come from the lines shown; *We owe* reads every sheet to today.
+ * A person with nothing paid in the period still gets a row while we owe them, so the column foots to the Pay view.
+ */
+export function ledgerBySub(sheets: readonly LedgerSheet[], shownLines: readonly LedgerLine[], f: { paidToKey?: string | null; search?: string | null } = {}): LedgerSubRow[] {
+  const by = new Map<string, LedgerSubRow>()
+  for (const s of sheets) {
+    if (!s.paidToKey) continue
+    let row = by.get(s.paidToKey)
+    if (!row) {
+      row = { key: s.paidToKey, name: s.paidTo, crew: s.crew, sheets: 0, payments: 0, firstYmd: '', lastYmd: '', paid: 0, backcharges: 0, backcharged: 0, weOwe: s.crew ? null : 0, over: 0 }
+      by.set(s.paidToKey, row)
+    }
+    row.sheets += 1
+    const owed = sheetOwed(s)
+    if (row.weOwe !== null) {
+      if (owed > 0) row.weOwe = cents(row.weOwe + owed)
+      else row.over = cents(row.over - owed)
+    }
+  }
+  const touched = new Set<string>()
+  for (const l of shownLines) {
+    const row = by.get(l.paidToKey)
+    if (!row) continue
+    touched.add(row.key)
+    if (l.kind === 'payment') {
+      row.payments += 1
+      row.paid = cents(row.paid + l.amount)
+      if (l.ymd) {
+        if (!row.firstYmd || l.ymd < row.firstYmd) row.firstYmd = l.ymd
+        if (!row.lastYmd || l.ymd > row.lastYmd) row.lastYmd = l.ymd
+      }
+    } else {
+      row.backcharges += 1
+      row.backcharged = cents(row.backcharged + Math.abs(l.amount))
+    }
+  }
+  const words = (f.search ?? '').toLowerCase().split(/\s+/).filter(Boolean)
+  return [...by.values()]
+    .filter((r) => {
+      if (f.paidToKey && r.key !== f.paidToKey) return false
+      if (touched.has(r.key)) return true
+      // Nothing of theirs is in the lines shown: they stay only while we owe them, and only when a search names them.
+      if (!r.weOwe) return false
+      const name = r.name.toLowerCase()
+      return words.every((w) => name.includes(w))
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+}
+
+export type LedgerBySubTotals = { people: number; payments: number; paid: number; backcharged: number; weOwe: number; over: number }
+
+export function ledgerBySubTotals(rows: readonly LedgerSubRow[]): LedgerBySubTotals {
+  const t: LedgerBySubTotals = { people: rows.length, payments: 0, paid: 0, backcharged: 0, weOwe: 0, over: 0 }
+  for (const r of rows) {
+    t.payments += r.payments
+    t.paid = cents(t.paid + r.paid)
+    t.backcharged = cents(t.backcharged + r.backcharged)
+    t.weOwe = cents(t.weOwe + (r.weOwe ?? 0))
+    t.over = cents(t.over + r.over)
+  }
+  return t
+}
+
+/** `Oct 21` · `Oct 21 to Nov 12` · '': the days a person's payments ran over. */
+export function ledgerSpanWords(firstYmd: string, lastYmd: string, withYear = false): string {
+  if (!firstYmd) return ''
+  return firstYmd === lastYmd ? ledgerDayWords(firstYmd, withYear) : `${ledgerDayWords(firstYmd, withYear)} to ${ledgerDayWords(lastYmd, withYear)}`
+}
+
+/** `over by $20.00 on a sheet`: the note under a person's We owe when a sheet of theirs was paid past its total. */
+export function overPaidWords(over: number): string {
+  return over > 0 ? `over by ${money(over)} on a sheet` : ''
+}
+
+/** `$1,200.00` · `settled` · `over by $20.00`: what we owe a person. */
+export function weOweWords(n: number): string {
+  if (n === 0) return 'settled'
+  return n < 0 ? `over by ${money(n)}` : money(n)
+}
+
+/**
+ * The address a person's statement is opened at: a roster person's own id, else the key as it is.
+ * `ledgerSubKeyFromParam` reads it back against the people the ledger knows.
+ */
+export function ledgerSubParam(key: string): string {
+  return key.startsWith('id:') ? key.slice(3) : key
+}
+
+export function ledgerSubKeyFromParam(param: string | null | undefined, keys: readonly string[]): string {
+  const want = (param ?? '').trim()
+  if (!want) return ''
+  return keys.find((k) => k === `id:${want}`) ?? keys.find((k) => k === want) ?? ''
+}
+
+// ── One person's statement ───────────────────────────────────────────────────────────────────────────────────
+
+export type StatementEntry = {
+  /** `sheet` adds what was agreed. A payment and a back-charge take away. */
+  kind: 'sheet' | 'payment' | 'backcharge'
+  id: string
+  ymd: string
+  /** A payment shown by the day it was recorded, having no Date sent. */
+  recorded: boolean
+  at: string
+  sheetId: string
+  job: string
+  address: string
+  memo: string
+  method: string
+  methodRef: string
+  /** Always above zero: what the line adds (a sheet) or takes away (a payment, a back-charge). */
+  amount: number
+  /** What we owed after this line. Below zero is over-paid. */
+  owed: number
+}
+
+export type SubStatement = {
+  key: string
+  name: string
+  crew: boolean
+  from: string | null
+  to: string | null
+  /** What we owed before the first day shown. Zero when the statement starts at the beginning. */
+  opening: number
+  entries: StatementEntry[]
+  /** Summed over the lines shown. */
+  agreed: number
+  paid: number
+  payments: number
+  backcharged: number
+  /** What we owed after the last line shown. */
+  closing: number
+  /** What we owe today across every sheet: where a statement of every date ends. */
+  owedToday: number
+  /** The part of `owedToday` still open on sheets, the figure People → Subs calls Balance due. */
+  openOnSheets: number
+  /** Paid past a sheet's total, summed. `owedToday` is `openOnSheets` less this. */
+  overPaid: number
+  /** True when the period is open at its end, so `closing` is today's figure. */
+  endsToday: boolean
+}
+
+/**
+ * One person's sheets and money, oldest first, with what we owed after each line. A sheet is dated no later than
+ * its first payment, so a deposit never reads as money paid for nothing. A line with no day closes the list and
+ * shows only when the period is open at both ends.
+ */
+export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, range: { from?: string | null; to?: string | null } = {}): SubStatement {
+  const mine = sheets.filter((s) => s.paidToKey === key)
+  const from = (range.from ?? '').trim() || null
+  const to = (range.to ?? '').trim() || null
+  const all: Array<Omit<StatementEntry, 'owed'>> = []
+  let openOnSheets = 0
+  let overPaid = 0
+  for (const s of mine) {
+    const lines = buildLedgerLines([s])
+    const firstPaid = lines.map((l) => l.ymd).filter(Boolean).sort()[0] ?? ''
+    const dated = (s.day ?? '').slice(0, 10)
+    const day = dated && firstPaid ? (dated < firstPaid ? dated : firstPaid) : dated || firstPaid
+    all.push({ kind: 'sheet', id: `sheet:${s.id}`, ymd: day, recorded: false, at: '', sheetId: s.id, job: s.job, address: s.address, memo: '', method: '', methodRef: '', amount: s.agreed })
+    for (const l of lines) {
+      all.push({ kind: l.kind, id: l.id, ymd: l.ymd, recorded: l.recorded, at: l.at, sheetId: l.sheetId, job: l.job, address: l.address, memo: l.memo, method: l.method, methodRef: l.methodRef, amount: Math.abs(l.amount) })
+    }
+    const owed = sheetOwed(s)
+    if (owed > 0) openOnSheets = cents(openOnSheets + owed)
+    else overPaid = cents(overPaid - owed)
+  }
+  // Oldest first. On one day a sheet comes before the money paid on it. A line with no day sorts last.
+  all.sort((a, b) => (a.ymd || '9999').localeCompare(b.ymd || '9999') || (a.kind === 'sheet' ? 0 : 1) - (b.kind === 'sheet' ? 0 : 1) || a.at.localeCompare(b.at))
+  const st: SubStatement = {
+    key,
+    name: mine[0]?.paidTo ?? '',
+    crew: mine[0]?.crew ?? false,
+    from,
+    to,
+    opening: 0,
+    entries: [],
+    agreed: 0,
+    paid: 0,
+    payments: 0,
+    backcharged: 0,
+    closing: 0,
+    owedToday: cents(openOnSheets - overPaid),
+    openOnSheets,
+    overPaid,
+    endsToday: !to,
+  }
+  let owed = 0
+  for (const e of all) {
+    const delta = e.kind === 'sheet' ? e.amount : -e.amount
+    const before = from && (!e.ymd ? false : e.ymd < from)
+    const after = to && (!e.ymd || e.ymd > to)
+    const undatedOut = !e.ymd && (from || to)
+    if (before) {
+      owed = cents(owed + delta)
+      st.opening = owed
+      continue
+    }
+    if (after || undatedOut) continue
+    owed = cents(owed + delta)
+    st.entries.push({ ...e, owed })
+    if (e.kind === 'sheet') st.agreed = cents(st.agreed + e.amount)
+    else if (e.kind === 'payment') {
+      st.paid = cents(st.paid + e.amount)
+      st.payments += 1
+    } else st.backcharged = cents(st.backcharged + e.amount)
+  }
+  st.closing = owed
+  return st
+}
+
+/**
+ * The foot's check against People → Subs. The roster's Balance due counts what is still open on sheets and
+ * leaves out anything paid past a sheet's total, so that is the figure it is held against.
+ */
+export function statementCheckWords(st: SubStatement, rosterBalanceDue: number | null | undefined): { agrees: boolean | null; words: string } {
+  const over = st.overPaid > 0 ? ` ${money(st.openOnSheets)} is still open on sheets and ${money(st.overPaid)} was paid past a sheet's total.` : ''
+  if (rosterBalanceDue == null || !Number.isFinite(rosterBalanceDue)) return { agrees: null, words: `We owe ${st.name || 'them'} ${weOweWords(st.owedToday)} today.${over}` }
+  const agrees = Math.abs(cents(rosterBalanceDue) - st.openOnSheets) < 0.005
+  return agrees
+    ? { agrees: true, words: `Agrees with People → Subs, where Balance due reads ${money(rosterBalanceDue)}.${over}` }
+    : { agrees: false, words: `People → Subs reads ${money(rosterBalanceDue)} for Balance due and these sheets come to ${money(st.openOnSheets)}. A sheet shared with another sub counts for neither there.${over}` }
+}
+
+export const SUB_STATEMENT_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Type', 'Job', 'How paid', 'Reference', 'Memo', 'Agreed', 'Paid', 'We owe after']
+
+/** One person's statement as a spreadsheet. Agreed and Paid are separate columns so each adds by itself. */
+export function subStatementCsv(st: SubStatement): string {
+  const rows: string[] = [SUB_STATEMENT_CSV_HEAD.map(csvCell).join(',')]
+  if (st.from) rows.push([csvCell(st.from), csvCell('Brought forward'), '', '', '', '', '', '', csvNumber(st.opening)].join(','))
+  for (const e of st.entries) {
+    rows.push(
+      [
+        csvCell(e.ymd),
+        csvCell(e.kind === 'sheet' ? 'Sheet agreed' : e.kind === 'backcharge' ? 'Back-charge' : 'Payment'),
+        csvCell(e.job),
+        csvCell(e.method),
+        csvCell(e.methodRef),
+        csvCell(e.memo),
+        e.kind === 'sheet' ? csvNumber(e.amount) : '',
+        e.kind === 'sheet' ? '' : csvNumber(e.amount),
+        csvNumber(e.owed),
+      ].join(','),
+    )
+  }
+  return rows.join('\r\n') + '\r\n'
+}
+
+/** `sub-statement-calloway-tile-2026-11-13.csv`. */
+export function subStatementCsvFileName(name: string, todayYmd: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  return `sub-statement-${slug || 'sub'}-${todayYmd}.csv`
+}
+
+/** One person's statement as a page to print. The office's own report: nothing here is sent to the sub. */
+export function subStatementHtml(st: SubStatement, opts: { periodWords: string; checkWords: string; printedWords: string }): string {
+  const cell = (n: number): string => `${n < 0 ? '−' : ''}${esc(money(n))}`
+  const row = (e: StatementEntry): string => {
+    const what =
+      e.kind === 'sheet'
+        ? '<b>Sheet agreed</b>'
+        : e.kind === 'backcharge'
+          ? `<b>Back-charge</b>${e.memo ? ` · ${esc(e.memo)}` : ''}`
+          : [`<b>Payment</b>`, esc(ledgerHowPaidWords(e)), esc(e.memo)].filter(Boolean).join(' · ')
+    return `<tr><td class="when">${esc(ledgerDayWords(e.ymd, true))}${e.recorded ? '<br><span>recorded</span>' : ''}</td><td>${what}</td><td>${esc(e.job)}${e.address && !e.job.includes(e.address) ? `<br><span>${esc(e.address)}</span>` : ''}</td><td class="amt">${e.kind === 'sheet' ? cell(e.amount) : ''}</td><td class="amt">${e.kind === 'sheet' ? '' : cell(e.amount)}</td><td class="amt">${cell(e.owed)}</td></tr>`
+  }
+  const forward = st.from ? `<tr class="fwd"><td class="when">${esc(ledgerDayWords(st.from, true))}</td><td colspan="4">Brought forward</td><td class="amt">${cell(st.opening)}</td></tr>` : ''
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Statement · ${esc(st.name)}</title><style>
+body{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:28px}
+h1{font-size:18px;margin:0 0 2px}p{margin:3px 0;color:#444}
+table{border-collapse:collapse;width:100%;margin-top:10px}th{text-align:left;font-size:11px;border-bottom:2px solid #111;padding:4px 8px 4px 0}th.amt{text-align:right;padding-right:0}
+td{border-top:1px solid #ccc;padding:5px 8px 5px 0;vertical-align:top}
+td.when{white-space:nowrap;width:1%;padding-right:14px;font-weight:600}td.amt{text-align:right;white-space:nowrap;padding-right:0}
+td span{color:#555;font-weight:400}tr.fwd td{color:#555}tr.foot td{border-top:2px solid #111;font-weight:700}
+tr{break-inside:avoid}
+</style></head><body>
+<h1>${esc(st.name)}</h1>
+<p>Statement of sub sheets and payments. ${esc(opts.periodWords)} Oldest first.</p>
+${
+  st.entries.length || st.from
+    ? `<table><thead><tr><th>Date</th><th>What</th><th>Job</th><th class="amt">Agreed</th><th class="amt">Paid</th><th class="amt">We owe</th></tr></thead><tbody>${forward}${st.entries.map(row).join('')}<tr class="foot"><td colspan="3">${st.endsToday ? 'We owe today' : 'We owed at the end'}</td><td class="amt">${cell(st.agreed)}</td><td class="amt">${cell(cents(st.paid + st.backcharged))}</td><td class="amt">${cell(st.closing)}</td></tr></tbody></table>`
+    : '<p>Nothing was agreed or paid in this period.</p>'
+}
+<p style="margin-top:14px">${esc(opts.checkWords)}</p>
+<p>A date marked recorded is the day the payment was entered, where no Date sent was given. Printed ${esc(opts.printedWords)}.</p>
 </body></html>`
 }

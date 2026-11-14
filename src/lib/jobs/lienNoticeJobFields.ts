@@ -1,0 +1,81 @@
+import type { LienNoticeFields } from '../jobsDocuments/lienNoticeFieldsType'
+import { cleanStoredAddress } from '../displayAddress'
+import { lienTradeWords } from './lienTradeWords'
+
+/**
+ * The company on a lien paper, as much of Settings → Company as the notice reads: its name and where its mail goes.
+ * A shape, not the settings file's own type, so this kernel pulls no settings code behind it and the edge copy can
+ * carry it (v2.7229, the dev seat's notice recorded by hand).
+ */
+export type LienNoticeIssuer = { companyName?: string | null; addressText?: string | null }
+
+/**
+ * The § 53.056 notice, filled from the job (pure). The Lien window's notice
+ * tab and the Lien desk build the same document from the same facts, so a
+ * draft approved on the desk is the paper the window would print.
+ */
+
+export type LienNoticeJobFacts = {
+  jobName: string | null | undefined
+  jobAddress: string | null | undefined
+  /** The GC on the job — the "original contractor" line. */
+  originalContractorName: string
+  /** What the notice claims — the open balance, or the figure the office set by hand (v2.3682). */
+  openBalance: number
+  /** The per-month split as the paper states it, when a person gave a month its own figure. */
+  claimSplit?: string
+  /** The signer (the job's master's "Full name and title", else the session name). */
+  contactPerson: string
+  issuer: LienNoticeIssuer | null
+  todayYmd: string
+  /** The job's service type name (v2.3849) — the form's default *Type of labor or materials*; blank reads as plumbing. */
+  serviceTypeName?: string | null
+  /** Print the § 53.254(g) statement — `homesteadStatementApplies(property)` (v2.3744). */
+  homesteadStatement?: boolean
+  /** Unpaid subcontract retainage recorded on the job (`jobs_ledger.lien_retainage_held`, v2.3753) — named inside the claim ("Of which, unpaid retainage"). Undefined or 0 prints nothing. */
+  retainageHeld?: number | null
+}
+
+export const DEFAULT_CLAIMANT_NAME = 'Click Plumbing and Electrical'
+
+/**
+ * Whether the notice prints the § 53.254(g) homestead statement (v2.3744):
+ * on a property flagged homestead, and on every residential property — a
+ * homestead is always residential, the roll's flag can be stale or missing,
+ * and the statement costs nothing on a residence that is not one. Counsel,
+ * 2026-09-22: the § 53.081 mechanics are the same on residential work; the
+ * homestead lien is invalid without this statement.
+ */
+export function homesteadStatementApplies(property: { propertyKind: string; homestead: boolean } | null | undefined): boolean {
+  if (!property) return false
+  return property.homestead === true || property.propertyKind === 'residential'
+}
+
+export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFields {
+  return {
+    noticeDate: f.todayYmd,
+    projectDescription: [f.jobName?.trim(), cleanStoredAddress(f.jobAddress)].filter(Boolean).join(' — '),
+    claimantName: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME,
+    laborMaterialsType: lienTradeWords(f.serviceTypeName).laborMaterials,
+    originalContractorName: f.originalContractorName,
+    contractedWithIfDifferent: '',
+    claimAmount: Math.max(0, f.openBalance).toFixed(2),
+    ...(f.claimSplit ? { claimSplit: f.claimSplit } : {}),
+    contactPerson: f.contactPerson,
+    claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
+    ...(f.homesteadStatement ? { homesteadStatement: true } : {}),
+    ...(retainageInsideClaim(f.openBalance, f.retainageHeld) ? { retainageIncluded: retainageInsideClaim(f.openBalance, f.retainageHeld).toFixed(2) } : {}),
+  }
+}
+
+/**
+ * The retainage the § 53.056 form names inside its claim (v2.3753): the
+ * recorded figure, never more than the claim itself — the claim is the open
+ * balance (or the office's corrected figure) and the retainage is a part of
+ * it, not on top of it. 0 when none is recorded.
+ */
+export function retainageInsideClaim(claim: number, retainageHeld: number | null | undefined): number {
+  const r = Number(retainageHeld ?? 0)
+  if (!Number.isFinite(r) || r <= 0) return 0
+  return Math.min(Math.max(0, claim), r)
+}

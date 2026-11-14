@@ -992,7 +992,7 @@ export default function Bridge() {
   const jobHours = useMemo(() => (jobHoursSessions ? jobHoursByJob(jobHoursSessions) : null), [jobHoursSessions])
   // What a percent is judged from, for the same jobs (v2.7221; `pctFacts.ts`): read while the move or its window is on screen.
   const noPctJobRows = useMemo(() => (data ? data.jobs.filter((j) => data.earned.assumedHalfJobs.includes(j.id)) : []), [data])
-  const pctFacts = useBridgePctFacts({ jobs: noPctJobRows, hours: jobHours, todayYmd: data?.todayYmd ?? null, enabled: pctFor != null || (weekModel?.card.moves.some((m) => m.key === 'pct') ?? false), refreshKey })
+  const pctFacts = useBridgePctFacts({ jobs: noPctJobRows, hours: jobHours, todayYmd: data?.todayYmd ?? null, addressJobIds: data?.earned.noRevenueJobs, enabled: pctFor != null || (weekModel?.card.moves.some((m) => m.key === 'pct' || m.key === 'price') ?? false), refreshKey })
   const callDives = useMemo<DiveFacts | null>(() => {
     if (!data) return null
     const jobById = new Map(data.jobs.map((j) => [j.id, j]))
@@ -1039,7 +1039,7 @@ export default function Bridge() {
           lastWorked: pctFacts.facts?.has(j.id) ? lastWorkedCell(pctFacts.facts.get(j.id)!, data.todayYmd, md) : null,
           address: pctFacts.facts?.get(j.id)?.address || null,
         })),
-      noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
+      noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label, address: pctFacts.addresses.get(j.id) ?? null })),
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
       supplyBills: [
         ...Object.values(fin.data?.apBills ?? {})
@@ -1053,7 +1053,7 @@ export default function Bridge() {
       ].sort((a, b) => b.usd - a.usd),
       dayLabel: md,
     }
-  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours, pctFacts.facts])
+  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours, pctFacts.facts, pctFacts.addresses])
   // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
   // cards that carry one of its own tags (PR 12), or one of its tagged addresses in a link, and reads again after a
   // card is made or changed here.
