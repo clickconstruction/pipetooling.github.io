@@ -311,6 +311,7 @@ describe('SiteMaterialsView', () => {
     expect(within(bills).queryByRole('button')).toBeNull()
     expect(within(win).queryByRole('textbox', { name: 'A price for one, as counted' })).toBeNull()
     expect(within(win).queryByRole('button', { name: /^Not a part/ })).toBeNull()
+    expect(win.querySelector('[data-just-price]')).toBeNull()
 
     // 1 takes the first answer: the tie is written, and the window moves on.
     fireEvent.keyDown(window, { key: '1' })
@@ -361,6 +362,37 @@ describe('SiteMaterialsView', () => {
     await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc'))
     expect(store.sitePrices).toHaveLength(0)
     expect(worth.textContent).toContain('$100.00 known')
+  })
+
+  it('Just price takes a parts-book part’s price and leaves the row its own name and count', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    fireEvent.click(await screen.findByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    // The parts-book offer has the second press. A bill is a price already and has none.
+    const just = await within(win).findByRole('button', { name: 'Just the price of 2 PVC 90 DWV, $1.50, for 2" 90 pvc' })
+    expect(just.textContent).toBe('Just price')
+    expect(win.querySelectorAll('[data-just-price]')).toHaveLength(1)
+    fireEvent.click(just)
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    // One price, dated the day the book checked it, and no tie: nothing is renamed or joined.
+    expect(store.sitePrices).toHaveLength(1)
+    expect(store.sitePrices[0]).toMatchObject({ rowKey: 'words:2" 90 pvc', rowName: '2" 90 pvc', kind: 'price', unitPrice: 1.5, source: 'book', sourceWords: '2 PVC 90 DWV', pricedOn: '2026-10-03' })
+    expect(tiesDb.rows).toHaveLength(0)
+    expect(worth.textContent).toContain('$271.00 known')
+    expect(screen.getByTestId('pricing-last-answer').textContent).toContain('Just now: 2" 90 pvc · $1.50 for one, the price of 2 PVC 90 DWV, name kept')
+    fireEvent.click(screen.getByRole('button', { name: 'Done for now' }))
+    fireEvent.click(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: /^No price/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
+    const row = screen.getByRole('button', { name: /^2" 90 pvc/ })
+    expect(row.textContent).toContain('$171.00 · the parts book’s price for 2 PVC 90 DWV · checked Oct 3')
+    expect(screen.queryByRole('button', { name: /^2 PVC 90 DWV/ })).toBeNull()
+    // The foot's Undo is the same delete the row offers.
+    fireEvent.click(row)
+    fireEvent.click(within(screen.getByTestId('priced-here')).getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(worth.textContent).toContain('$100.00 known'))
   })
 
   it('a typed price and Not a part finish the list, and the row keeps its answer with a way back', async () => {

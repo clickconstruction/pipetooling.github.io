@@ -1,9 +1,9 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
 import { monthFromCreation } from './lienDesk'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
-import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import { parseCourtesyRecords } from './lienCourtesyNotice'
 import { liveDemandLetters, type JobDemandLetterRow } from './demandLetterTracking'
 import type { JobLienFilingRow } from './lienDeadlines'
@@ -86,6 +86,41 @@ export function lienWindowDeskNotice(entry: Pick<LienDeskEntry, 'pile' | 'item'>
   return state ? { state, holdUntil: entry.item?.hold_until ?? null } : null
 }
 
+/** Where a job's affidavit stands on the desk, as the Lien window's opener hands it over (v2.7187, punch list #335, row 2). */
+export type LienWindowDeskAffidavit = {
+  state: LienTimelineAffidavitState
+  /** The gates still closed, by key, sorted: the header names the one fact that holds the paper. */
+  missing: LienAffidavitGateKey[]
+  holdUntil: string | null
+}
+
+function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile'> | null | undefined): LienTimelineAffidavitState {
+  switch (entry?.pile) {
+    case 'needs_property':
+    case 'to_draft':
+    case 'awaiting':
+    case 'ready':
+    case 'held':
+      return entry.pile
+    default:
+      return ''
+  }
+}
+
+/**
+ * The desk's word on a job's affidavit for the Lien window (v2.7187, punch list #335, row 2), as `lienWindowDeskNotice` is
+ * for its notice. The window builds its path from the job's filings and cannot see an affidavit that is not drafted,
+ * waits on approval or is held by a fact, so its header read *File the affidavit* over a row that read *Draft the
+ * affidavit* or *Answer the homestead question*. Null when the job has no entry, or one that is filed or missed,
+ * which is no step. The closed gates go over only for a paper its facts hold.
+ */
+export function lienWindowDeskAffidavit(entry: Pick<LienAffidavitEntry, 'pile' | 'gates' | 'item'> | null | undefined): LienWindowDeskAffidavit | null {
+  const state = affidavitStateOf(entry)
+  if (!entry || !state) return null
+  const missing = state === 'needs_property' ? entry.gates.filter((g) => !g.ok).map((g) => g.key).sort() : []
+  return { state, missing, holdUntil: entry.item?.hold_until ?? null }
+}
+
 export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string, propertyKind = ''): LienTimelineMonth[] {
   const deskMonths: LienDeskMonth[] = rows
     .filter((r) => r.job_id === jobId)
@@ -124,6 +159,10 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
           servedAt: affidavitFiling?.served_at ?? null,
           serveDue: affidavitFiling?.serve_due ?? null,
           missingGates: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => GATE_SHORT[g.key] ?? g.key),
+          // Where the paper stands on the desk (v2.7187, punch list #335, row 2), so the desk's own timeline names the step too.
+          state: affidavitFiling ? '' : affidavitStateOf(src.affidavit),
+          missingKeys: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => g.key),
+          holdUntil: src.affidavit?.item?.hold_until ?? null,
         }
       : null
 
@@ -232,6 +271,8 @@ export function buildLienTimelineFromWindow(src: {
   courtesy?: ReadonlyArray<LienTimelineCourtesy> | null
   /** Where the job's notice stands on the desk (v2.7077), when the opener holds the desk's queue; absent, the open months read *to draft*. */
   deskNotice?: LienWindowDeskNotice | null
+  /** Where the job's affidavit stands on the desk (v2.7187, punch list #335, row 2), from the same opener; absent, the header reads *File the affidavit*. */
+  deskAffidavit?: LienWindowDeskAffidavit | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
@@ -268,7 +309,10 @@ export function buildLienTimelineFromWindow(src: {
     retainage: src.job.lien_contract_ended_on ? { contractEndedOn: src.job.lien_contract_ended_on, deadline: lienThirtyDayClock(src.job.lien_contract_ended_on), noticed: false } : null,
     affidavit: affidavitFiling
       ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
-      : null,
+      : src.deskAffidavit?.state
+        ? // No filing yet: the desk's word alone. The last day stays the window's own (`deadline: ''` reads the last month's).
+          { deadline: '', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: src.deskAffidavit.missing.map((k) => GATE_SHORT[k] ?? k), state: src.deskAffidavit.state, missingKeys: src.deskAffidavit.missing, holdUntil: src.deskAffidavit.holdUntil }
+        : null,
     originalContractCompletedOn: null,
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,

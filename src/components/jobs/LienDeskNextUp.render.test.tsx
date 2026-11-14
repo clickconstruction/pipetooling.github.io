@@ -45,12 +45,14 @@ describe('LienDeskNextUp', () => {
     expect(onAct).toHaveBeenCalledTimes(1)
   })
 
-  it('nothing to do reads calm and points at the Calendar; a phone draws cards with a full-width button', () => {
+  it('nothing to do reads calm and points at the Calendar; a phone row’s press is as wide as its words and a thumb tall (punch list #352, PR 3)', () => {
     const view = render(<LienDeskNextUp rows={[]} loading={false} isMobile={false} onAct={() => {}} />)
     expect((document.querySelector('[data-lien-next-up="empty"]') as HTMLElement).textContent).toContain('Nothing needs you right now.')
     view.unmount()
     render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} />)
-    expect((screen.getByRole('button', { name: 'Draft notice' }) as HTMLButtonElement).style.width).toBe('100%')
+    const press = screen.getByRole('button', { name: 'Draft notice' }) as HTMLButtonElement
+    expect(press.style.width).toBe('')
+    expect(press.style.minHeight).toBe('40px')
   })
 
   it('the list is its own scroller unless the desk scrolls it with the month as one page (punch list #352, PR 0)', () => {
@@ -64,18 +66,50 @@ describe('LienDeskNextUp', () => {
     expect(list().style.overflowY).toBe('visible')
   })
 
-  it('a phone row names the four steps in place of the dots, with the current one saying whose it is (v2.4881)', () => {
+  it('a phone row wears the four dots; with no press for this viewer, the step’s name and whose it is stand beside them (punch list #352, PR 3; four named tiles from v2.4881 until then)', () => {
     render(<LienDeskNextUp rows={[row({ action: 'approve', button: 'Approve' })]} loading={false} isMobile onAct={() => {}} viewerIsLeader />)
-    const tiles = Array.from(screen.getByTestId('lien-step-row').querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)
-    expect(tiles).toEqual(['✓Owner:done', '✓Drafted:done', 'youApprove:now', '\u00a0Mail:todo'])
-    expect(screen.queryByTestId('lien-step-mark')).toBeNull()
+    expect(screen.queryByTestId('lien-step-row')).toBeNull()
+    expect(screen.getByTestId('lien-step-mark').getAttribute('aria-label')).toBe('Step 3 of 4: where this stands')
+    // The dots alone: the fraction a computer draws beside them gives its room to the press.
+    expect(screen.getByTestId('lien-step-mark').textContent).toBe('')
+    // With a press of his own, the press names the step (*Approve*) and the words stay out of its way.
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy()
+    expect(document.querySelector('[data-lien-next-up-step-words]')).toBeNull()
     cleanup()
-    render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Draft notice' })]} loading={false} isMobile onAct={() => {}} />)
-    expect(screen.getByTestId('lien-step-row').querySelector('[data-state="now"]')!.textContent).toBe('youDrafted')
+    render(<LienDeskNextUp rows={[row({ action: 'approve', button: null })]} loading={false} isMobile onAct={() => {}} />)
+    expect(document.querySelector('[data-lien-next-up-step-words]')!.textContent).toBe('Approve · leader')
     cleanup()
     render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Draft notice' })]} loading={false} isMobile={false} onAct={() => {}} />)
     expect(screen.queryByTestId('lien-step-row')).toBeNull()
     expect(screen.getByTestId('lien-step-mark')).toBeTruthy()
+    // A computer's row has its own column for the state and no step words beside the dots.
+    expect(document.querySelector('[data-lien-next-up-step-words]')).toBeNull()
+  })
+
+  it('a phone groups the rows by the day they are due, each head with how long is left and the money, and a row says what its job owes (punch list #352, PR 3)', () => {
+    const rows = [
+      row({ key: 'notice:a', jobId: 'a', title: '412 · Oak Hollow', dueOn: '2026-11-16', daysLeft: 3 }),
+      row({ key: 'notice:b', jobId: 'b', title: '437 · Larkspur lot 9', dueOn: '2026-11-16', daysLeft: 3 }),
+      row({ key: 'notice:c', jobId: 'c', title: '455 · Finch Ln', dueOn: '2026-12-15', daysLeft: 32, group: 'coming', severity: 'quiet' }),
+    ]
+    const owed: Record<string, number> = { a: 8400, b: 6125 }
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} amountFor={(r) => (r.jobId ? owed[r.jobId] ?? null : null)} />)
+    const heads = Array.from(document.querySelectorAll('[data-lien-phone-group] h3')).map((h) => h.textContent)
+    expect(heads).toEqual(['Due Mon Nov 16 · 23 days$14,525', 'Due Tue Dec 15 · 132 days'])
+    expect(Array.from(document.querySelectorAll('[data-lien-phone-group]')).map((el) => el.getAttribute('data-lien-phone-group'))).toEqual(['day:2026-11-16', 'day:2026-12-15'])
+    const first = document.querySelector('[data-lien-next-up-row="notice:a"]') as HTMLElement
+    expect(first.getAttribute('data-layout')).toBe('lines')
+    expect(first.querySelector('[data-lien-next-up-amount]')!.textContent).toBe('$8,400')
+    // The day is on the head, so the row does not say it again.
+    expect(first.querySelector('[data-lien-next-up-sub]')!.textContent).not.toMatch(/Nov 16|days left/)
+    // A job with nothing known draws no amount.
+    expect(document.querySelector('[data-lien-next-up-row="notice:c"] [data-lien-next-up-amount]')).toBeNull()
+    cleanup()
+    // A computer keeps the desk's own groups and draws no money on the row.
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} amountFor={(r) => (r.jobId ? owed[r.jobId] ?? null : null)} />)
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['Needs you now · 2', 'Coming up · 1'])
+    expect(document.querySelector('[data-lien-next-up-amount]')).toBeNull()
+    expect(document.querySelector('[data-lien-phone-group]')).toBeNull()
   })
 
   it('the day reads late, today, or days left', () => {
@@ -206,9 +240,11 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
   })
-  it('on a phone a tap on the named steps opens the card as a sheet with a Close', () => {
+  it('on a phone a tap on the dots opens the card as a sheet with a Close', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
-    fireEvent.click(screen.getAllByTestId('lien-step-row')[0]!)
+    const mark = screen.getAllByTestId('lien-step-mark')[0] as HTMLButtonElement
+    expect(mark.style.minHeight).toBe('40px')
+    fireEvent.click(mark)
     expect(screen.getByTestId('lien-step-card').getAttribute('data-place')).toBe('sheet')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
@@ -275,10 +311,10 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
     expect(onAct).toHaveBeenCalledTimes(2)
     expect(screen.getByTestId('lien-step-count-notice-4').textContent).toBe('19 printed')
   })
-  it('the find opens the fold; a phone stacks both buttons full width', () => {
+  it('the find opens the fold; a phone draws both buttons a thumb tall at the row’s end', () => {
     render(<LienDeskNextUp rows={[run]} loading={false} isMobile onAct={() => {}} foldsOpen />)
     expect(document.querySelector('[data-lien-next-up-fold-body="run:printed"]')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement).style.width).toBe('100%')
+    expect((screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement).style.minHeight).toBe('40px')
   })
 })
 
@@ -425,7 +461,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(screen.getByTestId('lien-notice-timeline').textContent).toContain('reminders paused until Nov 10')
     expect(screen.getByTestId('lien-step-brief-why').textContent).toBe('1 · paying it down')
   })
-  it('at 375 wide the rail stacks, a courtesy card wears the four reminder tiles in violet, and the step’s list is one column with a full-width Open', () => {
+  it('at 375 wide the rail folds, a courtesy row wears the reminder dots with its step’s name, and the step’s list is one column with a full-width Open', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} reminders={reminders} />)
     // The rails are one folded row on a phone (punch list #352, PR 2): the row names the papers, and a press unfolds them.
     const fold = screen.getByTestId('lien-step-rails-fold') as HTMLButtonElement
@@ -439,9 +475,9 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(fold.textContent).toContain('Hide the steps')
     expect(screen.getByTestId('lien-step-rail-reminder')).toBeTruthy()
     const card = document.querySelector('[data-lien-next-up-row="courtesy:j1"]') as HTMLElement
-    const stepRow = within(card).getByTestId('lien-step-row')
-    expect(stepRow.getAttribute('data-ladder')).toBe('reminder')
-    expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Attorney’s letter:todo', ' Closed:todo'])
+    // The card is three lines now (punch list #352, PR 3): the dots stand in for the four violet tiles, with the step's name beside them.
+    expect(within(card).getByTestId('lien-step-mark').getAttribute('aria-label')).toBe('Step 1 of 4: where this stands')
+    expect(within(card).getByTestId('lien-step-mark').textContent).toBe('')
     fireEvent.click(screen.getByTestId('lien-step-reminder-2'))
     expect((within(screen.getByTestId('lien-reminder-step-list')).getByRole('button', { name: 'Open' }) as HTMLButtonElement).style.width).toBe('100%')
     // Hiding the steps lets go of the pressed one, so the rails fold and the list is whole again.

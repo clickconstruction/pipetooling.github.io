@@ -57,7 +57,9 @@ To price many rows, press **Worth** and then {{button:blue|Price 88 rows one at 
 
 The window shows parts from the parts book whose names hold every word of the row's name. Each one is marked **Offer** and shows its price and the day it was checked. An offer is a guess. Read the name before you press it. A name with no material can fit a PVC part and a copper part.
 
-Press an offer to use that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
+Press an offer to say the row is that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
+
+Each parts-book offer has a second press on its right, **Just price**. Use it when the price is right and the part is not the same thing. The row takes that price for one piece. The row keeps the name the crew wrote, and the pieces are not counted as that part.
 
 An offer marked **a bill** is what a supply house charged for a line that fits. Press it to use that price for one piece. The offer names the house, the day and the unit the bill sold it by. A bill may sell pipe by the foot, so read the unit first.
 
