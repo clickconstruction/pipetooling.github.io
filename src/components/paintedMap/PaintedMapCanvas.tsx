@@ -57,6 +57,10 @@ type Props = {
   flyTo?: PaintedPoint | null
   /** Where the person stands, when they asked. */
   me?: (PaintedPoint & { accuracyM: number | null }) | null
+  /** Frame everything on the map again each time this number changes: a walk just ended, and the whole of it is to be looked over. */
+  refit?: number
+  /** Keep the person in view as they move: the map slides to them when they near its edge. For a walk being painted. */
+  follow?: boolean
   onPlaceTap?: (id: string) => void
   /** A picture, not a control: no drag, no zoom, no buttons. */
   still?: boolean
@@ -138,6 +142,14 @@ const DOT_ICON = L.divIcon({
   html: `<span style="display:block;width:22px;height:22px;margin:11px;border-radius:50%;background:${ME_BLUE};border:3px solid ${PAPER};box-shadow:0 1px 5px rgba(0,0,0,.6)"></span>`,
 })
 
+/** Where the person is: smaller than the dot a finger drags, so the two are never taken for each other. */
+const ME_ICON = L.divIcon({
+  className: 'painted-map-icon',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+  html: `<span style="display:block;width:14px;height:14px;margin:4px;border-radius:50%;background:${ME_BLUE};border:3px solid ${PAPER};box-shadow:0 0 0 1px rgba(17,24,39,.5),0 1px 4px rgba(0,0,0,.5)"></span>`,
+})
+
 /** Leaflet measures its box once; inside a window that opens later, or a flex box that settles, it needs telling. */
 function SizeFix() {
   const map = useMap()
@@ -150,6 +162,36 @@ function SizeFix() {
       ro?.disconnect()
     }
   }, [map])
+  return null
+}
+
+/** Frames everything again when asked: the map followed a walker to the end of the line, and Look it over wants all of it. */
+function Refit({ token, points }: { token: number; points: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const seen = useRef(token)
+  const latest = useRef(points)
+  latest.current = points
+  useEffect(() => {
+    if (seen.current === token) return
+    seen.current = token
+    const b = boundsOfPoints(latest.current)
+    if (!b) return
+    if (b.south === b.north && b.west === b.east) map.setView([b.south, b.west], 18, { animate: false })
+    else map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [40, 40], maxZoom: NATIVE_ZOOM, animate: false })
+  }, [map, token])
+  return null
+}
+
+/** Slides the map to the person when they walk out of the middle of it, and leaves it alone while they are in it. */
+function Follow({ me }: { me: PaintedPoint }) {
+  const map = useMap()
+  useEffect(() => {
+    const size = map.getSize()
+    const at = map.latLngToContainerPoint([me.lat, me.lng])
+    const margin = Math.min(size.x, size.y) * 0.25
+    const inside = at.x > margin && at.x < size.x - margin && at.y > margin && at.y < size.y - margin
+    if (!inside) map.panTo([me.lat, me.lng], { animate: true, duration: 0.4 })
+  }, [map, me.lat, me.lng])
   return null
 }
 
@@ -488,7 +530,7 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, onPlaceTap, still, onTilesFailed, onGlass, onView }: Props) {
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, onPlaceTap, still, onTilesFailed, onGlass, onView }: Props) {
   const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
   const [host, setHost] = useState<HTMLDivElement | null>(null)
@@ -541,11 +583,13 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         <FitOnce points={framed} />
         <FlyTo to={flyTo} />
         {onView ? <ViewTracker onView={onView} /> : null}
+        {follow && me ? <Follow me={me} /> : null}
+        {refit != null ? <Refit token={refit} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         <Shapes lines={lines} places={places} draftPoints={draftShown} onPlaceTap={draft || dot ? undefined : onPlaceTap} />
         {me ? (
           <>
             {me.accuracyM != null ? <Circle center={ll(me)} radius={me.accuracyM} pathOptions={{ color: ME_BLUE, weight: 1, fillColor: ME_BLUE, fillOpacity: 0.15 }} interactive={false} /> : null}
-            <Marker position={ll(me)} icon={DOT_ICON} interactive={false} title="You" />
+            <Marker position={ll(me)} icon={ME_ICON} interactive={false} title="You" />
           </>
         ) : null}
         {draft ? <DraftLayer draft={draft} setLive={setLive} coarse={coarse} /> : null}

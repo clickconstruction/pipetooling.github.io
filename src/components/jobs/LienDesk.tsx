@@ -93,6 +93,7 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
+import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
@@ -124,7 +125,7 @@ import { useLienSigningCounty } from './lienSigningCountyChoice'
 import { useLienAskPeople } from './lienAskPeopleChoice'
 import { lienClerkFor } from '../../lib/jobs/lienCountyClerks'
 import { lienHelpBatchRecordCode, lienHelpGuideCode } from '../../lib/jobs/lienHelpGuideCode'
-import { lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
+import { lienAffidavitNoticeCheck, lienNoticeCheckLines, lienNoticeCheckRowLine } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -1692,10 +1693,11 @@ export default function LienDesk({
       const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
       const filings = data.filingsByJob[e.jobId] ?? []
       const swornMonths = lienAffidavitSwornMonths({ isSub: e.isSub, workDays: job ?? null, lastMonth: e.lastMonth, todayYmd, filings })
-      const noticeLines = lienNoticeCheckLines(lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings }))
+      const noticeCheck = lienAffidavitNoticeCheck({ isSub: e.isSub, propertyKind: e.propertyKind, months: swornMonths, filings })
+      const noticeLines = lienNoticeCheckLines(noticeCheck)
       // The notice record (punch list #322): the same months and the same rows, read against the paper's own two sentences.
       const noticeRecord = lienNoticeRecord({ isSub: e.isSub, propertyKind: e.propertyKind, swornMonths, filings, paperMonthsWords: fields.workMonthsWords ?? '', paperNoticesWords: fields.noticesSentWords ?? '', workStart: fields.workStart, workEnd: fields.workEnd })
-      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines }
+      const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck) }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
   }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
@@ -1760,6 +1762,8 @@ export default function LienDesk({
     else if (key === 'share') setShareOpen(true)
     else if (key === 'owner_records') onOpenOwnerRecords?.()
   }
+  // What each row's job still owes, for a phone's rows and its days' totals (punch list #352, PR 3): the open balance each list already draws.
+  const phoneAmountFor = isMobile && data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
   // What a To do row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
@@ -3957,7 +3961,7 @@ export default function LienDesk({
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
             {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={pickMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} due={isMobile ? lienMonthLineDue(lienMonth, nextUpRows) : null} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp scrolls={doNow.listScrolls} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
