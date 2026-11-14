@@ -11,9 +11,9 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; her word on calls 1, 3, 4 and 5 and on Text again; the rule for /r/ on the short host's Worker, which a person adds in the Cloudflare dashboard.
+next: the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; her word on calls 1, 3, 4 and 5 and on Text again. The /r/ rule on the short host's Worker is live since 2026-11-14 (v2.7286), so the text carries the short link.
 size: M as a train of three (M · M · S), after #295's PR 3 has shipped
-blocker: nothing blocks the build. A first text waits on the owner's press of the switch on one card. Call 4, a push beside the text, waits on her word. The Worker rule waits on a person with the Cloudflare dashboard.
+blocker: nothing blocks the build. A first text waits on the owner's press of the switch on one card. Call 4, a push beside the text, waits on her word. The Worker rule is live (v2.7286).
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
 ---
 
@@ -226,3 +226,5 @@ PR 1 on a ZZ Test person's charge: copy the link from the line, open it signed o
 the ticket on the charge in the Team queue and the file under Team only › Tickets. PR 2 with the
 switch on for one card (the dev's): one charge, one text, one reminder, one STOP, each read on
 Messages and on the Needs you list.
+
+2026-11-14, the Worker rule: the owner asked for it in the main session and a session added it through his Chrome, signed in to Cloudflare (`portal-link-shell`, version `fe6488e1`), checked it live and mirrored it in `scripts/cloudflare/portal-link-shell.worker.js`; `RECEIPT_SHORT_ORIGIN` is the short host since v2.7286, so the text and Copy the receipt link carry `my.clickplumbing.com/r/<code>`. Both functions are redeployed after the merge.

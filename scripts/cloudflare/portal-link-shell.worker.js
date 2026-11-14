@@ -29,6 +29,12 @@
 // check. The app's /pay/:id page asks Stripe for the bill's current payment link
 // at click time, so the texted link never expires as Stripe's own does (30 days
 // after the due date). No shell and no card: a bill is a private page.
+//
+// Since v2.7286 (punch list #299, 2026-11-14) the same Worker carries the receipt
+// text's short link the same way: my.clickplumbing.com/r/<code> answers a 301 to
+// clicktooling.com/r/<code>, lower-cased, before the slug check. No shell and no
+// card: a receipt page names a charge and whose card it was. Added in the
+// dashboard on 2026-11-14 (version fe6488e1) and mirrored here the same day.
 
 // clicktooling since the domain cutover (v2.2495); pipetooling 301s here anyway.
 const TARGET = 'https://clicktooling.com/p/';
@@ -52,6 +58,8 @@ export default {
     if (url.pathname.startsWith('/e/')) return Response.redirect('https://clicktooling.com/e/' + url.pathname.slice(3).toLowerCase(), 301);
     // #290: a bill's short link forwards to the app's /pay/:id route, lower-cased.
     if (url.pathname.startsWith('/pay/')) return Response.redirect('https://clicktooling.com/pay/' + url.pathname.slice(5).toLowerCase(), 301);
+    // #299: a receipt's short link forwards to the app's /r/:code route, lower-cased.
+    if (url.pathname.startsWith('/r/')) return Response.redirect('https://clicktooling.com/r/' + url.pathname.slice(3).toLowerCase(), 301);
     const slug = url.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
     if (!slug || slug === 'favicon.ico' || slug === 'apple-touch-icon.png') {
       if (slug) return Response.redirect(ICON, 302);

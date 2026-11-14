@@ -201,8 +201,8 @@ describe('the words of the two texts', () => {
     expect(body.length).toBeLessThanOrEqual(160)
   })
 
-  it('a link is the app’s own address until the short host forwards', () => {
-    expect(receiptLinkUrl(' K7M2P9XQ4D ')).toBe('https://clicktooling.com/r/k7m2p9xq4d')
+  it('a link rides the short host, lower-cased', () => {
+    expect(receiptLinkUrl(' K7M2P9XQ4D ')).toBe('https://my.clickplumbing.com/r/k7m2p9xq4d')
     expect(receiptLinkUrl('k7m2p9xq4d', 'https://my.example.com/')).toBe('https://my.example.com/r/k7m2p9xq4d')
   })
 })
