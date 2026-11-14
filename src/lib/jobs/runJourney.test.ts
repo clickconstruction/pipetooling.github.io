@@ -185,7 +185,7 @@ describe('the checklist, live (Run-1)', () => {
     const rows = runChecklistRows(envs, true)
     expect(rows.map((r) => r.n)).toEqual([1, 3])
     expect(rows[0]!.inside).toBe('650 owner, 712 owner')
-    expect(rows[0]!.boxes).toEqual(['stuffed', 'slip on', 'mailed'])
+    expect(rows[0]!.boxes).toEqual(['stuffed', 'label on', 'mailed'])
     expect(rows[0]!.placeholder).toBe('9407 1118 …')
     expect(rows[0]!.done).toBe(false)
     expect(rows[1]!.boxes).toEqual(['stuffed', 'in the truck', 'handed over'])

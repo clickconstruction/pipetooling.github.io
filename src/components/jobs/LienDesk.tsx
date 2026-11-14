@@ -118,6 +118,8 @@ import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienNoticeNamedMonths, lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
+import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitFormForItem } from '../../lib/jobs/lienAffidavitForm'
 import { lienAffidavitRedrawOutcome, lienAffidavitRedrawPlan, lienAffidavitRedrawWords } from '../../lib/jobs/lienAffidavitRedraw'
@@ -831,6 +833,8 @@ export default function LienDesk({
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
+      // The months the live notices name, by job (punch list #353, part 2): a To draft row with a notice on record names the owed month beside them.
+      noticeMonthsByJob: Object.fromEntries(Object.entries(data.filingsByJob).map(([jobId, fs]) => [jobId, lienNoticeNamedMonths(fs)])),
       // v2.6734 (punch list #150): a leader's own rows are the jobs he is master of; another master's read as the office's.
       viewerUserId: authUserId,
       masterUserId: (jobId) => data.jobsById[jobId]?.master_user_id ?? null,
@@ -974,7 +978,27 @@ export default function LienDesk({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paperOpen, paperRows, data, issuer, todayYmd, paperFilledFrom])
-  /** A To do row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
+  /**
+   * The *paper named it too* door (punch list #353, part 2): the owed months join the recorded notice's months, after the
+   * office confirms the paper as mailed named them. The one write a To do row makes, and it asks first.
+   */
+  const correctNoticeMonths = async (jobId: string, months: string[]) => {
+    const filing = lienNoticeToExtend(data?.filingsByJob[jobId] ?? [])
+    if (!filing) {
+      showToast('No recorded notice on this job to correct.', 'error')
+      return
+    }
+    const words = lienNoticeOwedConfirmWords(months, filing.months_covered ?? [])
+    if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel }))) return
+    try {
+      const after = await addMonthsToLienNotice(filing, months)
+      showToast(`The notice on record now names ${describeNoticeMonths(after)}.`, 'success')
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not add the months to the record.'), 'error')
+    }
+  }
+  /** A To do row's button: the pane that already does that work, on that job and pile. Nothing is written here but the record's months, which ask first. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
@@ -982,7 +1006,11 @@ export default function LienDesk({
       setRunTakeBack(Boolean(t.takeBack))
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
-      ;(onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
+      // The last day of work is wrong (punch list #353): the window opens with the day ready to change, where the page has that door.
+      if (t.openLastWork && onOpenCalendarLastWork) onOpenCalendarLastWork(t.jobId)
+      else (onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
+    } else if (t.open === 'notice_record_months') {
+      void correctNoticeMonths(t.jobId, t.months)
     } else if (t.open === 'affidavits') {
       setKind('affidavit')
       setAffPile(null)
@@ -4149,6 +4177,7 @@ export default function LienDesk({
               onClose={closeJobScreen}
               onAct={() => act(row)}
               onSecondary={row.secondary ? () => act({ ...row, target: row.secondary!.target }) : undefined}
+              onMoreDoor={row.doors?.length ? (i) => { const d = row.doors?.[i]; if (d) act({ ...row, target: d.target }) } : undefined}
               onDoor={(key) => {
                 if (!row.jobId) return
                 if (key === 'paper') setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))

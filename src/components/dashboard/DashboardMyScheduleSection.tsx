@@ -790,8 +790,8 @@ export function DashboardMyScheduleSection({
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
                                     }}
-                                    title="Write up a change on this job"
-                                    aria-label="Write up a change"
+                                    title="Make change order on this job"
+                                    aria-label="Make change order"
                                     style={{ ...jobCardMobileActionButtonStyle('ghost'), flex: '0 0 44px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                   >
                                     <WriteUpChangeGlyph />
@@ -818,7 +818,7 @@ export function DashboardMyScheduleSection({
             onClick={() => onWriteUpChange(null)}
             style={{ minHeight: 36, padding: '0 0.5rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}
           >
-            Write up a change on another job, or new work
+            Make change order on another job, or new work
           </button>
         </div>
       ) : null}

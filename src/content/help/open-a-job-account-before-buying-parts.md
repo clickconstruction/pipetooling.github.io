@@ -65,7 +65,7 @@ The ask lands in the **Dispatch inbox** with a line per house. The inbox sits in
 
 - {{button:outline|Call Curly}} calls the house's job-accounts rep. You set the rep on the house's contacts with the **Job accounts** role.
 - {{button:green|Mark opened…}} takes how it was opened, the reference if the house gave one, and a note. Saving records the account on the job. It closes the request and pushes the tech.
-- {{button:outline|Send the packet}} opens the job window's *Share with supply house* email. You use it when the house wants the setup packet. It needs the property owner. See [share a job with a supply house](?g=share-job-with-supply-house).
+- {{button:outline|Send the packet}} opens the job window's *Add job account* email. You use it when the house wants the setup packet. It needs the property owner. See [add a job account at a supply house](?g=add-a-job-account-at-a-supply-house).
 - **Not needed** records why. Then the signal stops for that job and house.
 
 The account then shows on the house's **Job accounts** roster under **Materials → Supply houses**. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).

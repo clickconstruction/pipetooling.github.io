@@ -68,7 +68,7 @@ export function JobAccountPoLine({
             </button>
           ) : null}
           {line.canSendPacket && jobDetailModal ? (
-            <button type="button" onClick={() => jobDetailModal.openJobDetail({ jobId, openSupplyHouseShare: true })} style={btn} title="Open the job with the Share-with-supply-house email on top">
+            <button type="button" onClick={() => jobDetailModal.openJobDetail({ jobId, openSupplyHouseShare: true })} style={btn} title="Open the job with the Add job account email on top">
               Send the packet
             </button>
           ) : null}

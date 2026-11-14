@@ -425,7 +425,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Share with supply house</h3>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Add job account</h3>
             <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{jobLabel} — job account setup</p>
           </div>
           <button

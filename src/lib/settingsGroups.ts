@@ -122,6 +122,8 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     // Dev doors (v2.5882, punch list #188): the map of every door only a dev or the controller may open today, each a link.
     groups.push({ id: 'settings-dev-doors', label: 'Dev doors', zone: 'system', pagesHint: 'Every page, window and switch only a dev or the controller can open today. Each one is a link.' })
+    // Difficulty criteria (punch list #357, v2.7275): the scales a GC is rated on, versioned; the dev's words, the office's prices.
+    groups.push({ id: 'settings-difficulty-criteria', label: 'Difficulty criteria', zone: 'system', pagesHint: 'Shows on: a GC’s record, the Bid Board and the Workbench. The scales a GC is rated on, their rungs and their sentences, published as versions.' })
   }
   // Usage (punch list #188 row 7, v2.6762): how the company uses the app is the owner's to read, with a dev.
   if (isOwnerOrDev(r)) {

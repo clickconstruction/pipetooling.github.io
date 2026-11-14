@@ -15,10 +15,10 @@ const grid: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto
 const tileBtn: CSSProperties = { ...TILE, padding: 0, cursor: 'pointer', textAlign: 'left' }
 const day: CSSProperties = { position: 'absolute', left: 0, right: 0, bottom: 0, fontSize: '0.65rem', fontWeight: 600, textAlign: 'center', background: 'rgba(17, 24, 39, 0.55)', color: '#f9fafb', padding: '1px 0' }
 
-export function JobPhotosViewer({ jobId, photos, folderUrl, io, onClose }: { jobId: string; photos: readonly JobPhoto[]; folderUrl: string | null; io: JobPhotosIo; onClose: () => void }) {
+export function JobPhotosViewer({ jobId, photos, folderUrl, io, openAt = null, onClose }: { jobId: string; photos: readonly JobPhoto[]; folderUrl: string | null; io: JobPhotosIo; /** The photo the viewer opens on (the banner's tapped tile, punch list #355); null for the grid. */ openAt?: JobPhoto | null; onClose: () => void }) {
   const sorted = newestFirst(photos)
   const [shown, setShown] = useState(VIEWER_PAGE)
-  const [open, setOpen] = useState<JobPhoto | null>(null)
+  const [open, setOpen] = useState<JobPhoto | null>(openAt)
   const [full, setFull] = useState<string | null>(null)
 
   useEffect(() => {

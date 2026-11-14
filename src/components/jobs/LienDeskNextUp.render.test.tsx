@@ -529,3 +529,26 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(screen.getByTestId('lien-step-count-reminder-1').textContent).toBe('2')
   })
 })
+
+describe('LienDeskNextUp · the doors beside a row whose notice on record still owes a month (punch list #353, part 2)', () => {
+  const owed = row({
+    sub: 'September 2026 has no notice. The one on record names April, June, July and August 2026.',
+    doors: [
+      { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
+      { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
+    ],
+  })
+  it('draws each door as its own press, each acting on the row with that door’s target, beside the draft press', () => {
+    const onAct = vi.fn()
+    render(<LienDeskNextUp rows={[owed]} loading={false} isMobile={false} onAct={onAct} />)
+    const el = document.querySelector('[data-lien-next-up-row="notice:j1"]') as HTMLElement
+    expect(el.textContent).toContain('September 2026 has no notice.')
+    fireEvent.click(within(el).getByRole('button', { name: 'The paper named September 2026 too' }))
+    expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] })
+    fireEvent.click(within(el).getByRole('button', { name: 'The last day of work is wrong' }))
+    expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true })
+    fireEvent.click(within(el).getByRole('button', { name: 'Draft notice' }))
+    expect(onAct.mock.calls[2]![0].target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
+    expect(el.querySelectorAll('[data-lien-next-up-door]')).toHaveLength(2)
+  })
+})

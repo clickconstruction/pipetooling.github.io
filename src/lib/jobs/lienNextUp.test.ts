@@ -410,3 +410,26 @@ describe('the REMINDERS ladder (punch list #262)', () => {
     expect(one({ role: 'technician', notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') }, courtesyByJob: { j1: paying } }).button).toBeNull()
   })
 })
+
+describe('buildLienNextUp — a notice on record that still owes a month (punch list #353, part 2)', () => {
+  const named = { j1: ['2026-04', '2026-06', '2026-07', '2026-08'] }
+  it('the To draft row names the owed month beside the months on record, and offers the two ways it may be wrong', () => {
+    const r = one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: named })
+    expect(r.sub).toBe('September 2026 has no notice. The one on record names April, June, July and August 2026.')
+    expect([r.action, r.button]).toEqual(['draft', 'Draft notice'])
+    expect(r.doors).toEqual([
+      { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
+      { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
+    ])
+  })
+  it('with no notice on record, or no months handed in, the row keeps its plain words and no doors', () => {
+    expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: {} })).toMatchObject({ sub: 'Notice to draft' })
+    expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })] }).doors).toBeUndefined()
+  })
+  it('a viewer with no press gets the words and no doors', () => {
+    const r = one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: named, role: 'estimator' })
+    expect(r.sub).toContain('has no notice')
+    expect(r.button).toBeNull()
+    expect(r.doors).toBeUndefined()
+  })
+})

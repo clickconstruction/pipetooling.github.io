@@ -11,13 +11,13 @@ import { targetWords } from './superintendentLine'
 import { targetOf } from '../techWeek/crewTarget'
 
 export type JobTargetWords = {
-  /** "Target 96 h", "Target 110 h from the labor budget", "No target yet" */
+  /** "Hours target · 96 h", "Hours target · 110 h from the labor budget", "Hours target · none yet" */
   head: string
-  /** "Expected 96 h, set by Robert on Nov 1 (was 110 h): framed in a week", "The labor budget is 110 h from the bid.", "The crew's hours against the target are counted once this is set." */
+  /** "Expected 96 h, set by Robert on Nov 1 (was 110 h): framed in a week", "The labor budget is 110 h from the bid.", "How many hours the job should take. The crew's hours count against it once it is set." */
   detail: string
   /** The number the signal counts, or null while the job carries none. */
   counts: number | null
-  /** The press's label: Set a target, Change the target. */
+  /** The press's label: Set the hours, Change the hours. */
   press: string
   /** Whether Back to the budget is offered: only while an expected-hours row is open. */
   clearable: boolean
@@ -27,14 +27,14 @@ export type BudgetSource = 'bid' | 'typed' | null
 
 export function jobTargetWords(target: ExpectedHoursTarget | null, budgetHours: number | null, budgetSource: BudgetSource): JobTargetWords {
   if (target) {
-    return { head: `Target ${Math.round(target.hours)} h`, detail: targetWords({ by: target.by, at: target.at, from: target.from, why: target.why }, target.hours), counts: target.hours, press: 'Change the target', clearable: true }
+    return { head: `Hours target · ${Math.round(target.hours)} h`, detail: targetWords({ by: target.by, at: target.at, from: target.from, why: target.why }, target.hours), counts: target.hours, press: 'Change the hours', clearable: true }
   }
   const counts = targetOf(null, budgetHours)
   if (counts != null) {
     const from = budgetSource === 'typed' ? 'typed by the office' : budgetSource === 'bid' ? 'from the bid' : 'on the Costs tab'
-    return { head: `Target ${Math.round(counts)} h from the labor budget`, detail: `The labor budget is ${Math.round(counts)} h ${from}. Set a target to read a different number here.`, counts, press: 'Set a target', clearable: false }
+    return { head: `Hours target · ${Math.round(counts)} h from the labor budget`, detail: `The labor budget is ${Math.round(counts)} h ${from}. Set the hours to read a different number here.`, counts, press: 'Set the hours', clearable: false }
   }
-  return { head: 'No target yet', detail: 'The crew’s hours against the target are counted once this is set.', counts: null, press: 'Set a target', clearable: false }
+  return { head: 'Hours target · none yet', detail: 'How many hours the job should take. The crew’s hours count against it once it is set.', counts: null, press: 'Set the hours', clearable: false }
 }
 
 export const WHY_MIN = 3

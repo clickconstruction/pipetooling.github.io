@@ -32,6 +32,7 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
+import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue } from '../../lib/jobs/lienNoticeOwed'
 import { HOMESTEAD_QUESTION_DOOR } from '../../lib/customers/homesteadAnswer'
 import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import { lienAffidavitSubmitOutcome } from '../../lib/jobs/lienAffidavitBatch'
@@ -207,6 +208,8 @@ export default function LienDeskAffidavitPane({
     return lienAffidavitNoticeCheck({ isSub: entry.isSub, propertyKind: entry.propertyKind, months: lienAffidavitSwornMonths({ ...facts, filings }), filings, work: lienAffidavitWorkMonths(facts) })
   }, [data.filingsByJob, entry.jobId, entry.isSub, entry.propertyKind, entry.lastMonth, job, todayYmd])
   const noticeCheckLines = lienNoticeCheckLines(noticeCheck)
+  // The last work month's own § 53.056 notice still due and not recorded (punch list #353, part 2): said above Send for approval.
+  const noticeDue = useMemo(() => lienLastMonthNoticeDue({ isSub: entry.isSub, lastMonth: entry.lastMonth, propertyKind: entry.propertyKind, filings: data.filingsByJob[entry.jobId] ?? [], todayYmd }), [entry.isSub, entry.lastMonth, entry.propertyKind, data.filingsByJob, entry.jobId, todayYmd])
   const standInFlag = lienStandInFlag(lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill))
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
@@ -337,6 +340,8 @@ export default function LienDeskAffidavitPane({
       />
     ) : (
       <>
+        {/* The last work month's own notice is still due (punch list #353, part 2): a line, not a gate. The owner and the attorney decide the paper. */}
+        {noticeDue ? <div data-lien-affidavit-notice-due style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{lienAffidavitNoticeDueLine(noticeDue, formatYmdMonthDay)}</div> : null}
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {blocked ? `Blocked until every gate above is clear.` : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between filing and their word.` : `Goes to the leader — an affidavit is sworn and filed at the county; he signs it.`} {forfeit}
         </div>

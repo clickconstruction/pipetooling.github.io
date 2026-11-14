@@ -121,6 +121,7 @@ import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/Physic
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import DocsmitDevSettingsBlock from '../components/settings/DocsmitDevSettingsBlock'
 import DevDoorsCard from '../components/settings/DevDoorsCard'
+import DifficultyCriteriaCard from '../components/settings/DifficultyCriteriaCard'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
@@ -1570,6 +1571,11 @@ export default function Settings() {
       <SettingsGroup id="settings-dev-doors" hidden={activeSettingsTab !== 'settings-dev-doors'} title={settingsGroupTitle('settings-dev-doors', 'Dev doors')} description={settingsGroupHint('settings-dev-doors')}>
         {/* Dev doors (v2.5882, punch list #188): the list is a kernel and nothing loads, so the card mounts with the group. */}
         {myRole === 'dev' && <DevDoorsCard />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-difficulty-criteria" hidden={activeSettingsTab !== 'settings-difficulty-criteria'} title={settingsGroupTitle('settings-difficulty-criteria', 'Difficulty criteria')} description={settingsGroupHint('settings-difficulty-criteria')}>
+        {/* Difficulty criteria (punch list #357 PR 1, v2.7275): the scales a GC is rated on, versioned. Mounted while open, so the versions are read each time. */}
+        {activeSettingsTab === 'settings-difficulty-criteria' && myRole === 'dev' && <DifficultyCriteriaCard />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-usage" hidden={activeSettingsTab !== 'settings-usage'} title={settingsGroupTitle('settings-usage', 'Usage')} description={settingsGroupHint('settings-usage')}>

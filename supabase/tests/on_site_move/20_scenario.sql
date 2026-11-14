@@ -4,7 +4,10 @@
 -- the apply, with a same-name place, Unsorted on both sides, a label the target already holds (and its first numbered
 -- label taken too), a retired box, a box's own move and three photos; a replay refused; a move onto a job with nothing
 -- on site; two Unsorted piles whose fold changes what a line reads, said and not refused; and the trigger that gives a
--- new ledger row or photo its container's job. Fixtures made as postgres; the door runs as a dev through RLS;
+-- new ledger row or photo its container's job. Since v2.7265 the four tables of 2026-11-13 ride along: a part rename
+-- whose undo is asked against the target, a sticker run, the job's own Same part? answers and prices onto a job on
+-- no site (a pair both jobs answered keeping the newer answer) and, on the second move, onto a job on a site, where
+-- they fold into the site's scope. Fixtures made as postgres; the door runs as a dev through RLS;
 -- everything runs inside one transaction that rolls back. Raises on the first failed assertion; ends with
 -- "on_site_move PASSED". See scripts/pgtest-on-site-move.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -40,6 +43,11 @@ CREATE FUNCTION osm.door(p_from uuid, p_to uuid, dry boolean DEFAULT true) RETUR
 CREATE FUNCTION osm.counts(p_job uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT (c->>'places') || ' places, ' || (c->>'containers') || ' containers, ' || (c->>'movements') || ' rows, '
       || (c->>'container_moves') || ' box moves, ' || (c->>'photos') || ' photos, ' || (c->>'parts_on_hand') || ' on hand'
+  FROM (SELECT public.on_site_job_counts(p_job) AS c) s $$;
+-- The four tables of 2026-11-13 (v2.7265), and the job's site's answers and prices.
+CREATE FUNCTION osm.more(p_job uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT (c->>'part_renames') || ' renames, ' || (c->>'sticker_runs') || ' runs, ' || (c->>'ties') || ' ties, ' || (c->>'prices') || ' prices, '
+      || (c->>'site_ties') || ' site ties, ' || (c->>'site_prices') || ' site prices'
   FROM (SELECT public.on_site_job_counts(p_job) AS c) s $$;
 CREATE FUNCTION osm.box(p uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT j.job_name || ' · ' || c.label || ' · ' || c.code || ' · ' || COALESCE(pl.name, 'no place') || CASE WHEN c.retired_at IS NULL THEN '' ELSE ' · retired' END
@@ -80,6 +88,22 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, h
   ('00000000-0000-0000-0000-0000000509a5', '00000000-0000-0000-0000-0000000509d1', '00000000-0000-0000-0000-0000000509f1', 'Bed job E', '905');
 -- The helper is on A's crew and no other.
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES ('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509d2');
+-- C is on a site (v2.7265): the second move folds a job's own Same part? answers and prices into it. The site has
+-- answered the tee pair itself, newer than B will have.
+INSERT INTO public.developments (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000509f2', '00000000-0000-0000-0000-0000000509d1', 'Bed site');
+UPDATE public.jobs_ledger SET development_id = '00000000-0000-0000-0000-0000000509f2' WHERE id = '00000000-0000-0000-0000-0000000509a3';
+INSERT INTO public.on_site_part_ties (id, development_id, job_id, a_key, b_key, a_name, b_name, verdict, by_user_id, by_name, at) VALUES
+  ('00000000-0000-0000-0000-000000050981', '00000000-0000-0000-0000-0000000509f2', NULL, 'words:2in tee', 'words:2 inch tee', '2in tee', '2 inch tee', 'same', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-06 08:00-06'),
+-- A's own answers: the elbow pair is one part, the valve pair is not. B answered the elbow pair the other way round,
+-- a day earlier, and the tee pair.
+  ('00000000-0000-0000-0000-000000050982', NULL, '00000000-0000-0000-0000-0000000509a1', 'words:2in elbow', 'words:2 inch elbow', '2in elbow', '2 inch elbow', 'same', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-05 08:00-06'),
+  ('00000000-0000-0000-0000-000000050983', NULL, '00000000-0000-0000-0000-0000000509a1', 'words:gas valve', 'words:gas valve 1in', 'gas valve', 'gas valve 1in', 'different', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-05 09:00-06'),
+  ('00000000-0000-0000-0000-000000050984', NULL, '00000000-0000-0000-0000-0000000509a2', 'words:2 inch elbow', 'words:2in elbow', '2 inch elbow', '2in elbow', 'different', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-04 08:00-06'),
+  ('00000000-0000-0000-0000-000000050985', NULL, '00000000-0000-0000-0000-0000000509a2', 'words:2in tee', 'words:2 inch tee', '2in tee', '2 inch tee', 'same', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-03 08:00-06');
+-- A price each for the coupling: A's newer.
+INSERT INTO public.on_site_prices (id, development_id, job_id, row_key, row_name, kind, unit_price, source, priced_on, by_user_id, by_name, at) VALUES
+  ('00000000-0000-0000-0000-000000050991', NULL, '00000000-0000-0000-0000-0000000509a1', 'words:2in coupling', '2in coupling', 'price', 1.25, 'typed', '2026-11-05', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-05 08:00-06'),
+  ('00000000-0000-0000-0000-000000050992', NULL, '00000000-0000-0000-0000-0000000509a2', 'words:2in coupling', '2in coupling', 'price', 0.99, 'typed', '2026-11-02', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-02 08:00-06');
 
 -- A: two places, an Unsorted pile, a cage in Arena, a box in the Yard, a cage with no place, a retired cage.
 INSERT INTO public.job_places (id, job_id, name) VALUES
@@ -142,6 +166,18 @@ RESET ROLE;
 SELECT osm.same('A before', osm.counts('00000000-0000-0000-0000-0000000509a1'), '2 places, 5 containers, 6 rows, 1 box moves, 3 photos, 16 on hand');
 SELECT osm.same('B before', osm.counts('00000000-0000-0000-0000-0000000509a2'), '2 places, 4 containers, 2 rows, 0 box moves, 0 photos, 13 on hand');
 
+-- The dev fixes a name on A through the row Fix the name inserts (both gas valve rows, the helper's among them) and
+-- prints a run of three stickers for A (v2.7265).
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d1');
+SET LOCAL ROLE authenticated;
+INSERT INTO public.job_part_renames (id, job_id, old_name, new_name) VALUES ('00000000-0000-0000-0000-000000050961', '00000000-0000-0000-0000-0000000509a1', 'gas valve', 'gas valve 1in');
+SELECT osm.same('the rename changed both valve rows', osm.one($q$SELECT row_count::text FROM public.job_part_renames WHERE id = '00000000-0000-0000-0000-000000050961'$q$), '2');
+SELECT osm.same('a run of three stickers is printed for A', (public.mint_sticker_run('00000000-0000-0000-0000-0000000509a1', 3)->'run'->>'sticker_count'), '3');
+RESET ROLE;
+SELECT osm.same('A''s own records before', osm.more('00000000-0000-0000-0000-0000000509a1'), '1 renames, 1 runs, 2 ties, 1 prices, 0 site ties, 0 site prices');
+SELECT osm.same('B''s own records before', osm.more('00000000-0000-0000-0000-0000000509a2'), '0 renames, 0 runs, 2 ties, 1 prices, 0 site ties, 0 site prices');
+SELECT osm.same('C''s site has one answer', osm.more('00000000-0000-0000-0000-0000000509a3'), '0 renames, 0 runs, 0 ties, 0 prices, 1 site ties, 0 site prices');
+
 -- Outside the door.
 SELECT osm.as_user('00000000-0000-0000-0000-0000000509d3');
 SET LOCAL ROLE authenticated;
@@ -193,14 +229,20 @@ BEGIN
   PERFORM osm.same('the parts on hand add up', (r->'on_hand'->>'holds') || ' ' || (r->'before'->'from'->>'parts_on_hand') || '+' || (r->'before'->'to'->>'parts_on_hand') || '=' || (r->'after'->'to'->>'parts_on_hand'), 'true 16+13=29');
   PERFORM osm.same('the plan commits to both jobs'' rows before', (r->'before'->'from'->>'containers') || '/' || (r->'before'->'from'->>'movements') || ' and ' || (r->'before'->'to'->>'containers') || '/' || (r->'before'->'to'->>'movements'), '5/6 and 4/2');
   PERFORM osm.same('and after: the source empty, the target with both', (r->'after'->'from'->>'containers') || '/' || (r->'after'->'from'->>'movements') || '/' || (r->'after'->'from'->>'places') || ' and ' || (r->'after'->'to'->>'containers') || '/' || (r->'after'->'to'->>'movements') || '/' || (r->'after'->'to'->>'places'), '0/0/0 and 8/8/3');
-  PERFORM osm.same('the words say what moves', r->>'words', 'Everything on site on JQ901 moves to JQ902: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos. Every cage and box keeps its id and the code printed on its label; no ledger row is rewritten, only the job it sits under.');
+  PERFORM osm.same('the words say what moves', r->>'words', 'Everything on site on JQ901 moves to JQ902: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Every cage and box keeps its id and the code printed on its label; no ledger row is rewritten, only the job it sits under.');
   PERFORM osm.same('the target''s note names the renumbered label', (position('A1 is now A1 (3)' IN r->'notes'->>'to') > 0)::text, 'true');
+  -- v2.7265: the job's own records.
+  PERFORM osm.same('the rename, the run, the answers and the price are in the plan', (r->'moved'->>'part_renames') || '/' || (r->'moved'->>'sticker_runs') || '/' || (r->'moved'->>'ties') || '/' || (r->'moved'->>'prices'), '1/1/2/1');
+  PERFORM osm.same('the answers land on the target job, the elbow pair keeping the source''s newer answer', (r->'ties'->>'into') || ' ' || jsonb_array_length(r->'ties'->'dropped') || ' ' || (r->'ties'->'dropped'->0->>'kept'), 'job 1 source');
+  PERFORM osm.same('and the plan says so', r->'ties'->>'words', 'The job''s 2 Same part? answers and 1 price now belong to JQ902, which is on no site. 1 pair was answered on both sides; the newer answer stands: 2in elbow and 2 inch elbow (JQ901''s).');
+  PERFORM osm.same('the plan commits to the four tables on both jobs', (r->'before'->'from'->>'part_renames') || '/' || (r->'before'->'from'->>'sticker_runs') || '/' || (r->'before'->'from'->>'ties') || '/' || (r->'before'->'from'->>'prices') || ' and ' || (r->'before'->'to'->>'ties') || '/' || (r->'before'->'to'->>'prices') || ' → ' || (r->'after'->'to'->>'ties') || '/' || (r->'after'->'to'->>'prices'), '1/1/2/1 and 2/1 → 3/2');
 END $$;
 SELECT osm.same('the dry run moved nothing off A', osm.counts('00000000-0000-0000-0000-0000000509a1'), '2 places, 5 containers, 6 rows, 1 box moves, 3 photos, 16 on hand');
 SELECT osm.same('and nothing onto B', osm.counts('00000000-0000-0000-0000-0000000509a2'), '2 places, 4 containers, 2 rows, 0 box moves, 0 photos, 13 on hand');
 SELECT osm.same('and the dry run left no photo marked due a move', osm.one($q$SELECT count(*)::text FROM public.job_box_photos WHERE refile_due_at IS NOT NULL$q$), '0');
 SELECT osm.same('A1 still wears its stencil on A', osm.box('a5090c02-0000-0000-0000-0000000509c2'), 'Bed job A · A1 · A5090C02 · Arena');
 SELECT osm.same('the dry run left no note', osm.one($q$SELECT count(*)::text FROM public.jobs_ledger_thread_notes WHERE job_id IN ('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2')$q$), '0');
+SELECT osm.same('and dropped no answer and moved no record', osm.one($q$SELECT count(*)::text FROM public.on_site_part_ties$q$) || ' | ' || osm.more('00000000-0000-0000-0000-0000000509a1'), '5 | 1 renames, 1 runs, 2 ties, 1 prices, 0 site ties, 0 site prices');
 -- The same plan twice reads the same, so its hash holds until something changes.
 SELECT osm.same('a second dry run gives the same plan', (osm.door('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2', true) = (SELECT r FROM osm.plan))::text, 'true');
 
@@ -234,8 +276,20 @@ SELECT osm.same('a filed photo is marked due a move of its file', osm.one($q$SEL
 SELECT osm.same('a waiting photo is not', osm.one($q$SELECT (refile_due_at IS NULL)::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000050932'$q$), 'true');
 SELECT osm.same('both filed photos are due, and nothing else on either job', osm.one($q$SELECT count(*)::text FROM public.job_box_photos WHERE refile_due_at IS NOT NULL$q$), '2');
 SELECT osm.same('the Unsorted pile''s photo names the target''s pile', osm.one($q$SELECT container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000050933'$q$), 'b5090c01-0000-0000-0000-0000000509e1');
-SELECT osm.same('a note on the target says where it came from', osm.one($q$SELECT body FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-0000000509a2'$q$), 'Materials on site moved here from JQ901 (Bed job A), where the count was recorded: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos. Every box keeps its printed code. 1 took a numbered label because this job already had that stencil: A1 is now A1 (3).');
-SELECT osm.same('a note on the source says where it went, in the dev''s name', osm.one($q$SELECT u.name || ': ' || n.body FROM public.jobs_ledger_thread_notes n JOIN public.users u ON u.id = n.author_user_id WHERE n.job_id = '00000000-0000-0000-0000-0000000509a1'$q$), 'Site Dev: Materials on site moved to JQ902 (Bed job B), the job the material belongs to: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos. Nothing on site is left on this job.');
+SELECT osm.same('a note on the target says where it came from', osm.one($q$SELECT body FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-0000000509a2'$q$), 'Materials on site moved here from JQ901 (Bed job A), where the count was recorded: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Every box keeps its printed code. 1 took a numbered label because this job already had that stencil: A1 is now A1 (3). The job''s 2 Same part? answers and 1 price now belong to JQ902, which is on no site. 1 pair was answered on both sides; the newer answer stands: 2in elbow and 2 inch elbow (JQ901''s).');
+SELECT osm.same('a note on the source says where it went, in the dev''s name', osm.one($q$SELECT u.name || ': ' || n.body FROM public.jobs_ledger_thread_notes n JOIN public.users u ON u.id = n.author_user_id WHERE n.job_id = '00000000-0000-0000-0000-0000000509a1'$q$), 'Site Dev: Materials on site moved to JQ902 (Bed job B), the job the material belongs to: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Nothing on site is left on this job.');
+-- v2.7265: the job's own records went too.
+SELECT osm.same('A is empty of its own records', osm.more('00000000-0000-0000-0000-0000000509a1'), '0 renames, 0 runs, 0 ties, 0 prices, 0 site ties, 0 site prices');
+SELECT osm.same('B holds both jobs'' records, less the older answer', osm.more('00000000-0000-0000-0000-0000000509a2'), '1 renames, 1 runs, 3 ties, 2 prices, 0 site ties, 0 site prices');
+SELECT osm.same('the run printed for A names B, its three stickers still blank', osm.one($q$SELECT r.job_id::text || ' ' || (SELECT count(*) FROM public.box_stickers s WHERE s.run_id = r.id AND s.container_id IS NULL) FROM public.sticker_runs r$q$), '00000000-0000-0000-0000-0000000509a2 3');
+SELECT osm.same('the elbow pair keeps the source''s newer answer, under B', osm.one($q$SELECT id::text || ' ' || verdict || ' ' || job_id::text FROM public.on_site_part_ties WHERE LEAST(a_key, b_key) = 'words:2 inch elbow'$q$), '00000000-0000-0000-0000-000000050982 same 00000000-0000-0000-0000-0000000509a2');
+SELECT osm.same('the newest price of the coupling on B is the one A accepted', osm.one($q$SELECT unit_price::text FROM public.on_site_prices WHERE job_id = '00000000-0000-0000-0000-0000000509a2' AND row_key = 'words:2in coupling' ORDER BY at DESC LIMIT 1$q$), '1.2500');
+-- The rename's undo, asked against B as Fix the name's Undo asks it: the judge finds the rename on B and puts the name back.
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d1');
+SET LOCAL ROLE authenticated;
+INSERT INTO public.job_part_renames (id, job_id, undo_of) VALUES ('00000000-0000-0000-0000-000000050962', '00000000-0000-0000-0000-0000000509a2', '00000000-0000-0000-0000-000000050961');
+RESET ROLE;
+SELECT osm.same('the undo against the target puts the name back on both rows', osm.one($q$SELECT (SELECT row_count::text FROM public.job_part_renames WHERE id = '00000000-0000-0000-0000-000000050962') || ' ' || string_agg(DISTINCT part_name, ',') FROM public.job_material_movements WHERE id IN ('00000000-0000-0000-0000-000000050905', '00000000-0000-0000-0000-000000050906')$q$), '2 gas valve');
 
 -- The same move again has nothing to move, so a replayed apply is refused by the door itself.
 SELECT osm.refused('a second apply is refused', $q$SELECT osm.door('00000000-0000-0000-0000-0000000509a1', '00000000-0000-0000-0000-0000000509a2', false)$q$, 'JQ901 has nothing on site to move');
@@ -279,8 +333,15 @@ BEGIN
   PERFORM osm.same('everything moves onto the empty job', (r->'moved'->>'containers') || '/' || (r->'moved'->>'places') || '/' || (r->'moved'->>'movements') || '/' || (r->'moved'->>'photos'), '8/3/12/4');
   PERFORM osm.same('nothing joined, folded or renumbered', jsonb_array_length(r->'places_merged') || ' ' || jsonb_typeof(r->'unsorted_folded') || ' ' || jsonb_array_length(r->'labels_renamed'), '0 null 0');
   PERFORM osm.same('the parts on hand add up onto nothing', (r->'on_hand'->>'holds') || ' ' || (r->'before'->'to'->>'parts_on_hand') || ' ' || ((r->'after'->'to'->>'parts_on_hand') = (r->'before'->'from'->>'parts_on_hand'))::text, 'true 0 true');
+  -- v2.7265: C is on a site, so the job's own answers and prices fold into the site; the tee pair keeps the site's newer answer.
+  PERFORM osm.same('the answers fold into the site, the tee pair keeping the site''s newer answer', (r->'ties'->>'into') || ' ' || (r->'moved'->>'ties') || '/' || (r->'moved'->>'prices') || ' ' || jsonb_array_length(r->'ties'->'dropped') || ' ' || (r->'ties'->'dropped'->0->>'kept'), 'site 2/2 1 target');
+  PERFORM osm.same('the plan names the site', r->'ties'->>'words', 'The job''s 2 Same part? answers and 2 prices now belong to JQ903''s site, Bed site, where every job on it reads them. 1 pair was answered on both sides; the newer answer stands: 2in tee and 2 inch tee (JQ903''s).');
+  PERFORM osm.same('both renames and the run follow', (r->'moved'->>'part_renames') || '/' || (r->'moved'->>'sticker_runs'), '2/1');
 END $$;
 SELECT osm.same('the Unsorted pile moved whole, still the job''s catch-all', osm.box('b5090c01-0000-0000-0000-0000000509e1'), 'Bed job C · Unsorted · B5090C01 · no place');
+SELECT osm.same('B is empty of its own records', osm.more('00000000-0000-0000-0000-0000000509a2'), '0 renames, 0 runs, 0 ties, 0 prices, 0 site ties, 0 site prices');
+SELECT osm.same('C holds the renames and the run, and its site the answers and prices', osm.more('00000000-0000-0000-0000-0000000509a3'), '2 renames, 1 runs, 0 ties, 0 prices, 3 site ties, 2 site prices');
+SELECT osm.same('the site''s own tee answer stands, the folded rows beside it', osm.one($q$SELECT string_agg(id::text, ',' ORDER BY id) FROM public.on_site_part_ties WHERE development_id = '00000000-0000-0000-0000-0000000509f2' AND job_id IS NULL$q$), '00000000-0000-0000-0000-000000050981,00000000-0000-0000-0000-000000050982,00000000-0000-0000-0000-000000050983');
 
 -- Two Unsorted piles where a count on one resets a line the other fed: said in the plan, and not refused.
 DO $$

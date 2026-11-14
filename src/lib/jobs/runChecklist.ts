@@ -4,7 +4,7 @@ import { runLaneOf, type RunLane } from './runEnvelopeStage'
 
 /**
  * The checklist sheet, live (Run-1): the printed packet's page 1 has a row per envelope with three
- * boxes — stuffed, slip on, mailed — and a line for the number. Once the packet prints, the run
+ * boxes — stuffed, label on, mailed — and a line for the number. Once the packet prints, the run
  * window draws the same rows so they can be ticked at the counter from a phone. The ticks are the
  * window's own state; this kernel gives each row its words, its box labels for its lane, and
  * whether it is done (its number typed, or who took it). Pure.
@@ -29,7 +29,7 @@ export type RunChecklistRow = {
 export function runChecklistBoxes(lane: RunLane): [string, string, string] {
   if (lane === 'hand') return ['stuffed', 'in the truck', 'handed over']
   if (lane === 'courier') return ['stuffed', 'label on', 'picked up']
-  return ['stuffed', 'slip on', 'mailed']
+  return ['stuffed', 'label on', 'mailed']
 }
 
 export function runChecklistPlaceholder(lane: RunLane): string {

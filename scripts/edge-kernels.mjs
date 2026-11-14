@@ -275,6 +275,8 @@ export const ENTRIES = {
   'lib/jobs/lienDeskAffidavits.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitNotices.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitNoticeCheck.ts': { values: [], types: [] },
+  // The last work month's own notice still due (punch list #353, part 2): the affidavit pane's line, said by the seat too.
+  'lib/jobs/lienNoticeOwed.ts': { values: [], types: [] },
   'lib/jobs/lienClaimCorrection.ts': { values: [], types: [] },
   'lib/jobs/lienProperty.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitForm.ts': { values: [], types: [] },

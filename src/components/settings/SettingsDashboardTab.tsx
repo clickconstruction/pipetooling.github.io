@@ -1632,9 +1632,9 @@ function QuickEstimateToggleSection({
           style={{ marginTop: 3 }}
         />
         <span>
-          <span style={{ fontWeight: 600 }}>Write up a change from the field</span>
+          <span style={{ fontWeight: 600 }}>Make change order from the field</span>
           <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Write up a change order (or an estimate for new work) and send it to Dispatch to finish. Puts a
+            Make a change order (or an estimate for new work) and send it to Dispatch to finish. Puts a
             paper-and-pencil square on each job in your Dashboard's My Schedule, with a link under the list for
             other jobs and new work. Off by default.
           </span>

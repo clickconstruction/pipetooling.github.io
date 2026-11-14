@@ -56,7 +56,7 @@ export function parseFindOwnerPendingPayload(payload: unknown): RequestedSupplyH
 
 /** Request title; names the wanted supply house(s) so the inbox card reads the intent with no card changes. */
 export function findOwnerRequestTitle(jobLabel: string, supplyHouses: readonly RequestedSupplyHouse[]): string {
-  const base = `Find the property owner for ${jobLabel} (name/company + mailing address), then open Job Detail → Share with supply house and send the job account`
+  const base = `Find the property owner for ${jobLabel} (name/company + mailing address), then open Job Detail → Add job account and send the job account`
   const labels = supplyHouses.map((s) => s.label.trim()).filter(Boolean)
   return labels.length > 0 ? `${base} to ${labels.join(', ')}.` : `${base}.`
 }
