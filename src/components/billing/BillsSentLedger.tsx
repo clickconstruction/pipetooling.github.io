@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
-  BILLS_SENT_BY_HAND_HOWS,
   BILLS_SENT_GAP_LABEL,
   BILLS_SENT_PATH,
   BILLS_SENT_ROUTE_CHIPS,
@@ -32,7 +31,6 @@ import {
   byHandFiling,
   byHandProblem,
   type BillsSentByHandDraft,
-  type BillsSentByHandHow,
   type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
@@ -41,7 +39,8 @@ import {
   type BillsSentRoute,
   type BillsSentSum,
 } from '../../lib/billing/billsSent'
-import { readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
+import { readBillHandWays, readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
+import { BILL_HAND_WAYS_BUILT_IN, billHandWaysOrBuiltIn, liveBillHandWays, type BillHandWay } from '../../lib/billing/billHandWays'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -73,7 +72,9 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
  * PR 5: **Print** and **Download CSV** take what the list shows out of the app, in the screen's order and words.
  *
  * PR 6: a row of the strip offers **Say how it went…**: how the bill went, to whom and on what day, saved as a
- * record made by hand. The bill then leaves the strip and reads as a line on that day.
+ * record made by hand. The bill then leaves the strip and reads as a line on that day. The ways it offers are the
+ * office's own list (`bill_hand_ways`, punch list #340), read once with the page; the four in code stand in when that
+ * read is refused.
  *
  * On a phone (v2.7130): the list comes first. The tiles sit in one row, the chips in one row that slides, the strip
  * folds to one line that opens it, and Print and Download CSV move under the list. A line is three rows and the
@@ -293,18 +294,19 @@ const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '
  * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
  * made by hand; the list reads again and the bill moves from the strip to its day.
  */
-function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () => void; onClose: () => void }) {
+function ByHandForm({ gap, ways, onSaved, onClose }: { gap: BillsSentGap; ways: ReadonlyArray<BillHandWay>; onSaved: () => void; onClose: () => void }) {
   const phone = useIsMobile()
   const { showToast } = useToastContext()
   const today = todayYmdInAppTz()
   const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
   const [saving, setSaving] = useState(false)
-  const problem = byHandProblem(draft, today)
+  const offered = liveBillHandWays(ways)
+  const problem = byHandProblem(draft, today, ways)
   const save = async () => {
     if (problem || saving) return
     setSaving(true)
     try {
-      await recordBillByHand(byHandFiling(gap, draft))
+      await recordBillByHand(byHandFiling(gap, draft, ways))
       showToast('Recorded. The bill is on the list on the day it went.', 'success')
       onSaved()
     } catch (e) {
@@ -317,11 +319,11 @@ function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () 
     <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <label style={fieldLabel}>
         How the bill went
-        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value as BillsSentByHandHow | '' }))} style={field}>
+        <select value={draft.how} onChange={(ev) => setDraft((d) => ({ ...d, how: ev.target.value }))} style={field}>
           <option value="">Pick one</option>
-          {BILLS_SENT_BY_HAND_HOWS.map((h) => (
-            <option key={h.key} value={h.key}>
-              {h.label}
+          {offered.map((w) => (
+            <option key={w.key} value={w.key}>
+              {w.label}
             </option>
           ))}
         </select>
@@ -356,7 +358,7 @@ function ByHandForm({ gap, onSaved, onClose }: { gap: BillsSentGap; onSaved: () 
   )
 }
 
-function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
+function GapRow({ gap, ways, onSaved }: { gap: BillsSentGap; ways: ReadonlyArray<BillHandWay>; onSaved: () => void }) {
   const phone = useIsMobile()
   const [saying, setSaying] = useState(false)
   return (
@@ -388,7 +390,7 @@ function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
           </button>
         )}
       </div>
-      {saying ? <ByHandForm gap={gap} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
+      {saying ? <ByHandForm gap={gap} ways={ways} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -397,7 +399,7 @@ function GapRow({ gap, onSaved }: { gap: BillsSentGap; onSaved: () => void }) {
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; onSaved: () => void }) {
+function GapStrip({ open, paid, expanded, ways, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; ways: ReadonlyArray<BillHandWay>; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   if (open.length === 0 && paid.length === 0) return null
@@ -407,7 +409,7 @@ function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; pai
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
       {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} onSaved={onSaved} />
+        <GapRow key={g.billId} gap={g} ways={ways} onSaved={onSaved} />
       ))}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
@@ -424,7 +426,7 @@ function GapStrip({ open, paid, expanded, onSaved }: { open: BillsSentGap[]; pai
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} onSaved={onSaved} />) : null}
+      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} ways={ways} onSaved={onSaved} />) : null}
     </div>
   )
 }
@@ -518,6 +520,18 @@ export function BillsSentLedger() {
     }
   }, [limit, tries])
   const retry = useCallback(() => setTries((n) => n + 1), [])
+
+  // The list under How the bill went, read once with the page. Until it answers, and when it is refused, the four in code.
+  const [ways, setWays] = useState<ReadonlyArray<BillHandWay>>(BILL_HAND_WAYS_BUILT_IN)
+  useEffect(() => {
+    let cancelled = false
+    void readBillHandWays().then((read) => {
+      if (!cancelled) setWays(billHandWaysOrBuiltIn(read).ways)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const today = todayYmdInAppTz()
   const lines = useMemo(() => (data ? billsSentLines(data) : []), [data])
@@ -633,7 +647,7 @@ export function BillsSentLedger() {
           </button>
         ) : null
       ) : stripVisible ? (
-        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} onSaved={retry} />
+        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} ways={ways} onSaved={retry} />
       ) : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
