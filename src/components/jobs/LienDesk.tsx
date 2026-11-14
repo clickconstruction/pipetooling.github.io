@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
 import { EmptyState } from '../EmptyState'
@@ -139,6 +139,7 @@ import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseD
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import LienPaneHead from './LienPaneHead'
 import { LIEN_PANE_HEAD_H, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection, type LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
+import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -448,6 +449,8 @@ export default function LienDesk({
   const [notYetOpen, setNotYetOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
+  // A phone's open paper: the footer folded to one bar so the paper has the screen (punch list #352, PR 6).
+  const [footFolded, setFootFolded] = useState(false)
   // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
   const listRef = useRef<HTMLDivElement | null>(null)
   const [litPile, setLitPile] = useState<LienDeskPile | null>(null)
@@ -598,6 +601,14 @@ export default function LienDesk({
   const doorPickedJobId = useRef<string | null>(null)
   // The address can name the affidavit to open on (v2.7180), as it names a notice: `/lien-desk?tab=affidavits&job=…`.
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(initialKind === 'affidavit' ? (initialJobId ?? null) : null)
+  // Another paper opens with its footer showing, unless the footer would leave the paper next to no room (punch list #352, PR 6; `lienPhoneFootStartsFolded`).
+  const footFoldRef = useRef<HTMLButtonElement | null>(null)
+  useLayoutEffect(() => {
+    const bar = footFoldRef.current
+    const panel = bar?.parentElement
+    const foot = bar?.nextElementSibling
+    setFootFolded(Boolean(bar && panel && foot instanceof HTMLElement && lienPhoneFootStartsFolded({ panel: panel.clientHeight, header: (panel.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0, bar: bar.offsetHeight, footer: foot.offsetHeight })))
+  }, [kind, selectedJobId, affSelectedJobId, retSelectedJobId, mobileListShown])
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
   // a loop the Affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
@@ -2235,7 +2246,7 @@ export default function LienDesk({
       .map((h) => ({ key: h.key, el: host.querySelector<HTMLElement>(`[data-lien-pane-body="${h.key}"]`) }))
       .filter((b): b is { key: LienPaneSectionKey; el: HTMLElement } => b.el != null)
       .map((b) => ({ key: b.key, offsetTop: b.el.offsetTop }))
-    const next = litLienPaneSection(bodies, host.scrollTop, host.scrollTop > STRIP_COLLAPSE_PX ? stripH : 0)
+    const next = litLienPaneSection(bodies, host.scrollTop, host.scrollTop > STRIP_COLLAPSE_PX ? stripH : 0, isMobile)
     setLitSection((prev) => (prev === next ? prev : next))
   }
   const goToSection = (key: LienPaneSectionKey) => {
@@ -2248,7 +2259,7 @@ export default function LienDesk({
       else host.scrollTop = top
     }
     const measured = () => stripRef.current?.getBoundingClientRect().height || stripH
-    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0)
+    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0, isMobile)
     if (plain <= STRIP_COLLAPSE_PX) {
       scroll(plain, true)
       setLitSection(key)
@@ -2256,7 +2267,7 @@ export default function LienDesk({
     }
     if (paneScrolled) {
       // The strip is pinned already: its height is on the page to read.
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
       setLitSection(key)
       return
     }
@@ -2264,14 +2275,14 @@ export default function LienDesk({
     // landed 15 px short on a wrapped strip). Step just past the fold so it mounts, read it, then land exactly.
     scroll(STRIP_COLLAPSE_PX + 1, false)
     window.setTimeout(() => {
-      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured(), isMobile), true)
       setLitSection(key)
     }, 80)
   }
   const paneHead = (key: LienPaneSectionKey) => {
     const i = paneHeads.findIndex((h) => h.key === key)
     if (i < 0) return null
-    return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} />
+    return <LienPaneHead section={paneHeads[i]!} index={i} count={paneHeads.length} stripHeight={paneStripH} lit={(litSection ?? paneHeads[0]?.key) === key} onGo={() => goToSection(key)} phone={isMobile} />
   }
 
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
@@ -2282,6 +2293,7 @@ export default function LienDesk({
     <div
       ref={paneRef}
       data-lien-desk-pane
+      data-lien-pane-phone={isMobile ? 'yes' : undefined}
       data-lien-pane-simple={simpleApprove && !detailsOpen ? 'yes' : undefined}
       onScroll={(ev) => {
         const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
@@ -2289,7 +2301,8 @@ export default function LienDesk({
         relightPages(ev.currentTarget)
         relightPane(ev.currentTarget)
       }}
-      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
+      // On a phone the one column is held to the pane's width, so a wide head or strip cannot push the paper sideways (punch list #352, PR 6).
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
     >
       {paneScrolled ? (
         <div
@@ -2326,12 +2339,8 @@ export default function LienDesk({
           </button>
         </div>
       ) : null}
-      {isMobile ? (
-        <button type="button" data-lien-pane-keep onClick={() => { if (stacked && onShowList) onShowList(); else setMobileListShown(true) }} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
-          ← Back to the list
-        </button>
-      ) : null}
-      <div data-lien-pane-keep style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
+      {/* A phone's way back is in the desk's header since punch list #352, PR 6 (it was a button here, a second one for a notice). */}
+      <div data-lien-pane-keep style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={jobLabel(job, selected.jobId)} onOpenJob={onOpenJob ? () => onOpenJob(selected.jobId) : undefined} />
         {storedDraft?.letterTwo && item ? (
           <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
@@ -3786,15 +3795,22 @@ export default function LienDesk({
   const panelStyle: React.CSSProperties = { position: 'relative', background: 'var(--surface)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
   // Stacked, an open notice is the whole desk: its door back is the list, in the page door's place (punch list #182 PR 3).
   const noticeOpenStacked = stacked && kind === 'notice' && !mobileListShown && selected != null
+  // On a phone an open paper is the whole desk (punch list #352, PR 6): the header is one row with the way back to its list, and the footer folds.
+  const paneOpenPhone = lienPhonePaneOpen({ oneColumn, listShown: mobileListShown, kind, picked: { notice: selected != null, affidavit: affSelected != null, retainage: retSelected != null } })
+  const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded) : null
   return (
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        <div className="lienDeskTitleBar" data-lien-pane-open={paneOpenPhone ? paneOpenPhone.kind : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: isMobile ? '0.15rem 0.6rem 0.5rem' : '0.7rem 1.25rem 0.6rem 1.25rem', rowGap: isMobile ? '0.4rem' : '0.45rem', borderBottom: '1px solid var(--border)' }}>
           {/* The page's way back (punch list #182), before the title; stacked, an open notice's door back is the list. */}
           {noticeOpenStacked ? (
             <button type="button" onClick={onShowList} data-lien-desk-notices aria-label="Back to the notices" style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 44 : 30, marginRight: 8 }}>
               <span aria-hidden="true">←</span> Notices
+            </button>
+          ) : paneOpenPhone ? (
+            <button type="button" onClick={() => setMobileListShown(true)} data-lien-desk-back-to-list={paneOpenPhone.kind} aria-label={paneOpenPhone.backLabel} style={{ ...btn('plain'), display: 'inline-flex', alignItems: 'center', gap: 6, height: 44, marginRight: 8 }}>
+              <span aria-hidden="true">←</span> {paneOpenPhone.back}
             </button>
           ) : backDoor}
           <h2
@@ -4040,6 +4056,13 @@ export default function LienDesk({
             </>
           )}
         </div>
+        {/* A phone's open paper (punch list #352, PR 6): one bar folds the footer away so the paper has the screen; the footer stays mounted, so what was typed in it is kept (`index.css`). */}
+        {footFold ? (
+          <button ref={footFoldRef} type="button" data-lien-desk-foot-fold aria-expanded={footFold.expanded} onClick={() => setFootFolded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', minHeight: 40, padding: '0 1.1rem', border: 'none', borderRadius: 0, borderTop: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+            <span>{footFold.words}</span>
+            <span aria-hidden="true">{footFold.mark}</span>
+          </button>
+        ) : null}
         {kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" /> : null}
         {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
