@@ -17,6 +17,7 @@ import { EmptyState } from '../EmptyState'
 import { subsRosterEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 import { PeopleSubsLedger } from './PeopleSubsLedger'
+import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -93,6 +94,8 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
   const { role, readOnly } = useAuth()
   const canAddDocument = !readOnly && role != null && CAN_ADD_DOCUMENT_ROLES.has(role)
   const [result, setResult] = useState<SubsHqResult | null>(null)
+  /** v2.7235: each sub's credit, the sum of their `sub_credit_entries`. Empty until that table exists. */
+  const [creditByPersonId, setCreditByPersonId] = useState<Map<string, number>>(new Map())
   const [docsByPerson, setDocsByPerson] = useState<Record<string, DocRow[]>>({})
   const [expandedPersonId, setExpandedPersonId] = useState<string | null>(null)
   const [addingDocForPersonId, setAddingDocForPersonId] = useState<string | null>(null)
@@ -145,6 +148,15 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     const sheetIds = sheetRows.map((s) => s.id)
     let itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null; direct_labor_amount?: number | null }>>()
     let paymentsByJob = new Map<string, Array<{ id: string; amount: number; memo: string | null; created_at: string }>>()
+    // v2.7235: the credit ledger. A refused read means migration 20261114020000 is not pushed yet: nobody has a credit.
+    {
+      const creditsRes = await supabase.from('sub_credit_entries' as never).select('person_id, amount')
+      const credits = new Map<string, number>()
+      for (const r of ((creditsRes as { data: unknown[] | null }).data ?? []) as Array<{ person_id: string; amount: number | string }>) {
+        credits.set(r.person_id, Math.round(((credits.get(r.person_id) ?? 0) + (Number(r.amount) || 0)) * 100) / 100)
+      }
+      setCreditByPersonId(credits)
+    }
     if (sheetIds.length > 0) {
       const [itemsRes, paymentsRes] = await Promise.all([
         supabase.from('people_labor_job_items').select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount').in('job_id', sheetIds),
@@ -928,6 +940,11 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                 </td>
                 <td style={{ padding: '0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: row.balanceDue > 0 ? 700 : 400 }}>
                   {row.balanceDue > 0 ? money(row.balanceDue) : '—'}
+                  {creditNoteWords(creditByPersonId.get(row.personId) ?? 0) ? (
+                    <div data-testid={`subs-credit-${row.personId}`} title="Sent past what their sheets needed. The next payment to them offers it first." style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-green-700)' }}>
+                      {creditNoteWords(creditByPersonId.get(row.personId) ?? 0)}
+                    </div>
+                  ) : null}
                 </td>
                 <td style={{ padding: '0.6rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>

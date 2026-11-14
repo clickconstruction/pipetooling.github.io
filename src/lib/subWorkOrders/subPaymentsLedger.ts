@@ -16,7 +16,7 @@
 import type { LaborJobPayment, LaborJobPaymentEvent } from '../../types/laborJob'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { escapeCsvField } from '../domTableToCsv'
-import { subPayMethodLabel } from './subPaymentWindow'
+import { subPayMethodLabel, SUB_PAY_FROM_CREDIT } from './subPaymentWindow'
 
 const YMD = /^\d{4}-\d{2}-\d{2}/
 
@@ -74,6 +74,14 @@ export type LedgerLine = {
   methodRef: string
   /** As stored: above zero for a payment, below for a back-charge. */
   amount: number
+  /** v2.7235: paid from the sub's credit. No money left the bank, so it is in no Paid total. */
+  fromCredit: boolean
+  /** Credit kept with this line: what the same sending carried past what the sheets needed. */
+  creditKept: number
+  /** The number of the sending this line is part of. Lines that share one were one check or one transfer. */
+  sendingNo: number | null
+  /** What left the bank with this line: the amount and the credit kept. Zero for a back-charge and for a line paid from credit. */
+  sent: number
   /** What the sheet still owed after this line: agreed, less every payment and back-charge up to it. Below zero is over-paid. */
   leftOnSheet: number
 }
@@ -106,6 +114,8 @@ export function buildLedgerLines(sheets: readonly LedgerSheet[]): LedgerLine[] {
     let left = s.agreed
     for (const { p, day, amount } of dated) {
       left = cents(left - Math.abs(amount))
+      const fromCredit = p.method === SUB_PAY_FROM_CREDIT
+      const creditKept = amount > 0 && !fromCredit ? Math.max(0, cents(Number(p.credit_kept) || 0)) : 0
       out.push({
         kind: amount < 0 ? 'backcharge' : 'payment',
         id: p.id,
@@ -122,6 +132,10 @@ export function buildLedgerLines(sheets: readonly LedgerSheet[]): LedgerLine[] {
         method: subPayMethodLabel(p.method),
         methodRef: subPayMethodLabel(p.method) ? (p.method_ref ?? '').trim() : '',
         amount,
+        fromCredit,
+        creditKept,
+        sendingNo: p.sending_no ?? null,
+        sent: amount > 0 && !fromCredit ? cents(amount + creditKept) : 0,
         leftOnSheet: left,
       })
     }
@@ -186,7 +200,7 @@ export type LedgerFilter = { from?: string | null; to?: string | null; paidToKey
 function haystack(r: LedgerRow): string {
   if (r.kind === 'trace') return r.text.toLowerCase()
   const plain = Math.abs(r.amount).toFixed(2)
-  return [r.paidTo, r.job, r.address, r.memo, r.method, r.methodRef, plain, money(r.amount), r.kind === 'backcharge' ? 'back-charge backcharge' : 'payment', r.crew ? 'crew' : ''].join(' ').toLowerCase()
+  return [r.paidTo, r.job, r.address, r.memo, r.method, r.methodRef, r.sendingNo ? `sending ${r.sendingNo} #${r.sendingNo}` : '', r.creditKept ? `credit ${r.sent.toFixed(2)} ${money(r.sent)}` : '', plain, money(r.amount), r.kind === 'backcharge' ? 'back-charge backcharge' : 'payment', r.crew ? 'crew' : ''].join(' ').toLowerCase()
 }
 
 /** The rows a period, a person and a search leave. A row with no day shows only when the period is open at both ends. */
@@ -216,15 +230,23 @@ export type LedgerTotals = {
   people: number
   /** Payments with no Date sent, shown by the day they were recorded. */
   undated: number
+  /** Kept as credit, inside `paidTotal`. */
+  creditKept: number
+  /** Paid from credit: lines that are in no `paidTotal`. */
+  creditUsed: number
 }
 
 export function ledgerTotals(rows: readonly LedgerRow[]): LedgerTotals {
-  const t: LedgerTotals = { payments: 0, paidTotal: 0, backcharges: 0, backchargeTotal: 0, people: 0, undated: 0 }
+  const t: LedgerTotals = { payments: 0, paidTotal: 0, backcharges: 0, backchargeTotal: 0, people: 0, undated: 0, creditKept: 0, creditUsed: 0 }
   const people = new Set<string>()
   for (const r of rows) {
-    if (r.kind === 'payment') {
+    if (r.kind === 'payment' && r.fromCredit) {
+      // No money moved: it is counted apart and never as a payment made.
+      t.creditUsed = cents(t.creditUsed + r.amount)
+    } else if (r.kind === 'payment') {
       t.payments += 1
-      t.paidTotal = cents(t.paidTotal + r.amount)
+      t.paidTotal = cents(t.paidTotal + r.sent)
+      t.creditKept = cents(t.creditKept + r.creditKept)
       people.add(r.paidToKey)
       if (r.recorded || !r.ymd) t.undated += 1
     } else if (r.kind === 'backcharge') {
@@ -285,9 +307,14 @@ export function leftOnSheetWords(left: number): string {
   return left < 0 ? `over by ${money(left)}` : money(left)
 }
 
-/** `Check 1187` · `Zelle` · '': how a line was sent, with its reference. */
+/** `Check 1187` · `Zelle` · `From credit` · '': how a line was sent, with its reference. */
 export function ledgerHowPaidWords(l: Pick<LedgerLine, 'method' | 'methodRef'>): string {
   return l.method ? [l.method, l.methodRef].filter(Boolean).join(' ') : ''
+}
+
+/** `sending 12`: the tag lines of one check or one transfer share. '' for a line with no sending. */
+export function sendingTagWords(sendingNo: number | null | undefined): string {
+  return sendingNo ? `sending ${sendingNo}` : ''
 }
 
 /** A cell a spreadsheet will not run: text that opens like a formula is led with an apostrophe. */
@@ -295,7 +322,7 @@ const csvCell = (v: string): string => escapeCsvField(/^[=+\-@\t\r]/.test(v) ? `
 /** A number cell: left as it is so a column of them adds, and a back-charge keeps its minus sign. */
 const csvNumber = (n: number): string => n.toFixed(2)
 
-export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'How paid', 'Reference', 'Memo', 'Amount', 'Left on the sheet']
+export const SUB_PAYMENTS_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Date is', 'Paid to', 'Crew pay', 'Job', 'Address', 'Type', 'How paid', 'Reference', 'Memo', 'Amount', 'Left on the sheet', 'Sending', 'Credit kept']
 
 /** The lines as a spreadsheet, in the order given. Amounts are plain numbers; a back-charge is below zero. */
 export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
@@ -309,12 +336,14 @@ export function subPaymentsCsv(lines: readonly LedgerLine[]): string {
         csvCell(l.crew ? 'yes' : 'no'),
         csvCell(l.job),
         csvCell(l.address),
-        csvCell(l.kind === 'backcharge' ? 'Back-charge' : 'Payment'),
-        csvCell(l.method),
+        csvCell(l.kind === 'backcharge' ? 'Back-charge' : l.fromCredit ? 'From credit' : 'Payment'),
+        csvCell(l.fromCredit ? '' : l.method),
         csvCell(l.methodRef),
         csvCell(l.memo),
         csvNumber(l.amount),
         csvNumber(l.leftOnSheet),
+        l.sendingNo ? String(l.sendingNo) : '',
+        l.creditKept ? csvNumber(l.creditKept) : '',
       ].join(','),
     )
   }
@@ -343,7 +372,8 @@ export function subPaymentsLedgerHtml(months: readonly LedgerMonth[], totals: Le
     if (r.kind === 'trace') return `<tr class="trace"><td class="when">${esc(ledgerDayWords(r.ymd, true))}</td><td colspan="4">${esc(r.text)}</td></tr>`
     const how = ledgerHowPaidWords(r)
     const what = r.kind === 'backcharge' ? `<b>Back-charge</b>${r.memo ? ` · ${esc(r.memo)}` : ''}` : [how ? `<b>${esc(how)}</b>` : '', esc(r.memo)].filter(Boolean).join(' · ')
-    return `<tr><td class="when">${esc(ledgerDayWords(r.ymd, true))}${r.recorded ? '<br><span>recorded</span>' : ''}</td><td><b>${esc(r.paidTo)}</b>${r.crew ? ' <span>crew</span>' : ''}</td><td>${esc(r.job)}${r.address ? `<br><span>${esc(r.address)}</span>` : ''}</td><td>${what}</td><td class="amt">${r.amount < 0 ? '−' : ''}${esc(money(r.amount))}</td></tr>`
+    const kept = r.creditKept ? `<br><span>+ ${esc(money(r.creditKept))} kept as credit</span>` : ''
+    return `<tr><td class="when">${esc(ledgerDayWords(r.ymd, true))}${r.recorded ? '<br><span>recorded</span>' : ''}</td><td><b>${esc(r.paidTo)}</b>${r.crew ? ' <span>crew</span>' : ''}</td><td>${esc(r.job)}${r.address ? `<br><span>${esc(r.address)}</span>` : ''}</td><td>${what}</td><td class="amt">${r.amount < 0 ? '−' : ''}${esc(money(r.amount))}${kept}</td></tr>`
   }
   const block = (m: LedgerMonth): string =>
     `<tr class="month"><td colspan="4"><b>${esc(m.label)}</b> <span>${esc(m.words)}</span></td><td class="amt">${esc(money(m.totals.paidTotal))}</td></tr>${m.rows.map(row).join('')}`
@@ -375,6 +405,18 @@ function sheetOwed(s: LedgerSheet): number {
   return cents(left)
 }
 
+/** The credit a sheet's payments carry: kept with a payment, less what a from-credit payment used. */
+function sheetCredit(s: LedgerSheet): number {
+  let credit = 0
+  for (const p of s.payments) {
+    const amount = Number(p.amount)
+    if (!Number.isFinite(amount) || amount <= 0) continue
+    if (p.method === SUB_PAY_FROM_CREDIT) credit -= amount
+    else credit += Math.max(0, Number(p.credit_kept) || 0)
+  }
+  return cents(credit)
+}
+
 export type LedgerSubRow = {
   key: string
   name: string
@@ -396,6 +438,8 @@ export type LedgerSubRow = {
   weOwe: number | null
   /** Paid past a sheet's total, summed. It is not taken off `weOwe`: nothing moves it to another sheet today. */
   over: number
+  /** v2.7235: the credit they hold today, kept less used, read off their sheets' own payments. */
+  credit: number
 }
 
 /**
@@ -408,7 +452,7 @@ export function ledgerBySub(sheets: readonly LedgerSheet[], shownLines: readonly
     if (!s.paidToKey) continue
     let row = by.get(s.paidToKey)
     if (!row) {
-      row = { key: s.paidToKey, name: s.paidTo, crew: s.crew, sheets: 0, payments: 0, firstYmd: '', lastYmd: '', paid: 0, backcharges: 0, backcharged: 0, weOwe: s.crew ? null : 0, over: 0 }
+      row = { key: s.paidToKey, name: s.paidTo, crew: s.crew, sheets: 0, payments: 0, firstYmd: '', lastYmd: '', paid: 0, backcharges: 0, backcharged: 0, weOwe: s.crew ? null : 0, over: 0, credit: 0 }
       by.set(s.paidToKey, row)
     }
     row.sheets += 1
@@ -417,15 +461,17 @@ export function ledgerBySub(sheets: readonly LedgerSheet[], shownLines: readonly
       if (owed > 0) row.weOwe = cents(row.weOwe + owed)
       else row.over = cents(row.over - owed)
     }
+    row.credit = cents(row.credit + sheetCredit(s))
   }
   const touched = new Set<string>()
   for (const l of shownLines) {
     const row = by.get(l.paidToKey)
     if (!row) continue
     touched.add(row.key)
+    if (l.kind === 'payment' && l.fromCredit) continue
     if (l.kind === 'payment') {
       row.payments += 1
-      row.paid = cents(row.paid + l.amount)
+      row.paid = cents(row.paid + l.sent)
       if (l.ymd) {
         if (!row.firstYmd || l.ymd < row.firstYmd) row.firstYmd = l.ymd
         if (!row.lastYmd || l.ymd > row.lastYmd) row.lastYmd = l.ymd
@@ -440,24 +486,25 @@ export function ledgerBySub(sheets: readonly LedgerSheet[], shownLines: readonly
     .filter((r) => {
       if (f.paidToKey && r.key !== f.paidToKey) return false
       if (touched.has(r.key)) return true
-      // Nothing of theirs is in the lines shown: they stay only while we owe them, and only when a search names them.
-      if (!r.weOwe) return false
+      // Nothing of theirs is in the lines shown: they stay only while we owe them or they hold a credit, and only when a search names them.
+      if (!r.weOwe && !r.credit) return false
       const name = r.name.toLowerCase()
       return words.every((w) => name.includes(w))
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
 }
 
-export type LedgerBySubTotals = { people: number; payments: number; paid: number; backcharged: number; weOwe: number; over: number }
+export type LedgerBySubTotals = { people: number; payments: number; paid: number; backcharged: number; weOwe: number; over: number; credit: number }
 
 export function ledgerBySubTotals(rows: readonly LedgerSubRow[]): LedgerBySubTotals {
-  const t: LedgerBySubTotals = { people: rows.length, payments: 0, paid: 0, backcharged: 0, weOwe: 0, over: 0 }
+  const t: LedgerBySubTotals = { people: rows.length, payments: 0, paid: 0, backcharged: 0, weOwe: 0, over: 0, credit: 0 }
   for (const r of rows) {
     t.payments += r.payments
     t.paid = cents(t.paid + r.paid)
     t.backcharged = cents(t.backcharged + r.backcharged)
     t.weOwe = cents(t.weOwe + (r.weOwe ?? 0))
     t.over = cents(t.over + r.over)
+    t.credit = cents(t.credit + r.credit)
   }
   return t
 }
@@ -496,8 +543,11 @@ export function ledgerSubKeyFromParam(param: string | null | undefined, keys: re
 // ── One person's statement ───────────────────────────────────────────────────────────────────────────────────
 
 export type StatementEntry = {
-  /** `sheet` adds what was agreed. A payment and a back-charge take away. */
-  kind: 'sheet' | 'payment' | 'backcharge'
+  /**
+   * `sheet` adds what was agreed. A payment, a back-charge and credit kept take away. `credit-used` changes
+   * nothing: the sheet owes that much less and so does their credit.
+   */
+  kind: 'sheet' | 'payment' | 'backcharge' | 'credit-kept' | 'credit-used'
   id: string
   ymd: string
   /** A payment shown by the day it was recorded, having no Date sent. */
@@ -535,8 +585,10 @@ export type SubStatement = {
   owedToday: number
   /** The part of `owedToday` still open on sheets, the figure People → Subs calls Balance due. */
   openOnSheets: number
-  /** Paid past a sheet's total, summed. `owedToday` is `openOnSheets` less this. */
+  /** Paid past a sheet's total, summed. `owedToday` is `openOnSheets` less this and less `credit`. */
   overPaid: number
+  /** The credit they hold today. */
+  credit: number
   /** True when the period is open at its end, so `closing` is today's figure. */
   endsToday: boolean
 }
@@ -553,6 +605,7 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
   const all: Array<Omit<StatementEntry, 'owed'>> = []
   let openOnSheets = 0
   let overPaid = 0
+  let credit = 0
   for (const s of mine) {
     const lines = buildLedgerLines([s])
     const firstPaid = lines.map((l) => l.ymd).filter(Boolean).sort()[0] ?? ''
@@ -560,11 +613,14 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
     const day = dated && firstPaid ? (dated < firstPaid ? dated : firstPaid) : dated || firstPaid
     all.push({ kind: 'sheet', id: `sheet:${s.id}`, ymd: day, recorded: false, at: '', sheetId: s.id, job: s.job, address: s.address, memo: '', method: '', methodRef: '', amount: s.agreed })
     for (const l of lines) {
-      all.push({ kind: l.kind, id: l.id, ymd: l.ymd, recorded: l.recorded, at: l.at, sheetId: l.sheetId, job: l.job, address: l.address, memo: l.memo, method: l.method, methodRef: l.methodRef, amount: Math.abs(l.amount) })
+      all.push({ kind: l.fromCredit ? 'credit-used' : l.kind, id: l.id, ymd: l.ymd, recorded: l.recorded, at: l.at, sheetId: l.sheetId, job: l.job, address: l.address, memo: l.memo, method: l.method, methodRef: l.methodRef, amount: Math.abs(l.amount) })
+      // The credit kept with a payment is its own line, right under it.
+      if (l.creditKept > 0) all.push({ kind: 'credit-kept', id: `kept:${l.id}`, ymd: l.ymd, recorded: l.recorded, at: `${l.at}~`, sheetId: l.sheetId, job: l.job, address: l.address, memo: '', method: l.method, methodRef: l.methodRef, amount: l.creditKept })
     }
     const owed = sheetOwed(s)
     if (owed > 0) openOnSheets = cents(openOnSheets + owed)
     else overPaid = cents(overPaid - owed)
+    credit = cents(credit + sheetCredit(s))
   }
   // Oldest first. On one day a sheet comes before the money paid on it. A line with no day sorts last.
   all.sort((a, b) => (a.ymd || '9999').localeCompare(b.ymd || '9999') || (a.kind === 'sheet' ? 0 : 1) - (b.kind === 'sheet' ? 0 : 1) || a.at.localeCompare(b.at))
@@ -581,14 +637,15 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
     payments: 0,
     backcharged: 0,
     closing: 0,
-    owedToday: cents(openOnSheets - overPaid),
+    owedToday: cents(openOnSheets - overPaid - credit),
     openOnSheets,
     overPaid,
+    credit,
     endsToday: !to,
   }
   let owed = 0
   for (const e of all) {
-    const delta = e.kind === 'sheet' ? e.amount : -e.amount
+    const delta = e.kind === 'sheet' ? e.amount : e.kind === 'credit-used' ? 0 : -e.amount
     const before = from && (!e.ymd ? false : e.ymd < from)
     const after = to && (!e.ymd || e.ymd > to)
     const undatedOut = !e.ymd && (from || to)
@@ -604,7 +661,8 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
     else if (e.kind === 'payment') {
       st.paid = cents(st.paid + e.amount)
       st.payments += 1
-    } else st.backcharged = cents(st.backcharged + e.amount)
+    } else if (e.kind === 'credit-kept') st.paid = cents(st.paid + e.amount)
+    else if (e.kind === 'backcharge') st.backcharged = cents(st.backcharged + e.amount)
   }
   st.closing = owed
   return st
@@ -615,13 +673,17 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
  * leaves out anything paid past a sheet's total, so that is the figure it is held against.
  */
 export function statementCheckWords(st: SubStatement, rosterBalanceDue: number | null | undefined): { agrees: boolean | null; words: string } {
-  const over = st.overPaid > 0 ? ` ${money(st.openOnSheets)} is still open on sheets and ${money(st.overPaid)} was paid past a sheet's total.` : ''
+  const held = st.credit > 0 ? ` They hold a credit of ${money(st.credit)}.` : st.credit < 0 ? ` Their credit is short by ${money(st.credit)}.` : ''
+  const over = (st.overPaid > 0 ? ` ${money(st.openOnSheets)} is still open on sheets and ${money(st.overPaid)} was paid past a sheet's total.` : '') + held
   if (rosterBalanceDue == null || !Number.isFinite(rosterBalanceDue)) return { agrees: null, words: `We owe ${st.name || 'them'} ${weOweWords(st.owedToday)} today.${over}` }
   const agrees = Math.abs(cents(rosterBalanceDue) - st.openOnSheets) < 0.005
   return agrees
     ? { agrees: true, words: `Agrees with People → Subs, where Balance due reads ${money(rosterBalanceDue)}.${over}` }
     : { agrees: false, words: `People → Subs reads ${money(rosterBalanceDue)} for Balance due and these sheets come to ${money(st.openOnSheets)}. A sheet shared with another sub counts for neither there.${over}` }
 }
+
+/** What a statement line is called, on the screen, the print and the file. */
+export const STATEMENT_WHAT: Record<StatementEntry['kind'], string> = { sheet: 'Sheet agreed', payment: 'Payment', backcharge: 'Back-charge', 'credit-kept': 'Credit kept', 'credit-used': 'Credit used' }
 
 export const SUB_STATEMENT_CSV_HEAD: ReadonlyArray<string> = ['Date', 'Type', 'Job', 'How paid', 'Reference', 'Memo', 'Agreed', 'Paid', 'We owe after']
 
@@ -633,13 +695,13 @@ export function subStatementCsv(st: SubStatement): string {
     rows.push(
       [
         csvCell(e.ymd),
-        csvCell(e.kind === 'sheet' ? 'Sheet agreed' : e.kind === 'backcharge' ? 'Back-charge' : 'Payment'),
+        csvCell(STATEMENT_WHAT[e.kind]),
         csvCell(e.job),
         csvCell(e.method),
         csvCell(e.methodRef),
         csvCell(e.memo),
         e.kind === 'sheet' ? csvNumber(e.amount) : '',
-        e.kind === 'sheet' ? '' : csvNumber(e.amount),
+        e.kind === 'sheet' || e.kind === 'credit-used' ? '' : csvNumber(e.amount),
         csvNumber(e.owed),
       ].join(','),
     )
@@ -658,12 +720,12 @@ export function subStatementHtml(st: SubStatement, opts: { periodWords: string; 
   const cell = (n: number): string => `${n < 0 ? '−' : ''}${esc(money(n))}`
   const row = (e: StatementEntry): string => {
     const what =
-      e.kind === 'sheet'
-        ? '<b>Sheet agreed</b>'
-        : e.kind === 'backcharge'
-          ? `<b>Back-charge</b>${e.memo ? ` · ${esc(e.memo)}` : ''}`
-          : [`<b>Payment</b>`, esc(ledgerHowPaidWords(e)), esc(e.memo)].filter(Boolean).join(' · ')
-    return `<tr><td class="when">${esc(ledgerDayWords(e.ymd, true))}${e.recorded ? '<br><span>recorded</span>' : ''}</td><td>${what}</td><td>${esc(e.job)}${e.address && !e.job.includes(e.address) ? `<br><span>${esc(e.address)}</span>` : ''}</td><td class="amt">${e.kind === 'sheet' ? cell(e.amount) : ''}</td><td class="amt">${e.kind === 'sheet' ? '' : cell(e.amount)}</td><td class="amt">${cell(e.owed)}</td></tr>`
+      e.kind === 'payment'
+        ? [`<b>Payment</b>`, esc(ledgerHowPaidWords(e)), esc(e.memo)].filter(Boolean).join(' · ')
+        : e.kind === 'credit-used'
+          ? [`<b>Credit used</b>`, esc(money(e.amount)), esc(e.memo)].filter(Boolean).join(' · ')
+          : `<b>${STATEMENT_WHAT[e.kind]}</b>${e.memo ? ` · ${esc(e.memo)}` : ''}`
+    return `<tr><td class="when">${esc(ledgerDayWords(e.ymd, true))}${e.recorded ? '<br><span>recorded</span>' : ''}</td><td>${what}</td><td>${esc(e.job)}${e.address && !e.job.includes(e.address) ? `<br><span>${esc(e.address)}</span>` : ''}</td><td class="amt">${e.kind === 'sheet' ? cell(e.amount) : ''}</td><td class="amt">${e.kind === 'sheet' || e.kind === 'credit-used' ? '' : cell(e.amount)}</td><td class="amt">${cell(e.owed)}</td></tr>`
   }
   const forward = st.from ? `<tr class="fwd"><td class="when">${esc(ledgerDayWords(st.from, true))}</td><td colspan="4">Brought forward</td><td class="amt">${cell(st.opening)}</td></tr>` : ''
   return `<!doctype html><html><head><meta charset="utf-8"><title>Statement · ${esc(st.name)}</title><style>
