@@ -26,7 +26,7 @@ The leader says "Rudy's doing the rough-in". The assistant opens Work Orders, pi
 
 ## From the job window
 
-Taking a job in and the leader already knows who's doing it? Open the job's **Edit** tab. The **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked. Choose the sub and tick the scope. Leave the price blank if that's the leader's call. Click {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:blue|Price…}}. Once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
+Taking a job in and the leader already knows who's doing it? Open the job's **Edit** tab. The **Sub work order** row sits right under Contract. {{button:outline|Draft a work order…}} opens the assembler with the job already picked. Choose the sub and tick the scope. Leave the price blank if that's the leader's call. Click {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:outline|Price…}}. Once the order is signed the row shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
 
 ## The leader's queue
 

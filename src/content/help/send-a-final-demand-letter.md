@@ -18,7 +18,7 @@ The window has one tab for each paper.
 
 - **Demand letter** is this guide.
 - **§ 53.056 notice** is the monthly lien notice. It is covered in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).
-- **Mechanic's lien** is the lien affidavit. It is covered in [file a lien and never miss its deadlines](/help/file-a-lien-and-never-miss-its-deadlines).
+- **Lien affidavit** is the paper that files the mechanic's lien. It is covered in [file a lien and never miss its deadlines](/help/file-a-lien-and-never-miss-its-deadlines).
 - **Release of record** shows only once a lien affidavit is filed on the job.
 
 {{button:outline|§ Rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.

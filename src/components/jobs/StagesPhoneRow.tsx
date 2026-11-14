@@ -238,7 +238,11 @@ export function StagesPhoneRow({
                 fontWeight: 600,
                 lineHeight: 1.1,
                 cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                // A lien step can run long (*Answer the homestead question · 12 d*, punch list #335): past half the row it
+                // takes a second line and keeps its count, so the job's name is never squeezed out.
+                maxWidth: '56%',
+                textAlign: 'center',
+                textWrap: 'balance',
                 ...toneStyle[next.chip.tone],
               }}
             >

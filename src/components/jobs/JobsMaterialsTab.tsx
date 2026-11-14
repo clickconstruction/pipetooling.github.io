@@ -44,6 +44,8 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
+import { EditBoxWindow } from '../materials/EditBoxForm'
+import { editBoxTitle } from '../../lib/materials/editBox'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -492,6 +494,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
+  const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const people = [...new Set(movements.map((m) => m.byName))].sort()
   const since = new Date(now.getTime() - window * 86_400_000).toISOString()
@@ -577,7 +580,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}><span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span><span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}><span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span><span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -874,6 +877,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <EditBoxWindow container={box} containers={containers} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

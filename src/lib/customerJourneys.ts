@@ -813,7 +813,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'lien-affidavit',
           label: 'Lien affidavit',
-          sublabel: 'filed with the county clerk, then mailed to the owner and the builder within 5 days · Liens on job → Mechanic’s lien',
+          sublabel: 'filed with the county clerk, then mailed to the owner and the builder within 5 days · Liens on job → Lien affidavit',
           when: 'Step 4 · by the 15th of the fourth month',
           customerCan: 'Read the sworn claim recorded on the property: the month, the amount and the notice that came first.',
           guide: 'file-a-lien-and-never-miss-its-deadlines',

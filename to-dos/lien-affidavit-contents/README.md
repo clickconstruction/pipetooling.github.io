@@ -211,10 +211,11 @@ clicktooling.com.
   makes the desk stricter, and before the 16th it would take ready papers out of Ready.
 - **The 13 affidavits approved on the earlier form: leave them, or redraw them?** Decided
   2026-11-10: redraw them, they go out on the short form.
-- **Should the leader's phone buzz when an affidavit is sent for his approval?** Open, found
-  2026-11-11. A notice sent for approval tells him: his phone, or an email
-  (`tellLeaderOfLienApproval`, v2.4872). An affidavit does not. Neither the pane's **Send for
-  approval ▸** nor the list's **Send N for approval…** makes that call, so the paper waits in his
-  queue until he opens the desk or the Dashboard. A yes is not a one-line change:
-  `notify-lien-approval` writes its words from a notice's claim, so it needs an affidavit's words
-  and a redeploy, and a batch of twelve should buzz once, not twelve times. Nothing was changed.
+- **Should the leader's phone buzz when an affidavit is sent for his approval?** Answered yes
+  2026-11-13 and built (v2.7180). Found 2026-11-11: a notice sent for approval told him, by his
+  phone or an email (`tellLeaderOfLienApproval`, v2.4872), and an affidavit did not. Both presses
+  now make the call, the pane's **Send for approval ▸** and the list's **Send N for approval…**
+  (`tellLeaderOfLienAffidavits`). `notify-lien-approval` writes an affidavit's own words, the job
+  and the last day to file, and a batch of twelve is one message that names the count. The
+  function was redeployed 2026-11-13 on the owner's yes. A tell that fails never blocks the
+  send: the desk says he was not told and why.

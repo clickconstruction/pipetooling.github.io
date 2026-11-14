@@ -1,4 +1,4 @@
-import { Fragment, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useMemo, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
 import {
   mercuryTxHasNotePreview,
@@ -16,6 +16,9 @@ import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
+import { ReceiptStateChip } from '../tickets/ReceiptStateChip'
+import { useReceiptStates } from '../../hooks/useReceiptStates'
+import { receiptStateChargeIds } from '../../lib/tickets/receiptState'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -278,6 +281,9 @@ export function BankingMercuryTable({
   onOrgNoteUpdated,
 }: BankingMercuryTableProps) {
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
+  // The receipt's state beside a card charge (punch list #299, PR 3): the recent card charges on screen, read apart.
+  const receiptChargeIds = useMemo(() => receiptStateChargeIds(displayRows.map((r) => ({ id: r.id, kind: r.kind, amount: r.amount, at: r.posted_at ?? r.created_at })), Date.now()), [displayRows])
+  const receiptStates = useReceiptStates(receiptChargeIds)
   const tableColSpan =
     (hideKindColumn ? 7 : 8) + (showAllocations ? 2 : 0) - (counterpartyNoteCombined ? 1 : 0)
   const notesSubRowSpans = bankingMercuryNotesSubRowColSpans({
@@ -521,7 +527,10 @@ export function BankingMercuryTable({
                       }
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <span>{r.counterparty_name ?? '—'}</span>
+                        <span>
+                          {r.counterparty_name ?? '—'}
+                          <ReceiptStateChip state={receiptStates.get(r.id)} style={{ marginLeft: 6 }} />
+                        </span>
                         {(() => {
                           const nt = (r.note ?? '').trim()
                           if (nt === '') return null
@@ -537,7 +546,10 @@ export function BankingMercuryTable({
                       </div>
                     </td>
                   ) : (
-                    <td style={{ padding: padMain, borderBottom: mainRowBb }}>{r.counterparty_name ?? '—'}</td>
+                    <td style={{ padding: padMain, borderBottom: mainRowBb }}>
+                      {r.counterparty_name ?? '—'}
+                      <ReceiptStateChip state={receiptStates.get(r.id)} style={{ marginLeft: 6 }} />
+                    </td>
                   )}
                   {showAllocations && allocationsAfterCounterparty ? allocationCells(r, notesContinuationBelow) : null}
                   {counterpartyNoteCombined ? null : (

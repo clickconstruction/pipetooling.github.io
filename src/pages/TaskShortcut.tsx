@@ -6,7 +6,8 @@ import {
   useChecklistAddModal,
 } from '../contexts/ChecklistAddModalContext'
 import ChecklistAddModal from '../components/ChecklistAddModal'
-import { isStandalonePwa, markTaskShortcutInstalled, POST_LOGIN_REDIRECT_KEY } from '../lib/iosPwa'
+import { isStandalonePwa, markTaskShortcutInstalled } from '../lib/iosPwa'
+import { browserReturnAddressStore, keepReturnAddress } from '../lib/signInReturnAddress'
 
 const ADD_TASK_ICON_HREF = '/icons/add-task-180.png'
 const INSTALL_PAGE_HREF = '/task-install.html'
@@ -164,7 +165,7 @@ function StandaloneCreateTask() {
  * The Add Task icon's start_url (`/task`).
  * - Launched from the icon (standalone) + signed in: render the dedicated task-only create page.
  * - Launched standalone but signed out (the webclip has its own session): send to sign-in, then
- *   return here (POST_LOGIN_REDIRECT_KEY) so they land on the dedicated page, not the dashboard.
+ *   return here (`keepReturnAddress`) so they land on the dedicated page, not the dashboard.
  * - Opened in a browser instead of the icon: this URL is the launch target, not the installer —
  *   redirect to the static install page (/task-install.html) which carries the Add Task manifest.
  */
@@ -186,11 +187,7 @@ export default function TaskShortcut() {
   // Standalone launch with no session in this webclip: sign in, then come back to /task.
   useEffect(() => {
     if (surface !== 'standalone' || loading || user) return
-    try {
-      localStorage.setItem(POST_LOGIN_REDIRECT_KEY, '/task')
-    } catch {
-      /* ignore */
-    }
+    keepReturnAddress(browserReturnAddressStore(), '/task')
     navigate('/sign-in', { replace: true })
   }, [surface, user, loading, navigate])
 

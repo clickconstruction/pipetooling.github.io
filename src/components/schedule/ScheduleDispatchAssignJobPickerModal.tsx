@@ -9,7 +9,8 @@ function railDollars(n: number): string {
 }
 import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
+import { useVisualViewportBox } from '../../hooks/useVisualViewportBox'
+import { visibleBand } from '../../lib/visibleBand'
 
 /** Query occurrences render tinted+bold; plain text passes through untouched. */
 function HighlightedText({ text, query }: { text: string; query: string }) {
@@ -128,7 +129,8 @@ export function ScheduleDispatchAssignJobPickerModal({
   /** Phones: pin to the top and size to the visual viewport so the picker fills
    * the space above the software keyboard and resizes as it opens/closes. */
   const isMobile = useIsMobile()
-  const visualViewportHeight = useVisualViewportHeight()
+  // The room the keyboard leaves, and where it starts once an iPhone has slid the page (punch list #348).
+  const shows = visibleBand(useVisualViewportBox())
   const [notComingInConfirming, setNotComingInConfirming] = useState(false)
   const [ncnsConfirming, setNcnsConfirming] = useState(false)
   const [ncnsDetails, setNcnsDetails] = useState('')
@@ -221,7 +223,8 @@ export function ScheduleDispatchAssignJobPickerModal({
           padding: isMobile ? 'calc(0.85rem + env(safe-area-inset-top)) 0.85rem 0.85rem' : '1.25rem',
           maxWidth: 480,
           width: isMobile ? '100%' : '92%',
-          height: isMobile ? (visualViewportHeight ?? '100dvh') : undefined,
+          height: isMobile ? (shows?.height ?? '100dvh') : undefined,
+          marginTop: isMobile ? (shows?.top ?? 0) : undefined,
           maxHeight: isMobile ? undefined : '80vh',
           overflow: 'hidden',
           display: 'flex',

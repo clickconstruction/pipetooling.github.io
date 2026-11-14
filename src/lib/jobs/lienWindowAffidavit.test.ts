@@ -143,7 +143,7 @@ const deskFor = (over: { isSub?: boolean; gc?: { name: string; address: string }
     todayYmd: shared.todayYmd,
     form: 'long',
   })
-// The window, as its Mechanic's lien tab fills it: the claim from the job's own bills and payments, the correction read for the job.
+// The window, as its Lien affidavit tab fills it: the claim from the job's own bills and payments, the correction read for the job.
 const winFor = (over: { isSub?: boolean; gcName?: string; gcAddress?: string; correction?: LienClaimCorrection | null; issuer?: never } = {}) =>
   buildLienWindowAffidavitFields({
     ...shared,

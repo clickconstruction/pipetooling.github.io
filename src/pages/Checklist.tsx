@@ -53,6 +53,8 @@ import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistRe
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 import { ChecklistComingUpSection } from '../components/checklist/ChecklistComingUpSection'
 import { EmptyState } from '../components/EmptyState'
+import { showsNotifiesOnDone } from '../lib/checklistManageRow'
+import { ManageRowMenu } from '../components/checklist/ManageRowMenu'
 import {
   CHECKLIST_UPCOMING_EMPTY,
   HISTORY_MONTHS_MAX,
@@ -3280,6 +3282,8 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
   /** Due-change ledger rows per item (v2.2371) — powers the "pushed ×N" chip. */
   const [duePushesByItem, setDuePushesByItem] = useState<Map<string, DueChangeRow[]>>(new Map())
   const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null)
+  /** The list did not load: the error says so, and the empty line stays out of its way (punch list #348). */
+  const [loadFailed, setLoadFailed] = useState(false)
   const [completedOpen, setCompletedOpen] = useState(false)
   /** Card expanded to show its activity spine (history + notes), v2.2010. */
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
@@ -3321,8 +3325,10 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
           .order('start_date', { ascending: false })
     if (error) {
       setError(error.message)
+      setLoadFailed(true)
       return
     }
+    setLoadFailed(false)
     const loaded = (data ?? []) as ChecklistItem[]
     setItems(loaded)
     // Derive per-item completion from instances so one-off tasks can be split Incomplete/Complete.
@@ -3537,7 +3543,12 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
                 🔔 {item.reminder_time.slice(0, 5)}
               </span>
             ) : null}
-            {(item.notify_creator_on_complete || item.notify_on_complete_user_id) ? (
+            {showsNotifiesOnDone({
+              notifyCreator: !!item.notify_creator_on_complete,
+              notifyOtherUserId: item.notify_on_complete_user_id ?? null,
+              creatorId: item.created_by_user_id ?? null,
+              assigneeIds: (item.checklist_item_assignees ?? []).map((a) => a.user_id),
+            }) ? (
               <span style={{ fontSize: '0.72rem', padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>
                 notifies on done
               </span>
@@ -3576,50 +3587,39 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
           ) : null}
           {assignees.length === 0 ? <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', alignSelf: 'center' }}>unassigned</span> : null}
         </span>
-        <button
-          type="button"
-          onClick={() => setOpenMenuItemId(menuOpen ? null : item.id)}
-          aria-label={`Actions for ${item.title}`}
-          aria-expanded={menuOpen}
-          style={{ width: 36, height: 36, flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.1rem', borderRadius: 8 }}
-        >
-          ⋮
-        </button>
-        {menuOpen ? (
-          <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpenMenuItemId(null)} />
-            <div style={{ position: 'absolute', right: 8, top: '80%', zIndex: 41, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.15)', minWidth: 170, overflow: 'hidden' }}>
-              {item.roadmap_group_task_id && onOpenRoadmap ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuItemId(null)
-                    const rid = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.roadmap_id
-                    if (rid) onOpenRoadmap(rid)
-                  }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)' }}
-                >
-                  ⛰ Open in Roadmap
-                </button>
-              ) : null}
-              {!item.roadmap_group_task_id ? (
-              <button type="button" onClick={() => { setOpenMenuItemId(null); setEditItemId(item.id) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
-                Edit
-              </button>
-              ) : null}
-              {isNotificationRecipient(item) ? (
-                <button type="button" onClick={() => { setOpenMenuItemId(null); setMuteModalItemId(item.id); setMuteModalTitle(item.title) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)', borderTop: '1px solid var(--border)' }}>
-                  Mute notifications
-                </button>
-              ) : null}
-              {!item.roadmap_group_task_id ? (
-              <button type="button" onClick={() => { setOpenMenuItemId(null); setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-red-700)', borderTop: '1px solid var(--border)' }}>
-                Delete
-              </button>
-              ) : null}
-            </div>
-          </>
-        ) : null}
+        <ManageRowMenu
+          title={item.title}
+          open={menuOpen}
+          onOpenChange={(open) => setOpenMenuItemId(open ? item.id : null)}
+          lines={[
+            ...(item.roadmap_group_task_id && onOpenRoadmap
+              ? [
+                  {
+                    key: 'roadmap',
+                    label: '⛰ Open in Roadmap',
+                    onPress: () => {
+                      const rid = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.roadmap_id
+                      if (rid) onOpenRoadmap(rid)
+                    },
+                  },
+                ]
+              : []),
+            ...(!item.roadmap_group_task_id ? [{ key: 'edit', label: 'Edit', onPress: () => setEditItemId(item.id) }] : []),
+            ...(isNotificationRecipient(item)
+              ? [
+                  {
+                    key: 'mute',
+                    label: 'Mute notifications',
+                    onPress: () => {
+                      setMuteModalItemId(item.id)
+                      setMuteModalTitle(item.title)
+                    },
+                  },
+                ]
+              : []),
+            ...(!item.roadmap_group_task_id ? [{ key: 'delete', label: 'Delete', danger: true, onPress: () => setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' }) }] : []),
+          ]}
+        />
         </div>
         {expanded ? (
           <div style={{ padding: '0 0.75rem 0.7rem', background: 'var(--bg-muted)' }}>
@@ -3671,6 +3671,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
     shown: filteredItems.length,
     query: manageSearchQuery,
     forPerson: filterUserId !== '',
+    loadFailed,
     newTask: () => checklistAddModal?.openAddModal(filterUserId || undefined),
     clearSearch: () => setManageSearchQuery(''),
   })

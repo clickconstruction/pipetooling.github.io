@@ -12,6 +12,8 @@ const tables: Record<string, Row[]> = {}
 /** What the next insert answers, when a test wants something other than the table's own word. `lands` puts the row in first. */
 const nextInsert: Array<{ lands: boolean; answer: Answer }> = []
 const inserts: string[] = []
+/** Set to drop every read, as a phone with no signal would. */
+const reads = { fail: false }
 const NO_SIGNAL: Answer = { data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 }
 
 function query(table: string) {
@@ -23,7 +25,7 @@ function query(table: string) {
     in: (col: string, vs: unknown[]) => ((rows = rows.filter((r) => vs.includes(r[col]))), q),
     order: () => q,
     range: (from: number, to: number) => ((rows = rows.slice(from, to + 1)), q),
-    then: (resolve: (v: Answer) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
+    then: (resolve: (v: Answer) => unknown) => Promise.resolve(reads.fail ? NO_SIGNAL : { data: rows, error: null }).then(resolve),
     insert: (row: Row) => {
       inserts.push(`${table}:${String(row.id)}`)
       const scripted = nextInsert.shift()
@@ -52,14 +54,30 @@ vi.mock('../supabase', () => ({ supabase: { from: (table: string) => query(table
 const signal = { online: true }
 const box = { id: 'a1', job_id: 'j1', label: 'A1', kind: 'cage', where_note: '', place_id: null, lat: null, lng: null, retired_at: null, created_at: '2026-10-29T00:00:00.000Z' }
 const use = (quantity: number) => ({ jobId: 'j1', partId: null, partName: 'ZZ test elbow', manufacturer: null, quantity, reason: 'used' as const, fromContainerId: 'a1', toContainerId: null, byUserId: 'u1', byName: 'Mateo' })
-/** Let a send run to its end: it loads its lander on first use, which takes more than a turn of the microtask queue. */
+/** The sender of the bench in hand, so `settle` can ask it whether a press is still on its way. */
+let sender: { inHand(): ReadonlyArray<unknown> } | null = null
+/**
+ * Let a send run to its end. A send loads its lander on first use (`landFieldPress` imports `onSiteWritesIo`), and how
+ * long that takes is the machine's to say: this used to wait a fixed 30 ms, a loaded runner took longer, the write
+ * landed in the next case, and both cases failed (the merge queue, 2026-11-13). So it waits on the sender's own word
+ * that nothing is in hand, and only then gives what follows a send its few turns: the word to the person, the read
+ * after a refusal, the store's answer to the outbox. None of those loads anything.
+ */
 const settle = async () => {
+  await vi.waitFor(
+    () => {
+      if (sender && sender.inHand().length > 0) throw new Error('a press is still on its way')
+    },
+    { timeout: 10_000, interval: 5 },
+  )
   for (let i = 0; i < 6; i += 1) await new Promise((r) => setTimeout(r, 5))
 }
 
 async function bench() {
   vi.resetModules()
-  const [store, { outbox }, { replayOutbox }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay')])
+  const [store, { outbox }, { replayOutbox }, { onSiteSender }] = await Promise.all([import('./onSiteStore'), import('../offline/outboxState'), import('../../hooks/useOutboxReplay'), import('./onSiteSend')])
+  // The same sender the store sends through: both come from this bench's fresh modules.
+  sender = onSiteSender()
   await outbox.load('u1', Date.now())
   const said: Array<{ message: string; tone: string }> = []
   store.setOnSiteErrorHandler((message, tone) => said.push({ message, tone }))
@@ -73,10 +91,16 @@ beforeEach(() => {
   nextInsert.length = 0
   inserts.length = 0
   signal.online = true
+  reads.fail = false
   vi.stubGlobal('navigator', { get onLine() { return signal.online } })
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} })
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(async () => {
+  // A case that failed part way may have left a press on its way: let it land here, never in the next case.
+  await settle()
+  sender = null
+  vi.unstubAllGlobals()
+})
 
 describe('an on-site press through the store', () => {
   it('with a signal it is on the screen at once and at the office, and nothing waits', async () => {
@@ -186,5 +210,70 @@ describe('an on-site press through the store', () => {
     expect(tables.job_containers![0]).toMatchObject({ place_id: 'p1', retired_at: null })
     expect(tables.job_container_moves).toHaveLength(1)
     expect(tables.job_container_moves![0]).toMatchObject({ container_id: 'a1', to_place_id: 'p1', by_name: 'Mateo' })
+  })
+
+  it('an edit with no signal is on the screen at once and lands with only what changed', async () => {
+    signal.online = false
+    const b = await bench()
+    const before = { ...tables.job_containers![0]! }
+    b.store.editContainer('a1', { label: 'R70', kind: 'loose' })
+    b.store.editContainer('a1', {})
+    await settle()
+    expect(b.outbox.presses()).toHaveLength(1)
+    expect(b.store.listContainers('j1')[0]).toMatchObject({ label: 'R70', kind: 'loose' })
+    expect(tables.job_containers![0]).toEqual(before)
+    signal.online = true
+    await b.replay()
+    expect(tables.job_containers![0]).toEqual({ ...before, label: 'R70', kind: 'loose' })
+  })
+})
+
+describe('the store reads a job again by itself (v2.7177)', () => {
+  it('a read old enough is made again, quietly, and brings what another phone did', async () => {
+    const b = await bench()
+    const at = b.store.jobLoadedAt('j1')!
+    expect(b.store.listMovements('j1')).toEqual([])
+    // Another phone used 3 from A1.
+    tables.job_material_movements = [{ id: 'other', job_id: 'j1', part_id: null, part_name: 'ZZ test elbow', manufacturer: null, quantity: 3, reason: 'used', from_container_id: 'a1', to_container_id: null, note: '', source: null, item_id: null, by_user_id: 'u2', by_name: 'Ana', at: '2026-11-13T14:00:00.000Z' }]
+    // Too soon: nothing is asked.
+    b.store.refreshJob('j1', 60_000, at + 5_000)
+    await settle()
+    expect(b.store.listMovements('j1')).toEqual([])
+    b.store.refreshJob('j1', 60_000, at + 61_000)
+    // Quiet: the screen never reads as loading.
+    expect(b.store.jobLoadState('j1')).toMatchObject({ loaded: true, loading: false, error: null })
+    await settle()
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual(['other'])
+  })
+
+  it('a press that still waits stays on the screen through the read', async () => {
+    signal.online = false
+    const b = await bench()
+    const mine = b.store.addMovement(use(4))
+    await settle()
+    b.store.refreshJob('j1', 0)
+    await settle()
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual([mine.id])
+  })
+
+  it('a read made again that fails leaves the last good read on the screen, with no error', async () => {
+    tables.job_material_movements = [{ id: 'm0', job_id: 'j1', part_id: null, part_name: 'ZZ test elbow', manufacturer: null, quantity: 8, reason: 'delivered', from_container_id: null, to_container_id: 'a1', note: '', source: null, item_id: null, by_user_id: 'u1', by_name: 'Mateo', at: '2026-11-01T14:00:00.000Z' }]
+    const b = await bench()
+    reads.fail = true
+    b.store.refreshJob('j1', 0)
+    await settle()
+    expect(b.store.jobLoadState('j1')).toMatchObject({ loaded: true, loading: false, error: null })
+    expect(b.store.listMovements('j1').map((m) => m.id)).toEqual(['m0'])
+    // A person's own Retry is not quiet: the same failure is said.
+    await b.store.loadJob('j1', { force: true })
+    expect(b.store.jobLoadState('j1').error).toBeTruthy()
+    reads.fail = false
+  })
+
+  it('a job never read, and one whose read failed, are left to their own screens', async () => {
+    const b = await bench()
+    b.store.refreshJob('never-opened', 0)
+    await settle()
+    expect(b.store.jobLoadState('never-opened')).toMatchObject({ loaded: false, loading: false })
   })
 })
