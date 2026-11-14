@@ -876,7 +876,7 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     const list = screen.getByTestId('run-checklist')
     expect(list.textContent).toContain('At the counter')
     expect(screen.getByTestId('run-checklist-1').textContent).toContain('650 owner')
-    expect(screen.getByLabelText('Envelope 1 — slip on')).toBeTruthy()
+    expect(screen.getByLabelText('Envelope 1 — label on')).toBeTruthy()
     expect(screen.getByLabelText('Envelope 3 — handed over')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Envelope 1 — stuffed'))
     expect((screen.getByLabelText('Envelope 1 — stuffed') as HTMLInputElement).checked).toBe(true)

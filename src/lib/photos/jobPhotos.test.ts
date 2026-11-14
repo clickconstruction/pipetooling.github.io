@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emptyFolderWords, newestFirst, photoDayWords, photosDoorWords, stripTiles, viewerTitle, waitingWords, type JobPhoto } from './jobPhotos'
+import { ADD_A_PHOTO, bannerTiles, emptyFolderWords, newestFirst, photoDayWords, photosDoorWords, stripTiles, viewerTitle, waitingWords, type JobPhoto } from './jobPhotos'
 
 const p = (id: string, modified: string | null, name = `${id}.jpg`): JobPhoto => ({ id, name, mime: 'image/jpeg', bytes: 240000, modified, from: 'pictures' })
 
@@ -14,6 +14,15 @@ describe('the strip’s tiles', () => {
   })
   it('orders newest first with the name as the tie-break', () => {
     expect(newestFirst([p('b', '2026-10-24T20:00:00Z', 'slab-rough-east.jpg'), p('a', '2026-10-24T20:00:00Z', 'IMG_4021.jpg')]).map((x) => x.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('the phone’s banner (punch list #355)', () => {
+  it('puts Add a photo first, then every photo newest first with its place', () => {
+    const tiles = bannerTiles([p('old', '2026-10-01T20:00:00Z'), p('a', '2026-10-24T20:00:00Z'), p('b', '2026-10-22T20:00:00Z')])
+    expect(tiles.map((t) => (t.kind === 'add' ? 'add' : `${t.photo.id}@${t.index}`))).toEqual(['add', 'a@0', 'b@1', 'old@2'])
+    expect(bannerTiles([])).toEqual([{ kind: 'add' }])
+    expect(ADD_A_PHOTO).toBe('Add a photo')
   })
 })
 

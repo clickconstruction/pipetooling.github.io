@@ -24,8 +24,11 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55549}"
 NAME="pgtest-combine-rows"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The newest file that restates the combine, so the next restatement needs no edit here.
+# The newest file that restates the combine, so the next restatement needs no edit here, and after it the newest file
+# that restates the carry the combine calls (on_site_carry_job, v2.7265): the combine's file restates the carry too,
+# so applied alone it would put an older carry back and the bed would play the combine through a body prod no longer has.
 WRITES="$(grep -l 'CREATE OR REPLACE FUNCTION public.migrate_job_ledger_costs_and_delete' supabase/migrations/*.sql | sort | tail -1)"
+CARRY="$(grep -l 'CREATE OR REPLACE FUNCTION public.on_site_carry_job' supabase/migrations/*.sql | sort | tail -1)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,6 +47,9 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 pgtest_migrate
 # A second run must change nothing: every function is CREATE OR REPLACE, the trigger CREATE OR REPLACE TRIGGER.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+if [ "$CARRY" != "$WRITES" ]; then
+  psql_as postgres -f - < "$CARRY" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $CARRY"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+fi
 out="$(psql_as postgres -f - < supabase/tests/combine_rows/20_scenario.sql 2>&1 || true)"
 if ! grep -q "combine_rows PASSED" <<<"$out"; then echo "$out" | tail -60; exit 1; fi
 grep -o "ok: .*" <<<"$out"

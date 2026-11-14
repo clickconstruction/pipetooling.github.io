@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The job's Target line (punch list #255, v2.6585): the budget's hours as the fallback, Set a target with hours and why
+ * The job's Target line (punch list #255, v2.6585): the budget's hours as the fallback, Set the hours with hours and why
  * through the hook's setTarget, an open target with who set it and Back to the budget, a crew lead reading only, and a
  * draft with no reason refused in words.
  */
@@ -44,8 +44,8 @@ describe('JobTargetLine', () => {
   it('falls back to the labor budget, and Set a target saves the hours and the reason', async () => {
     const api = apiWith(null)
     render(<JobTargetLine jobId="job-1" api={api} readBudget={budget(110)} />)
-    expect(await screen.findByText('🎯 Target 110 h from the labor budget')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Set a target' }))
+    expect(await screen.findByText('⏱ Hours target · 110 h from the labor budget')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Set the hours' }))
     fireEvent.change(screen.getByLabelText('Target hours'), { target: { value: '96' } })
     fireEvent.change(screen.getByLabelText('Why this target'), { target: { value: 'framed in a week' } })
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
@@ -56,18 +56,18 @@ describe('JobTargetLine', () => {
   it('reads an open target with who set it and why, and Back to the budget clears it', async () => {
     const api = apiWith(TARGET)
     render(<JobTargetLine jobId="job-1" api={api} readBudget={budget(110)} />)
-    expect(await screen.findByText('🎯 Target 96 h')).toBeTruthy()
+    expect(await screen.findByText('⏱ Hours target · 96 h')).toBeTruthy()
     expect(screen.getByText('Expected 96 h, set by Robert on Nov 1 (was 110 h): framed in a week')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Back to the budget' }))
     await waitFor(() => expect(api.clearTarget).toHaveBeenCalledWith('job-1'))
-    expect(screen.getByRole('button', { name: 'Change the target' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change the hours' })).toBeTruthy()
   })
 
-  it('says no target yet, and a draft with no reason is refused in words', async () => {
+  it('says none yet, and a draft with no reason is refused in words', async () => {
     const api = apiWith(null)
     render(<JobTargetLine jobId="job-1" api={api} readBudget={budget(null, null)} />)
-    expect(await screen.findByText('🎯 No target yet')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Set a target' }))
+    expect(await screen.findByText('⏱ Hours target · none yet')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Set the hours' }))
     fireEvent.change(screen.getByLabelText('Target hours'), { target: { value: '40' } })
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Say why, in a few words. The crew reads it.')
@@ -77,13 +77,13 @@ describe('JobTargetLine', () => {
   it('a crew lead and a training account read the line and get no press', async () => {
     auth.role = 'primary'
     render(<JobTargetLine jobId="job-1" api={apiWith(TARGET)} readBudget={budget(110)} />)
-    expect(await screen.findByText('🎯 Target 96 h')).toBeTruthy()
+    expect(await screen.findByText('⏱ Hours target · 96 h')).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
     cleanup()
     auth.role = 'dev'
     auth.readOnly = true
     render(<JobTargetLine jobId="job-1" api={apiWith(TARGET)} readBudget={budget(110)} />)
-    expect(await screen.findByText('🎯 Target 96 h')).toBeTruthy()
+    expect(await screen.findByText('⏱ Hours target · 96 h')).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
   })
 })

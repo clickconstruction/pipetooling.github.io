@@ -347,7 +347,7 @@ Send to: **Taunya** · When: {{button:blue|Send now}} or **Schedule…** a date 
 
 Scheduled sends build the report **fresh at send time**. A Monday 7 AM email shows Monday's numbers, not Friday's. They arrive within about five minutes of the chosen time. Your pending sends are listed in the window with a **Cancel** next to each. **Preview** opens the exact email in a new tab. **Email me a test** sends it to your own address with a `[TEST]` subject. **Print instead** is the old print path, unchanged. Recipients can only be office roles, because the report carries amounts due.
 
-There is also a per-job version. On **Job Detail**, the envelope icon in the header opens the same email. The preview shows right in the window. Devs and leaders only see it. A **Detailed | Summary** toggle flips between the two versions. The send actions sit at the top:
+There is also a per-job version. On the job window, **Email the paid-in-full report** opens the same email. On a computer it is the envelope in the icon row. On a phone it is a row of the **⋯** sheet by the job's name. The preview shows right in the window. Devs and leaders only see it. A **Detailed | Summary** toggle flips between the two versions. The send actions sit at the top:
 
 :::example Paid-in-full email window
 {{button:blue|Send to me}} &nbsp; {{button:outline|Send to someone…}}

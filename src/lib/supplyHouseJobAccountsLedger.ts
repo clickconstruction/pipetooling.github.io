@@ -79,7 +79,7 @@ export function summarizeJobShares(
  */
 export function jobAccountShareIconTitle(rows: JobAccountShareRow[], formatDate: (iso: string) => string): string {
   const summary = summarizeJobShares(rows, formatDate)
-  if (!summary) return 'Share with supply house — set up a job account'
+  if (!summary) return 'Add job account — set one up at a supply house'
   return `Job account on file — ${summary.replace(/^Already shared with /, 'shared with ')}. Click for history or to resend.`
 }
 

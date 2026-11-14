@@ -6,20 +6,20 @@ const target = { id: 't', jobId: 'j', hours: 96, from: 110, by: 'Robert', at: '2
 describe('jobTargetWords', () => {
   it('reads an open target with who set it and why, and offers the change and the clear', () => {
     const w = jobTargetWords(target, 110, 'bid')
-    expect(w.head).toBe('Target 96 h')
+    expect(w.head).toBe('Hours target · 96 h')
     expect(w.detail).toBe('Expected 96 h, set by Robert on Nov 1 (was 110 h): framed in a week')
-    expect(w).toMatchObject({ counts: 96, press: 'Change the target' })
+    expect(w).toMatchObject({ counts: 96, press: 'Change the hours' })
     expect(w.clearable).toBe(true)
   })
 
   it('falls back to the labor budget and names where it came from', () => {
-    expect(jobTargetWords(null, 110, 'bid')).toMatchObject({ head: 'Target 110 h from the labor budget', detail: 'The labor budget is 110 h from the bid. Set a target to read a different number here.', counts: 110, press: 'Set a target', clearable: false })
+    expect(jobTargetWords(null, 110, 'bid')).toMatchObject({ head: 'Hours target · 110 h from the labor budget', detail: 'The labor budget is 110 h from the bid. Set the hours to read a different number here.', counts: 110, press: 'Set the hours', clearable: false })
     expect(jobTargetWords(null, 40.4, 'typed').detail).toContain('40 h typed by the office')
     expect(jobTargetWords(null, 12, null).detail).toContain('12 h on the Costs tab')
   })
 
-  it('says no target yet when the job carries none', () => {
-    expect(jobTargetWords(null, 0, null)).toEqual({ head: 'No target yet', detail: 'The crew’s hours against the target are counted once this is set.', counts: null, press: 'Set a target', clearable: false })
+  it('names the hours target and says what it is when the job carries none (punch list #355)', () => {
+    expect(jobTargetWords(null, 0, null)).toEqual({ head: 'Hours target · none yet', detail: 'How many hours the job should take. The crew’s hours count against it once it is set.', counts: null, press: 'Set the hours', clearable: false })
     expect(jobTargetWords(null, null, null).counts).toBeNull()
   })
 })

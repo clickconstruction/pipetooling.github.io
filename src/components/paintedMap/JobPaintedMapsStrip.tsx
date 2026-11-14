@@ -24,13 +24,17 @@ type Props = {
    * `maps` shows the maps alone: no press to paint one, and nothing at all for
    * a job with none. For a sheet that is about something else, such as On my way.
    */
+  /** The phone's Paint a map: centred blue words, no box. */
+  addCentred?: boolean
   only?: 'maps'
 }
 
 const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 40, padding: '0.35rem 0.6rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
 const add: CSSProperties = { ...row, borderStyle: 'dashed', borderColor: 'var(--border-strong)', background: 'transparent', color: 'var(--text-link)' }
+/** The phone's press (punch list #355, the owner's call): centred blue words with no box, the row still 40 px for a thumb. */
+const addWords: CSSProperties = { ...add, borderStyle: 'none', justifyContent: 'center', textAlign: 'center', padding: '0.2rem 0.6rem', fontWeight: 700 }
 
-export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only }: Props) {
+export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false }: Props) {
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
   const [failed, setFailed] = useState<string | null>(null)
 
@@ -81,7 +85,7 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
         </p>
       ) : null}
       {only === 'maps' ? null : (
-        <button type="button" data-paint-a-map style={add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
+        <button type="button" data-paint-a-map style={addCentred ? addWords : add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
           ＋ Paint a map
         </button>
       )}

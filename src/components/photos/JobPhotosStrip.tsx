@@ -7,11 +7,12 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { driveFolderIdFromUrl } from '../../lib/jobs/jobDriveFolders'
-import { ASK_OFFICE_FOLDER, FROM_LINE, NO_FOLDER_WORDS, SET_FOLDER, emptyFolderWords, photoDayWords, photosDoorWords, readFailedWords, stripTiles, waitingWords, type JobPhotosRead } from '../../lib/photos/jobPhotos'
+import { ADD_A_PHOTO, ASK_OFFICE_FOLDER, FROM_LINE, NO_FOLDER_WORDS, SET_FOLDER, bannerTiles, emptyFolderWords, photoDayWords, photosDoorWords, readFailedWords, stripTiles, waitingWords, type JobPhoto, type JobPhotosRead } from '../../lib/photos/jobPhotos'
 import { supabaseJobPhotosIo, type JobPhotosIo } from '../../lib/photos/jobPhotosIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { JobPhotoThumb, TILE } from './JobPhotoThumb'
 import { JobPhotosViewer } from './JobPhotosViewer'
+import { PhoneSectionTitle } from '../jobs/JobWindowPhoneSections'
 
 const label: CSSProperties = { fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }
 const doorBtn: CSSProperties = { ...label, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, font: 'inherit', fontSize: '0.8125rem' }
@@ -21,6 +22,11 @@ const tileBtn: CSSProperties = { ...TILE, padding: 0, cursor: 'pointer' }
 const moreTile: CSSProperties = { ...TILE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }
 const day: CSSProperties = { position: 'absolute', left: 0, right: 0, bottom: 0, fontSize: '0.6rem', fontWeight: 600, textAlign: 'center', background: 'rgba(17, 24, 39, 0.55)', color: '#f9fafb', padding: '1px 0' }
 const dashed: CSSProperties = { border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }
+/** The phone's banner (punch list #355): 72 px tiles on one row that flicks sideways, Add a photo first. */
+const BANNER_TILE = 72
+const bannerRow: CSSProperties = { display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -0.9rem', padding: '0 0.9rem 4px', WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 24px), transparent)', maskImage: 'linear-gradient(90deg, #000 calc(100% - 24px), transparent)' }
+const bannerTile: CSSProperties = { ...TILE, width: BANNER_TILE, height: BANNER_TILE, aspectRatio: undefined, flex: 'none', borderRadius: 10, padding: 0, cursor: 'pointer' }
+const bannerAdd: CSSProperties = { ...bannerTile, border: '1.5px dashed var(--text-blue-500)', background: 'var(--surface)', color: 'var(--text-link)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.6875rem', lineHeight: 1.15, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, textAlign: 'center', padding: '0 4px' }
 const smallBtn: CSSProperties = { display: 'inline-block', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.15rem 0.6rem', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', font: 'inherit' }
 
 export interface JobPhotosStripProps {
@@ -33,15 +39,20 @@ export interface JobPhotosStripProps {
   io?: JobPhotosIo
   /** Goes up when the window wants the folder read again. */
   rev?: number
+  /** The phone's banner (punch list #355): one row that flicks sideways, Add a photo the first tile, the count and open all at the title's right. */
+  banner?: boolean
+  /** The banner's first tile: opens the job's photos window, whose first tile is the camera on a phone. */
+  onAddPhoto?: () => void
 }
 
-export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io: ioProp, rev = 0 }: JobPhotosStripProps) {
+export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io: ioProp, rev = 0, banner = false, onAddPhoto }: JobPhotosStripProps) {
   const io = useMemo(() => ioProp ?? supabaseJobPhotosIo(), [ioProp])
   const hasFolder = Boolean(driveFolderIdFromUrl(picturesLink) || driveFolderIdFromUrl(driveLink))
   const [read, setRead] = useState<JobPhotosRead | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
-  const [viewer, setViewer] = useState(false)
+  /** The viewer, and on the banner the photo it opens at. */
+  const [viewer, setViewer] = useState<{ at: JobPhoto | null } | null>(null)
 
   useEffect(() => {
     let live = true
@@ -58,11 +69,12 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
   }, [io, jobId, hasFolder, rev, tick])
 
   const tiles = useMemo(() => (read ? stripTiles(read.photos) : []), [read])
+  const bannerRowTiles = useMemo(() => (read && banner ? bannerTiles(read.photos) : []), [read, banner])
 
   if (!hasFolder) {
     return (
       <div data-job-photos="no-folder" style={{ display: 'grid', gap: '0.35rem' }}>
-        <span style={label}>{photosDoorWords(null)}</span>
+        {banner ? <PhoneSectionTitle>Photos</PhoneSectionTitle> : <span style={label}>{photosDoorWords(null)}</span>}
         <div style={dashed}>
           <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-strong)' }}>{NO_FOLDER_WORDS}</span>
           {onSetFolder ? (
@@ -79,15 +91,36 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
 
   return (
     <div data-job-photos={read ? (read.photos.length ? 'photos' : 'empty') : error ? 'failed' : 'loading'} style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
-        {read && read.photos.length ? (
-          <button type="button" style={doorBtn} onClick={() => setViewer(true)} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
+      {banner ? (
+        <PhoneSectionTitle
+          right={
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+              {read ? <span style={{ ...muted, fontWeight: 600 }}>{read.photos.length}</span> : null}
+              {read && read.photos.length ? (
+                <button type="button" style={doorBtn} onClick={() => setViewer({ at: null })} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
+                  open all ›
+                </button>
+              ) : null}
+            </span>
+          }
+        >
+          Photos
+        </PhoneSectionTitle>
+      ) : null}
+      <div style={banner ? { display: 'none' } : { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+        {read && read.photos.length && !banner ? (
+          <button type="button" style={doorBtn} onClick={() => setViewer({ at: null })} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
             {photosDoorWords(read.photos.length)} ▸
           </button>
         ) : (
-          <span style={label}>{photosDoorWords(read ? read.photos.length : null)}</span>
+          <span style={banner ? { ...label, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.9375rem' } : label}>{photosDoorWords(read ? read.photos.length : null)}</span>
         )}
         {read?.capped ? <span style={muted}>the newest 500</span> : null}
+        {banner && read && read.photos.length ? (
+          <button type="button" style={{ ...doorBtn, marginLeft: 'auto' }} onClick={() => setViewer({ at: null })} aria-label={`${photosDoorWords(read.photos.length)}: open the folder's viewer`}>
+            open all ›
+          </button>
+        ) : null}
       </div>
       {error ? (
         <p style={{ ...muted, color: 'var(--text-amber-700)' }}>
@@ -98,6 +131,25 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
         </p>
       ) : !read ? (
         <p style={muted}>Reading the folder…</p>
+      ) : banner ? (
+        <>
+          <div style={bannerRow} role="list" aria-label="Photos" data-job-photos-banner="">
+            {bannerRowTiles.map((t) =>
+              t.kind === 'add' ? (
+                <button key="add" type="button" role="listitem" style={bannerAdd} aria-label={ADD_A_PHOTO} onClick={onAddPhoto} disabled={!onAddPhoto}>
+                  <span aria-hidden style={{ fontSize: '1.1rem' }}>📷</span>
+                  {ADD_A_PHOTO}
+                </button>
+              ) : (
+                <button key={t.photo.id} type="button" role="listitem" style={bannerTile} aria-label={`Open ${t.photo.name}`} onClick={() => setViewer({ at: t.photo })}>
+                  <JobPhotoThumb jobId={jobId} fileId={t.photo.id} alt={t.photo.name} io={io} />
+                  {photoDayWords(t.photo.modified) ? <span style={day}>{photoDayWords(t.photo.modified)}</span> : null}
+                </button>
+              ),
+            )}
+          </div>
+          {read.photos.length === 0 ? <p style={muted}>{emptyFolderWords(read.waiting)}</p> : null}
+        </>
       ) : read.photos.length === 0 ? (
         <p style={muted}>{emptyFolderWords(read.waiting)}</p>
       ) : (
@@ -105,12 +157,12 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
           <div style={strip} role="list" aria-label="Photos">
             {tiles.map((t) =>
               t.kind === 'photo' ? (
-                <button key={t.photo.id} type="button" role="listitem" style={tileBtn} aria-label={`Open ${t.photo.name}`} onClick={() => setViewer(true)}>
+                <button key={t.photo.id} type="button" role="listitem" style={tileBtn} aria-label={`Open ${t.photo.name}`} onClick={() => setViewer({ at: null })}>
                   <JobPhotoThumb jobId={jobId} fileId={t.photo.id} alt={t.photo.name} io={io} />
                   {photoDayWords(t.photo.modified) ? <span style={day}>{photoDayWords(t.photo.modified)}</span> : null}
                 </button>
               ) : (
-                <button key="more" type="button" role="listitem" style={moreTile} aria-label={`${t.count} more photos: open the folder's viewer`} onClick={() => setViewer(true)}>
+                <button key="more" type="button" role="listitem" style={moreTile} aria-label={`${t.count} more photos: open the folder's viewer`} onClick={() => setViewer({ at: null })}>
                   + {t.count}
                 </button>
               ),
@@ -122,7 +174,7 @@ export function JobPhotosStrip({ jobId, driveLink, picturesLink, onSetFolder, io
           </p>
         </>
       )}
-      {viewer && read ? <JobPhotosViewer jobId={jobId} photos={read.photos} folderUrl={read.folder.url} io={io} onClose={() => setViewer(false)} /> : null}
+      {viewer && read ? <JobPhotosViewer jobId={jobId} photos={read.photos} folderUrl={read.folder.url} io={io} openAt={viewer.at} onClose={() => setViewer(null)} /> : null}
     </div>
   )
 }

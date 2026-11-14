@@ -56,6 +56,19 @@ export function stripTiles(photos: readonly JobPhoto[], tiles = STRIP_TILES): St
   return [...shown.map((photo): StripTile => ({ kind: 'photo', photo })), { kind: 'more', count: sorted.length - shown.length }]
 }
 
+export type BannerTile = { kind: 'add' } | { kind: 'photo'; photo: JobPhoto; index: number }
+
+/**
+ * The phone's banner (punch list #355): one row that flicks sideways, Add a photo the first tile, then every photo
+ * newest first; `index` is the photo's place in that order, where the viewer opens.
+ */
+export function bannerTiles(photos: readonly JobPhoto[]): BannerTile[] {
+  return [{ kind: 'add' }, ...newestFirst(photos).map((photo, index): BannerTile => ({ kind: 'photo', photo, index }))]
+}
+
+/** The words on the banner's first tile. */
+export const ADD_A_PHOTO = 'Add a photo'
+
 /** The day under a tile, in the company's calendar: *Oct 24*; '' when Drive gave no time. */
 export function photoDayWords(modified: string | null): string {
   if (!modified || Number.isNaN(Date.parse(modified))) return ''
