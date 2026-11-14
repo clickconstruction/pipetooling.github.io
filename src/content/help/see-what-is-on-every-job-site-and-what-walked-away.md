@@ -11,6 +11,8 @@ The Materials tab on Jobs is the office side of the cages and boxes on a big sit
 
 Open **Jobs** and press **Materials**. The desk lists every job with a container and sorts the ones losing money to the top. Press a job to open its page.
 
+Under the money, a job that came up short this week reads how many lines were short. The words turn amber and add *with no price* when a short part has no price. The money leaves that part out, so the figure is then the least that walked away.
+
 A job whose boxes did not load says so in its row, with the reason. The row's figures are left blank, never drawn as zero. Press **Read again** on that row. A site's screen says the same at its top when one of its jobs did not load.
 
 The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open.
