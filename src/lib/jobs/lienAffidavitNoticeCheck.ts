@@ -34,6 +34,12 @@ export type LienNoticeCheck = {
   contractorMissing: string[]
   /** Months whose copy to the original contractor went after its day. */
   contractorLate: string[]
+  /**
+   * The paper swears no month while a notice is on record (punch list #356): the job's own work months and the months
+   * the recorded notices name, which do not meet. Null when the paper names a month, when no notice is on record (the
+   * affidavit's own gate holds then), or when the caller gave no work months.
+   */
+  empty: { work: string[]; named: string[] } | null
 }
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
@@ -52,37 +58,67 @@ function firstSend(filings: ReadonlyArray<LienAffidavitNoticeRow>, month: string
   return first
 }
 
-/** The check for one paper: `months` are the months it swears (`lienAffidavitSwornMonths`). A job contracted with the owner owes no notice and has nothing to check. */
-export function lienAffidavitNoticeCheck(input: { isSub: boolean; propertyKind: string | null | undefined; months: ReadonlyArray<string>; filings: ReadonlyArray<LienAffidavitNoticeRow> | null | undefined }): LienNoticeCheck {
-  const empty: LienNoticeCheck = { months: [], ownerLate: [], contractorMissing: [], contractorLate: [] }
-  if (!input.isSub) return empty
+const MONTH_KEY = /^\d{4}-\d{2}$/
+
+/** The months the live § 53.056 notices name, each once, oldest first (the record's side of `empty`). */
+function namedMonths(filings: ReadonlyArray<LienAffidavitNoticeRow>): string[] {
+  const out = new Set<string>()
+  for (const f of filings) if (f.kind === 'notice_53_056' && !f.voided_at) for (const m of f.months_covered ?? []) if (MONTH_KEY.test(m)) out.add(m)
+  return [...out].sort()
+}
+
+/**
+ * The check for one paper: `months` are the months it swears (`lienAffidavitSwornMonths`). A job contracted with the
+ * owner owes no notice and has nothing to check. `work` (punch list #356) is the job's own work months
+ * (`lienAffidavitWorkMonths`): with it, a paper that swears no month while a notice on record names other months is
+ * `empty`, and the lines say why the months line is blank.
+ */
+export function lienAffidavitNoticeCheck(input: { isSub: boolean; propertyKind: string | null | undefined; months: ReadonlyArray<string>; filings: ReadonlyArray<LienAffidavitNoticeRow> | null | undefined; work?: ReadonlyArray<string> | null }): LienNoticeCheck {
+  const none: LienNoticeCheck = { months: [], ownerLate: [], contractorMissing: [], contractorLate: [], empty: null }
+  if (!input.isSub) return none
   const filings = input.filings ?? []
-  const months = [...new Set(input.months.filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort().map((month): LienNoticeCheckMonth => ({
+  const months = [...new Set(input.months.filter((m) => MONTH_KEY.test(m)))].sort().map((month): LienNoticeCheckMonth => ({
     month,
     dueOn: noticeDeadlineForMonth(`${month}-01`, input.propertyKind ?? ''),
     ownerSentOn: firstSend(filings, month, 'owner'),
     contractorSentOn: firstSend(filings, month, 'original_contractor'),
   }))
   const late = (sentOn: string | null, dueOn: string) => sentOn !== null && dueOn !== '' && sentOn > dueOn
+  const work = [...new Set((input.work ?? []).filter((m) => MONTH_KEY.test(m)))].sort()
+  const named = months.length === 0 && work.length > 0 ? namedMonths(filings) : []
   return {
     months,
     ownerLate: months.filter((m) => m.ownerSentOn === null || late(m.ownerSentOn, m.dueOn)).map((m) => m.month),
     contractorMissing: months.filter((m) => m.contractorSentOn === null).map((m) => m.month),
     contractorLate: months.filter((m) => late(m.contractorSentOn, m.dueOn)).map((m) => m.month),
+    empty: named.length > 0 ? { work, named } : null,
   }
 }
 
-/** True when the record raises a question about any sworn month. */
+/** True when the record raises a question about any sworn month, or the paper swears none while a notice is on record. */
 export function lienNoticeCheckFlags(check: LienNoticeCheck): boolean {
-  return check.ownerLate.length > 0 || check.contractorMissing.length > 0 || check.contractorLate.length > 0
+  return check.ownerLate.length > 0 || check.contractorMissing.length > 0 || check.contractorLate.length > 0 || check.empty !== null
 }
 
 /** The lead above the lines: what to do about them. */
 export const LIEN_NOTICE_CHECK_LEAD = 'Ask the attorney before this is filed.'
 
+/** The first of the empty case's sentences: the fact, before the two lists. */
+export const LIEN_NOTICE_CHECK_EMPTY_LEAD = 'No recorded notice names a month this job was worked.'
+
+/**
+ * Why the months line is blank (punch list #356), three sentences: the fact, the job's work months, the months the
+ * notice on record names. The two lists side by side are what the office and the attorney read. Empty when the paper
+ * names a month.
+ */
+export function lienNoticeCheckEmptyLines(check: Pick<LienNoticeCheck, 'empty'>): string[] {
+  if (!check.empty) return []
+  return [LIEN_NOTICE_CHECK_EMPTY_LEAD, `Its work was in ${describeNoticeMonths(check.empty.work)}.`, `The notice on record names ${describeNoticeMonths(check.empty.named)}.`]
+}
+
 /** The lines the desk and the Lien window draw, one per kind of question; none when the record raises none. */
 export function lienNoticeCheckLines(check: LienNoticeCheck): string[] {
-  const lines: string[] = []
+  const lines: string[] = [...lienNoticeCheckEmptyLines(check)]
   if (check.ownerLate.length > 0) lines.push(`The owner's notice went after its date, or is not on record, for ${describeNoticeMonths(check.ownerLate)}.`)
   if (check.contractorMissing.length > 0) lines.push(`No copy to the original contractor is on record for ${describeNoticeMonths(check.contractorMissing)}.`)
   if (check.contractorLate.length > 0) lines.push(`The original contractor's copy went after its date for ${describeNoticeMonths(check.contractorLate)}.`)
@@ -114,6 +150,7 @@ export function noticeMonthsSpanWords(months: ReadonlyArray<string>): string {
  * the Lien window say those. '' when the record raises no question.
  */
 export function lienNoticeCheckRowLine(check: LienNoticeCheck): string {
+  if (check.empty) return LIEN_NOTICE_CHECK_EMPTY_LEAD
   const months = lienNoticeCheckMonths(check)
   if (months.length === 0) return ''
   return months.length === 1 ? `The notice for ${noticeMonthsSpanWords(months)} went late or is not on record.` : `Notices for ${noticeMonthsSpanWords(months)} went late or are not on record.`
@@ -127,6 +164,8 @@ export function lienNoticeCheckRowLine(check: LienNoticeCheck): string {
  * record, never both, because each month's row says which. A check whose months carry no row keeps the long lines.
  */
 export function lienNoticeCheckShortLines(check: LienNoticeCheck): string[] {
+  // The empty case has no month rows to shorten: the fact, then the two lists read as spans.
+  if (check.empty) return [LIEN_NOTICE_CHECK_EMPTY_LEAD, `Its work was in ${noticeMonthsSpanWords(check.empty.work)}.`, `The notice on record names ${noticeMonthsSpanWords(check.empty.named)}.`]
   const by = new Map(check.months.map((m) => [m.month, m]))
   if ([...check.ownerLate, ...check.contractorMissing, ...check.contractorLate].some((m) => !by.has(m))) return lienNoticeCheckLines(check)
   const ownerMissing = check.ownerLate.filter((m) => by.get(m)?.ownerSentOn === null)

@@ -235,6 +235,9 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     const blank = planned(world({ filings: [{ ...NOTICE, months_covered: ['2026-10'] }] }))
     expect((blank.reply.paper_today as Record<string, unknown>).months_it_names).toBeNull()
     expect(String(blank.reply.no_month)).toContain('prints a blank')
+    // The reason rides in front of it (punch list #356): the job's work months and the notice's months, side by side.
+    expect(String(blank.reply.no_month)).toContain('No recorded notice names a month this job was worked.')
+    expect(String(blank.reply.no_month)).toContain('The notice on record names October 2026.')
   })
 
   it('refreshes a standing draft in place, clearing any signature, as the pane does', () => {

@@ -115,3 +115,29 @@ export function lienWorkSpan(job: LienWorkSpanJob | null | undefined, months: Li
   }
   return { workStart, workEnd, startSource, endSource }
 }
+
+/**
+ * The months a span takes in, 'YYYY-MM' oldest first (punch list #356): the start's month through the end's. None
+ * while either side is unknown or the start is after the end. A job that runs for years is not a thing; the cap keeps
+ * a typo from filling a page.
+ */
+export function lienWorkSpanMonths(workStartYmd: string | null | undefined, workEndYmd: string | null | undefined): string[] {
+  const from = dayOf(workStartYmd)
+  const to = dayOf(workEndYmd)
+  if (!from || !to || from.slice(0, 7) > to.slice(0, 7)) return []
+  const out: string[] = []
+  let y = Number(from.slice(0, 4))
+  let m = Number(from.slice(5, 7))
+  const end = to.slice(0, 7)
+  for (let i = 0; i < 120; i += 1) {
+    const key = `${y}-${String(m).padStart(2, '0')}`
+    out.push(key)
+    if (key === end) break
+    m += 1
+    if (m > 12) {
+      m = 1
+      y += 1
+    }
+  }
+  return out
+}

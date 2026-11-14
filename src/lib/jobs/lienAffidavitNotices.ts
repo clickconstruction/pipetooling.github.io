@@ -1,5 +1,5 @@
 import { demandDate } from '../jobsDocuments/demandDate'
-import { lienWorkSpan, type LienWorkSpanJob } from './lienWorkSpan'
+import { lienWorkSpan, lienWorkSpanMonths, type LienWorkSpanJob } from './lienWorkSpan'
 
 /**
  * What the short lien affidavit says about the notices (punch list #305). Pure.
@@ -55,6 +55,17 @@ export function lienAffidavitSwornMonths(f: LienAffidavitSwornFacts): string[] {
   if (!f.isSub) return []
   const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
   return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
+}
+
+/**
+ * The months of the job's own work, as the paper's span reads them (punch list #356): the same span the sworn months
+ * are cut to, so the notice check can say which months the job was worked when none of them has a notice. None on a
+ * job contracted with the owner, whose paper names no month.
+ */
+export function lienAffidavitWorkMonths(f: Omit<LienAffidavitSwornFacts, 'filings'>): string[] {
+  if (!f.isSub) return []
+  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  return lienWorkSpanMonths(span.workStart, span.workEnd)
 }
 
 /** One notice sent to the owner: the day it went and how. */

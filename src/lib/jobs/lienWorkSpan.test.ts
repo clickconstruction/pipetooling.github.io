@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_LIEN_WORK_SPAN, lastDayOfMonth, lienWorkSpan } from './lienWorkSpan'
+import { EMPTY_LIEN_WORK_SPAN, lastDayOfMonth, lienWorkSpan, lienWorkSpanMonths } from './lienWorkSpan'
 
 describe('lienWorkSpan (v2.6061) — the affidavit’s paragraph 5 swears the real period, not one day', () => {
   it('a job with sessions: the first approved day through the last', () => {
@@ -45,5 +45,17 @@ describe('lienWorkSpan (v2.6061) — the affidavit’s paragraph 5 swears the re
     expect(lastDayOfMonth('2028-02')).toBe('2028-02-29')
     expect(lastDayOfMonth('2026-13')).toBe('')
     expect(lastDayOfMonth('July')).toBe('')
+  })
+})
+
+describe('lienWorkSpanMonths · the months a span takes in (punch list #356)', () => {
+  it('runs from the start’s month through the end’s, across a year end', () => {
+    expect(lienWorkSpanMonths('2026-11-20', '2027-02-03')).toEqual(['2026-11', '2026-12', '2027-01', '2027-02'])
+    expect(lienWorkSpanMonths('2026-08-03', '2026-08-21')).toEqual(['2026-08'])
+  })
+  it('is empty with a side unknown or a start after the end', () => {
+    expect(lienWorkSpanMonths('', '2026-08-21')).toEqual([])
+    expect(lienWorkSpanMonths('2026-08-03', null)).toEqual([])
+    expect(lienWorkSpanMonths('2026-09-03', '2026-08-21')).toEqual([])
   })
 })
