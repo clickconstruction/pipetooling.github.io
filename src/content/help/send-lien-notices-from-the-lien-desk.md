@@ -114,7 +114,7 @@ The button left of the × on Put a GC on notice makes that window full screen. T
 
 Some customers pay with something other than money, like a rent credit each month. That is an in kind arrangement. The desk treats a job on an open arrangement as paid.
 
-Such a job is on no tab of the desk. It is in no count and no total. No notice run, print run or shared summary names it. Its Pipeline row carries no lien date. Put a GC on notice leaves it out too.
+Such a job is on no tab of the desk. It is in no count and no total. No notice run, print run or shared summary names it. Its Pipeline row carries no lien date. Put a GC on notice leaves it out too. Held for suppliers in Materials shows no lien line for it either.
 
 One thing to know before you rely on this. The law's lien dates still run on that job. The desk no longer watches them, and nobody is reminded. If the arrangement stops being honoured, a deadline can pass while the job is off the desk.
 

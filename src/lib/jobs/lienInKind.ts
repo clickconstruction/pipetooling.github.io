@@ -12,8 +12,8 @@
  *
  * Every reader of the desk's jobs goes through here, so the views cannot disagree: the desk's read
  * (`useLienDeskData`), By job's book (`useLienTimelineBook`), By date and the Pipeline's marks
- * (`lienCalendarRows.ts`), Put a GC on notice (`useGcOnNoticeData`) and the Dashboard's lien watch
- * (`useLienWatchNudge`). Pure.
+ * (`lienCalendarRows.ts`), Put a GC on notice (`useGcOnNoticeData`), the Dashboard's lien watch
+ * (`useLienWatchNudge`) and Materials' held line (`buildHeldLienLines`, v2.7257). Pure.
  */
 import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 

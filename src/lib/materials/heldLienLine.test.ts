@@ -24,6 +24,20 @@ describe('buildHeldLienLines', () => {
     expect(lines.get('b')).toEqual({ words: 'On the Lien desk · our lien is due by Oct 8 · $900 unpaid', href: '/lien-desk?tab=affidavits&job=b', kind: 'lien', urgent: true })
   })
 
+  it('gives no line to a job the desk leaves off, since an open in-kind deal pays it (v2.7257)', () => {
+    const notices = [
+      { job_id: 'k', deadline: '2026-10-15', noticed: false, open_balance: 4000 },
+      { job_id: 'm', deadline: '2026-10-15', noticed: false, open_balance: 700 },
+    ]
+    const affidavits = [{ job_id: 'k', deadline: '2026-11-16', filed: false, open_balance: 4000 }]
+    const lines = buildHeldLienLines(notices, affidavits, TODAY, new Set(['k']))
+    // Neither the notice nor the lien date speaks for the in-kind job; the job beside it keeps its line.
+    expect(lines.has('k')).toBe(false)
+    expect(lines.get('m')!.kind).toBe('notice')
+    // With no set every job is read, as before.
+    expect(buildHeldLienLines(notices, affidavits, TODAY).has('k')).toBe(true)
+  })
+
   it('a notice owed speaks before the lien date', () => {
     const lines = buildHeldLienLines([{ job_id: 'c', deadline: '2026-10-15', noticed: false, open_balance: 500 }], [{ job_id: 'c', deadline: '2026-11-16', filed: false, open_balance: 500 }], TODAY)
     expect(lines.get('c')!.kind).toBe('notice')

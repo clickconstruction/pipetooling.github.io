@@ -15,6 +15,7 @@ import {
 } from '../../lib/materials/jobAccountsFlow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
+import { lienInKindJobIds, withLienInKindColumn } from '../../lib/jobs/lienInKind'
 import { heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
 import { buildHouseAsks, unpaidInvoiceNumbers } from '../../lib/materials/houseAsk'
 import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
@@ -363,7 +364,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id')
+                .select(withLienInKindColumn('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id'))
                 .in('id', chunk)
                 .order('id')
                 .range(from, to),
@@ -413,7 +414,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             supabase.rpc('list_lien_notice_months', { p_within_days: 400 } as never),
             supabase.rpc('list_lien_affidavit_windows', { p_within_days: 400 } as never),
           ])
-          setLienLines(buildHeldLienLines(((notices.data ?? []) as unknown) as HeldLienNoticeRow[], ((affidavits.data ?? []) as unknown) as HeldLienAffidavitRow[], today))
+          // A job an open in-kind deal pays is off the Lien desk (v2.7253), so it gets no "On the Lien desk" line (v2.7257).
+          setLienLines(buildHeldLienLines(((notices.data ?? []) as unknown) as HeldLienNoticeRow[], ((affidavits.data ?? []) as unknown) as HeldLienAffidavitRow[], today, lienInKindJobIds(jobs)))
         } catch {
           setLienLines(new Map())
         }
