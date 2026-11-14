@@ -21,6 +21,12 @@ import { cleanStoredAddress } from '../displayAddress'
  * important part", and "I don't need the state and zip code in the address though." A job's number and name do not
  * say where it is, and the place is how he knows the job. So each job says its street and city (`streetAndCity`).
  *
+ * The line's shape came next (v2.7245). The owner: "On last worked, instead of seeing September 22 comma clocked --
+ * Malachi, I would like to see 'Sept 22, [number of days ago]' And then in soft text below it, who contributed to it".
+ * So the day leads with how long ago it was, and the people sit under it. Asked whether that meant everyone who has
+ * worked the job or the last day's crew: "just the last people to go out there". So the soft line names the people on
+ * that last day, and a day the schedule alone names says who it was scheduled for.
+ *
  * Pure: no React, no Supabase (`pctFactsIo.ts` reads). The hours are `jobHours.ts`'s, which the page has already read.
  */
 
@@ -177,16 +183,27 @@ export const usdWords = (n: number): string => `${n < 0 ? '−' : ''}$${Math.rou
 
 const by = (people: ReadonlyArray<string>): string => hoursPeopleWords(people.map((name) => ({ name })))
 
-/** The job's line on the list: the day, which reading it is, and who. A job nobody has worked says what is next. */
-export function lastWorkedCell(f: Pick<PctJobFacts, 'lastWorked' | 'nextScheduled'>, todayYmd: string, dayLabel: (ymd: string) => string): { text: string; phone: string; muted: boolean } {
+/** How long ago a day was, counted in calendar days: *today*, *yesterday*, *52 days ago*. */
+export function daysAgoWords(ymd: string, todayYmd: string): string {
+  const n = Math.round((Date.parse(`${todayYmd}T00:00:00Z`) - Date.parse(`${ymd}T00:00:00Z`)) / 86_400_000)
+  if (!Number.isFinite(n) || n <= 0) return 'today'
+  return n === 1 ? 'yesterday' : `${n.toLocaleString('en-US')} days ago`
+}
+
+/**
+ * The job's line on the list: the day and how long ago it was, and under it, in soft words, the last people out
+ * there. A day the schedule alone names says who it was scheduled for. A job nobody has worked says what is next.
+ */
+export function lastWorkedCell(f: Pick<PctJobFacts, 'lastWorked' | 'nextScheduled'>, todayYmd: string, dayLabel: (ymd: string) => string): { text: string; phone: string; sub: string; muted: boolean } {
   const w = f.lastWorked
   if (w) {
-    const who = by(w.people)
-    return { text: `${dayLabel(w.ymd)}, ${w.source}${who ? ` · ${who}` : ''}`, phone: `Last ${w.source} ${dayLabel(w.ymd)}${who ? ` · ${who}` : ''}`, muted: false }
+    const day = `${dayLabel(w.ymd)}, ${daysAgoWords(w.ymd, todayYmd)}`
+    const crew = by(w.people)
+    const sub = w.source === 'clocked' ? crew : crew ? `Scheduled for ${crew}` : 'On the schedule'
+    return { text: day, phone: `Last worked ${day}`, sub, muted: false }
   }
   const n = f.nextScheduled
-  const next = n ? (n.ymd === todayYmd ? ' · scheduled today' : ` · next ${dayLabel(n.ymd)}`) : ''
-  return { text: `Not worked yet${next}`, phone: `Not worked yet${next}`, muted: true }
+  return { text: 'Not worked yet', phone: 'Not worked yet', sub: n ? (n.ymd === todayYmd ? 'Scheduled today' : `Next scheduled ${dayLabel(n.ymd)}`) : '', muted: true }
 }
 
 /** The Contract cell: the job's total, or that it has none. Never *$0*. */
@@ -208,7 +225,8 @@ export function pctFactsRows(f: PctJobFacts, todayYmd: string, dayLabel: (ymd: s
   const w = f.lastWorked
   if (w) {
     const who = by(w.people)
-    rows.push({ key: 'worked', label: 'Last worked', words: w.source === 'clocked' ? `${dayLabel(w.ymd)}. Clocked${who ? ` by ${who}` : ''}.` : `${dayLabel(w.ymd)}. On the schedule${who ? ` for ${who}` : ''}, with no clock time since.` })
+    const day = `${dayLabel(w.ymd)}, ${daysAgoWords(w.ymd, todayYmd)}`
+    rows.push({ key: 'worked', label: 'Last worked', words: w.source === 'clocked' ? `${day}. Clocked${who ? ` by ${who}` : ''}.` : `${day}. On the schedule${who ? ` for ${who}` : ''}, with no clock time since.` })
   } else rows.push({ key: 'worked', label: 'Last worked', words: 'Not worked yet.' })
   const n = f.nextScheduled
   if (n) {

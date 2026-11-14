@@ -108,7 +108,7 @@ describe('BridgePctFacts', () => {
     expect(screen.getByTestId('bridge-pct-facts').textContent!.startsWith('Address14 Pine Row, Cedar Falls')).toBe(true)
     expect(screen.getByTestId('bridge-pct-fact-charge').textContent).toBe('We are charging$9,500')
     expect(screen.getByTestId('bridge-pct-fact-billed').textContent).toBe('Billed so far$4,000 of $9,500')
-    expect(screen.getByTestId('bridge-pct-fact-worked').textContent).toBe('Last workedMar 5. Clocked by Sam and Dana.')
+    expect(screen.getByTestId('bridge-pct-fact-worked').textContent).toBe('Last workedMar 5, 5 days ago. Clocked by Sam and Dana.')
     expect(screen.getByTestId('bridge-pct-fact-next').textContent).toBe('Next scheduledMar 12, for Dana.')
     expect(screen.getByTestId('bridge-pct-fact-hours').textContent).toBe('Hours so far11 hours by Dana and Sam.')
     // The first few lines, the rest on a press, and a line on a bill that went out says so.
