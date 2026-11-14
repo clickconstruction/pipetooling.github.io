@@ -10,7 +10,7 @@ summary: >
   map; everything else is 20 to 31 px. Three directions, each built on the last: A tidies the top
   (one tab strip that scrolls, a title with a quiet line, three named 44 px presses with the rest
   under More, money and job accounts folded to one line each); B puts the job on one screen in the
-  order a phone needs (Where, Who, Now, the thread) with the rest folded under counted headings;
+  order a phone needs (Where, Photos, Who, What's happening, the thread) with the rest folded under counted headings;
   C gives the phone its own window shaped by role. Pass 2 read nineteen days of presses on the
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
@@ -47,7 +47,7 @@ scrolls, not a fixed band: a flick gives the whole screen to the job, a small �
 corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays.
 
 Also on pass 2: "I don't like how the titles blend in the way they do. I think where, who, now
-should all be more defined as titles or sections." So Where, Who, Now, the thread and More on this
+should all be more defined as titles or sections." So Where, Who, What's happening, the thread and More on this
 job are sections with a title of their own, in the body's own type and weight with a band between
 them, not the small grey labels pass 2 drew.
 
@@ -93,6 +93,17 @@ the viewer at that photo; the first tile opens the camera on a phone and the pic
 same door `JobPhotosWindow` draws first. A sits it where the strip is today; B gives it a section of
 its own, **Photos**, right after Where. A job with no photos draws the Add tile alone with *No
 photos yet* beside it.
+
+Also on pass 2: "What does the now section mean to represent?" and "I don't love this section only
+because it does not feel intuitive to a user. How can we make it more intuitive to a user?" *Now*
+was this card's own word, and its three cards each asked the reader to know what they were. So the
+section is **What's happening**, and it is three labelled rows, each a plain label at the left and
+its answer at the right: **Next on site** (the next block, who is on it), **Waiting on** (what the
+job waits for and from whom, in a sentence: *The office, to bill it. Nothing has happened for 6
+days.*, which is the Pipeline row's line and the bar's press said the other way round), and **Hours**
+(*No target set*, what the target is, the Set the hours press). The label says what the answer is
+before the eye reaches it, the way a form reads, and the Waiting on row names the person as well
+as the gap. The crew's window (C) drops the Hours row, since the crew do not set it.
 
 ## What the phone draws today, measured
 
@@ -144,7 +155,7 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | Name, number, status | Everyone: the right job, and where it stands | 1 | None |
 | The address and the painted map | The crew lead: where to drive and park. The office: which house | 2 (crew) · 3 (office) | Directions, the map row |
 | The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy |
-| The next block, the hours target, the Pipeline line | Everyone: what is happening now, how many hours the job should take, what it waits on | 4 | Set the hours |
+| What's happening: Next on site, Waiting on, Hours | Everyone: when someone is next there, what the job waits on and from whom, how many hours it should take | 4 | Set the hours |
 | Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
 | Money tiles and job accounts | The office, rarely on a phone; the Bill tab holds the work | Folded | One line that opens Bill |
@@ -173,8 +184,8 @@ moves; the bar is as today.
 **B · The job on one screen** (a second PR on A). The Job tab under 640 px reads Where (the
 address with a Directions press, the painted map, the street view folded), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
-Text and Copy beside them), Now (the next block, the target, the Pipeline row's
-own line; the target is the job's target in hours, named as such), then the thread (Where it stands, the customer's newest word, the newest three events
+Text and Copy beside them), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
+plain label and its answer), then the thread (Where it stands, the customer's newest word, the newest three events
 with *All 56 ›*, Note, Text, Email). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans

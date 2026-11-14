@@ -128,13 +128,19 @@
   .card.subtle { background: var(--subtle); }
   .card b.h { display: block; font-size: 15px; }
   .card .sub { color: var(--muted); font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .kv:last-of-type { border-bottom: 0; }
+  .kv .k { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+  .kv .v { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .kv .v .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .kv .v .press { display: inline-block; margin-top: 6px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; color: var(--link); }
   .card .right { float: right; border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 13px; }
   .fold { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; min-height: 44px; font-weight: 700; }
   .fold .n { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
   .fold .n.live { color: var(--blue-ink); }
   .fold .chev { color: var(--soft); }
   .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
-  /* Section titles (the owner's word, pass 2f): Where, Who, Now and the thread stand out as sections, not labels. */
+  /* Section titles (the owner's word, pass 2f): Where, Who, What's happening and the thread stand out as sections, not labels. */
   .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 18px -14px 8px; padding: 10px 14px 6px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
   .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
   .sect:first-child, .body > .sect:first-of-type { border-top: none; margin-top: 2px; }
@@ -372,10 +378,10 @@
           </div>
           <span class="mark ok" style="top:300px">the number and the address, each a 44 px press</span>
 
-          <div class="sect">Now</div>
-          <div class="card subtle" style="margin-bottom:6px"><b class="h">Saturday 8:00 AM–12:00 PM</b><span class="sub">November 14 · Sample leader and one helper</span></div>
-          <div class="card" style="margin-bottom:6px"><span class="right">Set the hours</span><b class="h">⏱ Hours target · none yet</b><span class="sub">How many hours the job should take.</span></div>
-          <div class="card" style="margin-bottom:6px"><b class="h">Quiet 6 days</b><span class="sub">The Pipeline row's own line: the one gap the bar's press closes.</span></div>
+          <div class="sect">What's happening</div>
+          <div class="kv"><span class="k">Next on site</span><span class="v">Saturday 8:00 AM–12:00 PM<span class="sub">November 14 · Sample leader and one helper</span></span></div>
+          <div class="kv"><span class="k">Waiting on</span><span class="v">The office, to bill it<span class="sub">Nothing has happened for 6 days. The bar's press moves it.</span></span></div>
+          <div class="kv"><span class="k">Hours</span><span class="v">No target set<span class="sub">How many hours the job should take. The crew's hours count against it.</span><span class="press">Set the hours</span></span></div>
 
           <div class="sect">The thread</div>
           <div class="card"><b class="h">Where it stands</b><span class="sub">The last word was Robert's, an email last week. Nobody has answered.</span>
@@ -398,8 +404,8 @@
     </div>
     <div class="verdict"><b>What changes, on top of A</b>
       <ul>
-        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside them, so a glance says whether it is the right person), <b>Now</b> (the next block, the hours target, the Pipeline row's own line), then <b>the thread</b>: where it stands, the customer's newest word, the newest three events, and Note, Text, Email.</li>
-        <li>Each part is a <b>section with a title of its own</b>: Where, Who, Now, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
+        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside them, so a glance says whether it is the right person), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours), then <b>the thread</b>: where it stands, the customer's newest word, the newest three events, and Note, Text, Email.</li>
+        <li>Each part is a <b>section with a title of its own</b>: Where, Photos, Who, What's happening, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
         <li><b>Photos</b> is a section of its own right after Where, the banner from A under its title, so the pictures are the second thing a thumb meets. Everything else folds under More on this job, each with its count: Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
         <li>The first screen is one screen. The scroll ends near 1,300 px with every fold closed.</li>
         <li>The desk is untouched: the order and the folds exist only under 640 px.</li>
