@@ -4,7 +4,7 @@
  * too. On 2026-11-13 this list matched the CLI's own `--debug` "Uploading asset" lines for legal-portal file for file
  * (257 files, 4,213,815 bytes). The API refuses a deploy over its 5 MB limit with HTTP 413: legal-portal was refused
  * at about 4.74 MB of source on 2026-11-12, and dev-mcp went through at about 4.71 MB, then was refused at 5.02 MB on
- * 2026-11-13 (v2.7256: the copy of the kernels named the whole generated database types, 1.45 MB, by type imports).
+ * 2026-11-13 (v2.7256: the copy of the kernels named the whole generated database types, 1.48 MB, by type imports).
  * `check:edge-bundles` fails a PR when any function's upload passes `UPLOAD_CEILING_BYTES` (`uploadReport`).
  *
  *   node scripts/lib/edgeUploadGraph.mjs [slug …]    (every function when none is named), largest first

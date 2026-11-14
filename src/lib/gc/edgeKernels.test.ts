@@ -91,7 +91,7 @@ describe('the copy of the kernels', () => {
   })
 })
 
-describe('the slim database types (v2.7256: a deploy uploads a type import too, and the whole file is 1.45 MB)', () => {
+describe('the slim database types (v2.7256: a deploy uploads a type import too, and the whole file is 1.48 MB)', () => {
   const { files, typeReaders } = g.generateEdgeKernels(ROOT)
   const full = readFileSync(join(ROOT, 'src', g.DATABASE_TYPES), 'utf8')
   const slim = files.get(g.DATABASE_TYPES)!

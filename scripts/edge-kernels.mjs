@@ -11,7 +11,7 @@
  *   whose own imports are types alone is copied too. One that imports nothing (the schedule's types) is pointed at in
  *   `src` with its `.ts`, so `deno check` resolves it as it stands. The generated database types are the exception: the
  *   copy holds a slim file of the parts it names (`DATABASE_TYPES`, v2.7256), since the deploy uploads a file a type
- *   import names and the whole one is 1.45 MB. A file the copy only takes types from that runs code of its own is
+ *   import names and the whole one is 1.48 MB. A file the copy only takes types from that runs code of its own is
  *   refused: move the types to a types file;
  * - a kernel that already lives on the edge (`supabase/functions/_shared/*.ts`, which `src` re-exports or imports) is
  *   pointed at where it is, never copied (v2.5881);
@@ -508,7 +508,7 @@ const OUTSIDE_TYPES = { 'lib/gc/types.ts': ['GcProject', 'GcState'] }
 /**
  * The generated database types (from `src/`), which the copy holds slim at the same path (v2.7256). Deno erases a type
  * import at run time, but `supabase functions deploy` uploads every file an import names, so pointing the copy at the
- * whole 1.45 MB file put it in 17 functions' uploads (dev-mcp at 5.02 MB was refused). The slim file keeps the tables,
+ * whole 1.48 MB file put it in 17 functions' uploads (dev-mcp at 5.02 MB was refused). The slim file keeps the tables,
  * views and functions a string in the copy names (`.from('…')`, `.rpc('…')`, `Tables<'…'>`, an embed in a select, a
  * table name kept in a constant) and what those name in turn, every enum and composite type, the other schemas and the
  * helpers, each as the generated file writes it (`slimDatabase`). An edge file outside the copy that takes its types
