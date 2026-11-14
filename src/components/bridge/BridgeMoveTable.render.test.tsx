@@ -4,13 +4,15 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeMoveTable } from './BridgeMoveTable'
 import { moveDive, type DiveFacts } from '../../lib/bridge/callDive'
+import { todoStates, type TodoCard } from '../../lib/bridge/callTodoState'
 
-// Made-up customers and jobs. The table is drawn from the kernel's own lines, so the columns are the real ones.
+// Made-up customers, jobs and people. The table is drawn from the kernel's own lines, so the columns are the real ones.
 const dayLabel = (ymd: string): string => `Mar ${Number(ymd.slice(8))}`
 const facts: DiveFacts = {
   payers: [
     {
       key: 'c1',
+      payerId: 'c1',
       name: 'Alder Builders',
       lateUsd: 40_000,
       usd: 52_000,
@@ -21,14 +23,14 @@ const facts: DiveFacts = {
         { key: 'b2', jobId: 'j202', label: '202 · Oak Court', usd: 10_000, ageDays: 40, broken: true, promisedYmd: '2026-03-01', promisedBy: null },
       ],
     },
-    { key: 'c2', name: 'Birch and Sons', lateUsd: 0, usd: 9_000, oldestAgeDays: 12, promise: { state: 'promised', ymd: '2026-03-20' } },
+    { key: 'c2', payerId: 'c2', name: 'Birch and Sons', lateUsd: 0, usd: 9_000, oldestAgeDays: 12, promise: { state: 'promised', ymd: '2026-03-20' } },
     { key: 'c3', name: 'Cedar Homes', lateUsd: 3_000, usd: 3_000, oldestAgeDays: 33, promise: { state: 'none', ymd: null } },
     { key: 'c4', name: 'Dogwood Group', lateUsd: 900, usd: 900, oldestAgeDays: 31, promise: { state: 'none', ymd: null } },
   ],
   billJobs: [],
   noPctJobs: [
-    { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' } },
-    { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, pctJob: { id: 'j302', hcpNumber: '302', jobName: 'Spruce Hall', label: '302 · Spruce Hall' }, setPct: 60 },
+    { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, pctJob: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' }, hoursLine: '24 hours by Dana and Sam', hoursCell: { text: '24', phone: '24 hours', by: 'Dana and Sam' } },
+    { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, pctJob: { id: 'j302', hcpNumber: '302', jobName: 'Spruce Hall', label: '302 · Spruce Hall' }, setPct: 60, hoursLine: 'No hours yet', hoursCell: { text: '0', phone: 'No hours yet', by: '' } },
   ],
   noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk' }],
   supplyBills: [{ houseId: 'h-north', name: 'Northside Supply', usd: 7_200, dueYmd: '2026-03-04', bills: 4 }],
@@ -42,31 +44,32 @@ const texts = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => 
 
 describe('BridgeMoveTable at a desk', () => {
   it('draws the customers under their headings, one row a customer, three then Show all', () => {
-    renderWithProviders(<BridgeMoveTable dive={chase} narrow={false} />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow={false} />)
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Customer', 'Late', 'Oldest bill', 'Pay date'])
     const rows = screen.getAllByTestId('bridge-week-dive-item')
     expect(rows.length).toBe(3)
-    expect(texts(rows[0]!)).toEqual(['Alder Builders', '$40.0k', '71 days', 'None yet', '2 projects ▾'])
+    expect(texts(rows[0]!)).toEqual(['Alder Builders', '$40.0k', '71 days', 'None yet', '2 projects ▾', ''])
     // Nothing late yet: the amount says it is open, so the heading does not call it late.
-    expect(texts(rows[1]!)).toEqual(['Birch and Sons', '$9.0k open', '12 days', 'Said Mar 20', ''])
+    expect(texts(rows[1]!)).toEqual(['Birch and Sons', '$9.0k open', '12 days', 'Said Mar 20', '', ''])
     expect(screen.queryByTestId('bridge-week-dive-project')).toBeNull()
-    // The rest are one press away, here, and one press back.
+    // The rest are one press away, here, and one press back. The press sits under the middle of the table, not under the names.
+    expect(screen.getByRole('button', { name: 'Show all 4' }).parentElement!.style.justifyContent).toBe('center')
     fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
     expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
     fireEvent.click(screen.getByRole('button', { name: 'Show the first 3' }))
     expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(3)
   })
 
-  it('opens a customer’s projects under the same headings, each with its own press', () => {
+  it('opens a customer’s projects under the same headings, each with its own press and check', () => {
     const onDive = vi.fn()
-    renderWithProviders(<BridgeMoveTable dive={chase} narrow={false} onDive={onDive} />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow={false} onDive={onDive} />)
     const toggle = screen.getByRole('button', { name: /2 projects/ })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     const projects = screen.getAllByTestId('bridge-week-dive-project')
-    expect(texts(projects[0]!)).toEqual(['201 · Maple Lofts', '$30.0k', '71 days', 'None yet', 'Set a pay date'])
-    expect(texts(projects[1]!)).toEqual(['202 · Oak Court', '$10.0k', '40 days', 'Said Mar 1, passed', 'Change the pay date'])
+    expect(texts(projects[0]!)).toEqual(['201 · Maple Lofts', '$30.0k', '71 days', 'None yet', 'Set a pay date', ''])
+    expect(texts(projects[1]!)).toEqual(['202 · Oak Court', '$10.0k', '40 days', 'Said Mar 1, passed', 'Change the pay date', ''])
     fireEvent.click(within(projects[0]!).getByRole('button', { name: 'Set a pay date' }))
     expect(onDive).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'promise', jobId: 'j201' }))
     // The customer's name opens the Collect window on that customer.
@@ -74,50 +77,119 @@ describe('BridgeMoveTable at a desk', () => {
     expect(onDive).toHaveBeenLastCalledWith({ kind: 'desk', stage: 'collect', payerKey: 'c1' })
   })
 
-  it('draws the jobs with no percent, Set the percent as a word, and a job set on this visit saying so', () => {
+  it('draws the jobs with their hours as the press that opens them, Set the percent as a word, and a job set on this visit saying so', () => {
     const onDive = vi.fn()
-    renderWithProviders(<BridgeMoveTable dive={pct} narrow={false} onDive={onDive} />)
-    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Contract'])
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow={false} onDive={onDive} />)
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job', 'Hours', 'Contract', 'Worked by'])
     const rows = screen.getAllByTestId('bridge-week-dive-item')
-    expect(texts(rows[0]!)).toEqual(['301 · Pine Row', '', '$30.0k', '', 'Set the percent'])
-    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '', '', 'Set to 60% just now', 'Change the percent'])
+    expect(texts(rows[0]!)).toEqual(['301 · Pine Row', '24', '$30.0k', 'Dana and Sam', 'Set the percent', ''])
+    expect(texts(rows[1]!)).toEqual(['302 · Spruce Hall', '0', 'No price', 'Set to 60% just now', 'Change the percent', ''])
+    // The hours are a press of their own: who worked them and when.
+    fireEvent.click(screen.getByRole('button', { name: 'See the hours on 301 · Pine Row: 24 hours by Dana and Sam' }))
+    expect(onDive).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'hours', jobId: 'j301', jobLabel: '301 · Pine Row' }))
     fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Set the percent' }))
     expect(onDive).toHaveBeenLastCalledWith({ kind: 'pct', job: { id: 'j301', hcpNumber: '301', jobName: 'Pine Row', label: '301 · Pine Row' } })
+    // A grey check makes the to-do for that one job. A job set on this visit has no check: it needs no card.
+    fireEvent.click(within(rows[0]!).getByTestId('bridge-week-dive-todo'))
+    expect(onDive).toHaveBeenLastCalledWith({ kind: 'todo', todo: expect.objectContaining({ key: 'pct.j301', title: 'Set the percent done on 301 · Pine Row. It is a $30.0k contract.' }) })
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-todo')).toBeNull()
     // The job's name is a link to the job itself.
     expect(within(rows[0]!).getByRole('link', { name: '301 · Pine Row' }).getAttribute('href')).toBe('/jobs?tab=stages&edit=j301')
   })
 
   it('opens a supply house on the day its bills fall due', () => {
-    renderWithProviders(<BridgeMoveTable dive={supply} narrow={false} />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={supply} narrow={false} />)
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Supply house', 'Due', 'Bills', 'Due day'])
     const row = screen.getByTestId('bridge-week-dive-item')
-    expect(texts(row)).toEqual(['Northside Supply', '$7.2k', '4', 'Mar 4', ''])
+    expect(texts(row)).toEqual(['Northside Supply', '$7.2k', '4', 'Mar 4', '', ''])
     expect(within(row).getByRole('link', { name: 'Northside Supply' }).getAttribute('href')).toBe('/materials?tab=supply-houses&house=h-north&due=2026-03-04')
   })
 
   it('gives no heading and no room to a column no line fills', () => {
-    renderWithProviders(<BridgeMoveTable dive={price} narrow={false} />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={price} narrow={false} />)
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent).filter(Boolean)).toEqual(['Job'])
-    expect(screen.getByRole('table').style.gridTemplateColumns).toBe('minmax(0, 1.6fr) 0px 0px 0px auto')
+    expect(screen.getByRole('table').style.gridTemplateColumns).toBe('minmax(0, 1.6fr) 0px 0px 0px auto 52px')
     expect(screen.queryByTestId('bridge-week-dive-all')).toBeNull()
+  })
+
+  it('says under a row who has its to-do, and how many of a customer’s projects are handed out (#334, PR 9)', () => {
+    const card = (itemId: string, link: string, who: string): TodoCard => ({ itemId, title: 'A card', links: [link], madeYmd: '2026-03-10', dueYmd: null, who: [who], instances: [{ id: `n-${itemId}`, doneYmd: null, doneBy: null }] })
+    const states = todoStates([card('i1', 'https://app.example/jobs?jobDetail=j201&todo=paydate.j201', 'Sam Holt'), card('i2', 'https://app.example/customers/c2?todo=payer.c2', 'Dana Reyes')], '2026-03-12')
+    const onTodoSee = vi.fn()
+    renderWithProviders(<BridgeMoveTable todoStates={states} dayLabel={dayLabel} dive={chase} narrow={false} onTodoSee={onTodoSee} />)
+    expect(screen.getAllByTestId('bridge-week-dive-under').map((u) => u.textContent)).toEqual(['1 of 2 handed out', 'Dana, 2 days'])
+    // A blue check shows the card it stands for. A grey one would make a card.
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(within(rows[1]!).getByTestId('bridge-week-dive-todo-state').getAttribute('data-todo-state')).toBe('open')
+    fireEvent.click(within(rows[1]!).getByTestId('bridge-week-dive-todo'))
+    expect(onTodoSee).toHaveBeenCalledWith(expect.objectContaining({ kind: 'open', who: 'Dana' }))
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-todo-state').getAttribute('data-todo-state')).toBe('none')
   })
 })
 
 describe('BridgeMoveTable on a phone', () => {
+  it('centres Show all under the lines too', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow />)
+    expect(screen.getByTestId('bridge-week-dive-all-row').style.justifyContent).toBe('center')
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
+    expect(screen.getAllByTestId('bridge-week-dive-item').length).toBe(4)
+  })
+
   it('draws a line as its name and figure, then the rest with its press, with no headings', () => {
-    renderWithProviders(<BridgeMoveTable dive={pct} narrow />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow />)
     expect(screen.queryByRole('columnheader')).toBeNull()
     const rows = screen.getAllByTestId('bridge-week-dive-item')
-    expect(rows[0]!.textContent).toBe('301 · Pine Row$30.0k contractSet the percent')
-    expect(rows[1]!.textContent).toBe('302 · Spruce HallSet to 60% just nowChange the percent')
-    // A word press is tall enough for a thumb.
+    expect(rows[0]!.textContent).toBe('301 · Pine Row24 hours$30.0k contract · Dana and SamSet the percent')
+    expect(rows[1]!.textContent).toBe('302 · Spruce HallNo hours yetNo price yet · Set to 60% just nowChange the percent')
+    // A word press is tall enough for a thumb, and so are the check and the name that opens the line's own thing.
     expect((within(rows[0]!).getByRole('button', { name: 'Set the percent' }) as HTMLButtonElement).style.minHeight).toBe('44px')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-todo').style.height).toBe('44px')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-name').style.minHeight).toBe('44px')
+  })
+
+  it('keeps a name one line high at a desk, where a pointer needs no more', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={pct} narrow={false} />)
+    const name = screen.getAllByTestId('bridge-week-dive-name')[0]!
+    expect(name.style.minHeight).toBe('')
+    expect(name.style.whiteSpace).toBe('nowrap')
   })
 
   it('opens a customer’s projects under the customer', () => {
-    renderWithProviders(<BridgeMoveTable dive={chase} narrow />)
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={chase} narrow />)
     expect(screen.getAllByTestId('bridge-week-dive-item')[0]!.textContent).toBe('Alder Builders$40.0k lateoldest bill 71 days · None yet2 projects ▾')
     fireEvent.click(screen.getByRole('button', { name: /2 projects/ }))
     expect(screen.getAllByTestId('bridge-week-dive-project').map((p) => p.textContent)).toEqual(['201 · Maple Lofts$30.0k owedbilled 71 days ago · None yetSet a pay date', '202 · Oak Court$10.0k owedbilled 40 days ago · Said Mar 1, passedChange the pay date'])
+  })
+})
+
+describe('BridgeMoveTable, a job’s address (v2.7232)', () => {
+  const placed = moveDive({ key: 'pct', title: 'Set a percent.', door: null }, { ...facts, noPctJobs: [{ ...facts.noPctJobs[0]!, address: '14 Pine Row, Cedar Falls' }, facts.noPctJobs[1]!] })!
+
+  it('says where the job is under its name at a desk, on one line, and leaves a job with no address as it was', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={placed} narrow={false} />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    const sub = within(rows[0]!).getByTestId('bridge-week-dive-sub')
+    expect(sub.textContent).toBe('14 Pine Row, Cedar Falls')
+    // In the name's own cell, under the name, cut with its whole text on hover.
+    expect(sub.closest('[role="cell"]')!.textContent).toBe('301 · Pine Row14 Pine Row, Cedar Falls')
+    expect(sub.style.whiteSpace).toBe('nowrap')
+    expect(sub.title).toBe('14 Pine Row, Cedar Falls')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+
+  it('says it under the name of a job with no price too (v2.7243)', () => {
+    const price = moveDive({ key: 'price', title: 'Price the jobs.', door: null }, { ...facts, noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk', address: '7 Willow Walk, Cedar Falls' }, { id: 'j402', label: '402 · Alder Yard' }] })!
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={price} narrow={false} />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-sub').textContent).toBe('7 Willow Walk, Cedar Falls')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+
+  it('says it under the name on a phone, free to wrap', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={placed} narrow />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(rows[0]!.textContent).toBe('301 · Pine Row14 Pine Row, Cedar Falls24 hours$30.0k contract · Dana and SamSet the percent')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-sub').style.whiteSpace).toBe('')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
   })
 })

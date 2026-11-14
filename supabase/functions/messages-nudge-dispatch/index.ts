@@ -32,7 +32,9 @@
  *
  * The residential customers' bills (punch list #124, v2.6224): the run reads their Pipeline jobs, bills and payments as
  * the reply box's paper read does, and the kernel fills a Paid reminder's {amount}, {bill} and {number} from the job's
- * newest open bill; with no open bill on the job the text waits as before (`blanks left`).
+ * newest open bill; with no open bill on the job the text waits as before (`blanks left`). Since v2.7140 (punch list
+ * #323) the run reads the Pay calendars and the days a payer accepted a bill beside the pace, as the step card does, so
+ * a Paid round of a payer on a calendar is due on the calendar's day; both read soft, and with neither the pace stands.
  *
  * Customers wait until the run can read their page: `customer_portal_views` and `customer_portal_papers` are the
  * office's alone, so the service role cannot read them, and the run never texts a customer off a partial read.
@@ -58,6 +60,7 @@ import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../
 import { APP_SENDS_SETTING_KEY, nudgeRunReads, runContactsOf, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
 import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from '../_shared/gcKernels/lib/flows/residentialRows.ts'
+import { parsePayCalendarRow, type PayCalendarDbRow, type PayCalendarRow } from '../_shared/gcKernels/lib/jobs/payCalendar.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import type { JobAt } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
@@ -268,7 +271,40 @@ async function readPipeline(admin: any, residential: readonly { id: string; cust
   // The pace is a soft read: a refusal leaves a bill's due day unset rather than stopping the morning.
   if (speeds.error) console.warn(`[messages-nudge-dispatch] get_billed_customer_pay_speeds: ${speeds.error.message}`)
   if (promises.error) console.warn(`[messages-nudge-dispatch] list_job_promised_pay_dates: ${promises.error.message}`)
-  return { jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts, paySpeeds: speeds.error ? null : speeds.data, promisedPay: promises.error ? null : promises.data }
+  const { payCalendars, acceptedDays } = await readPayCalendars(admin, invoices.map((i) => i.id))
+  return { jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts, paySpeeds: speeds.error ? null : speeds.data, promisedPay: promises.error ? null : promises.data, payCalendars, acceptedDays }
+}
+
+/**
+ * The Pay calendars and the accepted days of these bills (punch list #323, v2.7140), as the step card reads them
+ * through `payCalendarIo.ts`. Soft, each alone: a read that fails leaves that half null, the kernel then reads the pace
+ * for a bill's due day as it did before, and the morning goes on.
+ */
+async function readPayCalendars(admin: any, invoiceIds: readonly string[]): Promise<Pick<PipelineRows, 'payCalendars' | 'acceptedDays'>> {
+  let payCalendars: PayCalendarRow[] | null = null
+  let acceptedDays: Record<string, string> | null = null
+  try {
+    const stored = await all<PayCalendarDbRow>((a, b) => admin.from('payer_pay_calendars').select(PIPELINE_SELECTS.payCalendars).order('payer_customer_id').order('job_id').range(a, b), 'payer_pay_calendars')
+    payCalendars = stored.flatMap((r) => {
+      const row = parsePayCalendarRow(r)
+      return row ? [row] : []
+    })
+  } catch (e) {
+    console.warn(`[messages-nudge-dispatch] ${e instanceof Error ? e.message : String(e)}`)
+  }
+  // No calendar, no clock to move: the accepted days are read only when a calendar could use one.
+  if (!payCalendars?.length || !invoiceIds.length) return { payCalendars, acceptedDays }
+  try {
+    acceptedDays = {}
+    for (const ids of chunks(invoiceIds, CHUNK)) {
+      const rows = await all<{ invoice_id: string | null; accepted_on: string | null }>((a, b) => admin.from('invoice_payer_acceptances').select(PIPELINE_SELECTS.acceptedDays).in('invoice_id', ids).order('invoice_id').range(a, b), 'invoice_payer_acceptances')
+      for (const r of rows) if (r.invoice_id && typeof r.accepted_on === 'string') acceptedDays[r.invoice_id] = r.accepted_on.slice(0, 10)
+    }
+  } catch (e) {
+    acceptedDays = null
+    console.warn(`[messages-nudge-dispatch] ${e instanceof Error ? e.message : String(e)}`)
+  }
+  return { payCalendars, acceptedDays }
 }
 
 /** Who may ask for a dry run: the cron, or a signed-in dev on a real account. */

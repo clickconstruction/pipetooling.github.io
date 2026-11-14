@@ -3611,6 +3611,11 @@ body.my-time-boundary-dragging {
 .jobPaymentLineMore {
   width: 28px;
   height: 26px;
+  /* Centred by the box: under the default button padding the ⋯ overflowed right and low. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -4271,6 +4276,15 @@ body.my-time-boundary-dragging {
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
 /* The Lien window on a phone (v2.4422): a record sheet is drawn over the card, so the card holds its full height while one is up, however short the paper under it. */
 [data-lien-window-card]:has([data-lien-record-sheet]) { height: min(92vh, 100%); }
+/* A phone (punch list #352, PR 7): once the paper is scrolled the Lien window's header keeps its title line alone (`lienWindowHeadFolded`); the rest is hidden, not unmounted. */
+[data-lien-window-head][data-folded="yes"] > :not(:first-child) { display: none !important; }
+/* …and the run window fills the screen, with presses a thumb tall and fields in 16 px words, the size at which an iPhone leaves the page unzoomed. */
+@media (max-width: 640px) {
+  .lienRunWindow { width: 100vw !important; max-height: calc(100dvh - var(--app-top-chrome, 0px)) !important; border-radius: 0 !important; }
+  .lienRunWindow button { min-height: 40px; }
+  .lienRunWindow button[data-testid="run-explainer-toggle"] { min-width: 40px; }
+  .lienRunWindow input:not([type="checkbox"]):not([type="radio"]), .lienRunWindow select, .lienRunWindow textarea { font-size: 16px !important; min-height: 40px; }
+}
 /* The Lien desk's card does the same for its Already mailed sheet (v2.4446); its own max-height still caps it. */
 [data-lien-desk-panel]:has([data-lien-record-sheet]) { height: 100%; }
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
@@ -4287,7 +4301,7 @@ body.my-time-boundary-dragging {
 .lienCalPill { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--pill-border, var(--border)); background: var(--pill-bg, var(--surface)); color: var(--pill-ink, var(--text-700)); font: inherit; font-size: 0.78rem; white-space: nowrap; cursor: pointer; flex: none; }
 .lienCalPill:hover { border-color: var(--border-strong); }
 .lienCalPill[aria-pressed='true'], .lienCalPill[aria-pressed='true']:hover { border-color: var(--pill-border, var(--border-blue)); }
-.lienCalPillPhone { min-height: 36px; font-size: 0.8125rem; }
+.lienCalPillPhone { min-height: 40px; font-size: 0.875rem; }
 .lienCalPillCount { font-weight: 700; font-variant-numeric: tabular-nums; padding: 0 6px; border-radius: 999px; background: var(--bg-200); color: var(--text-strong); font-size: 0.72rem; line-height: 1.45; }
 .lienCalPillDate, .lienCalPillMoney { opacity: 0.85; font-variant-numeric: tabular-nums; }
 .lienCalKinds { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px dashed var(--border-amber); background: var(--bg-amber-tint); color: var(--text-amber-800); font: inherit; font-size: 0.75rem; font-weight: 600; white-space: nowrap; flex: none; }
@@ -4301,7 +4315,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A job's door on the Lien desk (v2.4531 the Calendar's number; v2.4628 text on every view, the Next up row's number and name too): underlines on hover and on focus only. */
 .lienJobDoor:hover, .lienJobDoor:focus-visible { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
 .lienJobDoor:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
-/* A Do now row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
+/* A To do row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
 .lienStepMark:hover, .lienStepMark:focus-visible { background: var(--bg-subtle); outline: none; }
 .lienStepMark:focus-visible { box-shadow: 0 0 0 2px var(--border-blue); }
 .lienStepRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
@@ -4314,7 +4328,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienStepTileName { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 /* The leader's one-screen approve on a phone (v2.4881): with Details folded, the pane shows only what is marked to keep. */
 [data-lien-pane-simple='yes'] > :not([data-lien-pane-keep]) { display: none !important; } /* !important: the pane's bodies set display inline */
-/* A Do now row's chip as a door to the paper (v2.4632): a ring in its own color on hover and focus. */
+/* A To do row's chip as a door to the paper (v2.4632): a ring in its own color on hover and focus. */
 .lienPaperDoor:hover, .lienPaperDoor:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; text-decoration: underline; text-underline-offset: 2px; outline: none; }
 /* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
 .lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
@@ -4333,6 +4347,16 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPaneHead .lienPaneHeadLabel { flex: none; }
 .lienPaneHead .n { font-weight: 700; font-size: 0.78rem; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lienPaneHead .lienPaneHeadTail { font-weight: 500; color: var(--text-muted); }
+/* A phone's open paper (punch list #352, PR 6): the header drops its two rows of tabs, the footer's presses are a thumb tall, and the bar over the footer folds it away without unmounting it. */
+.lienDeskTitleBar[data-lien-pane-open] [role="tablist"] { display: none !important; }
+[data-lien-desk-foot-fold] ~ div button { min-height: 40px; }
+[data-lien-desk-foot-fold][aria-expanded="false"] ~ div { display: none !important; }
+/* …and each section is held to the pane's width, with a page of the paper sliding inside its own frame sooner than push the whole pane sideways. */
+[data-lien-pane-phone] [data-lien-pane-body] { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+[data-lien-pane-phone] [data-lien-desk-months] { overflow-x: auto; }
+/* The affidavit's and the retainage notice's panes are the same one column: held to the screen's width while one is the whole desk. */
+.lienDeskTitleBar[data-lien-pane-open] + div > div { grid-template-columns: minmax(0, 1fr); }
+[data-lien-pane-phone] [data-lien-desk-cover], [data-lien-pane-phone] [data-lien-desk-release], [data-lien-pane-phone] [data-lien-desk-paper], [data-lien-pane-phone] [data-lien-desk-pay] { overflow-x: auto; padding: 0.9rem 0.8rem !important; }
 /* § Rules as a window (v2.4655): a found word, the one Enter stands on, and the rule the window opened at. */
 .lienRulesBody mark[data-find] { background: var(--bg-amber-tint); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: 0 0 0 1px var(--border-amber); }
 .lienRulesBody mark[data-find-at="yes"] { background: #fbbf24; color: #1a1200; }
@@ -5904,7 +5928,7 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalCardTable > tbody > tr > td[data-card-num], .legalCardTable > tbody > tr > td[data-card-title] { font-weight: 700; font-variant-numeric: tabular-nums; }
   .legalCardVal { min-width: 0; overflow-wrap: anywhere; }
 }
-/* The Deadlines grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */
+/* The By date grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */
 .lienCalWorkDoor:hover, .lienCalWorkDoor:focus-visible { color: var(--text-link) !important; text-decoration: underline; outline: none; }
 
 /* Uncollectible (punch list #94, v2.4792): a Collections row the office gave up on wears faint

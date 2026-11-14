@@ -24,7 +24,7 @@ import {
 import { useOrgDefault } from '../../hooks/useOrgDefault'
 import { orgDefaultBool } from '../../lib/orgDefaults'
 import { readDeviceString, writeDeviceString } from '../../lib/deviceString'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
@@ -77,8 +77,8 @@ import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLi
 import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
 import type { PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
-import type { PayCalendarJob } from '../customers/PayCalendarModal'
-import { calendarFor, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShort, payCutoffLine } from '../../lib/jobs/payCalendar'
+import { payCalendarJobOf } from '../../lib/jobs/payCalendarJob'
+import { calendarFor, calendarSourceFor, JOB_NO_CALENDAR_WORDS, nextCutoffChip, PAY_CUTOFF_WORKING_DAYS, payCalendarShortFor, payCutoffLine } from '../../lib/jobs/payCalendar'
 import { buildCutoffsComing } from '../../lib/jobs/cutoffsComing'
 import PayCutoffLine from './PayCutoffLine'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
@@ -195,7 +195,8 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
-import { lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import { withJobLastWork } from '../../lib/jobs/lienLastWorkJobs'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -264,6 +265,7 @@ import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
 import { LIEN_DESK_PATH, lienDeskHref } from '../../lib/lien/lienDeskRoute'
+import { BILLS_SENT_PATH, canOpenBillsSent } from '../../lib/billing/billsSent'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
@@ -301,7 +303,7 @@ import { canSeeProjectsBoard } from '../../lib/jobs/projectsBoard'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
-import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
+import { BILLS_SENT_DOOR_TITLE, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
@@ -499,16 +501,6 @@ const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
 /** A focused job's row is looked for this many times, `STAGES_JOB_FOCUS_RETRY_MS` apart, before the board gives up (about 9 s). */
 const STAGES_JOB_FOCUS_TRIES = 30
 const STAGES_JOB_FOCUS_RETRY_MS = 300
-
-/** Punch list #323, PR 4: the job a row's press sits on, so the Pay calendar window can set a calendar for that job alone, or for its development's jobs. */
-function payCalendarJobOf(j: JobWithDetails): PayCalendarJob {
-  return {
-    id: j.id,
-    label: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
-    developmentId: j.development_id ?? null,
-    developmentName: j.development?.name ?? null,
-  }
-}
 
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
@@ -1073,11 +1065,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         calendars: payCalendars,
         ready: unfilteredBoardLists.readyToBillRows.map((r) => {
           const payer = paySpeedPayer(r.job, r.kind === 'job' ? null : r.inv)
-          return { payerId: payer.id, payerName: payer.name, jobId: r.job.id, dollars: readyToBillRowsExposureTotal([r]) }
+          return { payerId: payer.id, payerName: payer.name, jobId: r.job.id, jobLabel: jobNumberLabel(r.job), dollars: readyToBillRowsExposureTotal([r]) }
         }),
         working: unfilteredBoardLists.working.map((j) => {
           const payer = paySpeedPayer(j, null)
-          return { payerId: payer.id, payerName: payer.name, jobId: j.id, dollars: jobBillingUnallocatedDollars(j) }
+          return { payerId: payer.id, payerName: payer.name, jobId: j.id, jobLabel: jobNumberLabel(j), dollars: jobBillingUnallocatedDollars(j) }
         }),
       }),
     [payCalendars, unfilteredBoardLists],
@@ -1087,13 +1079,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     (j: JobWithDetails) => {
       const payer = paySpeedPayer(j, null)
       const payerId = payer.id
-      const calendar = payerId ? calendarFor(payCalendars, { payerId, jobId: j.id }) : null
-      const line = calendar ? payCutoffLine(todayYmdInAppTz(), calendar, 'Bill') : null
+      const calRead = calendarSourceFor(payCalendars, { payerId, jobId: j.id })
+      const line = calRead.calendar ? payCutoffLine(todayYmdInAppTz(), calRead.calendar, 'Bill') : null
       if (!line || !payerId || line.daysLeft > PAY_CUTOFF_WORKING_DAYS) return null
       return (
         <PayCutoffLine
           line={line}
           payerName={payer.name}
+          own={calRead.from === 'job'}
           onOpen={payCalendarModal ? () => payCalendarModal.openPayCalendar({ id: payerId, name: payer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(j) }) : undefined}
         />
       )
@@ -1140,14 +1133,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // this block belongs to a Ready to Bill row: it has no bill date, no expected day and no lien clock yet.
       if (row.job.status === 'ready_to_bill') {
         const rtbPayer = paySpeedPayer(row.job, inv)
-        const rtbCalendar = rtbPayer.id ? calendarFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id }) : null
-        const cutoff = rtbCalendar ? payCutoffLine(todayYmdInAppTz(), rtbCalendar) : null
+        const rtbRead = calendarSourceFor(payCalendars, { payerId: rtbPayer.id, jobId: row.job.id })
+        const cutoff = rtbRead.calendar ? payCutoffLine(todayYmdInAppTz(), rtbRead.calendar) : null
         if (!cutoff) return null
         const rtbPayerId = rtbPayer.id
         return (
           <PayCutoffLine
             line={cutoff}
             payerName={rtbPayer.name}
+            own={rtbRead.from === 'job'}
             onOpen={
               payCalendarModal && rtbPayerId
                 ? () =>
@@ -1165,14 +1159,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const promise = promisedPayDates?.[row.job.id] ?? null
       const payer = inv ? paySpeedPayer(row.job, inv) : null
       // Punch list #323: a payer on a Pay calendar reads Due, with when their money usually lands under it.
-      const calendar = inv && payer ? calendarFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
+      // Punch list #341: the read says whose calendar it is, so the row can mark a job's own and a job switched off.
+      const calRead = inv && payer ? calendarSourceFor(payCalendars, { payerId: payer.id, jobId: row.job.id }) : null
+      const calendar = calRead?.calendar ?? null
       const ledger = buildBilledDatesLedger({
         todayYmd,
         row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: acceptedByInvoice?.get(inv.id) ?? null } : null,
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
-        calendar,
+        calendar: calRead,
         // v2.6695: the customer's word that they paid takes the money row (They say paid).
         claim: paidClaimsByJob?.get(row.job.id) ?? null,
         // v2.6834: a bill an in-kind deal pays reads Scheduled in kind, with no expected day (punch list #301).
@@ -1202,7 +1198,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
             canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
             // The calendar's own words stand where Pays in stood: the spread is the calendar's doing, not the payer's.
-            calendar ? payCalendarShort(calendar) : null,
+            // A job on its own calendar says so before the words (punch list #341): one payer can read two sets of days.
+            calRead ? payCalendarShortFor(calRead) : null,
           )}
           showBars={false}
           // v2.7013: the words open Pay speeds on this row's payer (the window Payment forecast opens). On a Pay
@@ -1211,12 +1208,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             pressedPayer && calendar && payCalendarModal
               ? () => payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) })
               : pressedPayer
-                ? () => setPaySpeedsPayer(pressedPayer)
+                ? // Punch list #341: Pay speeds carries this row's job, so its Pay calendar line opens on the job.
+                  () => setPaySpeedsPayer({ ...pressedPayer, job: payCalendarJobOf(row.job) })
                 : undefined
           }
           opens={calendar && payCalendarModal ? 'the pay calendar' : 'pay speeds'}
           payerName={payer?.name}
         />
+        {calRead?.from === 'off' && pressedPayer && payCalendarModal ? (
+          // Punch list #341: a job switched off reads like any payer with no calendar. This line says it was a choice, and leads back to it.
+          <button
+            type="button"
+            className="payCalendarPress"
+            data-testid="pay-calendar-off-press"
+            title={`${pressedPayer.name ?? 'This customer'}’s pay calendar is switched off for this job. Press to open it.`}
+            onClick={(e) => {
+              e.stopPropagation()
+              payCalendarModal.openPayCalendar({ id: pressedPayer.id, name: pressedPayer.name ?? 'this customer' }, { onSaved: () => void loadPayCalendars(), job: payCalendarJobOf(row.job) })
+            }}
+            style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+          >
+            {JOB_NO_CALENDAR_WORDS}
+          </button>
+        ) : null}
         {calendar && clock && canMarkPromisedPay && inv ? (
           <button
             type="button"
@@ -1709,7 +1723,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
   const lienDeskLeaderFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
-  // The notice's state per job (v2.5491): Do now's rows once over the desk's data (light while the desk is closed: the
+  // The notice's state per job (v2.5491): To do's rows once over the desk's data (light while the desk is closed: the
   // queues and letter two, no filings or mail pieces — a sent notice reads from its desk item), then the AR chip kernel.
   const lienStateFor = useMemo((): ((jobId: string) => LienArChip | null) => {
     if (!lienDeskData) return () => null
@@ -2704,7 +2718,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
             paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-            calendarFor(payCalendars, { payerId: payer.id, jobId: job.id }),
+            calendarSourceFor(payCalendars, { payerId: payer.id, jobId: job.id }),
           )
         : null
     const bDetail = deriveStagesBillingActivityDetail(job)
@@ -2741,6 +2755,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
+      // Punch list #335, row 5: the desk's next act for the job, so the chip names the step the billed row names.
+      lienDesk: (() => {
+        if (stage !== 'billed' && stage !== 'collections') return null
+        const chip = lienStateFor(job.id)
+        return chip ? { act: chip.act, paper: chip.paper, dueOn: chip.dueOn } : null
+      })(),
     }
   }
   const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
@@ -2758,7 +2778,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
         else if (chip.action === 'payments') openPaymentsReceived(job)
         else if (chip.action === 'contract' && openJobContract) openJobContract(job)
-        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null })
+        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null, initialTab: chip.lienTab ?? undefined })
         else openStagesDetailJobModal(job)
       },
       onShowAll: () => setPhoneRowFilter('all'),
@@ -3280,6 +3300,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // Punch list #182 (PR 2): the Legal desk is a page, `/legal-desk`; the row goes there and Back returns here.
       'legal-desk': () => navigate(LEGAL_DESK_PATH),
       'paid-notifications': () => setPaymentEmailSettingsOpen(true),
+      // Bills sent is a page, `/bills-sent` (punch list #327); the row goes there and Back returns here.
+      'bills-sent': () => navigate(BILLS_SENT_PATH),
       'paid-profit-chart': () => setPaidProfitChartOpen(true),
       'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
     }
@@ -4133,6 +4155,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Paid notifications
                     </button>
                   )}
+                  {/* Bills sent is a page (punch list #327), so its door is a link: a new tab opens it too. The page's own gate draws it. */}
+                  {canOpenBillsSent(authRole) && (
+                    <Link
+                      to={BILLS_SENT_PATH}
+                      data-testid="billed-header-bills-sent"
+                      title={BILLS_SENT_DOOR_TITLE}
+                      style={{ ...billedHeaderActionStyle(false), textDecoration: 'none' }}
+                    >
+                      <StagesToolsMenuGlyph name="send" inherit />
+                      Bills sent
+                    </Link>
+                  )}
                   </div>
                 </div>
                 {billedAgingFilter && (
@@ -4818,9 +4852,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
         // v2.7077: the window's header names the step the row names (a notice waiting on its owner, its approval or its mailing).
         deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
+        // v2.7187, punch list #335, row 2: and the step an affidavit is on (to draft, waiting on approval, held, or held by a fact).
+        deskAffidavit={lienWindowDeskAffidavit(lienInstrumentsModal ? lienDeskData?.affidavits.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
-        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
-        onLastWorkSaved={() => {
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read.
+        onLastWorkSaved={(jobId, facts) => {
+          // v2.7208: the billed row counts from the day on the job the board holds: write it there, so the row moves with no reload.
+          cacheSetJobs((prev) => withJobLastWork(prev, jobId, facts))
           setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()
         }}
@@ -4834,6 +4872,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {
           void loadDemandOutJobIds()
+          // v2.7208: the billed row reads its notice, its filing and its service off the lien clocks: read them again.
+          setLienClocksRefresh((k) => k + 1)
           // A recorded notice that names the desk item's months sends the item (v2.3405).
           const jobId = lienInstrumentsModal?.job.id
           if (jobId) void syncLienDeskAfterRecord(jobId).finally(() => refetchLienDesk())

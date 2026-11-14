@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
+keywords: materials on site, materials desk, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -10,6 +10,8 @@ The Materials tab on Jobs is the office side of the cages and boxes on a big sit
 ## Open the desk
 
 Open **Jobs** and press **Materials**. The desk lists every job with a container and sorts the ones losing money to the top. Press a job to open its page.
+
+A job whose boxes did not load says so in its row, with the reason. The row's figures are left blank, never drawn as zero. Press **Read again** on that row. A site's screen says the same at its top when one of its jobs did not load.
 
 The same desk opens from the Materials page. Open **Materials** and press **On site**, the tab under the word Track. A badge beside Track counts the boxes due a count and names what walked away this week. On a narrow window Track may show as its name alone. Press **Track** and its tabs open.
 
@@ -51,6 +53,32 @@ To take a join back, press the row to open it. **Names joined here** lists each 
 
 A name typed on site has no price until it is tied to the parts book. Press a row to open it. Press **This is a parts-book part** and type words from the part's name. Press the part in the list. The row now reads the book's name and price, and **Worth** grows. **Undo** under **Names joined here** takes the tie back.
 
+To price many rows, press **Worth** and then {{button:blue|Price 88 rows one at a time}}. The number on the button is how many rows have no price. A window opens on the row with the most pieces.
+
+The window shows parts from the parts book whose names hold every word of the row's name. Each one is marked **Offer** and shows its price and the day it was checked. An offer is a guess. Read the name before you press it. A name with no material can fit a PVC part and a copper part.
+
+Press an offer to say the row is that part. The number keys **1**, **2** and **3** press the offers too. The row takes that part's name and price, and the window moves to the next row. Press **Other part…** to search the parts book with other words. Press **Skip** or the **S** key to leave a row for later.
+
+Each parts-book offer has a second press on its right, **Just price**. Use it when the price is right and the part is not the same thing. The row takes that price for one piece. The row keeps the name the crew wrote, and the pieces are not counted as that part.
+
+An offer marked **a bill** is what a supply house charged for a line that fits. Press it to use that price for one piece. The offer names the house, the day and the unit the bill sold it by. A bill may sell pipe by the foot, so read the unit first.
+
+When nothing fits, type a price for one piece in the box and press {{button:blue|Save $3.12 for one}}. The button shows the price you typed.
+
+Some rows are not a part to price, such as scrap, tools or a mixed box. Press **Not a part** or the **N** key. The row leaves the count, and **Worth** says how many lines were left out.
+
+The foot of the window names your last answer. Press **Undo** there to take it back. Press **Done for now** to close the window. The rows you priced have left the list.
+
+To change an answer later, press the row on the list to open it. **Priced here** lists each answer with who gave it. Press **Undo** beside a price. Press **Bring back** beside a row that was left out.
+
+A price you accept here belongs to this site. Every device reads it, and so does the job's **Missing** table. A price older than 90 days stays and turns amber, as a parts-book price does.
+
+A press on **Worth** shows three chips over the list. **No price** lists the rows that still need one. **An old price** lists the rows on a price older than 90 days. **Left out** lists the rows set aside as not a part. Each chip shows its count.
+
+To refresh old prices, press **An old price** and then {{button:blue|Check 9 old prices one at a time}}. The window shows the price each row reads now. The window offers a bill only when the bill is newer than that price. Press the bill, or type today's price for one piece. For a parts-book part, **Open the Parts Book** leads to where the book's own price is checked.
+
+When **No price** is empty the list says *Nothing waiting on a price on this site*. Press **Show every row** to see the whole site again.
+
 Type in **Find a part or a box on this site** to narrow the rows. A line above them adds up what is shown. The line reads like *206 pieces in the 2 rows shown*.
 
 Press **By place** to read the boxes by where they stand. A place name that two jobs share is one section.
@@ -62,6 +90,8 @@ Press **Print the material location report** at the top to print the site. The [
 ## Read the row
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
+
+The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.
 
 A very large job can pass 5,000 rows in its ledger. Then History and the boxes show the newest 5,000 rows. The totals come from the database, and a line under the job's name says so.
 
@@ -79,11 +109,11 @@ The money uses the parts book's price. Beside each figure a small chip reads {{c
 
 ## Land a delivery
 
-Open **Deliveries**. Press **Open the job's Drive folder** and drop the invoice there. The app reads it from the folder.
+Open **Deliveries**. Press **Add the invoice to the job’s Drive folder** and drop the invoice there. That keeps the invoice with the job. The app does not read the file yet, so its lines land from pasted text.
 
 A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. Press it once. The app makes the job's folder under Jobs with Customer Pictures, Plans and Team only inside. The office sees it, and a box photo from the phone files there by itself. On the desk, **Make folders for 12 jobs** does the same for every live job without one. A job whose link is not a folder is held with the reason. A job with a folder but no pictures or plans link has the same press on its window's Documents tab. It fills in what is missing.
 
-To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
+To land the lines, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. The Part box of a line offers the names the job already has. Pick one when the invoice words the same part another way. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
 ## Print a label
 

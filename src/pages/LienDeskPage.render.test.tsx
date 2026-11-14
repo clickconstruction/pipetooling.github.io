@@ -36,7 +36,7 @@ vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => screenSize.phone }))
 vi.mock('../lib/people/fetchActiveUsers', () => ({ fetchActiveUsers: async () => ({ data: [], error: null }) }))
 vi.mock('../contexts/JobsListCacheContext', () => ({
   buildJobsListCacheKey: (userId: string, customerFilter: string | null) => `${userId}:${customerFilter || 'all'}`,
-  useJobsListCache: () => ({ jobs: [], jobsListLoading: false, jobsListDataKey: 'smoke-auth-user-1:all', fetchScopeIfNeeded: cache.fetchScopeIfNeeded, runFetchScopes: cache.runFetchScopes, mergedScopes: new Set(['billed_all']) }),
+  useJobsListCache: () => ({ jobs: [], setJobs: () => {}, jobsListLoading: false, jobsListDataKey: 'smoke-auth-user-1:all', fetchScopeIfNeeded: cache.fetchScopeIfNeeded, runFetchScopes: cache.runFetchScopes, mergedScopes: new Set(['billed_all']) }),
   JobsListCacheProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 vi.mock('../hooks/useLienDeskData', () => ({ useLienDeskData: () => ({ data: desk.data, loading: false, refetch: desk.refetch }) }))
@@ -144,8 +144,8 @@ describe('LienDeskPage (/lien-desk)', () => {
     const { container } = renderWithProviders(<Harness start="/lien-desk?tab=affidavits" />)
     await settle()
     await waitFor(() => expect(container.querySelector('[data-lien-desk-panel="page"]')).not.toBeNull())
-    expect(screen.getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'All filings' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /^Lien affidavits/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By paper' }).getAttribute('aria-selected')).toBe('true')
     expect(container.querySelector('[data-lien-desk-back]')).not.toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Lien desk' })).toBeNull()
     expect(screen.getByRole('region', { name: 'Lien desk' })).toBeTruthy()
@@ -158,26 +158,26 @@ describe('LienDeskPage (/lien-desk)', () => {
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=affidavits')
   })
 
-  it('a view press writes the address; Do now leaves it bare; Notices carries the open notice', async () => {
+  it('a view press writes the address; To do leaves it bare; Notices carries the open notice', async () => {
     renderWithProviders(<Harness start="/lien-desk" />)
     await settle()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Do now/ }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^To do/ }).getAttribute('aria-selected')).toBe('true'))
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=deadlines'))
-    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     // On a computer the Notices list opens on its first notice, and the address names it.
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
-    fireEvent.click(screen.getByRole('tab', { name: /^Timeline/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^By job/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=timeline'))
-    fireEvent.click(screen.getByRole('tab', { name: /^Do now/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^To do/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
   })
 
   it('a pasted notice address opens that notice and keeps the address', async () => {
     renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650" />)
     await settle()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^Monthly notices/ }).getAttribute('aria-selected')).toBe('true'))
     await settle()
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650')
   })
@@ -207,6 +207,32 @@ describe('LienDeskPage (/lien-desk)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to the notices' }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices'))
     await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
+  })
+
+  it('on a phone a row’s job opens as a history entry of its own at the same address: Back closes it, and its press opens the notice with Back returning to the job (punch list #352, PR 4)', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/lien-desk" />)
+    await settle()
+    await waitFor(() => expect(container.querySelector('[data-lien-next-up-open]')).not.toBeNull())
+    fireEvent.click(container.querySelector('[data-lien-next-up-open]')!)
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).not.toBeNull())
+    // The address did not move: the open row rides in the entry's state.
+    expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the list' }))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
+    expect(container.querySelector('[data-lien-do-now]')).not.toBeNull()
+    // Open it again and press: the notice is a new entry, and its way back lands on the job's screen.
+    fireEvent.click(container.querySelector('[data-lien-next-up-open]')!)
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen-act]')).not.toBeNull())
+    fireEvent.click(container.querySelector('[data-lien-job-screen-act]')!)
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toContain('tab=notices&job=j650'))
+    expect(container.querySelector('[data-lien-job-screen]')).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to the notices' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).not.toBeNull())
+    // A view press from there drops the open row, so coming back to the first view shows the list.
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the list' }))
+    await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
   })
 
   it('on a phone, a notice reached by a link goes to the list in its own place', async () => {

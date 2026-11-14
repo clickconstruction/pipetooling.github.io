@@ -1,5 +1,7 @@
 import { shortK } from './headline'
 import type { WeekMove } from './weekCall'
+import { billTodo, payerTodo, pctTodo, priceTodo, projectTodo, supplyTodo, type CallTodo } from './callTodo'
+import { chargeCell } from './pctFacts'
 
 /**
  * What is behind a move on the card *What to do now* (punch list #334, PR 8). The owner, of the card: "I can't easily
@@ -24,6 +26,16 @@ import type { WeekMove } from './weekCall'
  * Of the look: "Visually, I don't like how this looks, but I like how it functions." So a line also carries its facts
  * as cells under the move's headings (`DiveRow`, `DiveColumns`), which `BridgeMoveTable.tsx` draws as a table.
  *
+ * Each thing also carries its to-do card (punch list #334, PR 9; `callTodo.ts`), for the check that hands that one
+ * line to one person.
+ *
+ * A job with no percent says its hours and who worked them (punch list #334, PR 10; `jobHours.ts`). The hours are a
+ * press of their own, which opens the detail: a percent is judged from them.
+ *
+ * It also says what we are charging, or that the job has no price, and the last day it was worked, by whom, and
+ * whether that day is a clocked one or a scheduled one (v2.7221; `pctFacts.ts`). The percent window carries the rest.
+ * Under its name it says where it is, street and city (v2.7232), and so does a job with no price (v2.7243).
+ *
  * Nothing is counted here. Every list is handed in from what the page has already read, in the order it is given.
  *
  * Pure. Kept apart from `weekCall.ts`, which is copied to the edge functions: the weekly email does not draw this.
@@ -41,12 +53,16 @@ export type DiveTarget =
   | { kind: 'promise'; jobId: string; jobLabel: string; ymd: string | null; context: string }
   /** The app's percent window for one job. */
   | { kind: 'pct'; job: DivePctJob }
+  /** The app's Add task window, written for this one thing (`callTodo.ts`). */
+  | { kind: 'todo'; todo: CallTodo }
+  /** The hours behind one job and whose they are (`jobHours.ts`), with the percent window one press on. */
+  | { kind: 'hours'; jobId: string; jobLabel: string; pctJob: DivePctJob | null }
 
 /**
  * One cell of a line drawn as a table row. `text` is the cell under its column's heading; `phone` is the same fact
  * with its unit, for a phone where there is no heading over it.
  */
-export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean }
+export type DiveCell = { text: string; phone?: string; muted?: boolean; warn?: boolean; /** A cell that opens its own detail, and what a screen reader hears on it. */ target?: DiveTarget; label?: string }
 /** A line's cells: two short figures and one run of words, under `DiveColumns`. */
 export type DiveRow = { a?: DiveCell; b?: DiveCell; text?: DiveCell }
 /** The headings over a move's lines. An empty heading is a column the move does not use. */
@@ -56,7 +72,7 @@ export type DiveColumns = { name: string; a: string; b: string; text: string }
 export type DivePctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
 /** One project under a customer: what is owed on it, the day they named for it, and the press that sets one. */
-export type DiveProject = { key: string; title: string; detail: string; press: { label: string; target: DiveTarget } | null; /** The same facts as cells, under the customer's headings. */ row?: DiveRow }
+export type DiveProject = { key: string; title: string; detail: string; press: { label: string; target: DiveTarget } | null; /** The to-do card for this one project. */ todo?: CallTodo; /** The same facts as cells, under the customer's headings. */ row?: DiveRow }
 
 /** One named thing. Its own press goes straight to it: that customer in the Collect window, that job, that supply house. */
 export type DiveItem = {
@@ -67,8 +83,12 @@ export type DiveItem = {
   projects?: DiveProject[]
   /** A second press on the row that acts where the reader stands: *Set the percent*. */
   press?: { label: string; target: DiveTarget }
+  /** The to-do card for this one thing, for the check that hands it to a person. */
+  todo?: CallTodo
   /** The line's facts as cells, for the card that draws a table. */
   row?: DiveRow
+  /** A line under the name that says which thing this is: a job's street and city (v2.7232). */
+  sub?: string
 }
 
 /** The page that opens one job. */
@@ -91,6 +111,8 @@ export type DiveFacts = {
   /** The customers to call, most pressing first (the Collect window's own cut). */
   payers: ReadonlyArray<{
     key: string
+    /** The customer's own record, for the card's link; null for a payer known by name alone. */
+    payerId?: string | null
     name: string
     lateUsd: number
     usd: number
@@ -110,8 +132,16 @@ export type DiveFacts = {
     pctJob?: DivePctJob | null
     /** The percent set on the page this visit; the row stays where it was and says so. */
     setPct?: number | null
+    /** The job's hours and who worked them, in a few words (`jobHoursLine`). Absent until they are read. */
+    hoursLine?: string | null
+    /** The same as cells: the hours as a figure, with its unit for a phone, and the people. */
+    hoursCell?: { text: string; phone: string; by: string } | null
+    /** The last day worked, which reading it is, and who (`lastWorkedCell`). Absent until read: the line keeps its people. */
+    lastWorked?: { text: string; phone: string; muted: boolean } | null
+    /** Where the job is, as its street and city (`streetAndCity`). Absent until read, or when the job has none. */
+    address?: string | null
   }>
-  noPriceJobs: ReadonlyArray<{ id: string; label: string }>
+  noPriceJobs: ReadonlyArray<{ id: string; label: string; /** Where the job is, as its street and city (v2.7243). Absent until read, or when the job has none. */ address?: string | null }>
   /** What falls due on the day the cash call names, one row a supply house, largest first. */
   supplyBills: ReadonlyArray<{ houseId: string | null; name: string; usd: number; dueYmd: string | null; bills: number }>
   dayLabel: (ymd: string) => string
@@ -143,6 +173,7 @@ function projectOf(j: ProjectFact, payerName: string, dayLabel: (ymd: string) =>
     row: { a: { text: shortK(j.usd), phone: `${shortK(j.usd)} owed` }, b: ageCell(j.ageDays, (d) => `billed ${d} ago`), text: payDateCell(j.promisedYmd, j.broken, dayLabel) },
     title: j.label,
     detail: `${shortK(j.usd)} owed.${billed} ${word}`,
+    todo: projectTodo({ payerName, jobId: j.jobId, label: j.label, usd: j.usd, ageDays: j.ageDays, promisedYmd: j.promisedYmd, broken: j.broken }, dayLabel),
     // A bill with no job on it has nothing for the sheet to write to.
     press: j.jobId ? { label: j.promisedYmd ? 'Change the pay date' : 'Set a pay date', target: { kind: 'promise', jobId: j.jobId, jobLabel: `${payerName} · ${j.label}`, ymd: j.promisedYmd, context: `${shortK(j.usd)} owed.${billed}` } } : null,
   }
@@ -163,13 +194,14 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
         const money = p.lateUsd > 0 ? `${shortK(p.lateUsd)} late.${p.oldestAgeDays != null ? ` Oldest bill ${days(p.oldestAgeDays)}.` : ''}` : `${shortK(p.usd)} open.${p.oldestAgeDays != null ? ` Oldest bill ${days(p.oldestAgeDays)}.` : ''}`
         const word = p.promise ? ` ${payerPromiseWords(p.promise, facts.dayLabel)}` : ''
         const projects = (p.projects ?? []).map((j) => projectOf(j, p.name, facts.dayLabel))
+        const todo = payerTodo({ payerId: p.payerId ?? null, name: p.name, usd: p.usd, lateUsd: p.lateUsd, projects: (p.projects ?? []).map((j) => ({ label: j.label, promisedYmd: j.promisedYmd })) })
         const row: DiveRow = {
           // Nothing late yet: what is open, said as open so the column's heading does not call it late.
           a: p.lateUsd > 0 ? { text: shortK(p.lateUsd), phone: `${shortK(p.lateUsd)} late` } : { text: `${shortK(p.usd)} open`, muted: true },
           b: ageCell(p.oldestAgeDays, (d) => `oldest bill ${d}`),
           ...(p.promise ? { text: payDateCell(p.promise.state === 'none' ? null : p.promise.ymd, p.promise.state === 'broken', facts.dayLabel) } : {}),
         }
-        return { title: p.name, target: { kind: 'desk', stage: 'collect', payerKey: p.key }, detail: `${money}${word}`, ...(projects.length > 0 ? { projects } : {}), row }
+        return { title: p.name, target: { kind: 'desk', stage: 'collect', payerKey: p.key }, detail: `${money}${word}`, todo, ...(projects.length > 0 ? { projects } : {}), row }
       }),
       press: 'See who to call',
       columns: { name: 'Customer', a: 'Late', b: 'Oldest bill', text: 'Pay date' },
@@ -177,7 +209,7 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
     }
   }
   if (move.key === 'bill') {
-    return { ...listed(facts.billJobs, (j) => ({ title: j.label, detail: `${shortK(j.usd)} finished, not billed.`, target: { kind: 'page', to: jobPage(j.id) }, row: { a: { text: shortK(j.usd), phone: `${shortK(j.usd)} to bill` } } })), press: 'See what to bill', target: { kind: 'desk', stage: 'bill' }, columns: { name: 'Job', a: 'To bill', b: '', text: '' } }
+    return { ...listed(facts.billJobs, (j) => ({ title: j.label, detail: `${shortK(j.usd)} finished, not billed.`, target: { kind: 'page', to: jobPage(j.id) }, todo: billTodo(j), row: { a: { text: shortK(j.usd), phone: `${shortK(j.usd)} to bill` } } })), press: 'See what to bill', target: { kind: 'desk', stage: 'bill' }, columns: { name: 'Job', a: 'To bill', b: '', text: '' } }
   }
   if (move.key === 'pct') {
     if (facts.noPctJobs.length === 0) return null
@@ -186,29 +218,38 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
       ...listed(facts.noPctJobs, (j) => {
         const contract = j.revenueUsd != null && j.revenueUsd > 0 ? `${shortK(j.revenueUsd)} contract. ` : ''
         const press = j.pctJob ? { press: { label: j.setPct != null ? 'Change the percent' : 'Set the percent', target: { kind: 'pct' as const, job: j.pctJob } } } : {}
+        // A job set on this visit needs no card.
+        const todo = j.setPct == null ? { todo: pctTodo(j) } : {}
+        // The hours are what a percent is judged from: the cell says them, and it opens who worked them and when.
+        const hoursTarget = { kind: 'hours' as const, jobId: j.id, jobLabel: j.label, pctJob: j.pctJob ?? null }
+        // What we are charging, or that there is no price: never a blank where a figure belongs, and never $0.
+        const charge = chargeCell({ chargeUsd: j.revenueUsd != null && j.revenueUsd > 0 ? j.revenueUsd : null })
         const row: DiveRow = {
-          ...(j.revenueUsd != null && j.revenueUsd > 0 ? { b: { text: shortK(j.revenueUsd), phone: `${shortK(j.revenueUsd)} contract`, muted: true } } : {}),
-          // A percent set on this visit says so on the line, which stays where it was.
-          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : {}),
+          ...(j.hoursCell ? { a: { text: j.hoursCell.text, phone: j.hoursCell.phone, target: hoursTarget, label: `See the hours on ${j.label}: ${j.hoursLine ?? j.hoursCell.phone}` } } : {}),
+          b: charge.warn ? { text: charge.text, phone: charge.phone, warn: true } : { text: charge.text, phone: charge.phone, muted: true },
+          // A percent set on this visit says so where the people were. Else the last day worked, and until that is
+          // read, the people with hours.
+          ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.lastWorked ? { text: { text: j.lastWorked.text, phone: j.lastWorked.phone, ...(j.lastWorked.muted ? { muted: true } : {}) } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
         }
-        return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, row }
+        // The place under the name: the owner knows a job by where it is.
+        return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row, ...(j.address ? { sub: j.address } : {}) }
       }),
       press: null,
       target: null,
-      columns: { name: 'Job', a: '', b: 'Contract', text: '' },
+      columns: { name: 'Job', a: 'Hours', b: 'Contract', text: facts.noPctJobs.some((j) => j.lastWorked) ? 'Last worked' : 'Worked by' },
     }
   }
   if (move.key === 'price') {
     if (facts.noPriceJobs.length === 0) return null
     // A price is set on the job itself, and each job named opens there. A press to the Jobs page would add nothing.
-    return { ...listed(facts.noPriceJobs, (j) => ({ title: j.label, detail: 'No price set.', target: { kind: 'page', to: jobPage(j.id) } })), press: null, target: null, columns: { name: 'Job', a: '', b: '', text: '' } }
+    return { ...listed(facts.noPriceJobs, (j) => ({ title: j.label, detail: 'No price set.', target: { kind: 'page', to: jobPage(j.id) }, todo: priceTodo(j), ...(j.address ? { sub: j.address } : {}) })), press: null, target: null, columns: { name: 'Job', a: '', b: '', text: '' } }
   }
   if (move.key === 'approve') {
     // Hours are not a list of things; the press is the whole of it.
     return move.door ? { items: [], shown: DIVE_SHOWN, press: 'Open approvals', target: { kind: 'page', to: move.door.to } } : null
   }
   if (isSupplyMove(move)) {
-    return { ...listed(facts.supplyBills, (b) => ({ title: b.name, detail: `${shortK(b.usd)}${b.dueYmd ? ` due ${facts.dayLabel(b.dueYmd)}` : ''}${b.bills > 1 ? `, on ${b.bills} bills` : ''}.`, target: b.houseId ? { kind: 'page', to: supplyHousePage(b.houseId, b.dueYmd) } : { kind: 'money' }, row: { a: { text: shortK(b.usd), phone: `${shortK(b.usd)} due` }, b: { text: String(b.bills), phone: b.bills === 1 ? '1 bill' : `${b.bills} bills`, muted: true }, ...(b.dueYmd ? { text: { text: facts.dayLabel(b.dueYmd) } } : {}) } })), press: 'See the bills', target: { kind: 'money' }, columns: { name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' } }
+    return { ...listed(facts.supplyBills, (b) => ({ title: b.name, detail: `${shortK(b.usd)}${b.dueYmd ? ` due ${facts.dayLabel(b.dueYmd)}` : ''}${b.bills > 1 ? `, on ${b.bills} bills` : ''}.`, target: b.houseId ? { kind: 'page', to: supplyHousePage(b.houseId, b.dueYmd) } : { kind: 'money' }, todo: supplyTodo({ housePath: b.houseId ? supplyHousePage(b.houseId, b.dueYmd) : null, name: b.name, usd: b.usd, dueYmd: b.dueYmd, bills: b.bills }, facts.dayLabel), row: { a: { text: shortK(b.usd), phone: `${shortK(b.usd)} due` }, b: { text: String(b.bills), phone: b.bills === 1 ? '1 bill' : `${b.bills} bills`, muted: true }, ...(b.dueYmd ? { text: { text: facts.dayLabel(b.dueYmd) } } : {}) } })), press: 'See the bills', target: { kind: 'money' }, columns: { name: 'Supply house', a: 'Due', b: 'Bills', text: 'Due day' } }
   }
   return null
 }

@@ -19,6 +19,7 @@ import { taskPlaceColumns, type TaskPlaceDraft } from '../lib/tasks/taskPlace'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
 import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
+import { DONE_WHEN_HINT } from '../lib/tasks/taskRowsOnAPhone'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
 import { TaskFormRows } from './checklist/newTask/TaskFormRows'
 import { TASK_WORDS_BOX_STYLE, focusPeopleSearchIfOpen } from './checklist/newTask/taskWindowBits'
@@ -87,6 +88,8 @@ export default function ChecklistAddModal({
   const lineCount = parseLines(linesText).length
   /** The writer's switch (PR 4): on by itself once a line is written, off on a plain one-off, until the writer touches it. */
   const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
+  /** The key of the one thing a preset's card is made for; written to the card after it is made (punch list #334, PR 12). */
+  const [sourceTag, setSourceTag] = useState<string | null>(null)
   // Punch list #328: where the work is. Null is a task with no place, the default.
   const [place, setPlace] = useState<TaskPlaceDraft | null>(null)
   // PR 6: the giver's photo of the spot, held here until the task has an id to file it under.
@@ -245,6 +248,13 @@ export default function ChecklistAddModal({
       setRowsKey((k) => k + 1)
       setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
+      // A card written for one specific thing arrives with what finished looks like, shown open so the sender reads it.
+      const presetLines = (preset?.doneWhen ?? []).map((l) => l.trim()).filter(Boolean)
+      setLinesText(presetLines.join('\n'))
+      // One panel opens under the Add row at a time (punch list #331): the lines take it from the links.
+      if (presetLines.length > 0) setRowsOpen('lines')
+      setAsksForPhotoPick(preset?.asksForPhoto ?? null)
+      setSourceTag(preset?.sourceTag?.trim() || null)
     }
   }, [
     modalContext?.isOpen,
@@ -389,6 +399,9 @@ export default function ChecklistAddModal({
       }
       const newId = (data as { id: string })?.id
       if (newId) {
+        // Where the card came from, on the card itself. Written apart from the insert, so a card is still made if this
+        // does not land: the page that made it then finds it by its link. The column is younger than the generated types.
+        if (sourceTag) await supabase.from('checklist_items').update({ source_tag: sourceTag } as never).eq('id', newId)
         const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
         await supabase.from('checklist_item_assignees').insert(
           form.assigned_to_user_ids.map((uid) => ({
@@ -425,6 +438,7 @@ export default function ChecklistAddModal({
       }
       setLinesText('')
       setAsksForPhotoPick(null)
+      setSourceTag(null)
       setPlace(null)
       setSpotPhoto(null)
       modalContext.onSaved?.(newId || undefined)
@@ -477,29 +491,6 @@ export default function ChecklistAddModal({
       cardTestId="checklist-add-modal-card"
       headActions={
         <>
-          {/* Header Send (v2.2740): a second Send at the top of a phone, once a title is typed. The bar's Send
-              sits above the keyboard since v2.7085; this one stays until a walk on a real phone shows that holds. */}
-          {phone && form.title.trim() ? (
-            <button
-              type="button"
-              onClick={saveItem}
-              disabled={submitting}
-              aria-label="Send"
-              style={{
-                padding: '0.3rem 0.85rem',
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: 999,
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                opacity: submitting ? 0.7 : 1,
-              }}
-            >
-              {submitting ? 'Sending…' : 'Send'}
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -724,7 +715,7 @@ export default function ChecklistAddModal({
         onRepeatMode={setRepeatMode}
         linesText={linesText}
         onLinesText={setLinesText}
-        linesHint="The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand. A photo is offered at each new percent on every card. With Photo at the finish on, the finish holds until a photo is in or a reason is typed."
+        linesHint={DONE_WHEN_HINT.add}
         asksForPhoto={asksForPhoto}
         onAsksForPhoto={setAsksForPhotoPick}
         place={place}

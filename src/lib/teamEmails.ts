@@ -391,13 +391,13 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
   },
   {
     id: 'bridge_weekly_sheet',
-    label: 'The Bridge, the week’s call, every Monday',
+    label: 'The Bridge, what to do now, every Monday',
     when: { kind: 'weekly', label: 'Monday at 6 AM Central, while the Weekly email switch on the Bridge is on', order: 35 },
     recipients: { roles: ['dev', 'master_technician'], decidedBy: 'role', rule: 'The owner and every dev with a real account, each at their own address, and nobody else — the function picks them by role.' },
-    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: Bill is the slowest step. Cash low point $22.0k. Made last week $31.0k.`,
+    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: Bill is the slowest step. Cash balance $48.4k. Made last week $31.0k.`,
     render: { kind: 'sample', sample: 'bridge_weekly_sheet' },
     manage: emails('The Bridge → The flow → Weekly email'),
-    reflects: ['the Bridge’s first screen: the three tiles, the strip of pipe and the week’s call with its moves'],
+    reflects: ['the Bridge’s first screen: the tiles, the two balances, the strip of pipe and What to do now with its moves'],
     guide: 'the-bridge',
   },
   {

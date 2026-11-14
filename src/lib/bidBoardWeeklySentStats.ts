@@ -1,8 +1,8 @@
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import {
-  calendarYmdInAppTzFromIso,
   companyWeekStartSundayContaining,
   ymdAddDays,
+  ymdFromDateLike,
 } from '../utils/dateUtils'
 
 export type BidBoardWeekEstimatorRow = {
@@ -111,7 +111,8 @@ export function buildBidBoardWeeklySentSummaries(
 
   for (const bid of bids) {
     if (!bid.bid_date_sent) continue
-    const sentYmd = calendarYmdInAppTzFromIso(bid.bid_date_sent)
+    // The send day is a date with no time: read as written, never as a moment (v2.7170), or a Sunday send lands in the week before.
+    const sentYmd = ymdFromDateLike(bid.bid_date_sent)
     if (!sentYmd) continue
     const weekStart = companyWeekStartSundayContaining(sentYmd)
     if (!weekStart) continue

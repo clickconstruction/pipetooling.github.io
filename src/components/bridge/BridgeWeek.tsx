@@ -4,8 +4,9 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { accrualPressLabel, type MoneyLine } from '../../lib/bridge/moneyCard'
 import { moveDive, type DiveFacts, type DiveTarget } from '../../lib/bridge/callDive'
 import { BridgeMoveTable } from './BridgeMoveTable'
+import { TODO_FOOT } from '../../lib/bridge/callTodo'
+import type { TodoState } from '../../lib/bridge/callTodoState'
 import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, type WeekCallModel, type WeekMove, type WeekTile, type WeekTone } from '../../lib/bridge/weekCall'
-import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
 
 /**
  * The Bridge's first screen (punch list #303, PR 1): the tiles, then the card *What to do now* with its moves. The
@@ -14,10 +15,13 @@ import { NOW_CARD_LABEL, NOW_NOT_READ_LINE } from '../../lib/bridge/pulseWords'
  *
  * The page is a pulse (punch list #334, PR 7). The card reads today: the slowest step, or cash in a week it leads,
  * and the moves that would change it. It records nothing, hands nothing to a person and asks nothing on Friday.
- * The words of the step and its moves are still `buildWeekCall`'s, read with no call on record.
+ * The words of the card, the step and its moves are `buildWeekCall`'s.
  *
  * Each move names its things (punch list #334, PR 8; `callDive.ts`): a heading line with the move's one press, then
  * its lines as a table (`BridgeMoveTable.tsx`). The card is framed by a rule down its left side, not a box.
+ *
+ * Every line carries a check (punch list #334, PR 9; `callTodoState.ts`): grey makes a to-do card for that one thing,
+ * blue is with someone and shows the card.
  */
 
 const label: CSSProperties = { fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.25 }
@@ -120,6 +124,9 @@ export function BridgeWeek({
   onAccrual,
   dives = null,
   onDive,
+  todoStates = null,
+  dayLabel,
+  onTodoSee,
 }: {
   model: WeekCallModel
   /** Opens Money at the bank's accounts, from the sentence that names what is left out. */
@@ -136,12 +143,21 @@ export function BridgeWeek({
   dives?: DiveFacts | null
   /** A press that opens a window or a sheet on the page. A page of the app is a link and needs no handler. */
   onDive?: (target: DiveTarget) => void
+  /** Where each line stands as a to-do (`callTodoState.ts`), by the to-do's key. Null while not read: every check is grey. */
+  todoStates?: ReadonlyMap<string, TodoState> | null
+  /** How the words beside a check say a day. */
+  dayLabel: (ymd: string) => string
+  /** A blue check was pressed: show the card it stands for. */
+  onTodoSee?: (state: Extract<TodoState, { kind: 'open' | 'covered' | 'done' }>) => void
 }) {
   const narrow = useIsNarrowScreen()
   const cap = narrow ? WEEK_CALL_MOVES_PHONE : WEEK_CALL_MOVES
   // The card shows the first moves; the step's desk behind The flow lists every one.
   const shown = model.card.moves.slice(0, cap)
   const border = model.card.tone === 'lit' ? '#dc2626' : 'var(--border-strong)'
+
+  // The foot says how a line reaches a person, once some line on the card carries a check.
+  const hasChecks = shown.some((m) => (moveDive(m, dives)?.items ?? []).some((item) => item.todo))
 
   const moveRow = (m: WeekMove, i: number) => {
     // The real things behind the move, and the one press that opens the place to act on them.
@@ -150,7 +166,9 @@ export function BridgeWeek({
     return (
       <li key={m.title} data-testid="bridge-week-move" style={{ padding: narrow ? '10px 0 6px' : '12px 0 8px', borderTop: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
-          <span aria-hidden style={{ width: 22, height: 22, flex: '0 0 auto', borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* The number and its heading are one piece (the owner, 2026-11-13): a heading too long for the line wraps beside its number, where it used to drop under it and leave the number alone. */}
+          <span data-testid="bridge-week-move-head" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: '0 1 auto', minWidth: 0 }}>
+          <span aria-hidden style={{ width: 22, height: 22, flex: '0 0 auto', marginTop: -1, borderRadius: '50%', background: 'var(--bg-muted)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {i + 1}
           </span>
           <span style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3, minWidth: 0 }}>
@@ -166,6 +184,7 @@ export function BridgeWeek({
               m.title
             )}
           </span>
+          </span>
           {m.why && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>{m.why}</span>}
           {/* The move's own press sits on its heading, so no button floats beside the rows. */}
           {dive?.press && dive.target ? (
@@ -180,7 +199,7 @@ export function BridgeWeek({
             )
           ) : null}
         </div>
-        {dive && dive.items.length > 0 && <BridgeMoveTable dive={dive} narrow={narrow} onDive={onDive} />}
+        {dive && dive.items.length > 0 && <BridgeMoveTable dive={dive} narrow={narrow} todoStates={todoStates} dayLabel={dayLabel} onDive={onDive} onTodoSee={onTodoSee} />}
       </li>
     )
   }
@@ -207,17 +226,22 @@ export function BridgeWeek({
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: `4px solid ${border}`, borderRadius: 12, padding: narrow ? '0.55rem 0.75rem 0.65rem' : '0.75rem 0.95rem 0.85rem' }} data-testid="bridge-week-card">
             {/* The card is a reading of today, so it is not named a call. */}
             <div style={label} data-testid="bridge-week-label">
-              {NOW_CARD_LABEL}
+              {model.card.label}
             </div>
             <div style={{ fontSize: '1.12rem', fontWeight: 800, lineHeight: 1.25, margin: '2px 0' }} data-testid="bridge-week-lead">
               {model.card.lead}
             </div>
             {model.card.line && (
               <div style={{ fontSize: '0.86rem', color: 'var(--text-700)' }} data-testid="bridge-week-line">
-                {model.link == null ? NOW_NOT_READ_LINE : model.card.line}
+                {model.card.line}
               </div>
             )}
             {shown.length > 0 && <ol style={{ listStyle: 'none', margin: '7px 0 0', padding: 0 }}>{shown.map(moveRow)}</ol>}
+            {hasChecks && (
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 7 }} data-testid="bridge-week-foot">
+                {TODO_FOOT}
+              </div>
+            )}
           </div>
         </div>
       </div>

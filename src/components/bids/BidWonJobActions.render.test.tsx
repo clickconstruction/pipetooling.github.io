@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Render smoke for the shared Won-moment door (Tier-1 #8): which buttons mount, and where they route. */
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 
 const openNewJob = vi.fn()
 const openEditJob = vi.fn()
@@ -33,6 +33,14 @@ vi.mock('../../lib/bids/jobDraftIo', () => ({
   },
 }))
 vi.mock('../../hooks/useOpenJobFromBidRequest', () => ({ useOpenJobFromBidRequest: () => ({ request: handoffRequest, refetch: vi.fn() }) }))
+
+// The block's own lookup (no `knownJob`): each test decides when it answers, and with what.
+type Opened = { bidId: string; jobId: string; hcpNumber: string | null; jobName: string | null; createdAt: string | null }
+const lookups: Array<{ bidIds: ReadonlyArray<string>; resolve: (rows: Opened[]) => void; reject: (e: unknown) => void }> = []
+vi.mock('../../lib/bids/bidJobsOpenedIo', () => ({
+  loadJobsOpenedFromBids: (bidIds: ReadonlyArray<string>) => new Promise<Opened[]>((resolve, reject) => lookups.push({ bidIds, resolve, reject })),
+}))
+const job = (bidId: string, jobId: string, hcpNumber: string): Opened => ({ bidId, jobId, hcpNumber, jobName: null, createdAt: '2026-11-01T00:00:00Z' })
 
 import { BidWonJobActions } from './BidWonJobActions'
 import { installDomShims, settle } from '../../test/renderSmokeMocks'
@@ -144,5 +152,123 @@ describe('BidWonJobActions', () => {
     expect(screen.getByText('J878 opened from this bid')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Send to Dispatch' })).toBeNull()
     expect(screen.queryByText('Open the job')).toBeNull()
+  })
+
+  describe('the block looks the job up itself (no knownJob)', () => {
+    const CREATE_DOORS = ['Open the job', 'Create another job', 'Ask Dispatch to open it', 'Ask Dispatch to open the job', 'Send to Dispatch', 'open the job →', 'send to Dispatch →']
+    const noCreateDoor = () => {
+      for (const label of CREATE_DOORS) expect(screen.queryByText(label)).toBeNull()
+    }
+    const answer = async (rows: Opened[]) => {
+      await act(async () => {
+        lookups[lookups.length - 1]!.resolve(rows)
+      })
+    }
+    beforeEach(() => {
+      lookups.length = 0
+      handoffRequest = null
+      openNewJob.mockClear()
+      openEditJob.mockClear()
+    })
+
+    it('an office role, a bid that has a job: no door before the answer, then the chip and its two doors', async () => {
+      role = 'assistant'
+      render(<BidWonJobActions bidId="bid-20" won />)
+      await settle()
+      expect(lookups.map((l) => l.bidIds)).toEqual([['bid-20']])
+      noCreateDoor()
+      expect(screen.queryByTestId('bid-won-job-actions')).toBeNull()
+      await answer([job('bid-20', 'job-20', '1020')])
+      expect(screen.getByText('J1020 opened from this bid')).toBeTruthy()
+      fireEvent.click(screen.getByText('Open the job'))
+      expect(openEditJob).toHaveBeenCalledWith('job-20')
+      expect(openNewJob).not.toHaveBeenCalled()
+      expect(screen.getByText('Create another job')).toBeTruthy()
+      expect(screen.queryByText('Ask Dispatch to open it')).toBeNull()
+    })
+    it('an office role, a bid with no job: no door before the answer, then the doors as before', async () => {
+      role = 'controller'
+      render(<BidWonJobActions bidId="bid-21" won />)
+      await settle()
+      noCreateDoor()
+      await answer([])
+      fireEvent.click(screen.getByText('Open the job'))
+      expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-21' })
+      expect(screen.getByText('Ask Dispatch to open it')).toBeTruthy()
+    })
+    it('an estimator: Send to Dispatch waits for the answer, and a bid that has a job never shows it', async () => {
+      role = 'estimator'
+      const withJob = render(<BidWonJobActions bidId="bid-22" won />)
+      await settle()
+      noCreateDoor()
+      await answer([job('bid-22', 'job-22', '1022')])
+      expect(screen.getByText('J1022 opened from this bid')).toBeTruthy()
+      noCreateDoor()
+      withJob.unmount()
+      render(<BidWonJobActions bidId="bid-23" won />)
+      await settle()
+      noCreateDoor()
+      await answer([])
+      expect(screen.getByRole('button', { name: 'Send to Dispatch' })).toBeTruthy()
+    })
+    it('primary: the hand-off to Dispatch waits for the answer too', async () => {
+      role = 'primary'
+      render(<BidWonJobActions bidId="bid-24" won />)
+      await settle()
+      noCreateDoor()
+      await answer([])
+      expect(screen.getByText('Ask Dispatch to open the job')).toBeTruthy()
+    })
+    it('compact: the create link waits for the answer, and stays away when the bid has a job', async () => {
+      role = 'dev'
+      const withJob = render(<BidWonJobActions bidId="bid-25" compact />)
+      await settle()
+      noCreateDoor()
+      await answer([job('bid-25', 'job-25', '1025')])
+      expect(withJob.container.textContent).toBe('')
+      withJob.unmount()
+      render(<BidWonJobActions bidId="bid-26" compact />)
+      await settle()
+      noCreateDoor()
+      await answer([])
+      fireEvent.click(screen.getByText('open the job →'))
+      expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-26' })
+    })
+    it('a lookup that fails still ends with the doors drawn', async () => {
+      role = 'assistant'
+      render(<BidWonJobActions bidId="bid-27" won />)
+      await settle()
+      noCreateDoor()
+      await act(async () => {
+        lookups[lookups.length - 1]!.reject(new Error('Failed to fetch'))
+      })
+      expect(screen.getByText('Open the job')).toBeTruthy()
+      expect(screen.getByText('Ask Dispatch to open it')).toBeTruthy()
+    })
+    it('moving the block to another bid holds the doors again until that bid answers', async () => {
+      role = 'assistant'
+      const view = render(<BidWonJobActions bidId="bid-28" won />)
+      await settle()
+      await answer([])
+      expect(screen.getByText('Open the job')).toBeTruthy()
+      view.rerender(<BidWonJobActions bidId="bid-29" won />)
+      // Before any effect runs: the first bid's "no job" is not the second bid's answer.
+      noCreateDoor()
+      await settle()
+      noCreateDoor()
+      expect(lookups[lookups.length - 1]!.bidIds).toEqual(['bid-29'])
+      await answer([job('bid-29', 'job-29', '1029')])
+      expect(screen.getByText('J1029 opened from this bid')).toBeTruthy()
+      expect(screen.queryByText('Ask Dispatch to open it')).toBeNull()
+      fireEvent.click(screen.getByText('Open the job'))
+      expect(openEditJob).toHaveBeenCalledWith('job-29')
+    })
+    it('the board passes its own answer: the doors are there at once, with no lookup', async () => {
+      role = 'assistant'
+      render(<BidWonJobActions bidId="bid-30" won knownJob={null} />)
+      expect(screen.getByText('Open the job')).toBeTruthy()
+      await settle()
+      expect(lookups).toEqual([])
+    })
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienWindowDeskNotice } from './lienTimelineDesk'
+import { buildLienTimelineFromDesk, buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienWindowDeskAffidavit, lienWindowDeskNotice } from './lienTimelineDesk'
+import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobWorkMonths } from './forecastWorkMonths'
@@ -133,5 +134,137 @@ describe('the Lien window’s header names the desk’s step on a notice in work
     const direct = buildLienTimelineFromWindow({ ...src, isSub: false, deskNotice: { state: 'awaiting', holdUntil: null } })
     expect(direct.next.kind).toBe('affidavit')
     expect(direct.next.words.startsWith('File the affidavit')).toBe(true)
+  })
+})
+
+describe('the Lien window’s header names the desk’s step on an affidavit in work (v2.7187, punch list #335, row 2)', () => {
+  // A commercial sub job worked in July, its notice sent Sep 1: the affidavit by Nov 16, 54 days out.
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-07', '2026-10-15', 22)], totalHours: 20, sessionCount: 3, pendingSessions: 0, lastMonthKey: '2026-07', affidavitDue: '2026-11-16' }
+  const src = { workMonths: wm, filings: [filing({ months_covered: ['2026-07'] })], job: { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-07-20' }, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY }
+  const GATES: LienAffidavitGateKey[] = ['owner', 'legal', 'contractor', 'notice', 'homestead']
+  const entry = (pile: string, missing: LienAffidavitGateKey[] = [], hold_until: string | null = null) =>
+    ({ pile, gates: [...new Set([...GATES, ...missing])].map((key) => ({ key, ok: !missing.includes(key), label: key })), item: hold_until ? { hold_until } : null }) as unknown as LienAffidavitEntry
+  const affidavitStep = (t: ReturnType<typeof buildLienTimelineFromWindow>) => t.steps.find((s) => s.key === 'affidavit')!
+
+  it('with no word from the desk the header reads File the affidavit, as before', () => {
+    const t = buildLienTimelineFromWindow(src)
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: 'File the affidavit — 54 days.', date: '2026-11-16', daysLeft: 54 })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the affidavit to be filed' })
+    expect(affidavitStep(t).words).toBe('54 days')
+    expect(buildLienTimelineFromWindow({ ...src, deskAffidavit: null }).next.words).toBe(t.next.words)
+  })
+
+  it.each([
+    ['to_draft', 'Draft the affidavit — 54 days.', 'the affidavit to be drafted', '54 days · to draft'],
+    ['awaiting', 'Approve the affidavit — 54 days.', 'the leader’s approval of the affidavit', '54 days · awaiting approval'],
+    ['ready', 'File the affidavit — 54 days.', 'the affidavit to be filed', '54 days · ready to file'],
+  ])('an affidavit on the %s pile: %s', (pile, next, waiting, stepWords) => {
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry(pile)) })
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: next, affidavitState: pile, date: '2026-11-16', daysLeft: 54 })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: waiting })
+    expect(affidavitStep(t).words).toBe(stepWords)
+  })
+
+  it.each([
+    [['homestead_answer'], 'Answer the homestead question, then file the affidavit — 54 days.', 'a yes or a no on the homestead question', '54 days · the homestead answer missing'],
+    [['owner'], 'Find the owner, then file the affidavit — 54 days.', 'the owner of record and a mailing address', '54 days · owner of record missing'],
+    [['legal'], 'Add the legal description, then file the affidavit — 54 days.', 'the county and legal description on the property record', '54 days · legal description missing'],
+    [['contractor'], 'Add the GC’s address, then file the affidavit — 54 days.', 'the general contractor’s address', '54 days · the general contractor\'s address missing'],
+    [['homestead'], 'Homestead, ask the attorney — 54 days.', 'the attorney to be asked about a homestead lien', '54 days · homestead missing'],
+    [['legal', 'owner'], 'Fix the property record, then file the affidavit — 54 days · legal description, owner of record missing.', 'the property record to be completed', '54 days · legal description, owner of record missing'],
+  ] as Array<[LienAffidavitGateKey[], string, string, string]>)('an affidavit held by %j: %s', (missing, next, waiting, stepWords) => {
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry('needs_property', missing)) })
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: next, affidavitState: 'needs_property', daysLeft: 54 })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: waiting })
+    expect(affidavitStep(t).words).toBe(stepWords)
+  })
+
+  it('public property has no day to race: the fact, and who to ask', () => {
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry('needs_property', ['public_owner'])) })
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: 'Public property, no lien — ask the attorney about the bond.', date: '', daysLeft: null, tone: 'amber' })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the attorney to be asked about the payment bond' })
+  })
+
+  it('a held affidavit says when it asks again, and its last day', () => {
+    const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry('held', [], '2026-10-05')) })
+    expect(t.next.words).toBe('Held — the affidavit re-asks Oct 5; file by Nov 16.')
+    expect(t.waitingOn?.words).toBe('the hold to lift')
+    expect(affidavitStep(t).words).toBe('54 days · held · re-asks Oct 5')
+    expect(buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry('held')) }).next.words).toBe('Held — the affidavit waits on its hold; file by Nov 16.')
+  })
+
+  it('a job with no affidavit entry, or one that is filed or missed, hands over nothing; the closed gates go only with a paper they hold', () => {
+    expect(lienWindowDeskAffidavit(null)).toBeNull()
+    expect(lienWindowDeskAffidavit(undefined)).toBeNull()
+    expect(lienWindowDeskAffidavit(entry('filed'))).toBeNull()
+    expect(lienWindowDeskAffidavit(entry('missed'))).toBeNull()
+    expect(lienWindowDeskAffidavit(entry('needs_property', ['owner', 'legal']))).toEqual({ state: 'needs_property', missing: ['legal', 'owner'], holdUntil: null })
+    expect(lienWindowDeskAffidavit(entry('to_draft', ['notice']))).toEqual({ state: 'to_draft', missing: [], holdUntil: null })
+  })
+
+  it('a notice still to send comes first: the affidavit’s word waits its turn, and a filed lien never reads Draft', () => {
+    // No notice filing: July's window is open, so the header is the notice's.
+    const owing = buildLienTimelineFromWindow({ ...src, filings: [], deskAffidavit: lienWindowDeskAffidavit(entry('to_draft')) })
+    expect(owing.next.kind).toBe('notice')
+    expect(owing.next.affidavitState).toBeUndefined()
+    // On file: the header moves on to the service, whatever the desk's entry still says.
+    const filed = buildLienTimelineFromWindow({ ...src, filings: [...src.filings, filing({ id: 'a', kind: 'affidavit', filed_at: '2026-09-20', serve_due: '2026-09-25' })], deskAffidavit: lienWindowDeskAffidavit(entry('to_draft')) })
+    expect(filed.next.kind).toBe('serve')
+  })
+
+  it('the desk’s own timeline names the step too, from the entry it already holds', () => {
+    const affidavit = { ...entry('awaiting'), jobId: 'j1', isSub: true, lastMonth: '2026-07', lastMonthFromCreation: false, deadline: '2026-11-16', daysLeft: 54 } as LienAffidavitEntry
+    const row = { job_id: 'j1', work_month: '2026-07', approved_hours: 20, deadline: '2026-10-15', noticed: true } as unknown as LienNoticeMonthRow
+    const sent = { id: 'i1', job_id: 'j1', kind: 'notice_53_056', status: 'sent', months: ['2026-07'], sent_at: '2026-09-01T15:00:00Z', voided_at: null, created_at: '2026-08-30T00:00:00Z', fields: {} } as unknown as LienDeskItemRow
+    const t = buildLienTimelineFromDesk('j1', { rows: [row], items: [sent], filings: [], entry: null, affidavit, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY })
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: 'Approve the affidavit — 54 days.', affidavitState: 'awaiting' })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the leader’s approval of the affidavit' })
+  })
+})
+
+describe('the day set by hand counts in the Lien window (v2.7193, punch list #335, row 1, the owner’s reading of 2026-11-13)', () => {
+  // A commercial sub job: hours in May, the last day set by hand as Jun 12, then hours approved in October.
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-05', '2026-08-17', -37), month('2026-10', '2027-01-15', 114)], totalHours: 40, sessionCount: 6, pendingSessions: 0, lastMonthKey: '2026-10', affidavitDue: '2027-02-16' }
+  const job = { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' }
+  const src = { workMonths: wm, filings: [], job, isSub: true, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY }
+  const keys = (t: ReturnType<typeof buildLienTimelineFromWindow>) => t.steps.filter((s) => s.kind === 'notice').map((s) => s.monthKey ?? s.key)
+
+  it('the last month is the hand day’s, the later hours’ month owes no notice, and the node says the hours do not move it', () => {
+    const t = buildLienTimelineFromWindow(src)
+    const lastWork = t.steps.find((s) => s.kind === 'last_work')!
+    expect(lastWork.date).toBe('2026-06-01')
+    expect(lastWork.words).toBe('last day set by hand · later hours do not move it')
+    // May and June are on the clock; October is not. It read May and October, and counted the affidavit from October.
+    const t2 = buildLienTimelineFromWindow({ ...src, filings: [filing({ months_covered: ['2026-05', '2026-06'], filed_at: '2026-07-10' })] })
+    expect(keys(t2)).toEqual(['2026-05', '2026-06'])
+    expect(t2.steps.find((s) => s.key === 'affidavit')!.date).toBe('2026-10-15')
+    expect(t2.next).toMatchObject({ kind: 'affidavit', date: '2026-10-15', daysLeft: 22 })
+  })
+
+  it('with no notice sent the window reads what the billed row reads: the late notice while the affidavit’s day is ahead, then gone', () => {
+    // Sep 23: May's and June's notice windows are closed, the affidavit's day (Oct 15) is ahead.
+    expect(buildLienTimelineFromWindow(src).next.kind).toBe('late_notice')
+    const gone = buildLienTimelineFromWindow({ ...src, todayYmd: '2026-11-13' })
+    expect(gone.next.kind).toBe('lien_gone')
+    expect(gone.lienGone).toBe(true)
+  })
+
+  it('a hand day later than the hours owes its own month’s notice in the window, as on the desk and the row', () => {
+    const later = buildLienTimelineFromWindow({ ...src, workMonths: { ...wm, months: [month('2026-07', '2026-10-15', 22)], lastMonthKey: '2026-07' }, job: { ...job, last_work_date: '2026-07-20', lien_last_work_on: '2026-08-14' } })
+    expect(keys(later)).toEqual(['2026-07', '2026-08'])
+    expect(later.steps.find((s) => s.kind === 'last_work')!.words).toBe('last day set by hand')
+    expect(later.next.words).toBe('Draft the Jul + Aug notice — 22 days.')
+  })
+
+  it('the desk’s own timeline keeps the hand month the RPC marks, whatever the ledger’s later hours say', () => {
+    const rows = [
+      { job_id: 'j1', work_month: '2026-05', approved_hours: 20, deadline: '2026-08-17', noticed: true, month_source: 'hours' },
+      { job_id: 'j1', work_month: '2026-06', approved_hours: 0, deadline: '2026-09-15', noticed: true, month_source: 'hand' },
+    ] as unknown as LienNoticeMonthRow[]
+    const t = buildLienTimelineFromDesk('j1', { rows, items: [], filings: [], entry: null, affidavit: null, isSub: true, propertyKind: 'non_residential', lastWorkDate: '2026-10-20', openBalance: 5_000, todayYmd: TODAY })
+    const lastWork = t.steps.find((s) => s.kind === 'last_work')!
+    expect(lastWork.date).toBe('2026-06-01')
+    expect(lastWork.words).toBe('last day set by hand · later hours do not move it')
+    expect(t.steps.find((s) => s.key === 'affidavit')!.date).toBe('2026-10-15')
   })
 })

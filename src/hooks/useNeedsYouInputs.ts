@@ -32,6 +32,8 @@ import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
 import { useJobKindGaps } from './useJobKindGaps'
 import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
+import { useReceiptChases } from './useReceiptChases'
+import { receiptChaseDetail } from '../lib/needsYou/fillInReceipts'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
 import { useMaterialsOnSiteNeeds } from './useMaterialsOnSiteNeeds'
 import { useCapacityUnderNudge } from './useCapacityUnderNudge'
@@ -175,6 +177,10 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { credits: inKindCredits } = useInKindCreditsDue(inKindCreditsEnabled)
   const baselineGapsEnabled = on('baselineGaps')
   const { gaps: baselineGaps } = useBaselineGaps(baselineGapsEnabled)
+  // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2).
+  const receiptChasesEnabled = on('receiptChases')
+  const { chases: receiptChaseCountsNow } = useReceiptChases(receiptChasesEnabled)
+  const receiptChases = useMemo(() => (receiptChaseCountsNow ? { count: receiptChaseCountsNow.count, detail: receiptChaseDetail(receiptChaseCountsNow) } : null), [receiptChaseCountsNow])
   const lineBudgetsReviewEnabled = on('lineBudgetsReview')
   const { review: lineBudgetsReviewRows, reload: reloadLineBudgetsReview } = useLineBudgetsReview(lineBudgetsReviewEnabled)
   const materialsOnSiteEnabled = on('materialsOnSite')
@@ -287,6 +293,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     inKindCredits,
     baselineGapsEnabled,
     baselineGaps,
+    receiptChasesEnabled,
+    receiptChases,
     lineBudgetsReviewEnabled,
     lineBudgetsReview: lineBudgetsReviewRows ? { lines: lineBudgetsReviewRows.lines.length, projects: lineBudgetsReviewRows.jobIds.length, assumedUsd: lineBudgetsReviewRows.assumedUsd, totalUsd: lineBudgetsReviewRows.totalUsd } : null,
     materialsOnSiteEnabled,

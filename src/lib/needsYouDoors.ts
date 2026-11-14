@@ -11,6 +11,7 @@ import { messagesThreadHref } from './messages/customerThread'
 import type { NeedsYouHost } from './needsYouSources'
 import { lookAlikesHref } from './research/permitsLink'
 import { materialsNeedsHref } from './needsYou/materialsOnSite'
+import { RECEIPT_CHASE_TEAM_HREF } from './needsYou/fillInReceipts'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
@@ -125,6 +126,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href('/jobs?tab=stages&kind=unset')
     case 'projects-no-baseline':
       return href('/jobs?tab=stages&kind=project')
+    case 'receipts-to-chase':
+      // The Team queue, where each charge's line says what the text did and has + Ticket (punch list #299).
+      return href(RECEIPT_CHASE_TEAM_HREF)
     case 'line-budgets-review':
       // The owner's weekly review opens over the card (punch list #234, PR 1c).
       return { kind: 'window', window: 'line-budgets-review' }

@@ -88,6 +88,8 @@ export const RATE_SAMPLE_LOW_PATH = `/rate?t=${SAMPLE_TOKEN_LOW}`
 /** First look (punch list #319): the Show us the problem page before anything is added, and its thank-you. The sample opens no look and keeps no file. */
 export const SHOW_US_SAMPLE_PATH = `/show/${SAMPLE_TOKEN}`
 export const SHOW_US_SAMPLE_DONE_PATH = `/show/${SAMPLE_TOKEN_DONE}`
+/** A painted map, shared (punch list #345): the page at /way/<code> with a made-up map. The sample reads no link. */
+export const PAINTED_WAY_SAMPLE_PATH = `/way/${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -212,6 +214,16 @@ export function customerJourneys(): Journey[] {
           guide: 'schedule-a-job-and-tell-the-customer',
           reflects: ['The office’s Booked line on the quick replies, or the app’s own words', 'Our company name and the company number'],
           render: { kind: 'text', text: 'text-booked' },
+        },
+        {
+          id: 'painted-map-page',
+          label: 'A painted map',
+          sublabel: 'the link from Share on a painted map · no sign-in',
+          when: 'Before a visit or a delivery, when the address is not enough.',
+          customerCan: 'See the way in drawn on a map, read what each numbered place is, open Directions to the start, and show their own dot to follow the line. Their dot stays on their phone.',
+          guide: 'paint-a-map',
+          reflects: ['Our company name', 'Nothing about the job: no customer, no price, and nobody’s name'],
+          render: { kind: 'page', path: PAINTED_WAY_SAMPLE_PATH },
         },
         {
           id: 'job-contract-email',
@@ -801,7 +813,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'lien-affidavit',
           label: 'Lien affidavit',
-          sublabel: 'filed with the county clerk, then mailed to the owner and the builder within 5 days · Liens on job → Mechanic’s lien',
+          sublabel: 'filed with the county clerk, then mailed to the owner and the builder within 5 days · Liens on job → Lien affidavit',
           when: 'Step 4 · by the 15th of the fourth month',
           customerCan: 'Read the sworn claim recorded on the property: the month, the amount and the notice that came first.',
           guide: 'file-a-lien-and-never-miss-its-deadlines',
@@ -831,7 +843,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'lien-retainage',
           label: 'Retainage notice (§ 53.057)',
-          sublabel: 'for money the builder holds back · Lien desk → All filings → Retainage',
+          sublabel: 'for money the builder holds back · Lien desk → By paper → Retainage notices',
           when: 'Beside the order · 30 days after our contract ends',
           customerCan: 'Read that retainage is unpaid, and hold it back from the builder.',
           guide: 'send-lien-notices-from-the-lien-desk',

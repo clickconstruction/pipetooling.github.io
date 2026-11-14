@@ -19,6 +19,18 @@ beforeAll(async () => {
 })
 
 describe('LienRulesDoor', () => {
+  it('held by the caller (the Lien desk\u2019s More sheet on a phone, punch list #352 PR 1): no button, the window when open, and a close tells the caller', async () => {
+    const onOpenChange = vi.fn()
+    const view = render(<LienRulesDoor where="desk_notice" button={false} open={false} onOpenChange={onOpenChange} />)
+    expect(screen.queryByTestId('lien-rules-door')).toBeNull()
+    expect(screen.queryByTestId('lien-rules-modal')).toBeNull()
+    view.rerender(<LienRulesDoor where="desk_notice" button={false} open onOpenChange={onOpenChange} />)
+    expect(await screen.findByTestId('lien-rules-modal')).toBeTruthy()
+    expect(screen.queryByTestId('lien-rules-door')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
   it('opens the rules in a window at the rule for the surface, not a new page', async () => {
     render(<LienRulesDoor where="desk_notice" />)
     const door = screen.getByTestId('lien-rules-door')

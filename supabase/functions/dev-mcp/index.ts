@@ -19,12 +19,17 @@ import { billTextLink } from '../_shared/gcKernels/lib/billing/billTextLink.ts'
 import { billDollars } from '../_shared/gcKernels/lib/billing/newestBill.ts'
 import { moneyCents } from '../_shared/gcKernels/lib/billing/openLineAllocation.ts'
 import { COLLECTIONS_RPC, collectionsRpcBody, contractEndedPatch, jobLabelOf, jobMarkAppliedWords, jobMarkDryRun, readMarkJob, type JobMarkPayload, type JobMarkReads } from '../_shared/devMcpJobMarks.ts'
+import { lastWorkDayAppliedWords, lastWorkDayDryRun, lastWorkDayPatch, readLastWorkWorld, type LastWorkDayPayload, type LastWorkReads } from '../_shared/devMcpLastWorkDay.ts'
+import { noticeByHandAppliedWords, noticeByHandDryRun, noticeByHandItemPatches, noticeByHandRows, readNoticeByHandWorld, type NoticeByHandOutcome, type NoticeByHandPayload, type NoticeByHandReads } from '../_shared/devMcpNoticeByHand.ts'
 import { propertyPatch, propertyPatchBody, propertyLienReading, propertyRecordAppliedWords, propertyRecordDryRun, readPropertyWorld, type PropertyRecordPayload, type PropertyReads } from '../_shared/devMcpPropertyRecord.ts'
 import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload } from '../_shared/devMcpJobs.ts'
 import { getSubmittals, readSubmittalWorld, submittalAppliedWords, submittalDryRun, submittalWrites, type SubmittalPayload } from '../_shared/devMcpSubmittals.ts'
 import { activityNoteAppliedWords, activityNoteDryRun, activityNoteRow, readActivityNoteWorld, type ActivityNotePayload } from '../_shared/devMcpActivityNote.ts'
 import { PAYMENT_LINK_RPC, PAYMENT_REMOVE_RPC, PAY_ROW_COLS, jobPaymentAppliedWords, jobStatusWords, jobPaymentDryRun, payJobLabel, paymentInsertRow, paymentLine, paymentLinkRpcBody, paymentNoteBody, paymentWordsPatch, readJobPaymentWorld, type JobPaymentPayload, type JobPaymentReads, type PayRow } from '../_shared/devMcpJobPayment.ts'
 import { bidPricedTotal } from '../_shared/devMcpBidPricing.ts'
+import { DRIVE_FOLDER_PAGE, DRIVE_READONLY_SCOPE, SUBMISSION_LANDING, SUBMISSION_UPLOAD_MAX_BYTES, bidSubmissionAppliedWords, bidSubmissionDryRun, driveFolderArgs, driveGetWith, readBidSubmissionWorld, readCompanyDrive, readDriveFile, readDriveFolder, submissionFilingRefusal, submissionLinkAfter, submissionLinkWrite, submissionNoteRow, uploadBytesProblem, type BidSubmissionPayload, type DriveGet, type SubmissionHow, type SubmissionOutcome } from '../_shared/devMcpBidSubmission.ts'
+import { driveFileBytes, landingFolder } from '../_shared/driveJobFolder.ts'
+import { driveViewUrl } from '../_shared/driveLink.ts'
 import { bidPricesAppliedWords, bidPricesDryRun, readBidPricesWorld, type BidPricesPayload, type PlanPrice, type PriceOp } from '../_shared/devMcpBidPrices.ts'
 import { bidLaborAppliedWords, bidLaborDryRun, laborCostFromWorld, readBidLaborWorld, type BidLaborPayload, type LaborReads, type PlanDirect, type PlanLaborRow } from '../_shared/devMcpBidLabor.ts'
 import { bidTakeoffAppliedWords, bidTakeoffDryRun, materialsTotal, readBidTakeoffWorld, type BidTakeoffPayload, type PlanLine, type PlanTakeoffRow, type TakeoffReads } from '../_shared/devMcpBidTakeoff.ts'
@@ -40,11 +45,11 @@ import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, plan
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentIsText, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
-import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { DRIVE, driveFolderIdFromUrl, findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { GmailError, gmailAttachment, gmailMessage, gmailMessageHeaders, gmailMessagePage } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
 import { base64UrlBytes, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
-import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadReply, mailFileTextArgs, mailFileTextReply, mailFileWhole, pickMailFile, MAIL_FILE_TEXT_MAX_CHARS, type MailFileBytes, type MailFileJobRef, type MailFileRaw } from '../_shared/devMcpMailFile.ts'
+import { MAIL_FILE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadReply, mailFileTextArgs, mailFileTextReply, mailFileWhole, pickMailFile, MAIL_FILE_TEXT_MAX_CHARS, type MailFileBytes, type MailFileJobRef, type MailFileRaw } from '../_shared/devMcpMailFile.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import { driveDocArgs, driveDocChangedWords, driveDocPlanExtra, driveDocSource, readDriveDoc, serviceAccountEmail, type DriveDocFacts } from '../_shared/devMcpDriveDoc.ts'
 import { docEditApplyReply, docEditPlanReply, docEditQuery, docEditStored, prepareDocEdits, type DocEditPrepared } from '../_shared/devMcpDocEdits.ts'
@@ -82,13 +87,15 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // v2.6426 / 0.18.0, behind get_person_file's 0.17.0; clock sessions — the start and the end, the description, the job, the
 // approval — v2.6437 / 0.19.0; a signed hours statement made, sent and filed on a matter v2.6414 / 0.20.0, punch list #212; a waiting field report filed or dismissed v2.6430 / 0.21.0; a teammate's license added or its date changed v2.6475 / 0.24.0, punch list #255)
 // a matter opened on a person's HR file v2.6582 / 0.31.0, punch list #269 PR 3b)
-// are a SECOND path, not a loosening of the first: forty-seven verbs
-// (_shared/devMcpWrites.ts) — thirty-seven POST one of fifteen hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
-// one SECURITY INVOKER wrapper, so the rows land under the dev's own RLS); the four plan-part verbs (v2.6317) write the rows
-// the job window's Plans section writes (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no
-// RPC exists for them; and the two report verbs (v2.6430) POST the HR queue's own file_person_report /
-// dismiss_person_report after the server's own read of the report, and the two person-matter verbs (v2.6582) POST the
-// HR file's own legal_person_matter_open after the server's read of the person and of any matter standing on them —
+// are a SECOND path, not a loosening of the first: one hundred and seven verbs
+// (_shared/devMcpWrites.ts) — fifty-one POST one of twenty-one hard-coded, dev-gated RPCs as the dev (dev_on_site_write and
+// dev_on_site_rename the two SECURITY INVOKER wrappers, so the rows land under the dev's own RLS); the other fifty-six name no RPC (rpc: null)
+// and write what the screen itself writes, as the dev under the same RLS, after the server's own read as the dry run:
+// the four plan-part verbs (v2.6317) the rows the job window's Plans section writes (plan_sets, plan_parts, a lane's
+// request), the two report verbs (v2.6430) the HR queue's own file_person_report / dismiss_person_report, the two
+// person-matter verbs (v2.6582) the HR file's own legal_person_matter_open, and each pair since — a job, a bill, the
+// marks, an account, the submittals, a note, a payment, a combine, sub labor, a property record, and the bid train's
+// six (the bid, its counts, takeoff, labor and prices, and v2.7154's sent paper) — by the comment on its own entry —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
@@ -273,10 +280,49 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // with the tab (personAmendments.ts) through devMcpAmendments.ts; the links are a source of their own, read as the dev
 // under RLS and fail-soft. No wrapper RPC, no migration, no new verb.
 //
+// 0.82.0 (v2.7154, the bid train's pair 6, punch list #339; the owner, 2026-11-11, on old proposal files copied into
+// company Drive: "connected to their bids where a user links the submissions"): read_drive_folder lists a Drive folder
+// or reads one file's facts through the intake service account on a read-only token, and plan_bid_submission →
+// apply_bid_submission files one Drive file into Team only › Sent by us of the bid's project folder and sets
+// bids.bid_submission_link to the filed copy, with a line on the bid's Notes (devMcpBidSubmission.ts). The folder is
+// made by bid-photos' make when the bid has none; a file in the company's Shared Drive is copied by Drive itself and
+// any other is read here and put through drive-link, 10 MB at most. The plan reads on the read-only token, so a dry
+// run cannot change Drive whatever it is asked. A bid that already carries a link needs replace: true. No wrapper
+// RPC, no migration.
+//
+// 0.83.0 (v2.7186, punch list #339; the owner, 2026-11-13, asked whether a bid's link should be the folder once it holds
+// several papers: "Use the folder"): plan_bid_submission → apply_bid_submission set the link to the paper while Team
+// only › Sent by us holds it alone, and to the Sent by us folder once it holds more, where 0.82.0 always linked the
+// newest paper. A link that already points into the bid's own Sent by us moves without replace: true; a bid that
+// already carries its folder takes another paper with no write to its row. No new verb, no migration.
+//
+// 0.84.0 (v2.7206; the owner, 2026-11-13, after three jobs read lien gone because nobody had told the app when the
+// work ended): plan_last_work_day → apply_last_work_day sets a job's last day of work for the lien clocks with its
+// reason, or clears it, as the Lien window's Set the day saves it — one PATCH on jobs_ledger under RLS
+// (devMcpLastWorkDay.ts). The dry run runs the window's own kernels from the mirror, so it refuses what the window
+// refuses and replies with the window's table of dates before and after; a day far from the clock hours, the
+// window's amber second look, needs anyway: true. Clock hours and pay are never touched, and nothing is drafted or
+// sent. No wrapper RPC, no migration. (0.83.0 is v2.7186's, the folder as a bid's submission link.)
+//
+// 0.85.0 (v2.7229; the owner, 2026-11-13: one paper mailed for several jobs at a property was on record for one of
+// them): plan_notice_by_hand → apply_notice_by_hand records a § 53.056 notice that already went out, as the Lien
+// desk's Already mailed? Record it… records it — one job_lien_filings row a covered job on one packet, written as the
+// paper went, and each job's live desk item marked sent on the mailing day (devMcpNoticeByHand.ts). The rows are the
+// form's own, built by its kernel from the mirror; a job that already holds the mailing and a first job whose claim
+// was set by hand are refused. Nothing is mailed, drafted or approved. No wrapper RPC, no migration.
+//
+// 0.86.0 (v2.7241; the owner's yes of 2026-11-13, after the look at a site whose box names said too much): the seat
+// could add, move, retire and bring back a box and could not rename one, nor fix a part's typed name, so a site's
+// names could not be tidied through it. plan_container_edit → apply_container_edit changes a live box's name, kind
+// and where line by the Edit window's rules; plan_part_rename → apply_part_rename fixes a typed part's name job wide
+// by the row Fix the name inserts, the plan naming every spelling, every box and what two lines become where the
+// rename merges them, and undo: <rename_id> puts it back. Both POST dev_on_site_rename (20261114050000), SECURITY
+// INVOKER as dev_on_site_write is; the two history records read "<agent> · MCP as <dev>".
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.81.0'
+const SERVER_VERSION = '0.86.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -441,6 +487,11 @@ const TOOLS: McpTool[] = [
     name: 'read_mail_file_text',
     description: `The words of one file off a search_mail hit (server 0.60.0), where read_mail_file hands back its bytes: a PDF's text layer, a text file (.txt, .csv, .md) or an email (.eml) decoded, read on the server by the file index's own reader, by the file's name as read_mail lists it. This is the cheap way to read a supplier's PDF: its words cost a fraction of its base64. A reply carries at most ${MAIL_FILE_TEXT_MAX_CHARS} characters of text, ending on a line, with text_source (pdf_layer | plain), a PDF's pages and pages_read, chars (the whole text's length), the file's size_bytes and sha256, and next_offset: call again with offset set to next_offset until it is null; read_next says so in words. A scan or a picture has no text layer and is refused in words, as are a kind the reader does not read (a spreadsheet, a Word file) and a PDF it cannot open: read those with read_mail_file. Read-only.`,
     inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" }, name: { type: 'string', description: "The file's name as read_mail lists it" }, offset: { type: 'number', description: "The character of the text to start at: 0 when left out, then each reply's next_offset" } }, required: ['account', 'id', 'name'] },
+  },
+  {
+    name: 'read_drive_folder',
+    description: `A Drive folder's files and folders, or one file's facts (server 0.82.0, punch list #339), read through the intake service account on a read-only token: a GET and nothing else, so nothing in Drive changes and no file's bytes are read. folder (an id or a link) lists what the folder holds, folders first and then by name, ${DRIVE_FOLDER_PAGE} entries a reply: each with its id, name, kind (folder, file, shortcut, google_doc, google_sheet, google_slides), mime, size, modified time, owner (null inside a Shared Drive, where the drive owns it), company_drive (whether the company's Shared Drive, the one that holds the jobs root, holds it) and link; next_page reads a long folder on. file (an id or a link) answers one file's facts the same way with Drive's md5 and sha256, who changed it last, the folders above it by name (parents, path) and who it is shared with (shared_with; null with the reason when Drive does not show it). A folder or a file the service account cannot open is refused in words that name the share that fixes it. It reads through the service account, not as a person, so it runs only as you and never through view_as. Logged with the id it read.`,
+    inputSchema: { type: 'object', properties: { folder: { type: 'string', description: 'A Drive folder id or its link' }, file: { type: 'string', description: 'A Drive file id or its link, in place of folder' }, page: { type: 'string', description: "A reply's next_page, quoted whole, to read a long folder on" } } },
   },
   {
     name: 'plan_mail_file',
@@ -796,6 +847,26 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { contract: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['contract', 'plan_hash'] },
   },
   {
+    name: 'plan_last_work_day',
+    description: "Dry-run a job's last day of work for the lien clocks (v2.7206): the day the Lien window's Last day of work line sets by hand, with its reason, as one write on the job under the window's own RLS — the day, the reason, the moment and you stamped; clear: true goes back to the clock hours or the job's creation. Every lien date counts from the month of this day: the months a notice names, the § 53.056 notice day, the § 53.052 affidavit day and the § 53.158 suit day. The window's rules hold: a day after today or earlier than the clock hours is refused, the day the job already reads is refused, a reason is required, and a day far from the clock hours (the window's amber second look) is refused until the person who knows the day has confirmed it and the ask carries anyway: true. The dry run reads the job, its property's kind, its approved clock months and the months its notices name, and replies with the day before → after and the window's own table of dates before → after, under a plan_hash; nothing is written. Clock hours and pay are never touched, and no notice or affidavit is drafted or sent. The record shows you as who set the day, so use it for a day and a reason a person gave you in their own words.",
+    inputSchema: { type: 'object', properties: { day: { type: 'object', description: '{ job_id (find_job), last_work_on (YYYY-MM-DD), reason (one line: what was done that day, and why the hours do not show it), anyway? (true, only after the plan called the day far from the clock hours) } | { job_id, clear: true }' } }, required: ['day'] },
+  },
+  {
+    name: 'apply_last_work_day',
+    description: 'Set the day you planned: the same day plus the plan_hash from plan_last_work_day. Reads the job again first and writes only when it still matches: one PATCH on jobs_ledger as you, read back to confirm it landed (a row RLS kept is said).',
+    inputSchema: { type: 'object', properties: { day: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['day', 'plan_hash'] },
+  },
+  {
+    name: 'plan_notice_by_hand',
+    description: "Dry-run the record of a § 53.056 lien notice that ALREADY went out (v2.7229), as the Lien desk's Already mailed? Record it… records it: one paper, printed and mailed by hand, sometimes for several jobs at one property. It writes one filing a covered job on one packet — the day mailed, how, the mail number, who it went to, the claim and the months AS PRINTED on the paper, the saved copy's link and note — and marks each covered job's live notice item on the desk sent on the mailing day. Type what the paper says and where it went, never what it should have said: a paper that went to the owner alone names the owner alone. job_id is the job the paper was printed for; also_covers are other unpaid jobs at the same property (the plan lists them, and refuses any other job). Each job's own share is what its sent bills still owe; the paper's total is kept beside it when it differs. Refused: whatever the form's own list refuses (no recipient, no months, a day ahead of today, an email with no address), a job that already holds a notice with that mailing day and number (already recorded), and a first job whose claim was set by hand on the desk. The dry run replies with the paper as typed, each job with its share, the desk item that will read sent and the notices it already holds, the snapshot the rows keep and the unpaid jobs at the property it leaves out, under a plan_hash; nothing is written. It records a fact a person gave you: it mails nothing, drafts nothing, approves nothing, and does not judge whether the paper does what the law asks of a notice.",
+    inputSchema: { type: 'object', properties: { notice: { type: 'object', description: '{ job_id (find_job), also_covers?: [job ids], sent_on (YYYY-MM-DD), method (certified_mail | mail | traceable_courier | email | hand), tracking?, to: [owner, original_contractor], claim_as_printed (dollars), months_as_printed: [YYYY-MM], saved_copy_link?, saved_copy_note? }' } }, required: ['notice'] },
+  },
+  {
+    name: 'apply_notice_by_hand',
+    description: 'Record the notice you planned: the same notice plus the plan_hash from plan_notice_by_hand. Reads everything again first and writes only when it still matches: the filings as you in one insert, read back by their packet, then each covered job’s live desk item marked sent with its filing. Replies with what landed on each job; a job whose row did not land, or whose desk item was not marked, is named with the rest.',
+    inputSchema: { type: 'object', properties: { notice: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['notice', 'plan_hash'] },
+  },
+  {
     name: 'plan_property_record',
     description: "Dry-run a change to a property record's lien facts (v2.6950, the first of the Lien desk's verbs): the record the Property record row on Edit Job, Edit customer's Properties and the Lien desk's property window save — the county, the legal description, the kind (residential | commercial), the homestead answer, the owner of record (mode, name, company), where the owner's mail goes, the owner's email and phone — as one write on customer_addresses under the form's own RLS. Name the record by job_id (the job's linked property) or property_id. The form's rules hold: a typed county is marked typed by hand, a commercial kind clears homestead, homestead is asked only of a residential property, and a yes or a no stamps the answer where the record carries that column. The record is shared, so the dry run names every job that follows the change, each column before → after, what the Lien desk reads off the record before and after (the dates' footing, the homestead hold) and what the lien papers still lack, under a plan_hash; nothing is written. Refused when the job has no record linked or the record already reads that way.",
     inputSchema: { type: 'object', properties: { record: { type: 'object', description: '{ job_id (find_job) | property_id, set: { county?, legal_description?, property_kind? (residential | commercial | ""), homestead? (true | false), owner_mode? (homeowner | building_owner | ""), owner_name?, owner_company?, owner_mailing_address?, owner_email?, owner_phone? } }' } }, required: ['record'] },
@@ -894,6 +965,16 @@ const TOOLS: McpTool[] = [
     name: 'apply_sub_labor_payment',
     description: "Make the payment change you planned: the same payment plus the plan_hash from plan_sub_labor_payment. Reads the sheet, its payments and the bank row's allocations again first and writes only when they still match; then one row into people_labor_job_payments as you, or the remove RPC. Replies with the row or the trace event, and the sheet's paid and open figures read back.",
     inputSchema: { type: 'object', properties: { payment: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['payment', 'plan_hash'] },
+  },
+  {
+    name: 'plan_bid_submission',
+    description: `Dry-run filing a bid's sent paper from Drive and linking it (v2.7154, the bid train's pair 6, punch list #339): submission = { bid (an id, or text that finds one bid: "b398"), drive_file_id or drive_url (read_drive_folder lists a folder's files with their ids), replace? }. One paper a call. Nothing is written, in the app or in Drive: the bid is read as you and Drive through the service account on a read-only token. The plan names the paper's facts as Drive states them (name, mime, size, md5, sha256, modified, owner), the bid's project folder (there already, or made at the apply as the Files window's Make the project folder makes it, with the name it will get), where the paper lands (Team only › Sent by us of that folder, the app's fixed home for what we sent), how (Drive's own copy when the file is in the company's Shared Drive, read on the server and uploaded through drive-link's put when it is elsewhere, ${SUBMISSION_UPLOAD_MAX_BYTES / 1024 / 1024} MB at most, or nothing copied when the same bytes are there already), what Sent by us already holds, the link the bid carries now and the one it would carry, and the line its Notes get. WHICH LINK (since 0.83.0): the column holds one link, so it is the paper while Sent by us holds this paper alone, and the Sent by us folder itself once it holds more, where every paper sent is a click away (link.is: paper | folder). REFUSED in words: a bid whose submission link points outside its own Sent by us folder unless replace: true (the plan names the link it would replace; a link to a paper in that folder, or to the folder, moves without it), a bid whose link is already what this plan would set with the paper already there, a file in the trash, a folder, a shortcut, a Google Doc, Sheet or Slides (download it as a PDF), a file the service account cannot open (with the share that fixes it), a project folder link that is not a folder, cannot be opened or added to, or sits in a personal Drive, a bid with no folder while no jobs root is set, a file outside the Shared Drive that is too big or cannot be downloaded. It does not log a contact, set the sent date or the outcome (plan_bid_update), move the original or tell anyone.`,
+    inputSchema: { type: 'object', properties: { submission: { type: 'object', description: '{ bid (id, or text that finds one bid), drive_file_id | drive_url, replace? (true to take the place of a link the bid already carries) }' } }, required: ['submission'] },
+  },
+  {
+    name: 'apply_bid_submission',
+    description: "File and link the paper you planned: the same submission plus the plan_hash from plan_bid_submission. Reads the bid and Drive again first and writes only when the plan still matches: a file changed, renamed or trashed since, a link set on the bid since, a folder made or a paper filed since each refuse it. Then, in order: the project folder made through bid-photos' make as you when the bid has none (which writes bids.drive_link); the paper into Team only › Sent by us (Drive's copy by the service account, or the bytes read on the server, checked against the plan's size and sha256 and put through drive-link as you); bids.bid_submission_link set by the Files window's own write, held to the link the plan read — to the filed copy while it is the folder's only paper, to the Sent by us folder once the folder holds more, and not written at all when the bid already carries that folder; one line on the bid's Notes as plan_activity_note writes one. Each step's outcome is named: a paper filed whose link did not land says so with the write that sets it, and a note that failed never undoes the rest. One apply per plan.",
+    inputSchema: { type: 'object', properties: { submission: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['submission', 'plan_hash'] },
   },
   {
     name: 'plan_submittal_rows',
@@ -1001,6 +1082,26 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { move: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['move', 'plan_hash'] },
   },
   {
+    name: 'plan_container_edit',
+    description: "Dry-run a change to a live cage or box on a job (v2.7241), as the Edit window saves it: its name, its kind (cage | box | loose) and its where line, any one or all three. The name is saved in capitals, holds 24 characters and is refused when another live box of the job carries it; a retired box's name is free. The plan lists each field before and after and says what happens to a label already printed: it still opens the box, because its code is cut from the box's id and never from its name. Replies with a plan_hash; nothing is written. The box's place on site is plan_container with action move. Read read_on_site first.",
+    inputSchema: { type: 'object', properties: { edit: { type: 'object', description: "{ job_id (find_job), agent_label (the robot's name as the box's history shows it), container (the box's name as it reads now, or its id), and at least one of label (the new name), kind ('cage' | 'box' | 'loose'), where (\"\" clears the line) }" } }, required: ['edit'] },
+  },
+  {
+    name: 'apply_container_edit',
+    description: 'Make the box change you planned: the same edit plus the plan_hash from plan_container_edit. Runs the dry run again first and writes only when it still matches — the box renamed, retired or changed since, plan again. One update of the box as you through dev_on_site_rename under your own RLS; a new name is kept in the box\'s history with the old one, stamped "<agent_label> · MCP as <you>". The crew and the office see it at once.',
+    inputSchema: { type: 'object', properties: { edit: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['edit', 'plan_hash'] },
+  },
+  {
+    name: 'plan_part_rename',
+    description: "Dry-run fixing a typed part's name on a job (v2.7241), as Fix the name does: from (the name as read_on_site lists it; capitals and doubled spaces do not matter) and to. The rename is the whole job's, in every box that holds the line, since a part moved between two boxes is one ledger row both read; a part from the parts book keeps the book's name and is refused. The plan lists every spelling the rows carry now, every box the line is in, the name an undo would put back and, where the new name is already a line in one of those boxes, what the two lines become — the sum, or less when the newer count of the two resets the line. No quantity, count, box or time changes. With undo: <rename_id> it plans putting a rename's old name back on the rows it changed that still carry the new one. Replies with a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { rename: { type: 'object', description: "{ job_id (find_job), agent_label (the robot's name as the rename's record shows it), and either from + to, or undo (a rename_id from apply_part_rename, or a row of job_part_renames) }" } }, required: ['rename'] },
+  },
+  {
+    name: 'apply_part_rename',
+    description: 'Make the rename, or the undo, you planned: the same rename plus the plan_hash from plan_part_rename. Runs the dry run again first and writes only when it still matches — a press on that line since, plan again. One job_part_renames row as you through dev_on_site_rename under your own RLS, stamped "<agent_label> · MCP as <you>"; the database sets the name on the rows it names and keeps which ones. Replies with the rename_id to quote in an undo.',
+    inputSchema: { type: 'object', properties: { rename: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['rename', 'plan_hash'] },
+  },
+  {
     name: 'read_file_index_status',
     description: 'Where our own file index stands (v2.6332, punch list #240): rows, rows with text, counts by source (export, pdf_layer, plain, ocr), by why (scan, kind, big, slow, error, reading) and by folder, the jobs and bids with rows, the PDFs read only in part, the live and paid jobs with a Drive folder and how many have no row yet, the newest indexed stamp, the oldest recheck and the sweep’s last look. One call of dev_file_index_status as you. Read it before a backfill and after.',
     inputSchema: { type: 'object', properties: {} },
@@ -1037,7 +1138,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, a piece at a time past 54,000 bytes (offset, then each reply's next_offset), read_mail_file_text hands back its words instead — a PDF's text layer, a text file or an .eml, 60,000 characters a reply, a scan refused in words — the cheap way to read a supplier's PDF, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. plan_mail_untag → apply_mail_untag (0.79.0) take a conversation back off its job through that press's own untag, for a tag this seat made and no other: the plan writes nothing and reads back what goes, what is held, what a matter keeps and what is left behind, and there is no undo. Secret columns (tokens, hashes, passwords) come back redacted. Writes are ninety-seven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text, a section at a time against its own headings, or since 0.69.0 a line set under a heading or one run of text swapped inside a section, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_theme_review → apply_theme_review (the review of marks already there: keep the proposed marks named and take the named marks off with a reason each, up to 200 a call; a kept mark carries your name, and a mark that came off is made again, never reworded), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.53.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.55.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.56.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.56.0), plan_property_record → apply_property_record (a property record's lien facts as the Property record row saves them: the county, the legal description, the kind, the homestead answer, the owner of record and where the owner's mail goes, named by a job or by the record, with every job that follows the change named in the plan; since 0.73.0), plan_job_payment → apply_job_payment (a payment on a job: a row removed through the Job window's own remove RPC with your reason left on the job's activity, one recorded as the payments table writes it, or one tied to its bank row as Accounts Receivable links it; the plan says what stands behind the row and what the paid figure and status read after; since 0.65.0) and plan_job_combine → apply_job_combine (one job combined into another as Pipeline's Combine does it, the source's total added to the target's and its numbers kept as prior numbers; the plan lists what moves and every reason it would stop, bills and payments never move, there is no undo and apply needs confirm_no_undo: true; take a duplicate payment off first, then combine; since 0.65.0), plan_sub_labor → apply_sub_labor (a sub labor sheet on a job, made, changed, moved to another job or removed as Jobs → Subs → Pay's New Sub Labor and Edit window write it: one subcontractor or primary, the day or the span, lines as flat amounts or hours at a rate, a note, and stated: { source } when the days come from an outside record and not a punch, the mark riding in each line's words; the plan shows the sheet, their other sheets on the job, the job's sub labor and profit before and after, and the job's allocated bank rows that may be the same pay; since 0.71.0) and plan_sub_labor_payment → apply_sub_labor_payment (what was paid against a sheet, as Make Payment writes it, or a payment removed with its trace; name the bank row that paid it and the plan says whether it is already allocated to a job as cost, where the dollars would count twice — it never moves the allocation, plan_cost_batch does; since 0.71.0), plan_submittal_rows → apply_submittal_rows (submittal rows onto a bid's draft revision, one or many, added or changed by tag, as Bids → Submittals writes them; Rev 1 is made when the bid has none) and plan_submittal_log → apply_submittal_log (the order log's facts on a line: ordered, PO, expected, delivered, a note for the GC) — get_submittals reads where every row and line stands first, with the status in plain words to read back; nothing in the three shares with the GC or tells anyone (since 0.51.0), plan_activity_note → apply_activity_note (one line of your words on a job's Job activity / notes or on a bid's Notes, as the Note press and the Bid Board write them — where the team reads what moved; it tells nobody; since 0.54.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_bid_update → apply_bid_update (a bid changed as Edit Bid and the Bid Board change it: its value, the sent date and who it went to, the outcome with the day it was decided and why it was lost, the due date, the estimator, the GC, the development, the links, the notes; the plan shows each column before and after and what the database does next — a win opens no job, a first sent date fills the labor rows from the book; a bid with versions keeps Sent and Won / Lost per GC; plan_bid_counts → apply_bid_counts writes its count rows as the Count Sheet does, one row a fixture in the base bid or in an alternate, added, changed or removed, a faulty row held and the rest going on; plan_bid_takeoff → apply_bid_takeoff writes the part lines on a count row and the quoted materials cost each, as the Takeoffs tab holds them, a line's quantity for one counted unit, the plan stating the bid's materials before and after; plan_bid_labor → apply_bid_labor writes the Labor tab's estimate boxes, the hours on the counted fixtures' labor rows (typed, never teaching the labor book) and the direct cost lines, the plan stating the tab's direct cost of the bid before and after; plan_bid_pricing → apply_bid_pricing sets a count row's price as the Pricing tab does on the pricing it opens on, a shared book copied to the bid first, a sent bid only with revise: true, the plan stating the grid's revenue total before and after, since 0.78.0; the labor since 0.75.0; the takeoff since 0.74.0; the counts since 0.72.0; the update since 0.70.0), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_materials_move → apply_materials_move (everything a job holds on site moved to another job, for a count recorded under the wrong job: places, cages and boxes, the ledger, box moves and photos, every box keeping its id and printed code, a same-name place becoming one, Unsorted folding, a stencil the target already holds renumbered; the plan counts both jobs before and after and says where the photos' files stay); plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, a piece at a time past 54,000 bytes (offset, then each reply's next_offset), read_mail_file_text hands back its words instead — a PDF's text layer, a text file or an .eml, 60,000 characters a reply, a scan refused in words — the cheap way to read a supplier's PDF, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. plan_mail_untag → apply_mail_untag (0.79.0) take a conversation back off its job through that press's own untag, for a tag this seat made and no other: the plan writes nothing and reads back what goes, what is held, what a matter keeps and what is left behind, and there is no undo. Secret columns (tokens, hashes, passwords) come back redacted. Writes are one hundred and seven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text, a section at a time against its own headings, or since 0.69.0 a line set under a heading or one run of text swapped inside a section, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_theme_review → apply_theme_review (the review of marks already there: keep the proposed marks named and take the named marks off with a reason each, up to 200 a call; a kept mark carries your name, and a mark that came off is made again, never reworded), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.53.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.55.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.56.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.56.0), plan_property_record → apply_property_record (a property record's lien facts as the Property record row saves them: the county, the legal description, the kind, the homestead answer, the owner of record and where the owner's mail goes, named by a job or by the record, with every job that follows the change named in the plan; since 0.73.0), plan_last_work_day → apply_last_work_day (a job's last day of work for the lien clocks, set by hand with its reason as the Lien window's Set the day saves it, or cleared; the window's rules hold, the plan shows the lien dates before and after, and a day far from the clock hours needs the person's confirmation and anyway: true; since 0.84.0), plan_notice_by_hand → apply_notice_by_hand (a § 53.056 lien notice that already went out, recorded as the Lien desk's Already mailed? Record it… records it: one filing a covered job on one packet, typed as the paper went — the day, how, to whom, the claim and the months as printed, the saved copy — and each job's live desk item marked sent; a job that already holds the mailing is refused, and nothing is mailed, drafted or approved; since 0.85.0), plan_job_payment → apply_job_payment (a payment on a job: a row removed through the Job window's own remove RPC with your reason left on the job's activity, one recorded as the payments table writes it, or one tied to its bank row as Accounts Receivable links it; the plan says what stands behind the row and what the paid figure and status read after; since 0.65.0) and plan_job_combine → apply_job_combine (one job combined into another as Pipeline's Combine does it, the source's total added to the target's and its numbers kept as prior numbers; the plan lists what moves and every reason it would stop, bills and payments never move, there is no undo and apply needs confirm_no_undo: true; take a duplicate payment off first, then combine; since 0.65.0), plan_sub_labor → apply_sub_labor (a sub labor sheet on a job, made, changed, moved to another job or removed as Jobs → Subs → Pay's New Sub Labor and Edit window write it: one subcontractor or primary, the day or the span, lines as flat amounts or hours at a rate, a note, and stated: { source } when the days come from an outside record and not a punch, the mark riding in each line's words; the plan shows the sheet, their other sheets on the job, the job's sub labor and profit before and after, and the job's allocated bank rows that may be the same pay; since 0.71.0) and plan_sub_labor_payment → apply_sub_labor_payment (what was paid against a sheet, as Make Payment writes it, or a payment removed with its trace; name the bank row that paid it and the plan says whether it is already allocated to a job as cost, where the dollars would count twice — it never moves the allocation, plan_cost_batch does; since 0.71.0), plan_submittal_rows → apply_submittal_rows (submittal rows onto a bid's draft revision, one or many, added or changed by tag, as Bids → Submittals writes them; Rev 1 is made when the bid has none) and plan_submittal_log → apply_submittal_log (the order log's facts on a line: ordered, PO, expected, delivered, a note for the GC) — get_submittals reads where every row and line stands first, with the status in plain words to read back; nothing in the three shares with the GC or tells anyone (since 0.51.0), plan_activity_note → apply_activity_note (one line of your words on a job's Job activity / notes or on a bid's Notes, as the Note press and the Bid Board write them — where the team reads what moved; it tells nobody; since 0.54.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_bid_update → apply_bid_update (a bid changed as Edit Bid and the Bid Board change it: its value, the sent date and who it went to, the outcome with the day it was decided and why it was lost, the due date, the estimator, the GC, the development, the links, the notes; the plan shows each column before and after and what the database does next — a win opens no job, a first sent date fills the labor rows from the book; a bid with versions keeps Sent and Won / Lost per GC; plan_bid_counts → apply_bid_counts writes its count rows as the Count Sheet does, one row a fixture in the base bid or in an alternate, added, changed or removed, a faulty row held and the rest going on; plan_bid_takeoff → apply_bid_takeoff writes the part lines on a count row and the quoted materials cost each, as the Takeoffs tab holds them, a line's quantity for one counted unit, the plan stating the bid's materials before and after; plan_bid_labor → apply_bid_labor writes the Labor tab's estimate boxes, the hours on the counted fixtures' labor rows (typed, never teaching the labor book) and the direct cost lines, the plan stating the tab's direct cost of the bid before and after; plan_bid_pricing → apply_bid_pricing sets a count row's price as the Pricing tab does on the pricing it opens on, a shared book copied to the bid first, a sent bid only with revise: true, the plan stating the grid's revenue total before and after, since 0.78.0; the labor since 0.75.0; the takeoff since 0.74.0; the counts since 0.72.0; the update since 0.70.0; plan_bid_submission → apply_bid_submission files the paper that was sent onto its bid: one Drive file into Team only › Sent by us of the bid's project folder, the folder made first when the bid has none, a file in the company's Shared Drive copied by Drive itself and any other read on the server, 10 MB at most, then the bid's submission link set and a line left on its Notes — the link is the filed copy while it is the folder's only paper and, since 0.83.0, the Sent by us folder once the folder holds more; a bid whose link points outside that folder needs replace: true, and read_drive_folder lists a Drive folder or reads one file's facts first, through the service account on a read-only token, since 0.82.0), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_materials_move → apply_materials_move (everything a job holds on site moved to another job, for a count recorded under the wrong job: places, cages and boxes, the ledger, box moves and photos, every box keeping its id and printed code, a same-name place becoming one, Unsorted folding, a stencil the target already holds renumbered; the plan counts both jobs before and after and says where the photos' files stay); plan_container_edit → apply_container_edit (a live box's name, kind and where line as the Edit window saves them; a label already printed still opens the box) and plan_part_rename → apply_part_rename (a typed part's name fixed on the whole job as Fix the name does, the plan naming every box it reaches and what two lines become where it merges them, and undo: <rename_id> puts it back; since 0.86.0); plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -2373,6 +2474,112 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (!landed) return ok(jobMarkAppliedWords(p, label, { ok: false, error: 'This account could not change this job (RLS let no row through).' }), { target: p.job_id })
       return ok(jobMarkAppliedWords(p, label, { ok: true, detail: { row } }), { target: p.job_id })
     }
+    case 'plan_last_work_day':
+    case 'apply_last_work_day': {
+      // v2.7206: a job's last day of work for the lien clocks, as the Lien window's Set the day saves it — one PATCH on
+      // jobs_ledger under RLS. No wrapper RPC: the dry run is this server's read of the job, its property's kind, its
+      // approved clock months and the months its notices name, run through the window's own kernels
+      // (devMcpLastWorkDay.ts) and hashed with the payload; apply reads again and writes only when the hash still
+      // matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as LastWorkDayPayload
+      const reads: LastWorkReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      let world
+      try {
+        world = await readLastWorkWorld(reads, p.job_id)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = lastWorkDayDryRun(p, world, { userId: who.userId }, todayYmdInAppTz())
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const label = jobLabelOf(world.job!)
+      const patch = lastWorkDayPatch(p, { userId: who.userId }, new Date().toISOString())
+      const res = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${p.job_id}`, patch)
+      if (!res.ok) return errored(restError(res.status, res.body))
+      // return=minimal says nothing about rows RLS kept: read the columns back.
+      const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${p.job_id}`)
+      const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
+      const landed = !!row && String(row.lien_last_work_on ?? '') === String(patch.lien_last_work_on ?? '') && String(row.lien_last_work_note ?? '') === String(patch.lien_last_work_note ?? '')
+      if (!landed) return ok(lastWorkDayAppliedWords(p, label, { ok: false, error: 'This account could not change this job (RLS let no row through).' }), { target: p.job_id })
+      return ok(lastWorkDayAppliedWords(p, label, { ok: true, detail: { row } }), { target: p.job_id })
+    }
+    case 'plan_notice_by_hand':
+    case 'apply_notice_by_hand': {
+      // v2.7229: a § 53.056 notice that already went out, as the Lien desk's Already mailed? Record it… records it — the
+      // form's own rows on job_lien_filings and its mark on job_lien_desk_items, as the dev under RLS. No wrapper RPC:
+      // the dry run is this server's read of the jobs, the desk and the notices on record, run through the form's
+      // kernel (devMcpNoticeByHand.ts) and hashed with the payload; apply reads again and writes only when the hash
+      // still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as NoticeByHandPayload
+      const rowsOf = async (table: string, query: string) => {
+        const res = await restGet(session, table, query)
+        if (!res.ok) throw new Error(restError(res.status, res.body))
+        return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+      }
+      const reads: NoticeByHandReads = {
+        rows: rowsOf,
+        billedOpen: async (job) => {
+          const res = await restGet(session, 'rpc/lien_billed_open', `p_job_id=${job.id}&p_payments_made=${job.payments_made}&p_revenue=${job.revenue}&p_status=${encodeURIComponent(job.status ?? '')}`)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          const n = Number(res.body)
+          return Number.isFinite(n) ? n : 0
+        },
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      const today = todayYmdInAppTz()
+      let world
+      try {
+        world = await readNoticeByHandWorld(reads, p)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const dry = noticeByHandDryRun(p, world, { userId: who.userId, name: who.name }, today)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const packetId = crypto.randomUUID()
+      const made = await restRows(session, 'POST', 'job_lien_filings', 'select=id,job_id', noticeByHandRows(dry, { userId: who.userId }, packetId))
+      if (!made.ok) return errored(restError(made.status, made.body))
+      // Read the packet back: what an insert returns says nothing about a row RLS kept.
+      let back: Record<string, unknown>[] = []
+      try {
+        back = await rowsOf('job_lien_filings', `select=id,job_id&packet_id=eq.${packetId}`)
+      } catch (e) {
+        return errored(e instanceof Error ? e.message : String(e))
+      }
+      const filingByJob = new Map<string, string>()
+      for (const r of back) filingByJob.set(String(r.job_id ?? ''), String(r.id ?? ''))
+      const itemResult = new Map<string, NoticeByHandOutcome['item']>()
+      for (const it of noticeByHandItemPatches(dry, filingByJob, today)) {
+        // The form's own mark, one item at a time; an item that fails is named and the rest go on.
+        const res = await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${it.itemId}`, it.patch)
+        itemResult.set(it.jobId, res.ok ? 'marked sent' : { failed: restError(res.status, res.body) })
+      }
+      const outcomes: NoticeByHandOutcome[] = dry.input.jobs.map((j) => ({ jobId: j.jobId, label: j.label, filingId: filingByJob.get(j.jobId) ?? null, item: itemResult.get(j.jobId) ?? 'none' }))
+      return ok(noticeByHandAppliedWords(p, packetId, outcomes), { target: p.job_id })
+    }
     case 'plan_sub_labor':
     case 'apply_sub_labor': {
       // v2.6944: a sub labor sheet through the screen's own rows as the dev under RLS — New Sub Labor's sheet, assignee
@@ -3098,6 +3305,149 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         note = made.ok ? { asked: true, saved: true } : { asked: true, saved: false, why: restError(made.status, made.body) }
       }
       return ok(bidUpdateAppliedWords(bid, landed, note, row), { target: bid.id })
+    }
+    case 'read_drive_folder': {
+      // 0.82.0 (punch list #339): a Drive folder's files and folders, or one file's facts, through the intake service
+      // account on a read-only token (DRIVE_READONLY_SCOPE) and DriveGet, which only GETs: nothing in Drive can change
+      // and no file's bytes are read. The office's Drive settings are read as you (app_settings under RLS), to say
+      // whether the company's Shared Drive holds each entry. The service account sees more than any one person, so
+      // the verb runs as a dev alone: under view_as the role is the viewed person's and it refuses.
+      if (who.role !== 'dev') return refused('read_drive_folder reads Drive through the intake service account, which sees more than any one person: it runs only as you, with your own key.', { target: 'drive' })
+      const parsed = driveFolderArgs(args)
+      if (!parsed.ok) return refused(parsed.error, { target: 'drive' })
+      const target = parsed.ask.id
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+      if (!saJson) return refused('Drive is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md).', { target })
+      let drive: DriveGet
+      try {
+        drive = driveGetWith(await googleServiceToken(saJson, [DRIVE_READONLY_SCOPE]))
+      } catch (e) {
+        return refused(`Drive could not be reached: ${e instanceof Error ? e.message : String(e)}`, { target })
+      }
+      try {
+        const company = await readCompanyDrive(readerAs(await jwt()), drive, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
+        const ctx = { serviceAccount: serviceAccountEmail(saJson), company }
+        const read = parsed.ask.kind === 'folder' ? await readDriveFolder(drive, parsed.ask, ctx) : await readDriveFile(drive, parsed.ask, ctx)
+        if (!read.ok) return refused(read.error, { target })
+        return ok(read.reply, { target, rowCount: read.rows })
+      } catch (e) {
+        const message = `Drive did not answer the read: ${e instanceof Error ? e.message : String(e)}`
+        return { log: { status: 'error', target, error: message }, text: message, isError: true }
+      }
+    }
+    case 'plan_bid_submission':
+    case 'apply_bid_submission': {
+      // v2.7154 (the bid train's pair 6, punch list #339): a bid's sent paper filed from Drive and linked. The dry run
+      // is this server's read of the bid as the dev and of Drive through the service account on a read-only token
+      // (devMcpBidSubmission.ts), hashed with the payload; apply reads again and writes only when the hash still
+      // matches. The writes are the app's own doors as the dev — bid-photos' make for a bid with no project folder,
+      // drive-link's put for a file outside the company's Shared Drive, the Files window's PATCH of the link, the
+      // Notes row — and one the app has no door for: Drive's own copy, by the service account, of a file already in
+      // the company's Shared Drive, so a large paper never passes through here. No wrapper RPC, no migration.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const p = built.body.p as BidSubmissionPayload
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+      if (!saJson) return refused('Drive is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md).', { target: built.target })
+      const serviceAccount = serviceAccountEmail(saJson)
+      const session = await jwt()
+      let readToken: string
+      try {
+        readToken = await googleServiceToken(saJson, [DRIVE_READONLY_SCOPE])
+      } catch (e) {
+        return refused(`Drive could not be reached: ${e instanceof Error ? e.message : String(e)}`, { target: built.target })
+      }
+      let world
+      try {
+        world = await readBidSubmissionWorld(readerAs(session), driveGetWith(readToken), p, { envRoot: Deno.env.get('DRIVE_JOBS_FOLDER_ID'), serviceAccount })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      if ('refused' in world) return refused(world.refused, { target: built.target })
+      const target = world.bid.id
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target, error: text }, text, isError: true })
+      const dry = bidSubmissionDryRun(p, world, { serviceAccount })
+      if (!dry.ok) return refused(dry.refused, { target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target })
+      // One apply per plan, asked of the log before the hash: a plan that landed changed the bid's link, so it no
+      // longer hashes the same, and "already applied" says more than "the world changed".
+      const prior = await hooks.priorApply(name, built.planHash ?? '')
+      if (prior) return refused(alreadyApplied(name, prior), { target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target })
+      const how = dry.reply.how as SubmissionHow
+      const file = dry.reply.file as { drive_file_id: string; name: string; mime: string; size_bytes: number; sha256: string | null }
+      const untouched = "Nothing was filed and the bid's link is as it was."
+      // 1 · the project folder, made as the Files window's Make the project folder makes it when the bid has none.
+      let folderId = world.folder.kind === 'ok' ? world.folder.id : null
+      let folderUrl = world.folder.kind === 'ok' ? world.folder.url : null
+      let folderMade = false
+      if (!folderId) {
+        const made = await invokeAsDev(session, 'bid-photos', { action: 'make', bid_id: world.bid.id })
+        if (!made.ok) return errored(`The project folder was not made (bid-photos: ${fnWords(made)}). ${untouched}`)
+        const answer = made.body as { folder?: { projectUrl?: unknown } } | null
+        folderUrl = typeof answer?.folder?.projectUrl === 'string' ? answer.folder.projectUrl : null
+        folderId = driveFolderIdFromUrl(folderUrl)
+        folderMade = true
+        if (!folderId) return errored(`bid-photos made the project folder and answered with no link to it. ${untouched} get_bid shows the bid's drive_link; plan again.`)
+      }
+      const folderNote = folderMade ? ` The project folder was made (${folderUrl}) and is on the bid.` : ''
+      // 2 · the paper into Team only › Sent by us.
+      let filed: SubmissionOutcome['filed']
+      if (how === 'already_there') {
+        const id = String(dry.reply.already_filed_as ?? '')
+        filed = { id, url: driveViewUrl(id), how, md5: null }
+      } else if (how === 'copy') {
+        try {
+          const token = await googleAccessToken(saJson)
+          const into = await landingFolder(token, { folderId, plansId: null, teamId: null }, SUBMISSION_LANDING)
+          const res = await fetch(`${DRIVE}/files/${encodeURIComponent(file.drive_file_id)}/copy?supportsAllDrives=true&fields=id,md5Checksum`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: file.name, parents: [into] }),
+          })
+          const body = (await res.json().catch(() => ({}))) as { id?: string; md5Checksum?: string; error?: { message?: string } }
+          if (!res.ok || !body.id) throw new Error(`Copy failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+          filed = { id: body.id, url: driveViewUrl(body.id), how, md5: typeof body.md5Checksum === 'string' ? body.md5Checksum : null }
+        } catch (e) {
+          return errored(`${submissionFilingRefusal(e instanceof Error ? e.message : String(e), serviceAccount, folderUrl)}${folderNote}`)
+        }
+      } else {
+        const bytes = await driveFileBytes(readToken, file.drive_file_id, SUBMISSION_UPLOAD_MAX_BYTES)
+        if (bytes === null) return errored(`Drive did not hand over ${file.name}'s bytes. ${untouched}${folderNote} Plan again.`)
+        if (bytes === 'tooBig') return refused(`${file.name} read past ${SUBMISSION_UPLOAD_MAX_BYTES / 1024 / 1024} MB, more than the plan saw: the file changed in Drive since. ${untouched}${folderNote} Plan again.`, { target })
+        const problem = uploadBytesProblem(file, { length: bytes.length, sha256: await sha256HexOf(bytes) })
+        if (problem) return refused(`${problem}${folderNote}`, { target })
+        const put = await invokeAsDev(session, 'drive-link', { action: 'put', job: { bid_id: world.bid.id }, name: file.name, mime: file.mime, where: 'sent', base64: bytesToBase64(bytes) })
+        if (!put.ok) return errored(`The upload was refused (drive-link: ${fnWords(put)}). ${untouched}${folderNote}`)
+        const landed = put.body as { driveFileId?: unknown } | null
+        if (typeof landed?.driveFileId !== 'string' || !landed.driveFileId) return errored(`drive-link took the upload and answered with no file id. Read the bid's Sent by us folder (read_drive_folder) before planning again.${folderNote}`)
+        filed = { id: landed.driveFileId, url: driveViewUrl(landed.driveFileId), how, md5: null }
+      }
+      // 3 · the link, as the Files window's pasted link writes it, held to the link the plan read.
+      // 0.83.0: the paper while Sent by us holds it alone, the folder once it holds more; a bid that already carries
+      // its folder as the link takes another paper with no write to its row.
+      const linkTo = submissionLinkAfter(dry.reply, filed.id)
+      const after = linkTo.url
+      const unchanged = (dry.reply.link as { changes?: unknown }).changes === false
+      const write = submissionLinkWrite(world.bid.id, world.bid.linkRaw, after)
+      const res = unchanged ? null : await restRows(session, 'PATCH', 'bids', write.query, write.body, 'return=representation')
+      const linkSet = res === null || (res.ok && Array.isArray(res.body) && res.body.length > 0)
+      const link: SubmissionOutcome['link'] = linkSet
+        ? { set: true, before: world.bid.link, after, is: linkTo.is, ...(unchanged ? { unchanged: true } : {}) }
+        : { set: false, before: world.bid.link, after, is: linkTo.is, why: res!.ok ? 'the write matched no row — the bid’s link changed while the paper was being filed, or RLS kept the row' : restError(res!.status, res!.body) }
+      // 4 · the line on the bid's Notes, after the link; a note that fails never undoes the rest.
+      let note: SubmissionOutcome['note'] = { saved: false, why: 'not written: the link did not land' }
+      if (linkSet) {
+        const made = await restRows(session, 'POST', 'bids_submission_entries', 'select=id', submissionNoteRow(world.bid.id, String((dry.reply.note as { text?: unknown }).text ?? ''), { userId: who.userId }, new Date().toISOString()))
+        const row = (made.ok && Array.isArray(made.body) ? made.body[0] : null) as { id?: unknown } | null
+        note = typeof row?.id === 'string' ? { saved: true, id: row.id } : { saved: false, why: made.ok ? 'the insert answered with no row' : restError(made.status, made.body) }
+      }
+      const words = bidSubmissionAppliedWords(dry.reply, { filed, folder: { made: folderMade, url: folderUrl }, link, note })
+      if (!linkSet) return { log: { status: 'error', target, error: `filed ${filed.id}; the link was not set: ${link.why ?? ''}` }, text: replyText(words), isError: true }
+      return ok(words, { target })
     }
     case 'plan_submittal_rows':
     case 'apply_submittal_rows':
@@ -3893,6 +4243,10 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_count':
     case 'plan_materials_move':
     case 'apply_materials_move':
+    case 'plan_container_edit':
+    case 'apply_container_edit':
+    case 'plan_part_rename':
+    case 'apply_part_rename':
     case 'plan_hours_statement':
     case 'apply_hours_statement':
     case 'plan_person_doc':
@@ -4195,6 +4549,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
       if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill' || verb === 'plan_mail_file' || verb === 'apply_mail_file' || verb === 'plan_mail_tag' || verb === 'apply_mail_tag' || verb === 'plan_mail_untag' || verb === 'apply_mail_untag') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      // 0.82.0: the service account's Drive is nobody's view; a read through it is the dev's own.
+      if (verb === 'read_drive_folder') return finish(refused('view_as reads as a person, and read_drive_folder reads Drive through the intake service account: it runs only as you, with your own key.', { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>

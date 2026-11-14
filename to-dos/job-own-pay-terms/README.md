@@ -2,7 +2,7 @@
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
 group: gated
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the report, the gap list, the plan and the mock-up · nothing is built
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day · PRs 3 to 5 wait on the owner's calls
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,10 +12,10 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: the owner's calls below. With a yes on call 1, PR 1 (the door) and PR 2 (the mark) are two small PRs with no migration. Before any build, someone sets the first real calendars, since none is set.
-size: M as a train of five (S · S · S · M · M); PRs 1 and 2 carry the ask
+next: the owner's calls 2 to 4. Someone sets the first real calendars, since none is set, and the first real save on a job is the live walk.
+size: M as a train of five (S · S · S · M · M); left: PR 3 (S), PR 4 (M), PR 5 (M)
 blocker: the owner's word. PRs 4 and 5 each carry a migration and wait on calls 3 and 4.
-opinion: build PRs 1 and 2 — the override exists and nobody can find it; hold PRs 4 and 5 until a real contract needs them
+opinion: build PR 3 next, it is small and keeps a new job's due day honest; hold PRs 4 and 5 until a real contract needs them
 ver: v2.7036 · v2.7039 · v2.7040 · v2.7127
 ---
 
@@ -193,6 +193,12 @@ stays.
 For one bill with a date of its own, the nearest thing today is the promised date on the row. It
 wins the expected day. It is kept per job, so it moves every open bill on that job.
 
+**Corrected 2026-11-13, on the walk for PR 1.** The Their paper door did not draw where this
+section sends a person. The Pay calendar window's provider sat below the job window's and Bill
+Customer's, so the sheet opened from either found no opener and showed no press. Until PR 1 is
+live, the one way to a job's own calendar is the way around in the paragraph above: set the
+payer's, press the words on the job's row, save the job's own.
+
 ## The gaps
 
 | # | Gap | Size | Migration |
@@ -217,7 +223,7 @@ is in a development. A draw schedule changes what the forecast counts, and wants
 |---|---|---|---|
 | 1 | **The door.** A **Pay calendar** line in the job window, always there for the office. It says which calendar the job reads and opens the window on that job. Pay speeds, opened from a row, carries the row's job into the window. The Their paper door carries the development and the board's own label for the job. One kernel answer, `calendarSourceFor`: the calendar and whether it is the job's own, the payer's, switched off or none. The guide's section gains the second path. | S | No |
 | 2 | **The mark.** *This job's own* before the calendar's words on a billed row, a Ready to Bill row, the Working line, the job window's bills, Call mode and the hover. *No pay calendar on this job* as a quiet press on a job switched off. Cutoffs coming names the job on a line that is one job's own. The payer's window lists the jobs that carry their own, each a press. The two summary lines read their bills. A word in the window when a job holds a row for a payer who no longer pays it (gap 5). | S | No |
-| 3 | **The job's own record.** A job's own calendar is scored on that job's payments once it has two, and says so. Until then it says the record is the payer's on other jobs. | S | No |
+| 3 | **The job's own record.** A job's own calendar is scored on that job's payments once it has two, and says so. Until then it says the record is the payer's on other jobs. The payer's summary line in Money waiting and Accounts Receivable reads its bills' calendars. | S | No |
 | 4 | **This bill is due on…** A press under a billed row's dates, beside the accepted day's. The day wins over any calendar for that one bill. On call 3. | M | Yes |
 | 5 | **A number of days after the bill.** The window's first choice becomes how they pay: on a set day of the month, or a number of days after the bill is accepted. On call 4. | M | Yes |
 
@@ -228,6 +234,23 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
 `JobsStagesTab.tsx`, `TheirPaperSheet.tsx`, `cutoffsComing.ts`, `moneyWaiting.ts`,
 `arCustomerRollup.ts`, `billedDuePay.ts`, the job form's fact rows, and the guide
 `set-a-payers-pay-calendar.md`. None is one of the four files the other session is moving.
+
+## Where it stands
+
+- **PR 1, the door**, built 2026-11-13 after the owner's *Yes, build both*: the job window's
+  **Pay calendar** row, Pay speeds carrying the row's job, the Their paper door carrying the
+  development, `calendarSourceFor`, and every screen reading again after a save. The walk found
+  the provider fault above and the PR fixes it. Walked on the local app with no save made.
+- **PR 2, the mark**, built the same day on top of PR 1: *This job's own* on a billed row and on
+  the cutoff line, *No pay calendar on this job* under a row switched off, the job named on its
+  Cutoffs coming line, the payer's window listing the jobs that do not follow it, and the word
+  for a calendar held for a payer who no longer pays the job (call 5, my first pick). Walked on
+  live rows with made-up calendar reads and every write refused.
+- **Moved from PR 2 to PR 3:** the two summary lines in Money waiting and Accounts Receivable.
+  They rest on whose record scores a job, which is call 2.
+- **Not walked:** a real save. No calendar is set on prod, so the first one set on a job is the
+  live walk.
+- PRs 3 to 5 wait on the calls below.
 
 ## How to verify
 

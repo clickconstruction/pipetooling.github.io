@@ -5,11 +5,13 @@ import {
   lienStatusEmailText,
   lienStatusGroups,
   lienStatusMonthsWords,
+  lienStatusPayloadToPost,
   lienStatusSubject,
   lienStatusText,
   parseLienStatusPayload,
   type LienStatusHouseJob,
   type LienStatusJob,
+  type LienStatusNeed,
   type LienStatusPayload,
 } from '../../../supabase/functions/_shared/lienDeskStatus'
 
@@ -265,6 +267,51 @@ describe('parseLienStatusPayload — what the server accepts', () => {
   })
 })
 
+describe('every gate the Affidavits tab can close holds a lien (v2.7138)', () => {
+  const lien = (number: string, needs: LienStatusNeed[]) => ({ number, name: `Job ${number}`, gc: RLC, owed: 100, byYmd: OCT, needs })
+  const held: LienStatusPayload = {
+    ...OCT1,
+    jobs: [],
+    liens: [lien('1', []), lien('2', ['contractor']), lien('3', ['homestead_answer']), lien('4', ['public_owner']), lien('5', ['owner', 'legal', 'contractor', 'notice', 'homestead_answer'])],
+  }
+  const o = { appUrl: 'https://clicktooling.com', senderName: 'Grace' }
+
+  it('counts only a paper with no need as ready to file', () => {
+    expect(lienStatusText(held)).toContain('Liens to file: 5 jobs, $500, the first by Oct 15. 1 is ready to file.')
+  })
+
+  it('says each need in the desk’s words, the facts to enter in one sentence', () => {
+    const text = lienStatusEmailText(held, o)
+    expect(text).toContain('• 1 Job 1, $100. It is ready to file.')
+    expect(text).toContain('• 2 Job 2, $100. It needs the general contractor’s address.')
+    expect(text).toContain('• 3 Job 3, $100. It needs the homestead answer.')
+    expect(text).toContain('• 4 Job 4, $100. It is public property, so no lien can be filed.')
+    expect(text).toContain('• 5 Job 5, $100. It needs the owner of record, the legal description, the general contractor’s address and the homestead answer. No notice was sent for its work month.')
+    expect(lienStatusEmailHtml(held, o)).toContain('It needs the general contractor’s address.')
+  })
+
+  it('reads the whole list of needs back off the payload', () => {
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(held)))).toEqual(held)
+  })
+
+  it('posts what a function from before v2.7138 reads, with the whole list beside it', () => {
+    const posted = lienStatusPayloadToPost(held)
+    // That function refuses a lien naming any need but these four, and more than four of them.
+    const first = new Set(['owner', 'legal', 'notice', 'homestead'])
+    for (const l of posted.liens) expect(l.needs.length <= 4 && l.needs.every((n) => first.has(n))).toBe(true)
+    expect(posted.liens.map((l) => l.needs)).toEqual([[], [], [], [], ['owner', 'legal', 'notice']])
+    expect(posted.liens.map((l) => l.allNeeds)).toEqual(held.liens.map((l) => l.needs))
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(posted)))).toEqual(held)
+  })
+
+  it('refuses a need it does not know in either list', () => {
+    const one = (l: Record<string, unknown>) => parseLienStatusPayload({ ...JSON.parse(JSON.stringify(held)), liens: [{ ...lien('1', []), ...l }] })
+    expect(one({ allNeeds: ['money'] })).toBeNull()
+    expect(one({ allNeeds: 'contractor' })).toBeNull()
+    expect(one({ needs: Array.from({ length: 8 }, () => 'owner') })).toBeNull()
+  })
+})
+
 describe('the houses list — lien jobs where a supply house is also owed (v2.4407)', () => {
   const HOUSES: LienStatusHouseJob[] = [
     { number: '891', name: 'Tune 5- Liberty Hill', gc: 'Brund & Assoc.', owed: 27199, housesOwed: 6258, houses: 1, house: 'Reece', byYmd: OCT, jobAccount: false },
@@ -339,5 +386,49 @@ describe('the houses list — lien jobs where a supply house is also owed (v2.44
     expect(bad({ byYmd: 'Oct 15' })).toBeNull()
     expect(bad({ jobAccount: 'yes' })).toBeNull()
     expect(parseLienStatusPayload({ ...JSON.parse(JSON.stringify(P)), houses: 'all' })).toBeNull()
+  })
+})
+
+describe('a notice job with no GC on the job never prints a blank name', () => {
+  const o = { appUrl: 'https://clicktooling.com/', senderName: 'Grace', note: '', readerIsLeader: false }
+  const NO_GC: LienStatusPayload = {
+    ...OCT1,
+    liens: [],
+    jobs: [
+      job('804', 'Selwick GC- Tire Barn', '', 3553, ['2026-09'], 'approval', OCT, '2026-09-24'),
+      job('891', 'Tune 5- Liberty Hill', 'Brund & Assoc.', 2976, ['2026-09'], 'approval', OCT, '2026-09-25'),
+      job('650', 'AXO Schertz', '', 1000, ['2026-09'], 'draft'),
+    ],
+  }
+  const BLANK = /(^|\n)\s*(•\s*)?,|, ,/
+
+  it('names the group in the desk’s own words', () => {
+    expect(lienStatusGroups(NO_GC.jobs).map((g) => [g.name, g.jobs.length])).toEqual([['No GC on the job', 2], ['Brund & Assoc.', 1]])
+  })
+
+  it('says so in the text, under Waiting for approval and By GC', () => {
+    const text = lienStatusText(NO_GC)
+    expect(text).not.toMatch(BLANK)
+    expect(text).toContain('• Selwick GC- Tire Barn, no GC on the job, $3,553')
+    expect(text).toContain('• No GC on the job, 2 jobs, $4,553')
+    expect(text).toContain('• Tune 5- Liberty Hill, Brund & Assoc., $2,976')
+  })
+
+  it('says so in the email’s plain twin', () => {
+    const text = lienStatusEmailText(NO_GC, o)
+    expect(text).not.toMatch(BLANK)
+    expect(text).toContain('• 804 Selwick GC- Tire Barn, no GC on the job, Sep, $3,553, since Sep 24')
+    expect(text).toContain('No GC on the job, 2 jobs, $4,553, first by Oct 15')
+  })
+
+  it('says so in the email, on the waiting row and the group’s head', () => {
+    const html = lienStatusEmailHtml(NO_GC, o)
+    expect(html).not.toContain('<b></b>')
+    expect(html).toContain('<b>No GC on the job</b>')
+    expect(html).toContain('>No GC on the job &middot; Sep work</div>')
+  })
+
+  it('still takes the empty name off the payload: the words are the message’s, not the page’s', () => {
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(NO_GC)))?.jobs.map((j) => j.gc)).toEqual(['', 'Brund & Assoc.', ''])
   })
 })

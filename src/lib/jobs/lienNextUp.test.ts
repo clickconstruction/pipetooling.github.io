@@ -113,7 +113,7 @@ describe('buildLienNextUp — affidavits and retainage', () => {
     expect(one({ affidavits: [affidavit('j1', 'ready')] }).target).toEqual({ open: 'affidavits', jobId: 'j1' })
   })
 
-  it('a lien filed and not served opens the job’s Lien window on the Mechanic’s lien tab', () => {
+  it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
     expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Record service', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
@@ -368,7 +368,7 @@ describe('another master’s jobs read as the office reads them (v2.6734, punch 
 
 describe('a sent job with new months due (v2.6624, punch list #248)', () => {
   const sentItem = { id: 'sent1', status: 'sent', sent_at: '2026-09-23T12:00:00Z', months: ['2026-07'], fields: {} } as unknown as LienDeskEntry['item']
-  it('Do now shows the draft row and the attorney’s-letter row for one job, the reminder opening the To draft pane', () => {
+  it('To do shows the draft row and the attorney’s-letter row for one job, the reminder opening the To draft pane', () => {
     const rows = build({ notices: [notice('j1', 'to_draft', { sentItem })], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') } })
     expect(rows.map((r) => [r.key, r.action])).toEqual([
       ['letter-two:j1', 'letter_two'],

@@ -12,6 +12,7 @@ import { Pencil, ChevronUp } from 'lucide-react'
 export function JobFormFactRow({
   label,
   labelIcon,
+  labelNoWrap = false,
   value,
   valueTail,
   expanded = false,
@@ -21,6 +22,8 @@ export function JobFormFactRow({
 }: {
   label: string
   labelIcon?: ReactNode
+  /** Keeps a label that is a few pixels wider than its column on one line; it runs into the gap before the value, never over it. */
+  labelNoWrap?: boolean
   /** Collapsed summary; null renders a muted em dash. */
   value: ReactNode | null
   /** Rendered after the value, outside the ellipsis clamp (chips, inline links). */
@@ -54,6 +57,7 @@ export function JobFormFactRow({
             fontSize: '0.8125rem',
             color: 'var(--text-muted)',
             minWidth: 0,
+            whiteSpace: labelNoWrap ? 'nowrap' : undefined,
           }}
         >
           {labelIcon}

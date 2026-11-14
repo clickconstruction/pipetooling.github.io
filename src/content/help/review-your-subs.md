@@ -2,10 +2,16 @@
 title: review your subs in one place
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: subs, subcontractor, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order
+keywords: subs, subcontractor, ledger, statement, payments, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order, multiple subs, teammates, crew sheet, counted twice, double count
 order: 80
 ---
 People → Subs shows one row per subcontractor, an outside crew you hire. The row shows their work, what you owe them, whether their paperwork is current, and how they have performed.
+
+## Roster and Ledger
+
+Two chips sit at the top. {{chip:gray|Roster}} is the list of subs this guide describes. {{chip:gray|Ledger}} shows what was paid to each sub and when.
+
+Press a name on the Ledger to open that sub's statement. Its last row is checked against their Balance due here. See [every payment made to subs by date](/help/see-every-sub-payment-by-date#the-statement-for-one-sub).
 
 ## The columns
 
@@ -32,12 +38,16 @@ Open Subs → ▶ Documents → + Add document → COI → expires next March �
 An amber panel at the **top** of the tab lists sheets that could not be tied to one sub. Their money is missing from every sub's balance until they are fixed. Each row shows the job and the raw name written on the sheet. It also shows why it did not link, and the open balance:
 
 - {{chip:red|No roster match}} means the name on the sheet does not match anyone. It is usually a misspelling.
-- {{chip:blue|Multiple subs}} means the sheet names several people. So no single sub can own its balance.
+- {{chip:blue|Multiple subs}} means the sheet names two or more subs. Its balance is on nobody's row, so it is never counted twice.
+
+A sheet with one sub and teammates on it is the sub's sheet. The whole balance is on the sub's row, once. The teammates rode along and are paid through payroll. This is the rule Jobs → Subs → Pay uses, so the two pages agree.
+
+A sheet with teammates and no sub is a crew sheet. It pays through payroll and is in nobody's Balance due. A grey line under the panel counts the crew sheets.
 
 You fix a row without leaving the tab:
 
 - You tap {{button:outline-amber|✨ Link to Jesse Ramos}} when the sheet's name is clearly one roster sub, like "J Ramos". It shows only when there is exactly one safe match.
-- You tap {{button:outline|Assign…}} to pick the right sub from the roster. On a **Multiple subs** sheet this replaces the multi-name assignment with the one sub you pick.
+- You tap {{button:outline|Assign…}} to pick the right sub from the roster. On a **Multiple subs** sheet this replaces every name on the sheet with the one sub you pick. Do not make a second sheet for the other sub with the same lines. That would owe the same money twice.
 - You tap {{button:outline|Open →}} to jump to the sheet in Jobs → Subs → Pay and edit it directly.
 
 :::example Cleaning up a misspelled sheet

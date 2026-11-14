@@ -38,6 +38,7 @@ import {
 import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispatchAssignJobPickerModal'
 import type { Database } from '../../types/database'
 import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
+import { subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { Person, UserRow } from '../../pages/Jobs'
 import type { EditingPaymentTarget } from './SubLaborPaymentModals'
@@ -2058,8 +2059,8 @@ function JobsSubLaborFormModalInner(
                                 <Fragment key={p.id}>
                                 <tr data-testid="sub-payment-row">
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                 </tr>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>
@@ -2067,7 +2068,7 @@ function JobsSubLaborFormModalInner(
                                     <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', color: 'var(--text-muted)', paddingTop: '0.2rem' }}>{p.memo || '—'}</span>
                                     {(() => {
                                       // v2.3562: Edit · Move… · Remove on the row; on a phone, Edit and a ⋯ menu.
-                                      const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }
+                                      const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null, method: p.method ?? null, methodRef: p.method_ref ?? null }
                                       // A backcharge stays on the sheet it was raised on: Move says so on the row instead of opening.
                                       const tryMove = () => {
                                         if (subPaymentMoveRefusal(target)) setMoveRefusedId(p.id)

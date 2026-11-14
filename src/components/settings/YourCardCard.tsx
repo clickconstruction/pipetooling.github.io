@@ -16,6 +16,7 @@ import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompan
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { makesOwnCard } from '../../lib/brandKit/access'
 import { supabaseCardIo, type CardIo, type CardLoad, type CardPhoto } from '../../lib/brandKit/cardIo'
 import { CARD_NAME_MAX, cardWordsFor } from '../../lib/brandKit/cardWords'
 import { stagePlacement } from '../../lib/brandKit/cropMath'
@@ -97,7 +98,7 @@ export function YourCardCard({
   }, [])
 
   // A subcontractor is not on the company's card. The office decides who else's card it opens.
-  const hidden = !userId || (!teammate && (!role || role === 'subcontractor'))
+  const hidden = !userId || (!teammate && !makesOwnCard(role))
 
   useEffect(() => {
     if (hidden || !userId) return

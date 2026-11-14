@@ -79,7 +79,7 @@ The green lines are the attorney's words, arranged for the phone. Staying on the
 ## After the call
 
 1. Add a **note** on the last card if anything would help the master. One might read *"very calm — thought paying RLC ended it"*. Then tap {{button:blue|Save the call}}.
-2. Saving writes the call onto the notice. The desk's footer, the Affidavits tab and the GC run's grid read it. The job sorts into the attorney's **pile**. Pile A is an owner who still owes the builder. Pile B paid but never held the 10%. Pile C paid in full and holds nothing. *The attorney’s letter* switches off. *Wants to pay us → counsel* flags the sign-off.
+2. Saving writes the call onto the notice. The desk's footer, the Lien affidavits tab and the GC run's grid read it. The job sorts into the attorney's **pile**. Pile A is an owner who still owes the builder. Pile B paid but never held the 10%. Pile C paid in full and holds nothing. *The attorney’s letter* switches off. *Wants to pay us → counsel* flags the sign-off.
 3. **Tell the master the same day** in three cases. The owner wants to pay us directly. The builder has gone quiet on them too. Anything surprised you. The sheet records it. The master decides it.
 
 If the owner calls again, open the same sheet. It shows the last call at the top. The new one overwrites it.

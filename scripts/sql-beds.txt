@@ -16,6 +16,7 @@ gc-award
 pay-applications
 gc-back-charges
 lien-claim
+lien-hand-day
 customer-sends-trail
 sub-sheet-stamps
 gc-papers
@@ -86,6 +87,7 @@ job-warranty
 combine-rows
 dev-clock-session-write
 on-site-move
+on-site-guards
 employment-stints
 logbook-shares
 stage-check-self-close
@@ -103,7 +105,6 @@ permit-skim
 permit-policies
 permit-hint-decks
 theme-review
-bridge-moves
 bid-photos
 bill-lines-sweep
 price-sheets
@@ -114,3 +115,5 @@ pay-calendar
 person-file-numbers
 person-engagements
 dev-seat-kept-plans
+receipt-texts
+painted-maps

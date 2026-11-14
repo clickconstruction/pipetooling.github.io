@@ -7,10 +7,27 @@
  * those buttons open the desk on this job. The affidavit, its service and the release of
  * record are made in this window, so those buttons switch its tab. A step that is counsel's,
  * or a path with nothing left on it, has no button.
+ *
+ * An affidavit that is not drafted, waits on approval or is on hold (v2.7187, punch list #335, row 2)
+ * is worked on the desk's Affidavits list, so that step's button opens the desk there. One
+ * held by a fact stays on this window's tab, which lists the facts with their doors.
  */
 import type { LienTimelineNext, LienTimelineWaitingOn } from './lienTimeline'
+import type { StagesLienWindowTab } from './stagesDeepLinks'
 
-export type LienWindowNextDoor = { to: 'desk'; kind: 'notice' | 'retainage' } | { to: 'tab'; tab: 'notice' | 'affidavit' | 'release_record' }
+/**
+ * The names on the window's paper tabs (v2.7181, punch list #335, row 6). The third read *Mechanic's lien* while the billed
+ * row, the header above it and the Lien desk all call that paper the affidavit, so a person told to *File the
+ * affidavit* looked for a tab that was not there. A screen label only: no notice, affidavit or letter prints it.
+ */
+export const LIEN_WINDOW_TAB_LABEL: Record<StagesLienWindowTab, string> = {
+  demand: 'Demand letter',
+  notice: '§ 53.056 notice',
+  affidavit: 'Lien affidavit',
+  release_record: 'Release of record',
+}
+
+export type LienWindowNextDoor = { to: 'desk'; kind: 'notice' | 'retainage' | 'affidavit' } | { to: 'tab'; tab: 'notice' | 'affidavit' | 'release_record' }
 
 export type LienWindowNextStep = {
   words: string
@@ -43,7 +60,10 @@ export function lienWindowNextStep(next: LienTimelineNext, waitingOn: LienTimeli
       button = { label: 'Open it on the Lien desk', door: { to: 'desk', kind: 'retainage' } }
       break
     case 'affidavit':
-      button = { label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } }
+      button =
+        next.affidavitState === 'to_draft' || next.affidavitState === 'awaiting' || next.affidavitState === 'held'
+          ? { label: 'Open it on the Lien desk', door: { to: 'desk', kind: 'affidavit' } }
+          : { label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } }
       break
     case 'serve':
       button = { label: 'Record the service', door: { to: 'tab', tab: 'affidavit' } }

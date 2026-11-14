@@ -233,7 +233,7 @@ export default function BilledPaymentForecastModal({
           <section data-testid="cutoffs-coming" aria-label="Cutoffs coming" style={{ margin: '0 0 0.9rem', padding: '0.55rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
             <h3 style={{ margin: 0, fontSize: '0.8125rem' }}>Cutoffs coming</h3>
             {cutoffsComing.map((c) => (
-              <div key={c.key} data-testid="cutoff-coming" data-soon={c.soon ? 'true' : 'false'} title={`${c.calendarShort}. A bill in one day past the cutoff is due ${formatYmdMonthDay(c.nextDueYmd)}.`} style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: '0.8125rem', minWidth: 0 }}>
+              <div key={c.key} data-testid="cutoff-coming" data-soon={c.soon ? 'true' : 'false'} title={`${c.ownJob ? 'This job’s own calendar: ' : ''}${c.calendarShort}. A bill in one day past the cutoff is due ${formatYmdMonthDay(c.nextDueYmd)}.`} style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: '0.8125rem', minWidth: 0 }}>
                 <div style={{ fontWeight: 600, color: c.soon ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>
                   {c.title}
                   {c.soon ? <span style={{ fontWeight: 600 }}> · {c.daysLeft === 0 ? 'today' : c.daysLeft === 1 ? 'tomorrow' : `in ${c.daysLeft}d`}</span> : null}

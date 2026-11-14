@@ -23,9 +23,11 @@ import { jobKindFillInIo, type JobKindFillInIo } from '../lib/needsYou/fillInJob
 import { baselineFillInRows, compareBaselineRows, type BaselineFillInRow } from '../lib/needsYou/fillInBaselines'
 import { baselineFillInIo, type BaselineFillInIo } from '../lib/needsYou/fillInBaselinesIo'
 import { readLineBudgetSettings } from '../lib/jobs/lineBudgetSettingsStore'
+import { compareReceiptRows, receiptFillInRows, type ReceiptFillInRow } from '../lib/needsYou/fillInReceipts'
+import { receiptFillInIo, type ReceiptFillInIo } from '../lib/needsYou/fillInReceiptsIo'
 
 /** The rows the deck can fill, every kind built so far. */
-export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow | ContractFillInRow | ContractMissingFillInRow | PurchaseFillInRow | MoveWindowFillInRow | WorkOrderFillInRow | JobKindFillInRow | BaselineFillInRow
+export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow | ContractFillInRow | ContractMissingFillInRow | PurchaseFillInRow | MoveWindowFillInRow | WorkOrderFillInRow | JobKindFillInRow | BaselineFillInRow | ReceiptFillInRow
 
 export type FillInIo = {
   lostBids: LostBidFillInIo
@@ -44,6 +46,8 @@ export type FillInIo = {
   jobKinds?: JobKindFillInIo
   /** Optional the same way (punch list #234, PR 1a). */
   baselines?: BaselineFillInIo
+  /** Optional the same way (punch list #299, the step after PR 2). */
+  receipts?: ReceiptFillInIo
 }
 
 /** One object for the default io, so the read effect does not re-run on every render. */
@@ -61,7 +65,8 @@ function ordered(rows: readonly FillInRow[]): FillInRow[] {
   const workOrders = rows.filter((r): r is WorkOrderFillInRow => r.kind === 'work-order').sort(compareWorkOrderRows)
   const jobKinds = rows.filter((r): r is JobKindFillInRow => r.kind === 'job-kind').sort(compareJobKindRows)
   const baselines = rows.filter((r): r is BaselineFillInRow => r.kind === 'baseline').sort(compareBaselineRows)
-  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': missing, purchase: purchases, 'move-window': moveWindow, 'work-order': workOrders, 'job-kind': jobKinds, baseline: baselines })
+  const receipts = rows.filter((r): r is ReceiptFillInRow => r.kind === 'receipt').sort(compareReceiptRows)
+  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': missing, purchase: purchases, 'move-window': moveWindow, 'work-order': workOrders, 'job-kind': jobKinds, baseline: baselines, receipt: receipts })
 }
 
 /**
@@ -93,6 +98,8 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
     'job-kind': enabled && needsYouSourceEnabled('jobKindGaps', role, 'quickfill'),
     // The working projects with no hours baseline (punch list #234, PR 1a): the line's gate is the office set.
     baseline: enabled && needsYouSourceEnabled('baselineGaps', role, 'quickfill'),
+    // The card charges waiting on a receipt (punch list #299): the line's gate is the office set.
+    receipt: enabled && needsYouSourceEnabled('receiptChases', role, 'quickfill'),
   }
   const lostBidsOn = kindsOn['lost-bid']
   const vehiclesOn = kindsOn.vehicle
@@ -103,12 +110,13 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
   const workOrdersOn = kindsOn['work-order']
   const jobKindsOn = kindsOn['job-kind']
   const baselinesOn = kindsOn.baseline
+  const receiptsOn = kindsOn.receipt
   const [rows, setRows] = useState<FillInRow[]>([])
   const [loading, setLoading] = useState(false)
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
-    if (!lostBidsOn && !vehiclesOn && !jobAccountsOn && !contractsOn && !purchasesOn && !moveWindowOn && !workOrdersOn && !jobKindsOn) {
+    if (!lostBidsOn && !vehiclesOn && !jobAccountsOn && !contractsOn && !purchasesOn && !moveWindowOn && !workOrdersOn && !jobKindsOn && !receiptsOn) {
       setRows([])
       setLoading(false)
       return
@@ -117,7 +125,7 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
     setLoading(true)
     void (async () => {
       // Each kind fails soft on its own: a refused read leaves that kind empty and the others whole.
-      const [lostBids, vehicles, jobAccounts, contracts, contractsMissing, purchases, moveWindow, workOrders, jobKinds, baselines] = await Promise.all([
+      const [lostBids, vehicles, jobAccounts, contracts, contractsMissing, purchases, moveWindow, workOrders, jobKinds, baselines, receipts] = await Promise.all([
         lostBidsOn ? io.lostBids.fetchSources().then(lostBidFillInRows).catch(() => [] as LostBidFillInRow[]) : Promise.resolve([] as LostBidFillInRow[]),
         vehiclesOn ? Promise.all([io.vehicles.fetchGaps(), io.vehicles.fetchPlans()]).then(([gaps, plans]) => vehicleFillInRows(gaps, plans)).catch(() => [] as VehicleFillInRow[]) : Promise.resolve([] as VehicleFillInRow[]),
         jobAccountsOn
@@ -168,15 +176,21 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
               .then((s) => baselineFillInRows(s, readLineBudgetSettings().rateUsd))
               .catch(() => [] as BaselineFillInRow[])
           : Promise.resolve([] as BaselineFillInRow[]),
+        receiptsOn
+          ? (io.receipts ?? receiptFillInIo)
+              .fetchSources()
+              .then(receiptFillInRows)
+              .catch(() => [] as ReceiptFillInRow[])
+          : Promise.resolve([] as ReceiptFillInRow[]),
       ])
       if (cancelled) return
-      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': contractsMissing, purchase: purchases, 'move-window': moveWindow, 'work-order': workOrders, 'job-kind': jobKinds, baseline: baselines }))
+      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': contractsMissing, purchase: purchases, 'move-window': moveWindow, 'work-order': workOrders, 'job-kind': jobKinds, baseline: baselines, receipt: receipts }))
       setLoading(false)
     })()
     return () => {
       cancelled = true
     }
-  }, [lostBidsOn, vehiclesOn, jobAccountsOn, contractsOn, purchasesOn, moveWindowOn, workOrdersOn, jobKindsOn, baselinesOn, nonce, io])
+  }, [lostBidsOn, vehiclesOn, jobAccountsOn, contractsOn, purchasesOn, moveWindowOn, workOrdersOn, jobKindsOn, baselinesOn, receiptsOn, nonce, io])
 
   const reload = useCallback(() => setNonce((n) => n + 1), [])
   const drop = useCallback((key: string) => setRows((prev) => prev.filter((r) => r.key !== key)), [])

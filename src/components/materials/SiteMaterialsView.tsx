@@ -8,20 +8,30 @@
  * says here is **Same part?** (PR 3): two names that are nearly the same are asked about once, and
  * the answer (`on_site_part_ties`) only changes which lines a row adds up, never a count.
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePartTies } from '../../hooks/usePartTies'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { TIES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
+import { usePriceOffers } from '../../hooks/usePriceOffers'
+import { BookPartPicker } from './BookPartPicker'
+import { SitePricingWindow, type PricingAnswer, type TiePair } from './SitePricingWindow'
+import { countedLabel } from '../../lib/batchWords'
+import { offerRowsWords, siteOffers, type BillOffer, type BookOffer } from '../../lib/materials/priceOffers'
+import { isLeftOut, rowSitePrices, sitePriceWords, type SitePrice } from '../../lib/materials/sitePrices'
+import type { SitePriceInput } from '../../lib/materials/sitePricesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { askReasonWords, joinedTies, orderedPair, samePartAsks, tieCanon, tieFor, tieNamesWords, type PartTie, type SamePartAsk, type TieVerdict } from '../../lib/materials/partTies'
 import { containerLines, lastCountWords, type Movement } from '../../lib/materials/onSite'
 import { serverLines } from '../../lib/materials/onSiteServerSummary'
-import { listContainers, listMovements, listPlaces, loadBookPrices, priceFor, serverSummary } from '../../lib/materials/onSiteStore'
+import { addSitePrice, listContainers, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
 import { priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { searchBookParts, type BookPartHit } from '../../lib/materials/bookSearchIo'
-import { bookSearchWords, rowWorth, siteWorth, worthWords, type RowWorth } from '../../lib/materials/siteWorth'
+import { lensChipWords, rowWorth, siteWorth, worthWords, type PriceLens, type RowWorth } from '../../lib/materials/siteWorth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { jobMaterialsSummaryFor } from '../../lib/materials/onSiteSummary'
 import { readSiteView, writeSiteView, type SiteView } from '../../lib/materials/siteMaterialsViewPrefs'
@@ -70,6 +80,12 @@ function count(n: number, one: string, many: string): string {
   return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 }
 
+const LENS_WORDS: Record<PriceLens, string> = {
+  none: 'the rows with a line that has no price, most pieces first',
+  old: 'the rows on a price older than 90 days, most pieces first',
+  out: 'the rows left out as not a part',
+}
+
 function Tile({ label, big, small, tone, on, onPress }: { label: string; big: ReactNode; small?: ReactNode; tone?: 'amber' | 'green'; on?: boolean; onPress?: () => void }) {
   const toned: CSSProperties = tone === 'amber' ? { background: 'var(--bg-amber-100)', borderColor: 'var(--text-amber-800)' } : tone === 'green' ? { background: 'var(--bg-green-100)', borderColor: 'var(--text-green-700)' } : {}
   const ink = tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-700)' : undefined
@@ -96,9 +112,11 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
   /** The list narrowed to the rows with a Same part? to answer. */
   const [asksOnly, setAsksOnly] = useState(false)
-  /** The list narrowed to the rows with a line that has no price, most pieces first. */
-  const [unpricedOnly, setUnpricedOnly] = useState(false)
+  /** The list narrowed by the Worth tile: the rows with no price, on an old price, or left out. */
+  const [lens, setLens] = useState<PriceLens | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** The window that prices the rows with no price, one at a time (punch list #342). */
+  const [pricing, setPricing] = useState<'none' | 'old' | null>(null)
   const { showToast } = useToastContext()
   const ties = usePartTies({ developmentId: site.id })
 
@@ -126,17 +144,44 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   useEffect(() => {
     if (showMoney && tiedPartIds) void loadBookPrices(tiedPartIds.split('|'))
   }, [showMoney, tiedPartIds])
-  const rows = sitePartRows(rollup, now, tieCanon(ties.ties), bookNames)
-  const worth = showMoney ? siteWorth(rows, priceFor) : null
+  const canon = tieCanon(ties.ties)
+  const rows = sitePartRows(rollup, now, canon, bookNames)
+  // A price on this site (punch list #342): the one rule with the site's own answers and its ties in it.
+  const scope = useMemo(() => ({ developmentId: site.id }), [site.id])
+  const scopeKey = `d:${site.id}`
+  const priceFor = (key: string) => priceForScope(scopeKey, key, canon)
+  const sitePrices: SitePrice[] = showMoney ? listSitePrices(scope) : []
+  // A write to the store redraws the screen here, whoever else is listening.
+  const [, setTick] = useState(0)
+  // The store prices a job's page through the same ties.
+  useEffect(() => {
+    if (ties.available) setScopeTies(scope, ties.ties)
+  }, [scope, ties.available, ties.ties])
+  const worth = showMoney ? siteWorth(rows, priceFor, (r) => isLeftOut(r, sitePrices)) : null
   const today = todayYmdInAppTz()
   // Same part? is asked of the roles that may answer, and only once the answers so far were read.
   const asks = canTie && ties.available ? samePartAsks(rows, ties.ties, sameWordsKey) : []
   const askOf = new Map(asks.map((a) => [a.row.key, a] as const))
   const unpricedKeys = new Set((worth?.unpriced ?? []).map((r) => r.key))
-  const base = unpricedOnly && worth ? worth.unpriced.filter((r) => filterPartRows([r], filter).length > 0) : filterPartRows(rows, filter)
+  // Pricing is for the roles that may tie, once the ties were read. The offers' sources are read on the first ask.
+  const canPrice = Boolean(worth) && canTie && ties.available
+  // The site's own prices can be written once their table was read.
+  const canOwnPrice = canPrice && sitePricingAvailable()
+  const offers = usePriceOffers(canPrice && (lens != null || pricing != null))
+  const unpricedRows = worth?.unpriced ?? []
+  const unpricedSig = unpricedRows.map((r) => r.key).join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the rows are rebuilt each render; their keys say when they changed.
+  const offerRows = useMemo(() => (offers.index ? siteOffers(unpricedRows, offers.index).size : 0), [offers.index, unpricedSig])
+  // The rows on an old price, and the ones left out: the other two lists the Worth tile holds (punch list #342, PR 3).
+  const staleRows = worth?.stale ?? []
+  const leftOutRows = worth?.leftOut ?? []
+  const lensRows = lens === 'none' ? unpricedRows : lens === 'old' ? staleRows : lens === 'out' ? leftOutRows : null
+  const base = lensRows ? lensRows.filter((r) => filterPartRows([r], filter).length > 0) : filterPartRows(rows, filter)
   const shownRows = searchPartRows(asksOnly ? base.filter((r) => askOf.has(r.key)) : base, query)
   const sections = view === 'place' ? sitePlaceSections(rollup, now) : []
-  const narrowed = filter !== 'all' || query.trim() !== '' || asksOnly || unpricedOnly
+  const narrowed = filter !== 'all' || query.trim() !== '' || asksOnly || lens != null
+  /** Only the lens hides rows: an empty list then says what the lens found, not that a search missed. */
+  const lensAlone = lens != null && filter === 'all' && query.trim() === '' && !asksOnly
   const last = lastRecordedWords(glance)
   const quiet = glance.quietDays != null && glance.quietDays >= QUIET_DAYS
 
@@ -159,21 +204,64 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
     setFilter('all')
     setQuery('')
     setAsksOnly(false)
-    setUnpricedOnly(false)
+    setLens(null)
   }
-  const tieBook = async (row: SitePartRow, part: BookPartHit) => {
+  /** Tie a row's name to a parts-book part. The pair written, or null when the table refused. */
+  const tieBook = async (row: SitePartRow, part: { id: string; name: string }): Promise<TiePair | null> => {
     const own = row.memberKeys[0] ?? row.key
     const bookKey = `id:${part.id}`
     const [aKey, bKey] = orderedPair(bookKey, own)
     setBusy(row.key)
     try {
       await ties.answer({ aKey, bKey, aName: aKey === bookKey ? part.name : row.name, bName: bKey === bookKey ? part.name : row.name, verdict: 'same' }, byName)
+      return { aKey, bKey }
     } catch (e) {
       showToast(formatErrorMessage(e, 'The name was not tied to the parts book.'), 'error')
+      return null
     } finally {
       setBusy(null)
     }
   }
+  /** Take back the tie the pricing window just made. */
+  const undoPair = async (pair: TiePair): Promise<boolean> => {
+    const tie = ties.ties.find((t) => t.verdict === 'same' && t.aKey === pair.aKey && t.bKey === pair.bKey)
+    if (!tie) return true
+    try {
+      await ties.undo(tie.id)
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The names were not separated.'), 'error')
+      return false
+    }
+  }
+  /** One answer about a row's price on this site. The answer's id, or null when the table refused. */
+  const priceRow = async (row: SitePartRow, input: Omit<Extract<SitePriceInput, { kind: 'price' }>, 'rowKey' | 'rowName'> | { kind: 'left_out'; pricedOn: string }): Promise<string | null> => {
+    try {
+      const saved = await addSitePrice(scope, { rowKey: row.key, rowName: row.name, ...input }, byName)
+      setTick((t) => t + 1)
+      return saved.id
+    } catch (e) {
+      showToast(formatErrorMessage(e, input.kind === 'left_out' ? 'The row was not left out.' : 'The price was not saved.'), 'error')
+      return null
+    }
+  }
+  const billPrice = (row: SitePartRow, offer: BillOffer) => priceRow(row, { kind: 'price', unitPrice: Math.round(offer.priceEach * 10000) / 10000, source: 'bill', sourceLineId: offer.lineId, sourceWords: offer.houseName, pricedOn: offer.datedOn ?? today })
+  /** Just price: the part's price for one on this site, dated the day the book last checked it. No tie, so the row keeps its name. */
+  const bookPriceOnly = (row: SitePartRow, offer: BookOffer) => priceRow(row, { kind: 'price', unitPrice: offer.pick.price, source: 'book', sourceWords: offer.name, pricedOn: offer.pick.checkedOn ?? today })
+  const undoPrice = async (id: string): Promise<boolean> => {
+    setBusy(id)
+    try {
+      await removeSitePrice(scope, id)
+      setTick((t) => t + 1)
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The answer was not taken back.'), 'error')
+      return false
+    } finally {
+      setBusy(null)
+    }
+  }
+  const undoAnswer = (a: PricingAnswer) => (a.kind === 'tie' ? undoPair(a.pair) : undoPrice(a.id))
   const answer = async (ask: SamePartAsk, verdict: TieVerdict) => {
     setBusy(ask.row.key)
     try {
@@ -211,6 +299,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
         {developmentHref ? <Link to={`${developmentHref}?report=materials`} style={{ ...btn, fontWeight: 500 }} title="One Letter paper of every cage and box on the site, by job, by location or by part. It opens on the site’s Development page.">Print the material location report</Link> : null}
       </div>
 
+      {/* The names joined here did not load (v2.7175): the rows still add up, each spelling apart, and the screen says so. */}
+      <OfflineRetryPanel failure={ties.failed ? recoveryFailureFromError(ties.failed, TIES_NOT_LOADED_WORDS, TIES_NOT_LOADED_WORDS) : null} onRetry={ties.retry} surface="materials-site-ties" offlineMessage={TIES_NOT_LOADED_WORDS} idempotent />
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '0.5rem' }} role="group" aria-label="This site at a glance">
         <Tile label="Last recorded" big={last.big} small={last.small} tone={glance.lastRecorded ? (quiet ? 'amber' : 'green') : undefined} />
         <Tile label="Boxes" big={glance.boxes.toLocaleString('en-US')} small={`${count(glance.jobsWithBoxes, 'job', 'jobs')} · ${count(glance.places, 'place', 'places')}`} />
@@ -224,10 +315,10 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           <Tile
             label="Worth"
             big={worthWords(worth).big}
-            small={worthWords(worth).small}
-            on={unpricedOnly}
+            small={[worthWords(worth).small, offerRowsWords(offerRows)].filter(Boolean).join(' · ')}
+            on={lens != null}
             onPress={() => {
-              setUnpricedOnly((v) => !v)
+              setLens((cur) => (cur ? null : 'none'))
               if (view !== 'part') pickView('part')
             }}
           />
@@ -258,17 +349,40 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
 
       {view === 'part' ? (
         <div style={sec}>
+          {lens != null && worth ? (
+            <div style={{ padding: '0.4rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label="Rows by price" data-testid="site-price-lens">
+              <button type="button" aria-pressed={lens === 'none'} style={pill(lens === 'none')} onClick={() => setLens('none')}>{lensChipWords('none', unpricedRows.length)}</button>
+              <button type="button" aria-pressed={lens === 'old'} style={pill(lens === 'old')} onClick={() => setLens('old')} title="Rows on a price older than 90 days.">{lensChipWords('old', staleRows.length)}</button>
+              <button type="button" aria-pressed={lens === 'out'} style={pill(lens === 'out')} onClick={() => setLens('out')} title="Rows set aside as not a part to price.">{lensChipWords('out', leftOutRows.length)}</button>
+            </div>
+          ) : null}
           {narrowed && shownRows.length > 0 ? (
             <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="site-shown-total">
-              <span><strong>{shownTotalWords(shownRows)}</strong>{unpricedOnly ? <span style={muted}> · the rows with a line that has no price, most pieces first</span> : null}</span>
+              <span><strong>{shownTotalWords(shownRows)}</strong>{lens ? <span style={muted}> · {LENS_WORDS[lens]}</span> : null}</span>
+              {lens === 'none' && canPrice && unpricedRows.length > 0 ? (
+                <button type="button" style={{ ...btn, minHeight: 30, fontSize: '0.78rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} onClick={() => setPricing('none')} title="A window asks about one row at a time: the parts-book part that fits, and what a bill paid.">
+                  {countedLabel('Price', unpricedRows.length, 'row')} one at a time
+                </button>
+              ) : null}
+              {lens === 'old' && canOwnPrice && staleRows.length > 0 ? (
+                <button type="button" style={{ ...btn, minHeight: 30, fontSize: '0.78rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} onClick={() => setPricing('old')} title="A window asks about one row at a time: the price it reads now, and a newer bill where one fits.">
+                  {countedLabel('Check', staleRows.length, 'old price')} one at a time
+                </button>
+              ) : null}
               <button type="button" style={{ ...btn, minHeight: 26, fontSize: '0.72rem', padding: '0 0.5rem', fontWeight: 500 }} onClick={clear}>Show every row</button>
             </div>
           ) : null}
           {shownRows.length === 0 ? (
             rows.length === 0
               ? <EmptyState compact main={loading ? 'Reading the boxes…' : 'No part is on hand on this site yet.'} tail={loading ? undefined : 'A crew counts parts into a box on the phone’s On site tab.'} />
-              : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
-          ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} ask={askOf.get(r.key)} joined={joinedTies(r, ties.ties)} canTie={canTie && ties.available} busy={busy} onAnswer={answer} onUndo={undo} worth={worth ? rowWorth(r, priceFor) : null} unpriced={unpricedKeys.has(r.key)} today={today} onTieBook={tieBook} searchBook={searchBook} />)}
+              : lensAlone && lens === 'none'
+                ? <EmptyState compact main="Nothing waiting on a price on this site." next={staleRows.length > 0 ? { label: `Show the ${staleRows.length.toLocaleString('en-US')} on an old price`, onPress: () => setLens('old') } : { label: 'Show every row', onPress: clear }} />
+                : lensAlone && lens === 'old'
+                  ? <EmptyState compact main="Nothing waiting on a newer price on this site." next={{ label: 'Show every row', onPress: clear }} />
+                  : lensAlone && lens === 'out'
+                    ? <EmptyState compact main="Nothing was left out on this site." next={{ label: 'Show every row', onPress: clear }} tail="lists the rest." />
+                    : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
+          ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} ask={askOf.get(r.key)} joined={joinedTies(r, ties.ties)} canTie={canTie && ties.available} busy={busy} onAnswer={answer} onUndo={undo} worth={worth ? rowWorth(r, priceFor) : null} unpriced={unpricedKeys.has(r.key)} today={today} priced={showMoney ? rowSitePrices(r, sitePrices) : []} onUndoPrice={(id) => void undoPrice(id)} onTieBook={(row, part) => void tieBook(row, part)} searchBook={searchBook} />)}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -300,15 +414,36 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           ))}
         </div>
       )}
+      {pricing && canPrice ? (
+        <SitePricingWindow
+          key={pricing}
+          mode={pricing}
+          siteName={site.name}
+          rows={pricing === 'old' ? staleRows : unpricedRows}
+          nowPick={(row) => rowWorth(row, priceFor).pick}
+          offers={offers}
+          today={today}
+          searchBook={searchBook}
+          onUsePart={tieBook}
+          canOwnPrice={canOwnPrice}
+          onUseBill={billPrice}
+          onUseBookPrice={bookPriceOnly}
+          onTypePrice={(row, price) => priceRow(row, { kind: 'price', unitPrice: price, source: 'typed', pricedOn: today })}
+          onLeaveOut={(row) => priceRow(row, { kind: 'left_out', pricedOn: today })}
+          onUndo={undoAnswer}
+          onClose={() => setPricing(null)}
+        />
+      ) : null}
     </div>
   )
 }
 
-function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy, onAnswer, onUndo, worth, unpriced, today, onTieBook, searchBook }: { row: SitePartRow; open: boolean; onToggle: () => void; boxHref: Props['boxHref']; now: Date; ask?: SamePartAsk; joined: PartTie[]; canTie: boolean; busy: string | null; onAnswer: (ask: SamePartAsk, verdict: TieVerdict) => void; onUndo: (tie: PartTie) => void; /** The row's money, for the roles that read it; null otherwise. */ worth: RowWorth | null; unpriced: boolean; today: string; onTieBook: (row: SitePartRow, part: BookPartHit) => void; searchBook: (term: string) => Promise<BookPartHit[]> }) {
+function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy, onAnswer, onUndo, worth, unpriced, today, onTieBook, searchBook, priced, onUndoPrice }: { /** The answers given about this row's price on this site, newest first (punch list #342). */ priced: SitePrice[]; onUndoPrice: (id: string) => void; row: SitePartRow; open: boolean; onToggle: () => void; boxHref: Props['boxHref']; now: Date; ask?: SamePartAsk; joined: PartTie[]; canTie: boolean; busy: string | null; onAnswer: (ask: SamePartAsk, verdict: TieVerdict) => void; onUndo: (tie: PartTie) => void; /** The row's money, for the roles that read it; null otherwise. */ worth: RowWorth | null; unpriced: boolean; today: string; onTieBook: (row: SitePartRow, part: BookPartHit) => void; searchBook: (term: string) => Promise<BookPartHit[]> }) {
   const [picking, setPicking] = useState(false)
   const spellings = spellingsWords(row)
   const warn = row.cannotFind > 0 || row.short > 0
   const firstBoxes = row.boxes.slice(0, 4)
+  const leftOut = priced[0]?.kind === 'left_out'
   return (
     <div style={{ borderBottom: '1px solid var(--border)', ...(warn ? { background: 'var(--bg-amber-100)' } : {}) }} data-site-part-row={row.key}>
       <button type="button" aria-expanded={open} onClick={onToggle} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', alignItems: 'baseline' }}>
@@ -324,7 +459,9 @@ function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy,
           {row.cannotFind > 0 ? <span style={chipAmber}>{row.cannotFind} can't find</span> : null}
           {row.short > 0 ? <span style={chipAmber}>{row.short} short at a count</span> : null}
           {row.due ? <span style={chipAmber}>due a count</span> : <span style={chipDim}>{lastCountWords(row.countedAt ? { at: row.countedAt, byName: '' } : null, now).replace(/ by $/, '')}</span>}
-          {worth && worth.pricedLines > 0 ? (
+          {leftOut ? (
+            <span style={chipDim} data-row-left-out>left out · not a part</span>
+          ) : worth && worth.pricedLines > 0 ? (
             <span style={worth.staleLines > 0 ? chipAmber : chipDim} title={worth.pick ? priceTitle(worth.pick, today) : 'The price typed off the invoice that landed the part.'} data-row-worth>
               ${worth.money.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{worth.pick ? ` · ${priceWords(worth.pick, today)}` : ' · invoice price'}
             </span>
@@ -359,12 +496,24 @@ function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy,
           {row.spellings.length > 1 && joined.length === 0 ? <span style={muted}>These names are one row because their words are the same. Each keeps its own count in its box.</span> : null}
           {canTie && !row.partId ? (
             picking ? (
-              <BookPartPicker row={row} busy={busy === row.key} search={searchBook} onPick={(part) => { setPicking(false); onTieBook(row, part) }} onCancel={() => setPicking(false)} />
+              <BookPartPicker name={row.name} busy={busy === row.key} search={searchBook} onPick={(part) => { setPicking(false); onTieBook(row, part) }} onCancel={() => setPicking(false)} />
             ) : (
               <div>
                 <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => setPicking(true)} title="Tie this name to a part in the parts book. The row then reads the book’s name and price. It can be undone.">This is a parts-book part</button>
               </div>
             )
+          ) : null}
+          {priced.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.3rem' }} data-testid="priced-here">
+              <span style={{ ...muted, fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Priced here</span>
+              {priced.map((p, i) => (
+                <div key={p.id} style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ minWidth: 0, ...(i > 0 ? { color: 'var(--text-muted)' } : {}) }}>{sitePriceWords(p, today)}</span>
+                  {canTie ? <button type="button" disabled={busy === p.id} style={{ ...btn, minHeight: 26, fontSize: '0.72rem', padding: '0 0.5rem', fontWeight: 500 }} onClick={() => onUndoPrice(p.id)} aria-label={p.kind === 'left_out' ? `Bring ${row.name} back` : `Undo the price of ${row.name}`}>{p.kind === 'left_out' ? 'Bring back' : 'Undo'}</button> : null}
+                </div>
+              ))}
+              <span style={muted}>{priced.length > 1 ? 'The first line is the one read. ' : ''}Taking an answer back never changes a count or a box.</span>
+            </div>
           ) : null}
           {joined.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.3rem' }} data-testid="names-joined-here">
@@ -380,56 +529,6 @@ function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy,
           ) : null}
         </div>
       ) : null}
-    </div>
-  )
-}
-
-/** The parts book's picker, inline under an open row: every word typed must be in the part's name. A pick ties the row's name to that part. */
-function BookPartPicker({ row, busy, search, onPick, onCancel }: { row: SitePartRow; busy: boolean; search: (term: string) => Promise<BookPartHit[]>; onPick: (part: BookPartHit) => void; onCancel: () => void }) {
-  const [term, setTerm] = useState(() => bookSearchWords(row.name).join(' '))
-  const [hits, setHits] = useState<BookPartHit[] | null>(null)
-  const [failed, setFailed] = useState<string | null>(null)
-  useEffect(() => {
-    if (!term.trim()) {
-      setHits(null)
-      return
-    }
-    let live = true
-    const t = setTimeout(() => {
-      search(term)
-        .then((r) => {
-          if (!live) return
-          setHits(r)
-          setFailed(null)
-        })
-        .catch((e) => {
-          if (live) setFailed(formatErrorMessage(e, 'The parts book did not answer.'))
-        })
-    }, 250)
-    return () => {
-      live = false
-      clearTimeout(t)
-    }
-  }, [term, search])
-  return (
-    <div style={{ display: 'grid', gap: '0.35rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 8, padding: '0.45rem 0.55rem', background: 'var(--surface)' }} data-testid="book-part-picker">
-      <span style={{ fontWeight: 600 }}>Which parts-book part is “{row.name}”?</span>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        <input type="search" autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Words in the part’s name" aria-label="Find it in the parts book" style={{ flex: '1 1 200px', minWidth: 0, minHeight: 34, borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.6rem' }} />
-        <button type="button" style={{ ...btn, minHeight: 34, fontSize: '0.78rem', fontWeight: 500 }} onClick={onCancel}>Cancel</button>
-      </div>
-      {failed ? <span style={{ color: 'var(--text-red-700)' }}>{failed}</span> : null}
-      {hits && hits.length === 0 && !failed ? <span style={muted}>The parts book has no part with every one of those words. Try fewer words.</span> : null}
-      {hits && hits.length > 0 ? (
-        <div style={{ display: 'grid', gap: 2, maxHeight: 220, overflow: 'auto' }}>
-          {hits.map((p) => (
-            <button key={p.id} type="button" disabled={busy} onClick={() => onPick(p)} style={{ ...btn, minHeight: 32, fontSize: '0.8rem', fontWeight: 500, justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }} aria-label={`Tie to ${p.name}`}>
-              {p.name}{p.manufacturer ? <span style={muted}> · {p.manufacturer}</span> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <span style={muted}>The row then reads the book’s name and price. Each box keeps its own count, and Undo takes the tie back.</span>
     </div>
   )
 }

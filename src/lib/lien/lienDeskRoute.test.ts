@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { LIEN_DESK_PATH, lienDeskFromSearch, lienDeskHref, lienDeskKindFromWord, lienDeskRedirect } from './lienDeskRoute'
 
 describe('lienDeskRoute (punch list #182, the Lien desk)', () => {
-  it('the bare address is Do now; a view, a notice and a pile each write their own word', () => {
+  it('the bare address is To do; a view, a notice and a pile each write their own word', () => {
     expect(LIEN_DESK_PATH).toBe('/lien-desk')
     expect(lienDeskHref()).toBe('/lien-desk')
     expect(lienDeskHref({ kind: 'calendar' })).toBe('/lien-desk?tab=deadlines')

@@ -37,7 +37,7 @@ import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadV
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
-import { ymdAddDays } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils'
 import { buildStageFlow, withFieldPaces, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
@@ -45,8 +45,8 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { BridgeCashAccounts } from '../components/bridge/BridgeCashAccounts'
 import { BridgeWeek } from '../components/bridge/BridgeWeek'
-import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, firstName, topPerson, type WeekCallInput } from '../lib/bridge/weekCall'
-import { NOW_CARD_LABEL, nowDeskFoot } from '../lib/bridge/pulseWords'
+import { WEEK_CALL_MOVES, WEEK_CALL_MOVES_PHONE, WEEK_CARD_LABEL, WEEK_CASH_MAY_LEAD, buildWeekCall, deskMoves, type WeekCallInput } from '../lib/bridge/weekCall'
+import { nowDeskFoot } from '../lib/bridge/pulseWords'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { buildRecordedReading, buildWaitingDays } from '../lib/bridge/waitingDays'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
@@ -58,15 +58,25 @@ import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
 import { loadBidsSent } from '../lib/bridge/loadBidWins'
-import { leftOutKey, leftOutPickerNames, type LeftOutRule } from '../lib/bridge/leftOut'
+import { leftOutKey, leftOutPickerNames, withLeftOutJobIds, type LeftOutRule } from '../lib/bridge/leftOut'
 import { loadLeftOut, loadLeftOutJobIds, saveLeftOut, type LeftOutRead } from '../lib/bridge/leftOutIo'
 import { BridgeLeftOut } from '../components/bridge/BridgeLeftOut'
 import { accrualLine, burnPerDay, cashLine, runwayFoot } from '../lib/bridge/moneyCard'
-import type { DiveFacts, DivePctJob, DiveTarget } from '../lib/bridge/callDive'
+import { jobPage, moveDive, type DiveFacts, type DivePctJob, type DiveTarget } from '../lib/bridge/callDive'
+import { lastWorkedCell } from '../lib/bridge/pctFacts'
+import { useBridgePctFacts } from '../hooks/useBridgePctFacts'
+import { BridgePctRun } from '../components/bridge/BridgePctRun'
+import { todoLinkPaths, type CallTodo } from '../lib/bridge/callTodo'
+import { todoStates, type TodoCard, type TodoState } from '../lib/bridge/callTodoState'
+import type { TodoLinesRead } from '../components/bridge/BridgeTodoCheck'
+import { BridgeTodoOpen } from '../components/bridge/BridgeTodoOpen'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { APP_ORIGIN } from '../lib/appOrigin'
+import { NO_JOB_HOURS, jobHoursByJob, jobHoursCell, jobHoursLine, type JobHoursSession } from '../lib/bridge/jobHours'
+import { BridgeJobHoursWindow } from '../components/bridge/BridgeJobHours'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
-import FieldPctUpdateModal from '../components/dashboard/FieldPctUpdateModal'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { deskStatus, isStageLink, type BridgeCall, type CallLink } from '../lib/bridge/calls'
+import { deskStatus, isStageLink, type CallLink } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { arRowInvoiceId } from '../lib/bridge/collect/collectBills'
@@ -118,6 +128,7 @@ import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
 import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
+import { BridgePunchListLink } from '../components/bridge/BridgePunchListLink'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -134,15 +145,15 @@ const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const big: CSSProperties = { fontSize: '1.5rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '0.1rem 0' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-/** The page is a pulse (punch list #334, PR 7): it reads no call, so the model behind the first screen is told there are none. One list, so memos stay still. */
-const NO_CALLS: BridgeCall[] = []
+/** The names the page hands a read that looks people up itself: none, so the read fetches the few it needs. */
+const NO_NAMES: ReadonlyMap<string, string> = new Map()
 /** Where a door on the first screen lands: clear of the app's top bar. */
 const inputStyle: CSSProperties = { width: 110, font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)' }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
 
 export default function Bridge() {
-  const { user, role, profileName, loading: authLoading } = useAuth()
+  const { user, role, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
   const [data, setData] = useState<BridgeData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -180,6 +191,8 @@ export default function Bridge() {
   const doorParam = searchParams.get('door')
   /** The pipe stands up (punch list #318). `?pipe=across` draws it lying down, as it was. */
   const pipeAcross = searchParams.get('pipe') === 'across'
+  /** The app's Add task window, which a grey check opens already written (punch list #334, PR 9). */
+  const addTask = useChecklistAddModal()
   // What a press on the card What to do now opened (punch list #334, PR 8): the customer the Collect window opens on,
   // the job whose percent is being set, and the project whose pay date is being written down.
   const [collectFocus, setCollectFocus] = useState<string | null>(null)
@@ -249,8 +262,7 @@ export default function Bridge() {
   /** The ids every Bridge read takes (v2.6813): the ZZ test jobs while they are hidden, and the jobs of whatever the Bridge leaves out. Null keeps every job. */
   const readZzTestJobIds = useCallback(async (): Promise<ReadonlySet<string> | null> => {
     const zz = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
-    if (!leftOutJobIds || leftOutJobIds.size === 0) return zz
-    return zz ? new Set([...zz, ...leftOutJobIds]) : leftOutJobIds
+    return withLeftOutJobIds(zz, leftOutJobIds)
   }, [hideZz, user?.id, leftOutJobIds])
   /**
    * The viewer's ZZ switch alone, for the won rates. There a set stands for the switch, and a bid on something left
@@ -893,17 +905,10 @@ export default function Bridge() {
       chase: receipts.filter((r) => r.basis === 'late').reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
       approve: data ? data.crew.pendingClosedHours : null,
       price: data ? data.earned.noRevenueJobs.length : null,
-      pct: data ? data.earned.assumedHalfJobs.length : null,
+      // A job set above nothing on this visit has its percent: it is off the count, and off the list below.
+      pct: data ? data.earned.assumedHalfJobs.filter((id) => !((pctSetThisVisit.get(id) ?? 0) > 0)).length : null,
     }),
-    [billPile, receipts, doubtful, data],
-  )
-  const nowReading = useMemo(
-    () => ({
-      stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>,
-      stagePilesUsd: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.pile.usd])) as Partial<Record<StageId, number | null>>,
-      keys: moveNumbers,
-    }),
-    [stageFlow, moveNumbers],
+    [billPile, receipts, doubtful, data, pctSetThisVisit],
   )
   const deskReading = useMemo(() => {
     if (litLink && !isStageLink(litLink)) {
@@ -935,8 +940,7 @@ export default function Bridge() {
   }, [collectDesk, data, collectChips.chipsByJob, stageInput, stageFlow])
 
   // The first screen (punch list #303, PR 1): the tiles and the card *What to do now*, read from the readings above.
-  // The model is `buildWeekCall`'s, told there is no call on record and no pick (punch list #334, PR 7), so it always
-  // reads today: the slowest step, or cash in a week it leads.
+  // The model reads today and nothing else (punch list #334): the slowest step, or cash in a week it leads.
   const weekInput = useMemo((): WeekCallInput | null => {
     if (!data || !thisWeekStart) return null
     const late = receipts.filter((r) => r.basis === 'late')
@@ -949,25 +953,46 @@ export default function Bridge() {
       cashNote: cashAccounts?.note ?? null,
       cashMayLead: WEEK_CASH_MAY_LEAD && bank != null,
       flow: stageFlow,
-      picked: null,
       moveNumbers,
       counts: { billJobs: billPile?.knownJobs ?? null, lateInvoices: late.length + doubtful.length },
-      people: {
-        caller: firstName(profileName),
-        biller: topPerson(vectorInputs?.invoiceSends ?? [], vectorInputs?.people ?? [], data.windowStart),
-        collector: topPerson(vectorInputs?.payments ?? [], vectorInputs?.people ?? [], data.windowStart),
-      },
       // The hazards are the supply invoices due, by day: the one bill a call can ask more days on.
       supplyDue: forecast ? (data.hazards.find((h) => h.ymd > data.todayYmd && h.ymd <= forecast.lowest.ymd) ?? null) : null,
-      calls: NO_CALLS,
-      now: nowReading,
       dayLabel: md,
     }
-  }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile, profileName, vectorInputs, nowReading])
+  }, [data, thisWeekStart, receipts, doubtful, headline, forecast, cashToday, cashAccounts, bank, stageFlow, moveNumbers, billPile])
   const weekModel = useMemo(() => (weekInput ? buildWeekCall(weekInput) : null), [weekInput])
   // The real things behind each move on the card (punch list #334, PR 8; `callDive.ts`), from what the page has
   // already read: nothing here is a new count.
   const supplyDueYmd = weekInput?.supplyDue?.ymd ?? null
+  // The hours behind each job with no percent, and whose they are (punch list #334, PR 10; `jobHours.ts`). One read
+  // for those jobs, again after a refresh.
+  const noPctKey = data ? [...data.earned.assumedHalfJobs].sort().join(',') : ''
+  const [jobHoursSessions, setJobHoursSessions] = useState<JobHoursSession[] | null>(null)
+  const [hoursFor, setHoursFor] = useState<{ jobId: string; jobLabel: string; pctJob: DivePctJob | null } | null>(null)
+  useEffect(() => {
+    if (!noPctKey) {
+      setJobHoursSessions([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { loadJobHours } = await import('../lib/bridge/jobHoursIo')
+        const rows = await loadJobHours(supabase, noPctKey.split(','), NO_NAMES)
+        if (!cancelled) setJobHoursSessions(rows)
+      } catch {
+        // An extra reading: a read that fails leaves the lines as they were, with no hours on them.
+        if (!cancelled) setJobHoursSessions(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [noPctKey, refreshKey])
+  const jobHours = useMemo(() => (jobHoursSessions ? jobHoursByJob(jobHoursSessions) : null), [jobHoursSessions])
+  // What a percent is judged from, for the same jobs (v2.7221; `pctFacts.ts`): read while the move or its window is on screen.
+  const noPctJobRows = useMemo(() => (data ? data.jobs.filter((j) => data.earned.assumedHalfJobs.includes(j.id)) : []), [data])
+  const pctFacts = useBridgePctFacts({ jobs: noPctJobRows, hours: jobHours, todayYmd: data?.todayYmd ?? null, addressJobIds: data?.earned.noRevenueJobs, enabled: pctFor != null || (weekModel?.card.moves.some((m) => m.key === 'pct' || m.key === 'price') ?? false), refreshKey })
   const callDives = useMemo<DiveFacts | null>(() => {
     if (!data) return null
     const jobById = new Map(data.jobs.map((j) => [j.id, j]))
@@ -979,6 +1004,7 @@ export default function Bridge() {
       // Each customer with the day they named, and their open bills as projects, each with its own promised day.
       payers: (collectDesk?.cut.cut ?? []).map((p) => ({
         key: p.payerId ?? p.payerName,
+        payerId: p.payerId,
         name: p.payerName,
         lateUsd: p.latePileUsd,
         usd: p.usd,
@@ -998,8 +1024,9 @@ export default function Bridge() {
         }),
       // Each job as the percent window takes it, so its row can set the percent here: the percent prompt's own row
       // when it knows the job, else the job named by its label, as the prompt names a job with no number.
-      // A job set on this visit stays listed, and says so.
+      // A job set above nothing on this visit leaves the list: it has its percent. One set to 0% stays, and says so.
       noPctJobs: named(data.earned.assumedHalfJobs)
+        .filter((j) => !((pctSetThisVisit.get(j.id) ?? 0) > 0))
         .sort(byRevenue)
         .map((j) => ({
           id: j.id,
@@ -1007,8 +1034,12 @@ export default function Bridge() {
           revenueUsd: j.revenueUsd,
           pctJob: pctPrompt?.rows.find((r) => r.id === j.id)?.modalJob ?? { id: j.id, hcpNumber: j.label, jobName: j.label, label: j.label },
           setPct: pctSetThisVisit.get(j.id) ?? null,
+          hoursLine: jobHours ? jobHoursLine(jobHours.get(j.id)) : null,
+          hoursCell: jobHours ? jobHoursCell(jobHours.get(j.id)) : null,
+          lastWorked: pctFacts.facts?.has(j.id) ? lastWorkedCell(pctFacts.facts.get(j.id)!, data.todayYmd, md) : null,
+          address: pctFacts.facts?.get(j.id)?.address || null,
         })),
-      noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
+      noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label, address: pctFacts.addresses.get(j.id) ?? null })),
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
       supplyBills: [
         ...Object.values(fin.data?.apBills ?? {})
@@ -1022,7 +1053,50 @@ export default function Bridge() {
       ].sort((a, b) => b.usd - a.usd),
       dayLabel: md,
     }
-  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit])
+  }, [data, collectDesk, billPile, fin.data, supplyDueYmd, pctPrompt, pctSetThisVisit, jobHours, pctFacts.facts, pctFacts.addresses])
+  // Where each line of the card stands as a to-do (punch list #334, PR 9; `callTodoState.ts`). The page asks for the
+  // cards that carry one of its own tags (PR 12), or one of its tagged addresses in a link, and reads again after a
+  // card is made or changed here.
+  const todoList = useMemo(() => {
+    const out: CallTodo[] = []
+    if (!weekModel || !callDives) return out
+    for (const move of weekModel.card.moves) {
+      for (const item of moveDive(move, callDives)?.items ?? []) {
+        if (item.todo) out.push(item.todo)
+        for (const p of item.projects ?? []) if (p.todo) out.push(p.todo)
+      }
+    }
+    return out
+  }, [weekModel, callDives])
+  const todoLinksKey = useMemo(() => [...new Set(todoList.map((t) => `${APP_ORIGIN}${todoLinkPaths(t)[0]}`))].sort().join('\n'), [todoList])
+  const todoTagsKey = useMemo(() => [...new Set(todoList.map((t) => t.key))].sort().join('\n'), [todoList])
+  const [todoCards, setTodoCards] = useState<TodoCard[] | null>(null)
+  const [todoTick, setTodoTick] = useState(0)
+  const [todoSeen, setTodoSeen] = useState<Extract<TodoState, { kind: 'open' | 'covered' | 'done' }> | null>(null)
+  useEffect(() => {
+    if (!todoLinksKey) {
+      setTodoCards([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { loadTodoCards } = await import('../lib/bridge/callTodoIo')
+        // A card's days are the company's days, as today is.
+        const cards = await loadTodoCards(supabase, todoTagsKey.split('\n').filter(Boolean), todoLinksKey.split('\n'), calendarYmdInAppTzFromIso, NO_NAMES)
+        if (!cancelled) setTodoCards(cards)
+      } catch {
+        // The checks are an extra reading: a read that fails leaves every check grey, and the list as it was.
+        if (!cancelled) setTodoCards([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [todoLinksKey, todoTagsKey, todoTick, refreshKey])
+  const todoStatesByKey = useMemo(() => (todoCards && data ? todoStates(todoCards, data.todayYmd) : null), [todoCards, data])
+  const readTodoLines = useCallback<TodoLinesRead>(async (itemId, instanceIds) => (await import('../lib/taskLinesIo')).loadTaskLines({ itemIds: [itemId], taskIds: [], instanceIds }), [])
+
   // The two balances on the first screen (punch list #334, PR 6). The accrual balance is the page's net position:
   // cash, plus what customers owe, less what the company owes, the three figures Money owed walks through.
   // Runway burns payroll and overhead alone, the two figures the cash forecast already spends.
@@ -1417,6 +1491,7 @@ export default function Bridge() {
         <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
+        <BridgePunchListLink role={role} />
       </div>
       {leftOutRules && (
         <BridgeLeftOut
@@ -1443,6 +1518,9 @@ export default function Bridge() {
               stripSide={!pipeAcross}
               money={weekMoney}
               dives={callDives}
+              todoStates={todoStatesByKey}
+              dayLabel={md}
+              onTodoSee={setTodoSeen}
               onDive={(target: DiveTarget) => {
                 if (target.kind === 'desk') {
                   // A named customer opens the Collect window on that customer; the move's own press opens it as it is.
@@ -1451,8 +1529,13 @@ export default function Bridge() {
                 }
                 // The supply bills: the list of bills coming due, behind Money.
                 else if (target.kind === 'money') pressDoor('money', { keepOpen: true, scrollTo: 'bridge-bills-due' })
+                // One thing as a to-do card: the app's own Add task window, written for it. The person is picked there.
+                // Its link is the app's public address, so a card opens for whoever gets it, wherever it was written.
+                else if (target.kind === 'todo') addTask?.openAddModal({ preset: { title: target.todo.title, links: todoLinkPaths(target.todo).map((p) => `${APP_ORIGIN}${p}`), doneWhen: target.todo.doneWhen, asksForPhoto: false, sourceTag: target.todo.key }, onSaved: () => setTodoTick((t) => t + 1) })
                 // A job's percent: the app's own percent window, where the reader stands.
                 else if (target.kind === 'pct') setPctFor(target.job)
+                // A job's hours: who worked them and when, with the percent window one press on.
+                else if (target.kind === 'hours') setHoursFor({ jobId: target.jobId, jobLabel: target.jobLabel, pctJob: target.pctJob })
                 // A project's pay date: the app's own sheet for a customer's word.
                 else if (target.kind === 'promise') setPromiseFor({ jobId: target.jobId, jobLabel: target.jobLabel, ymd: target.ymd, context: target.context })
               }}
@@ -1463,7 +1546,7 @@ export default function Bridge() {
             />
           ) : (
             <p style={det} data-testid="bridge-week-wait">
-              Reading {NOW_CARD_LABEL.toLowerCase()}…
+              Reading {WEEK_CARD_LABEL.toLowerCase()}…
             </p>
           )}
 
@@ -1520,7 +1603,7 @@ export default function Bridge() {
           {stageFlow && litLink && (
             <BridgeLinkDesk
               link={litLink}
-              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: false })}
+              status={deskStatus({ link: litLink, linkId: stageFlow.linkId })}
               todayReading={deskReading}
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
               onGoToCall={() => setDoorScroll((d) => ({ id: 'bridge-week', n: (d?.n ?? 0) + 1 }))}
@@ -1811,8 +1894,28 @@ export default function Bridge() {
           )}
 
           {/* The desks open over the page from the stage cards and the link's desk. */}
+          {/* A blue check's window, and from it the app's own task window. The checks are read again when a card is saved or closed. */}
+          <BridgeTodoOpen seen={todoSeen} onSeenClose={() => setTodoSeen(null)} todayYmd={data.todayYmd} dayLabel={md} readLines={readTodoLines} role={role} setError={setError} onChanged={() => setTodoTick((t) => t + 1)} />
+          {hoursFor && (
+            <BridgeJobHoursWindow
+              jobLabel={hoursFor.jobLabel}
+              hours={jobHours?.get(hoursFor.jobId) ?? NO_JOB_HOURS}
+              dayLabel={md}
+              jobHref={`/jobs?tab=stages&edit=${hoursFor.jobId}`}
+              onClose={() => setHoursFor(null)}
+              onSetPct={
+                hoursFor.pctJob
+                  ? () => {
+                      const job = hoursFor.pctJob
+                      setHoursFor(null)
+                      if (job) setPctFor(job)
+                    }
+                  : undefined
+              }
+            />
+          )}
           {/* From the card What to do now: the app's own percent window and its sheet for a customer's word. */}
-          {pctFor && <FieldPctUpdateModal job={pctFor} onClose={() => setPctFor(null)} onSaved={(pct) => savePct(pctFor.id, pct)} />}
+          {pctFor && <BridgePctRun job={pctFor} run={(callDives?.noPctJobs ?? []).flatMap((j) => (j.pctJob ? [j.pctJob] : []))} facts={pctFacts.facts} factsError={pctFacts.error} todayYmd={data.todayYmd} dayLabel={md} jobHref={jobPage} onMove={setPctFor} onSaved={savePct} onClose={() => setPctFor(null)} />}
           {promiseFor && (
             <SetPromisedPayDateModal
               jobId={promiseFor.jobId}

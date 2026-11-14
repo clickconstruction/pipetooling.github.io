@@ -36,6 +36,7 @@ import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab, { SubLaborToolbar } from '../components/jobs/JobsSubLaborTab'
 import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
 import { JobsSubsTab, subsViewFromParam, type SubsView } from '../components/jobs/JobsSubsTab'
+import { SubPaymentsLedger } from '../components/jobs/SubPaymentsLedger'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
 import SubLaborPaymentMoveRemoveModals, { type SubLaborPaymentMoveRemoveHandle } from '../components/jobs/SubLaborPaymentMoveRemoveModals'
@@ -2020,10 +2021,51 @@ export default function Jobs() {
           onViewChange={(view) =>
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
-              if (view === 'pay') next.set('view', 'pay')
+              if (view === 'pay' || view === 'ledger') next.set('view', view)
               else next.delete('view')
               return next
             })
+          }
+          ledger={
+            showSuperintendentExtraTabs ? (
+              <SubPaymentsLedger
+                error={error}
+                laborJobs={laborJobs}
+                laborJobsLoading={laborJobsLoading}
+                laborJobNamesByJobId={laborJobNamesByJobId}
+                laborJobAssigneesByJobId={laborJobAssigneesByJobId}
+                onOpenSheet={(job) => subLaborFormRef.current?.openEdit(job)}
+                onOpenPay={() =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    next.set('view', 'pay')
+                    next.delete('by')
+                    next.delete('sub')
+                    return next
+                  })
+                }
+                // v2.7231: the grouping and the person whose statement is open live in the address
+                // (`?view=ledger&by=sub&sub=<people id>`), so one sub's statement can be linked to.
+                by={searchParams.get('by') === 'sub' ? 'sub' : 'date'}
+                onByChange={(by) =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    if (by === 'sub') next.set('by', 'sub')
+                    else next.delete('by')
+                    return next
+                  })
+                }
+                sub={searchParams.get('sub')}
+                onSubChange={(sub) =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    if (sub) next.set('sub', sub)
+                    else next.delete('sub')
+                    return next
+                  })
+                }
+              />
+            ) : undefined
           }
           work={
             showSuperintendentExtraTabs ? (
@@ -2121,7 +2163,7 @@ export default function Jobs() {
 
       {activeTab === 'materials' && (
         <JobsMaterialsTab
-          jobs={jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address ?? null, google_drive_link: j.google_drive_link ?? null }))}
+          jobs={jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, click_number: j.click_number ?? null, job_name: j.job_name, job_address: j.job_address ?? null, google_drive_link: j.google_drive_link ?? null }))}
           byUserId={authUser?.id ?? null}
           byName={materialsProfileName ?? 'the office'}
           onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}

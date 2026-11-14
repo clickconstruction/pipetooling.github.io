@@ -29,22 +29,44 @@ function row(jobId: string, reason: MovementReason, name: string, quantity: numb
 const box = (id: string, jobId: string, label: string, locationId: string | null): Container => ({ id, jobId, label, kind: 'cage', where: '', locationId, lat: null, lng: null, retiredAt: null, createdAt: ago(30) })
 const place = (id: string, jobId: string, name: string): Place => ({ id, jobId, name, createdAt: ago(30) })
 
-const store = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, places: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]>, loadBookPrices: vi.fn(async () => {}) }))
-vi.mock('../../lib/materials/onSiteStore', () => ({
-  listContainers: (id: string) => store.containers[id] ?? [],
-  listPlaces: (id: string) => store.places[id] ?? [],
-  listMovements: (id: string) => store.movements[id] ?? [],
-  serverSummary: () => null,
-  priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
-  // The worth (PR 4): the drop ear carries an invoice price, and one parts-book part has a book price.
-  priceFor: (key: string) =>
-    key === 'text:1/2" pex drop ear'
-      ? { price: 4, from: 'invoice', supplyHouse: null, checkedOn: null, ageDays: null, stale: false }
-      : key === 'id:book-9'
-        ? { price: 1.5, from: 'book', supplyHouse: 'Pecan Supply', checkedOn: '2026-10-03', ageDays: 40, stale: false }
-        : null,
-  loadBookPrices: store.loadBookPrices,
-}))
+const store = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, places: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]>, loadBookPrices: vi.fn(async () => {}), sitePrices: [] as Array<Record<string, unknown>>, pricingOk: true, n: 0, setScopeTies: vi.fn() }))
+vi.mock('../../lib/materials/onSiteStore', async () => {
+  const { latestSitePrices, sitePriceLookup } = await vi.importActual<typeof import('../../lib/materials/sitePrices')>('../../lib/materials/sitePrices')
+  return {
+    listContainers: (id: string) => store.containers[id] ?? [],
+    listPlaces: (id: string) => store.places[id] ?? [],
+    listMovements: (id: string) => store.movements[id] ?? [],
+    serverSummary: () => null,
+    priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
+    priceOfJob: (_jobId: string, key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
+    // The one rule, real, over a made-up book and device: the drop ear carries an invoice price, and one
+    // parts-book part has a book price checked inside 90 days. The site's own answers are the table below.
+    priceForScope: (_scope: string, key: string, canon?: (k: string) => string) => {
+      const latest = latestSitePrices(store.sitePrices as never)
+      return sitePriceLookup({
+        book: (id) => (id === 'book-9' ? [{ partId: 'book-9', supplyHouse: 'Pecan Supply', price: 1.5, checkedOn: '2026-10-03' }] : []),
+        invoice: (k) => (k === 'text:1/2" pex drop ear' ? 4 : null),
+        site: (k) => latest.get(k),
+        canon: canon ?? ((k) => k),
+        today: '2026-11-13',
+      })(key)
+    },
+    loadBookPrices: store.loadBookPrices,
+    // The site's own prices (punch list #342, PR 2), in memory.
+    sitePricingAvailable: () => store.pricingOk,
+    listSitePrices: () => store.sitePrices,
+    addSitePrice: async (_scope: unknown, input: Record<string, unknown>, byName: string) => {
+      store.n += 1
+      const row = { id: `sp${store.n}`, rowKey: input.rowKey, rowName: input.rowName, kind: input.kind, unitPrice: input.kind === 'price' ? input.unitPrice : null, source: input.source ?? 'typed', sourceLineId: input.sourceLineId ?? null, sourceWords: input.sourceWords ?? '', pricedOn: input.pricedOn, byName, at: new Date(Date.now() + store.n).toISOString() }
+      store.sitePrices = [...store.sitePrices, row]
+      return row
+    },
+    removeSitePrice: async (_scope: unknown, id: string) => {
+      store.sitePrices = store.sitePrices.filter((r) => r.id !== id)
+    },
+    setScopeTies: store.setScopeTies,
+  }
+})
 
 // The answers table, in memory (punch list #330, PR 3).
 const tiesDb = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, failRead: false, n: 0 }))
@@ -64,8 +86,25 @@ vi.mock('../../lib/materials/partTiesIo', () => ({
   },
 }))
 
+// The price offers' sources (punch list #342): a made-up parts book of one part and one bill line.
+const offersIo = vi.hoisted(() => ({ load: vi.fn() }))
+vi.mock('../../lib/materials/priceOffersIo', () => ({ loadOfferSources: offersIo.load }))
+
 function fill() {
   seq = 0
+  offersIo.load.mockReset()
+  store.sitePrices = []
+  store.pricingOk = true
+  store.n = 0
+  offersIo.load.mockResolvedValue({
+    sources: {
+      parts: [{ id: 'book-9', name: '2 PVC 90 DWV', manufacturer: 'Charlotte' }],
+      prices: [{ partId: 'book-9', supplyHouse: 'Pecan Supply', price: 1.5, checkedOn: '2026-10-03' }],
+      lines: [{ id: 'l1', houseId: 'h1', houseName: 'Cedar Fork Supply', datedOn: '2026-10-09', houseCode: 'P290', description: '2 PVC DWV 90 ELL', unit: 'EA', pricingUnit: 'each', unitPrice: 2.18, quantity: 10, extendedCents: 2180 }],
+    },
+    bookError: null,
+    billsError: null,
+  })
   tiesDb.rows = []
   tiesDb.failRead = false
   store.containers = { ja: [box('r12', 'ja', 'R12', 'ya'), box('r58', 'ja', 'R58', 'ya'), box('r22', 'ja', 'R22', null)], jb: [box('p1', 'jb', 'P1', 'yb')] }
@@ -242,6 +281,227 @@ describe('SiteMaterialsView', () => {
     expect(rows.map((r) => r.querySelector('button')!.textContent!.slice(0, 9))).toEqual(['2" 90 pvc', '2" 9042R5'])
     expect(screen.getByTestId('site-shown-total').textContent).toContain('the rows with a line that has no price')
     expect(document.querySelector('[data-row-worth]')).toBeNull()
+    // A viewer who may not tie is offered no pricing, and the offers are never read.
+    expect(screen.queryByRole('button', { name: /one at a time/ })).toBeNull()
+    expect(offersIo.load).not.toHaveBeenCalled()
+  })
+
+  it('Price rows one at a time: the window asks about one row, a number key takes an offer, Undo takes it back', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    // Before the site's own prices can be written, a bill is read and not pressed, and no box is drawn.
+    store.pricingOk = false
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    // The tile counts the rows with an offer, never dollars.
+    await waitFor(() => expect(worth.textContent).toContain('2 rows have an offer'))
+    expect(worth.textContent).toContain('$100.00 known')
+    expect(offersIo.load).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Price 2 rows one at a time' }))
+
+    const win = await screen.findByTestId('site-pricing-window')
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
+    expect(win.textContent).toContain('Row 1 of 2')
+    expect(win.textContent).toContain('2 left · 156 pieces to go')
+    // The parts-book fit is an answer. What a bill paid is read, not pressed.
+    expect(within(win).getByRole('button', { name: 'Use 2 PVC 90 DWV at $1.50 for 2" 90 pvc' }).textContent).toContain('Offer · parts book · checked Oct 3')
+    const bills = within(win).getByRole('group', { name: 'What a bill paid' })
+    expect(bills.textContent).toContain('Offer · a bill · Cedar Fork Supply · Oct 9')
+    expect(bills.textContent).toContain('$2.18 each')
+    expect(within(bills).queryByRole('button')).toBeNull()
+    expect(within(win).queryByRole('textbox', { name: 'A price for one, as counted' })).toBeNull()
+    expect(within(win).queryByRole('button', { name: /^Not a part/ })).toBeNull()
+    expect(win.querySelector('[data-just-price]')).toBeNull()
+
+    // 1 takes the first answer: the tie is written, and the window moves on.
+    fireEvent.keyDown(window, { key: '1' })
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    expect(tiesDb.rows).toHaveLength(1)
+    expect(tiesDb.rows[0]).toMatchObject({ aKey: 'id:book-9', aName: '2 PVC 90 DWV', verdict: 'same' })
+    expect(win.textContent).toContain('Row 2 of 2')
+    expect(win.textContent).toContain('1 left · 42 pieces to go')
+    expect(screen.getByTestId('pricing-last-answer').textContent).toContain('Just now: 2" 90 pvc · 2 PVC 90 DWV · $1.50')
+    await waitFor(() => expect(worth.textContent).toContain('3 of 4 lines have a price'))
+
+    // Undo takes the tie back and returns to that row.
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc'))
+    expect(tiesDb.rows).toHaveLength(0)
+
+    // S skips. Past the last row the window says what is left and offers it again.
+    fireEvent.keyDown(window, { key: 's' })
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90')
+    fireEvent.click(within(win).getByRole('button', { name: /^Skip/ }))
+    const end = screen.getByTestId('pricing-walk-end')
+    expect(end.textContent).toContain('0 rows priced. 2 rows still have no price.')
+    fireEvent.click(within(end).getByRole('button', { name: 'Go through the 2 left' }))
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
+    fireEvent.click(screen.getByRole('button', { name: 'Done for now' }))
+    expect(screen.queryByTestId('site-pricing-window')).toBeNull()
+  })
+
+  it('a bill’s price is an answer once the site’s own prices can be written, and Undo takes it back', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    fireEvent.click(await screen.findByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    const bill = await within(win).findByRole('button', { name: 'Use the bill’s price for 2 PVC DWV 90 ELL at $2.18 each for 2" 90 pvc' })
+    expect(bill.textContent).toContain('Offer · a bill · Cedar Fork Supply · Oct 9')
+    // 2 is the bill: 114 pieces at $2.18 join what is known, on the bill's own day.
+    fireEvent.keyDown(window, { key: '2' })
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    expect(store.sitePrices).toHaveLength(1)
+    expect(store.sitePrices[0]).toMatchObject({ rowKey: 'words:2" 90 pvc', kind: 'price', unitPrice: 2.18, source: 'bill', sourceLineId: 'l1', sourceWords: 'Cedar Fork Supply', pricedOn: '2026-10-09', byName: 'Dana' })
+    expect(worth.textContent).toContain('$348.52 known')
+    expect(worth.textContent).toContain('3 of 4 lines have a price')
+    expect(tiesDb.rows).toHaveLength(0)
+    expect(screen.getByTestId('pricing-last-answer').textContent).toContain('Just now: 2" 90 pvc · $2.18 each from Cedar Fork Supply’s bill')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc'))
+    expect(store.sitePrices).toHaveLength(0)
+    expect(worth.textContent).toContain('$100.00 known')
+  })
+
+  it('Just price takes a parts-book part’s price and leaves the row its own name and count', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    fireEvent.click(await screen.findByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    // The parts-book offer has the second press. A bill is a price already and has none.
+    const just = await within(win).findByRole('button', { name: 'Just the price of 2 PVC 90 DWV, $1.50, for 2" 90 pvc' })
+    expect(just.textContent).toBe('Just price')
+    expect(win.querySelectorAll('[data-just-price]')).toHaveLength(1)
+    fireEvent.click(just)
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    // One price, dated the day the book checked it, and no tie: nothing is renamed or joined.
+    expect(store.sitePrices).toHaveLength(1)
+    expect(store.sitePrices[0]).toMatchObject({ rowKey: 'words:2" 90 pvc', rowName: '2" 90 pvc', kind: 'price', unitPrice: 1.5, source: 'book', sourceWords: '2 PVC 90 DWV', pricedOn: '2026-10-03' })
+    expect(tiesDb.rows).toHaveLength(0)
+    expect(worth.textContent).toContain('$271.00 known')
+    expect(screen.getByTestId('pricing-last-answer').textContent).toContain('Just now: 2" 90 pvc · $1.50 for one, the price of 2 PVC 90 DWV, name kept')
+    fireEvent.click(screen.getByRole('button', { name: 'Done for now' }))
+    fireEvent.click(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: /^No price/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
+    const row = screen.getByRole('button', { name: /^2" 90 pvc/ })
+    expect(row.textContent).toContain('$171.00 · the parts book’s price for 2 PVC 90 DWV · checked Oct 3')
+    expect(screen.queryByRole('button', { name: /^2 PVC 90 DWV/ })).toBeNull()
+    // The foot's Undo is the same delete the row offers.
+    fireEvent.click(row)
+    fireEvent.click(within(screen.getByTestId('priced-here')).getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(worth.textContent).toContain('$100.00 known'))
+  })
+
+  it('a typed price and Not a part finish the list, and the row keeps its answer with a way back', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    fireEvent.click(worth)
+    fireEvent.click(await screen.findByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    const box = within(win).getByRole('textbox', { name: 'A price for one, as counted' })
+    fireEvent.change(box, { target: { value: 'two' } })
+    expect(win.textContent).toContain('Type a price as a number, such as 3.12.')
+    fireEvent.change(box, { target: { value: '3.5' } })
+    fireEvent.click(within(win).getByRole('button', { name: 'Save $3.50 for one' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90'))
+    expect(store.sitePrices[0]).toMatchObject({ rowKey: 'words:2" 90 pvc', kind: 'price', unitPrice: 3.5, source: 'typed' })
+    // N sets the last row aside: it leaves the cover, and nothing is left to price.
+    fireEvent.keyDown(window, { key: 'n' })
+    await waitFor(() => expect(screen.getByTestId('pricing-walk-end').textContent).toContain('Nothing waiting on a price on this site.'))
+    expect(store.sitePrices[1]).toMatchObject({ rowKey: 'words:2" 90', kind: 'left_out', unitPrice: null })
+    expect(worth.textContent).toContain('$499.00 known')
+    expect(worth.textContent).toContain('3 of 3 lines have a price · 1 left out')
+    fireEvent.click(within(screen.getByTestId('pricing-walk-end')).getByRole('button', { name: 'Done' }))
+    expect(screen.queryByTestId('site-pricing-window')).toBeNull()
+
+    // On the list the row says it was left out, and its open row brings it back.
+    fireEvent.click(worth)
+    expect(document.querySelector('[data-row-left-out]')?.textContent).toBe('left out · not a part')
+    fireEvent.click(screen.getByRole('button', { name: /^2" 90\b(?! pvc)/ }))
+    const here = screen.getByTestId('priced-here')
+    expect(here.textContent).toContain('Left out, not a part · by Dana')
+    fireEvent.click(within(here).getByRole('button', { name: 'Bring 2" 90 back' }))
+    await waitFor(() => expect(document.querySelector('[data-row-left-out]')).toBeNull())
+    expect(worth.textContent).toContain('3 of 4 lines have a price')
+    // The typed price reads on its row with who typed it, and Undo takes it back.
+    const priced = screen.getByRole('button', { name: /^2" 90 pvc/ })
+    expect(priced.textContent).toContain('$399.00 · typed by Dana')
+    fireEvent.click(priced)
+    fireEvent.click(within(screen.getByTestId('priced-here')).getByRole('button', { name: 'Undo the price of 2" 90 pvc' }))
+    await waitFor(() => expect(worth.textContent).toContain('$100.00 known'))
+  })
+
+  it('the Worth tile holds three lists, and an old price is checked against a newer bill', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    // A price typed for 2" 90 last winter: known, and older than 90 days.
+    store.sitePrices = [{ id: 'old1', rowKey: 'words:2" 90', rowName: '2" 90', kind: 'price', unitPrice: 2, source: 'typed', sourceLineId: null, sourceWords: '', pricedOn: '2026-02-04', byName: 'Dana', at: '2026-02-04T15:00:00Z' }]
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    await waitFor(() => expect(worth.textContent).toContain('2 of 4 lines have a price · 1 on a price older than 90 days'))
+    fireEvent.click(worth)
+    const lens = screen.getByTestId('site-price-lens')
+    expect(within(lens).getByRole('button', { name: 'No price · 1' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(lens).getByRole('button', { name: 'An old price · 1' }))
+    expect(screen.getByTestId('site-shown-total').textContent).toContain('the rows on a price older than 90 days')
+    expect([...document.querySelectorAll('[data-site-part-row]')]).toHaveLength(1)
+    fireEvent.click(await screen.findByRole('button', { name: 'Check 1 old price one at a time' }))
+
+    const win = await screen.findByTestId('site-pricing-window')
+    expect(screen.getByRole('dialog').textContent).toContain('Check the old prices · Juniper Ridge')
+    expect(screen.getByTestId('pricing-now').textContent).toBe('Now: $2.00 for one · typed by Dana · Feb 4, 282 days ago')
+    // Only the bill newer than that price is offered. The parts book is not, and neither is Other part.
+    expect(within(win).queryByRole('button', { name: /Use 2 PVC 90 DWV/ })).toBeNull()
+    expect(within(win).queryByRole('button', { name: 'Other part…' })).toBeNull()
+    fireEvent.click(await within(win).findByRole('button', { name: 'Use the bill’s price for 2 PVC DWV 90 ELL at $2.18 each for 2" 90' }))
+    await waitFor(() => expect(screen.getByTestId('pricing-walk-end').textContent).toContain('Nothing waiting on a newer price on this site.'))
+    expect(worth.textContent).not.toContain('older than 90 days')
+    fireEvent.click(within(screen.getByTestId('pricing-walk-end')).getByRole('button', { name: 'Done' }))
+
+    // The list is empty, says so, and leads back to every row. Left out has nothing and says so.
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(0)
+    expect(screen.getByText('Nothing waiting on a newer price on this site.')).toBeTruthy()
+    fireEvent.click(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: 'Left out · 0' }))
+    expect(screen.getByText('Nothing was left out on this site.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show every row' }))
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(3)
+  })
+
+  it('with no row left to price the list says so and offers the old prices', async () => {
+    setup({ canTie: true, byName: 'Dana' })
+    store.sitePrices = [
+      { id: 'a', rowKey: 'words:2" 90', rowName: '2" 90', kind: 'price', unitPrice: 2, source: 'typed', sourceLineId: null, sourceWords: '', pricedOn: '2026-02-04', byName: 'Dana', at: '2026-02-04T15:00:00Z' },
+      { id: 'b', rowKey: 'words:2" 90 pvc', rowName: '2" 90 pvc', kind: 'price', unitPrice: 2.18, source: 'bill', sourceLineId: 'l1', sourceWords: 'Cedar Fork Supply', pricedOn: '2026-10-09', byName: 'Dana', at: '2026-11-13T15:00:00Z' },
+    ]
+    await findAsk()
+    const worth = within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ })
+    await waitFor(() => expect(worth.textContent).toContain('4 of 4 lines have a price · 1 on a price older than 90 days'))
+    fireEvent.click(worth)
+    expect(screen.getByText('Nothing waiting on a price on this site.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /one at a time/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the 1 on an old price' }))
+    expect(within(screen.getByTestId('site-price-lens')).getByRole('button', { name: 'An old price · 1' }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelectorAll('[data-site-part-row]')).toHaveLength(1)
+  })
+
+  it('a source that did not answer is named, and a typed key in a box is not an answer', async () => {
+    setup({ canTie: true, byName: 'Dana', searchBook: vi.fn(async () => []) })
+    offersIo.load.mockResolvedValue({ sources: { parts: [], prices: [], lines: [] }, bookError: null, billsError: 'You do not have access to the bills.' })
+    await findAsk()
+    fireEvent.click(within(screen.getByRole('group', { name: 'This site at a glance' })).getByRole('button', { name: /Worth/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Price 2 rows one at a time' }))
+    const win = await screen.findByTestId('site-pricing-window')
+    await waitFor(() => expect(win.textContent).toContain('The bills’ offers are not here. You do not have access to the bills.'))
+    expect(win.textContent).toContain('Nothing found in the parts book or on a bill. Type a price for one')
+    // Other part… opens the picker on the folded words; typing an s there does not skip the row.
+    fireEvent.click(within(win).getByRole('button', { name: 'Other part…' }))
+    const box = within(win).getByRole('searchbox', { name: 'Find it in the parts book' }) as HTMLInputElement
+    expect(box.value).toBe('2 90 pvc')
+    fireEvent.keyDown(box, { key: 's' })
+    expect(screen.getByTestId('pricing-row-name').textContent).toBe('2" 90 pvc')
   })
 
   it('This is a parts-book part ties a typed name to the book, and the row takes the book’s name and price', async () => {

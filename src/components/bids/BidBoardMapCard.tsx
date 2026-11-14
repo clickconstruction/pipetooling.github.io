@@ -283,7 +283,7 @@ function SectionChips({
               transition: 'background 150ms, color 150ms, border-color 150ms',
             }}
           >
-            <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: isLit ? 'white' : on ? c : 'var(--text-faint-300)', display: 'inline-block' }} />
+            <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: isLit ? 'rgb(255, 255, 255)' : on ? c : 'var(--text-faint-300)', display: 'inline-block' }} />
             {BID_BOARD_MAP_SECTION_LABEL[l.section]}
             <span style={{ fontWeight: 500, color: isLit ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{l.count}</span>
             {isLit ? (

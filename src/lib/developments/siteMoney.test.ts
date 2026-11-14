@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { ExpectedPayModel, PaySpeedData } from '../jobs/billedExpectedPay'
+import type { PaySpeedData } from '../jobs/billedExpectedPay'
+import type { BilledPayModel } from '../jobs/billedDuePay'
 import type { MemberBid, MemberJob, Members } from './overview'
 import { MONEY_SORT_COLUMN, paySpeedPayerIds,
   MONEY_SORT_IS_SETTING,
@@ -171,7 +172,7 @@ describe('buildSiteMoney — the sections and rows', () => {
     expect(by.JP1106!.dates).toMatchObject({ billedYmd: '2026-10-20', billedAgoDays: 9, lien: { daysLeft: 47 }, expected: { state: 'upcoming', daysLate: 0 } })
     expect(by.JP1106!.next.askForDate).toBe(false)
     expect(by.JP1107!.dates).toMatchObject({ billedYmd: '2026-10-01', billedAgoDays: 28, lien: null, expected: { expectedYmd: '2026-10-31', state: 'upcoming' } })
-    expect(by.JP1108!.dates).toEqual({ billedYmd: null, billedAgoDays: null, expected: null, lien: null })
+    expect(by.JP1108!.dates).toEqual({ billedYmd: null, billedAgoDays: null, expected: null, due: null, lien: null })
     expect(by.JP1108!.next).toEqual({ askForDate: false, notice: false, words: null })
     expect(by.JP1109!.dates).toBeNull()
     expect(model.band.pastDue).toBe(1)
@@ -194,12 +195,12 @@ function row(over: Partial<MoneyRow> & { number: string }): MoneyRow {
   }
 }
 
-function expected(daysLate: number): ExpectedPayModel {
-  return { expectedYmd: '2026-10-01', state: daysLate > 0 ? 'late' : 'upcoming', source: 'customer', medianDays: 30, samples: 6, payers: 0, daysLate, paceWords: 'pays in ~30d', label: '', title: '' }
+function expected(daysLate: number): BilledPayModel {
+  return { expectedYmd: '2026-10-01', state: daysLate > 0 ? 'late' : 'upcoming', source: 'customer', medianDays: 30, samples: 6, payers: 0, daysLate, paceWords: 'pays in ~30d', label: '', title: '', dueYmd: null, daysPastDue: 0, lateness: null, calendar: null, calendarOwn: false, clockYmd: null, clockFrom: null }
 }
 
 function dates(over: Partial<MoneyDates>): MoneyDates {
-  return { billedYmd: null, billedAgoDays: null, expected: null, lien: null, ...over }
+  return { billedYmd: null, billedAgoDays: null, expected: null, due: null, lien: null, ...over }
 }
 
 const lien = (daysLeft: number) => ({ ymd: '2026-11-16', daysLeft, kindAssumed: true })

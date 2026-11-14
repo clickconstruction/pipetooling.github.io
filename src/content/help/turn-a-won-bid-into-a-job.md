@@ -50,10 +50,13 @@ An estimator cannot open a job. Their Job block shows {{button:green|Send to Dis
 
 1. Check the **Job name** and the **Address**.
 2. On a bid sent to more than one GC, pick the GC that won it.
-3. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
-4. Pick the **Trade**.
-5. Add a **Wanted by** day and **A note for Dispatch** if they help.
-6. Press **Send to Dispatch**.
+3. Press *+ Add their pay terms* if the GC pays on a set day of the month.
+4. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
+5. Pick the **Trade**.
+6. Add a **Wanted by** day and **A note for Dispatch** if they help.
+7. Press **Send to Dispatch**.
+
+The pay terms are one small line under the GC. Most drafts leave the line alone. The office checks the terms and sets the pay calendar. See [Pay terms an estimator read on a won bid](/help/set-a-payers-pay-calendar#pay-terms-an-estimator-read-on-a-won-bid).
 
 :::example What the estimator sees next
 The Job block reads {{chip:yellow|Sent to Dispatch Oct 20 · waiting}}. Once Dispatch opens the job, it reads {{chip:green|J878 opened from this bid}}, with the money line under it.
@@ -63,7 +66,7 @@ Dispatch's row shows the draft in one line, like *Wendi's draft: GC Southern Pin
 
 ## The bid shows its job
 
-Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}}. {{button:green|Open the job}} sits beside it and opens the job window. **Create another job** sits beside that. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself.
+Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}}. {{button:green|Open the job}} sits beside it and opens the job window. **Create another job** sits beside that. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself. The Job block checks the bid for a job first. Its buttons appear once it has the answer.
 
 And the job shows on the bid. The moment a job carries the bid, the bid's outcome moves to **Started / Complete** by itself. On the Bid Board the row moves to the *Started or Complete* section. A toast names the bid for about five seconds as the job saves. A toast is a small message that pops up. The outcome moves whichever door you came through: this button, **New Job → Import**, or a signed estimate. Bids that already had a job were caught up. Clearing the link later never clears the outcome. Changing the outcome stays a human call.
 

@@ -89,12 +89,23 @@ describe('the Lien window’s affidavit is the desk’s (v2.6809)', () => {
 
 describe('lienWindowLastMonth · the strip and the paper read one month (v2.6809)', () => {
   it('names the creation month for a job with no hours, the ledger’s month, or the day set by hand', () => {
-    expect(lienWindowLastMonth({ workMonths: null, job: jobRow })).toEqual({ lastMonth: '2026-08', fromCreation: true, byHand: false })
-    expect(lienWindowLastMonth({ workMonths: null, job: { ...jobRow, last_work_date: '2026-09-02' } })).toEqual({ lastMonth: '2026-09', fromCreation: false, byHand: false })
-    expect(lienWindowLastMonth({ workMonths: null, job: { ...jobRow, lien_last_work_on: '2026-10-01' } })).toEqual({ lastMonth: '2026-10', fromCreation: false, byHand: true })
+    expect(lienWindowLastMonth({ workMonths: null, job: jobRow })).toEqual({ lastMonth: '2026-08', fromCreation: true, byHand: false, laterHoursDay: '' })
+    expect(lienWindowLastMonth({ workMonths: null, job: { ...jobRow, last_work_date: '2026-09-02' } })).toEqual({ lastMonth: '2026-09', fromCreation: false, byHand: false, laterHoursDay: '' })
+    expect(lienWindowLastMonth({ workMonths: null, job: { ...jobRow, lien_last_work_on: '2026-10-01' } })).toEqual({ lastMonth: '2026-10', fromCreation: false, byHand: true, laterHoursDay: '' })
     const months = { months: [{ key: '2026-07' }] as never, lastMonthKey: '2026-07' }
-    expect(lienWindowLastMonth({ workMonths: months, job: jobRow })).toEqual({ lastMonth: '2026-07', fromCreation: false, byHand: false })
-    expect(lienWindowLastMonth({ workMonths: months, job: { ...jobRow, lien_last_work_on: '2026-08-15' } })).toEqual({ lastMonth: '2026-08', fromCreation: false, byHand: true })
+    expect(lienWindowLastMonth({ workMonths: months, job: jobRow })).toEqual({ lastMonth: '2026-07', fromCreation: false, byHand: false, laterHoursDay: '' })
+    expect(lienWindowLastMonth({ workMonths: months, job: { ...jobRow, lien_last_work_on: '2026-08-15' } })).toEqual({ lastMonth: '2026-08', fromCreation: false, byHand: true, laterHoursDay: '' })
+  })
+
+  it('the day set by hand counts when approved hours come after it (v2.7193, punch list #335, row 1, the owner’s reading of 2026-11-13)', () => {
+    // A day set in June; hours approved later, in October. The window took October and gave the affidavit four more months.
+    const later = { months: [{ key: '2026-05' }, { key: '2026-10' }] as never, lastMonthKey: '2026-10' }
+    const job = { ...jobRow, last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' }
+    expect(lienWindowLastMonth({ workMonths: later, job })).toEqual({ lastMonth: '2026-06', fromCreation: false, byHand: true, laterHoursDay: '2026-10-20' })
+    // With no forecast months read, the ledger's later day does not move it either.
+    expect(lienWindowLastMonth({ workMonths: null, job })).toEqual({ lastMonth: '2026-06', fromCreation: false, byHand: true, laterHoursDay: '2026-10-20' })
+    // Later hours in the hand day's own month move no month, and the window still says they are there.
+    expect(lienWindowLastMonth({ workMonths: { months: [{ key: '2026-06' }] as never, lastMonthKey: '2026-06' }, job: { ...jobRow, last_work_date: '2026-06-25', lien_last_work_on: '2026-06-12' } })).toEqual({ lastMonth: '2026-06', fromCreation: false, byHand: true, laterHoursDay: '2026-06-25' })
   })
 
   it('is the month the window’s strip draws as Last work', () => {
@@ -143,7 +154,7 @@ const deskFor = (over: { isSub?: boolean; gc?: { name: string; address: string }
     todayYmd: shared.todayYmd,
     form: 'long',
   })
-// The window, as its Mechanic's lien tab fills it: the claim from the job's own bills and payments, the correction read for the job.
+// The window, as its Lien affidavit tab fills it: the claim from the job's own bills and payments, the correction read for the job.
 const winFor = (over: { isSub?: boolean; gcName?: string; gcAddress?: string; correction?: LienClaimCorrection | null; issuer?: never } = {}) =>
   buildLienWindowAffidavitFields({
     ...shared,

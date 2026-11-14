@@ -91,12 +91,12 @@ The Dashboard's **Billing Pipeline** card has a round **i** button next to its t
 
 ## Section tools in one dropdown
 
-The stage headers down the board carry their own buttons. Working has Capable of Being Billed. Ready to Bill has Ready to Bill notifications. Billed Awaiting Payment has GC Review, Accounts Receivable, Share / Print and Paid notifications. GC means the general contractor. Paid in Full has Paid in Full notifications. The **hamburger menu icon just left of Waiting** sits in the stage strip. It collects all of them in one dropdown, grouped by section. So you can open any of these without scrolling the board.
+The stage headers down the board carry their own buttons. Working has Capable of Being Billed. Ready to Bill has Ready to Bill notifications. Billed Awaiting Payment has GC Review, Accounts Receivable, Share / Print, Paid notifications and Bills sent. GC means the general contractor. Paid in Full has Paid in Full notifications. The **hamburger menu icon just left of Waiting** sits in the stage strip. It collects all of them in one dropdown, grouped by section. So you can open any of these without scrolling the board.
 
 :::example Section tools
 **Working** &nbsp; Capable of Being Billed: $48,450
 **Ready to Bill** &nbsp; Ready to Bill notifications
-**Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications
+**Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications &nbsp;·&nbsp; Bills sent
 **Paid in Full** &nbsp; Paid in Full notifications
 :::
 
@@ -175,27 +175,62 @@ You press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill**. It 
 {{button:blue|Stripe bill}} &nbsp; {{button:outline|Physical invoice}} &nbsp; {{button:outline|▾}}
 :::
 
-- **Stripe bill**: creates and sends a hosted Stripe invoice by email. This is the standard path. Payment status syncs back automatically.
+- **Stripe bill**: makes a Stripe bill the customer pays online. One press makes the bill and emails it. A text can follow. This is the standard path. Payment status syncs back automatically.
 - **Physical invoice**: a mailed paper invoice, with a date and optional memo. Next to the on-screen invoice preview sit two check-before-you-send buttons. {{button:outline|Preview}} opens the PDF in a new tab. {{button:outline|Preview email}} opens the exact email the customer will receive, without sending anything. That is the subject, body, and the payment-history card.
 - **▾**: reveals **HouseCall Pro**, which records a bill you sent through HCP. The form says so on its face. It reads *Records the bill as sent through HouseCall Pro — ClickTooling emails nobody*. Nothing leaves the app on this channel. The job moves to Billed Awaiting Payment and the customer sees nothing from here. It is tucked away on purpose. Most billing should go through Stripe.
 
 A job needs a linked customer before it can be billed. For Stripe the customer needs an email. The modal guides you if something is missing.
 
+## What the customer will get
+
+Each tab says under its name what reaches the customer. **Stripe bill** reads *An email with a Pay now button. They pay by card or bank on Stripe's page.* **Physical invoice** reads *An email with the invoice PDF attached. It has no pay link.*
+
+**Send to** names who is billed, with the address. On a Stripe bill it also shows the phone on the job. A text can follow from the next screen. With no phone on the job it says so.
+
+A box above the press says what the press does.
+
+:::example When you press Make the bill and email Dana
+1. The bill is made and marked billed.
+2. The bill email goes now to dana@example.com.
+3. A text is your choice on the next screen.
+4. Every send is kept in Bills sent.
+
+{{button:outline|Cancel}} &nbsp; {{button:outline|Make the bill, send later}} &nbsp; {{button:blue|Make the bill and email Dana}}
+:::
+
+{{button:blue|Make the bill and email Dana}} makes the bill and sends the bill email in one press. With one more person ticked it reads {{button:blue|Make the bill and email 2 people}}. Each ticked person gets a copy of their own.
+
+{{button:outline|Make the bill, send later}} makes the bill and sends nothing. Use it for a bill you hand over or text. You can still send it later from the bill, with {{button:purple|stripe}}{{button:amber|Send Email invoice}}.
+
+The next screen says how the email went, with *Bill email sent to dana@example.com*. The same screen offers the text, as in [text a customer their bill](/help/text-a-customer-their-bill).
+
+Sometimes the email cannot go. The bill is still made. The next screen says the email did not go and why. You press {{button:purple|stripe}}{{button:amber|Send Email invoice}} there to send it.
+
+A Physical invoice sends at once. The press reads {{button:blue|Email the invoice to Dana}}. With one more person ticked it reads {{button:blue|Email the invoice to 2 people}}. Everyone rides the same email and sees each address.
+
+**See a sample of this email** under the box opens the sample in [What customers see](/help/see-what-customers-see).
+
 Sometimes checks from the payer came back this past year. Then the modal says so. It reads {{chip:yellow|2 checks came back · Apr}} and suggests a card or a bank transfer. It never stops the bill.
 
-**Opening Bill Customer changes nothing.** The RTB amount you see is worked out on the spot. It comes from the job total, payments made and the invoices already on the job. The bill row itself is written only when you press a send button. Those are {{button:blue|Create Stripe invoice}}, {{button:blue|Save}} on HouseCall Pro, or {{button:blue|Send invoice}} on Physical. You press {{button:outline|Cancel}} and the job is exactly as you found it. No draft appears and no draft resizes.
+**Opening Bill Customer changes nothing.** The RTB amount you see is worked out on the spot. It comes from the job total, payments made and the invoices already on the job. The bill row itself is written only when you press a send button. Those are the two Stripe presses, {{button:blue|Save}} on HouseCall Pro, or {{button:blue|Email the invoice to Dana}} on Physical. You press {{button:outline|Cancel}} and the job is exactly as you found it. No draft appears and no draft resizes.
 
 :::example If the remainder moved while the modal was open
 Someone records a $500 payment while you're looking at a $2,630 bill. When you press Send, the modal stops, shows the new **$2,130**, and asks you to look it over and send again — it never bills the new number silently.
 :::
 
-**What the customer will see** is filled in the moment the modal opens. It lists every line the bill will list, a discount as its negative line, and the total. It is built from the job's own line items. Stripe's exact rendering replaces it once it can run. Until then the small tag reads *from the job's lines*. The note above it says what Stripe is waiting on. That is the customer's email, or the bill row that is written when you send.
+On a Stripe bill, **What Dana will get** has three faces. The faces are **The bill**, **The email** and **The text**. Looking at a face sends nothing.
+
+**The email** is the message the customer will read. The face shows From, To and Subject, then the amount, the due day and the Pay now button. The Pay now button works once the bill is made. Stripe's PDF rides along.
+
+**The text** is the words a text would carry, with the number it would go to. The link shown is a sample. A text is your choice on the next screen. With no phone number on file, the face says so.
+
+**The bill** is filled in the moment the modal opens. The box is headed *On the bill*. It lists every line the bill will list, a discount as its negative line, and the total. It is built from the job's own line items. Stripe's exact rendering replaces it once it can run. Until then the small tag reads *from the job's lines*. The note above it says what Stripe is waiting on. That is the customer's email, or the bill row that is written when you send.
 
 If the job is already {{chip:green|Paid}}, Bill Customer says so instead of showing a preview. It reads ***This job is already paid in full — nothing to bill.*** All three send buttons stay off. The safe move is Cancel. Sometimes the customer really does owe more on that job. Only then, you tick **Bill this job again anyway** to unlock the buttons. The same check runs on the server, so an old browser tab cannot slip a bill past it.
 
 :::example Bill Customer on a paid job
 **This job is already paid in full — nothing to bill.**
-{{chip:gray|☐ Bill this job again anyway}} &nbsp; {{button:outline|Cancel}} &nbsp; {{button:gray|Create Stripe invoice}}
+{{chip:gray|☐ Bill this job again anyway}} &nbsp; {{button:outline|Cancel}} &nbsp; {{button:gray|Make the bill and email Dana}}
 :::
 
 ## Billed → Paid

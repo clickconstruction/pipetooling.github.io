@@ -9,7 +9,7 @@ The Lien desk shows which jobs still owe a supply house. A supply house can send
 
 ## Find the jobs
 
-Open the [Lien desk](/lien-desk?tab=notices) on its Notices tab, under All filings. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
+Open the [Lien desk](/lien-desk?tab=notices) on its Monthly notices tab, under By paper. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
 
 :::example the mark on a row
 3 houses owed $13,058
@@ -17,17 +17,17 @@ Open the [Lien desk](/lien-desk?tab=notices) on its Notices tab, under All filin
 
 A teal storefront means a house has a job account open for that job. A job with every house paid shows no mark.
 
-The mark shows on the Deadlines tab. It also shows on the Notices, Affidavits and Retainage lists.
+The mark shows on the By date tab. It also shows on the three lists under By paper.
 
 ## See only those jobs
 
-On the Deadlines tab, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
+On the By date tab, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
 
-The Deadlines tab then shows only those jobs, still sorted by month. Press it again to see every job.
+The By date tab then shows only those jobs, still sorted by month. Press it again to see every job.
 
 ## Read the card
 
-Press a job on the Notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
+Press a job on the Monthly notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.
@@ -107,7 +107,7 @@ Press **Open the desk ›** on that line. The Lien desk opens on that job.
 
 ## In the Lien window
 
-Press a job on the Deadlines tab to open its Lien window. Under the timeline, a chip reads how many houses are owed and how much. Press it, or **Details**, to open the same card.
+Press a job on the By date tab to open its Lien window. Under the timeline, a chip reads how many houses are owed and how much. Press it, or **Details**, to open the same card.
 
 ## Mark a house paid from the Legal desk
 

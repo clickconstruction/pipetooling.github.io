@@ -15,6 +15,8 @@ The line beside the page's name says today's date and the pay week. That line al
 
 The line under it says [what the Bridge leaves out](#what-the-bridge-leaves-out).
 
+Press {{button:outline|Punch list}} at the top right of the page to open the [Punch list](/punch-list). On a phone the button sits under the page's name.
+
 The Bridge is for the owner and devs. A dev lands here when they open the app or sign in. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## The first screen
@@ -50,13 +52,26 @@ Each move names the things behind it, as a small table. A table shows three line
 
 - **Chase the late invoices** lists the customers to call. Each line says what is late, how old the oldest bill is, and the pay date they named. Press a customer's name to open the Collect window on that customer. Press **2 projects** on a line to see each open bill under it. Press **Set a pay date** on a bill to write down the day they named. Press **See who to call ›** to open the Collect window as it is.
 - **Bill the finished jobs** lists the jobs with finished work and no bill. Press a job to open it. Press **See what to bill ›** to open the Bill window.
-- **Set a percent** lists the jobs with no percent. Press **Set the percent** on a line to set it right there. The line stays on the list for the visit and says what you set.
+- **Set a percent** lists the jobs with no percent. Under each job's name is its address, as street and city. The jobs under **Price the jobs with no price** show their address the same way. Each line says the hours worked on the job and what we are charging. A job with no price says **No price**. Each line also says the last day the job was worked and who worked it. That day is marked clocked when someone clocked time, and scheduled when the schedule alone had someone there. Press the hours to see each person, then every day worked, newest first. Hours still waiting on approval are marked and are not in the total. Press **Set the percent** on a line, or at the foot of the hours window. The percent window opens with the job's facts above the control. The address leads the facts. The facts say what we are charging, what has been billed and the job's lines with their amounts. The facts also say the last day worked, the next day on the schedule and the hours so far. Pick a percent and press **Save**. The window moves on to the next job on the list. Press **Skip** or **Back** to move without saving. Press **Not now** to close. A job you set leaves the list, and the count in the heading drops.
 - **Price the jobs** lists the jobs with no price. Press a job to open it.
 - **Ask the supply houses for more days** lists the supply houses with bills due that day. Press a supply house to open its bills on that day. Press **See the bills ›** to open the list behind Money.
 
 On a phone a line is its name and its figure, with the rest under it.
 
 The card is a reading of today. The card records nothing and hands nothing to a person. The card changes when the numbers change.
+
+## Hand a line to one person
+
+Every line under a move has a check at its right edge.
+
+- A grey check means nobody has that line. Press it and the Add task window opens, already written for that one thing. The title names who, what and how much. The **Done when** lines say what finished looks like. Pick the person and press {{button:blue|Send}}.
+- A blue check means someone has it. The person's name sits under the line, with how long they have had the task. Press the check to see the task, who has it and since when. Press {{button:blue|Open the to-do}} there to change it.
+- An amber check means the task has waited too long. Too long means past the due day, or three days with no due day.
+- When the task is finished, the check turns grey again. The line names who finished it and when, for 14 days.
+
+A customer's line counts how many of its projects are handed out. A project under a customer whose own task is open reads as with that person.
+
+The page finds a task again by a tag kept on the task itself. A task made before November 13 is found by its first link, so keep that link on it.
 
 ## The doors
 
@@ -100,7 +115,7 @@ Press a card to read it. The pressed card has the red border.
 
 A line under the page's name says what the Bridge leaves out. It reads *Leaves out Oak Hollow.* or *Nothing is left out.*
 
-The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole.
+The Bridge does not count the jobs, bids and estimates of anything on that list. The bank's cash and the overhead stay whole. [The weekly email](#the-weekly-email) leaves the same things out.
 
 To change the list, press **Change ›** beside the line.
 
@@ -263,11 +278,11 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on and the app mails the Bridge's first screen every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday.
 
-The email shows the three tiles, the strip of pipe and the week's call with its moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
+The email shows what the field made and the slowest step. Under them it shows the cash balance beside the accrual balance. Each balance says its runway in days, as on the page. Then come the strip of pipe and **What to do now** with its first three moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
-Market on the email's pipe reads what the asks are worth a week, by the page's rule. The email does not read the list of what the Bridge leaves out. The email's numbers can differ from the page's while that list names something. One line under the pipe says what the bids win and what the estimates sell.
+The email leaves out [what the Bridge leaves out](#what-the-bridge-leaves-out). When the list names something, a line under the email's name says what is left out. Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 
-The email records nothing. The email's button opens the Bridge. A move the page would give to you goes out with no name on it.
+The email records nothing and names no person. The email's button opens the Bridge.
 
 ## Cash on hand comes from the bank
 

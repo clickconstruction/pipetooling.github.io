@@ -185,7 +185,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
                       border: 'none',
                       borderBottom: '1px solid var(--border)',
                       background: active ? 'var(--bg-blue-tint)' : 'transparent',
-                      color: selectable ? (active ? 'var(--text-blue-700)' : 'var(--text-strong)') : '#9ca3af',
+                      color: selectable ? (active ? 'var(--text-blue-700)' : 'var(--text-strong)') : 'var(--text-faint)',
                       cursor: selectable ? 'pointer' : 'not-allowed',
                       fontSize: '0.875rem',
                       fontWeight: active ? 600 : 400,

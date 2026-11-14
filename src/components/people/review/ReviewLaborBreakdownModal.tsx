@@ -117,7 +117,7 @@ export function ReviewLaborBreakdownModal({
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.laborCost > 0 ? `$${formatCurrency(r.laborCost)}` : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{denom > 0 && r.laborCost > 0 ? `${pct}%` : '—'}</td>
                       {isProfit && (
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: isYou ? 600 : 400, color: profitSlice >= 0 ? undefined : '#b91c1c' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: isYou ? 600 : 400, color: profitSlice >= 0 ? undefined : 'var(--text-red-700)' }}>
                           {Math.abs(profitSlice) >= 0.5 ? `$${formatCurrency(profitSlice)}` : '—'}
                         </td>
                       )}
@@ -134,7 +134,7 @@ export function ReviewLaborBreakdownModal({
                     {denom > 0 ? `${Math.round((sumOfRows / denom) * 100)}%` : '—'}
                   </td>
                   {isProfit && (
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>
                       {Math.abs(ctx.revenueBeforeOverhead) >= 0.5 ? `$${formatCurrency(denom > 0 ? (sumOfRows / denom) * ctx.revenueBeforeOverhead : 0)}` : '—'}
                     </td>
                   )}

@@ -2,6 +2,7 @@ import { WINDOW_QR_MM, WINDOW_ZONE_MM } from '../mail/windowEnvelope'
 import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
 import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_PRINTED_NAME_LINE, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
+import type { LienNoticeFields } from './lienNoticeFieldsType'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -992,25 +993,7 @@ function drawFilingDocPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, blocks: 
 
 // ---------- 1 · § 53.056 notice ----------
 
-export type LienNoticeFields = {
-  /** YYYY-MM-DD */
-  noticeDate: string
-  projectDescription: string
-  claimantName: string
-  laborMaterialsType: string
-  originalContractorName: string
-  /** '' when the claimant contracted directly with the original contractor. */
-  contractedWithIfDifferent: string
-  claimAmount: string
-  /** "July 2026 $0.00 · August 2026 $5,900.00" — printed only when a person gave a month its own figure (v2.3682). */
-  claimSplit?: string
-  contactPerson: string
-  claimantAddress: string
-  /** Print the § 53.254(g) statement under the form (v2.3744) — set for a residential or homestead property, where a homestead lien is invalid without it. Absent on older drafts. */
-  homesteadStatement?: boolean
-  /** "1760.00" — the part of the claim that is unpaid subcontract retainage (v2.3753): printed as "Of which, unpaid retainage:" under the claim, so the § 53.056 notice traps it now (counsel, 2026-09-22) and the § 53.057 form is belt and suspenders. Absent = not recorded. */
-  retainageIncluded?: string
-}
+export type { LienNoticeFields } from './lienNoticeFieldsType'
 
 /**
  * Tex. Prop. Code § 53.254(g): the statement a Subchapter C notice on a

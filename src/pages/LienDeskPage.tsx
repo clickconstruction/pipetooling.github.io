@@ -5,7 +5,7 @@
  * opened by a one-shot `?liendesk=` link the board stripped on arrival; `Jobs.tsx` sends every such link here.
  *
  * The page reads for itself what the board used to hand the window: the desk's own rows (`useLienDeskData`, the
- * full read), the work months behind each notice, the letterhead, the people who sign, the Deadlines rows from
+ * full read), the work months behind each notice, the letterhead, the people who sign, the By date rows from
  * the app-wide jobs cache (every billed job, through the kernel the Pipeline reads too) and the firm's matters
  * for counsel's sign-off. The doors back: the job form and the job window through their app-wide contexts, the
  * Legal desk and Settings by their addresses, and the three windows the desk opens over itself — a job's Lien
@@ -14,10 +14,11 @@
  * is known. On a phone (PR 3) the Notices list is the whole desk until a notice is open, and an open notice is the
  * whole desk with ← Notices on top; the address says which.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useTopEdge } from '../hooks/useTopEdge'
 import { buildJobsListCacheKey, useJobsListCache } from '../contexts/JobsListCacheContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -36,7 +37,8 @@ import { lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../l
 import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
 import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
-import { lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
+import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
+import { withJobLastWork, withJobsLastWork } from '../lib/jobs/lienLastWorkJobs'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -52,6 +54,7 @@ import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LienDeskPile } from '../lib/jobs/lienDesk'
+import { lienDeskRowFromState, lienDeskStateForView, lienDeskStateWithRow } from '../lib/jobs/lienPhoneJobScreen'
 
 /** The same people the Jobs page hands the desk: the office and the field, and a dev's fellow devs. */
 const DESK_USER_ROLES = ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
@@ -77,10 +80,10 @@ export default function LienDeskPage() {
   const authName = profileName?.trim() ?? ''
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
-  // The Deadlines rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
+  // The By date rows are the billed jobs the board loads lazily. On a cold open, or when the cache holds another customer
   // filter's board, the page takes the Pipeline's own scoped first load for that one scope (a scope fetch alone is a no-op
   // until a board snapshot exists); on a warm cache it asks for the scope the way the Pipeline's doors did.
-  const { jobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
+  const { jobs, setJobs, jobsListDataKey, fetchScopeIfNeeded, runFetchScopes, mergedScopes } = useJobsListCache()
   const billedScope = scopeForStagesSection('billed')
   const userId = user?.id ?? null
   const cacheWarm = userId != null && jobsListDataKey === buildJobsListCacheKey(userId, null)
@@ -136,9 +139,16 @@ export default function LienDeskPage() {
   const leaderNameFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
   const signerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, issuer?.phone ?? ''), [users, issuer?.phone])
 
-  // The Deadlines rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
+  // The By date rows (v2.4101): the billed jobs with their runways, through the Pipeline's kernel. The pen on the grid
   // (v2.4153) re-reads what it wrote: a promise the pay dates, a kind or a last day the clocks.
   const [clocksRefresh, setClocksRefresh] = useState(0)
+  // v2.7208: a last day set on the desk's own line (the Notices pane) comes back in the desk's read of its jobs. A By date row
+  // counts from the day on the jobs list this page holds, so the fresh day is written there; the list is left as it is
+  // when nothing differs, and the rows stay mounted either way.
+  useEffect(() => {
+    if (!data) return
+    setJobs((prev) => withJobsLastWork(prev, Object.values(data.jobsById)))
+  }, [data, setJobs])
   const { rows: calendarRows, reloadPromises } = useLienCalendarRows(jobs, { role, billedLoaded: mergedScopes.has(billedScope), todayYmd, refreshKey: clocksRefresh })
 
   // Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask.
@@ -174,10 +184,17 @@ export default function LienDeskPage() {
   const onAddressChange = useCallback(
     (next: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => {
       const href = lienDeskHref(next)
-      if (href !== here) navigate(href, { replace: true, state: location.state })
+      // A job's own screen belongs to the first view (punch list #352, PR 4): another view drops the open row from the entry.
+      if (href !== here) navigate(href, { replace: true, state: lienDeskStateForView(location.state, next.kind) })
     },
     [here, navigate, location.state],
   )
+
+  // A phone: a row's job opens as its own screen, as a history entry of its own at the same address, so the phone's Back
+  // closes it and the list is where it was (punch list #352, PR 4).
+  const openRowKey = lienDeskRowFromState(location.state)
+  const onOpenRow = useCallback((rowKey: string) => navigate(here, { state: lienDeskStateWithRow(location.state, rowKey) }), [here, navigate, location.state])
+  const onCloseRow = useCallback(() => navigate(-1), [navigate])
 
   // A phone (punch list #182, PR 3): the Notices list, then one notice at a time. Opening a notice is a new entry, so Back
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
@@ -207,19 +224,12 @@ export default function LienDeskPage() {
     else navigate(PIPELINE_HREF)
   }, [canGoBack, navigate])
 
-  // The page is the whole screen under the app's top chrome: measured once drawn, so the desk's lists and panes scroll
-  // inside it and the document never scrolls. `--app-bottom-chrome` is the phone dock when a mode shows one.
+  // The page is the whole screen under the app's top chrome, so the desk's lists and panes scroll inside it and the
+  // document never scrolls. The top edge is read again whenever something above it changes (punch list #352, PR 0: a
+  // banner that closed left a grey band its height above the phone dock). `--app-bottom-chrome` is the phone dock
+  // when a mode shows one.
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [top, setTop] = useState(0)
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = rootRef.current
-      if (el) setTop(Math.max(0, Math.round(el.getBoundingClientRect().top)))
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
+  const top = useTopEdge(rootRef)
 
   // The doors back. Edit job and the job window open over the page through their app-wide contexts; the desk re-reads
   // after a save and again when the window closes.
@@ -262,7 +272,7 @@ export default function LienDeskPage() {
   if (!isStagesOfficeRole(role)) return <Navigate to="/dashboard" replace />
 
   const backDoor = (
-    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={BACK_DOOR}>
+    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={isMobile ? { ...BACK_DOOR, height: 44 } : BACK_DOOR}>
       <span aria-hidden="true">←</span> {canGoBack ? 'Back' : 'Pipeline'}
     </button>
   )
@@ -275,6 +285,9 @@ export default function LienDeskPage() {
         onShowList={onShowList}
         backDoor={backDoor}
         onAddressChange={onAddressChange}
+        openRowKey={openRowKey}
+        onOpenRow={onOpenRow}
+        onCloseRow={onCloseRow}
         data={data}
         loading={loading}
         todayYmd={todayYmd}
@@ -323,9 +336,13 @@ export default function LienDeskPage() {
         noticeMonths={lienWindow?.noticeMonths ?? null}
         // v2.7077: the window's header names the step the desk's row names.
         deskNotice={lienWindowDeskNotice(lienWindow ? data?.queue.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
+        // v2.7187, punch list #335, row 2: and the step an affidavit is on.
+        deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
-        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
-        onLastWorkSaved={() => {
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read. v2.7208: the row counts from
+        // the day on the jobs list this page holds, so the day is written there too; it kept its old dates until a reload.
+        onLastWorkSaved={(jobId, facts) => {
+          setJobs((prev) => withJobLastWork(prev, jobId, facts))
           setClocksRefresh((k) => k + 1)
           refetch()
         }}
@@ -337,6 +354,8 @@ export default function LienDeskPage() {
           navigate(lienDeskHref({ kind: deskKind, job: deskKind === 'notice' ? jobId : null }), { replace: true, state: location.state })
         }}
         onRecorded={() => {
+          // v2.7208: the row behind the window reads its notice, its filing and its service off the lien clocks: read them again.
+          setClocksRefresh((k) => k + 1)
           // A recorded notice that names the desk item's months sends the item (v2.3405).
           const jobId = lienWindow?.job.id
           if (jobId) void syncLienDeskAfterRecord(jobId).finally(refetch)

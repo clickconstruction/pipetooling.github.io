@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_MISSED_RUN_DAYS,
+  asPayCalendarRead,
   calendarBasisWords,
   calendarBillRead,
   calendarBillWords,
   calendarFor,
+  calendarSourceFor,
   cutoffWordsFor,
   dueDayFor,
   expectedFromDue,
   indexPayCalendars,
+  jobPayCalendarWords,
   latenessAgainst,
   latenessWords,
   nextCutoff,
@@ -19,6 +22,7 @@ import {
   parsePayCalendarRow,
   payCalendarPreview,
   payCalendarShort,
+  payCalendarShortFor,
   payCalendarWords,
   payCutoffLine,
   sendTodayCutoffWords,
@@ -184,6 +188,62 @@ describe('parsePayCalendarRow and calendarFor', () => {
     const index = indexPayCalendars([parsePayCalendarRow({ payer_customer_id: 'p9', job_id: 'j9', pay_day: 15 })!])
     expect(calendarFor(index, { payerId: 'p9', jobId: 'j9' })?.payDay).toBe(15)
     expect(calendarFor(index, { payerId: 'p9', jobId: 'other' })).toBeNull()
+  })
+})
+
+describe('whose calendar a job reads (punch list #341)', () => {
+  const payerRow = parsePayCalendarRow({ payer_customer_id: 'p1', job_id: null, pay_day: 10, months_after: 1 })!
+  const jobOwn = parsePayCalendarRow({ payer_customer_id: 'p1', job_id: 'j2', cutoff_day: 25, pay_day: 30, months_after: 1 })!
+  const jobOff = parsePayCalendarRow({ payer_customer_id: 'p1', job_id: 'j3', off: true })!
+  const loneJob = parsePayCalendarRow({ payer_customer_id: 'p9', job_id: 'j9', pay_day: 15 })!
+  const loneOff = parsePayCalendarRow({ payer_customer_id: 'p9', job_id: 'j8', off: true })!
+  const index = indexPayCalendars([payerRow, jobOwn, jobOff, loneJob, loneOff])
+
+  it("says the job's own, the payer's, switched off or none", () => {
+    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j1' })).toEqual({ calendar: TENTH, from: 'payer', payerCalendar: TENTH })
+    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' })).toEqual({ calendar: BY_25TH, from: 'job', payerCalendar: TENTH })
+    expect(calendarSourceFor(index, { payerId: 'p1', jobId: 'j3' })).toEqual({ calendar: null, from: 'off', payerCalendar: TENTH })
+    expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'j9' })).toMatchObject({ from: 'job', payerCalendar: null })
+    expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'j8' })).toEqual({ calendar: null, from: 'off', payerCalendar: null })
+    expect(calendarSourceFor(index, { payerId: 'p9', jobId: 'other' })).toEqual({ calendar: null, from: 'none', payerCalendar: null })
+    expect(calendarSourceFor(index, { payerId: null, jobId: 'j2' }).from).toBe('none')
+    expect(calendarSourceFor(null, { payerId: 'p1' }).from).toBe('none')
+  })
+
+  it("reads past a job's row when another party pays the bill", () => {
+    // j2's own calendar is held for p1. A bill on j2 that p2 pays reads p2's, which has none.
+    expect(calendarSourceFor(index, { payerId: 'p2', jobId: 'j2' })).toEqual({ calendar: null, from: 'none', payerCalendar: null })
+  })
+
+  it('agrees with calendarFor on every bill', () => {
+    for (const bill of [{ payerId: 'p1', jobId: 'j1' }, { payerId: 'p1', jobId: 'j2' }, { payerId: 'p1', jobId: 'j3' }, { payerId: 'p9', jobId: 'j9' }, { payerId: 'p2', jobId: 'j2' }]) {
+      expect(calendarFor(index, bill)).toEqual(calendarSourceFor(index, bill).calendar)
+    }
+  })
+
+  it("says it in the job window's words", () => {
+    const words = (payerId: string, jobId: string, canSet = true) => jobPayCalendarWords(calendarSourceFor(index, { payerId, jobId }), ' Larkfield Construction ', canSet)
+    expect(words('p1', 'j1')).toMatchObject({ lead: 'Follows Larkfield Construction', press: 'In by month end, paid the 10th', tail: null })
+    expect(words('p1', 'j2')).toMatchObject({ lead: 'This job’s own', press: 'In by the 25th, paid the 30th', tail: null })
+    expect(words('p1', 'j3')).toMatchObject({ lead: null, press: 'No pay calendar on this job', tail: 'Larkfield Construction has one' })
+    expect(words('p9', 'j8')).toMatchObject({ lead: null, press: 'No pay calendar on this job', tail: null })
+    expect(words('p9', 'other')).toMatchObject({ lead: null, press: 'Set a pay calendar…', tail: null })
+  })
+
+  it("marks a job's own calendar wherever a row says its calendar, and takes a bare calendar as the payer's", () => {
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' }))).toBe('This job’s own · In by the 25th, paid the 30th')
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j1' }))).toBe(payCalendarShort(TENTH))
+    expect(payCalendarShortFor(calendarSourceFor(index, { payerId: 'p1', jobId: 'j3' }))).toBeNull()
+    expect(asPayCalendarRead(BY_25TH)).toEqual({ calendar: BY_25TH, from: 'payer', payerCalendar: BY_25TH })
+    expect(asPayCalendarRead(null)).toEqual({ calendar: null, from: 'none', payerCalendar: null })
+    const read = calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' })
+    expect(asPayCalendarRead(read)).toBe(read)
+  })
+
+  it('says nothing to a reader who may not set one when none is set, and still names one that is', () => {
+    expect(jobPayCalendarWords(calendarSourceFor(index, { payerId: 'p9', jobId: 'other' }), 'Larkfield Construction', false)).toBeNull()
+    expect(jobPayCalendarWords(calendarSourceFor(index, { payerId: 'p1', jobId: 'j2' }), 'Larkfield Construction', false)?.lead).toBe('This job’s own')
+    expect(jobPayCalendarWords(calendarSourceFor(index, { payerId: 'p1', jobId: 'j1' }), null, true)?.lead).toBe('Follows this customer')
   })
 })
 

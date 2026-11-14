@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienCalendarJob } from './lienCalendar'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
+import { affidavitGates, buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienStatusPayload, lienShareHouseJobs, lienShareJobName, lienShareScopeFacts, lienShareScopeOptions, lienStatusJobFor } from './lienDeskShare'
 import { buildLienSupplierJobs } from './lienJobSuppliers'
-import { lienStatusText } from '../../../supabase/functions/_shared/lienDeskStatus'
+import { lienStatusEmailText, lienStatusText } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 const TODAY = '2026-10-01'
 const NOW = '2026-10-01T19:14:00.000Z'
@@ -126,6 +126,10 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
   it('reads kinds not set and windows already gone from the Calendar rows', () => {
     expect(p.kindsUnset).toBe(2)
     expect(p.pastWindow).toEqual({ jobs: 2, owed: 11555 })
+    // v2.7198, punch list #335, row 4: a notice window that closed while the affidavit can still be filed owes a late notice.
+    // The clock no longer calls it closed, so it is not counted as past its window.
+    const withLate = buildLienStatusPayload({ data, calendarRows: [...calendarRows, cal(700, GC.RLC, 900, 'late_notice')], todayYmd: TODAY, nowIso: NOW, scope: 'all' })
+    expect(withLate.pastWindow).toEqual({ jobs: 2, owed: 11555 })
   })
 
   it('says the Dashboard’s number when nothing is approved or held', () => {
@@ -155,6 +159,38 @@ describe('one GC', () => {
     expect(p.liens.map((l) => l.number)).toEqual(['881'])
     expect(p.kindsUnset).toBe(1)
     expect(p.pastWindow).toEqual({ jobs: 1, owed: 6200 })
+  })
+})
+
+describe('a paper held by one of the later gates is not ready to file', () => {
+  // Every other gate is clear on each row, so the one named is the only thing holding the paper.
+  const clear: LienAffidavitRow = { job_id: id(881), last_month: '2026-07', deadline: '2026-10-15', is_sub: true, noticed: true, filed: false, open_balance: 1050, customer_id: GC.RLC, gc_customer_id: GC.RLC, property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, has_contractor_address: true, owner_public: false, desk_item_id: null, desk_status: null }
+  const shared = (r: LienAffidavitRow) => {
+    const held = { ...data, affidavits: buildLienAffidavitQueue([r], [], TODAY) } as LienDeskData
+    return buildLienStatusPayload({ data: held, calendarRows: [], todayYmd: TODAY, nowIso: NOW, scope: 'all' })
+  }
+
+  it('reads a paper with every gate clear as ready', () => {
+    const p = shared(clear)
+    expect(p.liens.map((l) => l.needs)).toEqual([[]])
+    expect(lienStatusText(p)).toContain('Liens to file: 1 job, $1,050, the first by Oct 15. It is ready to file.')
+  })
+
+  it.each([
+    ['contractor', { has_contractor_address: false }, 'It needs the general contractor’s address.'],
+    ['homestead_answer', { property_kind: 'residential', homestead_answered: false }, 'It needs the homestead answer.'],
+    ['public_owner', { owner_public: true }, 'It is public property, so no lien can be filed.'],
+  ] as const)('holds a paper whose only closed gate is %s', (need, patch, sentence) => {
+    const p = shared({ ...clear, ...patch })
+    expect(p.liens.map((l) => l.needs)).toEqual([[need]])
+    expect(lienStatusText(p)).toContain('Liens to file: 1 job, $1,050, the first by Oct 15. None is ready to file yet.')
+    expect(lienStatusEmailText(p, { appUrl: 'https://clicktooling.com', senderName: 'Grace', note: '', readerIsLeader: false })).toContain(`• 881 Dunmere Mallin, $1,050. ${sentence}`)
+  })
+
+  it('gives every gate the desk can close a need', () => {
+    const keys = affidavitGates({ is_sub: true, noticed: false, has_owner: false, has_legal: false, homestead: true, has_contractor_address: false, owner_public: false }).map((g) => g.key)
+    const p = shared({ ...clear, noticed: false, has_owner: false, has_legal: false, homestead: true, has_contractor_address: false })
+    expect(p.liens[0]!.needs).toEqual(keys)
   })
 })
 

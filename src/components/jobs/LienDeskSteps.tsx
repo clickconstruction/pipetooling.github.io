@@ -3,10 +3,11 @@ import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepName, lienStepTiles, type 
 import { lienReminderRungWords, type LienReminderBrief } from '../../lib/jobs/lienReminders'
 import { LIEN_REMINDER_SCHEDULE, LIEN_SCHEDULE_AXIS_DAYS, LIEN_SCHEDULE_TAIL, lienScheduleMarks, lienSchedulePct, lienScheduleWords } from '../../lib/jobs/lienReminderSchedule'
 import type { LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
+import { lienStepFoldWords, lienStepRailsShown } from '../../lib/jobs/lienStepFold'
 import { LienNoticeTimeline } from './LienNoticeTimeline'
 
 /**
- * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
+ * The To do list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
  * rows, each rung with its count, a press narrowing the list to that rung; the four dots and
  * the fraction a row wears; and the card that opens on the dots — the row's ladder written
  * out. The words all come from `lienNextUpSteps.ts`; nothing here reads or writes.
@@ -51,9 +52,30 @@ export function LienStepRail({
   /** Sent notices past day 7 waiting for reminders week of the lien's month (punch list #235, PR 4): on the first rung, not in its count. */
   reminderScheduled?: number
 }) {
+  // On a phone the rails are one row that unfolds in place (punch list #352, PR 2); a pressed step keeps them open.
+  const [unfolded, setUnfolded] = useState(false)
+  const shown = lienStepRailsShown({ isMobile, unfolded, stepPressed: on != null })
+  const fold = lienStepFoldWords(ladders.map((key) => LIEN_STEP_LADDERS.find((l) => l.key === key)!.label), shown)
   return (
-    <div data-testid="lien-step-rails" style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
-      {ladders.map((key) => {
+    <div data-testid="lien-step-rails" data-folded={isMobile ? (shown ? 'no' : 'yes') : undefined} style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
+      {isMobile ? (
+        <button
+          type="button"
+          data-testid="lien-step-rails-fold"
+          aria-expanded={shown}
+          onClick={() => {
+            // Hiding the steps also lets go of a pressed one, or the rails would stay open on it.
+            if (shown && on != null) onPick(null)
+            setUnfolded(!shown)
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}
+        >
+          <span style={{ flex: 'none' }}>{fold.label}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>{fold.hint}</span>
+          <span aria-hidden style={{ flex: 'none', color: 'var(--text-muted)' }}>{shown ? '▴' : '▾'}</span>
+        </button>
+      ) : null}
+      {!shown ? null : ladders.map((key) => {
         const ladder = LIEN_STEP_LADDERS.find((l) => l.key === key)!
         const tone = LADDER_TONE[key]
         return (
@@ -249,7 +271,7 @@ export function LienStepBrief({ on, brief, count, marks, timeline, whyChips, isM
 }
 
 /** The four dots and the fraction a row wears; hover, focus or a tap opens the card. */
-export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide }: { at: LienStepAt | null; ladder: LienStepLadder; card: LienStepCard; isMobile: boolean; onShow: (el: HTMLElement, card: LienStepCard) => void; onHide: () => void }) {
+export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide, compact = false }: { at: LienStepAt | null; ladder: LienStepLadder; card: LienStepCard; isMobile: boolean; onShow: (el: HTMLElement, card: LienStepCard) => void; onHide: () => void; /** The dots alone, with no fraction beside them: a phone's row, where the press beside them needs the room (punch list #352, PR 3). */ compact?: boolean }) {
   const tone = LADDER_TONE[ladder]
   const step = at?.step ?? 0
   return (
@@ -266,15 +288,54 @@ export function LienStepMark({ at, ladder, card, isMobile, onShow, onHide }: { a
         e.stopPropagation()
         onShow(e.currentTarget, card)
       }}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: '2px 4px', margin: '-2px -4px', borderRadius: 5, font: 'inherit', color: tone.fg, cursor: 'default', minHeight: isMobile ? 28 : undefined }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: '2px 4px', margin: '-2px -4px', borderRadius: 5, font: 'inherit', color: tone.fg, cursor: 'default', minHeight: isMobile ? 40 : undefined }}
     >
       <span aria-hidden style={{ display: 'inline-flex', gap: 4 }}>
         {[1, 2, 3, 4].map((n) => (
           <i key={n} style={{ width: 7, height: 7, borderRadius: 999, display: 'inline-block', background: n <= step ? tone.fg : 'var(--border-strong)' }} />
         ))}
       </span>
-      <span style={{ fontSize: '0.72rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{at ? `${step}/4` : '—'}</span>
+      {compact && at ? null : <span style={{ fontSize: '0.72rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{at ? `${step}/4` : '—'}</span>}
     </button>
+  )
+}
+
+/**
+ * The row's ladder written out: four steps, the done ones ticked, the one it stands on lit. The card on the dots draws
+ * it, and so does a job's own screen on a phone (punch list #352, PR 4), where `roomy` sets it in a size a thumb reads.
+ */
+export function LienStepCardItems({ card, roomy = false }: { card: LienStepCard; roomy?: boolean }) {
+  const tone = LADDER_TONE[card.ladder]
+  const dot = roomy ? 24 : 18
+  return (
+    <ol data-roomy={roomy ? 'yes' : undefined} style={{ listStyle: 'none', margin: roomy ? 0 : '10px 0 0', padding: 0, display: 'grid' }}>
+      {card.items.map((it, i) => (
+        <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: `${dot + 2}px 1fr`, gap: roomy ? 10 : 8, alignItems: 'start', padding: roomy ? '7px 0' : '5px 0' }}>
+          <span
+            aria-hidden
+            style={{
+              width: dot,
+              height: dot,
+              borderRadius: 999,
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: roomy ? '0.8rem' : '0.66rem',
+              fontWeight: 700,
+              border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
+              background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
+              color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
+              boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
+            }}
+          >
+            {it.state === 'done' ? '✓' : i + 1}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: roomy ? '1rem' : '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
+            <span style={{ display: 'block', fontSize: roomy ? '0.875rem' : '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -301,34 +362,7 @@ export function LienStepCardView({ card, place, onClose, onMouseEnter, onMouseLe
       <div data-testid="lien-step-card-deadline" style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: 2, color: card.tone === 'red' ? 'var(--text-red-600)' : card.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
         {card.deadline}
       </div>
-      <ol style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid' }}>
-        {card.items.map((it, i) => (
-          <li key={i} data-testid="lien-step-card-item" data-state={it.state} style={{ display: 'grid', gridTemplateColumns: '20px 1fr', gap: 8, alignItems: 'start', padding: '5px 0' }}>
-            <span
-              aria-hidden
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 999,
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: '0.66rem',
-                fontWeight: 700,
-                border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
-                background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
-                color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
-                boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
-              }}
-            >
-              {it.state === 'done' ? '✓' : i + 1}
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: '0.84rem', fontWeight: it.state === 'todo' ? 500 : 600, color: it.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{it.title}</span>
-              <span style={{ display: 'block', fontSize: '0.76rem', color: it.state === 'now' ? 'var(--text-700)' : 'var(--text-muted)' }}>{it.detail}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
+      <LienStepCardItems card={card} />
       {card.blocked ? (
         <div data-testid="lien-step-card-blocked" style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>
           <strong>Blocked by:</strong> {card.blocked}
@@ -402,7 +436,7 @@ export function useLienStepCard(isMobile: boolean) {
  * Done steps ticked, the one the row stands on lit and saying whose it is. Nothing for a row past
  * the ladder.
  */
-export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the Do now rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
+export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the To do rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
   const tiles = lienStepTiles(at, ladder, viewerIsLeader)
   if (!tiles) return null
   const inner = tiles.map((t) => (

@@ -66,6 +66,7 @@ export const IMPORTERS = [
   'quo-send',
   'quo-webhook',
   'receipt-link',
+  'receipt-request',
   'remind-bid-followups',
   'send-checklist-notification',
   'send-estimate-to-customer',
@@ -244,17 +245,29 @@ export const ENTRIES = {
   'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
   // The Bridge's Monday email (v2.5881): the reads with a client passed in, the mail from them, and the mail's parts.
   // Since v2.6888 the weekly send (bridge-weekly-sheet) builds the page's first screen: the tiles, the strip and the
-  // week's call, with the accounts the owner left out of cash and the Done presses on the call's moves.
+  // card What to do now, with the accounts the owner left out of cash, and since v2.7214 the two balances.
   // The index exports nothing of them: bridge-weekly-sheet imports each file by its path, so the portals and the other
   // functions that read the index do not carry the Bridge's files (customer-portal went over the 5 MB a deploy may
   // upload a second time when the email took Market's worth, punch list #318).
   'lib/bridge/sheetReads.ts': { values: [], types: [] },
   'lib/bridge/sheetBuild.ts': { values: [], types: [] },
   'lib/bridge/weekMail.ts': { values: [], types: [] },
+  'lib/bridge/moneyCard.ts': { values: [], types: [] },
   'lib/bridge/cashAccounts.ts': { values: [], types: [] },
-  'lib/bridge/callPeople.ts': { values: [], types: [] },
   'lib/bridge/mercuryCash.ts': { values: [], types: [] },
   'lib/jobs/zzTestJobReads.ts': { values: [], types: [] },
+  // The dev seat's last day of work (v2.7206): the Lien window's own rule for a day set by hand and the table its
+  // confirm window draws, so plan_last_work_day refuses what the window refuses and shows the dates the window shows.
+  // The index exports nothing of them: the seat imports each file by its path.
+  'lib/jobs/lienLastWorkDay.ts': { values: [], types: [] },
+  'lib/jobs/lienLastWorkDayPreview.ts': { values: [], types: [] },
+  // The dev seat's notice recorded by hand (v2.7229): the app's own rule for the rows one mailed paper becomes, the day a
+  // desk item marked sent after the fact says it went, the nine values a notice's record keeps and who signs it.
+  // The index exports nothing of them: the seat imports each file by its path.
+  'lib/jobs/lienNoticeByHand.ts': { values: [], types: [] },
+  'lib/jobs/lienSentAt.ts': { values: [], types: [] },
+  'lib/jobs/lienNoticeJobFields.ts': { values: [], types: [] },
+  'lib/jobs/lienSigner.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
   'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },

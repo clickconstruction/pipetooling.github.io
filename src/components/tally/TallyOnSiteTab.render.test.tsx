@@ -28,6 +28,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   retireContainer: vi.fn(),
   unretireContainer: vi.fn(),
   setOnSiteErrorHandler: vi.fn(),
+  refreshJob: vi.fn(),
 }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -189,5 +190,34 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
     expect(screen.queryByTestId('add-part-already')).toBeNull()
     expect(screen.getByRole('button', { name: 'Use “wax ring” as typed' })).toBeTruthy()
+  })
+})
+
+describe('TallyOnSiteTab · Count this box walks every line (v2.7161)', () => {
+  it('a line counted to none does not make the walk step over the next one', async () => {
+    const { addMovement } = await import('../../lib/materials/onSiteStore')
+    // The store's write, stood in: the press lands in the ledger the tab reads, as the cache-first write does.
+    vi.mocked(addMovement).mockImplementation(((input: { partName: string; quantity: number; reason: string; fromContainerId: string | null; toContainerId: string | null }) => {
+      const row = mv({ partName: input.partName, quantity: input.quantity, reason: input.reason, fromContainerId: input.fromContainerId, toContainerId: input.toContainerId, at: '2026-11-12T10:00:00Z' })
+      store.movements = [...store.movements, row]
+      return row
+    }) as never)
+    store.movements = ['ZZ part a', 'ZZ part b', 'ZZ part c'].map((partName, i) => mv({ partName, reason: 'delivered', quantity: 5 + i, at: `2026-11-01T10:0${i}:00Z`, toContainerId: 'a2' }))
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    expect(screen.getByText('ZZ part a')).toBeTruthy()
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Not in A2 any more' }))
+    // The second line is next. Before the fix the walk showed the third and never counted this one.
+    expect(screen.getByText('ZZ part b')).toBeTruthy()
+    expect(screen.getByText('2 of 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '6 is right' }))
+    expect(screen.getByText('ZZ part c')).toBeTruthy()
+    expect(screen.getByText('3 of 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Not in A2 any more' }))
+    // Three lines, three count rows, and the toast says so.
+    expect(vi.mocked(addMovement).mock.calls.filter((c) => (c[0] as { reason: string }).reason === 'counted')).toHaveLength(3)
+    expect(await screen.findByText('A2 counted. 3 lines, 2 corrected.')).toBeTruthy()
+    vi.mocked(addMovement).mockReset()
   })
 })

@@ -8,6 +8,12 @@ export type ChecklistAddModalPreset = {
   job?: ChecklistJobPreset | null
   /** Which When the window opens on (v2.5825): the Physical inbox deck's Comes back opens it on repeat. */
   when?: 'today' | 'date' | 'repeat'
+  /** The Done when… lines the window opens with, one a line, for a card written for one specific thing (the Bridge's What to do now, punch list #334). */
+  doneWhen?: string[]
+  /** Whether the card asks for a photo at the finish. Absent: the window's own rule (on once lines are written). An office call has no photo to take. */
+  asksForPhoto?: boolean
+  /** The key of the one thing the card is made for (the Bridge's to-do key), kept on the card as `source_tag` so the page that made it finds it again (punch list #334, PR 12). */
+  sourceTag?: string | null
 }
 
 export type ChecklistAddModalOpenOptions = {

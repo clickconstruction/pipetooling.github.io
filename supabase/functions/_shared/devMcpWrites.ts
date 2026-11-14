@@ -10,7 +10,7 @@
 // makes it (action create) and, v2.6185, the plan set onto it (action file_plans); since v2.6244 dev_legal_statement_write, a sworn
 // statement drafted onto a matter's Timeline (punch list #220); since v2.6367 dev_on_site_write, the Materials on site
 // ledger's presses (punch list #209: a container, a delivery, a movement, a count), SECURITY INVOKER so every row lands
-// under the dev's own RLS, and since v2.6808 dev_on_site_move_job, a whole job's on-site rows moved to another job; since v2.6426 dev_person_evidence_write, a piece of evidence
+// under the dev's own RLS, since v2.6808 dev_on_site_move_job, a whole job's on-site rows moved to another job, and since v2.7241 dev_on_site_rename, a box's name, kind and where line and a typed part's name job wide; since v2.6426 dev_person_evidence_write, a piece of evidence
 // on a person's HR file, whose apply stages the files in the hr-files bucket before the rows and asks hr-evidence-drive
 // after them. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
@@ -37,6 +37,8 @@ import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
+import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
+import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
@@ -47,6 +49,7 @@ import { bidCountsInput, isBidCountsVerb } from './devMcpBidCounts.ts'
 import { bidTakeoffInput, isBidTakeoffVerb } from './devMcpBidTakeoff.ts'
 import { bidLaborInput, isBidLaborVerb } from './devMcpBidLabor.ts'
 import { bidPricesInput, isBidPricesVerb } from './devMcpBidPrices.ts'
+import { bidSubmissionInput, isBidSubmissionVerb } from './devMcpBidSubmission.ts'
 import { isSubLaborPaymentVerb, isSubLaborVerb, subLaborInput, subLaborPaymentInput } from './devMcpSubLabor.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
@@ -151,6 +154,15 @@ export const WRITE_VERBS = {
   // id and the code printed on its label; the plan counts both jobs before and after.
   plan_materials_move: { rpc: 'dev_on_site_move_job', step: 'plan' },
   apply_materials_move: { rpc: 'dev_on_site_move_job', step: 'apply' },
+  // v2.7241 / 0.86.0 (the owner's yes, 2026-11-13): a site's names tidied from the seat — a live box's name, kind and
+  // where line as the Edit window saves them, and a typed part's name fixed job wide as Fix the name does, or put back
+  // — through dev_on_site_rename. SECURITY INVOKER as dev_on_site_write is: the box is updated and the rename row
+  // inserted under the dev's own RLS, and the triggers the screens' writes fire keep the history. The plan names every
+  // box a part rename reaches and what two lines become where it merges them.
+  plan_container_edit: { rpc: 'dev_on_site_rename', step: 'plan' },
+  apply_container_edit: { rpc: 'dev_on_site_rename', step: 'apply' },
+  plan_part_rename: { rpc: 'dev_on_site_rename', step: 'plan' },
+  apply_part_rename: { rpc: 'dev_on_site_rename', step: 'apply' },
   // v2.6414 / 0.20.0 (punch list #212 PR 5): a signed hours statement — the row the window saves from a snapshot the
   // server reads through the shared kernel (dev_hours_statement_write, action make), its signing link through the
   // signing functions as the dev (send), and a signed copy onto a matter's Evidence tab (action file_on_matter).
@@ -194,6 +206,16 @@ export const WRITE_VERBS = {
   // server's read of the record and the jobs linked to it (devMcpPropertyRecord.ts).
   plan_property_record: { rpc: null, step: 'plan' },
   apply_property_record: { rpc: null, step: 'apply' },
+  // v2.7206 / 0.84.0: a job's last day of work for the lien clocks, set by hand with its reason or cleared, as the Lien
+  // window's Set the day saves it — one PATCH on jobs_ledger under RLS; rpc is null, the dry run the server's read of
+  // the job run through the window's own kernels (devMcpLastWorkDay.ts).
+  plan_last_work_day: { rpc: null, step: 'plan' },
+  apply_last_work_day: { rpc: null, step: 'apply' },
+  // v2.7229 / 0.85.0: a § 53.056 notice that already went out, recorded as the Lien desk's Already mailed? Record it…
+  // records it — one job_lien_filings row a covered job on one packet, each job's live desk item marked sent; rpc is
+  // null, the dry run the server's read run through the form's own kernel (devMcpNoticeByHand.ts).
+  plan_notice_by_hand: { rpc: null, step: 'plan' },
+  apply_notice_by_hand: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -258,6 +280,13 @@ export const WRITE_VERBS = {
   // is null: the dry run is the server's read of the bid's pricing (devMcpBidPrices.ts).
   plan_bid_pricing: { rpc: null, step: 'plan' },
   apply_bid_pricing: { rpc: null, step: 'apply' },
+  // v2.7154 / 0.82.0 (the bid train's pair 6, punch list #339): a bid's sent paper filed from Drive and linked — the
+  // project folder made by bid-photos' make when the bid has none, the paper into Team only › Sent by us (Drive's own
+  // copy inside the company's Shared Drive, else read on the server and put through drive-link), then the Files
+  // window's own PATCH of bids.bid_submission_link and a line on the bid's Notes. rpc is null: the dry run is the
+  // server's read of the bid as the dev and of Drive through the service account (devMcpBidSubmission.ts).
+  plan_bid_submission: { rpc: null, step: 'plan' },
+  apply_bid_submission: { rpc: null, step: 'apply' },
   // v2.6944 / 0.71.0: a sub labor sheet on a job — made, changed or removed as Jobs → Subs → Pay's New Sub Labor and
   // Edit window write it (people_labor_jobs, its assignee row, people_labor_job_items), as the dev under RLS; rpc is
   // null, the dry run the server's read of the job, the person and the job's sheets (devMcpSubLabor.ts).
@@ -306,6 +335,9 @@ const CLOCK_OPS = ['times', 'note', 'move', 'approve'] as const
 const CLOCK_SESSION_MAX_MS = 24 * 3600 * 1000
 const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
 const CONTAINER_KINDS = ['cage', 'box', 'loose'] as const
+/** `job_containers.label`'s own limit, and `job_material_movements.part_name`'s (src/lib/materials/editBox.ts BOX_NAME_MAX, partRename.ts PART_NAME_MAX). */
+const BOX_NAME_MAX = 24
+const PART_NAME_MAX = 160
 const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
 const ON_SITE_LINES_MAX = 200
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -383,6 +415,18 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isNoticeByHandVerb(verb)) {
+    // v2.7229: the shape check is devMcpNoticeByHand's; the dry run is the server's read of the jobs, the desk and the notices on record.
+    const built = noticeByHandInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isLastWorkDayVerb(verb)) {
+    // v2.7206: the shape check is devMcpLastWorkDay's; the dry run is the server's read of the job and its lien clock.
+    const built = lastWorkDayInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isPropertyRecordVerb(verb)) {
     // v2.6950: the shape check is devMcpPropertyRecord's; the dry run is the server's read of the record and its jobs.
     const built = propertyRecordInput(verb, input)
@@ -422,6 +466,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     // v2.6940: the shape check is devMcpJobPayment's, with the day (a payment is never recorded ahead of today); the
     // dry run is the server's read of the job, its payment rows and the bank row.
     const built = jobPaymentInput(verb, input, todayYmd())
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isBidSubmissionVerb(verb)) {
+    // v2.7154: the shape is devMcpBidSubmission's; the dry run is the server's read of the bid and of Drive.
+    const built = bidSubmissionInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1109,6 +1159,49 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${container}`, planHash }
   }
+  if (verb === 'plan_container_edit' || verb === 'apply_container_edit') {
+    const edit = obj(input.edit)
+    const shape = `${verb} needs edit — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the box's history shows it, under 80), container (the live box: its name as it reads now, or its id — read_on_site lists them), and at least one of: label (the new name, 1 to ${BOX_NAME_MAX} characters, saved in capitals; no other live box of the job may carry it), kind (cage | box | loose — a pallet, or a thing too big for a box, is loose), where (where exactly, in the crew's words, under 120; "" clears the line) }. A key left out stays as it is. The box's place on site is plan_container with action move; Unsorted is never changed.`
+    if (!edit) return { ok: false, error: shape }
+    const str = (k: string) => (typeof edit[k] === 'string' ? (edit[k] as string).trim().replace(/\s+/g, ' ') : '')
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    const ref = str('container')
+    if (!UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80 || !ref || ref.length > 40) return { ok: false, error: shape }
+    const p: Json = { action: 'edit_container', job_id: jobId, agent_label: agentLabel, container: ref }
+    for (const key of ['label', 'kind', 'where'] as const) {
+      if (edit[key] === undefined) continue
+      if (typeof edit[key] !== 'string') return { ok: false, error: shape }
+      const value = key === 'kind' ? str(key).toLowerCase() : str(key)
+      if (key === 'label' && (!value || value.length > BOX_NAME_MAX)) return { ok: false, error: shape }
+      if (key === 'kind' && !(CONTAINER_KINDS as readonly string[]).includes(value)) return { ok: false, error: shape }
+      if (key === 'where' && value.length > 120) return { ok: false, error: shape }
+      p[key] = value
+    }
+    if (p.label === undefined && p.kind === undefined && p.where === undefined) return { ok: false, error: shape }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${ref}`, planHash }
+  }
+  if (verb === 'plan_part_rename' || verb === 'apply_part_rename') {
+    const rename = obj(input.rename)
+    const shape = `${verb} needs rename — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the rename's record shows it, under 80), and either from (the typed name as read_on_site lists it; capitals and doubled spaces do not matter) with to (the name the line should carry, under ${PART_NAME_MAX}, its capitals kept as typed), or undo alone (a rename_id: the one apply_part_rename replied with, or a row of job_part_renames) }. A rename is the whole job's, in every box that holds the line; a part from the parts book keeps the book's name.`
+    if (!rename) return { ok: false, error: shape }
+    const str = (k: string) => (typeof rename[k] === 'string' ? (rename[k] as string).trim().replace(/\s+/g, ' ') : '')
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    if (!UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80) return { ok: false, error: shape }
+    if (rename.undo !== undefined) {
+      const undo = str('undo').toLowerCase()
+      if (!UUID_RE.test(undo) || rename.from !== undefined || rename.to !== undefined) return { ok: false, error: shape }
+      const p: Json = { action: 'undo_part_rename', job_id: jobId, agent_label: agentLabel, rename_id: undo }
+      return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} undo ${undo}`, planHash }
+    }
+    const from = str('from')
+    const to = str('to')
+    if (!from || from.length > PART_NAME_MAX || !to || to.length > PART_NAME_MAX) return { ok: false, error: shape }
+    if (from === to) return { ok: false, error: `${verb}: from and to are the same name, so there is nothing to rename.` }
+    const p: Json = { action: 'rename_part', job_id: jobId, agent_label: agentLabel, from, to }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${from}`, planHash }
+  }
   if (verb === 'plan_materials_move' || verb === 'apply_materials_move') {
     const move = obj(input.move)
     const shape = `${verb} needs move — { from_job (the jobs_ledger.id the material is recorded under — find_job), to_job (the jobs_ledger.id it belongs on) }. Everything the job holds on site moves: its places, cages and boxes, the ledger, the boxes' own moves and their photos, every box keeping its id and printed code. One box or one line is plan_container or plan_movement; read_on_site reads both jobs first.`
@@ -1293,10 +1386,12 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * longer matches. The log's rule would only refuse a real second act whose plan reads like an old one:
  * G4 added, retired, and added again on the same job. A whole job's move (v2.6808) commits to both jobs' row counts
  * and is refused by the wrapper once the source holds nothing; a count moved there, back, and there again is a
- * second act too.
+ * second act too. A box's edit and a part's rename (v2.7241) are refused the same way once they land — the box
+ * already reads that way, no typed part carries the old name, the rename was already undone — and a name fixed,
+ * undone and fixed again is a second act.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename'
 }
 
 /**
@@ -1331,6 +1426,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_property_record') return `Nothing written: this plan was already applied on this property record${when}. The record already reads that way; read_rows on customer_addresses shows it. A plan commits to the record's updated_at and each column's before value, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_job_payment') return `Nothing written: this plan was already applied${when}. The payment already reads that way; get_job lists the job's rows. A plan commits to the job's rows as they stood, so a further change needs a new plan.`
+  if (verb === 'apply_bid_submission') return `Nothing written: this plan was already applied on this bid${when}. The paper is in Team only › Sent by us of its project folder and the bid carries its link; get_bid shows it. Another paper, or the same one after a change, needs a new plan.`
   if (verb === 'apply_bid_pricing') return `Nothing written: this plan was already applied on this bid${when}. The prices already read that way; get_bid states the grid's total. A further change needs a new plan from the prices as they stand.`
   if (verb === 'apply_bid_labor') return `Nothing written: this plan was already applied on this bid${when}. The Labor tab already reads that way; read_rows on cost_estimate_labor_rows lists the rows. A further change needs a new plan from the tab as it stands.`
   if (verb === 'apply_bid_takeoff') return `Nothing written: this plan was already applied on this bid${when}. The takeoff already reads that way; read_rows on bids_takeoff_rough_part_lines by bid_id lists the lines. A further change needs a new plan from the lines as they stand.`

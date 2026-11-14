@@ -1,8 +1,9 @@
 /**
  * The Lien desk's address (punch list #182, the Lien desk's move): the desk is a page at `/lien-desk`,
  * and what it shows is in the address, so a reload keeps your place and the address bar is the link
- * to paste. `?tab=` is the view by a plain word — `deadlines` for the Deadlines grid, and under All
- * filings `notices`, `affidavits`, `retainage` or `timeline`; Do now is the default and never written.
+ * to paste. `?tab=` is the view by a plain word — `deadlines` for the By date grid (Deadlines until
+ * v2.7207; the word stays, so old links and printed codes still open), and under By paper `notices`,
+ * `affidavits`, `retainage` or `timeline`; To do is the default and never written.
  * `&job=<id>` is the notice the Notices list opens on, `&pile=<pile>` the pile it is narrowed to, and a
  * link that names a job or a pile with no tab lands on Notices, as the old door did. `&records=<job id>`
  * (or `records=1`) opens Records for an owner over the desk, a door the page consumes once.
@@ -16,7 +17,7 @@ import { LIEN_DESK_PILES, type LienDeskPile } from '../jobs/lienDesk'
 
 export const LIEN_DESK_PATH = '/lien-desk'
 
-/** The desk's views and kinds as the desk names them: Do now, Deadlines, and the four lists under All filings. */
+/** The desk's views and kinds as the desk names them: To do, By date, the three papers under By paper, and By job (`timeline`; a fourth list under By paper until v2.7219). */
 export type LienDeskKind = 'next' | 'calendar' | 'notice' | 'affidavit' | 'retainage' | 'timeline'
 
 /** The view the desk opens on when the address names none. */
@@ -41,7 +42,7 @@ const WORD_BY_KIND: Record<LienDeskKind, string> = {
 }
 
 export type LienDeskAddress = {
-  /** The view; null when the address names none (Do now applies). */
+  /** The view; null when the address names none (To do applies). */
   kind: LienDeskKind | null
   /** The notice to open on; null for the list's own pick. */
   job: string | null
@@ -92,7 +93,7 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
 }
 
 /**
- * The old links, mapped: `?liendesk=1` opens the desk on Do now; `&kind=notice|affidavit|retainage|timeline`
+ * The old links, mapped: `?liendesk=1` opens the desk on To do; `&kind=notice|affidavit|retainage|timeline`
  * its list; `&liendeskJob=<id>` the job's notice and `&liendeskPile=<pile>` the pile, each landing on Notices
  * when no kind is named; `?ownerrecords=<job id>` the desk with Records for an owner open on that job's
  * property. Null when the search carries neither door, so the caller leaves the page alone.

@@ -139,10 +139,10 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.81.0'")
-    expect(SERVER).toContain('Writes are ninety-seven verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.86.0'")
+    expect(SERVER).toContain('Writes are one hundred and seven verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
-    expect(README).toContain('ninety-seven `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and seven `plan_` / `apply_` / `revert_` verbs')
   })
   it('go through writeRpcBody with the app’s day, and an apply needs the plan’s hash', () => {
     const planned = writeRpcBody('plan_sub_labor', { labor: FLAT })
@@ -521,7 +521,11 @@ describe('devMcpSubLabor — a payment on a sheet', () => {
     expect(String(dry.reply.job_profit)).toContain('unchanged')
     expect((dry.reply.warnings as string[]).join(' ')).toContain('The memo "ACH · ref ZZ-1001" shows to ZZ Sample Sub on their portal')
     expect((dry.reply.warnings as string[]).join(' ')).toContain('No bank row was named')
-    expect(LEDGER).toContain("insert({ job_id: jobId, amount, memo: memo?.trim() || null, sequence_order: nextOrder, payment_date: paymentDate?.trim() || null })")
+    // The window's row, as the hook builds it: the same five fields. Since v2.7176 the window adds `method` and
+    // `method_ref` only when a chip was picked; the seat still says the method in the memo and names neither column.
+    expect(LEDGER).toContain('      job_id: jobId,\n      amount,\n      memo: memo?.trim() || null,\n      sequence_order: nextOrder,\n      payment_date: paymentDate?.trim() || null,\n')
+    expect(LEDGER).toContain("...(extras.method ? { method: extras.method, method_ref: extras.method_ref?.trim() || null } : {}),")
+    expect(LEDGER).toContain(".from('people_labor_job_payments').insert(row as never)")
     const second = await planPay({ ...PAID, amount: 400, hidden_from_sub: true, note: 'second half' }, worldWithSheet({ people_labor_job_payments: [sheetPay()] }))
     if (!second.dry.ok) throw new Error(second.dry.refused)
     expect(second.dry.reply.records).toEqual({ job_id: SHEET, amount: 400, memo: 'ACH · ref ZZ-1001 · second half', sequence_order: 1, payment_date: '2026-10-20', hidden_from_sub: true })

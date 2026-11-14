@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
-import { searchSettings, settingsSearchTrail, type SettingsSearchEntry } from '../../lib/settingsSearch'
+import type { UserRole } from '../../hooks/useAuth'
+import { searchSettings, settingsSearchIndexFor, settingsSearchTrail, type SettingsSearchEntry } from '../../lib/settingsSearch'
 
 /**
  * Settings search bar (v2.2084, mockup A): a type-ahead above the tab bar.
  * Results come from the curated index in `lib/settingsSearch.ts`, filtered to
- * the viewer's role-visible tabs; each row names its destination tab, matched
+ * the viewer's role-visible tabs and, for a card drawn for fewer roles than its
+ * tab, to the roles that see the card (`role`, v2.7139); each row names its destination tab, matched
  * label text is bolded, keyword-only matches show the word that hit. Keyboard:
  * ↑/↓ move, Enter jumps, Esc clears. Picking a result clears the box and hands
  * the entry to the parent (tab switch + anchor scroll).
@@ -19,10 +21,13 @@ import { searchSettings, settingsSearchTrail, type SettingsSearchEntry } from '.
  */
 export default function SettingsSearchBar({
   groups,
+  role,
   onPick,
 }: {
   /** Role-filtered jump groups — provides both visibility and tab labels. */
   groups: readonly { id: string; label: string }[]
+  /** The viewer's role: a row whose card is drawn for fewer roles than its tab shows for those roles alone. */
+  role: UserRole | null | undefined
   onPick: (entry: SettingsSearchEntry) => void
 }) {
   const [query, setQuery] = useState('')
@@ -31,7 +36,8 @@ export default function SettingsSearchBar({
   const inputRef = useRef<HTMLInputElement | null>(null)
   const tabLabelById = useMemo(() => new Map(groups.map((g) => [g.id, g.label])), [groups])
   const visibleTabIds = useMemo(() => groups.map((g) => g.id), [groups])
-  const hits = useMemo(() => searchSettings(query, visibleTabIds), [query, visibleTabIds])
+  const index = useMemo(() => settingsSearchIndexFor(role), [role])
+  const hits = useMemo(() => searchSettings(query, visibleTabIds, index), [query, visibleTabIds, index])
   const open = focused && query.trim() !== ''
   const clampedActive = Math.min(activeIndex, Math.max(0, hits.length - 1))
 

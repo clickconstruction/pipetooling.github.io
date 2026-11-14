@@ -24,7 +24,8 @@ import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/j
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
-import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
@@ -209,7 +210,7 @@ export default function LienDeskAffidavitPane({
   )
 
   // A stop's paper (v2.4793): what the window shows for each stop, from the affidavit's side — this pane's own affidavit,
-  // the retainage notice as its pane prints it, a filing's snapshot once it went out; the notice is read on Notices.
+  // the retainage notice as its pane prints it, a filing's snapshot once it went out; the notice is read on Monthly notices.
   const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
     const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
     const filings = (data.filingsByJob[entry.jobId] ?? []).filter((f) => !f.voided_at)
@@ -226,7 +227,7 @@ export default function LienDeskAffidavitPane({
       const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
       if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`, { envelope })
       if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
-      return { ...none, envelope, act: { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Notices, where its pages are.' }
+      return { ...none, envelope, act: { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Monthly notices, where its pages are.' }
     }
     if (kind === 'retainage') {
       const sent = filings.find((f) => f.kind === 'retainage_53_057')
@@ -258,12 +259,13 @@ export default function LienDeskAffidavitPane({
     return none
   }
 
-  const run = async (labelText: string, fn: () => Promise<void>, done: string) => {
+  /** `fn` may answer with its own words and tone, which replace `done`: the send for approval says which way the leader was told. */
+  const run = async (labelText: string, fn: () => Promise<void | { said: string; tone: 'success' | 'warning' }>, done: string) => {
     if (busy) return
     setBusy(true)
     try {
-      await fn()
-      showToast(done, 'success')
+      const own = await fn()
+      showToast(own ? own.said : done, own ? own.tone : 'success')
       onChanged()
     } catch (e) {
       showToast(e instanceof Error && e.message ? `${labelText}: ${e.message}` : `${labelText} failed.`, 'error')
@@ -279,7 +281,12 @@ export default function LienDeskAffidavitPane({
       'Send for approval',
       async () => {
         const id = await ensureDraft()
-        await submitLienDeskItem(id, lienAffidavitSubmitOutcome(entry, { policyFor: () => policy, promiseYmdFor: () => promise?.promisedYmd ?? null, gcHasPriorNotice: (gcId) => data.gcsWithPriorNotice.has(gcId), gcHeldBefore: (gcId) => data.gcsHeldBefore.has(gcId), todayYmd }))
+        const outcome = lienAffidavitSubmitOutcome(entry, { policyFor: () => policy, promiseYmdFor: () => promise?.promisedYmd ?? null, gcHasPriorNotice: (gcId) => data.gcsWithPriorNotice.has(gcId), gcHeldBefore: (gcId) => data.gcsHeldBefore.has(gcId), todayYmd })
+        await submitLienDeskItem(id, outcome)
+        // The leader is told (punch list #305, v2.7180), as a notice tells him: best effort, after the write, with the last day to file. A tell that fails never undoes the send.
+        if (outcome.status !== 'awaiting_approval') return
+        const told = await tellLeaderOfLienAffidavits([{ itemId: id, dueYmd: entry.deadline }])
+        return { said: lienAffidavitToldWords(told), tone: told && !told.ok ? 'warning' : 'success' }
       },
       policy === 'send' && !promise ? 'Approved by the standing rule — ready to file.' : 'Sent for approval.',
     )
@@ -420,7 +427,7 @@ export default function LienDeskAffidavitPane({
               if ((step.kind !== 'affidavit' && step.kind !== 'serve') || step.state === 'done' || step.state === 'missed') return null
               const gate = entry.gates.find((g) => !g.ok) ?? null
               if (!gate) return null
-              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : onFixProperty && gate.key === 'homestead_answer' ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, 'homestead_answer') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
+              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : onFixProperty && gate.key === 'homestead_answer' ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, 'homestead_answer') } } : gate.key === 'notice' ? { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
               return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
             }}
           />

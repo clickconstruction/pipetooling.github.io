@@ -63,6 +63,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/b', audience: 'staff', exempt: 'Scan a label, where bare prts.co lands: type a box code, or find a part on the site this phone last scanned. Not a customer surface.' },
   // #319: a First look's link, the page where a caller adds photos and a video of the problem. On the tab since v2.7017, with the ask that carries it.
   { kind: 'route', ref: '/show/:code', audience: 'homeowner', steps: [H('first-look-page'), H('first-look-thanks')] },
+  // #345 (v2.7223): a painted map, shared: the way in and what is where, for a customer or a driver.
+  { kind: 'route', ref: '/way/:code', audience: 'homeowner', steps: [H('painted-map-page')] },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
@@ -121,13 +123,16 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
   // owner turns a step on. The same text, opt-out line and thread as the office's own.
   { kind: 'sender', ref: 'messages-nudge-dispatch', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('rating-text')] },
+  // Punch list #299, PR 2: the receipt text goes to a card's holder on the team, from the company number, off until the
+  // owner turns it on. No customer is texted by it.
+  { kind: 'sender', ref: 'receipt-request', audience: 'staff', exempt: 'Texts a card holder on the team a receipt link when a charge posts to their card (punch list #299); no customer sees it.' },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },
   { kind: 'sender', ref: 'ct-roster-audit', audience: 'staff', exempt: 'Weekly roster drift audit to every dev.' },
   { kind: 'sender', ref: 'invite-user', audience: 'staff', exempt: 'Staff account invites.' },
   { kind: 'sender', ref: 'money-waiting-email-dispatch', audience: 'staff', exempt: 'The office\'s Money waiting list.' },
-  { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice awaits his approval, by push or else email.' },
+  { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice or affidavit awaits his approval, by push or else email.' },
   { kind: 'sender', ref: 'messages-notify', audience: 'staff', exempt: 'Tells the approvers a contract clause change waits on them, by push and email, and the editor how it was decided.' },
   { kind: 'sender', ref: 'payment-forecast-email-dispatch', audience: 'staff', exempt: 'The office\'s Payment forecast.' },
   { kind: 'sender', ref: 'schedule-share-dispatch', audience: 'staff', exempt: 'Schedule shares go to app users.' },

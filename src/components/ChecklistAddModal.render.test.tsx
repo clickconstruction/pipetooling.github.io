@@ -43,6 +43,8 @@ vi.mock('./checklist/TaskSpotPhotoField', () => ({
 
 // Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
 const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
+// Rows the modal updates after the insert (the card's tag, punch list #334).
+const updated = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
 // The roster and the rows a table lists (v2.7085, the faces): one made-up person unless a test fills them.
 const ONE_PERSON = vi.hoisted(() => [{ id: 'smoke-auth-user', name: 'Robert', email: 'smoke@example.com', role: 'dev' }])
 const db = vi.hoisted(() => ({ users: [] as Array<{ id: string; name: string; email: string; role: string }>, rows: {} as Record<string, unknown[]> }))
@@ -62,6 +64,10 @@ vi.mock('../lib/supabase', () => {
       return builder
     }
     builder.upsert = builder.insert
+    builder.update = (row: unknown) => {
+      updated.push({ table, row })
+      return builder
+    }
     builder.single = () => Promise.resolve({ data: singleResult, error: null })
     builder.then = (f?: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
       listPromise().then(f, r)
@@ -191,13 +197,13 @@ describe('ChecklistAddModal Send (v2.7085)', () => {
     cleanup()
   })
 
-  it('keeps a second Send at the top of a phone once a title is typed', async () => {
+  it('has one Send on a phone, the bar\'s: the second Send at the top is gone (v2.7155)', async () => {
     phoneViewport = true
     try {
       const title = await renderOpenModal()
       expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
       fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
-      expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
       expect(sendPress().disabled).toBe(false)
     } finally {
       phoneViewport = false
@@ -385,6 +391,46 @@ describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () 
     // The sentence stays, as the caption under the calendar.
     const status = screen.getByRole('status')
     expect(calendar.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    cleanup()
+  })
+
+  it('on a phone draws the four weeks only for a task that repeats (punch list #348)', async () => {
+    phoneViewport = true
+    try {
+      await renderOpenModal()
+      // A picked day: the date box opens, and the four weeks stay away so Where and Add keep their place.
+      fireEvent.click(screen.getByRole('button', { name: 'Pick a day' }))
+      expect(document.querySelector('input[type="date"]')).not.toBeNull()
+      expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+      // A due day on a one-time task: still no four weeks on a phone.
+      fireEvent.click(addPress('due'))
+      const dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]')
+      const dueBox = dates[dates.length - 1]!
+      const due = new Date(dueBox.min + 'T12:00:00')
+      due.setDate(due.getDate() + 3)
+      fireEvent.change(dueBox, { target: { value: `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}` } })
+      expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+      // A task that repeats: the four weeks are what shows which days it lands on.
+      fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+      expect(document.querySelector('[data-schedule-calendar]')!.querySelectorAll('[data-cal-day]')).toHaveLength(28)
+    } finally {
+      phoneViewport = false
+      cleanup()
+    }
+  })
+
+  it('at a desk still draws the four weeks for a picked day', async () => {
+    await renderOpenModal()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick a day' }))
+    expect(document.querySelector('[data-schedule-calendar]')!.querySelectorAll('[data-cal-day]')).toHaveLength(28)
+    cleanup()
+  })
+
+  it('says one line under the Done when… box (punch list #348)', async () => {
+    await renderOpenModal()
+    fireEvent.click(addPress('lines'))
+    expect(screen.getByText('The card reads its percent from the ticks.')).toBeTruthy()
+    expect(screen.queryByText(/sets the percent by hand/)).toBeNull()
     cleanup()
   })
 
@@ -613,6 +659,73 @@ describe('ChecklistAddModal place (punch list #328)', () => {
     expect(typeof row.place_set_at).toBe('string')
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
     offeredPlaces.places = []
+    cleanup()
+  })
+})
+
+// A card written for one specific thing (punch list #334): the Bridge opens the window with what finished looks like,
+// no photo asked, and the key of the thing. Made-up customer.
+const THING_PRESET = {
+  title: 'Call Alder Builders about $40.0k late. Get a pay date for each bill.',
+  links: ['https://app.example/customers/c1?todo=payer.c1'],
+  doneWhen: ['201 · Maple Lofts: pay date written down', ' 202 · Oak Court: pay date written down '],
+  asksForPhoto: false,
+  sourceTag: 'payer.c1',
+}
+
+function OpenWithThingOnMount() {
+  const modal = useChecklistAddModal()
+  const opened = useRef(false)
+  useEffect(() => {
+    if (modal && !opened.current) {
+      opened.current = true
+      modal.openAddModal({ preset: THING_PRESET })
+    }
+  }, [modal])
+  return null
+}
+
+describe('ChecklistAddModal, a card written for one thing (punch list #334)', () => {
+  it('opens with the Done when lines shown and no photo asked, and Send keeps the thing’s key on the card', async () => {
+    inserted.length = 0
+    updated.length = 0
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <OpenWithThingOnMount />
+        <ChecklistAddModal />
+      </ChecklistAddModalProvider>,
+    )
+    await screen.findByText('Robert')
+    expect(screen.getByDisplayValue(THING_PRESET.title)).toBeTruthy()
+    // The lines arrive trimmed, one a line, and the fold is open so the sender reads them.
+    const lines = screen.getByDisplayValue(/201 · Maple Lofts: pay date written down\s+202 · Oak Court: pay date written down/) as HTMLTextAreaElement
+    expect(lines.value).toBe('201 · Maple Lofts: pay date written down\n202 · Oak Court: pay date written down')
+    // The lines would turn the photo on by themselves; the card said no photo, so the press stays off.
+    expect(addPress('photo').getAttribute('aria-pressed')).toBe('false')
+    // Settle before Send: the window settles on its first person after the list of people lands, and Send names them
+    // from then on. A press before it is refused for having nobody on the card, which a loaded runner made happen.
+    await screen.findByRole('button', { name: 'Send to Robert' }, { timeout: 4000 })
+    fireEvent.click(sendPress())
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as Record<string, unknown>
+    expect(row.links).toEqual(THING_PRESET.links)
+    expect(row.asks_for_photo).toBe(false)
+    // The key is written apart from the insert, so a card is still made where the column is not there yet.
+    expect('source_tag' in row).toBe(false)
+    await vi.waitFor(() => expect(updated).toEqual([{ table: 'checklist_items', row: { source_tag: 'payer.c1' } }]))
+    await vi.waitFor(() => expect(screen.queryByDisplayValue(THING_PRESET.title)).toBeNull())
+    cleanup()
+  })
+
+  it('writes no key on a card a person wrote by hand', async () => {
+    inserted.length = 0
+    updated.length = 0
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order hose clamps' } })
+    fireEvent.click(sendPress())
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull())
+    expect(updated).toEqual([])
     cleanup()
   })
 })

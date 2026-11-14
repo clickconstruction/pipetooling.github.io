@@ -21,16 +21,19 @@ import { useToastContext } from '../../contexts/ToastContext'
 import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
 import { useOnSiteDesk, useOnSiteJob, useOnSiteStoreVersion } from '../../hooks/useOnSiteStore'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import OnSiteJobsNotLoaded from '../materials/OnSiteJobsNotLoaded'
+import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
-import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
+import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
 import { tieCanon } from '../../lib/materials/partTies'
@@ -43,11 +46,13 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { BoxWindow } from '../materials/BoxTabs'
+import { editBoxTitle } from '../../lib/materials/editBox'
+import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
-export type MaterialsJob = { id: string; hcp_number: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
+export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
 
 type Props = {
   jobs: MaterialsJob[]
@@ -110,14 +115,15 @@ function when(iso: string): string {
 }
 function jobLabel(j: MaterialsJob | undefined, id: string): string {
   if (!j) return `job ${id.slice(0, 8)}`
-  return `${j.hcp_number || '—'} · ${j.job_name || j.customer_name || '—'}`
+  return onSiteJobWords(j)
 }
-function unitPrice(line: Pick<ContainerLine, 'partKey'>): number | null {
-  return priceOf(line.partKey)
+/** A line's price on its job: the job's site's answers and ties are in the rule (punch list #342). */
+function unitPrice(jobId: string, line: Pick<ContainerLine, 'partKey'>): number | null {
+  return priceOfJob(jobId, line.partKey)
 }
 /** Beside a priced figure: where the price came from and the day it was checked (call 5); amber when the book's check is older than 90 days. */
-function PriceChip({ partKey: key }: { partKey: string }) {
-  const pick = priceFor(key)
+function PriceChip({ jobId, partKey: key }: { jobId: string; partKey: string }) {
+  const pick = priceForJob(jobId, key)
   if (!pick) return null
   const today = todayYmdInAppTz()
   return <span style={chip(pick.stale ? 'amber' : 'dim')} title={priceTitle(pick, today)}>{priceWords(pick, today)}</span>
@@ -139,7 +145,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
-  useEffect(() => { setOnSiteErrorHandler((m) => showToast(m, 'error')) }, [showToast])
+  useEffect(() => { setOnSiteErrorHandler((m, tone) => showToast(m, tone)) }, [showToast])
   const desk = useOnSiteDesk()
   const jobId = searchParams.get('job')
   /** A site's materials on one screen (punch list #330): `?site=<development id>`, a state of the desk. */
@@ -172,7 +178,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     if (missing.length === 0) return
     void supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link')
+      .select('id, hcp_number, click_number, job_name, job_address, google_drive_link')
       .in('id', missing)
       .then(({ data }) => {
         if (data && data.length) setExtraJobs((prev) => [...prev, ...(data as MaterialsJob[]).filter((d) => !prev.some((p) => p.id === d.id))])
@@ -197,6 +203,10 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-site" idempotent />
+        {/* A read that failed is not an empty site (v2.7175): which job is on which site, and each job's own boxes. */}
+        <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITE_NOT_LOADED_WORDS, SITE_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-site-jobs" offlineMessage={SITE_NOT_LOADED_WORDS} idempotent />
+        <OnSiteJobsNotLoaded jobIds={siteJobs.map((j) => j.id)} surface="materials-site-job" />
+        {sites.failed && siteJobs.length === 0 ? null : (
         <SiteMaterialsView
           site={{ id: siteId, name: sites.siteNames.get(siteId) ?? 'This site' }}
           jobs={siteJobs}
@@ -209,13 +219,19 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />
+        )}
       </div>
     )
   }
 
   if (!jobId) {
-    const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now) }))
-    rows.sort((a, b) => b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
+    // A job whose own read failed keeps its reason (v2.7175): its row says so in place of figures, which would read as a job with nothing on site.
+    const rows = withData.map((id) => {
+      const st = jobLoadState(id)
+      // A lost signal reads the read's own sentence; the store's says *nothing was saved*, which is a write's.
+      return { id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now), failed: st.error ? (errorKindOf(st.raw) === 'network' ? OFFLINE_READ_MESSAGE : st.error) : null }
+    })
+    rows.sort((a, b) => Number(Boolean(b.failed)) - Number(Boolean(a.failed)) || b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
     const groups = groupDeskBySite(rows.map((r) => r.id), sites.siteOfJob, sites.siteNames)
     const anySite = groups.some((g) => g.kind === 'site')
     const rowOf = (id: string) => rows.find((r) => r.id === id)!
@@ -228,6 +244,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           <span style={muted}>{rows.length} {rows.length === 1 ? 'job' : 'jobs'} with containers · what is on every site, what went missing this week, which containers have not been counted in {STALE_COUNT_DAYS} days</span>
         </div>
         <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-desk" idempotent />
+        <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITES_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-desk-sites" offlineMessage={SITES_NOT_LOADED_WORDS} idempotent />
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
@@ -235,7 +252,17 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
               {rows.length === 0 ? (
                 <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : groups.flatMap((g, gi) => {
-                const jobRow = (r: (typeof rows)[number], under: boolean) => (
+                const jobRow = (r: (typeof rows)[number], under: boolean) => r.failed ? (
+                  <tr key={r.id} data-job-not-loaded={r.id} style={{ background: 'var(--bg-amber-100)' }}>
+                    <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}), fontWeight: under ? 600 : 700 }}>{jobLabel(r.job, r.id)}</td>
+                    <td style={td} colSpan={cols - 1}>
+                      <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{deskRowNotLoadedWords(r.failed)}</span>
+                        <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => void loadJob(r.id, { force: true })} aria-label={`Read ${jobLabel(r.job, r.id)} again`}>Read again</button>
+                      </span>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : under ? { background: 'var(--bg-subtle)' } : undefined}>
                   <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}) }}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: under ? 600 : 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
                   <td style={{ ...td, ...num }}>{r.sum.containers}{listPlaces(r.id).length > 1 ? <span style={muted}> · {listPlaces(r.id).length} places</span> : null}</td>
@@ -262,6 +289,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                 }
                 // A site (punch list #330): one row with its jobs' totals, opening the site's screen; its jobs sit under it.
                 const members = g.jobIds.map(rowOf)
+                const notLoaded = members.filter((r) => r.failed).length
                 const boxes = members.reduce((n, r) => n + r.sum.containers, 0)
                 const lines = members.reduce((n, r) => n + r.sum.onSiteLines, 0)
                 const missing = members.reduce((n, r) => n + r.sum.missingMoneyWeek, 0)
@@ -272,6 +300,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                     <td style={td}>
                       <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 800, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setSite(g.siteId)} title="Everything on this site on one screen, across its jobs">{g.name}</button>
                       <span style={muted}> · {members.length === 1 ? '1 job' : `${members.length} jobs`} · the whole site</span>
+                      {notLoaded > 0 ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · {deskJobsNotLoadedWords(notLoaded)}</span> : null}
                     </td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{boxes}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{lines}</td>
@@ -398,6 +427,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [onSiteView, setOnSiteView] = useState<'list' | 'parts' | 'map'>('list')
   // By part (punch list #330): this job's parts as the site's screen rolls them up, with the names a person joined there.
   const partTies = usePartTies(siteId ? { developmentId: siteId } : { jobId })
+  const priceOf = (key: string) => priceOfJob(jobId, key)
   const flow = officeFlow(containers, movements, now, priceOf)
   const load = useOnSiteJob(jobId)
   /** The On site list narrowed to what needs a hand: boxes due a count, boxes with a Can't find since their last count. */
@@ -489,6 +519,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
+  const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const people = [...new Set(movements.map((m) => m.byName))].sort()
   const since = new Date(now.getTime() - window * 86_400_000).toISOString()
@@ -574,7 +605,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}><span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span><span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -638,7 +669,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>{r.cannotFind || ''}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.left}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.walkedAway > 0 ? r.walkedAway : <span style={chip('green')}>0</span>}</td>
-                    <td style={{ ...td, ...num }}>{r.money != null ? <><Money n={r.money} /> <PriceChip partKey={r.partKey} /></> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
+                    <td style={{ ...td, ...num }}>{r.money != null ? <><Money n={r.money} /> <PriceChip jobId={jobId} partKey={r.partKey} /></> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
                     <td style={{ ...td, ...num }}>{r.lastCountAt ? <Stamp iso={r.lastCountAt} /> : <span style={chip('amber')}>never</span>}</td>
                   </tr>
                 ))}
@@ -654,7 +685,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <tbody>
               {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${window} days.`} /></td></tr> : null}
               {missingRows.map((d) => {
-                const price = unitPrice(d)
+                const price = unitPrice(jobId, d)
                 const m = missingMoney(d.diff, price)
                 return (
                   <tr key={d.movementId} style={d.diff < 0 ? { background: 'var(--bg-amber-100)' } : undefined}>
@@ -663,14 +694,14 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>{d.expected}</td>
                     <td style={{ ...td, ...num }}>{d.counted}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{d.diff < 0 ? -d.diff : <span style={chip('blue')}>{d.diff} found</span>}</td>
-                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip partKey={d.partKey} /></>}</td>
+                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip jobId={jobId} partKey={d.partKey} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{d.byName} <Stamp iso={d.at} inline /></td>
                   </tr>
                 )
               })}
               {cannotRows.map((m) => {
                 const pk = partKey(m.partId, m.partName)
-                const price = unitPrice({ partKey: pk })
+                const price = unitPrice(jobId, { partKey: pk })
                 const mm = missingMoney(-m.quantity, price)
                 return (
                   <tr key={m.id} style={{ background: 'var(--bg-red-100)' }}>
@@ -679,12 +710,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{m.quantity} <span style={chip('red')}>can't find</span></td>
-                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <PriceChip partKey={pk} /></>}</td>
+                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <PriceChip jobId={jobId} partKey={pk} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{m.byName} <Stamp iso={m.at} inline />{m.note ? <span style={muted}> · {m.note}</span> : null}</td>
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice({ partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
             </tbody>
           </table>
         </div>
@@ -694,7 +725,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {section === 'deliveries' ? (
         <div style={{ display: 'grid', gap: '0.9rem' }}>
           <div style={sec}>
-            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. The app reads it from there and shows the lines for a once-over before they land.</span></h5>
+            <h5 style={secH}>Land an invoice as a delivery<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The invoice lives in the job’s Drive folder. Paste its text here and look the lines over before they land.</span></h5>
             <div style={{ padding: '0.75rem 0.9rem', display: 'grid', gap: '0.6rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {driveLink ? (
@@ -709,7 +740,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }} onClick={() => setAgentOpen(true)}>Or have your agent do it via MCP</button>
                 <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>Invoice #<input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-48812" aria-label="Invoice number" style={{ minHeight: 32, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', width: 130, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
               </div>
-              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo. The build reads new invoices from that folder with the model and lists them here; until then, paste the text.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
+              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo, so it is kept with the job. The app does not read the file yet. Paste the invoice’s text to land its lines.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
               {madeWords && madeFolders ? (
                 <p style={{ ...muted, margin: 0 }}>
                   {madeWords.line}{' '}
@@ -871,6 +902,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

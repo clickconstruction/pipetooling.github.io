@@ -2,16 +2,16 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
+keywords: lien desk, to do, by date, by paper, by job, monthly notices, lien affidavits, retainage notices, timeline, do now, deadlines, all filings, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
 where: /lien-desk
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
 
 On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due by the 15th of the third month after the work. On a residential property it is due a month sooner. The office readies and drafts each notice. The leader approves it. Then it goes out on paper.
 
-## Start on Do now
+## Start on the To do tab
 
-Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **Section tools** menu and the {{button:outline|⋯}} menu list **Lien desk** too. So does the **Collections** header. The Dashboard's lien cards open it on their own list. The desk opens on its **Do now** tab. The desk is a page of its own. The address names the tab and the notice you are on. You can paste it to a teammate. Hold ⌘ or Ctrl when you press the gavel to open the desk in a new tab. Press {{button:outline|← Pipeline}} at the top left to go back. The browser's Back button goes back too. On a phone the Notices list fills the screen. Press a notice to open it on its own screen. Press {{button:outline|← Notices}} to go back to the list. The tab is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
+Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **Section tools** menu and the {{button:outline|⋯}} menu list **Lien desk** too. So does the **Collections** header. The Dashboard's lien cards open it on their own list. The desk opens on its **To do** tab. The desk is a page of its own. The address names the tab and the notice you are on. You can paste it to a teammate. Hold ⌘ or Ctrl when you press the gavel to open the desk in a new tab. Press {{button:outline|← Pipeline}} at the top left to go back. The browser's Back button goes back too. On a phone the Notices list fills the screen. Press a notice to open it on its own screen. Press {{button:outline|← Notices}} to go back to the list. The tab is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
 
 - **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
 - Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.
@@ -19,21 +19,24 @@ Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **
 - The button opens the tab that does that work, on that job. Nothing is sent from the list itself.
 - A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
 - Two or more printed notices are one row too, tagged {{chip:yellow|Run}}. It says when they printed and asks whether they were mailed. {{button:blue|Record the mailing}} opens the run to type the tracking numbers. {{button:outline|Take back…}} opens the run on its take back question. Press **The N jobs** to see which jobs are in it. The find box opens that list.
-- Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them last, under **Waiting on** and the leader's name. Each says since when and shows {{button:outline|Open}}. They are not in the office's count on the Do now tab. A master's own jobs are the ones he is master of. Another master's notices wait on that master by name, for a dev too.
+- Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them last, under **Waiting on** and the leader's name. Each says since when and shows {{button:outline|Open}}. They are not in the office's count on the To do tab. A master's own jobs are the ones he is master of. Another master's notices wait on that master by name, for a dev too.
 - Signing is the other step only the leader can take. An approved notice with no signature sits first, under **Only you can sign**, with {{button:blue|Sign}}. It opens the notice, where {{button:green|Sign ▸}} waits. The office's row says it waits on the leader by name. So does a dev's row on another master's job. The Dashboard's Needs you carries the same count for the leader.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. The steps are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Send the run counts the notices ready and the ones printed. Press a step and a brief opens under the rails. The brief says what the step is and why a row is on it. The brief names the usual move and the other moves you may take instead. The rows on that step come first under **On this step**. The rest follow under **On other steps**. Press {{button:outline|Every step}} to put the list back. Affidavits and retainage get rails of their own when one needs an act, with the same kind of brief.
+- On a phone the rails are one row named **Steps of each paper**. Press it to unfold the rails. Press **Hide the steps** to fold them again. A pressed step keeps the rails open.
 - A violet rail named **Reminders** sits between Notices and Affidavits once a notice has been sent. The rail's four steps are Reminder due, Reminder sent, The attorney’s letter and Closed. Reminder due counts the sent notices with nothing since the packet whose reminders week has opened. The count says beside it how many notices are still before day 7, and how many wait for reminders week. Reminder sent counts the notices a courtesy notice went to. The attorney’s letter counts the second letters drafting, waiting on the leader, in the run or sent. Closed counts the notices that are paid, answered, called about, okayed by the GC or filed on. Press a step and its brief opens, with the schedule of days across the top. The brief draws one notice's dated timeline, with today on it and every payment as a row. Press **Show another** to see a different notice. A step whose notices have no row on the list names them under the rail. Each name has {{button:outline|Open}}, which opens that notice. The strip's own guide is [read the reminders ladder on the Lien desk](/help/read-the-reminders-ladder-on-the-lien-desk).
-- The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail. On a phone their four tiles read Due, Sent, The attorney’s letter and Closed.
-- On a phone each row shows the four steps by name. Done steps have a tick. The step waiting on you says *you*. That is your own job's step. A step on someone else says *office* or *leader*. Press the row of steps to see the card.
+- The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail.
+- On a phone the rows are grouped by the day they are due, soonest first. Each heading says the day, how long is left and the money its jobs still owe. A heading reads red inside three days and amber inside a week. The groups that say whose move it is keep their names, like **Only you can approve** and **Reminders**.
+- A phone row has three lines. The first is the job and what it still owes. The second says where the paper stands. The third has the paper's chip, four dots and the row's button. A row with no button for you says whose step it is beside the dots, like *Approve · leader*.
+- Tap a phone row to open that job as its own screen. A tap on the job's name or on the dots does the same. [The desk on a phone](#the-desk-on-a-phone) says what the screen holds.
 - The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. {{button:blue|Fix the property}} opens the property record in a window above the paper. The lookup fills the county, the legal description and the owner when it can. {{button:blue|Pick the GC}} sets the job's original contractor the same way. Press {{button:blue|Done}} and the paper fills in behind it. Each filled detail turns green in the list and shows what it reads now. The arrow keys walk the rows. Esc closes the paper.
-- Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
+- Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots to open the job's screen.
 
-When nothing needs anyone, the tab says so and points you at the Deadlines.
+When nothing needs anyone, the tab says so and points you at the **By date** tab.
 
 ## The lien month
 
-A bar across the top of **Do now** shows the lien month. The month is the office's rhythm for lien work, set by the owner. The bar has five zones, each as wide as its days. A mark shows today.
+A bar across the top of **To do** shows the lien month. The month is the office's rhythm for lien work, set by the owner. The bar has five zones, each as wide as its days. A mark shows today.
 
 - **Reminders**, days 1 to 5. The courtesy notice goes for every lien due this month.
 - **Notices**, days 6 to 9. The § 53.056 notices due this 15th go out.
@@ -45,29 +48,62 @@ Each zone reads its counts. The zone today is in says how many are left and how 
 
 Press a zone and the list under the bar shows only that zone's rows. The bar says how many it is showing. Press the zone again or {{button:outline|Show all}} to see every row. The bar never sends, files or moves anything. A window closing with work unsent is a red count in Catch-up, and that is the whole nudge. The days sit in {{button:outline|§ Rules}} under **The lien month**.
 
-## The three views
+On a phone the month is one line under the tabs. The line says what is left in the zone today is in, like *9 liens to file by Mon Nov 16*. A chip says how many days are left. The words under it name the day and count what slipped earlier in the month. Press the line and the five zones open as cards in a sheet. Press a card and the sheet closes. The list then shows only that zone's rows and brings them to the top of the screen.
 
-The top of the desk has three tabs.
+## The four views
 
-- **Do now** is the list of what to do now.
-- **Deadlines** shows when each deadline falls.
-- **All filings** holds every paper by its state. A second row of tabs appears under it. They are **Notices**, **Affidavits**, **Retainage** and **Timeline**.
+The top of the desk has four tabs. **To do** is the work. The other three show the same jobs sorted three ways.
 
-All filings reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All filings.
+- **To do** is the list of what to do now.
+- **By date** sorts the jobs by when each deadline falls.
+- **By paper** sorts them by the kind of paper. Each paper shows its state. A second row of tabs appears under it. They are **Monthly notices**, **Lien affidavits** and **Retainage notices**.
+- **By job** lists every job with its whole path. The job with the nearest date comes first.
 
-## Look ahead on the Deadlines
+**By paper** reopens on the tab you last used there. This guide names those three tabs often. Each one sits under **By paper**.
 
-The **Deadlines** tab is beside Do now. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
+## The desk on a phone
+
+On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The four tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper wrap the same way, so neither row of tabs slides sideways.
+
+Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
+
+- **Record the mailing** or **Send the run**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
+- **Put a GC on notice…** shows while **Monthly notices** is open.
+- **§ Rules** opens the Texas lien rules.
+- **An owner is calling** opens what to say.
+- **What this desk holds** names each part of the desk.
+- **Share where the liens stand** makes a message for a teammate.
+- **An owner asked for records** opens the packet for a property.
+
+Press a row and More closes. The door opens as it does on a computer.
+
+**A job as its own screen.** On the desk's first tab, tap a row. The job opens as a screen of its own over the desk.
+
+- The top line holds {{button:outline|‹}}, the job and what it still owes.
+- A band under it says when the paper is due and how many days are left. The band is red inside three days.
+- **Where it stands** lists the paper's four steps. Done steps are ticked. The step it is on now is ringed.
+- **Open the notice as it stands** shows the paper as it would print today. The door says how many details are missing. An affidavit's door reads **Open the affidavit as it stands**.
+- **Open the Lien window** shows every lien paper on the job.
+- **Open the job** shows its history, its bills and Edit.
+- The row's button is at the foot of the screen, where your thumb rests. The button keeps its words, like {{button:blue|File the affidavit}}. The button opens what it opens on the list.
+
+Press {{button:outline|‹}} to go back to the list. Your phone's Back does the same. A run's row lists its jobs on the screen, and each one opens its job.
+
+On **Lien affidavits** and **Retainage notices** the pile chips sit at the top of the list. They slide sideways and scroll away with the list.
+
+## Look ahead by date
+
+The **By date** tab is beside **To do**. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 
-Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. A job's number is a button of its own. Press it to open the job itself, with its history, its bills and **Edit**. It is on every Deadlines and Timeline row. On the Notices, Affidavits and Retainage tabs it is at the top of the job you picked. The Deadlines is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
+Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. A job's number is a button of its own. Press it to open the job itself, with its history, its bills and **Edit**. It is on every row of the **By date** tab and of the **By job** tab. On the three tabs under **By paper** it is at the top of the job you picked. The **By date** tab is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
 
 ## Where it opens
 
 - **Dashboard, Needs you.** One lien card for the office leads with the next deadline, like *Next lien deadline: Oct 15 · in 23 days*. It is grey beyond 14 days, amber inside them and red inside 7. The master also gets {{chip:blue|Approve N lien notices the office drafted}}. Both open the desk in place. Quickfill shows the same cards on a phone.
 - **Jobs, Pipeline, the Collections header.** The {{button:outline|Lien desk}} button sits beside {{button:outline|⚖ Legal}}, with its count. It wears the orange gavel.
-- **Jobs, Pipeline, Today's Money Opportunities.** A card shows whenever a notice waits to be drafted, waits on an owner or waits for approval. It gives the count, the dollars and the first window to close. It is red inside a week and amber inside two. {{button:outline-blue|Lien desk →}} lands on the Notices tab. With nothing due, there is no card.
+- **Jobs, Pipeline, Today's Money Opportunities.** A card shows whenever a notice waits to be drafted, waits on an owner or waits for approval. It gives the count, the dollars and the first window to close. It is red inside a week and amber inside two. {{button:outline-blue|Lien desk →}} lands on the Monthly notices tab. With nothing due, there is no card.
 - **Jobs, Pipeline, the stage bar.** An orange gavel sits beside the last stage in the bar. It shows the count of notices to work. One click opens the desk.
 - **Jobs, Pipeline, the ⋯ Pipeline tools menu.** The desk is also the first row of the jump strip's ☰ **Section tools** menu.
 - **A forecast row.** Its **Send notice…** opens the desk on that job.
@@ -76,11 +112,11 @@ The button left of the × on Put a GC on notice makes that window full screen. T
 
 ## Find a job on the list
 
-A find box sits at the top of every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+A find box sits at the top of every list. On a phone the box is as tall as a thumb. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
 
 ## The piles
 
-The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from Do now can open the list on one pile. Its title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
+The **Monthly notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. On a phone one title stays at the top, the title of the pile you are reading. The other titles scroll with their rows. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from the **To do** tab can open the list on one pile. The pile's title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
 
 - {{chip:yellow|Needs the owner}} means no owner of record with a mailing address is on file. The notice goes to the owner, so this comes first. The pane looks the property up on the county appraisal roll as it opens. It shows the answer under gate 1, laid out the way the envelope will read. A note below flags anything unusual, like a landlord or a public owner. {{button:blue|Use this owner}} saves it on the property record, and the row moves to To draft. {{button:outline|Find the owner ›}} opens Edit Job. Edit Job's Property record has the paste box. Use it when the roll cannot place the address.
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
@@ -113,7 +149,7 @@ The steps are these:
 
 Each step wears a mark. {{chip:green|✓}} means done. {{chip:yellow|!}} means due, and it turns red inside a week. {{chip:red|✗}} means missed. A grey dash means blocked. A dashed ring is a step the app cannot date yet, with a door to set the date.
 
-**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. For a notice, it names the step the notice is on. That is find the owner, draft, approve, send or record the mailing. **Waiting on** sits in the same band. When every window closed with nothing sent, the band says what is left. While the affidavit window is still open, it says to send the notice late and then file. Once that window closes too, it turns red. The lien is gone, and the money is still owed in Collections.
+**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. For a notice, it names the step the notice is on. That is find the owner, draft, approve, send or record the mailing. For an affidavit, it names the step the affidavit is on. That is draft, approve or file. When one fact holds the affidavit, the band names that fact first. An unanswered homestead question is one such fact. **Waiting on** sits in the same band. When every window closed with nothing sent, the band says what is left. While the affidavit window is still open, it says to send the notice late and then file. Once that window closes too, it turns red. The lien is gone, and the money is still owed in Collections.
 
 Under each step still to come, a small word says whose move it is. {{chip:blue|ours}} marks the notices, the retainage notice, the affidavit and the serve. {{chip:purple|the GC}} or {{chip:yellow|the owner}} marks the release until it is paid. {{chip:yellow|the owner}} also marks the owner's hold. {{chip:gray|counsel}} marks the year to sue, which the firm takes. **Waiting on** says who we wait on and for what.
 
@@ -128,9 +164,9 @@ Under each step still to come, a small word says whose move it is. {{chip:blue|o
 The last work was in August. July's notice window closed on Sep 15, and nobody noted it yet. August's notice has been open since Sep 1, and it is due Oct 15. It waits for the leader's approval. The affidavit is due Nov 16. Next on the path says to approve the August notice within 22 days.
 :::
 
-## The Timeline tab
+## The By job tab
 
-The **Timeline** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
+The **By job** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
 
 - **GC** turns the list into one GC's book.
 - **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone. When nothing is due, the list offers **Show All ›**.
@@ -140,7 +176,7 @@ The **Timeline** tab is the book. It lists every billed job with money open and 
 
 ## Drafting a notice
 
-Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand. {{button:blue|Save the day}} opens a window before anything is written. It says how far the day sits from the clock hours, in words. A table shows the dates that move with it, today beside the new day. A changed row is lit. A day earlier than the hours is refused there, and so is a day after today. A day far past the hours asks for a second look. The reason is typed in the window, and it is required. Press **Set the day** to write it. The months follow the day you set. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job. The Lien window has it too. Press **change ›** under **Last work** on its timeline, and the line opens there. On **Deadlines**, the date where a row's bar starts opens the same thing. A day set in either place moves the row to its new group.
+Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand. {{button:blue|Save the day}} opens a window before anything is written. It says how far the day sits from the clock hours, in words. A table shows the dates that move with it, today beside the new day. A changed row is lit. A day earlier than the hours is refused there, and so is a day after today. A day far past the hours asks for a second look. The reason is typed in the window, and it is required. Press **Set the day** to write it. The months follow the day you set. Hours approved after that day do not move it. The line then says those hours are there. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job. The Lien window has it too. Press **change ›** under **Last work** on its timeline, and the line opens there. On the **By date** tab, the date where a row's bar starts opens the same thing. A day set in either place moves the row to its new group.
 
 - Each row is one month worked, oldest first, with its hours and crew. A job nobody clocked in on has one row, the month it was created.
 - Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A month skipped before the Skip button left says who skipped it and why.
@@ -181,13 +217,13 @@ Noting a month records that a person saw the loss, with a name and a date. Then 
 
 A skipped or missed month stays as a row in the **Months** grid. A month skipped in the past reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
-On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
+On the **Lien affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
 The pane draws the affidavit under that card. A new draft is on the short form. The short form names the months and the notices from the record. On a property marked homestead, the paper opens with a bold notice that it is not a lien. The desk still holds a homestead for the attorney. An affidavit drafted before the short form keeps the earlier form, so an approved paper never changes by itself. A line above that paper says so. Press **Redraw on the short form…** there to move it. The affidavit goes back to **To draft** and needs approval again.
 
 To move every ready affidavit at once, look at the top of the list. A press there reads like **Redraw 12 on the short form…**. The number counts the ready affidavits on the earlier form. The press asks once before anything moves. Each affidavit then goes back to **To draft** and needs approval again. An affidavit waiting on the leader or held by him is left alone. If one cannot be redrawn, the rest still are. The one left behind stays listed under the press with its reason.
 
-Two more presses at the top of the list finish the job. **Send 12 for approval…** sends every drafted affidavit in **To draft**. The window that opens says how many a GC's standing rule approves at once. The window also says how many go to the leader. An affidavit nobody has drafted yet is left alone. **Print 12 for notarization** prints every affidavit in **Ready to file** that is on the short form. Each one starts on its own sheet. A help sheet prints in front of the batch. The help sheet counts the papers clear to sign and the papers with a question. A row marked **Ask first** goes to the attorney before anyone signs. The papers print in county clerk order, so each clerk's papers come off the printer together. The help sheet gives each clerk a row above its papers, with a count. Each paper has a row, with a place to write the recording number. The row has boxes to tick as each step is done. A code marked **Scan to record** opens the Affidavits list on a phone. Do not file the help sheet. **Signed in** holds the county every paper prints on both county lines. Signing somewhere else? Type that county for this print. Untick **Print the help sheet first** to leave it off. Notice records print behind the help sheet. Each paper has a block there, with the same number as its row. The block lists each notice on the job with the day, the method and the mail number of each copy. It says what the record is missing. Untick **Print the notice record** to leave the blocks off. Tick **Add a copy of each notice** to print the notices too. That box says how many pages it adds, and it starts unticked. All of these pages sit in front of the stack. Do not file them. Each job keeps its own printed copy. A ready affidavit on the earlier form is left out, and a line under the press says so. A ready affidavit with a hold is left out too, and the help sheet names it with the reason. A long affidavit can take a second sheet. A line under the press then names its job and says what moved to page 2. The press still prints it with the rest. Keep its sheets together for the notary, or print it alone from its own Lien window.
+Two more presses at the top of the list finish the job. **Send 12 for approval…** sends every drafted affidavit in **To draft**. The window that opens says how many a GC's standing rule approves at once. The window also says how many go to the leader. The leader gets one message for all of them, on his phone or by email. The message gives the count and the soonest day to file. An affidavit nobody has drafted yet is left alone. **Print 12 for notarization** prints every affidavit in **Ready to file** that is on the short form. Each one starts on its own sheet. A help sheet prints in front of the batch. The help sheet counts the papers clear to sign and the papers that wait for the attorney. A row that says **Ask the attorney first** is not signed until the attorney answers. The row gives each reason in one sentence. A late or missing notice names its months. The help sheet lists the five blanks to fill on each paper. With the county printed there are three. The notary’s signature and seal are one line, named the notarial certificate. The papers print in county clerk order, so each clerk's papers come off the printer together. The help sheet gives each clerk a row above its papers, with a count. Each paper has a row, with a place to write the recording number. The row has boxes to tick as each step is done. A code marked **Scan to record** opens the Affidavits list on a phone. Do not file the help sheet. **Signed in** holds the county every paper prints on both county lines. Signing somewhere else? Type that county for this print. Untick **Print the help sheet first** to leave it off. Notice records print behind the help sheet. Each paper has a block there, with the same number as its row. The block lists each notice on the job with the day, the method and the mail number of each copy. It says what the record is missing. Each block ends with its verdict. **On record** means every month has a notice mailed on time. A grey box that says **Ask the attorney first** names the copy that went late or is missing. Untick **Print the notice record** to leave the blocks off. Tick **Add a copy of each notice** to print the notices too. That box says how many pages it adds, and it starts unticked. All of these pages sit in front of the stack. Do not file them. Each job keeps its own printed copy. A ready affidavit on the earlier form is left out, and a line under the press says so. A ready affidavit with a hold is left out too, and the help sheet names it with the reason. A long affidavit can take a second sheet. A line under the press then names its job and says what moved to page 2. The press still prints it with the rest. Keep its sheets together for the notary, or print it alone from its own Lien window.
 
 :::example One call, one rule
 Robert opens J650 under Awaiting approval. Lowbeck Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Lowbeck Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Lowbeck's months go to Ready to send by themselves. Each one is marked as sent by Lowbeck Contracting's rule. A live promise always comes back to him.
@@ -196,6 +232,10 @@ Robert opens J650 under Awaiting approval. Lowbeck Contracting owes $33,500 on i
 ## Reading the notice before it goes
 
 The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section.
+
+On a phone an open notice takes the whole desk. The tabs fold away, and the top row holds {{button:outline|← Notices}} to go back to the list. One title row stays pinned, the row of the section you are reading. A page of the notice slides sideways inside its own frame when it is wider than the phone.
+
+The buttons for the next step sit in a footer under the notice. On a phone a bar over the footer reads **Hide the next step**. Press the bar to fold the footer away and give the notice the screen. Press **Show the next step** to bring the footer back. What you typed in the footer is kept. A tall footer starts folded, so the notice is not squeezed into a strip. An open affidavit and an open retainage notice work the same way. The way back reads {{button:outline|← Affidavits}} or {{button:outline|← Retainage}}.
 
 Each row ends with its fact.
 
@@ -318,9 +358,9 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. A small bar rides on it. Green is what printed. Amber is what waits on the leader. The words beside it say who waits, like *1 waits on Robert*. When every notice in the run has printed, the button reads {{button:blue|Record the mailing · N}}.
+Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the four views. A small bar rides on it. Green is what printed. Amber is what waits on the leader. The words beside it say who waits, like *1 waits on Robert*. When every notice in the run has printed, the button reads {{button:blue|Record the mailing · N}}.
 
-The run opens with a journey across the top. It has six steps. They are **Built**, **Signed**, **Sent**, **In the mail**, **Recorded** and **Delivered**. Under each step is a count, like *2 of 3*. The step the run is on is blue. A step that blocks the run is amber, and it says why. The fill between the steps runs as far as every envelope has come. On a phone the six steps sit in two rows of three.
+The run opens with a journey across the top. The journey has six steps. The steps are **Built**, **Signed**, **Sent**, **In the mail**, **Recorded** and **Delivered**. Under each step is a count, like *2 of 3*. The step the run is on is blue. A step that blocks the run is amber, and it says why. The fill between the steps runs as far as every envelope has come. On a phone the run fills the screen and the six steps are one line. The line names the step the run is on, like *Step 2 of 6 · Signed*, with its count. Press the line to see all six in two rows of three.
 
 The run makes one envelope per name and address. Each envelope is a card. The envelope on the card is drawn open until it prints. It is drawn sealed once it printed. It gets a postmark once it has its number. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. The notices inside are listed on the card.
 
@@ -358,7 +398,7 @@ A printed notice waits on the desk in the mail pile. Open it and press {{button:
 
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same.
 
-A notice mailed through Docsmit never owes a number. The mail service brings it within the hour. Its row under Sent says where each envelope is, like in transit or delivered and signed. Its footer lists each envelope with its number. The Sent title has a {{button:outline|Deliveries}} button once a notice went through Docsmit. Press it to see only those notices. An envelope that came back or went unclaimed is a red row on Do now. Its {{button:outline|Open the notice}} button opens the notice under Sent. The footer has three doors for that envelope. {{button:outline|send a plain copy ›}} mails a plain copy to the same address through Docsmit. {{button:outline|mail to another address ›}} takes a name and one address line, then mails the same letter again. {{button:outline|handled by hand ›}} records a courier or a visit in a few words. Each door marks the envelope answered, and Do now stops asking. The Dashboard's Needs you counts the mailed notices that still have no number. It also shows a card when Docsmit credit drops under the warn line. Add credit on Docsmit's own site before the next run.
+A notice mailed through Docsmit never owes a number. The mail service brings it within the hour. Its row under Sent says where each envelope is, like in transit or delivered and signed. Its footer lists each envelope with its number. The Sent title has a {{button:outline|Deliveries}} button once a notice went through Docsmit. Press it to see only those notices. An envelope that came back or went unclaimed is a red row on the **To do** tab. Its {{button:outline|Open the notice}} button opens the notice under Sent. The footer has three doors for that envelope. {{button:outline|send a plain copy ›}} mails a plain copy to the same address through Docsmit. {{button:outline|mail to another address ›}} takes a name and one address line, then mails the same letter again. {{button:outline|handled by hand ›}} records a courier or a visit in a few words. Each door marks the envelope answered, and the **To do** tab stops asking. The Dashboard's Needs you counts the mailed notices that still have no number. It also shows a card when Docsmit credit drops under the warn line. Add credit on Docsmit's own site before the next run.
 
 :::example One notice on its own
 A ready notice's footer also offers the link **Just this one ›**. It opens the § 53.056 tab with the desk's months filled in. Use it to print or email one notice by hand. Recording it there moves the desk row too.
@@ -366,11 +406,11 @@ A ready notice's footer also offers the link **Just this one ›**. It opens the
 
 ## Affidavits
 
-The notice keeps a month's lien right alive. The **affidavit** is the lien itself. Its deadline is one date per job, the 15th of the fourth month after the last month worked. On a residential property it is the third month. The **Affidavits** tab lists every unpaid job whose deadline is within 30 days. When none is that close, **Deadlines ›** shows the later ones.
+The notice keeps a month's lien right alive. The **affidavit** is the lien itself. Its deadline is one date per job, the 15th of the fourth month after the last month worked. On a residential property it is the third month. The **Lien affidavits** tab lists every unpaid job whose deadline is within 30 days. When none is that close, **By date ›** shows the later ones.
 
 - {{chip:yellow|Needs the property facts}} is the affidavit's gate. It needs the owner of record, the county and the legal description on the property record. A public owner, such as a city or a school district, holds the affidavit for the attorney. A job with a GC also needs a recorded § 53.056 notice. That job needs the GC's address too, because the affidavit gives that address. Press **Add the address ›** on that line to open the GC's customer record. A homestead is for the attorney, because its lien needs a contract recorded before the work. A house also waits until someone answers the homestead question. Press **Answer it ›** on that line. The property record opens, and you pick **Yes** or **No** under *Is this the owner's homestead?* Each missing fact has its door.
 - An amber line under the gates can open with *Ask the attorney before this is filed*. The line names a month whose notice went late or never reached the GC. The line holds nothing.
-- It flows like a notice. Press {{button:blue|Send for approval ▸}} or **The leader said to file it ▸**. The master approves it, holds it or sends it back.
+- It flows like a notice. Press {{button:blue|Send for approval ▸}} or **The leader said to file it ▸**. The master's phone gets one line: the job and the last day to file. With no phone set up for notifications, the same line goes by email. The words on your screen say which way the line reached him. The master approves it, holds it or sends it back.
 - {{chip:green|Ready to file}} offers {{button:blue|Open the affidavit tab ›}} in the Lien window. Print it, sign it before a notary and file it with the County Clerk. Then press **Record filing…** and type the recording number. The row moves to **Filed**.
 - A copy must reach the owner and the contractor within five days. The Lien window records that too.
 - A filed affidavit that is still unpaid offers **Refer to the Legal desk ›**.
@@ -382,9 +422,9 @@ The Dashboard's card for a closing lien filing window opens the desk here. The w
 The monthly notice claims what is unpaid for a month's work. The **§ 53.057 retainage notice** claims the retainage the GC holds back and has not paid. There is one per job. It is due 30 days after our contract on the job is complete, terminated or abandoned. That is a short fuse, and the app cannot see the day on its own. Two facts start it, and both are typed on the job.
 
 1. **Edit Job, Our contract on this job** sits under the Property record row on a job with a GC. Pick Still open, Complete, Terminated or Abandoned, then the day. The row suggests the last approved clock day, so confirm it or change it. Type the day the work is done, not the day the GC declares it. The day saves once it is finished. Pick it from the calendar, or type it and press Enter. A half typed date is not saved. The same row holds the retainage the GC holds in dollars, and whether a payment bond is on the project. A 0 means the subcontract holds none.
-2. The **Retainage** tab lists every job with retainage recorded. {{chip:gray|Clock not started}} means there is no end date yet. The footer's {{button:blue|Set the day our contract ended ›}} lands on the row. From there it works like a monthly notice. It rides in the same run and is recorded as a § 53.057 filing.
+2. The **Retainage notices** tab lists every job with retainage recorded. {{chip:gray|Clock not started}} means there is no end date yet. The footer's {{button:blue|Set the day our contract ended ›}} lands on the row. From there it works like a monthly notice. It rides in the same run and is recorded as a § 53.057 filing.
 
-3. **Where the figure comes from.** On a job with a saved pay application, the retainage is the latest application's figure. Edit Job shows it read only and says which application it reads. Change it in the AIA window. On a job with no pay application, type the figure in Edit Job. The row on the Retainage tab says which one it reads.
+3. **Where the figure comes from.** On a job with a saved pay application, the retainage is the latest application's figure. Edit Job shows it read only and says which application it reads. Change it in the AIA window. On a job with no pay application, type the figure in Edit Job. The row on the Retainage notices tab says which one it reads.
 4. **The release.** Once the retainage is released, the row says so under the figure. It reads *Release: release billed · awaiting payment · bill #4*. Press {{button:outline|Open the job ›}} to see the bill. The release is the final pay application, or a release bill on a job with none. See [Retainage a GC holds](/help/match-bank-deposits-to-bills#retainage-a-gc-holds).
 
 The owner's copy opens with counsel's cover letter for retainage. It says the GC holds back our retainage and has not paid it. It asks the owner to keep both the reserved 10% and our retainage. It gives three ways to settle before they pay the GC, and none is a joint check. It ends with the signer's number to call. A homestead's letter adds the § 53.254 statement.
@@ -397,7 +437,7 @@ The cover letters give the signing master's own phone as the number to call. It 
 
 ## The courtesy notice
 
-A sent notice still needs watching. The notice's footer counts the days since the packet went out. In reminders week of the lien's month the footer offers {{button:blue|Send a courtesy notice ▸}}. Reminders week is days 1 to 5 of the month the lien is due in. The press never comes before day 7 after the packet. Before reminders week the footer says when the reminder goes. On Do now the same press sits on the row under the **Reminders** heading. The Reminders rail counts that notice on its first step. The courtesy notice is a plain reminder by email and text. The reminder says the notice stands. The reminder names the day the lien goes on unless the claim is paid. The reminder carries the pay link. The desk holds the press when the lien cannot go on, and says why. See [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien).
+A sent notice still needs watching. The notice's footer counts the days since the packet went out. In reminders week of the lien's month the footer offers {{button:blue|Send a courtesy notice ▸}}. Reminders week is days 1 to 5 of the month the lien is due in. The press never comes before day 7 after the packet. Before reminders week the footer says when the reminder goes. On the **To do** tab the same press sits on the row under the **Reminders** heading. The Reminders rail counts that notice on its first step. The courtesy notice is a plain reminder by email and text. The reminder says the notice stands. The reminder names the day the lien goes on unless the claim is paid. The reminder carries the pay link. The desk holds the press when the lien cannot go on, and says why. See [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien).
 
 ## Attorney’s letter
 
@@ -423,7 +463,7 @@ Every owner letter asks the owner to call. The desk turns that call into a guide
 
 The last card is the **Never** strip. It lists what never to say on the call.
 
-The **Affidavits** tab sorts the job into counsel's three piles from the answers.
+The **Lien affidavits** tab sorts the job into counsel's three piles from the answers.
 
 - {{chip:green|A · owner still owes the GC}} means trap it, because the notice holds those dollars.
 - {{chip:yellow|B · paid, never reserved the 10%}} means a lien on the funds that should have been held. Other unpaid claimants share it.
@@ -465,7 +505,7 @@ The footer says what the run takes. Then the buttons follow the role.
 Taunya hears that Harborline's Harbor Ridge draw went to another job. She filters the Pipeline to Harborline and opens Put Harborline on notice. Six of the nine owners are missing. The roll finds five, so she presses Use all found and types the sixth. One job is the city's fire station, so it is left out for a bond claim. She picks that the GC is not paying its subs and writes what she heard. She ticks the rule, Winding down and the Legal desk. Then she sends all seven to the leader. Robert approves them from his phone, and the office prints the run.
 :::
 
-Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's row on Bids, Customer review shows {{chip:red|on notice since Sep 15 · 7}}. The desk's Affidavits tab carries the same jobs with their deadlines.
+Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's row on Bids, Customer review shows {{chip:red|on notice since Sep 15 · 7}}. The desk's Lien affidavits tab carries the same jobs with their deadlines.
 
 ### Pressed Sign and approve all by mistake
 

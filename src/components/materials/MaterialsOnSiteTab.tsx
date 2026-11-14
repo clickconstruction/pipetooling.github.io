@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import OnSiteJobsNotLoaded from './OnSiteJobsNotLoaded'
 import JobsMaterialsTab, { type MaterialsJob } from '../jobs/JobsMaterialsTab'
 
 type Props = {
@@ -67,7 +68,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
     if (!active || !office) return
     let live = true
     void withSupabaseRetry(
-      () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link').eq('billing_only', false).order('hcp_number', { ascending: false }),
+      () => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, google_drive_link').eq('billing_only', false).order('hcp_number', { ascending: false }),
       'load jobs for materials on site',
     )
       .then((data) => {
@@ -102,7 +103,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
     })
   // The office's job page and a site's screen have their own search; this one is the desk's, across jobs.
   const showSearch = !(office && (jobId || siteId)) && !fieldSite
-  const deskJobs: MaterialsJob[] = allJobs.length ? allJobs : desk.rows.map((r: OnSiteDeskJobRow) => ({ id: r.id, hcp_number: r.hcp_number, job_name: r.job_name, job_address: r.job_address ?? null, google_drive_link: r.google_drive_link ?? null }))
+  const deskJobs: MaterialsJob[] = allJobs.length ? allJobs : desk.rows.map((r: OnSiteDeskJobRow) => ({ id: r.id, hcp_number: r.hcp_number, click_number: r.click_number ?? null, job_name: r.job_name, job_address: r.job_address ?? null, google_drive_link: r.google_drive_link ?? null }))
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }} data-testid="materials-on-site-tab">
@@ -151,6 +152,8 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           </table>
         </div>
       ) : fieldSite && fieldSite.kind === 'site' ? (
+        <>
+        <OnSiteJobsNotLoaded jobIds={fieldSite.jobIds} surface="materials-on-site-field-site" />
         <SiteMaterialsView
           site={{ id: fieldSite.siteId, name: fieldSite.name }}
           jobs={fieldSite.jobIds.map((id) => ({ id, label: withBoxes.find((j) => j.jobId === id)?.label ?? `job ${id.slice(0, 8)}` }))}
@@ -160,6 +163,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
           boxHref={boxOnSiteLink}
           loading={desk.loading && !desk.loaded}
         />
+        </>
       ) : office ? (
         <JobsMaterialsTab
           jobs={deskJobs}

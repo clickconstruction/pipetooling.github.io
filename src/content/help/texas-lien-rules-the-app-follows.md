@@ -70,7 +70,7 @@ This page was checked on 2026-09-14 against the statute text at statutes.capitol
 
 Count from the month the work was done, never from the bill date. Each unpaid month has its own clock.
 
-**What it says.** Every lien deadline counts from the month the labor or materials were furnished. The bill date does not matter. Each unpaid month has its own clock. The clock reads the approved clock sessions. A sub's notice is due by the 15th of the third month after the work. The lien is due by the 15th of the fourth month after the last month worked. On a house both dates are a month earlier.
+**What it says.** Every lien deadline counts from the month the labor or materials were furnished. The bill date does not matter. Each unpaid month has its own clock. The clock reads the approved clock sessions. A last day of work set by hand counts in their place. Hours approved after that day do not move the clock. A sub's notice is due by the 15th of the third month after the work. The lien is due by the 15th of the fourth month after the last month worked. On a house both dates are a month earlier.
 
 :::example Work done in 2026, on a job with a GC
 
@@ -128,7 +128,7 @@ A form the statute sets. It goes to the owner of record and to the GC, by certif
 
 **What it says.** The notice is a form the statute sets. It goes to the owner of record and to the original contractor. The owner of record is the owner the county's records name. It is due by the 15th of the third month after the work month. On a residential property it is due by the 15th of the second month. It goes by certified mail or another service that can be traced. It may include the invoice.
 
-**What you do.** Draft it on the Lien desk under Notices. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/lien-desk?tab=notices).
+**What you do.** Draft it on the Lien desk, on the **Monthly notices** tab. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056(a-1) to (a-3), § 53.003*
 
@@ -172,7 +172,7 @@ The affidavit needs six things.
 - A property that is not a homestead.
 - A yes or a no to the homestead question, on a house. An unanswered question is not a no.
 
-**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
+**What you do.** Open the job's Lien window on the Lien affidavit tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.054, § 53.055*
 
@@ -211,7 +211,7 @@ While the affidavit window is open, a notice sent after its own 15th still count
 
 **What it says.** A month's notice is due by its 15th. The affidavit is due a month later. The owner reads the statute to let a notice sent in that last month still support the affidavit.
 
-**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. [Open the Notices list](/lien-desk?tab=notices).
+**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. The By date tab lists the job in the month of the affidavit's last day. Its row reads *send the late notice*. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056, § 53.052*
 

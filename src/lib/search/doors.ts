@@ -32,16 +32,17 @@ import { KIND_PILLS } from '../messages/kindPills'
 import { GROUP_LABELS, type BoardGroup } from '../todos/todoBoard'
 import { ROLES } from '../userRoles'
 
-export type DoorKind = 'page' | 'window' | 'box' | 'settings' | 'guide' | 'todo'
+export type DoorKind = 'page' | 'window' | 'box' | 'map' | 'settings' | 'guide' | 'todo'
 
-/** The group a door is drawn under: a window is a place too, so it draws with the pages; a box on a job site (#209) is its own group, built live from the store. */
-export type DoorGroupKey = 'page' | 'box' | 'settings' | 'guide' | 'todo'
+/** The group a door is drawn under: a window is a place too, so it draws with the pages; a box on a job site (#209) is its own group, built live from the store, and so is a painted map (#345), read when the box opens. */
+export type DoorGroupKey = 'page' | 'box' | 'map' | 'settings' | 'guide' | 'todo'
 
-export const DOOR_GROUP_ORDER: readonly DoorGroupKey[] = ['page', 'box', 'settings', 'guide', 'todo']
+export const DOOR_GROUP_ORDER: readonly DoorGroupKey[] = ['page', 'box', 'map', 'settings', 'guide', 'todo']
 
 export const DOOR_GROUP_LABELS: Readonly<Record<DoorGroupKey, string>> = {
   page: 'Pages',
   box: 'Boxes on site',
+  map: 'Painted maps',
   settings: 'Settings',
   guide: 'Guides',
   todo: 'Punch list',
@@ -243,6 +244,8 @@ function jobsTabDoors(): Door[] {
 const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
+  // Paint a map (punch list #345): the door with no job open. The one host in the Layout reads the key on any page.
+  p({ label: 'Paint a map', kind: 'window', where: 'The way in to a job, drawn or walked', words: ['paint a map', 'painted map', 'paint', 'draw a map', 'map the way in', 'way in', 'walk a line', 'where to park', 'gate'], to: '/dashboard?paintMap=1', gate: everyone, reads: { file: 'src/components/paintedMap/PaintedMapHost.tsx', text: 'paintedMapAskFromSearch(searchParams)' } }),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
   // The Lien desk is a page since punch list #182 (v2.6777): its door is its own address, the office's gate.
   p({ label: 'Lien desk', where: 'The notices, affidavits and retainage notices on every job with money open', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/lien-desk', gate: office }),
@@ -365,6 +368,9 @@ function settingsDoors(): Door[] {
       ;(group as { words: readonly string[] }).words = [...group.words, ...words]
       continue
     }
+    // A card drawn for fewer roles than its tab (v2.7139): the door opens for the roles that see the card.
+    const tabGate = settingsTabVisible(entry.tabId)
+    const seenBy = entry.seenBy
     doors.push({
       id: `settings:${entry.tabId}:${slug(entry.label)}`,
       kind: 'settings',
@@ -372,7 +378,7 @@ function settingsDoors(): Door[] {
       where: `Settings · ${tabLabel}`,
       words,
       to: settingsEntryTo(entry),
-      gate: settingsTabVisible(entry.tabId),
+      gate: seenBy ? (v) => tabGate(v) && seenBy(v.role) : tabGate,
     })
   }
   return doors

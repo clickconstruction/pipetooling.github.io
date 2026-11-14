@@ -553,7 +553,7 @@ export function TransactionDetailModal({
                 )
               })}
               {lines.length > 0 ? (
-                <div style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', color: displayTotal <= 0 ? '#6b7280' : canSaveSplits ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
+                <div style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', color: displayTotal <= 0 ? 'var(--text-muted)' : canSaveSplits ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
                   {displayTotal <= 0 ? 'Zero charge — cannot split.' : <>Allocated: {allocationSum.ok ? formatCurrency(allocationSum.sum) : '—'} · Remainder: {allocationSum.ok ? formatCurrency(remainder) : '—'}</>}
                 </div>
               ) : null}

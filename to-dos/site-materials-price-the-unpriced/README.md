@@ -1,9 +1,10 @@
 ---
 name: "A site's materials: press the Worth, see everything with no price, and price it fast"
 number: 342
-group: gated
-status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · nothing built · waits on the owner's pick of a drawing and eight short calls
+group: close
+status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge) · PR 3 the end and the old prices v2.7165 · all three LIVE 2026-11-13 and walked on clicktooling.com, read only · migration 20261113160000 pushed on the owner's yes · left: the owner's look on the real site and his first answers
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
+ver: v2.7156 · 7159 · 7165 · 7216
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -15,10 +16,10 @@ summary: >
   book where the book has the part, and otherwise a price kept for the site in one new table that
   every on-site money figure reads through the one price rule. Three drawings: the list priced in
   place, one name at a time, and a table grouped by where the price comes from.
-next: The owner opens the mock-up, picks a drawing (A is recommended) and answers the eight calls. Then PR 1, the offers, which needs no migration.
-size: M · M · S as a train of three (the offers · a price of the site's own · the keyboard and the end)
-blocker: The owner's pick. Nothing else.
-opinion: build — drawing A, PR 1 first; it turns 34 rows into one press each with no migration, and shows on the real site how often the first offer is right before anything is saved in a new place
+next: The owner opens the site (Materials → On site → the site's name), presses Worth and prices the rows in the window. He says what the first offers got wrong. Then the folder is deleted.
+size: M · M · S as a train of three, shipped; left: the owner's look and the first answers (XS)
+blocker: None. The owner's look.
+opinion: your call — the train is built as you picked it; price the real site's rows and say what the first offers got wrong
 ---
 
 # A site's materials: price what has no price (#342)
@@ -209,10 +210,10 @@ an old price, each with a newer bill beside it where one exists. The tile then h
 `mockup.html`, at a desk's width and a phone's. The summary as it is today, then three ways the
 press could open.
 
-- **A · In place (recommended).** The press narrows the list as today, and each row now carries
+- **A · In place.** The press narrows the list as today, and each row now carries
   its offers as one-press answers, a price box and **Not a part**. Enter saves and moves down.
   Chips over the list: every row, has an offer, nothing found, left out.
-- **B · One at a time.** A window with one name, its boxes, its offers as large numbered answers,
+- **B · One at a time (picked).** A window with one name, its boxes, its offers as large numbered answers,
   a price box, **Skip** and **Not a part**, and a count that ticks down.
 - **C · By source.** One table in sections: one fit in the parts book, one bill has it, more than
   one fit, nothing found. A counted press acts on the ticked rows of the first two sections and
@@ -221,18 +222,27 @@ press could open.
 The mock-up also draws the summary's words changing as rows are priced, the row after an answer
 with its **Undo**, and the end: *Nothing waiting on a price on this site.*
 
-**Recommended: A.** He asked to see all of them, and the press already makes that list. A puts
-the answer on the row he is looking at, it is the smallest step from what is built, and the
-measure says a row needs a choice among a few offers far more often than it needs a batch.
+**Picked: B**, by the owner on 2026-11-13. He first picked A, the one this card recommended, and
+changed his mind the same day: he wants one name at a time.
+
+**How B still shows him all of them.** The press on Worth keeps doing what it does today: it
+narrows the list to the rows with no price, so every one of them is on the screen. The line over
+that list gains one press, **Price 88 rows one at a time**, with its count. That press opens the
+window on the first row. **Done for now** closes it, and the list under it has moved: a priced
+row is gone from it, and the tile's words have changed. Call 9 asks whether the tile should open
+the window at once.
+
+**What B costs against A.** A second surface beside the list. It is one component over the same
+rows, the same offers and the same writes, so the rules are shared and only the drawing is new.
 
 ## The plan
 
 | PR | What | Lets the owner | Size |
 |---|---|---|---|
-| 1 · the offers | A pure kernel `src/lib/materials/priceOffers.ts` (a row's same-words fold against the book's names and the bill lines, ranked, each with its source, price for one, day and house) with tests. One read `priceOffersIo.ts`: the book's names and prices and the priced bill lines, paged past the 1,000-row cap, asked once when the tile is pressed. The narrowed list draws each row's offers. A parts-book offer is one press, **Use this part**, the tie that exists. A bill offer is shown, with its door to What we buy, and no press yet. The tile says how many rows have an offer. The picker opens on the folded words. **No migration.** | Price the 34 rows the book fits at one press each, and see what a bill paid for 39 | M |
+| 1 · the window and its offers | A pure kernel `src/lib/materials/priceOffers.ts` (a row's same-words fold against the book's names and the bill lines, ranked, each with its source, price for one, day and house) with tests. One read `priceOffersIo.ts`: the book's names and prices and the priced bill lines, paged past the 1,000-row cap, asked once when the window opens. A pure kernel for the walk (`pricingWalk.ts`: the order, the row after an answer or a skip, the count left, the last answer). The window `SitePricingWindow.tsx`, opened by **Price 88 rows one at a time** on the narrowed list's head. In it: the name, its boxes, its offers as numbered answers, **Other part…** (the picker, on the folded words), **Skip**, **Done for now**, and **Undo** on the last answer. A parts-book offer is one press or its number key: the tie that exists. A bill offer is shown, with its door to What we buy, and no press yet. The tile says how many rows have an offer. **No migration.** | Walk the rows one at a time and price the 34 the book fits at one key each, seeing what a bill paid for 39 | M |
 | | **Stop and look on the real site.** Count how often the first offer was the right one. | | |
-| 2 · a price of the site's own | The migration `on_site_prices` (opens with `SET lock_timeout = '3s';`, numbered from `origin/main` and claimed, idempotent, the four `apply_*` fence calls, its `docs/migrations/` page, pushed right after the merge since the client reads what it makes). The store reads the site's prices and ties into `priceFor`. **Use this price** on a bill offer, the price box, **Not a part**, **Priced here** with **Undo**. `worthWords` gains *left out*. `PricePick` gains the site's own source and its words. | Price every row, from any device, and see it on the job's Missing table | M |
-| 3 · the keyboard and the end | Enter saves and moves to the next row. The chips. The line that counts down. The empty state. The press on *older than 90 days*. The phone's layout. | Work the list in one sitting | S |
+| 2 · a price of the site's own | The migration `on_site_prices` (opens with `SET lock_timeout = '3s';`, numbered from `origin/main` and claimed, idempotent, the four `apply_*` fence calls, its `docs/migrations/` page, pushed right after the merge since the client reads what it makes). The store reads the site's prices and ties into `priceFor`. In the window: a bill offer becomes an answer, the price box, **Not a part**. On the open row of the list: **Priced here** with **Undo**. `worthWords` gains *left out*. `PricePick` gains the site's own source and its words. | Price every row, from any device, and see it on the job's Missing table | M |
+| 3 · the end and the old prices | The end of the walk: *Nothing waiting on a price on this site.* The chips on the list (no price, an old price, left out) with **Bring back**. The press on *older than 90 days* and its walk, a newer bill beside each. The phone's layout checked on a phone. | Finish, and then keep the prices fresh | S |
 
 Each PR ships its release note, fragment and guide (`src/content/help/`, the site's materials
 guide), and updates `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`. PR 2 updates `ACCESS_CONTROL.md`.
@@ -243,7 +253,8 @@ guide), and updates `docs/MATERIALS_ON_SITE_ARCHITECTURE.md`. PR 2 updates `ACCE
 offers is the better read once the bills pass about ten thousand lines. PR 2: `on_site_prices`
 for the site, with the ties.
 
-**Where it plugs in:** `SiteMaterialsView.tsx` (the tile, the narrowed list, the row),
+**Where it plugs in:** `SiteMaterialsView.tsx` (the tile, the narrowed list and its head, the open row), the new
+`SitePricingWindow.tsx`,
 `siteWorth.ts` (`worthWords`, the left-out count), `siteRollup.ts` (`sameWordsKey`), `bookPrice.ts`
 (`priceLookup`, `PricePick`, `priceWords`), `onSiteStore.ts` (`priceFor`, the invoice prices),
 `partTies.ts` and `usePartTies` (the tie), `bookSearchIo.ts` (the picker), `batchWords.ts` (drawing
@@ -262,11 +273,11 @@ C only), and #298's `supply_purchase_lines` view.
 
 ## The owner's calls
 
-Each takes a word. My pick is first.
+Each takes a word. My pick is first. Call 1 is answered. PR 1 rests on calls 2, 3 and 9. Calls 4 to 8 are PR 2's.
 
 | Call | Recommended | Also possible |
 |---|---|---|
-| 1 · Which drawing? | **A**, in place | B, one at a time · C, by source |
+| 1 · Which drawing? | **Answered 2026-11-13: B, one at a time.** The card recommended A, and he picked A first | A, in place · C, by source |
 | 2 · May an offer come from any bill the company has? | **Yes.** The site's own bills fit one row | Only this site's bills |
 | 3 · Does an offer ever count in *known*? | **No.** Only a price a person accepted | Yes, as a second figure |
 | 4 · Does **Not a part** take a row out of the cover? | **Yes**, and the cover says how many were left out | No, it stays as *no price* |
@@ -274,11 +285,58 @@ Each takes a word. My pick is first.
 | 6 · Does a price belong to the site? | **Yes**, as a tie does | To the whole company |
 | 7 · Who may price? | **The roles that tie today** | The office only |
 | 8 · Does a price set here also price the job's Missing table and the desk? | **Yes.** One rule, one price | The site's screen only |
+| 9 · Does a press on Worth open the window at once? | **No.** It lists the rows as today, and one press on the list's head opens the window | Yes, straight into the window |
 
 ## Where it stands
 
-Designed and measured 2026-11-13. Nothing is built, no migration is written and nothing was
-written to prod. The measure was run as the dev on a local copy of the app, reads only.
+Designed and measured 2026-11-13. The owner picked drawing A, changed to B, one at a time, and
+then said *build the entire PR train*. So calls 2 to 9 stand on their recommended answers.
+
+- **PR 1, the window and its offers (v2.7156).** Built. On the real site, read only: Worth reads
+  *48 rows have an offer*, the press reads **Price 96 rows one at a time**, and the window opens
+  on row 1 of 96. The first row had three numbered answers and 25 more fits, which is the
+  measure's point: a short name fits many parts. No answer was pressed, since each is a write.
+  The first look showed one house's part three times under three of its numbers, so the bills'
+  offers fold by house and wording.
+- **PR 2, a price of the site's own (v2.7159).** Built, with the migration
+  `20261113160000_on_site_prices.sql`. A bill's offer is an answer, a box takes a typed price,
+  **Not a part** sets a row aside, and every answer has **Undo**. Read is held to the money
+  roles, tighter than the ties: a price is money. The job page's Missing table, its flow and the
+  desk read the same price. The migration was applied twice to a throwaway Postgres and tried as
+  three made-up people. Before the push the window shows bills to read and no box.
+  Merged as #7983 and **pushed to prod 2026-11-13** on the owner's yes: the dry run listed this
+  migration alone and the drift check read every file applied. CI caught one thing first: the
+  day's default was the UTC session's and is now the app's own today.
+- **PR 3, the end and the old prices (v2.7165).** Built. A press on Worth shows three chips, **No
+  price**, **An old price** and **Left out**. **Check N old prices one at a time** walks the rows
+  on a price older than 90 days against newer bills. Every list says so when it is empty.
+
+**Live and walked.** All three PRs were on main by 2026-11-13 (#7967, #7983, #7997) and the
+migration was pushed right after #7983. clicktooling.com was walked as the dev at 1400 and 375
+wide with every write to a table refused. Worth read its cover with *48 rows have an offer*. The
+chips read *No price · 96*, *An old price · 3* and *Left out · 0*. **Price 96 rows one at a time**
+opened on row 1 of 96 with three numbered answers, the price box and **Not a part**. **Check 3 old
+prices one at a time** opened on the price the first row reads now. The app's read of
+`on_site_prices` answered. No page error and no sideways scroll.
+
+**The generated types** name the new table in the types PR that was open at the time (#8011).
+`sitePricesIo.ts` reads it through an untyped cast, which the next pass over that file can drop.
+
+**What no walk did, because each is a write and prod is the only database:** an answer pressed in
+the window, its Undo, and Bring back. Render tests hold each of them end to end. The first real
+answers are the owner's to give on the real site.
+
+**The owner's calls, as built:** 1 B, one at a time. 2 any bill of the company. 3 an offer never
+counts in *known*. 4 **Not a part** leaves the cover, which says how many were left out. 5 a typed
+or bill price is flagged past 90 days. 6 a price belongs to the site. 7 the roles that tie, and
+read is held to them too. 8 the job's Missing table and the desk read the same price. 9 Worth
+lists the rows, and one press opens the window.
+
+**Just price (v2.7216), the owner's first ask after pricing a row.** A press on a parts-book offer
+ties the name to the part, so the row is re-labelled as well as priced. He asked for a press on
+the right of each offer that takes the price alone. It writes a row of the site's own prices with
+source `book` and no tie, so the row keeps its name and its own count. One small migration,
+`20261113233000`, widens the source check. The price is a copy dated the book's check day.
 
 ## How to verify (when it is built)
 

@@ -1,13 +1,14 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
 import { monthFromCreation } from './lienDesk'
-import type { LienAffidavitEntry } from './lienDeskAffidavits'
+import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
-import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineAffidavitState, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import { parseCourtesyRecords } from './lienCourtesyNotice'
 import { liveDemandLetters, type JobDemandLetterRow } from './demandLetterTracking'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { daysBetweenYmd } from './billedExpectedPay'
+import { lienClockMonths, lienHoursAfterHandDay } from './lienLastWorkDay'
 import type { JobWorkMonths } from './forecastWorkMonths'
 import { noticeDeadlineForMonth } from './lienDeadlines'
 
@@ -86,6 +87,41 @@ export function lienWindowDeskNotice(entry: Pick<LienDeskEntry, 'pile' | 'item'>
   return state ? { state, holdUntil: entry.item?.hold_until ?? null } : null
 }
 
+/** Where a job's affidavit stands on the desk, as the Lien window's opener hands it over (v2.7187, punch list #335, row 2). */
+export type LienWindowDeskAffidavit = {
+  state: LienTimelineAffidavitState
+  /** The gates still closed, by key, sorted: the header names the one fact that holds the paper. */
+  missing: LienAffidavitGateKey[]
+  holdUntil: string | null
+}
+
+function affidavitStateOf(entry: Pick<LienAffidavitEntry, 'pile'> | null | undefined): LienTimelineAffidavitState {
+  switch (entry?.pile) {
+    case 'needs_property':
+    case 'to_draft':
+    case 'awaiting':
+    case 'ready':
+    case 'held':
+      return entry.pile
+    default:
+      return ''
+  }
+}
+
+/**
+ * The desk's word on a job's affidavit for the Lien window (v2.7187, punch list #335, row 2), as `lienWindowDeskNotice` is
+ * for its notice. The window builds its path from the job's filings and cannot see an affidavit that is not drafted,
+ * waits on approval or is held by a fact, so its header read *File the affidavit* over a row that read *Draft the
+ * affidavit* or *Answer the homestead question*. Null when the job has no entry, or one that is filed or missed,
+ * which is no step. The closed gates go over only for a paper its facts hold.
+ */
+export function lienWindowDeskAffidavit(entry: Pick<LienAffidavitEntry, 'pile' | 'gates' | 'item'> | null | undefined): LienWindowDeskAffidavit | null {
+  const state = affidavitStateOf(entry)
+  if (!entry || !state) return null
+  const missing = state === 'needs_property' ? entry.gates.filter((g) => !g.ok).map((g) => g.key).sort() : []
+  return { state, missing, holdUntil: entry.item?.hold_until ?? null }
+}
+
 export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string, propertyKind = ''): LienTimelineMonth[] {
   const deskMonths: LienDeskMonth[] = rows
     .filter((r) => r.job_id === jobId)
@@ -105,7 +141,9 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
   const months = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd, src.propertyKind)
   const fromRows = months.length ? months[months.length - 1] : null
   const fromLedger = (src.lastWorkDate ?? '').slice(0, 7)
-  const lastMonth = src.affidavit?.lastMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
+  // The day set by hand counts (v2.7193, punch list #335, row 1): the desk's RPC marks its month, and the ledger's later hours do not move it.
+  const handMonth = src.rows.find((r) => r.job_id === jobId && r.month_source === 'hand')?.work_month ?? ''
+  const lastMonth = src.affidavit?.lastMonth || handMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
   const lastMonthFromCreation = src.affidavit ? src.affidavit.lastMonthFromCreation : Boolean(fromRows && fromRows.key === lastMonth && fromRows.fromCreation) || Boolean(src.entry?.datedFromCreation && (!fromRows || fromRows.key === lastMonth))
   // The last day of work set by hand (v2.4676): the affidavit entry says so, else the desk row for the last month.
   const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : src.rows.some((r) => r.job_id === jobId && r.work_month === lastMonth && r.month_source === 'hand')
@@ -124,6 +162,10 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
           servedAt: affidavitFiling?.served_at ?? null,
           serveDue: affidavitFiling?.serve_due ?? null,
           missingGates: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => GATE_SHORT[g.key] ?? g.key),
+          // Where the paper stands on the desk (v2.7187, punch list #335, row 2), so the desk's own timeline names the step too.
+          state: affidavitFiling ? '' : affidavitStateOf(src.affidavit),
+          missingKeys: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => g.key),
+          holdUntil: src.affidavit?.item?.hold_until ?? null,
         }
       : null
 
@@ -134,6 +176,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     lastMonth,
     lastMonthFromCreation,
     lastMonthByHand,
+    laterHoursDay: lastMonthByHand && fromLedger > lastMonth ? (src.lastWorkDate ?? '').slice(0, 10) : '',
     months,
     noticeState: noticeStateOf(src.entry),
     holdUntil: src.entry?.item?.hold_until ?? null,
@@ -185,27 +228,27 @@ export function lienRetainageClockFromDesk(data: unknown, jobId: string): NonNul
 }
 
 /**
- * The last month worked as the Lien window knows it (v2.6809), with what named it: the forecast's last month with a
- * session, the later month of a day set by hand (v2.4676), and for a job with no sessions the ledger's last day,
- * else its creation month (v2.3747), the desk's RPC's rule. One read for the window's strip and for the period its
- * affidavit swears: the strip said *Last work Aug 2026* while paragraph 5 printed blanks, because the paper read
- * the session months alone.
+ * The last month worked as the Lien window knows it (v2.6809), with what named it: the month of a day set by hand
+ * when there is one, else the forecast's last month with a session, and for a job with no sessions the ledger's last
+ * day, else its creation month (v2.3747). One read for the window's strip and for the period its affidavit swears:
+ * the strip said *Last work Aug 2026* while paragraph 5 printed blanks, because the paper read the session months alone.
+ *
+ * Until v2.7193 (punch list #335, row 1) a hand day counted only when it was later than the sessions (v2.4676), so hours
+ * approved after it moved the window's clock while the billed row's stayed on the hand day. The owner's reading of
+ * 2026-11-13 is the row's: the day set by hand counts (`lienClockMonths`). `laterHoursDay` is the last approved clock
+ * day when it follows the hand day, so the window can say those hours are there and do not move it.
  */
 export function lienWindowLastMonth(src: {
   workMonths: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null | undefined
   job: { created_at?: string | null; last_work_date?: string | null; lien_last_work_on?: string | null }
-}): { lastMonth: string; fromCreation: boolean; byHand: boolean } {
+}): { lastMonth: string; fromCreation: boolean; byHand: boolean; laterHoursDay: string } {
   const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
-  const hand = (src.job.lien_last_work_on ?? '').slice(0, 7)
   const wm = src.workMonths
-  if (wm && wm.months.length) {
-    const lastMonth = wm.lastMonthKey || fromLedger
-    // The last day of work set by hand (v2.4676) extends the months when it is later than the sessions.
-    return hand && hand > lastMonth ? { lastMonth: hand, fromCreation: false, byHand: true } : { lastMonth, fromCreation: false, byHand: false }
-  }
+  const clock = lienClockMonths(wm?.months.length ? wm.months.map((m) => m.key) : fromLedger ? [fromLedger] : [], src.job.lien_last_work_on)
+  if (clock.byHand) return { lastMonth: clock.lastMonth, fromCreation: false, byHand: true, laterHoursDay: lienHoursAfterHandDay(src.job) }
+  if (wm && wm.months.length) return { lastMonth: wm.lastMonthKey || fromLedger, fromCreation: false, byHand: false, laterHoursDay: '' }
   const created = calendarYmdInAppTzFromIso(src.job.created_at ?? '').slice(0, 7)
-  const lastMonth = hand && hand >= fromLedger ? hand : fromLedger || created
-  return { lastMonth, fromCreation: !fromLedger && !hand && Boolean(created), byHand: Boolean(hand) && lastMonth === hand }
+  return { lastMonth: fromLedger || created, fromCreation: !fromLedger && Boolean(created), byHand: false, laterHoursDay: '' }
 }
 
 /**
@@ -232,20 +275,25 @@ export function buildLienTimelineFromWindow(src: {
   courtesy?: ReadonlyArray<LienTimelineCourtesy> | null
   /** Where the job's notice stands on the desk (v2.7077), when the opener holds the desk's queue; absent, the open months read *to draft*. */
   deskNotice?: LienWindowDeskNotice | null
+  /** Where the job's affidavit stands on the desk (v2.7187, punch list #335, row 2), from the same opener; absent, the header reads *File the affidavit*. */
+  deskAffidavit?: LienWindowDeskAffidavit | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
   for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? calendarYmdInAppTzFromIso(f.created_at))
   let months: LienTimelineMonth[] = []
   // The last month and what named it: one rule with the affidavit's period (v2.6809).
-  const { lastMonth, fromCreation: lastMonthFromCreation, byHand: lastMonthByHand } = lienWindowLastMonth(src)
+  const { lastMonth, fromCreation: lastMonthFromCreation, byHand: lastMonthByHand, laterHoursDay } = lienWindowLastMonth(src)
   const wm = src.workMonths
   if (wm && wm.months.length) {
-    months = wm.months.map((m) => {
-      const deadline = m.notice?.due || noticeDeadlineForMonth(`${m.key}-01`, src.propertyKind)
-      const sentAt = sentMonths.get(m.key)
+    // The months on the clock (v2.7193, punch list #335, row 1): with a day set by hand, the worked months before its month and
+    // its own month, which owes a notice like any other; months of hours after it are off the clock.
+    const dueByKey = new Map(wm.months.map((m) => [m.key, m.notice?.due ?? ''] as const))
+    months = lienClockMonths(wm.months.map((m) => m.key), src.job.lien_last_work_on).months.map((key) => {
+      const deadline = dueByKey.get(key) || noticeDeadlineForMonth(`${key}-01`, src.propertyKind)
+      const sentAt = sentMonths.get(key)
       const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
-      return { key: m.key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
+      return { key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
     })
   } else if (lastMonth && src.isSub) {
     const deadline = noticeDeadlineForMonth(`${lastMonth}-01`, src.propertyKind)
@@ -262,13 +310,17 @@ export function buildLienTimelineFromWindow(src: {
     lastMonth,
     lastMonthFromCreation,
     lastMonthByHand,
+    laterHoursDay,
     months,
     noticeState: src.deskNotice?.state ?? '',
     holdUntil: src.deskNotice?.holdUntil ?? null,
     retainage: src.job.lien_contract_ended_on ? { contractEndedOn: src.job.lien_contract_ended_on, deadline: lienThirtyDayClock(src.job.lien_contract_ended_on), noticed: false } : null,
     affidavit: affidavitFiling
       ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
-      : null,
+      : src.deskAffidavit?.state
+        ? // No filing yet: the desk's word alone. The last day stays the window's own (`deadline: ''` reads the last month's).
+          { deadline: '', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: src.deskAffidavit.missing.map((k) => GATE_SHORT[k] ?? k), state: src.deskAffidavit.state, missingKeys: src.deskAffidavit.missing, holdUntil: src.deskAffidavit.holdUntil }
+        : null,
     originalContractCompletedOn: null,
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,

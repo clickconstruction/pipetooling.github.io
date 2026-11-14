@@ -9,10 +9,10 @@
 
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import {
-  calendarYmdInAppTzFromIso,
   companyWeekStartSundayContaining,
   getScheduleDispatchWeekNavParts,
   ymdAddDays,
+  ymdFromDateLike,
 } from '../../utils/dateUtils'
 import { formatBidStaffDisplayName } from './bidBoardStaffOutcomes'
 
@@ -116,12 +116,16 @@ function monthShortOfYmd(ymd: string): string | null {
   return MONTH_SHORT[Number(m[1]) - 1] ?? null
 }
 
-/** Sent bids only, with their app-timezone company week start. */
+/**
+ * Sent bids only, each with the company week its send day falls in. `bid_date_sent` is a date with no time, so it is
+ * read as written. Read as a moment it is midnight UTC, the evening before in Chicago, and a bid sent on a Sunday
+ * counted in the week before (v2.7170).
+ */
 function sentBidsWithWeek(bids: BidWithBuilder[]): Array<{ bid: BidWithBuilder; weekStart: string }> {
   const out: Array<{ bid: BidWithBuilder; weekStart: string }> = []
   for (const bid of bids) {
     if (!bid.bid_date_sent) continue
-    const ymd = calendarYmdInAppTzFromIso(bid.bid_date_sent)
+    const ymd = ymdFromDateLike(bid.bid_date_sent)
     if (!ymd) continue
     const weekStart = companyWeekStartSundayContaining(ymd)
     if (!weekStart) continue

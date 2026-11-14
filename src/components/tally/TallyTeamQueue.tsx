@@ -51,6 +51,8 @@ import { loadJobsForTicketPick, loadTicketJobFacts } from '../../lib/tickets/tic
 import { ticketScreensIo } from '../../lib/tickets/ticketScreensIo'
 import { receiptCopiedWords } from '../../lib/tickets/receiptLink'
 import { copyReceiptLinkFor } from '../../lib/tickets/receiptLinkIo'
+import { receiptLineWords } from '../../lib/tickets/receiptText'
+import { listReceiptRequestsByCharge, type ReceiptRequestRow } from '../../lib/tickets/receiptTextsIo'
 import { useTicketCapture } from '../../hooks/useTicketCapture'
 import { useNavigate } from 'react-router-dom'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
@@ -117,6 +119,8 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const [ticketBusy, setTicketBusy] = useState<string | null>(null)
   const [pickJobFor, setPickJobFor] = useState<TicketWithPages | null>(null)
   const [receiptLinkBusyId, setReceiptLinkBusyId] = useState<string | null>(null)
+  /** Receipt texts (punch list #299, PR 2): each charge's request, for the line that says it was texted or why not. */
+  const [receiptRequests, setReceiptRequests] = useState<ReadonlyMap<string, ReceiptRequestRow>>(new Map())
   const [pickJobs, setPickJobs] = useState<ChooseJobRow[] | null>(null)
   /** + Ticket (PR 4): the desk's scan of a paper handed in, tied to the charge it was pressed on. */
   const deskCapture = useTicketCapture()
@@ -145,6 +149,8 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
       setReads(next)
       setSortedRows(sorted)
       setLoadedAt(Date.now())
+      // What the receipt text did for each charge to sort: a layer on the queue, read apart, and never its failure.
+      void listReceiptRequestsByCharge(next.queue.map((r) => r.mercury_transaction_id)).then(setReceiptRequests)
       // The tickets in the window, and the matcher over every charge the queue read: a match it makes is written here.
       try {
         // The tickets from the oldest charge the window read, so a ticket meets any charge the queue can show.
@@ -225,6 +231,15 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     },
     [showToast],
   )
+
+  const receiptLineByCharge = useMemo(() => {
+    const out = new Map<string, NonNullable<ReturnType<typeof receiptLineWords>>>()
+    for (const [chargeId, r] of receiptRequests) {
+      const line = receiptLineWords(r, loadedAt)
+      if (line) out.set(chargeId, line)
+    }
+    return out
+  }, [receiptRequests, loadedAt])
 
   const ticketJobByCharge = useMemo(() => ticketJobByChargeOf(tickets), [tickets])
   const queue = useMemo(
@@ -693,6 +708,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
                   }}
                   onCopyReceiptLink={(row) => void copyReceiptLink(row)}
                   receiptLinkBusyId={receiptLinkBusyId}
+                  receiptLineByCharge={receiptLineByCharge}
                 />
               ))}
             </div>

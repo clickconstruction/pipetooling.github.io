@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
+keywords: team purchases, follow-up, texted, no text, receipt text, got it, needs you, fill them in, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
 where: /tally?tab=transactions
 order: 60
 ---
@@ -91,7 +91,54 @@ The photo lands on the charge. The line then wears a green chip, like {{chip:gre
 
 The link opens for 14 days. The page shows that charge and nothing else. A charge with a ticket on it has no **Copy the receipt link**.
 
-The app sends no text by itself. You send the link.
+## What a line says about the text
+
+The app can text the card's holder by itself when a charge posts. The owner turns those texts on in Settings. [Turn on receipt texts for card charges](/help/turn-on-receipt-texts-for-card-charges) shows how.
+
+A charge that was texted wears a blue chip, like {{chip:blue|Texted 6:14 PM}}. The line under the charge says *No receipt yet.* After the reminder, the line also says when the reminder went.
+
+A charge that could not be texted wears a yellow chip, {{chip:yellow|No text}}. The line under the charge gives the reason and what to do.
+
+- *The card is tied to no one.* Tie the card to its holder on Banking.
+- *Jordan has no cell on file.* Add the cell on People.
+- *Jordan has left.* Tie the card to the person who holds it now.
+- *Jordan replied STOP.* Ask for the receipt another way.
+- *The text did not go.* Press **Copy the receipt link** and send the link yourself.
+
+Fixing the reason does not text that charge again. The next charge on the card texts the holder.
+
+With receipt texts off, the app sends no text. You send the link.
+
+## The charges on Needs you
+
+Some charges need you because the text cannot finish them. The **Needs you** card counts them as *N card charges wait on a receipt the text cannot get*.
+
+On Quickfill, {{button:outline|Fill them in}} walks them one at a time. Each row says what happened.
+
+- The holder has no cell on file. The row's door reads *Add Jordan's cell*.
+- The card is tied to no one, or to a person who has left. The row's door reads *Tie the card*.
+- The holder replied STOP. Ask for the receipt another way.
+- The text did not go. Send the link yourself.
+- The holder was texted twice and sent no receipt.
+
+Press **Copy the receipt link** on a row to send the link yourself. The row stays.
+
+Press {{button:blue|Got it}} when you have done what you can. The row leaves the list. The link stays open, and a receipt that comes later still lands on the charge. **Undo** under the card brings the row back.
+
+A row also leaves the list when the receipt comes, or when its link closes after 14 days.
+
+## The receipt on Banking and Job Summary
+
+A card charge shows its receipt in two more places. The chip sits beside the charge.
+
+- On **Banking**, the ledger and User Sort show the chip after the store's name.
+- On **Job Summary**, a cost cell's list of card charges has a **Receipt** column.
+
+The chip reads {{chip:green|Ticket}} or {{chip:green|Receipt from the link}} for a charge with its paper. A texted charge reads like {{chip:blue|Texted 6:14 PM}}. A charge the app could not text reads {{chip:yellow|No text}}.
+
+Rest the pointer on a chip to read the reason. Only charges from the last 60 days show a chip.
+
+The card's holder gets the text. [Answer the text about a charge on your card](/help/answer-the-text-about-a-charge-on-your-card) shows what they see.
 
 A ticket on account has {{button:blue|Record as a bill}}. The press opens Add invoice on that ticket at its supply house. Read [record a supply-house bill from its PDF](/help/record-a-supply-house-bill-from-its-pdf) for that window.
 

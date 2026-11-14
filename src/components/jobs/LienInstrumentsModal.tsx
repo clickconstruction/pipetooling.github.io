@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type UIEvent } from 'react'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import type { PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { ActionPhaseButton } from '../ActionPhaseButton'
@@ -42,7 +42,8 @@ import { noticeInvoiceDocs, unpaidBilledInvoices } from '../../lib/jobs/noticeIn
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
-import { buildLienTimelineFromWindow, lienCourtesyFromItems, type LienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienCourtesyFromItems, type LienWindowDeskAffidavit, type LienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import type { LienAffidavitGateKey } from '../../lib/jobs/lienDeskAffidavits'
 import { readLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { readLienAffidavitForm } from '../../lib/jobs/lienDeskIo'
 import type { LienAffidavitForm } from '../../lib/jobs/lienAffidavitForm'
@@ -51,10 +52,12 @@ import type { LienTimelineCourtesy } from '../../lib/jobs/lienTimeline'
 import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
-import { lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
+import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
+import { LIEN_LAST_WORK_COLUMNS, lienLastWorkFactsOf, type LienLastWorkFacts } from '../../lib/jobs/lienLastWorkJobs'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { lienWindowHeadFoldWords, lienWindowHeadFolded, lienWindowHeadStartsFolded, lienWindowScrollIsPaper } from '../../lib/jobs/lienPhoneWindows'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
@@ -141,6 +144,7 @@ export default function LienInstrumentsModal({
   openLastWork = false,
   onLastWorkSaved,
   deskNotice,
+  deskAffidavit,
 }: {
   open: boolean
   onClose: () => void
@@ -157,15 +161,21 @@ export default function LienInstrumentsModal({
   /** The Lien desk's months for the § 53.056 notice (v2.3405) — recorded as months_covered instead of the last work month alone. */
   noticeMonths?: string[] | null
   /** The next step's door to the Lien desk on this job (punch list #82): notices and retainage are drafted, approved and sent there. Absent, the card has no desk button. */
-  onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage') => void
+  onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage' | 'affidavit') => void
   /** *Waivers on the bills* (punch list #82): the Release of Lien window for this job, opened over this one. */
   onOpenRelease?: (job: JobWithDetails) => void
-  /** Open with the last day of work's line already editing (v2.4735): the Deadlines grid's last-day label. */
+  /** Open with the last day of work's line already editing (v2.4735): the By date grid's last-day label. */
   openLastWork?: boolean
-  /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
-  onLastWorkSaved?: () => void
+  /**
+   * The last day of work was set or cleared here: the opener re-reads its clocks and the desk, and writes the fresh
+   * facts onto the job it already holds (`withJobLastWork`), so the row behind this window moves without a reload.
+   * `facts` is null when the window's own re-read came back empty.
+   */
+  onLastWorkSaved?: (jobId: string, facts: LienLastWorkFacts | null) => void
   /** Where the job's § 53.056 notice stands on the Lien desk (v2.7077), from an opener that holds the desk's queue: the header then names the desk's step, not *Draft*. */
   deskNotice?: LienWindowDeskNotice | null
+  /** Where the job's affidavit stands on the Lien desk (v2.7187, punch list #335, row 2), from an opener that holds the desk's queue; absent, the header reads *File the affidavit*. */
+  deskAffidavit?: LienWindowDeskAffidavit | null
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -212,7 +222,7 @@ export default function LienInstrumentsModal({
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
   // The courtesy notices sent on the job (punch list #231), off the sent notice's desk item, for the strip's node.
   const [courtesyRows, setCourtesyRows] = useState<LienTimelineCourtesy[]>([])
-  // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
+  // The last day of work (v2.4735): the timeline's *change ›* opens the By paper line here; a save re-reads the job's five columns.
   const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
   const [lastWorkPatch, setLastWorkPatch] = useState<Partial<Pick<JobWithDetails, 'last_work_date' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>> | null>(null)
   useEffect(() => {
@@ -744,10 +754,12 @@ export default function LienInstrumentsModal({
   const canSetLastWork = isLienOffice(authRole)
   const reReadLastWork = useCallback(async () => {
     if (!job) return
-    const { data } = await supabase.from('jobs_ledger').select('last_work_date, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', job.id).maybeSingle()
-    if (data) setLastWorkPatch(data as NonNullable<typeof lastWorkPatch>)
+    const { data } = await supabase.from('jobs_ledger').select(LIEN_LAST_WORK_COLUMNS.join(', ')).eq('id', job.id).maybeSingle()
+    const facts = lienLastWorkFactsOf(data as Record<string, unknown> | null)
+    if (facts) setLastWorkPatch(facts as NonNullable<typeof lastWorkPatch>)
     setLastWorkOpen(false)
-    onLastWorkSaved?.()
+    // The opener gets what was read, so the row behind this window counts from the new day too.
+    onLastWorkSaved?.(job.id, facts)
   }, [job, onLastWorkSaved])
   const clock = useMemo(
     () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),
@@ -776,9 +788,43 @@ export default function LienInstrumentsModal({
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
   const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
   const papersBar = useScrollEdgeFade<HTMLDivElement>()
+  // A phone (punch list #352, PR 7): the header folds to its title line once the paper under it is scrolled, and comes back at the paper's top.
+  const headRef = useRef<HTMLDivElement | null>(null)
+  const [headFolded, setHeadFolded] = useState(false)
+  // Folded because the screen is too small for the header, or by its own press: a scroll does not bring it back.
+  const headHeld = useRef(false)
+  // The reader pressed the fold on this paper: the window stops deciding for them.
+  const headTouched = useRef(false)
+  useLayoutEffect(() => {
+    headHeld.current = false
+    headTouched.current = false
+    setHeadFolded(false)
+  }, [activeTab, isMobile])
+  // The header grows as the job's facts arrive, so the room is read after every draw until the reader presses the fold: a paper left under 140 px folds the header.
+  useLayoutEffect(() => {
+    if (!isMobile || headFolded || headTouched.current) return
+    const head = headRef.current
+    const card = head?.parentElement
+    const paper = card ? [...card.children].find((c): c is HTMLElement => c !== head && c instanceof HTMLElement && /auto|scroll/.test(getComputedStyle(c).overflowY)) : undefined
+    if (!card || !paper || !lienWindowHeadStartsFolded({ card: card.clientHeight, paper: paper.clientHeight })) return
+    headHeld.current = true
+    setHeadFolded(true)
+  })
+  const onPaperScroll = (ev: UIEvent<HTMLDivElement>) => {
+    const t = ev.target
+    const head = headRef.current
+    if (!(t instanceof HTMLElement) || !head) return
+    if (!lienWindowScrollIsPaper({ scrollHeight: t.scrollHeight, clientHeight: t.clientHeight, insideHead: head.contains(t) })) return
+    const titleLine = head.firstElementChild instanceof HTMLElement ? head.firstElementChild.offsetHeight : 0
+    setHeadFolded((folded) => lienWindowHeadFolded({ folded, held: headHeld.current, scrollTop: t.scrollTop, scrollHeight: t.scrollHeight, clientHeight: t.clientHeight, foldable: folded ? 0 : Math.max(0, head.offsetHeight - titleLine) }))
+  }
   // The opener's word on the notice (v2.7077), read by value so a fresh object each render does not rebuild the path.
   const deskNoticeState = deskNotice?.state ?? ''
   const deskHoldUntil = deskNotice?.holdUntil ?? null
+  // The opener's word on the affidavit (v2.7187, punch list #335, row 2), by value for the same reason: the closed gates as one string.
+  const deskAffidavitState = deskAffidavit?.state ?? ''
+  const deskAffidavitMissing = (deskAffidavit?.missing ?? []).join('|')
+  const deskAffidavitHoldUntil = deskAffidavit?.holdUntil ?? null
   const timeline = useMemo(
     () =>
       job && property
@@ -794,9 +840,10 @@ export default function LienInstrumentsModal({
             demandLetters: historyRows,
             courtesy: courtesyRows,
             deskNotice: deskNoticeState ? { state: deskNoticeState, holdUntil: deskHoldUntil } : null,
+            deskAffidavit: deskAffidavitState ? { state: deskAffidavitState, missing: (deskAffidavitMissing ? deskAffidavitMissing.split('|') : []) as LienAffidavitGateKey[], holdUntil: deskAffidavitHoldUntil } : null,
           })
         : null,
-    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil],
+    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
   )
   // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
   // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.
@@ -1074,10 +1121,10 @@ export default function LienInstrumentsModal({
       </button>
     ) : null
   const paperTabs = [
-    ['demand', 'Demand letter'],
-    ['notice', '§ 53.056 notice'],
-    ['affidavit', "Mechanic's lien"],
-    ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
+    ['demand', LIEN_WINDOW_TAB_LABEL.demand],
+    ['notice', LIEN_WINDOW_TAB_LABEL.notice],
+    ['affidavit', LIEN_WINDOW_TAB_LABEL.affidavit],
+    ...(hasFiledAffidavit ? ([['release_record', LIEN_WINDOW_TAB_LABEL.release_record]] as const) : []),
   ] as const
   // Save & record send… on a phone is a sheet over the whole card (v2.4414); a computer keeps the panel at the foot.
   const recordSheetOpen = isMobile && recordOpen && activeTab === 'demand'
@@ -1101,17 +1148,18 @@ export default function LienInstrumentsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+        // A phone's window is the whole screen (punch list #352, PR 7): the 1rem all round was 58 px of height and 32 of width.
+        padding: isMobile ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
       <div
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
+          borderRadius: isMobile ? 0 : 8,
           maxWidth: 920,
           width: '100%',
-          maxHeight: 'min(92vh, 100%)',
+          maxHeight: isMobile ? '100%' : 'min(92vh, 100%)',
           // A phone's record sheet is drawn over the card (v2.4414); index.css keeps the card at its full height while one is up.
           position: 'relative',
           display: 'flex',
@@ -1119,6 +1167,7 @@ export default function LienInstrumentsModal({
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
+        onScrollCapture={isMobile ? onPaperScroll : undefined}
         data-lien-window-card
       >
         {recordSheetOpen ? (
@@ -1140,12 +1189,26 @@ export default function LienInstrumentsModal({
           />
         ) : null}
         {/* The title bar. On a phone (v2.4398) the title, § Rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
-        <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+        <div ref={headRef} data-lien-window-head data-folded={isMobile && headFolded ? 'yes' : undefined} style={{ position: 'relative', padding: isMobile ? (headFolded ? '0.35rem 1rem 0.2rem' : '0.35rem 1rem 0.65rem') : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           {isMobile ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
                 Liens on job {jobNumber}
               </h2>
+              <button
+                type="button"
+                data-lien-window-head-fold
+                aria-expanded={!headFolded}
+                aria-label={lienWindowHeadFoldWords(headFolded).label}
+                onClick={() => {
+                  headTouched.current = true
+                  headHeld.current = !headFolded
+                  setHeadFolded(!headFolded)
+                }}
+                style={{ flexShrink: 0, width: 44, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: 'var(--text-muted)' }}
+              >
+                <span aria-hidden="true">{lienWindowHeadFoldWords(headFolded).mark}</span>
+              </button>
               <LienRulesDoor where={rulesWhere} job={rulesJob} todayYmd={todayYmdLocal()} style={{ minHeight: 34, padding: '0 0.65rem' }} />
               <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
             </div>
@@ -1184,7 +1247,7 @@ export default function LienInstrumentsModal({
             </div>
           ) : null}
           {lastWorkOpen && lastWorkJob && property ? (
-            // The All filings line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
+            // The By paper line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
             <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
               <LienLastWorkDayLine
                 jobId={lastWorkJob.id}

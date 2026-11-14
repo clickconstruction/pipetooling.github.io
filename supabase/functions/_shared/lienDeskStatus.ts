@@ -23,7 +23,7 @@ export type LienStatusJob = {
   /** "878": the ledger number as the desk prints it. */
   number: string
   name: string
-  /** The GC's name. Every job on the notice desk has one. */
+  /** The GC's name; '' when no GC is set on the job, which the message says in words (`lienStatusGcWords`). */
   gc: string
   /** The months the notice names, 'YYYY-MM'. */
   months: string[]
@@ -35,8 +35,13 @@ export type LienStatusJob = {
   sinceYmd: string
 }
 
-/** What a § 53.052 affidavit still needs before it can be filed (the Affidavits tab's gates). */
-export type LienStatusNeed = 'owner' | 'legal' | 'notice' | 'homestead'
+/**
+ * What a § 53.052 affidavit still needs before it can be filed: one need for every gate the Affidavits tab can close
+ * (`LienAffidavitGateKey`, whose keys these are). The desk's `NEED_BY_GATE` (`src/lib/jobs/lienDeskShare.ts`) is keyed
+ * by every gate and `NEED_WORDS` below by every need, so a gate added later compiles only once it has a need and the
+ * need has words (v2.7138: three gates had neither, and a paper held by one of them alone read as ready to file).
+ */
+export type LienStatusNeed = 'owner' | 'public_owner' | 'legal' | 'contractor' | 'notice' | 'homestead' | 'homestead_answer'
 
 export type LienStatusLien = {
   number: string
@@ -179,6 +184,17 @@ function byYmdOrder(a: { byYmd: string; owed: number }, b: { byYmd: string; owed
   return b.owed - a.owed
 }
 
+/**
+ * A notice job's GC as the message says it. The payload carries '' for a job with no GC set, and until v2.7171 every
+ * rendering printed that as it was: *• , 1 job, $1,200* under By GC and *Tire Barn, , $1,200* on the waiting line (a
+ * made-up job and amount). The words are the notice gate's own (`lienDeskGates.ts`: *No GC on the job*), since a notice goes to the owner
+ * and the GC and the desk holds it until one is set. `mid` is the same words inside a line.
+ */
+export const LIEN_STATUS_NO_GC = 'No GC on the job'
+export function lienStatusGcWords(gc: string, mid = false): string {
+  return gc.trim() || (mid ? `${LIEN_STATUS_NO_GC.charAt(0).toLowerCase()}${LIEN_STATUS_NO_GC.slice(1)}` : LIEN_STATUS_NO_GC)
+}
+
 export type LienStatusGcGroup = { name: string; jobs: LienStatusJob[]; owed: number; firstYmd: string }
 
 /** The notices by GC, most money first; each GC's jobs soonest first, then biggest. */
@@ -193,7 +209,7 @@ export function lienStatusGroups(jobs: ReadonlyArray<LienStatusJob>): LienStatus
     .map(([name, list]) => {
       const sorted = [...list].sort(byYmdOrder)
       return {
-        name,
+        name: lienStatusGcWords(name),
         jobs: sorted,
         owed: sorted.reduce((s, j) => s + j.owed, 0),
         firstYmd: sorted.find((j) => j.byYmd)?.byYmd ?? '',
@@ -315,12 +331,35 @@ function headline(p: LienStatusPayload): string[] {
   return out
 }
 
+/**
+ * Each need in the message's words. `lacks` is a fact the office can enter, and every one a paper lacks is joined into
+ * one *It needs …* sentence; `says` is a hold told whole. The words are the desk's own: the gate's *missing …* word
+ * (`affidavitGateMissingWord`) and its hold line (`lienAffidavitFootBlockedSentence`).
+ */
+const NEED_WORDS: Record<LienStatusNeed, { lacks: string } | { says: string }> = {
+  owner: { lacks: 'the owner of record' },
+  public_owner: { says: 'It is public property, so no lien can be filed.' },
+  legal: { lacks: 'the legal description' },
+  contractor: { lacks: 'the general contractor’s address' },
+  notice: { says: 'No notice was sent for its work month.' },
+  homestead: { says: 'It is a homestead, so counsel decides.' },
+  homestead_answer: { lacks: 'the homestead answer' },
+}
+
+/** "a" · "a and b" · "a, b and c". */
+function listWords(items: ReadonlyArray<string>): string {
+  return items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
 function lienNeedsSentence(l: LienStatusLien): string {
-  const fixable = l.needs.filter((k) => k === 'owner' || k === 'legal')
-  const parts: string[] = []
-  if (fixable.length) parts.push(`It needs ${fixable.map((k) => (k === 'owner' ? 'the owner of record' : 'the legal description')).join(' and ')}.`)
-  if (l.needs.includes('notice')) parts.push('No notice was sent for its work month.')
-  if (l.needs.includes('homestead')) parts.push('It is a homestead, so counsel decides.')
+  const lacks: string[] = []
+  const says: string[] = []
+  for (const k of l.needs) {
+    const w = NEED_WORDS[k]
+    if ('lacks' in w) lacks.push(w.lacks)
+    else says.push(w.says)
+  }
+  const parts = [lacks.length ? `It needs ${listWords(lacks)}.` : '', ...says].filter(Boolean)
   return parts.length ? parts.join(' ') : 'It is ready to file.'
 }
 
@@ -396,7 +435,7 @@ export function lienStatusText(p: LienStatusPayload): string {
   } else {
     if (f.waiting.length) {
       L.push('', 'Waiting for approval:')
-      for (const j of f.waiting) L.push(`• ${j.name}, ${j.gc}, ${money(j.owed)}`)
+      for (const j of f.waiting) L.push(`• ${j.name}, ${lienStatusGcWords(j.gc, true)}, ${money(j.owed)}`)
     }
     const ready = p.jobs.filter((j) => j.where === 'ready')
     const held = p.jobs.filter((j) => j.where === 'held')
@@ -459,7 +498,7 @@ export function lienStatusEmailText(p: LienStatusPayload, o: LienStatusEmailOpti
   L.push(`${p.gc ?? 'Lien desk'}, as of ${lienStatusAsOfWords(p.asOf)}`, '', ...headline(p))
   if (f.waiting.length) {
     L.push('', o.readerIsLeader ? 'Waiting for your approval:' : 'Waiting for approval:')
-    for (const j of f.waiting) L.push(`• ${j.number} ${j.name}, ${j.gc}, ${lienStatusMonthsWords(j.months)}, ${money(j.owed)}${j.sinceYmd ? `, since ${lienStatusMonthDay(j.sinceYmd)}` : ''}`)
+    for (const j of f.waiting) L.push(`• ${j.number} ${j.name}, ${lienStatusGcWords(j.gc, true)}, ${lienStatusMonthsWords(j.months)}, ${money(j.owed)}${j.sinceYmd ? `, since ${lienStatusMonthDay(j.sinceYmd)}` : ''}`)
   }
   const groups = lienStatusGroups(p.jobs)
   if (groups.length) {
@@ -519,7 +558,7 @@ ${f.waiting.length ? tile(`${f.waiting.length} · ${money(f.waiting.reduce((s, j
         ${f.waiting
           .map(
             (j) => `<tr>
-          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;color:${INK};"><b>${esc(j.number)} ${esc(j.name)}</b><div style="font-size:12px;color:${MUTED};">${esc(j.gc)}${j.months.length ? ` &middot; ${esc(lienStatusMonthsWords(j.months))} work` : ''}</div></td>
+          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;color:${INK};"><b>${esc(j.number)} ${esc(j.name)}</b><div style="font-size:12px;color:${MUTED};">${esc(lienStatusGcWords(j.gc))}${j.months.length ? ` &middot; ${esc(lienStatusMonthsWords(j.months))} work` : ''}</div></td>
           <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;text-align:right;font-weight:bold;white-space:nowrap;color:${INK};">${money(j.owed)}</td>
           <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:12px;color:${MUTED};white-space:nowrap;">${j.sinceYmd ? `since ${esc(lienStatusMonthDay(j.sinceYmd))}` : ''}</td>
         </tr>`,
@@ -614,7 +653,22 @@ const UUIDISH = /^[0-9a-f-]{8,40}$/i
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const YM = /^\d{4}-\d{2}$/
 const WHERES: ReadonlySet<string> = new Set(['owner', 'draft', 'approval', 'ready', 'held'])
-const NEEDS: ReadonlySet<string> = new Set(['owner', 'legal', 'notice', 'homestead'])
+const NEEDS: ReadonlySet<string> = new Set(Object.keys(NEED_WORDS))
+/** The four needs `send-lien-desk-summary` knew before v2.7138. A function that old refuses a payload naming any other. */
+const FIRST_NEEDS: ReadonlySet<LienStatusNeed> = new Set<LienStatusNeed>(['owner', 'legal', 'notice', 'homestead'])
+
+/** A lien as it is posted: `needs` cut to the four first needs, the whole list in `allNeeds`. */
+export type LienStatusPostedLien = LienStatusLien & { allNeeds: LienStatusNeed[] }
+
+/**
+ * The payload as the desk posts it to `send-lien-desk-summary`. The function is deployed by hand, after the page, and
+ * one from before v2.7138 answers a need it does not know by refusing the whole email. So each lien posts its whole
+ * list as `allNeeds` and keeps in `needs` only what that function reads: until the deploy the email goes out with the
+ * old count, and from the deploy on `parseLienStatusPayload` reads `allNeeds`.
+ */
+export function lienStatusPayloadToPost(p: LienStatusPayload): Omit<LienStatusPayload, 'liens'> & { liens: LienStatusPostedLien[] } {
+  return { ...p, liens: p.liens.map((l) => ({ ...l, needs: l.needs.filter((n) => FIRST_NEEDS.has(n)), allNeeds: l.needs })) }
+}
 
 function str(v: unknown, max: number): string | null {
   return typeof v === 'string' ? v.trim().slice(0, max) : null
@@ -669,7 +723,9 @@ export function parseLienStatusPayload(raw: unknown): LienStatusPayload | null {
     const gcName = str(l.gc, 160)
     const owed = amount(l.owed)
     const byYmd = ymdOrBlank(l.byYmd)
-    const needs = Array.isArray(l.needs) && l.needs.length <= 4 && l.needs.every((n) => typeof n === 'string' && NEEDS.has(n)) ? (l.needs as LienStatusNeed[]) : null
+    // The whole list when the desk posted one (`lienStatusPayloadToPost`), else the list as drawn.
+    const listed = l.allNeeds !== undefined ? l.allNeeds : l.needs
+    const needs = Array.isArray(listed) && listed.length <= NEEDS.size && listed.every((n) => typeof n === 'string' && NEEDS.has(n)) ? (listed as LienStatusNeed[]) : null
     if (number === null || name === null || gcName === null || owed === null || byYmd === null || !needs) return null
     liens.push({ number, name, gc: gcName, owed, byYmd, needs })
   }

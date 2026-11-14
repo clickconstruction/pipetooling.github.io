@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The paper behind a Do now chip (v2.4632): the banner counts the blanks, the paper carries the
+ * The paper behind a To do chip (v2.4632): the banner counts the blanks, the paper carries the
  * painted marks, the rail lists them with the row's button, the arrows walk the rows and Esc
  * closes the preview alone.
  */
