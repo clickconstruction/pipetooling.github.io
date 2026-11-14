@@ -53,7 +53,7 @@ import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import { BoxWindow } from '../materials/BoxTabs'
-import { editBoxTitle } from '../../lib/materials/editBox'
+import { boxKindWords, editBoxTitle } from '../../lib/materials/editBox'
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -531,7 +531,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now) ? 'amber' : 'ok' }))
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
-  const [window, setWindow] = useState<7 | 30>(7)
+  const [sinceDays, setSinceDays] = useState<7 | 30>(7)
   /** The labels window: every box, or one (`only`) from a panel's Label button or the phone's link (`?label=<id>`). */
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
   /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
@@ -548,6 +548,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   }, [labelParams, setLabelParams])
   const [adding, setAdding] = useState(false)
   const [newLabel, setNewLabel] = useState('')
+  /** A stencil a live box on the job already carries: the press is dead and the line under it says why. */
+  const stencilTaken = containers.some((c) => !c.retiredAt && c.label.toLowerCase() === newLabel.trim().toLowerCase())
   const [newWhere, setNewWhere] = useState('')
   const [newPlaceId, setNewPlaceId] = useState<string>('')
   const [newPlaceName, setNewPlaceName] = useState('')
@@ -555,10 +557,9 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
   const people = [...new Set(movements.map((m) => m.byName))].sort()
-  const since = new Date(now.getTime() - window * 86_400_000).toISOString()
+  const since = new Date(now.getTime() - sinceDays * 86_400_000).toISOString()
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
-  const weekMoney = sum.missingMoneyWeek
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -617,8 +618,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Which place<select value={newPlaceId} onChange={(e) => { setNewPlaceId(e.target.value); setNewPlaceName('') }} aria-label="Which place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.4rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: 220 }}><option value="">No place yet</option>{places.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Or a new place<input value={newPlaceName} onChange={(e) => setNewPlaceName(e.target.value)} placeholder="Laydown yard" aria-label="A new place" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
           <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontWeight: 600 }}>Where exactly<input value={newWhere} onChange={(e) => setNewWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0 0.6rem', font: 'inherit', width: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
-          <button type="button" style={btnPrimary} disabled={!newLabel.trim() || containers.some((c) => c.label.toLowerCase() === newLabel.trim().toLowerCase())} onClick={() => { const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; addContainer({ jobId, label: newLabel.trim().toUpperCase(), kind: 'cage', where: newWhere, locationId: loc }); setNewLabel(''); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${newLabel.trim().toUpperCase()} added.`, 'success') }}>Add {newLabel.trim().toUpperCase() || 'it'}</button>
-          <span style={muted}>A cage, unless the crew says otherwise on their phone.</span>
+          <button type="button" style={btnPrimary} disabled={!newLabel.trim() || stencilTaken} onClick={() => { const loc = newPlaceName.trim() ? addPlace({ jobId, name: newPlaceName }).id : newPlaceId || null; addContainer({ jobId, label: newLabel.trim().toUpperCase(), kind: 'cage', where: newWhere, locationId: loc }); setNewLabel(''); setNewWhere(''); setNewPlaceName(''); setAdding(false); showToast(`${newLabel.trim().toUpperCase()} added.`, 'success') }}>Add {newLabel.trim().toUpperCase() || 'it'}</button>
+          <span style={muted}>{stencilTaken ? `${newLabel.trim().toUpperCase()} is already a box on this job. Pick another stencil.` : 'A cage, unless the crew says otherwise on their phone.'}</span>
         </div>
       ) : null}
           {(
@@ -638,7 +639,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -712,11 +713,11 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <p style={{ ...muted, margin: 0, padding: '0.5rem 0.9rem 0.75rem' }}>Walked away is bought plus added, minus used, returned, taken and left. It is only as true as the Used presses and the last count: a box nobody counted can hide a gap, and an honest count shows it.</p>
           </div>
         <div style={sec}>
-          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(window === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setWindow(d)}>{d} days</button>)}</span></h3>
+          <h3 style={secH}>Reported this week · counts that came up short, and every Can't find<span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.3rem' }}>{([7, 30] as const).map((d) => <button key={d} type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', ...(sinceDays === d ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setSinceDays(d)}>{d} days</button>)}</span></h3>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={th}>Part</th><th style={th}>Container</th><th style={{ ...th, ...num }}>Expected</th><th style={{ ...th, ...num }}>Counted</th><th style={{ ...th, ...num }}>Missing</th><th style={{ ...th, ...num }}>Money</th><th style={th}>Who, when</th></tr></thead>
             <tbody>
-              {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${window} days.`} /></td></tr> : null}
+              {missingRows.length === 0 && cannotRows.length === 0 ? <tr><td style={td} colSpan={7}><EmptyState compact main={`Nothing missing in the last ${sinceDays} days.`} /></td></tr> : null}
               {missingRows.map((d) => {
                 const price = unitPrice(jobId, d)
                 const m = missingMoney(d.diff, price)
@@ -748,7 +749,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {window} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(window === 7 ? weekMoney : missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(missingRows.reduce((s, d) => s + (missingMoney(d.diff, unitPrice(jobId, d)) ?? 0), 0) + cannotRows.reduce((s, m) => s + (missingMoney(-m.quantity, unitPrice(jobId, { partKey: partKey(m.partId, m.partName) })) ?? 0), 0))}</td><td style={td}></td></tr>
             </tbody>
           </table>
         </div>
@@ -849,7 +850,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={th}>Source</th><th style={th}>When</th><th style={th}>By</th><th style={{ ...th, ...num }}>Lines</th><th style={{ ...th, ...num }}>Pieces</th></tr></thead>
               <tbody>
-                {deliveries.length === 0 ? <tr><td style={td} colSpan={5}><span style={muted}>No delivery has landed yet. Paste an invoice above, or mark lines delivered on the bid's Procure step.</span></td></tr> : null}
+                {deliveries.length === 0 ? <tr><td style={td} colSpan={5}><span style={muted}>No delivery has landed yet. Paste an invoice above, or add a part on the phone from the box it went in.</span></td></tr> : null}
                 {deliveries.map((d) => (
                   <tr key={d.source}><td style={{ ...td, fontWeight: 700 }}>{d.source}</td><td style={td}>{when(d.at)}</td><td style={td}>{d.by}</td><td style={{ ...td, ...num }}>{d.lines}</td><td style={{ ...td, ...num }}>{d.qty}</td></tr>
                 ))}

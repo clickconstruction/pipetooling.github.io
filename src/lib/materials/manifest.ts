@@ -1,9 +1,10 @@
 /**
  * The materials manifest (punch list #209): what was bought for a job, read off an invoice's text,
  * landed as Delivered rows with the invoice line as their source, and the three-way comparison the
- * owner asked for: bought, reported on site, left, and what walked away. The spike reads lines with
- * the rules below; the build sends the text to a model and keeps the same shape, reviewed once by
- * the office before anything lands, because a wrong manifest line becomes a false "walked away".
+ * owner asked for: bought, reported on site, left, and what walked away. The lines are read with
+ * the rules below, no model, and the office looks them over before anything lands, because a
+ * wrong manifest line becomes a false "walked away". The lines it cannot read are handed back
+ * beside the ones it can (v2.7250).
  */
 import { containerLines, partKey, type Movement } from './onSite'
 
