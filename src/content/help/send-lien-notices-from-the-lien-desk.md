@@ -63,7 +63,7 @@ The top of the desk has four tabs. **To do** is the work. The other three show t
 
 ## The desk on a phone
 
-On a phone the top of the desk is one row. It holds the way back, the desk's name and {{button:outline|⋯}}. The four tabs sit under it, each as tall as a thumb.
+On a phone the top of the desk is one row. The row holds the way back, the desk's name and {{button:outline|⋯}}. The four tabs sit under it, each as tall as a thumb. On a narrow phone a tab's words wrap onto a second line. The kinds of paper wrap the same way, so neither row of tabs slides sideways.
 
 Press {{button:outline|⋯}} to open **More**. More holds the doors that sit in the top bar on a computer.
 
@@ -112,11 +112,11 @@ The button left of the × on Put a GC on notice makes that window full screen. T
 
 ## Find a job on the list
 
-A find box sits at the top of every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+A find box sits at the top of every list. On a phone the box is as tall as a thumb. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
 
 ## The piles
 
-The **Monthly notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from the **To do** tab can open the list on one pile. Its title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
+The **Monthly notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. On a phone one title stays at the top, the title of the pile you are reading. The other titles scroll with their rows. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from the **To do** tab can open the list on one pile. The pile's title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
 
 - {{chip:yellow|Needs the owner}} means no owner of record with a mailing address is on file. The notice goes to the owner, so this comes first. The pane looks the property up on the county appraisal roll as it opens. It shows the answer under gate 1, laid out the way the envelope will read. A note below flags anything unusual, like a landlord or a public owner. {{button:blue|Use this owner}} saves it on the property record, and the row moves to To draft. {{button:outline|Find the owner ›}} opens Edit Job. Edit Job's Property record has the paste box. Use it when the roll cannot place the address.
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
@@ -232,6 +232,10 @@ Robert opens J650 under Awaiting approval. Lowbeck Contracting owes $33,500 on i
 ## Reading the notice before it goes
 
 The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section.
+
+On a phone an open notice takes the whole desk. The tabs fold away, and the top row holds {{button:outline|← Notices}} to go back to the list. One title row stays pinned, the row of the section you are reading. A page of the notice slides sideways inside its own frame when it is wider than the phone.
+
+The buttons for the next step sit in a footer under the notice. On a phone a bar over the footer reads **Hide the next step**. Press the bar to fold the footer away and give the notice the screen. Press **Show the next step** to bring the footer back. What you typed in the footer is kept. A tall footer starts folded, so the notice is not squeezed into a strip. An open affidavit and an open retainage notice work the same way. The way back reads {{button:outline|← Affidavits}} or {{button:outline|← Retainage}}.
 
 Each row ends with its fact.
 

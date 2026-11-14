@@ -13,13 +13,17 @@ import ConfirmDialog from '../ConfirmDialog'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PAINTED_MAP_SHARE_WORDS, linkDayWords, linkEndsWords, linkOpenedWords, paintedMapLinkOpen, paintedMapLinkUrl, type PaintedMapLinkRow } from '../../lib/paintedMap/paintedMapLink'
+import type { NumberedPlace, PaintedLine } from '../../lib/paintedMap/paintedMap'
 import { endPaintedMapLinks, loadPaintedMapLinks, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
+import { PaintedMapCopies } from './PaintedMapCopies'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   mapId: string
   mapName: string
+  /** The map with its lines and places, for a copy: a picture, a page to print. Left out, the sheet offers the link alone. */
+  whole?: { map: { id: string; name: string; words: string; jobId: string | null }; lines: ReadonlyArray<PaintedLine>; places: ReadonlyArray<NumberedPlace> } | null
   onClose: () => void
   /** Where links point. The app's own address by default. */
   origin?: string
@@ -31,7 +35,7 @@ const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color:
 const rowPress: CSSProperties = { display: 'grid', gap: '0.1rem', width: '100%', textAlign: 'left', padding: '0.55rem 0.7rem', borderRadius: 9, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }
 const note: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }
 
-export function PaintedMapShareSheet({ mapId, mapName, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '' }: Props) {
+export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '' }: Props) {
   const isTopmost = useModalStackEntry()
   const [mine, setMine] = useState<{ code: string; endsOn: string | null } | null>(() => rememberedPaintedMapLink(mapId))
   const [links, setLinks] = useState<PaintedMapLinkRow[] | null>(null)
@@ -213,6 +217,8 @@ export function PaintedMapShareSheet({ mapId, mapName, onClose, origin = typeof 
                 </button>
               </div>
             ) : null}
+
+            {whole ? <PaintedMapCopies map={whole.map} lines={whole.lines} places={whole.places} link={url && live ? { url, endsOn: live.endsOn } : null} /> : null}
           </div>
         </div>
       </div>
