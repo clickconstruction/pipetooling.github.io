@@ -4,7 +4,7 @@ import { lienMonthLine, type LienMonthLineDue } from '../../lib/jobs/lienMonthLi
 import { lienMonthSpanWords, lienMonthWords, lienMonthZoneLine, lienMonthZonePress, type LienMonth, type LienMonthZone, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 
 /**
- * The lien month across the top of the Lien desk's Do now (punch list #235, PR 2): five zones sized
+ * The lien month across the top of the Lien desk's To do (punch list #235, PR 2): five zones sized
  * by their days — Reminders, Notices, Liens, Catch-up, Nothing scheduled — each reading its count
  * left, its count done and what slipped, today marked across the bar, and one press per zone that
  * narrows the list under it to that zone's work. The month is `lienMonthRhythm.ts`'s; nothing here

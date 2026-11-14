@@ -166,7 +166,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'in_transit', delivered_at: null, signed_by: null })] } })!.words).toBe('Mailed Sep 13 · in transit')
     expect(lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'returned' })] } })!).toMatchObject({ tone: 'red', words: 'Returned to sender' })
     expect(lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'sent', delivered_at: null, mailed_at: null })] } })!).toMatchObject({ tone: 'blue', words: 'With Docsmit · number coming' })
-    // Letter two due without Do now’s row: the clock still says it.
+    // Letter two due without To do’s row: the clock still says it.
     const due = lienArChipFor({ ...base, letterTwo: two({ state: 'due', day: 12, words: 'day 12 · the attorney’s letter · from delivery' }) })!
     expect(due).toMatchObject({ tone: 'amber', paper: 'letter_two', words: 'Delivered Sep 16 · day 12 · the attorney’s letter' })
     expect(lienArChipFor({ ...base, letterTwo: two({ state: 'sent', letterTwo: { itemId: 'i2', kind: 'paid_out', status: 'sent', sentAt: '2026-10-01T15:00:00Z' } }) })!).toMatchObject({ tone: 'green', paper: 'letter_two', words: 'The attorney’s letter sent Oct 1' })

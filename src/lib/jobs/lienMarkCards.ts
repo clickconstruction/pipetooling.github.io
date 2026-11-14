@@ -4,7 +4,7 @@ import { lienCalendarMarks, type LienCalendarAxis, type LienCalendarGroup, type 
 import type { LienRunwayTone } from './lienPayRunway'
 
 /**
- * The hover cards on the Lien desk's Deadlines board (v2.5531). A mark's browser tooltip was one
+ * The hover cards on the Lien desk's By date board (v2.5531). A mark's browser tooltip was one
  * line, a second late, one mark at a time. A card says what the mark is, when, how much rides on
  * it and what to do next, in plain words, and ends on the door the board already has. Marks that
  * touch share one card, a column per mark in their order (`lienMarkClusters`); a GC row's folded

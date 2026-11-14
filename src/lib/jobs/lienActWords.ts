@@ -3,7 +3,7 @@
  *
  * A billed row used to print the deadline's name in bold (*File the lien*) with the desk's real next
  * step in small type under it, so the bold line asked for an act the job was not ready for. This is
- * the one table that turns a Do now move on a paper into the words of that act: *Find the owner*,
+ * the one table that turns a To do move on a paper into the words of that act: *Find the owner*,
  * *Draft the affidavit*, *Answer the homestead question*. The Pipeline's dates block prints them as
  * its lien line, with the day the clock gives; `lienArChipFor` carries them on its chip.
  *
@@ -64,7 +64,7 @@ function gateAct(missing: ReadonlyArray<LienAffidavitGateKey>): LienAct {
 /** A notice window closed with none sent while the affidavit can still be filed: the late notice (v2.4708's reading). */
 export const LIEN_LATE_NOTICE_ACT: LienAct = act('Send the late notice', 'The notice window closed with no notice sent. A late notice can still go while the affidavit can be filed.')
 
-/** The act for one Do now move on one paper; null when the move is not a step toward a legal day. */
+/** The act for one To do move on one paper; null when the move is not a step toward a legal day. */
 export function lienActFor(input: LienActInput): LienAct | null {
   const { paper, action } = input
   const name = PAPER_NAME[paper]
