@@ -29,9 +29,9 @@ export type LienWindowAffidavitFacts = Omit<LienAffidavitJobFacts, 'lastMonth' |
 }
 
 /** The months the window's affidavit swears, as keys: the same reading its fields are filled from (punch list #314, the notice check). */
-export function lienWindowSwornMonths(f: Pick<LienWindowAffidavitFacts, 'job' | 'workMonths' | 'isSub' | 'todayYmd' | 'filings'>): string[] {
+export function lienWindowSwornMonths(f: Pick<LienWindowAffidavitFacts, 'job' | 'workMonths' | 'isSub' | 'todayYmd' | 'filings' | 'monthsByHand'>): string[] {
   const { lastMonth } = lienWindowLastMonth({ workMonths: f.workMonths, job: f.job })
-  return lienAffidavitSwornMonths({ isSub: f.isSub, workDays: f.job, firstMonth: f.workMonths?.months[0]?.key ?? null, lastMonth, todayYmd: f.todayYmd, filings: f.filings })
+  return lienAffidavitSwornMonths({ isSub: f.isSub, workDays: f.job, firstMonth: f.workMonths?.months[0]?.key ?? null, lastMonth, todayYmd: f.todayYmd, filings: f.filings, monthsByHand: f.monthsByHand })
 }
 
 /** The months of the job's own work as the window's paper spans them (punch list #356): what the notice check names when the paper swears none. */

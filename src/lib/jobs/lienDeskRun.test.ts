@@ -42,7 +42,7 @@ function data(items: LienDeskItemRow[]): LienDeskData {
     ownerByJob: {},
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
-    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, filingsByJob: {},
+    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, affidavitMonthsByJob: {}, filingsByJob: {},
   }
 }
 
