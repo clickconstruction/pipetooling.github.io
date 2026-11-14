@@ -46,7 +46,20 @@ Many jobs have more than one priced line. On such a job the sheet opens a list i
 
 The new % also shows up everywhere immediately. Your schedule card shows the new %, with today's ▲ movement. The office's Jobs Pipeline **% done** and the job's activity history show it too.
 
-**Saving 100% on a Working job** asks one more question. The question is whether to move the job to **Ready to bill**. The question uses the same two checkboxes as the report flow. Moving the job to Ready to bill tells the office the job is ready to invoice. You confirm the move only when the work is truly wrapped.
+**At 100% on a Working job** the sheet offers one more line, **Also move to Ready to Bill**. The line starts unticked. Under the line are the words *Parts are reported, and the customer knows the work is done.* Tick the line only when both are true. Save then names both things it will do:
+
+:::example At 100%, with the line ticked
+**95%** → **100%** {{chip:green|▲ 5}}
+
+☑ **Also move to Ready to Bill**
+Parts are reported, and the customer knows the work is done.
+
+{{button:outline|Not now}} {{button:blue|Save 100% and move to Ready to Bill}}
+:::
+
+One press saves the percent and moves the job. Moving the job tells the office the job is ready to invoice. Leave the line unticked and Save keeps the job in Working. A job already at 100% that is still Working shows the line too. Tick it and press Save to move the job.
+
+If the move is refused, your percent is still saved. The sheet says why. Press {{button:blue|Move to Ready to Bill}} to try again, or {{button:outline|Leave it in Working}}.
 
 ## When a finished job comes back
 

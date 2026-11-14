@@ -41,6 +41,13 @@ vi.mock('../../lib/reports/submitStatusReportFromStepper', () => ({
   },
 }))
 vi.mock('../../lib/propagateReportPctToJob', () => ({ propagateReportPctToJob: async () => ({ jobStatus: 'working', pctError: null }) }))
+const moves: string[] = []
+vi.mock('../../lib/markJobReadyToBill', () => ({
+  markJobReadyToBill: async (jobId: string) => {
+    moves.push(jobId)
+    return { ok: true, message: 'Job moved to Ready to Bill.', variant: 'error' }
+  },
+}))
 
 import { useState } from 'react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -223,6 +230,19 @@ describe('BridgePctRun', () => {
     await waitFor(() => expect(screen.getByText(/row-level security/)).toBeTruthy())
     expect(screen.getByRole('dialog', { name: 'Update % done for 301 · Pine Row' })).toBeTruthy()
     expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('moves a job to Ready to Bill with its 100% and still goes on to the next job (v2.7260)', async () => {
+    moves.length = 0
+    const onSaved = vi.fn()
+    renderWithProviders(<Page onSaved={onSaved} />)
+    await ready()
+    fireEvent.click(screen.getByRole('button', { name: 'Set Job to 100 percent' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Also move to Ready to Bill/ }))
+    fireEvent.click(screen.getByText('Save 100% and move to Ready to Bill'))
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Update % done for 302 · Spruce Hall' })).toBeTruthy())
+    expect(moves).toEqual(['j301'])
+    expect(onSaved).toHaveBeenCalledWith('j301', 100)
   })
 
   it('leads the list with a job opened from elsewhere on the page', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -14,7 +14,8 @@ import { STAGE_PCT_WORDS, STAGE_QUICK_PICK_MIN_HEIGHT, saveWords } from '../../l
 import { stampMovedLines, useJobLineProgress } from '../../hooks/useJobLineProgress'
 import { ReportLinesProgressField } from '../ReportLinesProgressField'
 import { StagePctControl } from '../reports/StagePctControl'
-import { MarkJobReadyToBillPrompt } from '../jobs/MarkJobReadyToBillPrompt'
+import { markJobReadyToBill } from '../../lib/markJobReadyToBill'
+import { READY_TO_BILL_WORDS, afterPctSave, pctSaveLabel, readyToBillHeldWords, readyToBillOffered } from '../../lib/jobs/pctReadyToBill'
 import { PhoneSheet } from '../PhoneSheet'
 import AutosizeTextarea from '../AutosizeTextarea'
 
@@ -33,7 +34,8 @@ const BAR_DROP_COLOR = '#d97706'
  * `submitStatusReportFromStepper`, then the shared report pipeline runs:
  * `propagateReportPctToJob` mirrors the % into jobs_ledger (thread note, day
  * deltas, Stages), and 100% on a Working job chains into the same
- * MarkJobReadyToBillPrompt as Leave Report. So both doors — the stepper and
+ * MarkJobReadyToBillPrompt as Leave Report did until v2.7260, when the offer
+ * moved into this window (below). So both doors — the stepper and
  * the report modal — are one flow: report → % mirror → Ready to Bill. The
  * report clears the Report-due reminder and counts in the reports chip.
  * If no Status Report template exists, the save falls back to the legacy
@@ -47,6 +49,13 @@ const BAR_DROP_COLOR = '#d97706'
  * `ReportLinesProgressField`) — each line its own number, the job's number
  * derived from their shares — and files the same Status Report with the moved
  * lines named under "Stage progress".
+ *
+ * Ready to Bill in the window (v2.7260; `lib/jobs/pctReadyToBill.ts` has the
+ * owner's words): at 100% on a Working job one line appears under the control,
+ * *Also move to Ready to Bill*, off until ticked, and Save names the move when
+ * it is on. The second window with its two checkboxes no longer follows a save
+ * here. A move that is refused keeps the percent, says the reason, and offers
+ * the move again by itself. Leave Report still opens its own prompt.
  *
  * Phone first (punch list #189, PR 5a): the window is a sheet from the bottom on a
  * phone (`PhoneSheet`), opened from the press bar's % done on the clocked-in job
@@ -89,8 +98,10 @@ export default function FieldPctUpdateModal({
   const [loadFailure, setLoadFailure] = useState<OfflineRecoveryLastError | null>(null)
   /** Bumped by Retry: the read below runs again. */
   const [reloadKey, setReloadKey] = useState(0)
-  const [rtbJob, setRtbJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
-  const [savedPct, setSavedPct] = useState<number | null>(null)
+  /** The tick *Also move to Ready to Bill*, offered at 100% on a Working job (v2.7260; `pctReadyToBill.ts`). Off until ticked. */
+  const [alsoMove, setAlsoMove] = useState(false)
+  /** A percent that saved while its move to Ready to Bill was refused: the window stays, with the reason and a press to try again. */
+  const [held, setHeld] = useState<{ pct: number; reason: string } | null>(null)
   // Report by line (v2.5664): the job's priced lines, two or more; null = the ± chips as before.
   const lineProgress = useJobLineProgress(job.id, true)
   const linesActive = lineProgress.lines != null
@@ -141,13 +152,39 @@ export default function FieldPctUpdateModal({
   const linesNext = linesActive && lineProgress.lines ? (lineProgress.moved.length > 0 ? jobPercentFromLines(lineProgress.lines, lineProgress.picks, base) : base) : null
   const saveValue = linesActive ? linesNext : next
 
+  // Something to file: a number that moved, or a note. A job already at 100% and still Working has neither, and its
+  // tick alone is enough to press Save: the move is then all that happens, with no second report of the same number.
+  const changed = base != null && next != null && (linesActive ? lineProgress.moved.length > 0 || note.trim() !== '' : next !== base || note.trim() !== '')
+  const offered = readyToBillOffered({ saveValue, status: jobStatus })
+  const willMove = offered && alsoMove
+  // The line appears under the control the moment the number reaches 100. On a phone that is below the sheet's fold,
+  // so it is brought into view, or it would sit half under the foot where nobody sees it was offered.
+  const offerRef = useRef<HTMLLabelElement | null>(null)
+  useEffect(() => {
+    if (offered) offerRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [offered])
+
+  /** The move by itself: after the percent has saved, and again from the press that retries it. */
+  const moveToReadyToBill = async (pct: number) => {
+    const moved = await markJobReadyToBill(job.id)
+    if (!moved.ok) {
+      setHeld({ pct, reason: moved.message })
+      return
+    }
+    showToast(moved.message, 'success')
+    onSaved(pct)
+    onClose()
+  }
+
   const save = async () => {
     if (base == null || saveValue == null || saving) return
     setSaving(true)
     setError(null)
     try {
       let effectiveStatus: string | null = jobStatus
-      if (authUser?.id) {
+      if (!changed) {
+        // Nothing to file: the press is the move alone.
+      } else if (authUser?.id) {
         const moves = linesActive && lineProgress.lines ? lineProgressFieldValue(lineProgress.lines, lineProgress.picks, base) : ''
         const res = await submitStatusReportFromStepper({
           authUserId: authUser.id,
@@ -177,9 +214,8 @@ export default function FieldPctUpdateModal({
         await saveLegacyPctOnly()
         showToast(`Saved — ${job.hcpNumber} is now ${saveValue}% done.`, 'success')
       }
-      if (saveValue === 100 && effectiveStatus === 'working') {
-        setSavedPct(saveValue)
-        setRtbJob({ id: job.id, hcpNumber: job.hcpNumber, jobName: job.jobName })
+      if (afterPctSave({ willMove, statusAfter: effectiveStatus }) === 'move') {
+        await moveToReadyToBill(saveValue)
         return
       }
       onSaved(saveValue)
@@ -191,34 +227,57 @@ export default function FieldPctUpdateModal({
     }
   }
 
-  if (rtbJob) {
-    return (
-      <MarkJobReadyToBillPrompt
-        job={rtbJob}
-        onClose={() => {
-          setRtbJob(null)
-          if (savedPct != null) onSaved(savedPct)
-          onClose()
-        }}
-      />
-    )
-  }
-
-  const delta = base != null && next != null ? fieldPctDeltaLabel(base, next) : null
-  const loaded = base != null && next != null
-  const canSave = loaded && !saving && (linesActive ? lineProgress.moved.length > 0 || note.trim() !== '' : next !== base || note.trim() !== '')
-  const barBase = loaded ? Math.min(base, next) : 0
-  const barChange = loaded ? Math.abs(next - base) : 0
   const footBtn: CSSProperties = {
     minHeight: STAGE_QUICK_PICK_MIN_HEIGHT,
     padding: '0.55rem 0.75rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
+    lineHeight: 1.2,
     borderRadius: 10,
     cursor: 'pointer',
     fontFamily: 'inherit',
   }
 
+  // The percent saved and the move was refused. The percent is the page's to hear about however this window closes.
+  if (held) {
+    const leave = () => {
+      onSaved(held.pct)
+      onClose()
+    }
+    const retry = async () => {
+      if (saving) return
+      setSaving(true)
+      try {
+        await moveToReadyToBill(held.pct)
+      } finally {
+        setSaving(false)
+      }
+    }
+    return (
+      <PhoneSheet label={`Update % done for ${job.label}`} title={`Saved at ${held.pct}%`} width={440} zIndex={1100} onClose={leave}>
+        <div style={{ padding: '0.5rem 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: 'none' }}>{job.label}</div>
+        <div style={{ overflowY: 'auto', minHeight: 0, padding: '0.5rem 1rem 0.9rem' }}>
+          <p role="alert" data-testid="pct-ready-to-bill-held" style={{ margin: 0, fontSize: '0.9375rem', lineHeight: 1.4, color: 'var(--text-amber-800)' }}>
+            {readyToBillHeldWords(held.reason)}
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '0.5rem', padding: '0.6rem 1rem 0.75rem', borderTop: '1px solid var(--border)', flex: 'none' }}>
+          <button type="button" onClick={leave} disabled={saving} style={{ ...footBtn, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }}>
+            {READY_TO_BILL_WORDS.leave}
+          </button>
+          <button type="button" onClick={() => void retry()} disabled={saving} style={{ ...footBtn, background: '#2563eb', color: '#fff', border: 'none', cursor: saving ? 'wait' : 'pointer' }}>
+            {saving ? 'Moving…' : READY_TO_BILL_WORDS.retry}
+          </button>
+        </div>
+      </PhoneSheet>
+    )
+  }
+
+  const delta = base != null && next != null ? fieldPctDeltaLabel(base, next) : null
+  const loaded = base != null && next != null
+  const canSave = loaded && !saving && (changed || willMove)
+  const barBase = loaded ? Math.min(base, next) : 0
+  const barChange = loaded ? Math.abs(next - base) : 0
   return (
     <PhoneSheet label={`Update % done for ${job.label}`} title={linesActive ? LINES_QUESTION : 'How done is this job?'} width={440} zIndex={1100} onClose={onClose}>
       <div style={{ padding: '0.5rem 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: 'none' }}>{job.label}</div>
@@ -295,6 +354,17 @@ export default function FieldPctUpdateModal({
           </button>
         ) : null}
 
+        {/* At 100% on a Working job: one tick moves it to Ready to Bill with the save (v2.7260). Its words under it are what the tick says. */}
+        {offered && loaded ? (
+          <label ref={offerRef} data-testid="pct-ready-to-bill" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginTop: '0.9rem', padding: '0.6rem 0.7rem', minHeight: 44, border: '1px solid var(--border-strong)', borderRadius: 8, cursor: saving ? 'default' : 'pointer', boxSizing: 'border-box' }}>
+            <input type="checkbox" checked={alsoMove} onChange={(e) => setAlsoMove(e.target.checked)} disabled={saving} style={{ width: 20, height: 20, margin: '1px 0 0', flex: 'none' }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: '0.9375rem', fontWeight: 600, lineHeight: 1.3 }}>{READY_TO_BILL_WORDS.tick}</span>
+              <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>{READY_TO_BILL_WORDS.attest}</span>
+            </span>
+          </label>
+        ) : null}
+
         <label style={{ display: 'block', marginTop: '0.9rem' }}>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
             What got done? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional — saving files a report for the office)</span>
@@ -330,7 +400,7 @@ export default function FieldPctUpdateModal({
             cursor: canSave ? 'pointer' : 'not-allowed',
           }}
         >
-          {saving ? 'Saving…' : !loaded ? 'Save' : linesActive ? saveWords({ jobPct: saveValue ?? 0 }) : `Save ${next}%`}
+          {saving ? 'Saving…' : !loaded ? 'Save' : pctSaveLabel(linesActive ? saveWords({ jobPct: saveValue ?? 0 }) : `Save ${next}%`, willMove)}
         </button>
       </div>
     </PhoneSheet>
