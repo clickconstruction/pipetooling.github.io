@@ -3,7 +3,7 @@
  * with `EmptyState`, in the voice of the notice piles (`lienEmptyPileWords` in `lienDesk.ts`). Each
  * one takes the press it offers, so the component hands over its own setter and the words live here:
  * the affidavit and retainage piles (Show every pile) and their find (Clear the find), the affidavit
- * list (Deadlines), the Deadlines board and its search (Clear the search), the Timeline book (Show
+ * list (By date), the By date board and its search (Clear the search), the Timeline book (Show
  * All), the run, and Records for an owner. Where empty is the good state the words say so and offer
  * nothing.
  */
@@ -27,15 +27,15 @@ export function lienListFindEmptyWords(find: string, clearFind: () => void): Emp
   return { main: lienFindNothingWords(find).head, next: { label: LIEN_CLEAR_THE_FIND, onPress: clearFind } }
 }
 
-/** The affidavit list when no window closes inside the desk's 30 days: the later ones are on Deadlines. */
+/** The affidavit list when no window closes inside the desk's 30 days: the later ones are on By date. */
 export function lienAffidavitsEmptyWords(openDeadlines: () => void): EmptyStateWords {
-  return { main: 'No affidavit window closes within 30 days.', next: { label: 'Deadlines ›', onPress: openDeadlines }, tail: 'shows what falls due later.' }
+  return { main: 'No affidavit window closes within 30 days.', next: { label: 'By date ›', onPress: openDeadlines }, tail: 'shows what falls due later.' }
 }
 
-/** The Deadlines board with nothing on it: the good state. */
+/** The By date board with nothing on it: the good state. */
 export const LIEN_CALENDAR_EMPTY: EmptyStateWords = { main: 'Nothing billed is on a lien clock.' }
 
-/** The Deadlines board, or one of its buckets, when the search hides every billed job. */
+/** The By date board, or one of its buckets, when the search hides every billed job. */
 export function lienCalendarSearchEmptyWords(query: string, clearQuery: () => void): EmptyStateWords {
   return emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'billed jobs', query }), { onPress: clearQuery })
 }

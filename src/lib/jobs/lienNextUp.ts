@@ -160,7 +160,7 @@ function compareRows(a: LienNextUpRow, b: LienNextUpRow): number {
 /**
  * Whether the viewer is the leader this job's paper waits on (v2.6734, punch list #150): a lien leader on a job whose
  * master is him, or that has none (then the signed-in leader signs as himself); a dev on another master's job is not,
- * and his Do now reads those rows as the office does — *Waiting on Malachi*, never *Only you can approve*. Without a
+ * and his To do reads those rows as the office does — *Waiting on Malachi*, never *Only you can approve*. Without a
  * viewer or a master lookup, every leader leads every job, as before.
  */
 export function lienViewerLeadsJob(input: Pick<LienNextUpInput, 'role' | 'viewerUserId' | 'masterUserId'>, jobId: string | null): boolean {
@@ -204,7 +204,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const pane = (pile: LienDeskPile): LienNextUpTarget => ({ open: 'notices', jobId: e.jobId, pile })
     // A notice that went inside thirty days (v2.6624, punch list #248): its courtesy, letter-two and promise rows ride on the
     // row's own pile — Sent while nothing is due, To draft once new months are — so one job's draft row and its reminder row
-    // stand together on Do now, and the press opens the pane whose footer carries the door.
+    // stand together on To do, and the press opens the pane whose footer carries the door.
     if (e.pile === 'sent' || e.sentItem) {
       const two = input.letterTwoByJob[e.jobId]
       const courtesy = input.courtesyByJob?.[e.jobId]
@@ -450,7 +450,7 @@ export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { wait
   ]
 }
 
-/** Do now's count (punch list #101 PR 3): every row but the ones waiting on the leader — what this viewer can move. */
+/** To do's count (punch list #101 PR 3): every row but the ones waiting on the leader — what this viewer can move. */
 export function lienNextUpCount(rows: ReadonlyArray<LienNextUpRow>): number {
   return rows.filter((r) => approvalGroup(r) !== 'waiting').length
 }

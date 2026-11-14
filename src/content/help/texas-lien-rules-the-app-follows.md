@@ -211,7 +211,7 @@ While the affidavit window is open, a notice sent after its own 15th still count
 
 **What it says.** A month's notice is due by its 15th. The affidavit is due a month later. The owner reads the statute to let a notice sent in that last month still support the affidavit.
 
-**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. The Deadlines tab lists the job in the month of the affidavit's last day. Its row reads *send the late notice*. [Open the Notices list](/lien-desk?tab=notices).
+**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. The By date tab lists the job in the month of the affidavit's last day. Its row reads *send the late notice*. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056, § 53.052*
 

@@ -55,7 +55,7 @@ what still differed. Counts only are given here, since the repo is public.
    the runway's `closed`. The runway still answers `closed` the day a notice window shuts.~~
    **Shipped v2.7198.** `buildLienPayRunway` answers `late_notice` for a sub job whose notice
    windows all closed unsent while the affidavit can still be filed, and `closed` only once that day
-   has passed too. The Deadlines view lists such a job in the month of the affidavit's day with
+   has passed too. The Lien desk's By date view (Deadlines until v2.7207) lists such a job in the month of the affidavit's day with
    *send the late notice*, counts it as a late notice on the bar and the GC row, and keeps it out
    of Overdue and Lien gone. The Share message's past-window count leaves it out. The row and the
    phone chip read the state where they read past `closed`.

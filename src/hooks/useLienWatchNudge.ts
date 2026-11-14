@@ -52,7 +52,7 @@ export function useLienWatchNudge(enabled: boolean, hideZzTestJobs = false): { w
           customer_address_id: string | null
         }[]
         const rawJobs = hideZzTestJobs ? withoutZzTestJobs(rawJobsRead) : rawJobsRead
-        // The money is what each job's sent bills owe (v2.4970), the rule the desk and the Deadlines count by — so the bills and their payments are read too.
+        // The money is what each job's sent bills owe (v2.4970), the rule the desk and its By date view count by — so the bills and their payments are read too.
         const invoiceRows: { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }[] = []
         const paymentRows: { job_id: string; invoice_id: string | null; amount: number | null }[] = []
         for (const chunk of chunkIds(rawJobs.map((j) => j.id))) {

@@ -47,7 +47,7 @@ describe('the desk reads the mail pieces behind a sent notice (the Docsmit train
     expect(filingMailCostWords([{ ...base, price: 9.85 }, { ...base, id: 'p2', recipient: 'original_contractor' }])).toBe('Docsmit cost $9.85 · 1 not read yet')
   })
 
-  it('the Do now rows for the envelopes that want a person, keyed to their jobs, each piece once; and the jobs the Deliveries filter keeps (6b-2)', () => {
+  it('the To do rows for the envelopes that want a person, keyed to their jobs, each piece once; and the jobs the Deliveries filter keeps (6b-2)', () => {
     const by = { f1: [base, { ...base, id: 'p2', recipient: 'original_contractor', status: 'returned' as const }], f2: [{ ...base, id: 'p2', recipient: 'original_contractor', status: 'returned' as const }, { ...base, id: 'p3', status: 'notice_left' as const }] }
     expect(mailNeedsYouRows({ j1: [{ id: 'f1' }, { id: 'f2' }], j2: [{ id: 'f9' }] }, by, fmt)).toEqual([
       { jobId: 'j1', pieceId: 'p2', who: 'Original contractor', words: 'returned to sender' },

@@ -45,7 +45,7 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * affidavit's own day is still ahead. A late notice can still go and the affidavit follow it (v2.4708, the owner's
  * reading of 2026-10-06), so the lien is not gone. Until then the runway answered `closed` the day the notice window
  * shut, and each reader that knew better read past it (the billed row since v2.7047, the phone chip since v2.7184)
- * while the Deadlines view and the Share message said *lien gone*.
+ * while the By date view and the Share message said *lien gone*.
  */
 export type LienRunwayState = 'none' | 'filed' | 'closed' | 'late_notice' | 'notice_due' | 'file_first' | 'room' | 'no_pay'
 export type LienRunwayTone = 'green' | 'amber' | 'red' | 'grey'
