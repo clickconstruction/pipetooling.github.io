@@ -6,8 +6,10 @@ import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidav
 import { lienPhoneChipWords } from './lienLineStep'
 import type { LienNextUpAction, LienNextUpRow } from './lienNextUp'
 import { buildLienPayRunway, type LienRunwayInput } from './lienPayRunway'
-import { buildLienTimeline, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
+import { buildLienTimeline, type LienTimelineAffidavitState, type LienTimelineInput, type LienTimelineNoticeState } from './lienTimeline'
 import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from './lienWindowNextStep'
+import { buildLienTimelineFromWindow } from './lienTimelineDesk'
+import type { JobWorkMonths } from './forecastWorkMonths'
 
 /**
  * One job, one reading (v2.7048, punch list #325, PR 5). Four places name a job's next lien step: the Pipeline's
@@ -133,15 +135,19 @@ describe('the phone row’s chip names an affidavit’s step as the billed row d
   const entry = (missing: LienAffidavitGateKey[]) => ({ jobId: 'j1', gates: missing.map(gate) }) as unknown as LienAffidavitEntry
   const chipWith = (row: LienNextUpRow, missing: LienAffidavitGateKey[] = []) => lienArChipFor({ jobId: 'j1', todayYmd: TODAY, nextUp: [row], entry: null, affidavit: missing.length ? entry(missing) : null, filings: [], piecesByFiling: {}, letterTwo: null } as LienArJobInput)!
 
-  const STEPS: Array<{ action: LienNextUpAction; sub: string; missing?: LienAffidavitGateKey[]; act: string; dated?: boolean }> = [
-    { action: 'draft', sub: 'Affidavit to draft', act: 'Draft the affidavit' },
-    { action: 'approve', sub: 'Affidavit · waiting on your approval', act: 'Approve the affidavit' },
-    { action: 'approve', sub: 'Affidavit · waiting on Robert · since Sep 20', act: 'Waiting on Robert' },
-    { action: 'fix_property', sub: 'Affidavit · the property record is not complete', missing: ['homestead_answer'], act: 'Answer the homestead question' },
-    { action: 'fix_property', sub: 'Affidavit · the property record is not complete', missing: ['owner'], act: 'Find the owner' },
-    { action: 'fix_property', sub: 'Affidavit · the general contractor has no address on file', missing: ['contractor'], act: 'Add the GC’s address' },
-    { action: 'fix_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', missing: ['public_owner'], act: 'Public property, no lien', dated: false },
-    { action: 'review_hold', sub: 'Affidavit held', act: 'Review the hold' },
+  // The Lien window's header for the same paper (v2.7187, punch list #335, row 2): it read *File the affidavit* at every
+  // one of these steps. It opens on the act's own first word, with two readings kept apart on purpose. A paper that waits
+  // on someone else's approval is *Waiting on Robert* on the row and *Approve the affidavit* in the header, whose second
+  // line says who. A hold is the act on the row (*Review the hold*) and the state in the header (*Held*), as a notice's is.
+  const STEPS: Array<{ action: LienNextUpAction; state: LienTimelineAffidavitState; sub: string; missing?: LienAffidavitGateKey[]; act: string; dated?: boolean; headerOpens?: string }> = [
+    { action: 'draft', state: 'to_draft', sub: 'Affidavit to draft', act: 'Draft the affidavit' },
+    { action: 'approve', state: 'awaiting', sub: 'Affidavit · waiting on your approval', act: 'Approve the affidavit' },
+    { action: 'approve', state: 'awaiting', sub: 'Affidavit · waiting on Robert · since Sep 20', act: 'Waiting on Robert', headerOpens: 'Approve' },
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · the property record is not complete', missing: ['homestead_answer'], act: 'Answer the homestead question' },
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · the property record is not complete', missing: ['owner'], act: 'Find the owner' },
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · the general contractor has no address on file', missing: ['contractor'], act: 'Add the GC’s address' },
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', missing: ['public_owner'], act: 'Public property, no lien', dated: false },
+    { action: 'review_hold', state: 'held', sub: 'Affidavit held', act: 'Review the hold', headerOpens: 'Held' },
   ]
   for (const step of STEPS) {
     it(`an affidavit at "${step.sub}": ${step.act}`, () => {
@@ -149,6 +155,44 @@ describe('the phone row’s chip names an affidavit’s step as the billed row d
       expect(chip.act?.words).toBe(step.act)
       expect(rowLabel(runway, chip)).toBe(step.act)
       expect(phoneChip(runway, chip)).toMatchObject({ label: step.dated === false ? step.act : `${step.act} · 83 d`, tab: 'affidavit', step: true })
+      const next = buildLienTimeline(
+        timelineInput({
+          months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'sent', at: '2026-09-10' }],
+          affidavit: { deadline: '2026-12-15', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: [], state: step.state, missingKeys: step.missing ?? [] },
+        }),
+      ).next
+      expect(next.kind).toBe('affidavit')
+      expect(firstWord(next.words)).toBe(step.headerOpens ?? firstWord(step.act))
+      // The header counts the same days the row and the chip count, and none where no lien can attach.
+      expect(next.daysLeft).toBe(step.dated === false ? null : 83)
     })
   }
+})
+
+describe('a last day set by hand, with approved hours after it: the row and the window count from the same day (v2.7193, punch list #335, row 1)', () => {
+  // The owner's reading of 2026-11-13: the day set by hand counts. A commercial sub job with hours in May, the last day
+  // set by hand as Jun 12, and hours approved in October. The row's clock counted from June (v2.4830) and read *Lien
+  // gone*; the window took October, the later of the two (v2.4676), and read *File the affidavit* with months to spare.
+  const month = (key: string, due: string): JobWorkMonths['months'][number] => ({ key, label: key, weeks: [], people: ['M'], hours: 20, pendingHours: 0, dayCount: 3, hoursShare: 50, notice: { due, daysLeft: 0, state: 'open' } as never })
+  const wm: JobWorkMonths = { jobId: 'j1', role: 'sub', propertyKind: 'non_residential', months: [month('2026-05', '2026-08-17'), month('2026-10', '2027-01-15')], totalHours: 40, sessionCount: 6, pendingSessions: 0, lastMonthKey: '2026-10', affidavitDue: '2027-02-16' }
+  const job = { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12' }
+  const row = (todayYmd: string) => buildLienPayRunway(runwayInput({ todayYmd, lastWorkYmd: job.last_work_date, handLastWorkYmd: job.lien_last_work_on, workMonths: wm.months.map((m) => m.key) }))
+  const header = (todayYmd: string) => buildLienTimelineFromWindow({ workMonths: wm, filings: [], job, isSub: true, propertyKind: 'non_residential', openBalance: 4200, todayYmd }).next
+
+  it('both count the affidavit from June: its last day is Oct 15, never a day in 2027', () => {
+    const before = '2026-09-23'
+    expect(row(before)).toMatchObject({ lienByYmd: '2026-10-15', datedByHand: true })
+    expect(header(before).date).toBe('2026-10-15')
+    // May's and June's notice windows are closed with none sent: the late notice, on the row, the chip and the header.
+    expect(rowLabel(row(before), null, before)).toBe('Send the late notice')
+    expect(phoneChip(row(before), null, before).label).toBe('Send the late notice · 22 d')
+    expect(header(before).kind).toBe('late_notice')
+  })
+
+  it('past that day both say the lien is gone', () => {
+    const after = '2026-11-13'
+    expect(rowLabel(row(after), null, after)).toBe('Lien gone')
+    expect(phoneChip(row(after), null, after).label).toBe('lien gone')
+    expect(header(after).kind).toBe('lien_gone')
+  })
 })

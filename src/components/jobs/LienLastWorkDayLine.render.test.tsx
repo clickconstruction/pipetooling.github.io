@@ -100,4 +100,21 @@ describe('LienLastWorkDayLine', () => {
     renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-10-06" canEdit={false} userId={null} onSaved={() => {}} />)
     expect(screen.queryByTestId('lien-last-work-change')).toBeNull()
   })
+
+  it('a day set by hand that approved hours follow still counts, and the line says the hours do not move it (v2.7193, punch list #335, row 1)', () => {
+    renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-10-20', lien_last_work_on: '2026-06-12', lien_last_work_note: 'final walk-through' }} todayYmd="2026-11-13" canEdit userId="u1" onSaved={() => {}} />)
+    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Jun 12')
+    expect(screen.getByTestId('lien-last-work').getAttribute('data-source')).toBe('hand')
+    expect(screen.getByTestId('lien-last-work-later-hours').textContent).toBe('Hours were approved after it, through Oct 20. They do not move it.')
+    // The door to change it stands beside the line.
+    expect(screen.getByTestId('lien-last-work-change')).toBeTruthy()
+  })
+
+  it('no later-hours line when the hand day is the later, or when no day is set by hand', () => {
+    const first = renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-07-17', lien_last_work_on: '2026-08-14' }} todayYmd="2026-11-13" canEdit userId="u1" onSaved={() => {}} />)
+    expect(screen.queryByTestId('lien-last-work-later-hours')).toBeNull()
+    first.unmount()
+    renderWithProviders(<LienLastWorkDayLine jobId="j1" job={{ last_work_date: '2026-09-24' }} todayYmd="2026-11-13" canEdit userId="u1" onSaved={() => {}} />)
+    expect(screen.queryByTestId('lien-last-work-later-hours')).toBeNull()
+  })
 })

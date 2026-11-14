@@ -4,7 +4,9 @@ import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling,
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
-import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
+import { lienActFor } from './lienActWords'
+import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
 /**
@@ -139,6 +141,8 @@ export interface LienTimelineNext {
   date: string
   daysLeft: number | null
   tone: 'red' | 'amber' | 'green' | 'quiet'
+  /** An affidavit step only (v2.7187, punch list #335, row 2): where the paper stands on the desk, so the window knows which door the step is behind. */
+  affidavitState?: LienTimelineAffidavitState
 }
 
 export interface LienTimeline {
@@ -176,6 +180,13 @@ export interface LienTimelineMonth {
 /** Where the open months' notice stands on the desk; '' when the reader cannot know. `printed` is a notice in the mail whose certified number is not typed in yet (v2.7077). */
 export type LienTimelineNoticeState = '' | 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent'
 
+/**
+ * Where the job's affidavit stands on the desk (v2.7187, punch list #335, row 2); '' when the reader cannot know, which reads
+ * *File the affidavit* as it always did. `needs_property` is an affidavit held by a fact the property record, the GC's
+ * record or the notice still owes (`missingKeys` says which).
+ */
+export type LienTimelineAffidavitState = '' | 'needs_property' | 'to_draft' | 'awaiting' | 'ready' | 'held'
+
 export interface LienTimelineInput {
   todayYmd: string
   isSub: boolean
@@ -185,6 +196,8 @@ export interface LienTimelineInput {
   lastMonthFromCreation: boolean
   /** The last month is the day set by hand (v2.4676) — the node says so. */
   lastMonthByHand?: boolean
+  /** 'YYYY-MM-DD': the last approved clock day when it follows the day set by hand (v2.7193, punch list #335, row 1). The hand day still counts; the node says the later hours do not move it. */
+  laterHoursDay?: string
   months: ReadonlyArray<LienTimelineMonth>
   /** Where the job's live notice sits on the desk, for the due node's words. */
   noticeState: LienTimelineNoticeState
@@ -200,6 +213,12 @@ export interface LienTimelineInput {
     serveDue: string | null
     /** Gate labels still failing, short — `legal description`. */
     missingGates: string[]
+    /** Where the affidavit stands on the desk (v2.7187, punch list #335, row 2); absent or '' reads *File the affidavit*. */
+    state?: LienTimelineAffidavitState
+    /** The gates still closed, by key (`affidavitGates`): the header names the one fact that holds the paper, in the act table's words. */
+    missingKeys?: ReadonlyArray<LienAffidavitGateKey>
+    /** A held affidavit asks again on this day; null or absent when the hold names none. */
+    holdUntil?: string | null
   } | null
   /** The § 53.101 clock: null until the job carries the fact (#33 §3). */
   originalContractCompletedOn: string | null
@@ -354,6 +373,56 @@ function noticeVerb(state: LienTimelineNoticeState): string {
   }
 }
 
+/** An affidavit's place on the desk, for its step on the strip; '' when the step's days say everything. */
+function affidavitStateWords(state: LienTimelineAffidavitState, holdUntil: string | null | undefined, todayYmd: string): string {
+  switch (state) {
+    case 'to_draft':
+      return 'to draft'
+    case 'awaiting':
+      return 'awaiting approval'
+    case 'ready':
+      return 'ready to file'
+    case 'held':
+      return holdUntil ? `held · re-asks ${lienDateWords(holdUntil, todayYmd)}` : 'held'
+    default:
+      return ''
+  }
+}
+
+/**
+ * Next on the path for an affidavit that is the next paper (v2.7187, punch list #335, row 2). The header read *File the
+ * affidavit* at every step, over a billed row that read *Draft the affidavit*, *Approve the affidavit* or the fact
+ * that holds it. Each step opens on the words the act table gives the row (`lienActFor`), so the two cannot part.
+ * `dated` is false when no lien can attach and there is no day to race.
+ */
+function affidavitNextWords(a: NonNullable<LienTimelineInput['affidavit']> | null, count: string, lastDayWords: string, todayYmd: string): { words: string; dated: boolean } {
+  const state = a?.state ?? ''
+  const missingTail = a?.missingGates.length ? ` · ${a.missingGates.join(', ')} missing` : ''
+  switch (state) {
+    case 'to_draft':
+      return { words: `Draft the affidavit — ${count}.`, dated: true }
+    case 'awaiting':
+      return { words: `Approve the affidavit — ${count}.`, dated: true }
+    case 'held':
+      return { words: `Held — the affidavit ${a?.holdUntil ? `re-asks ${lienDateWords(a.holdUntil, todayYmd)}` : 'waits on its hold'}; file by ${lastDayWords}.`, dated: true }
+    case 'needs_property': {
+      const keys = a?.missingKeys ?? []
+      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys })
+      if (!act) break
+      // No lien attaches to public property: the fact, and who to ask.
+      if (!act.dated) return { words: `${act.words} — ${act.under.charAt(0).toLowerCase()}${act.under.slice(1)}.`, dated: false }
+      // A homestead is the attorney's call, so the sentence does not promise a filing after it.
+      if (keys.includes('homestead')) return { words: `${act.words} — ${count}.`, dated: true }
+      // One fact is named by the act; several are listed after the days, as the strip lists them.
+      const one = keys.length === 1
+      return { words: `${act.words}, then file the affidavit — ${count}${one ? '' : missingTail}.`, dated: true }
+    }
+    default:
+      break
+  }
+  return { words: `File the affidavit — ${count}${missingTail}.`, dated: true }
+}
+
 function monthsPhrase(keys: ReadonlyArray<string>): string {
   return keys.map(workMonthShort).join(' + ')
 }
@@ -373,7 +442,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       date: `${input.lastMonth}-01`,
       dateWords: `${workMonthShort(input.lastMonth)} ${input.lastMonth.slice(0, 4)}`,
       state: 'done',
-      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? LAST_DAY_SET_BY_HAND_WORDS : 'clock hours',
+      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? (input.laterHoursDay ? LAST_DAY_BY_HAND_LATER_HOURS_WORDS : LAST_DAY_SET_BY_HAND_WORDS) : 'clock hours',
       daysLeft: null,
       door: null,
     })
@@ -462,7 +531,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       words = 'window closed with nothing filed'
     } else {
       state = openMonths.length ? 'later' : 'due'
-      words = [daysWords(left), missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
+      words = [daysWords(left), affidavitStateWords(input.affidavit?.state ?? '', input.affidavit?.holdUntil, todayYmd), missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
       // The first day (v2.3815): a sub's lien follows its notice; an original contractor's the month after the work.
       if (lateNoticeOpen) {
         words = [daysWords(left), 'send the late notice first', missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
@@ -613,7 +682,12 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     if (r) {
       next = { kind: 'retainage', words: `Send the § 53.057 retainage notice — ${daysWords(r.daysLeft)}.`, aside: '', date: r.date, daysLeft: r.daysLeft, tone: (r.daysLeft ?? 99) <= 7 ? 'red' : 'amber' }
     } else if (!filedAt && a.state === 'due') {
-      next = { kind: 'affidavit', words: `File the affidavit — ${daysWords(a.daysLeft)}${input.affidavit?.missingGates.length ? ` · ${input.affidavit.missingGates.join(', ')} missing` : ''}.`, aside: '', date: a.date, daysLeft: a.daysLeft, tone: (a.daysLeft ?? 99) <= 7 ? 'red' : (a.daysLeft ?? 99) <= 14 ? 'amber' : 'quiet' }
+      // The step the desk has the paper on (v2.7187, punch list #335, row 2); with no word from the desk it reads *File the affidavit*.
+      const said = affidavitNextWords(input.affidavit, daysWords(a.daysLeft), a.dateWords, todayYmd)
+      const affidavitState = input.affidavit?.state ?? ''
+      next = said.dated
+        ? { kind: 'affidavit', words: said.words, aside: '', date: a.date, daysLeft: a.daysLeft, tone: (a.daysLeft ?? 99) <= 7 ? 'red' : (a.daysLeft ?? 99) <= 14 ? 'amber' : 'quiet', affidavitState }
+        : { kind: 'affidavit', words: said.words, aside: '', date: '', daysLeft: null, tone: 'amber', affidavitState }
     } else if (!filedAt && a.state === 'missed') {
       next = { kind: 'lien_gone', words: 'The affidavit window closed with nothing filed — the lien is gone; the money is still owed.', aside: 'The Legal desk, or Collections.', date: a.date, daysLeft: a.daysLeft, tone: 'red' }
     } else if (filedAt) {
@@ -719,6 +793,39 @@ function noticeWaitWords(state: LienTimelineNoticeState): string {
   }
 }
 
+/** What an affidavit that is the next paper waits on, step by step (v2.7187, punch list #335, row 2). Every one is our move. */
+function affidavitWaitWords(a: LienTimelineInput['affidavit']): string {
+  switch (a?.state ?? '') {
+    case 'to_draft':
+      return 'the affidavit to be drafted'
+    case 'awaiting':
+      return 'the leader’s approval of the affidavit'
+    case 'held':
+      return 'the hold to lift'
+    case 'needs_property': {
+      const keys = a?.missingKeys ?? []
+      if (keys.includes('public_owner')) return 'the attorney to be asked about the payment bond'
+      if (keys.includes('homestead')) return 'the attorney to be asked about a homestead lien'
+      switch (keys.length === 1 ? keys[0] : undefined) {
+        case 'homestead_answer':
+          return 'a yes or a no on the homestead question'
+        case 'contractor':
+          return 'the general contractor’s address'
+        case 'owner':
+          return 'the owner of record and a mailing address'
+        case 'legal':
+          return 'the county and legal description on the property record'
+        case 'notice':
+          return 'the late notice to be mailed'
+        default:
+          return 'the property record to be completed'
+      }
+    }
+    default:
+      return 'the affidavit to be filed'
+  }
+}
+
 /** Who we wait on, and for what (v2.3877): a live demand letter first, else whatever Next on the path names. */
 function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimelineNext, input: LienTimelineInput, paidBy: LienTimelineMove, todayYmd: string): LienTimelineWaitingOn | null {
   const d = steps.find((s) => s.kind === 'demand')
@@ -737,7 +844,7 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
     case 'retainage':
       return { who: 'ours', words: 'the § 53.057 retainage notice to be sent' }
     case 'affidavit':
-      return { who: 'ours', words: 'the affidavit to be filed' }
+      return { who: 'ours', words: affidavitWaitWords(input.affidavit) }
     case 'serve':
       return { who: 'ours', words: 'the filed affidavit to be served' }
     case 'release':

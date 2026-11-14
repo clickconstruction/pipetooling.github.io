@@ -11,7 +11,7 @@
  */
 import { formatYmdMonthDay } from './billedExpectedPay.ts'
 import { filingDeadlineForMonth, noticeDeadlineForMonth, suitDeadlineFor } from './lienDeadlines.ts'
-import { lienLastWorkDayProblem } from './lienLastWorkDay.ts'
+import { lienClockMonths, lienLastWorkDayProblem } from './lienLastWorkDay.ts'
 import { workMonthLabel } from './forecastWorkMonths.ts'
 
 export type LienLastWorkPreviewInput = {
@@ -81,13 +81,13 @@ export function lienLastWorkShiftSize(days: number): string {
   return `${n} ${n === 1 ? 'day' : 'days'}`
 }
 
-/** The months the readers will name for a day: the clocked months, plus the day's month when it is later than every one of them (or alone, when there are none). */
+/**
+ * The months the readers will name for a day: the clocked months up to the day's month, and the day's month (the one
+ * rule, `lienClockMonths`). A typed day is never earlier than the hours, so for a day about to be saved this is the
+ * clocked months plus its own. For a day already on the job that later hours follow, the later months are left out.
+ */
 export function lienLastWorkMonthsFor(day: string | null, clockMonths: ReadonlyArray<string>): string[] {
-  const months = [...new Set(clockMonths.filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort()
-  if (!day || !YMD.test(day)) return months
-  const m = day.slice(0, 7)
-  if (!months.length || m > months[months.length - 1]!) months.push(m)
-  return months
+  return lienClockMonths(clockMonths, day && YMD.test(day) ? day : null).months
 }
 
 function datesFor(day: string | null, clockMonths: ReadonlyArray<string>, propertyKind: string): LienLastWorkPreviewDates {
