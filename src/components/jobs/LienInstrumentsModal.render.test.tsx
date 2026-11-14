@@ -79,6 +79,21 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.queryByText(/File by /)).toBeNull()
   })
 
+  it('a job an open in-kind deal pays opens whole and says it is off the Lien desk; any other job says nothing (v2.7253)', async () => {
+    const { unmount } = renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ in_kind_arrangement_id: 'deal-1' })} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    const note = document.querySelector('[data-lien-window-in-kind]') as HTMLElement
+    expect(note.textContent).toContain('Paid in kind')
+    expect(note.textContent).toContain('off the Lien desk while the deal is open')
+    // The window is whole under the note: the steps, § Rules and the demand letter's foot are all there.
+    expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
+    expect(document.querySelector('[data-demand-foot]')).toBeTruthy()
+    unmount()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    expect(document.querySelector('[data-lien-window-in-kind]')).toBeNull()
+  })
+
   it('a computer keeps the steps as a row and its doors, has a × that closes (v2.4398), and has no lientooling.com door (v2.4403)', async () => {
     const onClose = vi.fn()
     renderWithProviders(<LienInstrumentsModal {...baseProps} onClose={onClose} job={job()} />)

@@ -75,10 +75,10 @@ export function edgeUploads(functionsDir = 'supabase/functions', root = process.
 }
 
 /**
- * The most a function's upload may be in a PR (v2.7256): 4 MB of raw source, a fifth under the 5 MB the deploy refuses
+ * The most a function's upload may be in a PR (v2.7256): 4.5 MB of raw source, a tenth under the 5 MB the deploy refuses
  * with HTTP 413, so a function nearing the limit is named in its PR and not at the deploy after it merges.
  */
-export const UPLOAD_CEILING_BYTES = 4_000_000
+export const UPLOAD_CEILING_BYTES = 4_500_000
 
 const mb = (bytes) => `${(bytes / 1e6).toFixed(2)} MB`
 

@@ -3,6 +3,7 @@ import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
 import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_PRINTED_NAME_LINE, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
 import type { LienNoticeFields } from './lienNoticeFieldsType'
+import type { FilingSignature } from './filingSignatureType'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -30,17 +31,7 @@ import type { LienNoticeFields } from './lienNoticeFieldsType'
  * and company under the rule, the day and clock, and the record ID in the corner; the audit
  * sentence and the statute line in grey beneath. `lienNoticeSignature.ts` builds it from the row.
  */
-export type FilingSignature = {
-  /** `type` = his name in cursive from one press; `draw` = his ink; `pen` (the pen train) = he signed the paper as printed, so the frame prints no mark, only the record; `code` (v2.5788) = his name in cursive, placed with his signing code on someone else's screen. */
-  mode: 'type' | 'draw' | 'pen' | 'code'
-  printedName: string
-  pngDataUrl?: string | null
-  /** "Signed October 9, 2026 at 2:14 PM CT". */
-  signedWords: string
-  /** "L878-4C2E91". */
-  recordId: string
-  auditLine: string
-}
+export type { FilingSignature } from './filingSignatureType'
 
 export const FILING_ESIGN_LINE = 'Binding as a signature in ink under the ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322).'
 /** Under a pen-signed frame instead of the statute line (the pen train): the ink is on the paper, this is the record of it. */

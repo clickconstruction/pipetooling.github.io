@@ -30,6 +30,8 @@ export type LienBookRawJob = {
   lien_contract_ended_on?: string | null
   /** The ZZ test-job rule reads it (punch list #61, PR 3); optional so the portal's rows and older fixtures stand. */
   customer_name?: string | null
+  /** The open in-kind deal that pays the job; set, the job is off the book (v2.7253, `lienInKind.ts`). Optional so the portal's rows stand. */
+  in_kind_arrangement_id?: string | null
 }
 
 export type LienBookRawGc = { id: string; name: string | null; lien_notice_policy: string | null }
@@ -49,7 +51,7 @@ export type LienBookRaw = {
 }
 
 /** The select the book needs from jobs_ledger — the hook and the function read the same columns. */
-export const LIEN_BOOK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name'
+export const LIEN_BOOK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name, in_kind_arrangement_id'
 
 export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienTimelineBookInput {
   const rows = raw.rows.map((r) => ({ ...r, approved_hours: Number(r.approved_hours) || 0, open_balance: Number(r.open_balance) || 0 }))

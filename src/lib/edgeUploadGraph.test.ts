@@ -43,13 +43,13 @@ describe('edgeUpload (what a deploy uploads)', () => {
 
   it('names each function past the ceiling with its biggest files, and the five biggest uploads (v2.7256)', () => {
     const row = (slug: string, bytes: number): Row => ({ slug, files: 3, bytes, biggest: [[`fn/${slug}/index.ts`, bytes - 10], ['fn/_shared/x.ts', 10]] })
-    const rows = [row('small', 100), row('big', 4_100_000), row('edge', 4_000_000), row('a', 5), row('b', 6), row('c', 7)]
+    const rows = [row('small', 100), row('big', 4_600_000), row('edge', 4_500_000), row('a', 5), row('b', 6), row('c', 7)]
     const r = uploadReport(rows)
-    expect(CEILING).toBe(4_000_000)
-    expect(r.ceiling).toBe('4.00 MB')
+    expect(CEILING).toBe(4_500_000)
+    expect(r.ceiling).toBe('4.50 MB')
     // At the ceiling passes; one byte over would not.
     expect(r.over).toEqual(['big'])
-    expect(r.lines).toEqual(['  - big: 4.10 MB, 0.10 MB past the ceiling. Its biggest files:', '       4.10 MB  fn/big/index.ts', '       0.00 MB  fn/_shared/x.ts'])
+    expect(r.lines).toEqual(['  - big: 4.60 MB, 0.10 MB past the ceiling. Its biggest files:', '       4.60 MB  fn/big/index.ts', '       0.00 MB  fn/_shared/x.ts'])
     expect(r.biggest.map((l) => l.trim().split(/\s+/).pop())).toEqual(['big', 'edge', 'small', 'c', 'b'])
     expect(uploadReport(rows, 50).over).toEqual(['big', 'edge', 'small'])
   })

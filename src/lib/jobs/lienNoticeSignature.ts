@@ -1,4 +1,4 @@
-import type { FilingSignature } from '../jobsDocuments/lienFilingDocuments'
+import type { FilingSignature } from '../jobsDocuments/filingSignatureType'
 import { signedRecordId } from '../signedRecordId'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 

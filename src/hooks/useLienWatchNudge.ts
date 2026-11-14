@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { withoutZzTestJobs } from '../lib/jobs/zzTestJobVisibility'
 import { chunkIds } from '../lib/supabasePaging'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
+import { jobOffLienDeskInKind } from '../lib/jobs/lienInKind'
 import { supabase } from '../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { assessLienWatch, type JobLienFilingRow, type LienWatchJob, type LienWatchResult } from '../lib/jobs/lienDeadlines'
@@ -32,7 +33,7 @@ export function useLienWatchNudge(enabled: boolean, hideZzTestJobs = false): { w
         const [{ data: jobRows, error: jobErr }, { data: filingRows, error: filErr }] = await Promise.all([
           supabase
             .from('jobs_ledger')
-            .select('id, status, gc_customer_id, last_work_date, lien_last_work_on, revenue, payments_made, customer_address_id, job_name, customer_name')
+            .select('id, status, gc_customer_id, last_work_date, lien_last_work_on, revenue, payments_made, customer_address_id, job_name, customer_name, in_kind_arrangement_id')
             .in('status', ['billed']),
           supabase.from('job_lien_filings').select('*').is('voided_at', null),
         ])
@@ -50,8 +51,10 @@ export function useLienWatchNudge(enabled: boolean, hideZzTestJobs = false): { w
           revenue: number | null
           payments_made: number | null
           customer_address_id: string | null
+          in_kind_arrangement_id?: string | null
         }[]
-        const rawJobs = hideZzTestJobs ? withoutZzTestJobs(rawJobsRead) : rawJobsRead
+        // v2.7253: a job an open in-kind deal pays is off the watch, as it is off the desk (`lienInKind.ts`).
+        const rawJobs = (hideZzTestJobs ? withoutZzTestJobs(rawJobsRead) : rawJobsRead).filter((j) => !jobOffLienDeskInKind(j))
         // The money is what each job's sent bills owe (v2.4970), the rule the desk and its By date view count by — so the bills and their payments are read too.
         const invoiceRows: { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }[] = []
         const paymentRows: { job_id: string; invoice_id: string | null; amount: number | null }[] = []

@@ -1,11 +1,11 @@
 import type { LienAffidavitFields, LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
-import { workMonthLabel } from './forecastWorkMonths'
 import { cleanStoredAddress } from '../displayAddress'
 import { lienTradeWords } from './lienTradeWords'
 import type { CoverLetterKind } from './gcOnNotice'
 import { lienWorkSpan, type LienWorkSpanJob } from './lienWorkSpan'
-import { lienAffidavitMonthsInSpan, lienAffidavitNoticeMonths, lienAffidavitNoticesWords, lienAffidavitOwnerSends, type LienAffidavitNoticeRow } from './lienAffidavitNotices'
+import { lienAffidavitNoticesWords, lienAffidavitOwnerSends, lienAffidavitSwornMonths, type LienAffidavitNoticeRow } from './lienAffidavitNotices'
+import { describeNoticeMonths } from './lienNoticeMonthWords'
 
 // The § 53.056 form's nine values filled from the job live in `lienNoticeJobFields.ts` (v2.7229: a kernel small enough
 // for the edge copy, which the dev seat's notice recorded by hand reads). Re-exported, so every import here stands.
@@ -105,23 +105,7 @@ export function lienRetainageCoverLetter(input: {
   ].join('\n\n')
 }
 
-/** "June, July and August 2026" — the months a notice names, for the reference strip and the cover note. */
-const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const
-
-function fullMonthLabel(key: string): string {
-  const m = /^(\d{4})-(\d{2})/.exec(key)
-  if (!m) return workMonthLabel(key)
-  return `${FULL_MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}`
-}
-
-export function describeNoticeMonths(months: ReadonlyArray<string>): string {
-  const sorted = months.slice().sort()
-  if (sorted.length === 0) return ''
-  const years = new Set(sorted.map((m) => m.slice(0, 4)))
-  const names = sorted.map((m) => (years.size === 1 ? fullMonthLabel(m).replace(/ \d{4}$/, '') : fullMonthLabel(m)))
-  const joined = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-  return years.size === 1 ? `${joined} ${sorted[0]!.slice(0, 4)}` : joined
-}
+export { describeNoticeMonths } from './lienNoticeMonthWords'
 
 /** The parsed draft stored on a desk item's `fields` jsonb. */
 export type LienDeskDraftFields = {
@@ -302,16 +286,7 @@ export function lienOriginalContractor(f: { isSub: boolean; gcName: string | nul
   return { name: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME, address: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim() }
 }
 
-/**
- * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the months its recorded § 53.056 notices name
- * that fall inside the job's own work span. The short form prints them in words; the notice check reads them as they
- * are (punch list #314). None on a job contracted with the owner.
- */
-export function lienAffidavitSwornMonths(f: Pick<LienAffidavitJobFacts, 'isSub' | 'workDays' | 'firstMonth' | 'lastMonth' | 'todayYmd' | 'filings'>): string[] {
-  if (!f.isSub) return []
-  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
-  return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
-}
+export { lienAffidavitSwornMonths } from './lienAffidavitNotices'
 
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
   const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
