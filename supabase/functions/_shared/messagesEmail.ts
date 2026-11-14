@@ -8,8 +8,7 @@
  * job, Click Construction on any other). A client built before that still sends a `greeting` and a `footer`; both are
  * drawn when given, so a stale tab's email keeps its greeting. Dependency-free, so the app and its tests read it too.
  */
-import { GC_CUSTOMER_EMAIL_FROM_NAME } from './gcCustomerEmails.ts'
-import { PORTAL_COMPANY } from './portalCompany.ts'
+import { GC_CUSTOMER_EMAIL_FROM_NAME, PORTAL_COMPANY } from './portalCompany.ts'
 
 /** The sent copy's kind and the send log's type: `sent_documents.kind`, never changed once rows exist. */
 export const MESSAGES_EMAIL_KIND = 'messages_email'
