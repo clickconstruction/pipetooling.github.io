@@ -185,8 +185,14 @@ the team-note box. Nothing new is written anywhere; the rows are doors to the wr
 Also on pass 2: "Set the hours should not be in a blue box, it should just be a blue text at the end
 of 'against it' period." So the Hours row has no press box: *Set the hours* is blue words at the end of
 its sentence, *… The crew's hours count against it. Set the hours*, the whole row the tap target at 44
-px. The promise rows keep their boxed presses, since each opens a writer; the owner has not said
-otherwise.
+px.
+
+Also on pass 2: "Just like how we just changed Set the hours, let's also change this text and button.
+Maybe we should offer more simplified text." So the two promise rows read the same way as Hours, one
+short sentence with the door as blue words at its end: **They promised** · *Nothing yet* · *A day they
+gave for a payment or an answer. Write it down*, and **We owe them** · *Nothing open* · *A call, a
+price or a date we said we would give. Mark it*. Filled, the blue words read *Change it* on both, and
+We owe them adds *Done* after it. The doors are the ones above.
 
 ## What the phone draws today, measured
 
@@ -270,7 +276,7 @@ Street View banner first, then the address with a Directions press, the painted 
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
 plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the two promise rows
-each with the press that writes it, the newest two
+each ending in the blue words that open its writer, the newest two
 messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
 under its title. The rest folds under More on this job, each with its count: Questions, Money, Plans
