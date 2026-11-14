@@ -48,6 +48,61 @@ export function lienLastWorkDay(job: LienLastWorkJob | null | undefined): LienLa
   return { day: created || null, source: 'created', sourceWords: created ? SOURCE_WORDS.created : 'no day yet', note: '', setAt: null, setBy: null }
 }
 
+/**
+ * The months on a job's lien clock (v2.7193, punch list #335, row 1). The owner's reading of 2026-11-13, to the question
+ * *which last day of work counts*: **the day set by hand**. A day set by hand is the last day of work. Its month is the
+ * last month on the clock, months with approved hours before it stay, and months with approved hours after it are off
+ * the clock: they move no notice, no affidavit and no year to sue. Until then two readers took the later of the two
+ * (the Lien window and the affidavit's work period), and four SQL readers did, so one job read *Lien gone* on its
+ * billed row and *File the affidavit, 95 days* in its window.
+ *
+ * Every reader takes its months from here, or from SQL that follows the same rule (migration
+ * `lien_hand_day_counts`): the billed row's clock (`buildLienPayRunway`, which read it this way since v2.4830), the
+ * Lien window (`lienWindowLastMonth`), the affidavit's work period (`lienWorkSpan`) and the window that previews a
+ * typed day (`lienLastWorkMonthsFor`). Pure.
+ */
+export type LienClockMonths = {
+  /** 'YYYY-MM', oldest first: every month the clock counts. */
+  months: string[]
+  /** The last of them; '' when the job has no month at all. */
+  lastMonth: string
+  /** The last month is the month of a day set by hand. */
+  byHand: boolean
+  /** Months with approved hours after the hand day's month, oldest first: off the clock, and said wherever the last day shows. */
+  hoursAfter: string[]
+}
+
+const CLOCK_MONTH = /^\d{4}-\d{2}$/
+
+export function lienClockMonths(sessionMonths: ReadonlyArray<string | null | undefined>, handDay: string | null | undefined): LienClockMonths {
+  const worked = [...new Set(sessionMonths.map((m) => (m ?? '').slice(0, 7)).filter((m) => CLOCK_MONTH.test(m)))].sort()
+  const hand = (handDay ?? '').slice(0, 10)
+  const handMonth = plausible(hand) ? hand.slice(0, 7) : ''
+  if (!handMonth) return { months: worked, lastMonth: worked[worked.length - 1] ?? '', byHand: false, hoursAfter: [] }
+  const months = worked.filter((m) => m < handMonth)
+  months.push(handMonth)
+  return { months, lastMonth: handMonth, byHand: true, hoursAfter: worked.filter((m) => m > handMonth) }
+}
+
+/**
+ * Approved hours after a day set by hand (v2.7193, punch list #335, row 1): the last approved clock day, when it is later than
+ * the hand day; '' when there is no hand day or no later hours. The hand day still counts. This is only so the screen
+ * that shows the last day can say the later hours are there and do not move it.
+ */
+export function lienHoursAfterHandDay(job: Pick<LienLastWorkJob, 'last_work_date' | 'lien_last_work_on'> | null | undefined): string {
+  const hand = (job?.lien_last_work_on ?? '').slice(0, 10)
+  const hours = (job?.last_work_date ?? '').slice(0, 10)
+  return plausible(hand) && plausible(hours) && hours > hand ? hours : ''
+}
+
+/** The line a screen prints beside a hand day that later hours follow: "Hours were approved after it, through Oct 20. They do not move it." */
+export function lienHoursAfterHandDayWords(laterHoursDay: string): string {
+  return laterHoursDay ? `Hours were approved after it, through ${formatYmdMonthDay(laterHoursDay)}. They do not move it.` : ''
+}
+
+/** The timeline's LAST WORK node when later hours follow the hand day: the fact in the node's own short form. */
+export const LAST_DAY_BY_HAND_LATER_HOURS_WORDS = 'last day set by hand · later hours do not move it'
+
 function plausible(day: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`))
 }

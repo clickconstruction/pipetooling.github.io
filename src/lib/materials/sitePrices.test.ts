@@ -42,6 +42,16 @@ describe('a site’s own price in the one rule', () => {
     const price = lookup({ ties: [tie('id:tee', own)], book: { tee: [bookRow('tee', 2.86, '2026-10-03')] } })
     expect(price('text:1" pex tees')).toMatchObject({ from: 'book', price: 2.86 })
   })
+  it('Just price: a parts-book part’s price without the tie keeps the row its own, dated the book’s check', () => {
+    const own = ownRowKey('text:1" pex tees')
+    const just = answer(own, { unitPrice: 2.86, source: 'book', sourceLineId: null, sourceWords: '1" PEX TEE BRASS', pricedOn: '2026-10-03' })
+    const pick = lookup({ site: [just] })('text:1" pex tees')
+    expect(pick).toMatchObject({ price: 2.86, from: 'site', via: 'book', bookPart: '1" PEX TEE BRASS', supplyHouse: null, checkedOn: '2026-10-03', stale: false })
+    expect(priceWords(pick!, TODAY)).toBe('the parts book’s price for 1" PEX TEE BRASS · checked Oct 3')
+    expect(sitePriceWords(just, TODAY)).toBe('$2.86 for one · the parts book’s price for 1" PEX TEE BRASS · checked Oct 3 · by Dana, Nov 13')
+    // A book price last checked long ago is an old price here too.
+    expect(priceWords(sitePick({ ...just, pricedOn: '2026-02-04' }, TODAY)!, TODAY)).toBe('the parts book’s price for 1" PEX TEE BRASS · checked Feb 4, 282 days ago')
+  })
   it('a price past 90 days stays a price and is flagged, as a book price is', () => {
     const old = sitePick(answer('words:x y', { pricedOn: '2026-02-04' }), TODAY)
     expect(old).toMatchObject({ price: 3.12, stale: true, ageDays: 282 })

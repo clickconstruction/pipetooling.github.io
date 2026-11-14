@@ -331,6 +331,17 @@ export function mapsForJob(maps: ReadonlyArray<PaintedMap>, jobId: string, devel
   return [...own.map((m) => ({ ...m, fromDevelopment: false })), ...shared.map((m) => ({ ...m, fromDevelopment: true }))]
 }
 
+/**
+ * The maps a development shows: its own first, then each lot's own, each newest first. A lot's map
+ * says which lot it is for, so a reader of the whole site can tell the site's way in from one lot's.
+ */
+export function mapsForDevelopment(maps: ReadonlyArray<PaintedMap>, developmentId: string, jobLabels: ReadonlyMap<string, string>): Array<PaintedMap & { jobLabel: string | null }> {
+  const newest = (a: PaintedMap, b: PaintedMap) => b.createdAt.localeCompare(a.createdAt)
+  const own = maps.filter((m) => m.developmentId === developmentId).sort(newest)
+  const lots = maps.filter((m) => m.jobId != null && jobLabels.has(m.jobId)).sort(newest)
+  return [...own.map((m) => ({ ...m, jobLabel: null })), ...lots.map((m) => ({ ...m, jobLabel: jobLabels.get(m.jobId as string) ?? null }))]
+}
+
 export type NumberedPlace = PaintedPlace & { number: number }
 
 /** A map's places with the number each dot wears: the order they were set in, so a number never moves when another is added. */

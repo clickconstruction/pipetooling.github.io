@@ -12,7 +12,7 @@ import type { SitePrice } from './sitePrices'
 // The table is younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
 
-type Row = { id: string; development_id: string | null; job_id: string | null; row_key: string; row_name: string; kind: 'price' | 'left_out'; unit_price: number | string | null; source: 'typed' | 'bill'; source_line_id: string | null; source_words: string; priced_on: string; by_name: string; at: string }
+type Row = { id: string; development_id: string | null; job_id: string | null; row_key: string; row_name: string; kind: 'price' | 'left_out'; unit_price: number | string | null; source: 'typed' | 'bill' | 'book'; source_line_id: string | null; source_words: string; priced_on: string; by_name: string; at: string }
 const COLS = 'id, development_id, job_id, row_key, row_name, kind, unit_price, source, source_line_id, source_words, priced_on, by_name, at'
 const priceOf = (r: Row): SitePrice => ({ id: r.id, rowKey: r.row_key, rowName: r.row_name, kind: r.kind, unitPrice: r.unit_price == null ? null : Number(r.unit_price), source: r.source, sourceLineId: r.source_line_id, sourceWords: r.source_words, pricedOn: (r.priced_on ?? '').slice(0, 10), byName: r.by_name, at: r.at })
 
@@ -36,7 +36,7 @@ export async function fetchAllSitePrices(): Promise<Map<string, SitePrice[]>> {
 }
 
 /** What a new answer carries. A row left out has no price and no source. */
-export type SitePriceInput = { rowKey: string; rowName: string } & ({ kind: 'price'; unitPrice: number; source: 'typed' | 'bill'; sourceLineId?: string | null; sourceWords?: string; pricedOn: string } | { kind: 'left_out'; pricedOn: string })
+export type SitePriceInput = { rowKey: string; rowName: string } & ({ kind: 'price'; unitPrice: number; source: 'typed' | 'bill' | 'book'; sourceLineId?: string | null; sourceWords?: string; pricedOn: string } | { kind: 'left_out'; pricedOn: string })
 
 export async function insertSitePrice(scope: TieScope, input: SitePriceInput, byName: string): Promise<SitePrice> {
   const { data, error } = await db
