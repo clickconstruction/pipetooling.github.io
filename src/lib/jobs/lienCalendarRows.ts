@@ -11,6 +11,7 @@ import type { BilledLienClock, BilledLienClockJob } from '../../hooks/useBilledL
 import type { LienCalendarJob } from './lienCalendar'
 import { buildLienPayRunway, type LienPayRunway } from './lienPayRunway'
 import { lienBilledOpen } from './lienBilledOpen'
+import { lienBilledOnYmd } from './lienBilledAge'
 import type { PaySpeedData, PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel } from './billedDuePay'
 import { calendarSourceFor, type PayCalendarIndex } from './payCalendar'
@@ -117,6 +118,7 @@ export function buildLienCalendarRows(jobs: ReadonlyArray<JobWithDetails>, runwa
       runway,
       lastWorkYmd: job.lien_last_work_on || job.last_work_date || null,
       addressId: job.customer_address_id ?? null,
+      billedOnYmd: lienBilledOnYmd(job, job.invoices ?? [], job.payments ?? []),
     })
   }
   return out

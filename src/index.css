@@ -4373,6 +4373,18 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: #92400e; color: #fff; font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }
+/* v2.7254: a group is one quiet line with a hairline after it; it wraps before it cuts a word off. */
+.lienCalGroupLine { position: relative; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 10px; min-height: 26px; padding: 2px 14px 2px 6px; background: var(--surface); font-size: 0.72rem; color: var(--text-muted); }
+.lienCalGroupFold { display: inline-flex; align-items: center; gap: 8px; flex: none; border: none; background: none; padding: 2px 4px; font: inherit; color: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
+.lienCalGroupFold:hover { color: var(--text-700); }
+.lienCalGroupRule { flex: 1 1 24px; height: 1px; background: var(--border); }
+.lienCalGroupPen { flex: none; border: none; background: none; padding: 2px 0; font: inherit; font-weight: 600; color: var(--text-link); white-space: nowrap; cursor: pointer; }
+.lienCalGroupPen:hover { text-decoration: underline; }
+.lienCalGroupFold:focus-visible, .lienCalGroupPen:focus-visible, button.lienCalNoHours:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
+/* v2.7254: "Nov · no hours" is a chip beside the job's name, not words on the lane. */
+.lienCalNoHours { flex: none; display: inline-flex; align-items: center; padding: 0 6px; border: 1px solid var(--border-amber); border-radius: 999px; background: var(--bg-amber-100); color: var(--text-amber-800); font: inherit; font-size: 0.625rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+button.lienCalNoHours { cursor: pointer; }
+button.lienCalNoHours:hover { text-decoration: underline; }
 /* The picked bucket's stretch of the axis: it lies over the rows, so it tints the paper and leaves every mark its full ink. */
 .lienCalBand { mix-blend-mode: multiply; }
 :root[data-theme='dark'] .lienCalBand { mix-blend-mode: screen; opacity: 0.4; }

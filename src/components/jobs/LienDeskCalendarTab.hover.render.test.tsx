@@ -23,7 +23,8 @@ const rows: LienCalendarJob[] = [
   // Rilvo: August's notice owed Oct 15, and the GC's word on the same day — a pay dot and a flag that touch.
   { jobId: 'a', number: '890 PLUM', name: 'Rilvo', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '628 Tarrow Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-08-12', isSub: true, expectedPayYmd: '2026-10-15' }), lastWorkYmd: '2026-08-12' },
   { jobId: 'b', number: '881 PLUM', name: 'Ulric Karrow', customer: 'Dunmere Mallin', gcId: 'gc1', gcName: 'RLC · Dunmere Mallin', address: '9703 Linmor Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }), lastWorkYmd: '2026-08-20', addressId: 'addr-b' },
-  { jobId: 'd', number: '473 PLUM', name: 'Mike Holmby', customer: 'Michael Holmby', gcId: null, gcName: null, address: '109 Tamberline', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-08-12' },
+  // Holmby worked in July, so his lien day is Oct 15, next month: a timeline row. A job due later is a line of the Later list (v2.7254).
+  { jobId: 'd', number: '473 PLUM', name: 'Mike Holmby', customer: 'Michael Holmby', gcId: null, gcName: null, address: '109 Tamberline', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-07-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-07-12' },
 ]
 
 function rowOf(number: string): HTMLElement {
@@ -108,13 +109,13 @@ describe('LienDeskCalendarTab — the hover cards (v2.5531)', () => {
     const holmby = rowOf('473 PLUM')
     fireEvent.mouseEnter(within(holmby).getByRole('button', { name: /said they would pay: Sep 30/ }))
     let c = await card()
-    expect(c.textContent).toContain('That leaves 47 days of room before the lien flag.')
+    expect(c.textContent).toContain('That leaves 15 days of room before the lien flag.')
     fireEvent.click(within(c).getByRole('button', { name: 'Open the Lien window ›' }))
     expect(onOpen).toHaveBeenCalledWith('d')
     await noCard()
     fireEvent.mouseEnter(within(holmby).getByLabelText('Room — the money is expected before the lien date'))
     c = await card()
-    expect(c.textContent).toContain('The money is expected Sep 30, 47 days before the lien flag on Nov 16.')
+    expect(c.textContent).toContain('The money is expected Sep 30, 15 days before the lien flag on Oct 15.')
     fireEvent.mouseLeave(within(holmby).getByLabelText('Room — the money is expected before the lien date'))
     await noCard()
     const ulric = rowOf('881 PLUM')
@@ -126,20 +127,13 @@ describe('LienDeskCalendarTab — the hover cards (v2.5531)', () => {
     expect(within(c).queryByTestId('lien-mark-card-door')).toBeNull()
   })
 
-  it('a GC row’s folded flag lists the jobs behind its count and offers Draft the N for exactly those; the kinds door opens the sheet', async () => {
-    const onDraft = vi.fn()
-    mount({ canWrite: true, onDraft })
+  it('a GC’s line has no lane and no card of its own (v2.7254); the bracket’s card opens Set kinds for the office', async () => {
+    mount({ canWrite: true })
     const rlc = screen.getByTestId('lien-cal-group-gc:gc1')
-    fireEvent.mouseEnter(within(rlc).getByLabelText('2 notices owed by Oct 15'))
-    const c = await card()
-    expect(c.getAttribute('aria-label')).toBe('About RLC · Dunmere Mallin')
-    const jobs = within(c).getAllByTestId('lien-mark-card-job').map((j) => j.textContent)
-    expect(jobs).toEqual(['890 PLUMRilvo · August$9,800', '881 PLUMUlric Karrow · August$7,902'])
-    expect(c.textContent).toContain('$17,702 across the 2.')
-    fireEvent.click(within(c).getByRole('button', { name: 'Draft the 2 ›' }))
-    expect(onDraft).toHaveBeenCalledWith('2026-10-15', ['a', 'b'])
-    await noCard()
-    // the bracket's card opens Set kinds for the office
+    // the counts the folded flag carried are the line's words
+    expect(within(rlc).getByTestId('lien-cal-group-line').textContent).toBe('RLC · Dunmere Mallin · GC · 2 jobs · 2 notices owed')
+    expect(within(rlc).queryByTestId('lien-cal-track')).toBeNull()
+    expect(within(rlc).queryByLabelText('2 notices owed by Oct 15')).toBeNull()
     fireEvent.mouseEnter(within(rowOf('881 PLUM')).getByLabelText(/Property kind not set/))
     fireEvent.click(within(await card()).getByRole('button', { name: 'Set the kind ›' }))
     expect(screen.getByTestId('lien-cal-kinds')).toBeTruthy()

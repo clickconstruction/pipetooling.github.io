@@ -35,6 +35,8 @@ export type LienCalendarJob = {
   lastWorkYmd?: string | null
   /** The linked property record (`customer_addresses.id`) — where a kind is written (PR D). */
   addressId?: string | null
+  /** The civil day the oldest bill still open went out (`lienBilledOnYmd`, v2.7254): the Later list's Billed column. */
+  billedOnYmd?: string | null
 }
 
 export type LienCalendarGroupKind = 'gc' | 'direct' | 'gone'
@@ -108,6 +110,23 @@ function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word
   const fileFirst = jobs.filter((j) => j.runway.state === 'file_first').length
   if (fileFirst > 1) return { word: `file first on ${fileFirst}`, tone: 'red' }
   return { word: verdict, tone: tightest.runway.tone }
+}
+
+/** The direct jobs' heading (v2.7254; "Direct — we contracted with the owner" until then, which a narrow column cut off). */
+export const LIEN_DIRECT_GROUP_NAME = 'Direct to owner'
+
+/**
+ * A group as one quiet line (v2.7254): "Lowbeck Contracting · GC · 1 job · 1 notice owed", "Direct to owner · 2 jobs · no notice step".
+ * The counts the group's own lane drew as folded flags are the words of `sub`.
+ */
+export function lienGroupLine(g: Pick<LienCalendarGroup, 'name' | 'sub'>): string {
+  return g.sub ? `${g.name} · ${g.sub}` : g.name
+}
+
+/** The chip beside a job dated from its creation day (v2.7254): "Nov · no hours"; null on a job with hours or a day set by hand. */
+export function lienNoHoursChip(job: Pick<LienCalendarJob, 'runway'>): string | null {
+  const r = job.runway
+  return r.datedFromCreation && r.basisYmd ? `${monthShort(r.basisYmd)} · no hours` : null
 }
 
 /** A typed address as a key: lower case, no punctuation, nothing from the state on ("9703 lenox hl san antonio"). */
@@ -186,7 +205,7 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
     groups.push({
       key: 'direct',
       kind: 'direct',
-      name: 'Direct — we contracted with the owner',
+      name: LIEN_DIRECT_GROUP_NAME,
       sub: `${direct.length} ${direct.length === 1 ? 'job' : 'jobs'} · no notice step`,
       jobs: direct,
       total: direct.reduce((s, j) => s + j.openBalance, 0),
@@ -452,7 +471,7 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
     long: 'The last day the lien affidavit can be filed with the county — the 15th of the third month after the work month on a residential property, the fourth on a commercial one (§ 53.052). Slate, and red inside a week. After this day the lien is gone; the debt is not.',
   },
   { glyph: 'pay', short: 'Pay date they gave', label: 'when they said they would pay (a promise, the GC’s word, or the pay-speed estimate)', long: 'When they said the money would come — a promise on the job, the GC’s word from the statement round, or, with neither, the estimate from how fast this customer usually pays. Click it to change it.' },
-  { glyph: 'pay_missing', short: 'No pay date yet', label: 'no pay date yet — click to record what they said', long: 'Nobody has said when this will be paid. On a GC row one dot speaks for all of its jobs — click it to record the GC’s word for every job at once; a job row shows its own dot only when it has its own date.' },
+  { glyph: 'pay_missing', short: 'No pay date yet', label: 'no pay date yet — click to record what they said', long: 'Nobody has said when this will be paid. Under a GC the press on the GC’s own line speaks for all of its jobs: it records the GC’s word for every job at once. A job row shows its own dot only when it has its own date.' },
   { glyph: 'room', short: 'Room', label: 'room: the money is expected before the lien date', long: 'Green room between the pay date and the lien flag: the money is expected before the window closes. Wait for it; the lien is still there if it does not come.' },
   { glyph: 'short', short: 'File first', label: 'file first: the lien date comes before the money', long: 'Red hatching: the lien window closes before the money is expected. File the affidavit first, or get the pay date moved ahead of the flag.' },
   {
@@ -462,7 +481,6 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
     long: 'The property’s kind — a house or a commercial building — is not on its record, so the board shows the earlier, residential date and stripes the stretch to the commercial one. A house read as commercial is a lien lost a month late, so the safer date stands until someone sets the kind.',
     door: 'kinds',
   },
-  { glyph: 'count', short: 'Jobs on one date', label: 'on a GC row, the number is how many of its jobs share that date', long: 'On a GC row the flags are folded: one flag per date, and the number is how many of that GC’s jobs share it. Open the row to see each job’s own flags.' },
   {
     glyph: 'gone',
     short: 'Lien gone',
