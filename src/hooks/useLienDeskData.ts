@@ -30,6 +30,8 @@ import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
 import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
+import { readLienAffidavitMonthsByHand } from '../lib/jobs/lienAffidavitMonthsByHandIo'
+import type { LienAffidavitMonthsByHand } from '../lib/jobs/lienAffidavitMonthsByHand'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
@@ -119,6 +121,8 @@ export type LienDeskData = {
   gcsHeldBefore: ReadonlySet<string>
   /** The claim set by hand per job (v2.3682) — empty when none, or when the table is not there yet. */
   claimCorrectionsByJob: Record<string, LienClaimCorrection>
+  /** The months set by hand per job (v2.7270, `job_lien_affidavit_months`): the paper names these in place of the record's. Empty in light mode, and when the read failed. */
+  affidavitMonthsByJob: Record<string, LienAffidavitMonthsByHand>
   /** The payments on every job with a sent notice, with their day (PR 2 of #274): the step brief's timeline draws each as a row. Absent in light mode or when the read failed. */
   paymentsByJob?: Record<string, Array<{ amount: number; paidOn: string | null }>>
   /** The job's affidavits and releases of record (v2.3761) — the timeline's tail; empty in light mode. */
@@ -423,6 +427,12 @@ export function useLienDeskData(
           gcsWithPriorNotice = new Set((priorNoticeRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
           gcsHeldBefore = new Set((heldRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
         }
+        // The months set by hand per job (v2.7270): the affidavit pane, the help sheet and the papers read them. A failed read (the table not pushed yet) leaves none, never the desk dark.
+        let affidavitMonthsByJob: Record<string, LienAffidavitMonthsByHand> = {}
+        if (!light && jobIds.length) {
+          affidavitMonthsByJob = await readLienAffidavitMonthsByHand(jobIds).catch(() => ({}))
+          if (cancelled) return
+        }
         // The claim set by hand per job (v2.3682) — loaded in light mode too (v2.3684): one indexed select, and the Stages board's Collections line reads it.
         if (jobIds.length) {
           const correctionRows = await withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
@@ -474,6 +484,7 @@ export function useLienDeskData(
           gcsWithPriorNotice,
           gcsHeldBefore,
           claimCorrectionsByJob,
+          affidavitMonthsByJob,
           filingsByJob,
           demandLettersByJob,
           mailPiecesByFiling,
@@ -500,7 +511,7 @@ export function useLienDeskData(
             promisesByJob: {},
             gcsWithPriorNotice: new Set(),
             gcsHeldBefore: new Set(),
-            claimCorrectionsByJob: {}, filingsByJob: {},
+            claimCorrectionsByJob: {}, affidavitMonthsByJob: {}, filingsByJob: {},
           })
       } finally {
         if (!cancelled) setLoading(false)

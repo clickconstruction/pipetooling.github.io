@@ -215,7 +215,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     ownerByJob: {},
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
-    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, filingsByJob: {},
+    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, affidavitMonthsByJob: {}, filingsByJob: {},
   }
 }
 

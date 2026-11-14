@@ -147,7 +147,7 @@ export type LienAffidavitPrintPaper = {
   label?: string
   fileBy?: string
   /** What the desk knows of the property and the notices, for the help sheet's checks (the best-we-can-do pass). */
-  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; /** The notice check in one sentence (`lienNoticeCheckRowLine`), the batch sheet's row. */ noticeRow?: string }
+  checked?: { propertyKind: string | null | undefined; homestead: boolean; noticeLines: ReadonlyArray<string>; /** The notice check in one sentence (`lienNoticeCheckRowLine`), the batch sheet's row. */ noticeRow?: string; /** The months set by hand (v2.7270, `lienAffidavitMonthsByHandCheck`), named with the reason. */ monthsByHand?: { lead: string; words: string; row: string } | null }
   /** The property's county clerk as Settings hold it, and who to ask about this job (changes 9 and 10). */
   clerk?: LienHelpClerk
   ask?: string

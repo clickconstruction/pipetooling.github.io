@@ -57,6 +57,7 @@ const world = (over: Partial<AffidavitDraftWorld> = {}): AffidavitDraftWorld => 
   ownerOverride: null,
   gc: { id: GC, name: 'ZZ Test Builders', address: '5 Builder Way, Marlow, TX 78000', email: 'gc@example.test' },
   correctionOff: null,
+  monthsByHand: null,
   filings: [NOTICE],
   signer: { id: MASTER, name: 'Sam Sample', notes: 'Sam Sample, Master Plumber' },
   issuer: { companyName: 'ZZ Test Plumbing', addressText: '1 Main St\nMarlow, TX 78000' },

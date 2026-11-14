@@ -2,7 +2,7 @@
 name: "Affidavit: the months line on a job whose notice names other months"
 number: 356
 group: gated
-status: written 2026-11-14 from a Lien desk session · the owner picked door 1 for part 2 the same day, months set by hand with counsel's reason · part 1 built 2026-11-14 as v2.7266 · part 2 next
+status: written 2026-11-14 from a Lien desk session · the owner picked door 1 for part 2 the same day, months set by hand with counsel's reason · part 1 built as v2.7266 and part 2 as v2.7270 the same day · counsel's read of the words still open
 summary: >
   A short-form affidavit swears the months the job's recorded notices name, cut to the job's own
   work span. On a job with no clock hours and a last day set by hand, the span is that day's month
@@ -11,9 +11,9 @@ summary: >
   blank. Widening the span is not the fix, because the notice's months are the property's, not the
   job's. The paper should say why the line is empty, and the office should be able to set the
   months by hand with counsel's reason, as it already can for the claim.
-next: Counsel's word on what the line may say for such a job. Then the owner's pick between the two doors below, then build.
+next: Counsel reads the words a paper with months set by hand prints, and the office walks one on a live job. Then retire the card.
 size: M as two PRs (S · M)
-blocker: Counsel's word on the months a paper may swear when the notice on record names other months. The owner's pick on part 2.
+blocker: none for the build. Counsel's read of the words before a paper with months set by hand is sworn.
 ver: v2.6061 · v2.7224 · v2.7229 · v2.7247
 ---
 
