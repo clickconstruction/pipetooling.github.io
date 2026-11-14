@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
+import { PortalPromiseStrip } from '../components/portal/PortalPromiseStrip'
+import { PortalSideBySide } from '../components/portal/PortalSideBySide'
+import { promiseCallYmd } from '../lib/portal/portalPromiseStrip'
+import { PORTAL_SHAPE_LABEL, portalShapeMode, type PortalShapeMode } from '../lib/portal/portalShape'
+import { useOptionalAuth } from '../hooks/useAuth'
 import { PortalGcJobs } from '../components/portal/PortalGcJobs'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
@@ -16,7 +21,7 @@ import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { probeLegalPortalKey } from '../lib/legal/legalPortalProbe'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import type { CSSProperties, FormEvent } from 'react'
+import type { CSSProperties, FormEvent, ReactNode } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -40,7 +45,7 @@ import {
   type PortalBillsSnapshot,
 } from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
-import { foldPortalTestReports, portalCertifierLine, type PortalTestReport, type PortalWaiverRow } from '../lib/portal/portalPayload'
+import { foldPortalTestReports, portalCertifierLine, type PortalPromise, type PortalTestReport, type PortalWaiverRow } from '../lib/portal/portalPayload'
 import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
 import PortalYourJobs from '../components/portal/PortalYourJobs'
 import { PortalPapersGroupHeading, PortalWaiverNoteLink, PortalWaiverPaperGroup } from '../components/portal/PortalWaiverPapers'
@@ -103,6 +108,10 @@ export default function CustomerPortal() {
   // Office preview (journey-map #37): the globe modal opens this page with `?preview=1`; forwarded
   // to the edge function so the load is not counted as the customer looking.
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  // Punch list #217 (outside-12): the pay-by promise as a strip on the bill's row, behind the page's own switch
+  // (`?shape=1`), and beside today's look for the office (`?sbs=1` on the sample, or a signed-in dev).
+  const auth = useOptionalAuth()
+  const shapeMode = portalShapeMode(params, { sample: sample != null, dev: auth?.role === 'dev' })
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
@@ -320,7 +329,7 @@ export default function CustomerPortal() {
             )}
             {/* Your jobs (v2.5948, punch list #185): where each of their jobs is, and the review. Screen only. */}
             <PortalYourJobs jobs={state.payload.myJobs} />
-            <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
+            <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} shape={shapeMode} />
             {state.payload.checks ? <PortalPaymentsSection checks={state.payload.checks} formatUsd={formatPortalUsd} /> : null}
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
@@ -341,7 +350,7 @@ export default function CustomerPortal() {
   )
 }
 
-function PortalStatement({ payload, today, requestToken }: { payload: PortalPayload; today: string; requestToken: string }) {
+function PortalStatement({ payload, today, requestToken, shape }: { payload: PortalPayload; today: string; requestToken: string; shape: PortalShapeMode }) {
   // Test reports card (v2.3312): five, then "Show all N reports".
   const [showAllReports, setShowAllReports] = useState(false)
   const reportsFold = foldPortalTestReports(payload.testReports, showAllReports)
@@ -357,6 +366,11 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
   // What someone else pays and the office chose to show them is `sharedBills`.
   const owedBills = payload.bills
   const groups = groupPortalBillsByJob(owedBills)
+  // Punch list #217 (outside-12): the day on record, lifted so a Tell us redraws the strip on the bill's row.
+  const [promise, setPromise] = useState<PortalPromise | null>(payload.promise)
+  useEffect(() => setPromise(payload.promise), [payload.promise])
+  const onPromised = (ymd: string) => setPromise({ promisedYmd: ymd, source: 'customer', callYmd: promiseCallYmd(ymd) })
+  const money = { payload, owedBills, groups, todayYmd, today, requestToken, promise, onPromised }
   return (
     <>
       {/* Print all (v2.2331): the statement re-lays for paper — cover, one
@@ -425,110 +439,16 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       </div>
 
-      {/* Their Word PR 2: once a bill is a week old, the customer can name the
-          date themselves. Screen only — paper asks for money, not a date. */}
-      {promiseAskVisible(owedBills, todayYmd) && (
-        <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} phone={payload.company.phone} />
-      )}
-
-      {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
-      <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} payload={payload} />
-
-      {groups.length > 0 && (
+      {/* Punch list #217 (outside-12): the ask and the ledger as today, with the strip, or both one above the other. */}
+      {shape === 'sideBySide' ? (
         <>
-          <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 0 0' }}>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              aria-label="Print the statement, one job per page"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 7,
-                border: `1px solid ${INK}`,
-                background: CARD,
-                color: INK,
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '6px 14px',
-                letterSpacing: '0.02em',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
-                <path d="M160 96C160 78.3 174.3 64 192 64L448 64C465.7 64 480 78.3 480 96L480 192L160 192L160 96zM128 224L512 224C547.3 224 576 252.7 576 288L576 416C576 433.7 561.7 448 544 448L480 448L480 544C480 561.7 465.7 576 448 576L192 576C174.3 576 160 561.7 160 544L160 448L96 448C78.3 448 64 433.7 64 416L64 288C64 252.7 92.7 224 128 224zM208 448L208 528L432 528L432 448L208 448z" />
-              </svg>
-              Print all <span style={{ color: FAINT, fontWeight: 400 }}>· one job per page</span>
-            </button>
-          </div>
-          {/* Print cover note: the balance page announces what follows. */}
-          <div data-print-only style={{ padding: '14px 0 0', fontSize: 12.5, color: MUTED }}>
-            {groups.length === 1
-              ? 'Your job follows on its own page, with every bill and every payment received.'
-              : `${groups.length} jobs — each on its own page, with every bill and every payment received.`}
-          </div>
+          <PortalSideBySide label={PORTAL_SHAPE_LABEL} today={<PortalMoneySection {...money} shape={false} />} shape={<PortalMoneySection {...money} shape />} />
+          <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} payload={payload} />
         </>
-      )}
-
-      {/* Ledger */}
-      {owedBills.length === 0 ? (
-        // v2.3825: "all paid up" is wrong for an owner whose builder owes on their property — say what is true instead.
-        <div data-portal-paid-up style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
-          {payload.propertyNotices.length > 0 || payload.sharedBills.some((b) => b.viewerRole === 'customer') ? (
-            <>
-              <b>Nothing is billed to you directly.</b>{' '}
-              <span style={{ color: MUTED }}>Work on your property is billed to your builder — see below.</span>
-            </>
-          ) : (
-            <>
-              <b>You&#8217;re all paid up.</b>{' '}
-              <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
-            </>
-          )}
-        </div>
       ) : (
-        <div data-portal-ledger-scroll style={{ marginTop: 10 }}>
-          <div data-portal-ledger>
-            <div data-screen-only data-portal-ledger-head style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
-              <span>Billed</span>
-              <span />
-              <span style={{ textAlign: 'right' }}>Amount due</span>
-              {/* Hidden pay-button twin: gives the header's last column the same
-                  width as the rows' button column, so "Amount due" sits over
-                  the money figures instead of the sheet edge. */}
-              <span aria-hidden style={{ visibility: 'hidden', height: 0, overflow: 'hidden', padding: '0 16px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                PAY ONLINE
-              </span>
-            </div>
-            {groups.map((g, i) => (
-              <PortalJobGroupSection
-                key={i}
-                group={g}
-                todayYmd={todayYmd}
-                isLast={i === groups.length - 1}
-                printHeading={`${payload.customerName} · ${today} · Job ${i + 1} of ${groups.length}`}
-                reports={payload.testReports.filter((r) => portalReportBelongsToGroup(r, g))}
-                reportUrl={(r) => portalTestReportUrl(requestToken, r)}
-                waivers={payload.waivers}
-                cardBills={payload.cardBills}
-                token={requestToken}
-                phone={payload.company.phone || null}
-              />
-            ))}
-            <div data-print-page>
-              <PortalPrintPageHeader heading={`${payload.customerName} · ${today} · Closing`} />
-              <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>
-                <span />
-                <span style={{ fontWeight: 700, textAlign: 'right' }}>Total due</span>
-                <span style={{ textAlign: 'right', fontWeight: 900, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${INK}`, borderBottom: `3px double ${INK}`, padding: '3px 0' }}>
-                  {formatPortalUsd(payload.totalDue)}
-                </span>
-                <span />
-              </div>
-            </div>
-          </div>
-        </div>
+        <PortalMoneySection {...money} shape={shape === 'shape'}>
+          <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} payload={payload} />
+        </PortalMoneySection>
       )}
 
       {/* Share this bill (v2.3375): what someone else pays and the office chose to
@@ -705,6 +625,161 @@ function PortalPrintPageHeader({ heading }: { heading: string }) {
 }
 
 /**
+ * The ask for a day and the ledger (punch list #217, outside-12): as today, the ask at the top and the ledger under it,
+ * or with the strip, where the day on record draws on each owed bill's row — billed, your day, we call — and the ask at
+ * the top is gone once a day exists. `children` is the GC jobs block, between the two as the page always drew it.
+ */
+function PortalMoneySection({
+  payload,
+  owedBills,
+  groups,
+  todayYmd,
+  today,
+  requestToken,
+  shape,
+  promise,
+  onPromised,
+  children,
+}: {
+  payload: PortalPayload
+  owedBills: PortalBill[]
+  groups: PortalJobGroup[]
+  todayYmd: string
+  today: string
+  requestToken: string
+  /** Draw the day on record as a strip on the rows. */
+  shape: boolean
+  promise: PortalPromise | null
+  onPromised: (ymd: string) => void
+  children?: ReactNode
+}) {
+  const strip = shape && promise ? promise : null
+  return (
+    <>
+      {/* Their Word PR 2: once a bill is a week old, the customer can name the
+          date themselves. Screen only — paper asks for money, not a date. With the strip (punch list #217,
+          outside-12) a day on record draws on the bill's row, and the ask at the top draws only before one exists. */}
+      {promiseAskVisible(owedBills, todayYmd) && !strip && (
+        <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} phone={payload.company.phone} onSent={onPromised} />
+      )}
+
+      {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
+      {children}
+
+      {groups.length > 0 && (
+        <>
+          <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 0 0' }}>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              aria-label="Print the statement, one job per page"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                border: `1px solid ${INK}`,
+                background: CARD,
+                color: INK,
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '6px 14px',
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
+                <path d="M160 96C160 78.3 174.3 64 192 64L448 64C465.7 64 480 78.3 480 96L480 192L160 192L160 96zM128 224L512 224C547.3 224 576 252.7 576 288L576 416C576 433.7 561.7 448 544 448L480 448L480 544C480 561.7 465.7 576 448 576L192 576C174.3 576 160 561.7 160 544L160 448L96 448C78.3 448 64 433.7 64 416L64 288C64 252.7 92.7 224 128 224zM208 448L208 528L432 528L432 448L208 448z" />
+              </svg>
+              Print all <span style={{ color: FAINT, fontWeight: 400 }}>· one job per page</span>
+            </button>
+          </div>
+          {/* Print cover note: the balance page announces what follows. */}
+          <div data-print-only style={{ padding: '14px 0 0', fontSize: 12.5, color: MUTED }}>
+            {groups.length === 1
+              ? 'Your job follows on its own page, with every bill and every payment received.'
+              : `${groups.length} jobs — each on its own page, with every bill and every payment received.`}
+          </div>
+        </>
+      )}
+
+      {/* Ledger */}
+      {owedBills.length === 0 ? (
+        // v2.3825: "all paid up" is wrong for an owner whose builder owes on their property — say what is true instead.
+        <div data-portal-paid-up style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
+          {payload.propertyNotices.length > 0 || payload.sharedBills.some((b) => b.viewerRole === 'customer') ? (
+            <>
+              <b>Nothing is billed to you directly.</b>{' '}
+              <span style={{ color: MUTED }}>Work on your property is billed to your builder — see below.</span>
+            </>
+          ) : (
+            <>
+              <b>You&#8217;re all paid up.</b>{' '}
+              <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div data-portal-ledger-scroll style={{ marginTop: 10 }}>
+          <div data-portal-ledger>
+            <div data-screen-only data-portal-ledger-head style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
+              <span>Billed</span>
+              <span />
+              <span style={{ textAlign: 'right' }}>Amount due</span>
+              {/* Hidden pay-button twin: gives the header's last column the same
+                  width as the rows' button column, so "Amount due" sits over
+                  the money figures instead of the sheet edge. */}
+              <span aria-hidden style={{ visibility: 'hidden', height: 0, overflow: 'hidden', padding: '0 16px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                PAY ONLINE
+              </span>
+            </div>
+            {groups.map((g, i) => (
+              <PortalJobGroupSection
+                key={i}
+                group={g}
+                todayYmd={todayYmd}
+                isLast={i === groups.length - 1}
+                printHeading={`${payload.customerName} · ${today} · Job ${i + 1} of ${groups.length}`}
+                reports={payload.testReports.filter((r) => portalReportBelongsToGroup(r, g))}
+                reportUrl={(r) => portalTestReportUrl(requestToken, r)}
+                waivers={payload.waivers}
+                cardBills={payload.cardBills}
+                token={requestToken}
+                phone={payload.company.phone || null}
+                stripFor={
+                  strip
+                    ? (bill, bi) => (
+                        <PortalPromiseStrip
+                          billedOn={bill.billedOn}
+                          promisedYmd={strip.promisedYmd}
+                          callYmd={strip.callYmd}
+                          todayYmd={todayYmd}
+                          ask={i === 0 && bi === 0 ? { token: requestToken, phone: payload.company.phone, onSent: onPromised } : null}
+                        />
+                      )
+                    : undefined
+                }
+              />
+            ))}
+            <div data-print-page>
+              <PortalPrintPageHeader heading={`${payload.customerName} · ${today} · Closing`} />
+              <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>
+                <span />
+                <span style={{ fontWeight: 700, textAlign: 'right' }}>Total due</span>
+                <span style={{ textAlign: 'right', fontWeight: 900, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${INK}`, borderBottom: `3px double ${INK}`, padding: '3px 0' }}>
+                  {formatPortalUsd(payload.totalDue)}
+                </span>
+                <span />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
  * One job's slice of the statement (v2.2318): a quiet note-band header, the
  * job's bills newest-first, and a right-aligned boxed recap that reads like a
  * little ledger (v2.2320) — Billed to date, every payment received by date,
@@ -723,6 +798,7 @@ function PortalJobGroupSection({
   cardBills = [],
   token = '',
   phone = null,
+  stripFor,
 }: {
   group: PortalJobGroup
   todayYmd: string
@@ -739,6 +815,8 @@ function PortalJobGroupSection({
   token?: string
   /** Our office's phone, for a refusal's line. */
   phone?: string | null
+  /** Punch list #217 (outside-12): the promise strip under a bill's row, by the bill and its place in the group; none as today. */
+  stripFor?: (bill: PortalBill, index: number) => ReactNode
 }) {
   const addr = splitPortalAddress(group.jobAddress)
   const headline = addr?.street ?? group.jobName ?? group.jobLabel
@@ -816,6 +894,7 @@ function PortalJobGroupSection({
           card={b.invoiceId ? (cardBills.find((c) => c.invoiceId === b.invoiceId) ?? null) : null}
           token={token}
           phone={phone}
+          promiseStrip={stripFor ? stripFor(b, i) : null}
         />
       ))}
       {group.showRecap && (
@@ -870,6 +949,7 @@ function PortalBillRow({
   card = null,
   token = '',
   phone = null,
+  promiseStrip = null,
 }: {
   bill: PortalBill
   todayYmd: string
@@ -878,13 +958,15 @@ function PortalBillRow({
   card?: PortalCardBill | null
   token?: string
   phone?: string | null
+  /** Punch list #217 (outside-12): the day on record drawn under this row; null as today. */
+  promiseStrip?: ReactNode
 }) {
   const age = portalDaysSinceBilled(bill.billedOn, todayYmd)
   const offer = card?.state === 'offer' && !bill.payUrl && token ? card : null
   const [cardOpen, setCardOpen] = useState(false)
   return (
     <>
-    <div data-portal-bill data-last={isLast && !cardOpen ? '' : undefined} style={{ fontSize: 13.5 }}>
+    <div data-portal-bill data-last={(isLast && !cardOpen) || promiseStrip ? '' : undefined} style={{ fontSize: 13.5 }}>
       <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
         {formatPortalDate(bill.billedOn) ?? '—'}
         {age && (
@@ -963,6 +1045,11 @@ function PortalBillRow({
       )}
     </div>
     {offer && cardOpen && <PortalCardBillPanel token={token} card={offer} formatUsd={formatPortalUsd} phone={phone} onClose={() => setCardOpen(false)} />}
+    {promiseStrip ? (
+      <div data-portal-bill-strip style={{ borderBottom: isLast ? 'none' : `1px solid ${HAIR}` }}>
+        {promiseStrip}
+      </div>
+    ) : null}
     </>
   )
 }
