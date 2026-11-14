@@ -242,13 +242,14 @@ AS $fn$
     'sticker_runs', (SELECT count(*) FROM public.sticker_runs WHERE job_id = p_job_id),
     'ties', (SELECT count(*) FROM public.on_site_part_ties WHERE job_id = p_job_id),
     'prices', (SELECT count(*) FROM public.on_site_prices WHERE job_id = p_job_id),
-    'site_ties', (SELECT count(*) FROM public.on_site_part_ties t WHERE t.development_id IS NOT NULL AND t.development_id = d.development_id),
-    'site_prices', (SELECT count(*) FROM public.on_site_prices x WHERE x.development_id IS NOT NULL AND x.development_id = d.development_id),
+    -- The job's site, read inside each count: a cross join on the job's own row would hand back no row at all, and so
+    -- NULL for every count, wherever that row is not the caller's to see.
+    'site_ties', (SELECT count(*) FROM public.on_site_part_ties t WHERE t.development_id IS NOT NULL AND t.development_id = (SELECT j.development_id FROM public.jobs_ledger j WHERE j.id = p_job_id)),
+    'site_prices', (SELECT count(*) FROM public.on_site_prices x WHERE x.development_id IS NOT NULL AND x.development_id = (SELECT j.development_id FROM public.jobs_ledger j WHERE j.id = p_job_id)),
     'lines_on_hand', (SELECT count(*) FROM jsonb_array_elements(s.summary->'lines') l WHERE (l->>'on_hand')::int <> 0),
     'parts_on_hand', (SELECT COALESCE(sum((l->>'on_hand')::int), 0) FROM jsonb_array_elements(s.summary->'lines') l)
   )
-  FROM (SELECT public.on_site_job_summary(p_job_id) AS summary) s,
-       (SELECT j.development_id FROM public.jobs_ledger j WHERE j.id = p_job_id) d
+  FROM (SELECT public.on_site_job_summary(p_job_id) AS summary) s
 $fn$;
 
 REVOKE ALL ON FUNCTION public.on_site_job_counts(uuid) FROM PUBLIC;

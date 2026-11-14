@@ -21,10 +21,12 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55568}"
 NAME="pgtest-on-site-move"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The move and the photos' due mark (#297), each applied a second time below.
+# The move, the photos' due mark (#297) and the carry of the four tables of 2026-11-13 (v2.7265), each applied a second
+# time below, in order: the last file restates the three functions, so it must come last or the bed tests the old body.
 PRESSES=(
   supabase/migrations/*_on_site_move_job.sql
   supabase/migrations/*_box_photo_refile_due.sql
+  supabase/migrations/*_on_site_carry_job_renames_ties_prices_runs.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
