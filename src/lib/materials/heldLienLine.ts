@@ -3,7 +3,9 @@
  * open statement, one line saying the job is on a lien clock — the § 53.056 notice we still
  * owe, else the § 53.052 lien date — so whoever pays the houses sees which unpaid customer
  * has a deadline. Pure; the rows are the Lien desk's own RPCs (`list_lien_notice_months`,
- * `list_lien_affidavit_windows`), so the dates are the desk's.
+ * `list_lien_affidavit_windows`), so the dates are the desk's. A job the desk leaves off (an
+ * open in-kind deal pays it, `lienInKind.ts`, v2.7253) gets no line here either (v2.7257):
+ * the RPCs still list it, and the line would say it is on the desk when it is not.
  */
 
 import { formatYmdMonthDay } from '../jobs/billedExpectedPay'
@@ -37,7 +39,13 @@ export interface HeldLienLine {
 }
 
 /** Per job, the next date on our own lien clock: the earliest open notice still owed, else the open lien window. */
-export function buildHeldLienLines(notices: ReadonlyArray<HeldLienNoticeRow>, affidavits: ReadonlyArray<HeldLienAffidavitRow>, todayYmd: string): Map<string, HeldLienLine> {
+export function buildHeldLienLines(
+  notices: ReadonlyArray<HeldLienNoticeRow>,
+  affidavits: ReadonlyArray<HeldLienAffidavitRow>,
+  todayYmd: string,
+  /** Jobs the desk leaves off (`lienInKindJobIds`): no line, since the desk shows no row for them. */
+  offDesk: ReadonlySet<string> = new Set(),
+): Map<string, HeldLienLine> {
   const out = new Map<string, HeldLienLine>()
   const line = (jobId: string, kind: HeldLienLine['kind'], ymd: string, balance: number): HeldLienLine => {
     const days = daysBetweenYmd(todayYmd, ymd) ?? 0
@@ -52,14 +60,14 @@ export function buildHeldLienLines(notices: ReadonlyArray<HeldLienNoticeRow>, af
   const firstNotice = new Map<string, HeldLienNoticeRow>()
   for (const r of notices) {
     const ymd = (r.deadline ?? '').slice(0, 10)
-    if (r.noticed || !ymd || ymd < todayYmd) continue
+    if (r.noticed || !ymd || ymd < todayYmd || offDesk.has(r.job_id)) continue
     const have = firstNotice.get(r.job_id)
     if (!have || ymd < have.deadline.slice(0, 10)) firstNotice.set(r.job_id, r)
   }
   for (const [jobId, r] of firstNotice) out.set(jobId, line(jobId, 'notice', r.deadline.slice(0, 10), Number(r.open_balance ?? 0)))
   for (const r of affidavits) {
     const ymd = (r.deadline ?? '').slice(0, 10)
-    if (out.has(r.job_id) || r.filed || !ymd || ymd < todayYmd) continue
+    if (out.has(r.job_id) || r.filed || !ymd || ymd < todayYmd || offDesk.has(r.job_id)) continue
     out.set(r.job_id, line(r.job_id, 'lien', ymd, Number(r.open_balance ?? 0)))
   }
   return out
