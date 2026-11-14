@@ -104,6 +104,16 @@ export function worthWords(w: Pick<SiteWorth, 'known' | 'lines' | 'pricedLines' 
   return { big: w.pricedLines === 0 ? 'No price yet' : `${dollars(w.known)} known`, small: `${cover}${stale}${out}` }
 }
 
+/** The three lists the Worth tile holds: the rows with no price, on a price older than 90 days, and left out. */
+export type PriceLens = 'none' | 'old' | 'out'
+
+const LENS_CHIP: Record<PriceLens, string> = { none: 'No price', old: 'An old price', out: 'Left out' }
+
+/** A chip over the list with its count: "No price · 87", "An old price · 9", "Left out · 14". */
+export function lensChipWords(lens: PriceLens, rows: number): string {
+  return `${LENS_CHIP[lens]} · ${rows.toLocaleString('en-US')}`
+}
+
 /** The words a typed name is searched by in the parts book: its words with the inch marks and punctuation set aside. */
 export function bookSearchWords(name: string): string[] {
   return name

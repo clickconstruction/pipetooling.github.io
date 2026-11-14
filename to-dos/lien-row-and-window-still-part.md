@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: waiting
-status: carried from #325 when it closed 2026-11-12 · nothing built · row 1 waits on the owner's reading
+status: carried from #325 when it closed 2026-11-12 · rows 5 and 6 shipped v2.7184 and v2.7181 · row 1 waits on the owner's reading
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: The owner says which last day of work counts in row 1. Then one of the two readers changes. Rows 2 to 6 can be built any time.
+next: The owner says which last day of work counts in row 1. Then one of the two readers changes. Rows 2 and 4 can be built any time.
 size: M as six small pieces (S · S · XS · M · S · XS)
 blocker: The owner's call on row 1.
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -57,14 +57,19 @@ what still differed. Counts only are given here, since the repo is public.
    wrong in use.
 4. **The clock's own `closed` state (M).** v2.7047 taught the row the late notice by reading past
    the runway's `closed`. The runway still answers `closed` the day a notice window shuts. So the
-   Lien desk's Deadlines view, the phone chip and the Dashboard's lien card say *lien gone* while a
-   late notice can still go (v2.4708). Moving the rule into the runway touches the calendar's marks
+   Lien desk's Deadlines view and the Dashboard's lien card say *lien gone* while a late notice can
+   still go (v2.4708). The phone chip did too until v2.7184, which reads past `closed` as the row
+   does. Moving the rule into the runway touches the calendar's marks
    and buckets.
-5. **The phone's two-line rows (S).** Their chip comes from the runway (*lien in 4 d*, *file
+5. ~~**The phone's two-line rows (S).** Their chip comes from the runway (*lien in 4 d*, *file
    first*). It can take the act table's words (`lienActWords.ts`), as the Accounts Receivable chip
-   did in v2.7048.
-6. **The tab named *Mechanic's lien* (XS).** The row, the header and the desk call that paper the
-   affidavit. The window's third tab does not.
+   did in v2.7048.~~ **Shipped v2.7184.** The chip reads the step and the days left, *Draft the
+   affidavit · 4 d*, and opens the window on that paper's tab. A late notice that can still go reads
+   *Send the late notice*, so the phone chip's part of row 4 is done. With no step to name it keeps
+   the clock's words.
+6. ~~**The tab named *Mechanic's lien* (XS).** The row, the header and the desk call that paper the
+   affidavit. The window's third tab does not.~~ **Shipped v2.7181.** The tab reads *Lien affidavit*.
+   A screen label only: no notice, affidavit or letter prints it.
 
 ## Also seen
 

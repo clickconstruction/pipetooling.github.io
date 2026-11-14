@@ -1004,7 +1004,7 @@ export default function LienFilingTabs({
           {!isSub ? (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               No monthly notice required — this job has no GC on file, so you contracted with the owner (original
-              contractor). The affidavit window still applies; see the Mechanic's lien tab.
+              contractor). The affidavit window still applies; see the Lien affidavit tab.
             </p>
           ) : (
             <>

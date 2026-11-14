@@ -26,7 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal, flushSync } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { boxAddressWords, boxCodeWords, boxUrl, labelRows } from '../../lib/materials/labels'
+import { boxAddressWords, boxCodeWords, boxUrl, labelPrintName, labelPrintNames, labelRows, shortenedLabelsNote } from '../../lib/materials/labels'
 import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/materials/labelsCsv'
 import { readLabelFormat, readTapeCopies, readTapePrintedDay, readTapeWidth, writeLabelFormat, writeTapeCopies, writeTapePrintedDay, writeTapeWidth } from '../../lib/materials/labelPrefs'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
@@ -150,6 +150,9 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   const settled = tape && tapeDay != null && !choosing
   const showSetup = tape && (tapeDay == null || setupOpen)
   const printed = testOnly ? shown.slice(0, 1) : shown
+  /** What each label prints in large type (v2.7195): the letters and number alone, read against every box of the job so two labels never read the same. */
+  const printNames = useMemo(() => labelPrintNames(containers), [containers])
+  const shortNote = shortenedLabelsNote(printed, printNames)
   /** The ticked boxes, or the first alone, sent to the printer one strip at a time. A strip that fails stops the run and says how many went. */
   const printDirect = async (test: boolean) => {
     if (!link || dead) return
@@ -322,20 +325,21 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             ) : null}
           </div>
         )}
+        {shortNote ? <p className="on-site-labels-pick" data-testid="labels-short-note" style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{shortNote}</p> : null}
         <div className="on-site-labels-list" style={{ display: 'grid', gap: '0.9rem', ...(tape ? { justifyItems: 'start' } : {}) }}>
           {printed.map((c) => {
             const place = places.find((p) => p.id === c.locationId)?.name ?? ''
             const kind = c.kind === 'box' ? 'box' : c.kind === 'cage' ? 'cage' : 'pile'
             if (direct) {
               // The strip at the printer's own dots: what is on the screen is what prints.
-              return <TapeStripBitmap key={c.id} id={c.id} stencil={c.label} address={boxAddressWords(c.id).toUpperCase()} value={boxUrl(c.id)} words={TAPE_WORDS} dots={ptouchTapeDots(width) ?? 128} onDrawn={onStripDrawn} />
+              return <TapeStripBitmap key={c.id} id={c.id} stencil={labelPrintName(printNames, c)} address={boxAddressWords(c.id).toUpperCase()} value={boxUrl(c.id)} words={TAPE_WORDS} dots={ptouchTapeDots(width) ?? 128} onDrawn={onStripDrawn} />
             }
             if (tape) {
               const strip = (copy: number) => (
                 <div key={`${c.id}:${copy}`} className={copy === 0 ? 'on-site-tape' : 'on-site-tape on-site-tape-copy'} data-testid={copy === 0 ? 'labels-tape' : 'labels-tape-copy'} style={{ ...(copy === 0 ? {} : { display: 'none' }), width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, ...(copy === 0 ? { display: 'grid' } : {}), gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>
                   <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
                   <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
-                    <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
+                    <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelPrintName(printNames, c)}</div>
                     <div style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', marginTop: `${layout.padMm}mm` }}>{boxAddressWords(c.id).toUpperCase()}</div>
                     <div style={{ fontSize: `${layout.wordsMm}mm`, lineHeight: 1.1 }}>{TAPE_WORDS}</div>
                   </div>
@@ -349,7 +353,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
               <div key={c.id} className="on-site-label" data-testid="labels-sheet" style={{ border: '2px solid #111827', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.7rem', breakInside: 'avoid' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 104px', gap: '0.75rem', alignItems: 'center' }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '3.4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '0.02em' }}>{c.label}</div>
+                    <div style={{ fontSize: '3.4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '0.02em' }}>{labelPrintName(printNames, c)}</div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.4rem' }}>{jl}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{c.kind}{place ? ` · ${place}` : ''}{c.where ? ` · ${c.where}` : ''}</div>
                   </div>

@@ -4,7 +4,7 @@
  * the code as a person reads it, the address as a person types it, and the address the QR carries, with its scheme. Pure.
  */
 import { csvEscapeField } from '../bids/bidCsvExport'
-import { boxAddressWords, boxCodeWords, boxUrl } from './labels'
+import { boxAddressWords, boxCodeWords, boxUrl, labelPrintName, labelPrintNames } from './labels'
 import { compareLabels, type Container } from './onSite'
 
 export const LABELS_CSV_COLUMNS = ['Stencil', 'Kind', 'Place', 'Where', 'Code', 'Address', 'QR'] as const
@@ -14,11 +14,13 @@ export type LabelsCsvRow = { stencil: string; kind: string; place: string; where
 /** Every live cage, box or pile, never Unsorted, in stencil order. */
 export function labelsCsvRows(containers: ReadonlyArray<Container>, places: ReadonlyArray<{ id: string; name: string }>): LabelsCsvRow[] {
   const placeName = new Map(places.map((p) => [p.id, p.name] as const))
+  // The Stencil cell is what the label prints (v2.7195): the letters and number alone, as the app's own strip.
+  const names = labelPrintNames(containers.filter((c) => c.kind !== 'unsorted'))
   return containers
     .filter((c) => !c.retiredAt && c.kind !== 'unsorted')
     .sort((a, b) => compareLabels(a.label, b.label))
     .map((c) => ({
-      stencil: c.label,
+      stencil: labelPrintName(names, c),
       kind: c.kind,
       place: (c.locationId && placeName.get(c.locationId)) || '',
       where: c.where,

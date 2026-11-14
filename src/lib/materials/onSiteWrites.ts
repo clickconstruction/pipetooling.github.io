@@ -77,6 +77,10 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
                 ...(has(r, 'lat') ? { lat: numOrNull(r.lat) } : {}),
                 ...(has(r, 'lng') ? { lng: numOrNull(r.lng) } : {}),
                 ...(has(r, 'retired_at') ? { retiredAt: strOrNull(r.retired_at) } : {}),
+                // Edit a box (v2.7179): its name, its kind and its where line, each only when the press sent it.
+                ...(has(r, 'label') && str(r.label) ? { label: str(r.label) } : {}),
+                ...(has(r, 'kind') && str(r.kind) ? { kind: str(r.kind) as ContainerKind } : {}),
+                ...(has(r, 'where_note') ? { where: str(r.where_note) } : {}),
               },
         )
       }

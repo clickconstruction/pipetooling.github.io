@@ -27,7 +27,7 @@ On the right sits **at most one chip**. It is the first of these that applies:
 - {{chip:red|no price yet}} means the job has no priced line items. You tap it to add the price.
 - {{chip:red|check returned · $1,200}} means the bank returned a payment the job still counts as paid. You tap it to open the payments.
 - {{chip:red|set % done}} means a bill went out with no progress recorded.
-- A lien chip like {{chip:yellow|notice in 17 d}} or {{chip:red|file first}} means a lien deadline needs you. You tap it to open the Lien window. [The money view guide](/help/read-the-pipeline-money-view) explains each one.
+- A lien chip like {{chip:yellow|Draft the notice · 17 d}} or {{chip:red|file first}} means a lien deadline needs you. The chip names the next step when the Lien desk has one. You tap it to open the Lien window. [The money view guide](/help/read-the-pipeline-money-view) explains each one.
 - {{chip:red|quiet 15 d}} or {{chip:yellow|quiet 6 d}} means nothing has happened on the job for that many days. That is past the stage's follow-up limit.
 - {{chip:yellow|12 d past expected}} means a Billed job is past the day its customer usually pays.
 - {{chip:yellow|no contract}} means there is no agreement on file. Nobody has marked one as not needed either.

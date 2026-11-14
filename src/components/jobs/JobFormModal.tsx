@@ -2,6 +2,10 @@
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import type { NewJobCustomerPrefill } from '../../lib/messages/leadDoors'
 import type { JobDraft } from '../../lib/bids/jobDraft'
+import type { NewJobPayTermsState } from '../../lib/jobs/draftPayTerms'
+import { theirPaperPayer } from '../../lib/jobs/theirPaperPayer'
+import { dispatchPayCalendarChanged, savePayCalendar } from '../../lib/jobs/payCalendarIo'
+import NewJobPayTermsLine from './NewJobPayTermsLine'
 import {
   useCallback,
   useEffect,
@@ -456,6 +460,9 @@ export default function JobFormModal({
   const [termsModalOpen, setTermsModalOpen] = useState(false)
   // Who pays (v2.3346): the bar describes the party the bills go to — the GC only when the rule says so.
   const termsPayerId = billToParty === 'gc' && gcCustomerId ? gcCustomerId : customerId || gcCustomerId || null
+  // The pay terms an estimator's draft carried (punch list #323): the office checks them here, and terms agreed for this job
+  // alone are held until the job exists, then set with it (`createJob`).
+  const [draftPayTermsState, setDraftPayTermsState] = useState<NewJobPayTermsState>({ kind: 'offered' })
   const customerTerms = useCustomerTermsWarning(termsPayerId, termsRefresh)
   /** Property record link (v2.2638): customer_addresses row this job sits at — feeds lien documents. */
   const [customerAddressId, setCustomerAddressId] = useState<string | null>(null)
@@ -2486,6 +2493,19 @@ export default function JobFormModal({
           console.error('JobFormModal createJob: child rows not saved', childRowFailures)
           showToast(childRowFailureWords, 'error', NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS)
         }
+        // The pay terms the office agreed for this job alone (punch list #323): the job exists now, so they set. Best
+        // effort, the job is already saved: a refusal says so, and the job's Pay calendar row still offers the draft's terms.
+        if (draftPayTermsState.kind === 'with-job') {
+          const gcId = resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers)
+          const payer = theirPaperPayer({ customer_id: resolvedCustomerIdNew, gc_customer_id: gcId, bill_to_party: billToParty === 'gc' && !gcId ? 'customer' : billToParty })
+          try {
+            if (!payer) throw new Error('the job names nobody to bill')
+            await savePayCalendar(supabase, { payerId: payer.id, jobId, calendar: draftPayTermsState.calendar })
+            dispatchPayCalendarChanged()
+          } catch (calendarErr) {
+            showToast(`Job saved, but its pay calendar could not be set: ${formatErrorMessage(calendarErr)}`, 'error')
+          }
+        }
         onCreatedJobIdRef.current?.(jobId)
         // Tier-1 #8: a job's birth is unloggable in job_activity_events without a migration (no client
         // INSERT policy, no AFTER INSERT trigger on jobs_ledger) — record it as telemetry for now, and
@@ -2964,6 +2984,22 @@ export default function JobFormModal({
                 record={customerTerms.record}
                 onClose={() => setTermsModalOpen(false)}
                 onSaved={() => setTermsRefresh((n) => n + 1)}
+              />
+            ) : null}
+            {!editing && newJobPrefillDraft?.payTerms ? (
+              <NewJobPayTermsLine
+                terms={newJobPrefillDraft.payTerms}
+                from={newJobPrefillDraftFrom}
+                payer={theirPaperPayer({
+                  customer_id: customerId,
+                  gc_customer_id: gcCustomerId,
+                  bill_to_party: billToParty,
+                  customer_name: customers.find((c) => c.id === customerId)?.name ?? customerName,
+                  gcCustomer: { name: customers.find((c) => c.id === gcCustomerId)?.name ?? null },
+                })}
+                jobLabel={jobName.trim() || 'this job'}
+                state={draftPayTermsState}
+                onState={setDraftPayTermsState}
               />
             ) : null}
             {!editing ? (

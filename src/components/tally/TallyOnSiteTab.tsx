@@ -36,8 +36,10 @@ import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkKeys } from '../../lib/materials/countWalk'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
+import { editBoxTitle } from '../../lib/materials/editBox'
+import EditBoxForm from '../materials/EditBoxForm'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
 import { boxClipboardWords, copiedLabelWords } from '../../lib/materials/labels'
@@ -46,6 +48,7 @@ import { findOnSite, otherJobsWithBoxes, otherJobsWords, type OnSiteFindHit } fr
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import ScanLabelWindow from '../materials/ScanLabelWindow'
+import { ON_SITE_BOX_REFRESH_AFTER_MS } from '../../lib/materials/onSiteFresh'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -110,6 +113,7 @@ type Sheet =
   | { kind: 'add-part'; container: Container }
   | { kind: 'add-container'; moveAfter: { line: ContainerLine; qty: number; from: Container } | null }
   | { kind: 'retire'; container: Container }
+  | { kind: 'edit-box'; container: Container }
   | { kind: 'pick-job' }
   | { kind: 'move-box'; container: Container }
   | { kind: 'places' }
@@ -131,6 +135,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const lines = containerLines(movements)
   const now = new Date()
   const [view, setView] = useState<View>({ kind: 'containers' })
+  // Opening a box reads the job again when its last read is more than a few seconds old (v2.7177): the number on a
+  // line is about to be pressed against, and another phone may have changed it.
+  const openBoxId = view.kind === 'container' ? view.id : null
+  useEffect(() => { if (jobId && openBoxId) refreshJob(jobId, ON_SITE_BOX_REFRESH_AFTER_MS) }, [jobId, openBoxId])
   const [sheet, setSheet] = useState<Sheet>(null)
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
@@ -478,6 +486,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{containerWords(container)}</div>
         <div style={muted}>{container.where ? `${container.where} · ` : ''}{ls.filter((l) => l.onHand > 0).length} parts · <span style={due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : undefined}>{container.kind === 'unsorted' ? 'put them in a cage' : lastCountWords(last, now)}</span></div>
       </div>
+      {/* Edit a box (v2.7179): its name, its kind and its where line, from the box's own screen. Never Unsorted, the app's own row. */}
+      {container.kind !== 'unsorted' ? <button type="button" style={{ ...chip, marginLeft: 'auto', flex: 'none' }} aria-label={editBoxTitle(container)} onClick={() => setSheet({ kind: 'edit-box', container })}>Edit</button> : null}
     </div>
   )
 
@@ -614,6 +624,11 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       ) : null}
       {pinSheet}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
+      {sheet?.kind === 'edit-box' ? (
+        <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
+          <EditBoxForm touch container={sheet.container} containers={containers} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
+        </Sheet>
+      ) : null}
       {sheet?.kind === 'retire' ? (
         <Sheet title={`Retire ${sheet.container.label}?`} onClose={() => setSheet(null)}>
           {ls.some((l) => l.onHand > 0) ? (

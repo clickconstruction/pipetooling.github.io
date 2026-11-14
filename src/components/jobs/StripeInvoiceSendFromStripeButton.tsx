@@ -3,24 +3,11 @@ import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
-import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
-import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
-import {
-  billCopiesFailedMessage,
-  billCopiesSentHint,
-  billEmailSentMessage,
-  parseBillCopiesOutcome,
-  parseBillEmailOutcome,
-} from '../../lib/billing/billEmailOutcome'
+import { forgetBillEmailSent, rememberBillEmailSent, sendStripeBillEmail, stripeEmailSentSessionKey } from '../../lib/billing/sendStripeBillEmail'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 
 const CONFIRM_MODAL_Z = 120000
-
-/** Survives parent remount after `onSent` (e.g. refetch) so the inline success line stays visible; holds the line itself. */
-function stripeEmailSentSessionKey(jobsLedgerInvoiceId: string, stripeInvoiceId: string): string {
-  return `pt-stripe-invoice-email-sent:${jobsLedgerInvoiceId}:${stripeInvoiceId}`
-}
 
 export type StripeInvoiceSendFromStripeButtonProps = {
   jobsLedgerInvoiceId: string
@@ -190,77 +177,23 @@ export function StripeInvoiceSendFromStripeButton({
 
     setSending(true)
     setSendError(null)
-    try {
-      const jid = jobsLedgerInvoiceId.trim()
-      const sid = stripeInvoiceId.trim()
-      if (jid && sid) {
-        sessionStorage.removeItem(stripeEmailSentSessionKey(jid, sid))
-      }
-    } catch {
-      /* private mode */
-    }
+    forgetBillEmailSent(jobsLedgerInvoiceId, stripeInvoiceId)
     setSentLine(null)
     try {
-      const { data: auth } = await supabase.auth.getSession()
-      const token = auth.session?.access_token
-      if (!token) {
-        setSendError('Not signed in')
-        showToast('Not signed in', 'error')
+      // The call and the reading of its answer are `sendStripeBillEmail` (punch list #343, PR 3): Bill Customer's one
+      // press makes the same send, so both read one function.
+      const sent = await sendStripeBillEmail(jobsLedgerInvoiceId, stripeModeForBilling)
+      if (!sent.ok) {
+        setSendError(sent.error)
+        showToast(sent.error, 'error')
         return
       }
-
-      const { data: raw, error: fnErr } = await supabase.functions.invoke('send-stripe-invoice', {
-        body: {
-          jobs_ledger_invoice_id: jobsLedgerInvoiceId.trim(),
-          ...stripeModeInvokeBody(stripeModeForBilling),
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (fnErr) {
-        const detail = await readEdgeFunctionErrorBody(fnErr)
-        const msg = detail ?? formatErrorMessage(fnErr, 'Could not send the bill email')
-        setSendError(msg)
-        showToast(msg, 'error')
-        return
-      }
-
-      const body = raw as Record<string, unknown> | null
-      if (body && typeof body.error === 'string' && body.error.length > 0) {
-        setSendError(body.error)
-        showToast(body.error, 'error')
-        return
-      }
-
-      if (body?.success !== true) {
-        const msg = 'Unexpected response from server'
-        setSendError(msg)
-        showToast(msg, 'error')
-        return
-      }
-
-      const outcome = parseBillEmailOutcome(body)
-      const line = billEmailSentMessage(outcome, stripeModeForBilling === 'test' ? 'test' : 'live')
-      const copies = parseBillCopiesOutcome(body)
-      showToast(`${line}${billCopiesSentHint(copies)}`, 'success')
-      const copiesFailed = billCopiesFailedMessage(copies)
-      if (copiesFailed) showToast(copiesFailed, 'error')
-      try {
-        const jid = jobsLedgerInvoiceId.trim()
-        const sid = stripeInvoiceId.trim()
-        if (jid && sid) {
-          sessionStorage.setItem(stripeEmailSentSessionKey(jid, sid), line)
-        }
-      } catch {
-        /* private mode */
-      }
-      setSentLine(line)
-      onSentLine?.(line)
+      showToast(`${sent.line}${sent.copiesHint}`, 'success')
+      if (sent.copiesFailed) showToast(sent.copiesFailed, 'error')
+      rememberBillEmailSent(jobsLedgerInvoiceId, stripeInvoiceId, sent.line)
+      setSentLine(sent.line)
+      onSentLine?.(sent.line)
       onSent?.()
-    } catch (e) {
-      const msg = formatErrorMessage(e, 'Could not send the bill email')
-      setSendError(msg)
-      showToast(msg, 'error')
     } finally {
       setSending(false)
     }
