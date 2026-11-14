@@ -130,6 +130,15 @@ title line, *Photos ····· 5 open all ›*, and the banner starts straight u
 its own. In A, which has no section titles, the label line *Photos · 5* carries *open all ›* at its
 right the same way.
 
+Also on pass 2, on the three marks beside the customer's name (🌐 the customer's portal, ▲
+Customer Files, 🖼 Customer Photos, the live window's link icons): "How can we make those easier to
+click for someone on mobile?" A mark is hard to hit and harder to name, so each becomes a 44 px
+press with its word, in one row under the number and the address: **Portal**, **Files**, **Photos**.
+The rule is the window's already: blue when the link is set and it opens; grey with *set* when it is
+missing and the press opens the add-a-link box for the roles that may, and is not drawn for the
+roles that may not. The portal press is office-only, as the globe is. Photos and the banner's *open
+all ›* open the same folder; one of them can go once the count says which is pressed.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -179,7 +188,7 @@ and the body, which the count does not see. The first PR adds the tabs to the co
 | The tab strip | Everyone: which part of the job. The office moves between Job, Edit and Bill; a crew lead between Job, Materials and Documents | The frame | The tab, 40 px; the ✕ |
 | Name, number, status | Everyone: the right job, and where it stands | 1 | None |
 | The address and the painted map | The crew lead: where to drive and park. The office: which house | 2 (crew) · 3 (office) | Directions, the map row |
-| The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy |
+| The customer, with the number and the email written out | The crew lead: who to call at the gate, and that it is the right number. The office: who to text or email, and that it is the right address | 3 (crew) · 2 (office) | The number (calls) · the address (emails) · Text · Copy · Portal · Files · Photos |
 | What's happening: Next on site, Waiting on, Hours | Everyone: when someone is next there, what the job waits on and from whom, how many hours it should take | 4 | Set the hours |
 | Where it stands and the thread | The office: has the customer answered, what went out last | 5 (office) · folded (crew) | Note · Text · Email |
 | Today's work: the open stage, its checklist, plans, materials on site | The crew lead: what to do and what is on site | 4 (crew) · folded (office) | The checklist, Materials on site |
@@ -209,7 +218,7 @@ moves; the bar is as today.
 **B · The job on one screen** (a second PR on A). The Job tab under 640 px reads Where (the
 address with a Directions press, the painted map, the street view folded), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
-Text and Copy beside them), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
+Text and Copy beside them, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
 plain label and its answer), then the thread (Last word, Their word and Our word as labelled rows, the newest two
 messages with the customer as bubbles, *Open the thread · 56 ›*, Reply by text and Note). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
