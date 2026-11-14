@@ -5,9 +5,9 @@
  * `sentCopiesIo.ts`; the list of what files a copy and what does not yet is `docs/SENT_COPIES.md`.
  */
 
-export type SentHow = 'print' | 'email' | 'hand' | 'mail' | 'link' | 'download'
+export type SentHow = 'print' | 'email' | 'hand' | 'mail' | 'link' | 'download' | 'other'
 
-export const SENT_HOWS: ReadonlyArray<SentHow> = ['print', 'email', 'hand', 'mail', 'link', 'download']
+export const SENT_HOWS: ReadonlyArray<SentHow> = ['print', 'email', 'hand', 'mail', 'link', 'download', 'other']
 
 /** How it went, as the list says it. */
 export const SENT_HOW_WORDS: Record<SentHow, string> = {
@@ -17,6 +17,8 @@ export const SENT_HOW_WORDS: Record<SentHow, string> = {
   mail: 'Mailed',
   link: 'Link sent',
   download: 'Saved as a file',
+  // A way the office typed for a bill it recorded by hand (`bill_hand_ways`, punch list #340): the row's title says which.
+  other: 'Sent another way',
 }
 
 /** Who reads the copies: the office (dev, master, assistant, controller), as the table's SELECT policy. */

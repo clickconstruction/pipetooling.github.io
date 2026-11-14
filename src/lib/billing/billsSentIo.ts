@@ -17,11 +17,15 @@
  *
  * PR 6 adds the one write: `recordBillByHand` files a person's word that a bill went (a `sent_documents` row with no
  * copy body, through the table's own insert policy and stamp). It throws its reason, so the form can say it.
+ *
+ * Punch list #340 adds the list the form picks from: `readBillHandWays` reads `bill_hand_ways`, the ways a bill can
+ * go when the app did not send it. A read that is refused answers null and the form offers the four kept in code.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
 import { parseSentCopy, sentDocumentInsert, type SentFiling } from '../sent/sentCopies'
 import { payLinkRef } from './payLink'
+import { parseBillHandWay, type BillHandWay } from './billHandWays'
 import {
   BILLS_SENT_KIND_PREFIX,
   BILLS_SENT_OTHER_KINDS,
@@ -93,6 +97,21 @@ export async function recordBillByHand(filing: SentFiling): Promise<void> {
   if (!row) throw new Error('The record could not be built.')
   const { error } = await supabase.from('sent_documents').insert(row as never)
   if (error) throw error
+}
+
+/**
+ * The list under *How the bill went*: every way, on the list or taken off. Null when the read is refused or fails
+ * (the table is not on the database yet, a lost signal): the caller then offers the four ways kept in code, so a
+ * bill can always be recorded. The table is not in the generated types until the types pass that follows its migration.
+ */
+export async function readBillHandWays(): Promise<BillHandWay[] | null> {
+  try {
+    const result = (await supabase.from('bill_hand_ways' as never).select('id, key, label, sent_how, sort_order, retired_at, retired_by_name, created_by_name, created_at').order('sort_order', { ascending: true })) as unknown as { data: unknown[] | null; error: unknown }
+    if (result.error || !Array.isArray(result.data)) return null
+    return result.data.map(parseBillHandWay).filter((w): w is BillHandWay => w != null)
+  } catch {
+    return null
+  }
 }
 
 /** Copy ids per call of the marks read. */

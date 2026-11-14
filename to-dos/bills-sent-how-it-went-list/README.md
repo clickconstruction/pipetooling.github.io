@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: gated
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 and PR 3 wait on calls 2 to 5
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166 · PR 3 (the chips and the window) next
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,11 +11,11 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: The owner answers calls 2 to 5: who may edit, the four ways, the chip, the cap. Then PR 2, the list's own table, with its one migration.
+next: PR 3, the chips with ＋ Add a way and Edit list, and the window. Then the owner's calls 6 to 8 on the form's own fixes.
 size: M as a train of three (S · M · M), then up to three small ones for the form's own fixes (S each)
-blocker: Calls 2 to 5, since call 2 sets the table's policy. PR 2 carries one migration, so it merges when someone is at hand to push it.
-opinion: Option B is picked — take calls 2 to 5 as suggested and build PR 2 and PR 3
-ver: v2.7145
+blocker: None to build. PR 2's migration `20261113170000` is pushed right after its merge; until then the form offers the four ways kept in code.
+opinion: build PR 3 as drawn — the calls are answered and the list's table is in
+ver: v2.7145 · v2.7166
 ---
 
 # Bills sent: the list under *How the bill went* (#340)
@@ -117,7 +117,7 @@ Three fixes the screenshot suggests. None needs the list to change and none need
 | PR | What | Size | Migration |
 |---|---|---|---|
 | 1 | **A record keeps its words.** `byHandFiling` writes `how_label`. `billsSentLines` reads it first (`byHandWordsOf`). Kernel tests. **Built, v2.7145** | S | none |
-| 2 | **The list in the database.** `<stamp>_bill_hand_ways.sql`: the table, its policies and trigger, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readHandWays` with the fall-back to the four in code. The form reads the live list. `docs/migrations/`, `docs/ACCESS_CONTROL.md` | M | one |
+| 2 | **The list in the database.** `20261113170000_bill_hand_ways.sql`: the table, its policies and guard, the four first rows, `other` added to `sent_documents_how_known` and to the client's `SENT_HOWS`, the four fences. `readBillHandWays` with the fall-back to the four in code. The form reads the live list. **Built, v2.7166** | M | one |
 | 3 | **The editor**, as the owner picked: the chips with **＋ Add a way** and **Edit list**, the window, the kernel that words each refusal, a render smoke, the guide's new section, the glossary line | M | none |
 | 4 to 6 | R1, R2, R3, each alone, in the order he wants them | S each | none |
 
@@ -136,10 +136,10 @@ PR 2's client reads a table only the migration creates, so it is pushed right af
 The owner's, a word each:
 
 1. **Which option?** **B, the chips.** Picked 2026-11-13.
-2. **Who may edit the list?** The four roles that open the page, or the master and the dev only. I suggest the four.
-3. **May the four ways there today be renamed and taken off?** I suggest yes.
-4. **Does every way count under Recorded by hand?** Or may a way name the chip it counts under. I suggest every way.
-5. **Is 12 the right cap?**
+2. **Who may edit the list?** **The four roles that open the page.** Taken as suggested, 2026-11-13.
+3. **May the four ways there today be renamed and taken off?** **Yes.** Taken as suggested.
+4. **Does every way count under Recorded by hand?** **Every way.** Taken as suggested.
+5. **Is 12 the right cap?** **12.** Taken as suggested.
 6. **R1, the day offers the day the bill was made?** I suggest yes.
 7. **R2, several bills to one person at once?** I suggest yes, after the list is done.
 8. **R3, the form reads the record back?** I suggest yes.
