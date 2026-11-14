@@ -40,6 +40,8 @@ export type LienDeskAffidavitFacts = {
   filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
   /** The property record's homestead flag: the short form opens with the § 53.254(f) notice. */
   homestead?: boolean
+  /** The months set by hand on the job (v2.7270, `data.affidavitMonthsByJob`): when any, the paper names these in place of the record's. */
+  monthsByHand?: ReadonlyArray<string> | null
 }
 
 export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAffidavitFields {
@@ -69,5 +71,6 @@ export function buildLienDeskAffidavitFields(f: LienDeskAffidavitFacts): LienAff
     form: f.form,
     filings: f.filings,
     homestead: f.homestead,
+    monthsByHand: f.monthsByHand,
   })
 }
