@@ -89,6 +89,13 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
       </button>
     )
   }
+  /** Under a name, the line that says which thing it is: a job's street and city (v2.7232). One line, cut with its whole text on hover. */
+  const subOf = (item: DiveItem): ReactNode =>
+    item.sub ? (
+      <span data-testid="bridge-week-dive-sub" title={item.sub} style={{ display: 'block', minWidth: 0, fontSize: '0.78rem', fontWeight: 400, lineHeight: 1.3, color: 'var(--text-700)', ...(narrow ? { margin: '-8px 0 6px', overflowWrap: 'anywhere' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
+        {item.sub}
+      </span>
+    ) : null
   const check = (todo: CallTodo | undefined, state: TodoState): ReactNode =>
     todo ? <BridgeTodoCheck todo={todo} state={state} dayLabel={dayLabel} narrow={narrow} showWords={false} onMake={(t) => onDive?.({ kind: 'todo', todo: t })} onSee={(seen) => onTodoSee?.(seen)} /> : null
   /** The row's own press: *Set the percent*, *Set a pay date*, or the press that opens a customer's projects. */
@@ -175,7 +182,19 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
             const handed = handedOutWords(todoStates, (item.projects ?? []).map((p) => p.todo))
             return (
               <Fragment key={item.title}>
-                {phoneRow(item.title, nameOf(item), item.row, actionOf(item), check(item.todo, state), under(state, handed), 'bridge-week-dive-item', false)}
+                {phoneRow(
+                  item.title,
+                  <>
+                    {nameOf(item)}
+                    {subOf(item)}
+                  </>,
+                  item.row,
+                  actionOf(item),
+                  check(item.todo, state),
+                  under(state, handed),
+                  'bridge-week-dive-item',
+                  false,
+                )}
                 {item.projects && open.has(item.title) && (
                   <li style={{ listStyle: 'none' }}>
                     <ul style={{ listStyle: 'none', margin: '0 0 6px', padding: 0 }} data-testid="bridge-week-dive-projects">
@@ -223,7 +242,14 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
             <Fragment key={item.title}>
               <div role="row" style={{ display: 'contents' }} data-testid="bridge-week-dive-item">
                 <span role="cell" style={cell}>
-                  {nameOf(item)}
+                  {item.sub ? (
+                    <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
+                      {nameOf(item)}
+                      {subOf(item)}
+                    </span>
+                  ) : (
+                    nameOf(item)
+                  )}
                 </span>
                 <span role="cell" style={{ ...cell, ...right, fontWeight: 600, ...lead(has.a) }}>
                   {cellWords(item.row?.a, false)}
