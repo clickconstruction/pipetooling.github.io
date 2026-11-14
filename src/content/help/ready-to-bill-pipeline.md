@@ -375,7 +375,7 @@ The detailed version ends with a **Cost & payment timeline**. It is the same sto
 
 Commercial customers are usually several people: the PM, the AP clerk, the owner. The PM is the project manager. The AP clerk handles accounts payable, the bills they owe. You open the job in Edit Job and click **Bills also go to** under the customer's Email. You tick the people at the customer who should get every bill, or add one with a name and email. It saves on the customer, so their next job already has them. Bill Customer's **Send to** list starts with them ticked. You untick to skip someone on one bill, or type a one-off address. The full walk-through is in *send a bill to more than one person*.
 
-The primary **Email** field stays the billing identity. Stripe itself emails that one address. You press **Send Email invoice**. Everyone else on the Send to list gets a copy from Click Plumbing and Electrical with the same Pay link.
+The primary **Email** field stays the billing identity. The bill email goes to that one address. It goes when you press {{button:blue|Make the bill and email Dana}} or {{button:purple|stripe}}{{button:amber|Send Email invoice}}. Everyone else on the Send to list gets a copy from Click Plumbing and Electrical with the same Pay link.
 
 ## When there's no customer email
 

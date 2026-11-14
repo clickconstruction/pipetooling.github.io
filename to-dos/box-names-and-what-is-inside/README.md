@@ -2,7 +2,7 @@
 name: "Box names: a letter and a number, with what is inside on its own line"
 number: 351
 group: gated
-status: asked 2026-11-13 · the card and the mock-up the same day · six calls wait on the owner · nothing built
+status: asked 2026-11-13 · the card and the mock-up the same day · six calls wait on the owner · nothing built but the print half of call 4 (v2.7195)
 mockup: to-dos/box-names-and-what-is-inside/mockup.html
 summary: >
   A box's name is one free field of 24 characters, and nothing says what is in a box, so people type the

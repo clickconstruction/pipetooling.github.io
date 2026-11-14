@@ -463,7 +463,7 @@ one count dropped from the kernel's copy disagreed on that line. The types and t
   Android;
 - a sent-copy record of the manifest if the week of use asks for it;
 - a site-wide place that is not a row of one job, so the material location report's by-location fold (#268) stops guessing by name;
-- stickers printed ahead of the boxes, and a box renamed after the fact: its own card, #329 (`to-dos/stickers-before-boxes/README.md`).
+- stickers printed ahead of the boxes: its own card, #329 (`to-dos/stickers-before-boxes/README.md`), its ground built as v2.7072; a box renamed after the fact shipped as **Edit** (v2.7179), the box's own window (v2.7199) and **Fix the name** for a typed part (v2.7212).
 
 **V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
 name of a job's folder, which the live test raised, are #211 (`where-files-go/`).

@@ -64,7 +64,7 @@ Front matter cites **shipped** versions only — the check refuses a `v2.NNNN` w
 `docs/recent-features/` fragment, because planned numbers are what a claim race renumbers.
 
 **The punch list** — the index as a board, **in the app**: Settings → *Punch list* (the chip under the rail's search)
-(`/punch-list`, dev + master). Every open to-do by readiness, each row opening with its number (the handle to use in a note
+(`/punch-list`, dev + master). Every open to-do by readiness (or, under **View → By number** since v2.7150, every card in one list, the newest first), each row opening with its number (the handle to use in a note
 or a request), with a size, a blocker and a next step per row, a Do / Later / Drop pick, and a
 links line — every mock-up saved beside the to-do
 (served as pages at `/to-dos/…`), every artifact its prose links, each cited version's docs
