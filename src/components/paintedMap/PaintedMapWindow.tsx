@@ -1006,7 +1006,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         onCancel={() => setConfirm(null)}
       />
     ) : null}
-    {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} onClose={() => setSharing(false)} /> : null}
+    {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map: { id: map.id, name: map.name, words: map.words, jobId: map.jobId }, lines, places }} onClose={() => setSharing(false)} /> : null}
     {viewing ? (
       <div role="dialog" aria-modal="true" aria-label="The photo of the place" data-painted-photo-view style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }} onClick={() => setViewing(null)}>
         <img src={viewing} alt="The place" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
