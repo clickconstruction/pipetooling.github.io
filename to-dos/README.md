@@ -69,7 +69,12 @@ or a request), with a size, a blocker and a next step per row, a Do / Later / Dr
 links line — every mock-up saved beside the to-do
 (served as pages at `/to-dos/…`), every artifact its prose links, each cited version's docs
 fragment, and the to-do's history (every PR that touched it). Shipped work is not on it; the
-release notes carry that record.
+release notes carry that record. The filter row has a **View** choice — **By group** (the Shortlist, the
+flagged rows, each readiness group) or **By number** (every card in one flat list, the newest on top,
+v2.7150) — and beside it a **search field** (v2.7263) that narrows the cards as you type, by number
+(`#343` or `343`), name, summary, Next line, shipped version or group name, in both views, alongside
+the **Show** filters and the **Waiting on a mock-up** toggle; the address carries the view and the
+search (`/punch-list?view=number&q=ledger`), so a link opens on them.
 
 The board's rows are rendered from this folder at build time (`todoBoardPlugin` in
 `vite.config.ts`, the `virtual:punch-list` module); the mock-ups reach the app through a

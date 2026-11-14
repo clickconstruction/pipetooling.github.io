@@ -106,12 +106,47 @@ export async function recordBillByHand(filing: SentFiling): Promise<void> {
  */
 export async function readBillHandWays(): Promise<BillHandWay[] | null> {
   try {
-    const result = (await supabase.from('bill_hand_ways' as never).select('id, key, label, sent_how, sort_order, retired_at, retired_by_name, created_by_name, created_at').order('sort_order', { ascending: true })) as unknown as { data: unknown[] | null; error: unknown }
+    const result = (await supabase.from('bill_hand_ways' as never).select(WAY_COLS).order('sort_order', { ascending: true })) as unknown as { data: unknown[] | null; error: unknown }
     if (result.error || !Array.isArray(result.data)) return null
     return result.data.map(parseBillHandWay).filter((w): w is BillHandWay => w != null)
   } catch {
     return null
   }
+}
+
+const WAY_COLS = 'id, key, label, sent_how, sort_order, retired_at, retired_by_name, created_by_name, created_at'
+
+type WayResult = { data: unknown; error: unknown }
+
+/** One change to a way. A change that reaches no row is a refusal the policy made silently, so it is said. */
+async function updateBillHandWay(id: string, patch: Record<string, unknown>): Promise<void> {
+  const result = (await supabase.from('bill_hand_ways' as never).update(patch as never).eq('id', id).select('id')) as unknown as WayResult
+  if (result.error) throw result.error
+  if (!Array.isArray(result.data) || result.data.length === 0) throw new Error('The list was not changed. Read the page again and try once more.')
+}
+
+/** Add a way to the end of the list. The database makes its key and stamps who added it. Throws its reason. */
+export async function addBillHandWay(label: string): Promise<BillHandWay> {
+  const result = (await supabase.from('bill_hand_ways' as never).insert({ label } as never).select(WAY_COLS).single()) as unknown as WayResult
+  if (result.error) throw result.error
+  const way = parseBillHandWay(result.data)
+  if (!way) throw new Error('The new way was saved and did not read back. Read the page again.')
+  return way
+}
+
+/** Change a way's words. A record already made keeps the words it was made with. */
+export async function renameBillHandWay(id: string, label: string): Promise<void> {
+  await updateBillHandWay(id, { label })
+}
+
+/** Take a way off the list (`on = false`), or bring it back. The database stamps who and when. */
+export async function setBillHandWayOnList(id: string, on: boolean): Promise<void> {
+  await updateBillHandWay(id, { retired_at: on ? null : new Date().toISOString() })
+}
+
+/** Put ways at new places in the list, one row at a time. */
+export async function moveBillHandWays(moves: ReadonlyArray<{ id: string; sortOrder: number }>): Promise<void> {
+  for (const m of moves) await updateBillHandWay(m.id, { sort_order: m.sortOrder })
 }
 
 /** Copy ids per call of the marks read. */

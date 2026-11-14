@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -37,6 +37,20 @@ You press **By number** in the **View** row above the list. The newest card is o
 - The chips under the heading narrow the list to one group. The **Show** filters work here too.
 
 The heading counts the cards in the list. This device remembers the view and the sort. The address `/punch-list?view=number` opens the view from a link.
+
+## Find a card with the search
+
+The search field sits beside the **View** choice. You type in it and the cards narrow as you type. The search works in both views.
+
+- A search finds a card by its number. You type *#343* or *343*.
+- A search finds a card by its name, its summary or its **Next** line.
+- A search finds a card by a shipped version, like *v2.7150*, or by its group's name.
+- Capital letters and accents do not matter.
+- Two words find the cards that carry both words, in any order.
+
+The search works with the **Show** filters, **Waiting on a mock-up** and the group chips. In By group, a group with no matching card is left out. In By number, the heading says how many cards match.
+
+When nothing matches, the page says *No cards match* and offers {{button:outline|Clear the search}}. You press **×** in the field to clear it, or press Escape. The address carries the search, so `/punch-list?q=ledger` opens on that search from a link. On a phone the field takes its own line under the View choice.
 
 ## What a row tells you
 

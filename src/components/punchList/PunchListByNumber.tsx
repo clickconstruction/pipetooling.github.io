@@ -26,21 +26,28 @@ import { GROUP_LABELS, type BoardGroup, type BoardItem } from '../../lib/todos/t
  * and its Next line cut to one line. A press on the Next line opens the card as the grouped view
  * draws it, with the whole text and Do / Later / Drop; the page hands that card in as `renderCard`.
  *
- * The page's Show filters and the mock-up toggle narrow it through `visible`; the group chips here
- * narrow it to one group. The order and the sort are the page's (the address and the device);
- * the rules are in `lib/todos/punchListByNumber.ts`.
+ * The page's Show filters, the mock-up toggle and the search narrow it through `visible`; the group
+ * chips here narrow it to one group. When the search leaves nothing the empty words name it and
+ * offer to clear it (`query`, v2.7263). The order and the sort are the page's (the address and the
+ * device); the rules are in `lib/todos/punchListByNumber.ts`.
  */
 export function PunchListByNumber({
   items,
   visible,
+  query = '',
+  onClearSearch,
   order,
   onFlip,
   onClearFilters,
   renderCard,
 }: {
   items: readonly BoardItem[]
-  /** The page's own filters: Show, and Waiting on a mock-up. */
+  /** The page's own filters: Show, Waiting on a mock-up, and the search. */
   visible: (item: BoardItem) => boolean
+  /** The search as typed, so the empty words can name it; '' when the field is empty. */
+  query?: string
+  /** Clears the page's search field. */
+  onClearSearch?: () => void
   order: NumberOrder
   onFlip: () => void
   /** Clears the page's filters; the group chip here clears with it. */
@@ -126,10 +133,14 @@ export function PunchListByNumber({
       <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
         {shown.length === 0 ? (
           <EmptyState
-            {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'cards', query: '' }), {
+            {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'cards', query }), {
+              // The search is named first: clearing it is the smaller step, and the filters' press follows if it was not enough.
               onPress: () => {
-                setGroupOnly(null)
-                onClearFilters()
+                if (query.trim() && onClearSearch) onClearSearch()
+                else {
+                  setGroupOnly(null)
+                  onClearFilters()
+                }
               },
             })}
           />
