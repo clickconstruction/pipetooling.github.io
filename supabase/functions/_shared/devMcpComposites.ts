@@ -529,6 +529,6 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
     missing: { counts_short: missing, cannot_find: cannotFind },
     recent,
     photos: 'read_rows on job_box_photos by job_id — the files live in the job\'s Drive folder, never here.',
-    writes: 'plan_container → apply_container (a cage or box: add, move, retire an empty one, bring a retired one back) · plan_delivery → apply_delivery (lines into Unsorted or a box) · plan_movement → apply_movement (moved, used, returned, taken, cannot_find, damaged, one line) · plan_count → apply_count (a box walked). Name a box by its stencil as listed here.',
+    writes: 'plan_container → apply_container (a cage or box: add, move, retire an empty one, bring a retired one back) · plan_delivery → apply_delivery (lines into Unsorted or a box) · plan_movement → apply_movement (moved, used, returned, taken, cannot_find, damaged, one line) · plan_count → apply_count (a box walked) · plan_materials_move → apply_materials_move (everything one job holds on site moved to another job, for a count recorded under the wrong job) · plan_container_edit → apply_container_edit (a live box\'s name, kind and where line) · plan_part_rename → apply_part_rename (a typed part\'s name fixed on the whole job, or undone). Name a box by its stencil as listed here.',
   }
 }

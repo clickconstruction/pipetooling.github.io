@@ -9,6 +9,7 @@ export {
   BOX_PAGE_LOCKED_WORDS,
   boxPageCode,
   boxPageCodeWords,
+  boxPageEarlyAnswer,
   boxPageFind,
   boxPageFindWords,
   boxPageGoneLines,

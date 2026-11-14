@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOX_PAGE_FIND_MAX, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageStickerAnswer, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_FIND_MAX, BOX_PAGE_LOCKED_WORDS, boxPageCallHref, boxPageCannotFindWords, boxPageCode, boxPageCodeWords, boxPageCountVerdict, boxPageEarlyAnswer, boxPageDayWords, boxPageDialNumber, boxPageGoneLines, boxPageTextHref, boxPageTextWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPageOfficePhone, boxPagePartsWords, boxPagePath, boxPagePhotoUrl, boxPageStickerAnswer, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
 import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
 
 const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
@@ -281,6 +281,24 @@ describe('a sticker\'s code (v2.7072, punch list #329)', () => {
     expect(a).toEqual({ kind: 'lost', status: 410, body: { error: 'sticker_lost', number: 147, lostOn: '2026-11-14' } })
     expect(boxPageView(410, a.kind === 'lost' ? a.body : null)).toEqual({ kind: 'sticker_lost', number: 147, lostOn: '2026-11-14' })
     expect(boxPageView(410, { error: 'sticker_lost', number: 147, lostOn: null })).toEqual({ kind: 'sticker_lost', number: 147, lostOn: null })
+  })
+
+  it('a locked source is answered locked before the sticker is, blank or lost; an open one hears the sticker\'s own answer (v2.7264)', () => {
+    const blank = boxPageStickerAnswer(STICKER)
+    const lost = boxPageStickerAnswer({ ...STICKER, container_id: CONTAINER.id, lost_at: '2026-11-14T15:00:00Z' }, '2026-11-14')
+    const onBox = boxPageStickerAnswer({ ...STICKER, container_id: CONTAINER.id })
+    const locked = { status: 429, body: { error: BOX_PAGE_LOCKED_WORDS, code: 'locked' }, state: 'locked' }
+    // Locked: the same 429 whatever the code, so the sticker numbers that exist never reach a guesser.
+    expect(boxPageEarlyAnswer(true, blank)).toEqual(locked)
+    expect(boxPageEarlyAnswer(true, lost)).toEqual(locked)
+    expect(boxPageEarlyAnswer(true, onBox)).toEqual(locked)
+    expect(boxPageEarlyAnswer(true, { kind: 'none' })).toEqual(locked)
+    expect(boxPageView(429, boxPageEarlyAnswer(true, blank)!.body)).toEqual({ kind: 'locked' })
+    // Open: a blank or lost sticker answers for itself; a sticker on a box, or no sticker, goes on to the box.
+    expect(boxPageEarlyAnswer(false, blank)).toEqual({ status: 404, body: { error: 'sticker_blank', number: 147 }, state: 'sticker_blank' })
+    expect(boxPageEarlyAnswer(false, lost)).toEqual({ status: 410, body: { error: 'sticker_lost', number: 147, lostOn: '2026-11-14' }, state: 'sticker_lost' })
+    expect(boxPageEarlyAnswer(false, onBox)).toBeNull()
+    expect(boxPageEarlyAnswer(false, { kind: 'none' })).toBeNull()
   })
 
   it('the old answers still read as they did', () => {
