@@ -94,6 +94,7 @@ import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRo
 import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 import { lienMonthLineDue } from '../../lib/jobs/lienMonthLine'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
+import { LIEN_PHONE_TAB, lienPileHeadPlace, lienPileReached, lienPileScrollTop } from '../../lib/jobs/lienPhoneLists'
 import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
@@ -337,7 +338,9 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
  * padding above and below, and the 1px border. Send the run, Put a GC on notice…, ☎ and Share (on a computer) take it.
  */
 /** A phone's tabs and chips are a thumb tall and share the row's width (punch list #352, PR 1). */
-const PHONE_TAB: React.CSSProperties = { flex: '1 0 auto', minHeight: 44, padding: '0 8px' }
+const PHONE_TAB: React.CSSProperties = LIEN_PHONE_TAB
+/** A press inside a pile's title on a phone: taller and in a size a thumb reads (punch list #352, PR 5). */
+const PHONE_PILE_PRESS: React.CSSProperties = { minHeight: 30, padding: '0 10px', fontSize: '0.8125rem' }
 const PHONE_CHIP: React.CSSProperties = { flex: 'none', minHeight: 40, padding: '2px 14px', fontSize: '0.875rem', whiteSpace: 'nowrap' }
 const headDoor: React.CSSProperties = { height: 'calc(0.78rem * 1.5 + 6px)', boxSizing: 'border-box', paddingTop: 0, paddingBottom: 0, display: 'inline-flex', alignItems: 'center' }
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
@@ -1786,13 +1789,13 @@ export default function LienDesk({
   }
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
-  const PILE_HEAD_H = 30
+  // On a phone one title pins, the pile being read, and each is a thumb tall (punch list #352, PR 5; `lienPhoneLists.ts`).
   const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p), total: visibleAll.filter((e) => e.pile === p).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   const scrollToPile = (p: LienDeskPile, i: number) => {
     const host = listRef.current
     const rows = host?.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
     if (!host || !rows) return
-    const top = Math.max(0, rows.offsetTop - (i + 1) * PILE_HEAD_H)
+    const top = lienPileScrollTop(rows.offsetTop, i, isMobile)
     if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
     else host.scrollTop = top
     setLitPile(p)
@@ -1803,7 +1806,7 @@ export default function LienDesk({
     let on: LienDeskPile | null = null
     pilesShown.forEach(({ p }, i) => {
       const rows = host.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
-      if (rows && rows.offsetTop <= host.scrollTop + (i + 2) * PILE_HEAD_H) on = p
+      if (rows && lienPileReached(rows.offsetTop, host.scrollTop, i, isMobile)) on = p
     })
     setLitPile(on)
   }
@@ -1842,23 +1845,23 @@ export default function LienDesk({
         const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
         return (
           <Fragment key={p}>
-            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} data-empty={finding && rows.length === 0 ? 'yes' : undefined} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H, opacity: finding && rows.length === 0 ? 0.55 : undefined }}>
+            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} data-empty={finding && rows.length === 0 ? 'yes' : undefined} style={{ ...lienPileHeadPlace(i, pilesShown.length, isMobile), ...(isMobile ? { fontSize: '0.75rem' } : null), opacity: finding && rows.length === 0 ? 0.55 : undefined }}>
               <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPile(p, i)} title="Go to this pile">
                 {label}
                 <span className="n" data-lien-pile-count={p}>{finding ? lienFindPileCount(rows.length, total, true) : (counts?.[p] ?? rows.length)}</span>
               </button>
               {p === 'ready' && office && runCount > 0 ? (
-                <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap', ...(isMobile ? PHONE_PILE_PRESS : null) }}>
                   Send the run · {runCount}
                 </button>
               ) : null}
               {p === 'sent' && mailedJobIds.size > 0 ? (
-                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' , ...(isMobile ? PHONE_PILE_PRESS : null) }}>
                   {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
                 </button>
               ) : null}
               {pile ? (
-                <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' , ...(isMobile ? { fontSize: '0.8125rem', minHeight: 40 } : null) }}>
                   show every pile
                 </button>
               ) : null}
