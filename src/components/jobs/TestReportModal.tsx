@@ -323,7 +323,7 @@ export default function TestReportModal({
     >
       <div data-test-report-form="" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 0.95fr', gap: isMobile ? 16 : 24, padding: '0.25rem 0 1rem' }}>
         {/* Punch list #355 H (v2.7282): on a phone the fields are 16 px, so an iPhone does not zoom on focus; the result cards and the pressure boxes stack. */}
-        <style>{`@media (max-width: 640px) { [data-test-report-form] input, [data-test-report-form] select, [data-test-report-form] textarea { font-size: 16px; } }`}</style>
+        <style>{`@media (max-width: 640px) { [data-test-report-form] input, [data-test-report-form] select, [data-test-report-form] textarea { font-size: 16px !important; } }`}</style>
         <div>
           {/* Reports on this job */}
           <div style={{ ...field, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>

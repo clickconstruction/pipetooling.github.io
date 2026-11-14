@@ -677,7 +677,7 @@ export default function AiaG702G703Modal({
       }}
     >
       {/* Punch list #355 H (v2.7282): a field under 16 px makes an iPhone zoom the page on focus. */}
-      <style>{`@media (max-width: 640px) { [data-aia-modal] input, [data-aia-modal] select, [data-aia-modal] textarea { font-size: 16px; } }`}</style>
+      <style>{`@media (max-width: 640px) { [data-aia-modal] input, [data-aia-modal] select, [data-aia-modal] textarea { font-size: 16px !important; } }`}</style>
       <div
         style={{
           background: 'var(--surface)',
