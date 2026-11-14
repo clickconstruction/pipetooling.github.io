@@ -11,6 +11,7 @@ import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabas
 import { enclosureEntries, enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { demandDate } from './demandDate'
 
 /**
  * Final demand letter (v2.2640, Lien Instruments phase 2): the lientooling.com
@@ -141,14 +142,7 @@ export function demandMoney(input: string): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-export function demandDate(ymd: string): string {
-  const d = (ymd ?? '').trim()
-  if (!d) return '—'
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
-  const parsed = new Date(d + 'T00:00:00')
-  if (Number.isNaN(parsed.getTime())) return d
-  return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-}
+export { demandDate } from './demandDate'
 
 /** ymd + n business days (Sat/Sun skipped; legal holidays are not modeled). */
 export function addBusinessDays(ymd: string, days: number): string {

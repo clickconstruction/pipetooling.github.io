@@ -122,6 +122,13 @@ describe('what the index does not carry', () => {
       'lib/jobs/lienSentAt.ts',
       'lib/jobs/lienNoticeJobFields.ts',
       'lib/jobs/lienSigner.ts',
+      // The dev seat's plan_affidavit_draft (v2.7247): the desk's affidavit queue and gates, the paper's months and sends, the attorney's questions, the claim set by hand, the property as resolved and the form's mark.
+      'lib/jobs/lienDeskAffidavits.ts',
+      'lib/jobs/lienAffidavitNotices.ts',
+      'lib/jobs/lienAffidavitNoticeCheck.ts',
+      'lib/jobs/lienClaimCorrection.ts',
+      'lib/jobs/lienProperty.ts',
+      'lib/jobs/lienAffidavitForm.ts',
       // The dev seat's plan_bid_update (v2.6945): the outcome line, the loss categories and the Board's sections.
       'lib/outcomeChangeBidNote.ts',
       'lib/bidLossCategories.ts',

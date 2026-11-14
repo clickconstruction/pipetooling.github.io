@@ -1,4 +1,5 @@
-import { demandDate } from '../jobsDocuments/demandLetter'
+import { demandDate } from '../jobsDocuments/demandDate'
+import { lienWorkSpan, type LienWorkSpanJob } from './lienWorkSpan'
 
 /**
  * What the short lien affidavit says about the notices (punch list #305). Pure.
@@ -33,6 +34,27 @@ export function lienAffidavitMonthsInSpan(months: ReadonlyArray<string>, workSta
   const from = monthOf(workStartYmd)
   const to = monthOf(workEndYmd)
   return months.filter((m) => (!from || m >= from) && (!to || m <= to))
+}
+
+/** What the sworn months are read from: the job's work days and months, and its recorded filings (`LienAffidavitJobFacts` carries all of them). */
+export type LienAffidavitSwornFacts = {
+  isSub: boolean
+  workDays?: LienWorkSpanJob | null
+  firstMonth?: string | null
+  lastMonth: string
+  todayYmd?: string | null
+  filings?: ReadonlyArray<LienAffidavitNoticeRow> | null
+}
+
+/**
+ * The months a job's affidavit swears, as keys ('YYYY-MM', oldest first): the months its recorded § 53.056 notices name
+ * that fall inside the job's own work span. The short form prints them in words; the notice check reads them as they
+ * are (punch list #314). None on a job contracted with the owner.
+ */
+export function lienAffidavitSwornMonths(f: LienAffidavitSwornFacts): string[] {
+  if (!f.isSub) return []
+  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  return lienAffidavitMonthsInSpan(lienAffidavitNoticeMonths(f.filings), span.workStart, span.workEnd)
 }
 
 /** One notice sent to the owner: the day it went and how. */

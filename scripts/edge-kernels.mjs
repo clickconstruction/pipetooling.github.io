@@ -268,6 +268,14 @@ export const ENTRIES = {
   'lib/jobs/lienSentAt.ts': { values: [], types: [] },
   'lib/jobs/lienNoticeJobFields.ts': { values: [], types: [] },
   'lib/jobs/lienSigner.ts': { values: [], types: [] },
+  // The dev seat's plan_affidavit_draft (v2.7247): the desk's affidavit queue and gates, the paper's months and sends,
+  // the attorney's questions, the claim set by hand, the property as resolved and the form's mark.
+  'lib/jobs/lienDeskAffidavits.ts': { values: [], types: [] },
+  'lib/jobs/lienAffidavitNotices.ts': { values: [], types: [] },
+  'lib/jobs/lienAffidavitNoticeCheck.ts': { values: [], types: [] },
+  'lib/jobs/lienClaimCorrection.ts': { values: [], types: [] },
+  'lib/jobs/lienProperty.ts': { values: [], types: [] },
+  'lib/jobs/lienAffidavitForm.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
   'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },
