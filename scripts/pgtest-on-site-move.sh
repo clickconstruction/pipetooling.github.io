@@ -21,8 +21,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55568}"
 NAME="pgtest-on-site-move"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The move, the photos' due mark (#297) and the carry of the four tables of 2026-11-13 (v2.7265), each applied a second
-# time below, in order: the last file restates the three functions, so it must come last or the bed tests the old body.
+# The move and the photos' due mark (#297), each applied a second time below, then the v2.7265 carry last: both older
+# files redefine on_site_carry_job (and the move on_site_job_counts and dev_on_site_move_job), so the newest bodies must
+# be re-applied after them or the scenario reads the older ones.
 PRESSES=(
   supabase/migrations/*_on_site_move_job.sql
   supabase/migrations/*_box_photo_refile_due.sql
