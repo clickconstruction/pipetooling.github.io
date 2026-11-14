@@ -2,7 +2,7 @@
 name: "Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom"
 number: 359
 group: ready
-status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · PR 6 (v2.7293) the copy inlines a row alias where a kernel names it, dev-mcp 3.40 MB and no slim types · next the four portal kernels written plain so the portals drop the slim file too
+status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · PR 6 (v2.7293) the copy inlines a row alias where a kernel names it, dev-mcp 3.40 MB and no slim types · PR 7 (v2.7294) the four portal kernels write each row as one alias, the portals 1.33 MB · built; what is left is the deploys after each merge and the card's closing note
 summary: >
   v2.7256 took the whole database types file out of every edge upload: dev-mcp went from 5.02 MB,
   which the deploy refused, to 4.03 MB, and the eight portals from about 4.1 MB to about 3.0 MB.
@@ -15,7 +15,7 @@ summary: >
   translations (portalI18n, 125 KB) through customerLang for one constant, and
   devMcpAffidavitDraft reaches the slim types through lienProperty for a type. The fix is to cut
   those chains, not to re-export less.
-next: PR 7, the four portal kernels whose Database uses are not plain aliases (drawRows, changeOrderOfficeRows, legalRoute, customerContactDisplay) written as aliases, so the portals drop the slim file too (−315 KB each). Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.40 MB, under the 3.5 MB line.
+next: Deploy what check:edge-drift names after each merge and write Checked live into each fragment. Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.40 MB, under the 3.5 MB line, with 1.1 MB to the ceiling; a verb pair costs about 0.15 MB, so seven more fit before the next cut. Then the card closes with the sizes.
 size: S to read · S per cut, two or three cuts · M for the descriptions and the catalog if it comes to that
 blocker: none; it waits on dev-mcp's growth, so that a cut lands before the ceiling and not after a refused deploy
 opinion: cut the chains, never raise the ceiling, since the wall at 5 MB is Supabase's; the portals get the same cuts for free
