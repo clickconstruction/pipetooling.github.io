@@ -208,8 +208,7 @@ reads *Ferguson · Nov 3. Add another*. A does the same to its two one-liners, s
 rows one PR earlier.
 
 Also on pass 2, from a crop of the title row: "Should we move this button here to offer more space
-for the title and stage?", the ⋯ drawn under the ✕. Yes: the two 44 px presses stack at the right, ✕
-on the name's line and ⋯ on the quiet line under it, so the name and the status chip have the whole
+for the title and stage?", the ⋯ drawn under the ✕. Yes: the two 44 px presses stack at the right (the order swapped on his next note below), so the name and the status chip have the whole
 first line and a long name wraps later. The floating ✕ on scroll is unchanged.
 
 Also on pass 2, from a crop of What's happening: "Should we make these actionable as well?" Yes.
@@ -232,6 +231,11 @@ happened for 6 days.*, the blue words inside the sentence and nothing after it. 
 rows: when the act is already a word of the headline, that word is the door; otherwise the door is
 the blue words at the end. *The customer, to* **pay** then ends in *Remind them* at the end, since
 paying is theirs and the nudge is ours.
+
+Also on pass 2: "Let's move the ••• at the top right to the top right above the X and have the X
+start its float just below it." So the stack is ⋯ on the name's line and ✕ under it on the quiet
+line, and the floating ✕ on scroll sits where that ✕ was, one press down from the corner, so it
+never covers the first line of whatever scrolls under it.
 
 ## What the phone draws today, measured
 
@@ -299,7 +303,7 @@ each a scrolling 375 px phone. Every name, address and number on it is invented.
 
 **A · The top in the right order** (one PR, the first step). A title row like the desk's since
 v2.6539 comes first: the name and the status, a quiet line with the number, the customer and the
-kind, and two 44 px presses stacked at the right, ✕ on the name's line and ⋯ under it. The seven tabs run on one line that scrolls
+kind, and two 44 px presses stacked at the right, ⋯ on the name's line and ✕ under it. The seven tabs run on one line that scrolls
 sideways under it, 40 px tall, the active one kept in view, a fade at the edge. The title row and
 the strip scroll away with the page; a small ✕ floats at the corner the whole way down, and a
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
