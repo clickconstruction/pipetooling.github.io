@@ -142,3 +142,26 @@ describe('Record payment as a sending', () => {
     expect((document.querySelector('input[type="number"]') as HTMLInputElement).disabled).toBe(true)
   })
 })
+
+describe('the windows and the check mark (v2.7237)', () => {
+  it('a back-charge takes its day, today unless changed', async () => {
+    const recordLaborJobBackcharge = vi.fn(async () => {})
+    const ref = createRef<SubLaborPaymentModalsHandle>()
+    renderWithProviders(<SubLaborPaymentModals ref={ref} recordLaborJobPayment={vi.fn()} recordLaborJobBackcharge={recordLaborJobBackcharge} deleteLaborJobPayment={vi.fn()} updateLaborJobPayment={vi.fn()} />)
+    act(() => ref.current!.openBackcharge({ id: 'here', contractor: 'Sub Sam', hcp: 'S-300', totalCost: 60, paid: 0 }))
+    const date = screen.getByLabelText('Date') as HTMLInputElement
+    expect(date.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    fireEvent.change(date, { target: { value: '2026-11-03' } })
+    fireEvent.change(document.querySelector('input[type="number"]') as HTMLInputElement, { target: { value: '25' } })
+    fireEvent.change(screen.getByPlaceholderText('Required for backcharges'), { target: { value: 'Broken vanity top' } })
+    fireEvent.click(screen.getByRole('button', { name: /Backcharge|Record/ }))
+    await waitFor(() => expect(recordLaborJobBackcharge).toHaveBeenCalledWith('here', 25, 'Broken vanity top', '2026-11-03'))
+  })
+
+  it('Edit on a ticked payment says a change to its amount or date clears the tick', () => {
+    const ref = createRef<SubLaborPaymentModalsHandle>()
+    renderWithProviders(<SubLaborPaymentModals ref={ref} recordLaborJobPayment={vi.fn()} recordLaborJobBackcharge={vi.fn()} deleteLaborJobPayment={vi.fn()} updateLaborJobPayment={vi.fn()} />)
+    act(() => ref.current!.openEditPayment({ id: 'pay-2', jobId: 'here', amount: 40, memo: null, isBackcharge: false, paymentDate: '2026-11-10', createdAt: null, method: 'check', checkedAt: '2026-11-12T18:00:00Z' }, '40', ''))
+    expect(document.querySelector('[data-sub-payment-checked-hint]')!.textContent).toBe('This payment is ticked against the bank. Changing its amount or its date clears the tick.')
+  })
+})

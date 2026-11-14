@@ -2,7 +2,7 @@
 title: see every payment made to subs by date
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: ledger, sub payments, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
+keywords: ledger, sub payments, checked, tick, not checked, bank reconciliation, statement, by sub, running balance, we owe, 1099, how paid, check number, reconcile, bank statement, date sent, back-charge, backcharge, csv, export, print, month total, paid to, sub labor, payment history, when was it paid
 order: 32
 ---
 Jobs → Subs → Ledger lists every payment made to a sub, newest first. You hold it beside a bank statement and check each line.
@@ -40,7 +40,22 @@ Three tiles add up what is showing. They show what was paid, what was back-charg
 1. Set the chips or the date boxes to the month on the bank statement.
 2. Compare the month's total with the statement.
 3. Read down the lines by date and match each amount.
-4. Press {{button:outline|Download CSV}} to sort the lines in a spreadsheet.
+4. Tick the box at the start of a line once you find it on the statement.
+5. Press {{chip:gray|Not checked}} to see only the lines still to find.
+
+The **Checked against the bank** tile counts as you go. It shows how many are ticked, how many are left and what they add up to.
+
+A tick records your name and the day. Hover the box to read them. Untick the box to clear it.
+
+Lines of one check share a sending number. Ticking one of them ticks them all, because the bank shows one line.
+
+A back-charge has no box, and neither does a line paid from credit. No money left the bank for them.
+
+**How paid** narrows the list to one method. Pick {{chip:gray|Check}} to work through the checks on one statement.
+
+Changing a ticked payment's amount or date clears its tick. The Edit window says so before you save.
+
+{{button:outline|Download CSV}} saves the lines to sort in a spreadsheet. The file has a column for the day each was checked.
 
 {{button:outline|Print}} makes a page of the same lines. On a phone both buttons sit under the list.
 
@@ -76,6 +91,8 @@ The same ledger sits on [People → Subs](/people?tab=subs&view=ledger), under *
 
 A payment saved with no Date sent shows the day it was recorded. It carries a {{chip:yellow|no date sent}} chip.
 
-Press the job to open the sheet. Press **Edit** on the payment and set **Date sent** to the day the money left. A back-charge always shows the day it was recorded.
+Press the job to open the sheet. Press **Edit** on the payment and set **Date sent** to the day the money left.
+
+A back-charge has a **Date** box of its own. One recorded before that box shows the day it was typed.
 
 To move a payment or take one off, see [fix a payment on the wrong sheet](/help/fix-a-payment-on-the-wrong-sheet). To see who is owed what, see [what you still owe each sub](/help/sub-labor-outstanding).

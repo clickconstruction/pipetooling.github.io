@@ -12,7 +12,7 @@
  * statement with what we owed after each line. People → Subs mounts this too, opening on By sub.
  */
 import { useMemo, useState } from 'react'
-import type { LaborJob } from '../../types/laborJob'
+import type { LaborJob, SubSendingResult } from '../../types/laborJob'
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { sheetLabel } from '../../lib/jobs/subPaymentMoveRemove'
 import { buildSheetPartiesLookup, sheetParties } from '../../lib/subWorkOrders/sheetParties'
@@ -23,6 +23,8 @@ import {
   filterLedger,
   ledgerBySub,
   ledgerBySubTotals,
+  ledgerCheckedWords,
+  ledgerMethodOptions,
   ledgerDayWords,
   ledgerHowPaidWords,
   ledgerSubKeyFromParam,
@@ -82,6 +84,8 @@ export type SubPaymentsLedgerProps = {
   onSubChange?: (sub: string | null) => void
   /** People → Subs' Balance due by person id, for the statement's check. Left out, the foot says what we owe and checks nothing. */
   balanceDueByPersonId?: ReadonlyMap<string, number>
+  /** v2.7237: tick or clear a payment against the bank. Left out, the list has no ✓ column. */
+  onSetChecked?: (paymentId: string, checked: boolean) => Promise<SubSendingResult>
 }
 
 /** The amount cell: a payment plain, a back-charge red with its minus sign. */
@@ -110,7 +114,7 @@ function Left({ line }: { line: LedgerLine }) {
   return <AmountSmallCents value={line.leftOnSheet} />
 }
 
-export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay, by: byProp, onByChange, initialBy, sub: subProp, onSubChange, balanceDueByPersonId }: SubPaymentsLedgerProps) {
+export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJobNamesByJobId, laborJobAssigneesByJobId, onOpenSheet, onOpenPay, by: byProp, onByChange, initialBy, sub: subProp, onSubChange, balanceDueByPersonId, onSetChecked }: SubPaymentsLedgerProps) {
   const narrow = useIsNarrowScreen()
   const { showToast } = useToastContext()
   const { roster } = useRosterSubKinds()
@@ -121,6 +125,14 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const [ownPaidToKey, setOwnPaidToKey] = useState('')
   const [search, setSearch] = useState('')
   const [ownBy, setOwnBy] = useState<LedgerGrouping>(initialBy ?? 'date')
+  // v2.7237: the two bank filters. They narrow the by-date list and the people it counts, never a statement.
+  const [notChecked, setNotChecked] = useState(false)
+  const [method, setMethod] = useState('')
+  const toggleChecked = async (line: LedgerLine) => {
+    if (!onSetChecked) return
+    const res = await onSetChecked(line.id, !line.checkedAt)
+    if (!res.ok) showToast(res.missing ? 'Ticking a payment against the bank is not switched on yet.' : res.message, 'error')
+  }
   const by = byProp ?? ownBy
   const setBy = (next: LedgerGrouping) => {
     setOwnBy(next)
@@ -159,8 +171,13 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
     onSubChange?.(key ? ledgerSubParam(key) : null)
   }
   const range = useMemo(() => ledgerPeriodRange(period, today, { from, to }), [period, today, from, to])
-  const shownLines = useMemo(() => filterLedger(allLines, { ...range, paidToKey, search }), [allLines, range, paidToKey, search])
-  const shownTraces = useMemo(() => filterLedger(allTraces, { ...range, paidToKey, search }), [allTraces, range, paidToKey, search])
+  const shownLines = useMemo(() => filterLedger(allLines, { ...range, paidToKey, search, check: notChecked ? 'unchecked' : null, method: method || null }), [allLines, range, paidToKey, search, notChecked, method])
+  /** The period's own lines, before the two bank filters: the bank tile counts these, so ticking a line never moves its own total. */
+  const periodLines = useMemo(() => filterLedger(allLines, { ...range, paidToKey, search }), [allLines, range, paidToKey, search])
+  const periodTotals = useMemo(() => ledgerTotals(periodLines), [periodLines])
+  const methodOptions = useMemo(() => ledgerMethodOptions(allLines), [allLines])
+  const bank = ledgerCheckedWords(periodTotals)
+  const shownTraces = useMemo(() => filterLedger(allTraces, { ...range, paidToKey, search, check: notChecked ? 'unchecked' : null, method: method || null }), [allTraces, range, paidToKey, search, notChecked, method])
   const months = useMemo(() => ledgerMonths([...shownLines, ...shownTraces] as LedgerRow[]), [shownLines, shownTraces])
   const totals = useMemo(() => ledgerTotals(shownLines), [shownLines])
   const subRows = useMemo(() => ledgerBySub(sheets, shownLines, { paidToKey, search }), [sheets, shownLines, paidToKey, search])
@@ -178,7 +195,8 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
 
   const periodLabel = period === 'custom' ? [from ? ledgerDayWords(from, true) : 'the start', to ? ledgerDayWords(to, true) : 'today'].join(' to ') : (LEDGER_PERIODS.find((p) => p.key === period)?.label ?? 'All')
   const paidToLabel = paidToOptions.find((o) => o.key === paidToKey)?.label ?? ''
-  const shownWords = [`${periodLabel}.`, paidToLabel ? `Paid to ${paidToLabel}.` : '', search.trim() ? `Search “${search.trim()}”.` : ''].filter(Boolean).join(' ')
+  const methodLabel = methodOptions.find((o) => o.key === method)?.label ?? ''
+  const shownWords = [`${periodLabel}.`, paidToLabel ? `Paid to ${paidToLabel}.` : '', methodLabel ? `How paid: ${methodLabel}.` : '', notChecked ? 'Not checked against the bank.' : '', search.trim() ? `Search “${search.trim()}”.` : ''].filter(Boolean).join(' ')
 
   const printList = () => {
     const html = statement
@@ -191,6 +209,8 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
       ? saveBlobAs(new Blob(['﻿', subStatementCsv(statement)], { type: 'text/csv;charset=utf-8' }), subStatementCsvFileName(statement.name, today))
       : saveBlobAs(new Blob(['﻿', subPaymentsCsv(orderedLines)], { type: 'text/csv;charset=utf-8' }), subPaymentsCsvFileName(today))
   const nothingToSend = statement ? statement.entries.length === 0 : orderedLines.length === 0
+  /** The ✓ column, when the caller can tick. */
+  const checkCols = onSetChecked ? 1 : 0
   const withYear = period === 'all' || period === 'custom'
 
   const openSheet = (sheetId: string) => {
@@ -224,6 +244,10 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
   const empty =
     allLines.length === 0 ? (
       <EmptyState main="Nothing has been paid on a sub sheet yet." next={{ label: 'Pay', onPress: onOpenPay }} tail="is where a payment is recorded." />
+    ) : notChecked && periodLines.length > 0 ? (
+      <EmptyState main="Nothing waiting on a check against the bank in this period." next={{ label: 'Show every payment', onPress: () => setNotChecked(false) }} />
+    ) : method && periodLines.length > 0 ? (
+      <EmptyState main={`Nothing in this period was paid by ${methodLabel || 'that method'}.`} next={{ label: 'Show every method', onPress: () => setMethod('') }} />
     ) : search.trim() ? (
       <EmptyState main={`Nothing here matches “${search.trim()}”.`} next={{ label: 'Clear the search', onPress: () => setSearch('') }} />
     ) : paidToKey ? (
@@ -277,6 +301,23 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             </option>
           ))}
         </select>
+        {statement ? null : (
+          <>
+            {methodOptions.length > 0 ? (
+              <select aria-label="How paid" value={method} onChange={(e) => setMethod(e.target.value)} style={{ ...field, maxWidth: narrow ? '100%' : 200 }}>
+                <option value="">How paid: any</option>
+                {methodOptions.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <button type="button" aria-pressed={notChecked} onClick={() => setNotChecked((v) => !v)} title="Show only the payments not yet ticked against the bank" style={chip(notChecked)}>
+              Not checked
+            </button>
+          </>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12 }}>
@@ -297,6 +338,13 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           </strong>
           <span style={tileSub}>{totals.backcharges === 1 ? '1 back-charge' : `${totals.backcharges} back-charges`}</span>
         </div>
+        {statement ? null : (
+          <div style={tile} data-ledger-tile="bank">
+            <span style={tileLabel}>Checked against the bank</span>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{bank.head}</strong>
+            <span style={tileSub}>{bank.sub}</span>
+          </div>
+        )}
         {by === 'sub' ? (
           <div style={tile} data-ledger-tile="owed">
             <span style={tileLabel}>We owe today</span>
@@ -369,6 +417,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                       <Amount line={r} />
                     </span>
                     <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
+                      {r.checkedAt ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>✓ checked · </span> : null}
                       {r.job}
                       {r.kind === 'backcharge' ? ' · Back-charge' : ''}
                       {ledgerHowPaidWords(r) ? ` · ${ledgerHowPaidWords(r)}` : ''}
@@ -386,6 +435,11 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 960 }}>
             <thead>
               <tr>
+                {onSetChecked ? (
+                  <th style={{ ...th, width: 1, paddingRight: 0 }} title="Tick a payment once you have found it on the bank statement">
+                    ✓
+                  </th>
+                ) : null}
                 <th style={th}>Date sent</th>
                 <th style={th}>Paid to</th>
                 <th style={th}>Job</th>
@@ -398,7 +452,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             {months.map((m) => (
               <tbody key={m.ym || 'undated'} data-ledger-month={m.ym || 'undated'}>
                 <tr>
-                  <td colSpan={5} style={{ ...td, background: 'var(--bg-muted)', fontWeight: 700, color: 'var(--text-strong)' }}>
+                  <td colSpan={checkCols + 5} style={{ ...td, background: 'var(--bg-muted)', fontWeight: 700, color: 'var(--text-strong)' }}>
                     {m.label}
                     <span style={{ fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>{m.words}</span>
                   </td>
@@ -410,6 +464,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                 {m.rows.map((r) =>
                   r.kind === 'trace' ? (
                     <tr key={r.id} data-ledger-trace={r.id}>
+                      {onSetChecked ? <td style={{ ...td, background: 'var(--bg-subtle)' }} /> : null}
                       <td style={{ ...td, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{ledgerDayWords(r.ymd)}</td>
                       <td colSpan={6} style={{ ...td, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {r.text}
@@ -417,6 +472,21 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
                     </tr>
                   ) : (
                     <tr key={r.id} data-ledger-line={r.id}>
+                      {onSetChecked ? (
+                        <td style={{ ...td, paddingRight: 0 }}>
+                          {r.checkable ? (
+                            <input
+                              type="checkbox"
+                              data-ledger-check={r.id}
+                              checked={!!r.checkedAt}
+                              onChange={() => void toggleChecked(r)}
+                              aria-label={`Checked against the bank: ${r.paidTo}, ${ledgerDayWords(r.ymd, true)}`}
+                              title={r.checkedAt ? `Checked ${ledgerDayWords(calendarYmdInAppTzFromIso(r.checkedAt), true)}${r.checkedBy ? ` by ${r.checkedBy}` : ''}. Untick to clear it.` : r.sendingNo ? 'Tick it once it is found on the bank statement. Every line of the same sending is ticked with it.' : 'Tick it once it is found on the bank statement.'}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }}
+                            />
+                          ) : null}
+                        </td>
+                      ) : null}
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>{dayCell(r)}</td>
                       <td style={td}>
                         {r.paidTo}
@@ -453,7 +523,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
             ))}
             <tfoot>
               <tr data-ledger-foot>
-                <td colSpan={5} style={{ ...td, borderBottom: 'none', background: 'var(--bg-subtle)', fontWeight: 700, color: 'var(--text-strong)' }}>
+                <td colSpan={checkCols + 5} style={{ ...td, borderBottom: 'none', background: 'var(--bg-subtle)', fontWeight: 700, color: 'var(--text-strong)' }}>
                   {periodLabel} · {ledgerPaidWords(totals)}
                   {totals.backcharges ? `, less ${totals.backcharges === 1 ? '1 back-charge' : `${totals.backcharges} back-charges`}` : ''}
                 </td>

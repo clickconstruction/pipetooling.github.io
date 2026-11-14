@@ -34,6 +34,8 @@ export type EditingPaymentTarget = {
   /** v2.7176: how it was sent and that method's number; absent on callers that do not know them. */
   method?: string | null
   methodRef?: string | null
+  /** v2.7237: set when the payment is ticked against the bank, so the window can say an edit clears the tick. */
+  checkedAt?: string | null
 }
 
 /** Local YYYY-MM-DD for date inputs (same pattern as the form modal's Date of Labor seed). */
@@ -63,7 +65,7 @@ export type SubLaborPaymentModalsHandle = {
 
 export type SubLaborPaymentModalsProps = {
   recordLaborJobPayment: (jobId: string, amount: number, memo: string | null, paymentDate: string | null, extras?: SubPaymentExtras) => Promise<void>
-  recordLaborJobBackcharge: (jobId: string, amount: number, memo: string) => Promise<void>
+  recordLaborJobBackcharge: (jobId: string, amount: number, memo: string, paymentDate?: string | null) => Promise<void>
   deleteLaborJobPayment: (paymentId: string) => Promise<void>
   updateLaborJobPayment: (paymentId: string, amount: number, memo: string | null, isBackcharge: boolean, paymentDate: string | null, extras?: SubPaymentExtras) => Promise<void>
   /** v2.3562: when set, the Edit dialog's Remove hands the row to the reason dialog instead of deleting on a confirm. */
@@ -128,6 +130,8 @@ function SubLaborPaymentModalsInner(
   const [backchargeLaborJob, setBackchargeLaborJob] = useState<SubLaborBackchargeTarget | null>(null)
   const [backchargeAmount, setBackchargeAmount] = useState('')
   const [backchargeMemo, setBackchargeMemo] = useState('')
+  // v2.7237: the day the back-charge was raised, so the ledger files it there and not on the day it was typed.
+  const [backchargeDate, setBackchargeDate] = useState('')
   const [backchargeSaving, setBackchargeSaving] = useState(false)
   const [editingPayment, setEditingPayment] = useState<EditingPaymentTarget | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
@@ -172,6 +176,7 @@ function SubLaborPaymentModalsInner(
     openBackcharge: (target) => {
       setBackchargeAmount('')
       setBackchargeMemo('')
+      setBackchargeDate(todayYmd())
       setBackchargeLaborJob(target)
     },
     openEditPayment: (payment, amountSeed, memoSeed) => {
@@ -326,6 +331,16 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="sub-backcharge-date" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+              <input
+                id="sub-backcharge-date"
+                type="date"
+                value={backchargeDate}
+                onChange={(e) => setBackchargeDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
               <textarea
                 value={backchargeMemo}
@@ -338,7 +353,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim()} onClick={async () => { if (!backchargeLaborJob) return; const amt = parseFloat(backchargeAmount); if (!(amt > 0) || !backchargeMemo.trim()) return; setBackchargeSaving(true); await recordLaborJobBackcharge(backchargeLaborJob.id, amt, backchargeMemo); setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeSaving(false) }} style={{ padding: '0.5rem 1rem', background: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? DEAD_PRESS_FILL : '#dc2626', color: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? 'not-allowed' : 'pointer' }}>{backchargeSaving ? '…' : 'Record Backcharge'}</button>
+              <button type="button" disabled={backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim()} onClick={async () => { if (!backchargeLaborJob) return; const amt = parseFloat(backchargeAmount); if (!(amt > 0) || !backchargeMemo.trim()) return; setBackchargeSaving(true); await recordLaborJobBackcharge(backchargeLaborJob.id, amt, backchargeMemo, backchargeDate || null); setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeSaving(false) }} style={{ padding: '0.5rem 1rem', background: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? DEAD_PRESS_FILL : '#dc2626', color: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? 'not-allowed' : 'pointer' }}>{backchargeSaving ? '…' : 'Record Backcharge'}</button>
             </div>
           </div>
         </div>
@@ -369,6 +384,11 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
+            {editingPayment.checkedAt ? (
+              <p data-sub-payment-checked-hint style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                This payment is ticked against the bank. Changing its amount or its date clears the tick.
+              </p>
+            ) : null}
             {editingPayment.method === SUB_PAY_FROM_CREDIT ? (
               <p data-sub-payment-from-credit style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 This payment was made from their credit, so no money left the bank. Its amount is fixed. Remove it to put the credit back.

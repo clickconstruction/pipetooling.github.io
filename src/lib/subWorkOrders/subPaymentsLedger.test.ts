@@ -6,6 +6,9 @@ import {
   buildSubStatement,
   ledgerBySub,
   ledgerBySubTotals,
+  ledgerCheckedWords,
+  ledgerMethodOptions,
+  LEDGER_NO_METHOD,
   ledgerHowPaidWords,
   ledgerSpanWords,
   ledgerSubKeyFromParam,
@@ -198,7 +201,7 @@ describe('months and totals', () => {
 
   it('the months add up to the whole', () => {
     const whole = ledgerTotals(lines)
-    expect(whole).toEqual({ payments: 7, paidTotal: 10050, backcharges: 1, backchargeTotal: 150, people: 4, undated: 1, creditKept: 0, creditUsed: 0 })
+    expect(whole).toEqual({ payments: 7, paidTotal: 10050, backcharges: 1, backchargeTotal: 150, people: 4, undated: 1, creditKept: 0, creditUsed: 0, checked: 0, uncheckedTotal: 10050 })
     expect(months.reduce((s, m) => s + m.totals.paidTotal, 0)).toBe(whole.paidTotal)
     expect(months.reduce((s, m) => s + m.totals.payments, 0)).toBe(whole.payments)
     expect(ledgerPaidWords(whole)).toBe('7 payments to 4 people')
@@ -220,8 +223,8 @@ describe('out of the app', () => {
     const rows = subPaymentsCsv(shown).trimEnd().split('\r\n')
     expect(rows[0]).toBe(SUB_PAYMENTS_CSV_HEAD.join(','))
     expect(rows).toHaveLength(9)
-    expect(rows[1]).toBe('2026-11-12,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,,,Zelle · final on tile,2400.00,0.00,,')
-    expect(rows.find((r) => r.includes('Broken vanity top'))).toBe('2026-11-06,day recorded,Marco Estrada,no,2090 Pinecrest Remodel,7 Pinecrest Ct,Back-charge,,,Broken vanity top,-150.00,0.00,,')
+    expect(rows[1]).toBe('2026-11-12,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,,,Zelle · final on tile,2400.00,0.00,,,,')
+    expect(rows.find((r) => r.includes('Broken vanity top'))).toBe('2026-11-06,day recorded,Marco Estrada,no,2090 Pinecrest Remodel,7 Pinecrest Ct,Back-charge,,,Broken vanity top,-150.00,0.00,,,,')
     expect(subPaymentsCsvFileName('2026-11-13')).toBe('sub-payments-2026-11-13.csv')
   })
 
@@ -261,7 +264,7 @@ describe('how a line was sent', () => {
   it('the search finds a check by its number, and the CSV has a column for each', () => {
     expect(filterLedger(checked, { search: '1187' }).map((l) => l.id)).toEqual(['k1'])
     expect(filterLedger(checked, { search: 'zelle' }).map((l) => l.id)).toEqual(['k2'])
-    expect(subPaymentsCsv(checked).split('\r\n')[1]).toBe('2026-11-02,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Check,1187,draw,400.00,500.00,,')
+    expect(subPaymentsCsv(checked).split('\r\n')[1]).toBe('2026-11-02,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Check,1187,draw,400.00,500.00,,,,')
   })
 })
 
@@ -416,7 +419,7 @@ describe('a credit and a sending (v2.7235)', () => {
   })
 
   it('Paid counts what was sent and leaves out what was paid from credit', () => {
-    expect(ledgerTotals(all)).toEqual({ payments: 1, paidTotal: 1200, backcharges: 0, backchargeTotal: 0, people: 1, undated: 0, creditKept: 200, creditUsed: 150 })
+    expect(ledgerTotals(all)).toEqual({ payments: 1, paidTotal: 1200, backcharges: 0, backchargeTotal: 0, people: 1, undated: 0, creditKept: 200, creditUsed: 150, checked: 0, uncheckedTotal: 1200 })
     expect(ledgerMonths(all)[0]!.totals.paidTotal).toBe(1200)
   })
 
@@ -424,8 +427,8 @@ describe('a credit and a sending (v2.7235)', () => {
     expect(filterLedger(all, { search: 'sending 12' }).map((l) => l.id)).toEqual(['k1'])
     expect(filterLedger(all, { search: '1200.00' }).map((l) => l.id)).toEqual(['k1'])
     const rows = subPaymentsCsv(all).trimEnd().split('\r\n')
-    expect(rows[1]).toBe('2026-11-02,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Check,1187,final,1000.00,0.00,12,200.00')
-    expect(rows[2]).toBe('2026-11-10,date sent,Calloway Tile,no,2131 Juniper Flats,418 Larkspur Bend,From credit,,,,150.00,350.00,,')
+    expect(rows[1]).toBe('2026-11-02,date sent,Calloway Tile,no,2104 Larkspur Lot 14,418 Larkspur Bend,Payment,Check,1187,final,1000.00,0.00,12,200.00,,')
+    expect(rows[2]).toBe('2026-11-10,date sent,Calloway Tile,no,2131 Juniper Flats,418 Larkspur Bend,From credit,,,,150.00,350.00,,,,')
   })
 
   it('By sub shows what was sent, the credit they still hold, and what is open', () => {
@@ -455,5 +458,63 @@ describe('a credit and a sending (v2.7235)', () => {
     const html = subStatementHtml(st, { periodWords: '', checkWords: '', printedWords: '' })
     expect(html).toContain('<b>Credit kept</b>')
     expect(html).toContain('<b>Credit used</b> · $150.00')
+  })
+})
+
+describe('checked against the bank (v2.7237)', () => {
+  const ticked = sheet({
+    id: 'k',
+    agreed: 2000,
+    payments: [
+      { ...pay('a', 500, '2026-11-02', '2026-11-02T15:00:00Z'), method: 'check', method_ref: '1187', checked_at: '2026-11-13T18:00:00Z', checked_by_name: ' Dana Office ' },
+      { ...pay('b', 300, '2026-11-05', '2026-11-05T15:00:00Z'), method: 'zelle' },
+      pay('c', 200, '2026-11-06', '2026-11-06T15:00:00Z'),
+      pay('d', -50, null, '2026-11-07T15:00:00Z', 'damage'),
+      { ...pay('e', 100, '2026-11-08', '2026-11-08T15:00:00Z'), method: 'credit', checked_at: '2026-11-13T18:00:00Z' },
+    ],
+  })
+  const all = buildLedgerLines([ticked])
+  const line = (id: string) => all.find((l) => l.id === id)!
+
+  it('a payment that moved money can be ticked, and a back-charge and a line paid from credit cannot', () => {
+    expect(line('a')).toMatchObject({ checkable: true, checkedAt: '2026-11-13T18:00:00Z', checkedBy: 'Dana Office' })
+    expect(line('b')).toMatchObject({ checkable: true, checkedAt: '', checkedBy: '' })
+    expect(line('d')).toMatchObject({ checkable: false, checkedAt: '' })
+    // A tick stored on a from-credit row by some other road is not read as one.
+    expect(line('e')).toMatchObject({ checkable: false, checkedAt: '' })
+  })
+
+  it('the totals say how many are checked and what is left to check', () => {
+    const t = ledgerTotals(all)
+    expect(t).toMatchObject({ payments: 3, checked: 1, uncheckedTotal: 500 })
+    expect(ledgerCheckedWords(t)).toEqual({ head: '1 of 3', sub: '2 left to check · $500.00' })
+    expect(ledgerCheckedWords(ledgerTotals([line('a')]))).toEqual({ head: '1 of 1', sub: 'all checked against the bank' })
+    expect(ledgerCheckedWords(ledgerTotals([]))).toEqual({ head: '0 of 0', sub: 'nothing to check in this period' })
+  })
+
+  it('Not checked keeps the payments still to tick, and leaves out what cannot be ticked', () => {
+    expect(filterLedger(all, { check: 'unchecked' }).map((l) => l.id)).toEqual(['b', 'c'])
+    expect(filterLedger(all, { check: 'checked' }).map((l) => l.id)).toEqual(['a'])
+    expect(filterLedger(buildLedgerTraces(ALL), { check: 'unchecked' })).toEqual([])
+  })
+
+  it('How paid narrows to one method, or to payments nobody gave a method', () => {
+    expect(ledgerMethodOptions(all)).toEqual([{ key: 'Check', label: 'Check' }, { key: 'From credit', label: 'From credit' }, { key: 'Zelle', label: 'Zelle' }, { key: LEDGER_NO_METHOD, label: 'No method given' }])
+    expect(filterLedger(all, { method: 'Check' }).map((l) => l.id)).toEqual(['a'])
+    expect(filterLedger(all, { method: LEDGER_NO_METHOD }).map((l) => l.id)).toEqual(['c'])
+    expect(filterLedger(all, { method: 'Zelle', check: 'unchecked' }).map((l) => l.id)).toEqual(['b'])
+    expect(ledgerMethodOptions(buildLedgerLines([sheet({ agreed: 5, payments: [{ ...pay('z', 5, '2026-11-01', '2026-11-01T15:00:00Z'), method: 'cash' }] })]))).toEqual([{ key: 'Cash', label: 'Cash' }])
+  })
+
+  it('the CSV says the day a line was checked and by whom', () => {
+    const rows = subPaymentsCsv(all).trimEnd().split('\r\n')
+    expect(rows[0]!.endsWith('Checked on,Checked by')).toBe(true)
+    expect(rows[1]!.endsWith(',2026-11-13,Dana Office')).toBe(true)
+    expect(rows[2]!.endsWith(',,')).toBe(true)
+  })
+
+  it('a back-charge with a day of its own is filed under that day and is not marked recorded', () => {
+    const dated = buildLedgerLines([sheet({ agreed: 100, payments: [pay('bc', -20, '2026-11-03', '2026-11-09T15:00:00Z', 'damage')] })])
+    expect(dated[0]).toMatchObject({ kind: 'backcharge', ymd: '2026-11-03', recorded: false })
   })
 })
