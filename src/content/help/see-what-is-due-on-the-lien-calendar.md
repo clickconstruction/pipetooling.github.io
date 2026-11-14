@@ -8,7 +8,7 @@ The By date tab on the Lien desk shows when each lien deadline falls. Pills at t
 
 ## Open the By date tab
 
-Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|By date}} tab, beside **To do**. Every billed job with money still owed is on it.
+Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|By date}} tab, beside **To do**. Every billed job with money still owed is on it. A job paid in kind is not. [A job paid in kind is off the desk](/help/send-lien-notices-from-the-lien-desk#a-job-paid-in-kind-is-off-the-desk) says why.
 
 ## Read the pills
 

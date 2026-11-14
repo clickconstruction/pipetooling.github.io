@@ -115,6 +115,28 @@ describe('useLienDeskData · ZZ test jobs', () => {
     }
   })
 
+  it('a job an open in-kind deal pays leaves every list, the jobs and the counts, whoever looks; the deal ended, it is back (v2.7253)', async () => {
+    const jobsLedger = TABLES.jobs_ledger!
+    const onDeal = (deal: string | null) => jobsLedger.map((j) => ((j as { id: string }).id === 'A' ? { ...(j as object), in_kind_arrangement_id: deal } : j))
+    try {
+      TABLES.jobs_ledger = onDeal('deal-1')
+      const off = await read(false)
+      expect(off.rows.map((r) => r.job_id)).toEqual(['Z'])
+      expect(off.items.map((i) => i.job_id)).toEqual(['Z'])
+      expect(Object.keys(off.jobsById).sort()).toEqual(['Y', 'Z'])
+      expect(off.queue.entries.map((e) => e.jobId)).toEqual(['Z'])
+      expect(off.queue.counts.held).toBe(1)
+      // The deal ended: the trigger cleared the link, and the next read lists the job as before.
+      TABLES.jobs_ledger = onDeal(null)
+      const back = await read(false)
+      expect(back.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+      expect(back.queue.entries.map((e) => e.jobId).sort()).toEqual(['A', 'Z'])
+      expect(back.queue.counts.held).toBe(2)
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+    }
+  })
+
   it('in full, reads the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
     const items = TABLES.job_lien_desk_items!
     TABLES.job_lien_desk_items = [{ ...(items[0] as object), status: 'approved' }, items[1]!]

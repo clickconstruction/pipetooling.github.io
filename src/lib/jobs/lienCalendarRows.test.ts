@@ -32,6 +32,19 @@ describe('lienCalendarRows (punch list #182: the By date rows, one kernel for th
     expect(billedLienClockJobsOf(jobs)).toEqual([{ id: 'j1', customer_address_id: 'addr-1', gc_customer_id: 'gc-1' }])
   })
 
+  it('a job an open in-kind deal pays is off the clocks and off By date, and back the read after the deal ends (v2.7253)', () => {
+    const onDeal = billedJob('j5', { in_kind_arrangement_id: 'deal-1' })
+    const jobs = [billedJob('j1'), onDeal]
+    const clocks = { j1: clock(), j5: clock() }
+    const rowsOf = (list: typeof jobs) => buildLienCalendarRows(list, (job, inv) => lienRunwayForJob(job, inv, { clocks, paySpeeds: null, promisedPayDates: null, paceContext: null, todayYmd: TODAY })).map((r) => r.jobId)
+    expect(billedLienClockJobsOf(jobs).map((j) => j.id)).toEqual(['j1'])
+    expect(rowsOf(jobs)).toEqual(['j1'])
+    // The deal ended: the trigger cleared the link, and nothing else about the job changed.
+    const released = [jobs[0]!, { ...onDeal, in_kind_arrangement_id: null }]
+    expect(billedLienClockJobsOf(released).map((j) => j.id)).toEqual(['j1', 'j5'])
+    expect(rowsOf(released)).toEqual(['j1', 'j5'])
+  })
+
   it('a job with no clock yet has no runway; with one, the runway counts from the work month', () => {
     const job = billedJob('j1')
     const deps = { clocks: null, paySpeeds: null, promisedPayDates: null, paceContext: null, todayYmd: TODAY }

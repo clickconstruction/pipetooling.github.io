@@ -28,6 +28,7 @@ import {
 } from '../../lib/jobsDocuments/demandLetter'
 import { customerBillingEmail, effectiveInvoiceParty, type EffectiveBillParty } from '../../lib/jobs/billToParty'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { lienInKindWindowNote } from '../../lib/jobs/lienInKind'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physicalInvoiceDocumentForBilledInvoice'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { fetchStripeInvoiceFacts, type StripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
@@ -475,6 +476,8 @@ export default function LienInstrumentsModal({
   }, [open, job?.id, invoice?.id, loadHistory, loadFilings])
 
   const effJob = fullJob && job && fullJob.id === job.id ? fullJob : job
+  // v2.7253: a job an open in-kind deal pays is off the Lien desk (`lienInKind.ts`); its own window stays whole and says so.
+  const inKindNote = lienInKindWindowNote(effJob)
   const demandable = useMemo(() => (effJob ? demandableInvoices(effJob) : []), [effJob])
 
   // What Stripe rendered for each hosted bill: the number the customer saw, the day it was due and the lines as they saw them —
@@ -1263,6 +1266,12 @@ export default function LienInstrumentsModal({
                 noticedMonths={[...new Set(filings.filter((f) => f.kind === 'notice_53_056' && f.voided_at == null).flatMap((f) => f.months_covered ?? []))]}
                 propertyKind={propertyKind}
               />
+            </div>
+          ) : null}
+          {inKindNote ? (
+            <div data-lien-window-in-kind role="note" style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: '1px solid var(--border-strong)', borderRadius: 9, padding: '0.55rem 0.8rem', background: 'var(--bg-amber-tint)' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{inKindNote.head}</div>
+              <div style={{ fontSize: '0.8125rem', marginTop: 2 }}>{inKindNote.line}</div>
             </div>
           ) : null}
           {nextStep && (isMobile || !timeline) ? (

@@ -12,6 +12,7 @@ import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { lienJobIdsOffDesk, withLienInKindColumn } from '../lib/jobs/lienInKind'
 import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -134,7 +135,7 @@ export function useGcOnNoticeData(
               () =>
                 supabase
                   .from('jobs_ledger')
-                  .select(`${LIEN_DESK_JOB_COLUMNS}, status, pct_complete`)
+                  .select(withLienInKindColumn(`${LIEN_DESK_JOB_COLUMNS}, status, pct_complete`))
                   .in('id', chunk),
               'GC on notice: jobs',
             ),
@@ -154,15 +155,16 @@ export function useGcOnNoticeData(
           paymentRowsRead.push(...((paymentPart ?? []) as PaymentRow[]))
         }
         // A ZZ test GC's run drops every job (as a ZZ customer's page does); otherwise a job by its own or its customer's name.
-        const zzJobIds = zzGc ? new Set(jobIdsRead) : hideZzTestJobs ? zzTestJobIds(jobsRead) : null
-        const kept = (jobId: string) => !zzJobIds?.has(jobId)
-        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
-        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
-        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
-        const items = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
-        const fixtureRows = zzJobIds ? fixtureRowsRead.filter((f) => kept(f.job_id)) : fixtureRowsRead
-        const invoiceRows = zzJobIds ? invoiceRowsRead.filter((i) => kept(i.job_id)) : invoiceRowsRead
-        const paymentRows = zzJobIds ? paymentRowsRead.filter((p) => kept(p.job_id)) : paymentRowsRead
+        // v2.7253: a job an open in-kind deal pays leaves the run too (`lienInKind.ts`).
+        const offJobIds = zzGc ? new Set(jobIdsRead) : lienJobIdsOffDesk(jobsRead, hideZzTestJobs ? zzTestJobIds(jobsRead) : null)
+        const kept = (jobId: string) => !offJobIds?.has(jobId)
+        const rows = offJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const jobIds = offJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        const jobs = offJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const items = offJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
+        const fixtureRows = offJobIds ? fixtureRowsRead.filter((f) => kept(f.job_id)) : fixtureRowsRead
+        const invoiceRows = offJobIds ? invoiceRowsRead.filter((i) => kept(i.job_id)) : invoiceRowsRead
+        const paymentRows = offJobIds ? paymentRowsRead.filter((p) => kept(p.job_id)) : paymentRowsRead
         const workByJob: Record<string, GcNoticeBandWork> = {}
         for (const j of jobs) {
           workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
