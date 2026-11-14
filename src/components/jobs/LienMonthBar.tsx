@@ -1,4 +1,6 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
+import { PhoneSheet } from '../PhoneSheet'
+import { lienMonthLine, type LienMonthLineDue } from '../../lib/jobs/lienMonthLine'
 import { lienMonthSpanWords, lienMonthWords, lienMonthZoneLine, lienMonthZonePress, type LienMonth, type LienMonthZone, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 
 /**
@@ -6,7 +8,8 @@ import { lienMonthSpanWords, lienMonthWords, lienMonthZoneLine, lienMonthZonePre
  * by their days — Reminders, Notices, Liens, Catch-up, Nothing scheduled — each reading its count
  * left, its count done and what slipped, today marked across the bar, and one press per zone that
  * narrows the list under it to that zone's work. The month is `lienMonthRhythm.ts`'s; nothing here
- * reads, writes, sends or files. On a phone the zones stack as rows and the zone today is in says so.
+ * reads, writes, sends or files. On a phone the month is one line that says the day's headline, and the
+ * five zones are cards in a sheet a press away (punch list #352, PR 2; the words are `lienMonthLine.ts`).
  */
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -100,14 +103,7 @@ function Zone({ zone, on, isMobile, isToday, onPick }: { zone: LienMonthZone; on
   )
 }
 
-export function LienMonthBar({
-  month,
-  on,
-  onPick,
-  isMobile,
-  shown,
-  total,
-}: {
+type BarProps = {
   month: LienMonth
   /** The zone the list is narrowed to, or null. */
   on: LienMonthZoneKey | null
@@ -116,7 +112,86 @@ export function LienMonthBar({
   /** With a zone pressed: how many of the list's rows are that zone's, of how many. */
   shown?: number
   total?: number
-}) {
+  /** The earliest day a row of today's zone is due, for the phone line's *by Mon Nov 16* and its chip. */
+  due?: LienMonthLineDue | null
+}
+
+const CHIP: Record<'red' | 'amber' | 'quiet', { fg: string; bg: string }> = {
+  red: { fg: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
+  amber: { fg: 'var(--text-amber-800)', bg: 'var(--bg-amber-tint)' },
+  quiet: { fg: 'var(--text-muted)', bg: 'var(--bg-subtle)' },
+}
+
+/**
+ * The month on a phone: one line a thumb tall, and the five zones as cards in a sheet. A press on a card narrows the
+ * list to that zone and closes the sheet, as a press on a zone does on a computer.
+ */
+function LienMonthLine({ month, on, onPick, shown, total, due }: BarProps) {
+  const [open, setOpen] = useState(false)
+  const line = lienMonthLine(month, due)
+  const onZone = on ? month.zones.find((z) => z.key === on) ?? null : null
+  const chip = line.chip ? CHIP[line.chip.tone] : null
+  const headColor = line.tone === 'slipped' ? RED : line.tone === 'done' ? GREEN : 'var(--text-strong)'
+  const pick = (key: LienMonthZoneKey | null) => {
+    setOpen(false)
+    onPick(key)
+  }
+  return (
+    <div data-testid="lien-month-bar" data-layout="line" title={lienMonthWords(month)} style={{ borderBottom: '1px solid var(--border)' }}>
+      <button
+        type="button"
+        data-testid="lien-month-line"
+        data-tone={line.tone}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`The lien month: ${line.head}. ${line.sub}${line.slipWords ? `. ${line.slipWords}` : ''}`}
+        onClick={() => setOpen(true)}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 56, padding: '0.45rem 0.75rem', border: 'none', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+      >
+        <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 1 }}>
+          <span data-testid="lien-month-line-head" style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.2, color: headColor, overflowWrap: 'anywhere' }}>{line.head}</span>
+          <span data-testid="lien-month-line-sub" style={{ ...muted, fontSize: '0.78rem' }}>
+            {line.sub}
+            {line.slipWords ? <span data-testid="lien-month-line-slipped" style={{ color: RED, fontWeight: 600 }}> · {line.slipWords}</span> : null}
+          </span>
+          <span aria-hidden style={{ display: 'grid', gridTemplateColumns: line.segments.map((seg) => `${seg.days}fr`).join(' '), gap: 2, height: 5, marginTop: 4 }}>
+            {line.segments.map((seg) => (
+              <i key={seg.key} data-state={seg.state} style={{ borderRadius: 3, background: seg.slipped ? RED : seg.state === 'now' ? TONE[seg.key].fg : 'var(--border-strong)', opacity: seg.state === 'now' ? 1 : seg.slipped ? 0.45 : 0.5 }} />
+            ))}
+          </span>
+        </span>
+        {line.chip && chip ? (
+          <span data-testid="lien-month-line-chip" style={{ flex: 'none', padding: '4px 10px', borderRadius: 999, background: chip.bg, color: chip.fg, fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{line.chip.words}</span>
+        ) : null}
+        <span aria-hidden style={{ flex: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>›</span>
+      </button>
+      {onZone ? (
+        <div data-testid="lien-month-showing" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0.4rem 0 0.75rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+          <span style={{ ...muted, fontSize: '0.8rem', flex: 1, minWidth: 0 }}>{shown === 0 ? `Nothing on the list is ${onZone.label}’s work right now` : `Showing ${shown ?? 0} of ${total ?? 0} · ${onZone.label}, days ${lienMonthSpanWords(onZone.key, onZone.span)}`}</span>
+          <button type="button" data-testid="lien-month-show-all" onClick={() => onPick(null)} style={{ flex: 'none', minHeight: 44, padding: '0 0.6rem', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-blue-700)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Show all
+          </button>
+        </div>
+      ) : null}
+      {open ? (
+        <PhoneSheet label="The lien month" title={<>The lien month <span style={{ ...muted, fontWeight: 500, marginLeft: 6 }}>{monthWords(month.month)} · day {month.today}</span></>} onClose={() => setOpen(false)} dataAttrs={{ 'data-lien-month-sheet': 'open' }}>
+          <div role="group" aria-label="The lien month’s five zones" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6, padding: '0.6rem 0.75rem 0.9rem', overflowY: 'auto' }}>
+            {month.zones.map((z) => (
+              <Zone key={z.key} zone={z} on={on === z.key} isMobile isToday={month.zone === z.key} onPick={pick} />
+            ))}
+          </div>
+        </PhoneSheet>
+      ) : null}
+    </div>
+  )
+}
+
+export function LienMonthBar(props: BarProps) {
+  if (props.isMobile) return <LienMonthLine {...props} />
+  return <LienMonthBarWide {...props} />
+}
+
+function LienMonthBarWide({ month, on, onPick, isMobile, shown, total }: BarProps) {
   const onZone = on ? month.zones.find((z) => z.key === on) ?? null : null
   // Each zone as wide as its days, but never so narrow its words crush (the desk at 800 px put Catch-up at 40 px).
   const columns = month.zones.map((z) => `minmax(${z.key === 'catch_up' ? 104 : 120}px, ${Math.max(1, z.days)}fr)`).join(' ')

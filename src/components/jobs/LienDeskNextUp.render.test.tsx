@@ -170,6 +170,8 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     // On a phone the brief and its press stay.
     cleanup()
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
+    // On a phone the rails are one folded row until pressed (punch list #352, PR 2).
+    fireEvent.click(screen.getByTestId('lien-step-rails-fold'))
     fireEvent.click(screen.getByTestId('lien-step-affidavit-1'))
     expect(screen.getByTestId('lien-step-brief-title').textContent).toBe('1 · Fix the property')
     expect(screen.getByTestId('lien-step-brief-usual').textContent).toContain('Fix the property · the office presses it · opens the property record')
@@ -425,6 +427,16 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
   })
   it('at 375 wide the rail stacks, a courtesy card wears the four reminder tiles in violet, and the step’s list is one column with a full-width Open', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} reminders={reminders} />)
+    // The rails are one folded row on a phone (punch list #352, PR 2): the row names the papers, and a press unfolds them.
+    const fold = screen.getByTestId('lien-step-rails-fold') as HTMLButtonElement
+    expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBe('yes')
+    expect(screen.queryByTestId('lien-step-rail-reminder')).toBeNull()
+    expect(fold.style.minHeight).toBe('44px')
+    expect(fold.textContent).toContain('Steps of each paper')
+    expect(fold.textContent).toContain('Reminders')
+    fireEvent.click(fold)
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
+    expect(fold.textContent).toContain('Hide the steps')
     expect(screen.getByTestId('lien-step-rail-reminder')).toBeTruthy()
     const card = document.querySelector('[data-lien-next-up-row="courtesy:j1"]') as HTMLElement
     const stepRow = within(card).getByTestId('lien-step-row')
@@ -432,6 +444,10 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Attorney’s letter:todo', ' Closed:todo'])
     fireEvent.click(screen.getByTestId('lien-step-reminder-2'))
     expect((within(screen.getByTestId('lien-reminder-step-list')).getByRole('button', { name: 'Open' }) as HTMLButtonElement).style.width).toBe('100%')
+    // Hiding the steps lets go of the pressed one, so the rails fold and the list is whole again.
+    fireEvent.click(fold)
+    expect(screen.getByTestId('lien-step-rails').getAttribute('data-folded')).toBe('yes')
+    expect(screen.queryByTestId('lien-reminder-step-list')).toBeNull()
   })
   it('without the kernel’s counts the rail shows only when a row stands on it, from the rows themselves', () => {
     render(<LienDeskNextUp rows={[rows[0]!]} loading={false} isMobile={false} onAct={() => {}} />)

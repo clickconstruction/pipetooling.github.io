@@ -1,6 +1,6 @@
 /**
  * bridge-weekly-sheet (v2.5883): the Bridge's weekly email. On Monday at 6 AM Central the run builds the page's first
- * screen (since v2.6888: the three tiles, the strip of pipe and the card What to do now, `buildWeekMailFromReads` over
+ * screen (since v2.6888: the tiles, since v2.7214 the two balances, the strip of pipe and the card What to do now, `buildWeekMailFromReads` over
  * `loadMondaySheetReads`, the copy of the kernels, the same reads the page makes, as the service role) and mails it
  * to the owner and every dev with a real account (the Bridge's own audience since v2.6763, `BRIDGE_ROLES`), each to
  * their own address, and never to anyone else (`weeklySendRecipients`). The bank is read from Mercury with the API

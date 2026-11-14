@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -60,6 +60,7 @@ export default function FieldPctUpdateModal({
   job,
   onClose,
   onSaved,
+  lead,
 }: {
   job: {
     id: string
@@ -72,6 +73,8 @@ export default function FieldPctUpdateModal({
   onClose: () => void
   /** Fired after a successful save (and after the RTB prompt, when shown). */
   onSaved: (newPct: number) => void
+  /** Drawn above the control by a caller with more to say about the job: the Bridge's facts a percent is judged from (v2.7221). */
+  lead?: ReactNode
 }) {
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
@@ -220,6 +223,7 @@ export default function FieldPctUpdateModal({
     <PhoneSheet label={`Update % done for ${job.label}`} title={linesActive ? LINES_QUESTION : 'How done is this job?'} width={440} zIndex={1100} onClose={onClose}>
       <div style={{ padding: '0.5rem 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: 'none' }}>{job.label}</div>
       <div style={{ overflowY: 'auto', minHeight: 0, padding: '0.5rem 1rem 0.75rem' }}>
+        {lead}
         {linesActive && lineProgress.lines && loaded ? (
           <ReportLinesProgressField
             rows={lineProgress.lines}

@@ -11,7 +11,7 @@
  *
  * Pure rules and words only. The write is `editContainer` in `onSiteStore.ts`.
  */
-import type { Container, ContainerKind } from './onSite'
+import type { Container, ContainerKind, Place } from './onSite'
 
 /** `job_containers.label`'s own limit. */
 export const BOX_NAME_MAX = 24
@@ -108,4 +108,63 @@ export function editedBoxWords(before: Pick<Container, 'label' | 'kind'>, patch:
   if (patch.label !== undefined) return `${before.label} is now ${patch.label}. Its printed label still opens it.`
   if (patch.kind !== undefined) return `${before.label} is ${aKind(patch.kind)} now.`
   return `${before.label} saved.`
+}
+
+/** `job_places.name`'s own limit. */
+export const PLACE_NAME_MAX = 80
+
+/** The place half of the window (v2.7199): a place picked from the job's own, or a new one typed. */
+export type BoxPlaceDraft = { placeId: string | null; newPlace: string }
+
+export function boxPlaceDraftOf(c: Pick<Container, 'locationId'>): BoxPlaceDraft {
+  return { placeId: c.locationId, newPlace: '' }
+}
+
+export type BoxPlaceChange =
+  | { kind: 'none' }
+  | { kind: 'known'; placeId: string; name: string }
+  | { kind: 'new'; name: string }
+  | { kind: 'refused'; words: string }
+
+/**
+ * Where the box goes, if anywhere. A typed place wins over a picked one. A typed name the job already has is
+ * that place, as Add a place treats it, and the place the box already stands in is no change.
+ */
+export function boxPlaceChange(box: Pick<Container, 'locationId'>, places: ReadonlyArray<Place>, draft: BoxPlaceDraft): BoxPlaceChange {
+  const typed = draft.newPlace.trim().replace(/\s+/g, ' ')
+  if (typed) {
+    if (typed.length > PLACE_NAME_MAX) return { kind: 'refused', words: `A place name holds ${PLACE_NAME_MAX} characters. This one is ${typed.length}.` }
+    const have = places.find((p) => p.name.toLowerCase() === typed.toLowerCase())
+    if (!have) return { kind: 'new', name: typed }
+    return have.id === box.locationId ? { kind: 'none' } : { kind: 'known', placeId: have.id, name: have.name }
+  }
+  if (!draft.placeId || draft.placeId === box.locationId) return { kind: 'none' }
+  const picked = places.find((p) => p.id === draft.placeId)
+  return picked ? { kind: 'known', placeId: picked.id, name: picked.name } : { kind: 'none' }
+}
+
+/** What the whole window would do: the box's own fields, the place, both or nothing. */
+export type EditBoxPlan =
+  | { ok: true; patch: BoxPatch; place: Extract<BoxPlaceChange, { kind: 'known' | 'new' }> | null }
+  | { ok: false; words: string }
+
+/** The verdict on the fields and the place together. Nothing changed is a quiet no, as in `editBoxVerdict`. */
+export function editBoxPlan(containers: ReadonlyArray<Container>, places: ReadonlyArray<Place>, id: string, draft: BoxDraft, placeDraft: BoxPlaceDraft): EditBoxPlan {
+  const verdict = editBoxVerdict(containers, id, draft)
+  if (!verdict.ok && verdict.reason !== 'same') return { ok: false, words: verdict.words }
+  const box = containers.find((c) => c.id === id)
+  const change = box ? boxPlaceChange(box, places, placeDraft) : ({ kind: 'none' } as const)
+  if (change.kind === 'refused') return { ok: false, words: change.words }
+  const place = change.kind === 'none' ? null : change
+  const patch = verdict.ok ? verdict.patch : {}
+  if (!verdict.ok && !place) return { ok: false, words: '' }
+  return { ok: true, patch, place }
+}
+
+/** The toast for the whole window: the fields' own words, and where the box stands now when it moved. */
+export function savedBoxWords(before: Pick<Container, 'label' | 'kind'>, patch: BoxPatch, placeName: string | null): string {
+  const name = patch.label ?? before.label
+  if (!placeName) return editedBoxWords(before, patch)
+  if (Object.keys(patch).length === 0) return `${name} moved to ${placeName}.`
+  return `${editedBoxWords(before, patch)} It stands at ${placeName} now.`
 }

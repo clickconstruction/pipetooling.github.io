@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Container } from './onSite'
-import { BOX_NAME_MAX, BOX_WHERE_MAX, boxDraftOf, boxKindWords, cleanBoxName, editBoxPressLabel, editBoxTitle, editBoxVerdict, editedBoxWords, renameLabelNote } from './editBox'
+import type { Container, Place } from './onSite'
+import { BOX_NAME_MAX, BOX_WHERE_MAX, boxDraftOf, boxKindWords, boxPlaceChange, boxPlaceDraftOf, cleanBoxName, editBoxPlan, editBoxPressLabel, editBoxTitle, editBoxVerdict, editedBoxWords, renameLabelNote, savedBoxWords } from './editBox'
 
 const box = (over: Partial<Container> = {}): Container => ({ id: 'c1', jobId: 'j1', label: 'R70 NO CONTAINER', kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T12:00:00Z', ...over })
 
@@ -66,5 +66,42 @@ describe('the words', () => {
     expect(editBoxTitle(box({ label: 'R70' }))).toBe('Edit R70')
     expect((['cage', 'box', 'loose'] as const).map(boxKindWords)).toEqual(['Cage', 'Box', 'Loose pile'])
     expect(cleanBoxName('  r70   toilets ')).toBe('R70 TOILETS')
+  })
+})
+
+describe('the place in the window (v2.7199)', () => {
+  const places: Place[] = [{ id: 'p1', jobId: 'j1', name: 'Arena', createdAt: '' }, { id: 'p2', jobId: 'j1', name: 'Yard', createdAt: '' }]
+  const here = box({ locationId: 'p1' })
+
+  it('is no change until a different place is picked or typed', () => {
+    expect(boxPlaceChange(here, places, boxPlaceDraftOf(here))).toEqual({ kind: 'none' })
+    expect(boxPlaceChange(here, places, { placeId: 'p1', newPlace: '  arena ' })).toEqual({ kind: 'none' })
+    expect(boxPlaceChange(here, places, { placeId: 'gone', newPlace: '' })).toEqual({ kind: 'none' })
+  })
+
+  it('takes a picked place, and a typed one over it', () => {
+    expect(boxPlaceChange(here, places, { placeId: 'p2', newPlace: '' })).toEqual({ kind: 'known', placeId: 'p2', name: 'Yard' })
+    expect(boxPlaceChange(here, places, { placeId: 'p2', newPlace: ' Laydown   yard ' })).toEqual({ kind: 'new', name: 'Laydown yard' })
+    expect(boxPlaceChange(here, places, { placeId: 'p1', newPlace: 'YARD' })).toEqual({ kind: 'known', placeId: 'p2', name: 'Yard' })
+  })
+
+  it('refuses a place name past the database’s limit', () => {
+    expect(boxPlaceChange(here, places, { placeId: 'p1', newPlace: 'x'.repeat(81) })).toEqual({ kind: 'refused', words: 'A place name holds 80 characters. This one is 81.' })
+  })
+
+  it('plans the fields and the place together', () => {
+    const site = [here, box({ id: 'c2', label: 'R71' })]
+    const same = boxDraftOf(here)
+    expect(editBoxPlan(site, places, 'c1', same, boxPlaceDraftOf(here))).toEqual({ ok: false, words: '' })
+    expect(editBoxPlan(site, places, 'c1', same, { placeId: 'p2', newPlace: '' })).toEqual({ ok: true, patch: {}, place: { kind: 'known', placeId: 'p2', name: 'Yard' } })
+    expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70' }, boxPlaceDraftOf(here))).toEqual({ ok: true, patch: { label: 'R70' }, place: null })
+    expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r70' }, { placeId: 'p1', newPlace: 'Dock' })).toEqual({ ok: true, patch: { label: 'R70' }, place: { kind: 'new', name: 'Dock' } })
+    expect(editBoxPlan(site, places, 'c1', { ...same, label: 'r71' }, { placeId: 'p2', newPlace: '' })).toEqual({ ok: false, words: 'R71 is already on this job. Pick another name.' })
+  })
+
+  it('says where the box stands when it moved', () => {
+    expect(savedBoxWords(here, {}, 'Yard')).toBe('R70 NO CONTAINER moved to Yard.')
+    expect(savedBoxWords(here, { label: 'R70' }, 'Yard')).toBe('R70 NO CONTAINER is now R70. Its printed label still opens it. It stands at Yard now.')
+    expect(savedBoxWords(here, { kind: 'loose' }, null)).toBe('R70 NO CONTAINER is a loose pile now.')
   })
 })
