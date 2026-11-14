@@ -212,6 +212,14 @@ for the title and stage?", the ⋯ drawn under the ✕. Yes: the two 44 px press
 on the name's line and ⋯ on the quiet line under it, so the name and the status chip have the whole
 first line and a long name wraps later. The floating ✕ on scroll is unchanged.
 
+Also on pass 2, from a crop of What's happening: "Should we make these actionable as well?" Yes.
+**Next on site** ends in *Open the calendar*, the job's calendar sheet where the block is moved or
+another added (the ⋯ sheet's row, so the row keeps its `data-navtrack` name); with no block it reads
+*Nothing scheduled. Open the calendar*. **Waiting on** ends in the job's next move itself, *Bill it*,
+the bar's verb from `tabbedJobWindowBar`, so the sentence and the press agree; when the move is
+someone else's (*The customer, to pay*) it ends in the nudge the Pipeline row offers, *Remind them*.
+Every row of What's happening and the thread now ends the same way.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -293,7 +301,7 @@ moves; the bar is as today.
 Street View banner first, then the address with a Directions press, the painted map), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
-plain label and its answer), then the thread (Last word, They promised and We owe them as labelled rows, the two promise rows
+plain label, its answer and its act in blue words), then the thread (Last word, They promised and We owe them as labelled rows, the two promise rows
 each ending in the blue words that open its writer, the newest two
 messages with the customer as bubbles, *Open the thread · 56 ›*; Reply is the Last word row's blue words and Note is the bar's). Each is a section with a title of its own, with a band between
 them. Photos is a section of its own right after Where, the banner
