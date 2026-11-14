@@ -250,6 +250,34 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(card.textContent).not.toMatch(/Draft the/)
   })
 
+  it('the header names the desk’s step on an affidavit in work, and its button opens the desk’s Affidavits list (v2.7187, punch list #335, row 2)', async () => {
+    const verdict = async (re: RegExp) =>
+      waitFor(() => {
+        const el = document.querySelector('[data-lien-timeline-verdict]') as HTMLElement | null
+        expect(el?.textContent).toMatch(re)
+        return el!
+      })
+    // An original contractor sends no notice, so the affidavit is the next paper whatever day the suite runs.
+    const direct = () => job({ created_at: new Date().toISOString(), last_work_date: null, gc_customer_id: null, gcCustomer: null })
+    const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} />)
+    await settle()
+    expect((await verdict(/affidavit/)).textContent).toMatch(/File the affidavit/)
+    first.unmount()
+    const onOpenLienDesk = vi.fn()
+    const second = renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} onOpenLienDesk={onOpenLienDesk} deskAffidavit={{ state: 'to_draft', missing: [], holdUntil: null }} />)
+    await settle()
+    const card = await verdict(/Draft the affidavit/)
+    expect(card.textContent).toContain('the affidavit to be drafted')
+    expect(card.textContent).not.toMatch(/File the affidavit/)
+    fireEvent.click(document.querySelector('[data-lien-window-next-step-button]') as HTMLElement)
+    expect(onOpenLienDesk).toHaveBeenCalledWith(expect.any(String), 'affidavit')
+    second.unmount()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={direct()} deskAffidavit={{ state: 'needs_property', missing: ['homestead_answer'], holdUntil: null }} />)
+    await settle()
+    const held = await verdict(/Answer the homestead question, then file the affidavit/)
+    expect(held.textContent).toContain('a yes or a no on the homestead question')
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await settle()

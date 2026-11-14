@@ -76,7 +76,7 @@ The bell beside Send is **Tell me**. It is lit, so you hear when the task is don
 
 Tap **+ Done when…** in the **Add** row. Type one line a row. Each line is one thing that has to be true. The card shows each line as a box the person ticks. The card reads its percent from the ticks. Two of three ticked reads 67%. Leave the box empty and the person sets the percent by hand.
 
-Beside it sits **Photo at the finish**. It turns on by itself once you write a line. Tap it on a plain task too when you want a photo before the card closes. The green sentence above Send says what the card will carry, the lines and the photo.
+Beside it sits **Photo at the finish**. It turns on by itself once you write a line. Tap it on a plain task too when you want a photo before the card closes. With it on, the card stays open until a photo is in or a reason is typed. Every card offers a photo at each new percent. The green sentence above Send says what the card will carry, the lines and the photo.
 
 :::example Lines on a card
 Put the plumbing tools in a neat home
