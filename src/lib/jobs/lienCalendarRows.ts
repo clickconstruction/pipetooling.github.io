@@ -20,6 +20,7 @@ import { listPayer, paySpeedPayer } from './billToParty'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { jobUncollectible, type StageRow } from '../jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { jobOffLienDeskInKind } from './lienInKind'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -36,9 +37,9 @@ export type LienRunwayDeps = {
   acceptedByInvoice?: ReadonlyMap<string, string> | null
 }
 
-/** The billed jobs whose lien clocks are read: a job marked Uncollectible is off the desk — no clock, no row (v2.4788, punch list #94). */
+/** The billed jobs whose lien clocks are read: a job marked Uncollectible is off the desk — no clock, no row (v2.4788, punch list #94) — and so is a job an open in-kind deal pays (v2.7253, `lienInKind.ts`). */
 export function billedLienClockJobsOf(jobs: ReadonlyArray<JobWithDetails>): BilledLienClockJob[] {
-  return jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null }))
+  return jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j) && !jobOffLienDeskInKind(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null }))
 }
 
 /** The payers the pace rule reads across the board's Billed and Collections rows: whoever owes each open bill. */
@@ -95,7 +96,7 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
 }
 
 /**
- * The By date rows: every billed job (never one given up on) whose runway says something, with the
+ * The By date rows: every billed job (never one given up on, never one an open in-kind deal pays) whose runway says something, with the
  * one billed bill handed to the runway when the job has exactly one. The caller says when the rows are
  * ready (the billed scope merged, the clocks read); this only shapes them.
  */
@@ -104,6 +105,7 @@ export function buildLienCalendarRows(jobs: ReadonlyArray<JobWithDetails>, runwa
   for (const job of jobs) {
     if (job.status !== 'billed') continue
     if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the By date list
+    if (jobOffLienDeskInKind(job)) continue // v2.7253: an open in-kind deal pays it — paid, as far as the desk goes
     const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
     const runway = runwayFor(job, billed.length === 1 ? billed[0]! : null)
     if (!runway || runway.state === 'none') continue

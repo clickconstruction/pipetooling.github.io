@@ -10,6 +10,7 @@ import type { CustomerAddressRow } from '../lib/jobs/lienProperty'
 import { buildLienTimelineBook, type LienTimelineBook } from '../lib/jobs/lienTimelineBook'
 import { LIEN_BOOK_JOB_COLUMNS, assembleLienBookInput, type LienBookRaw, type LienBookRawGc, type LienBookRawJob } from '../lib/jobs/lienTimelineBookAssemble'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { lienJobIdsOffDesk } from '../lib/jobs/lienInKind'
 
 /** Wide enough that every open month and every affidavit window is inside it — the book is the whole path, not this month's. */
 export const LIEN_BOOK_WINDOW_DAYS = 400
@@ -64,12 +65,13 @@ export function useLienTimelineBook(
           jobsRead.push(...((part ?? []) as LienBookRawJob[]))
         }
         if (cancelled) return
-        const zzJobIds = hideZzTestJobs ? zzTestJobIds(jobsRead) : null
-        const kept = (jobId: string) => !zzJobIds?.has(jobId)
-        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
-        const affidavitRows = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
-        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
-        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        // v2.7253: a job an open in-kind deal pays leaves with the ZZ test jobs (`lienInKind.ts`).
+        const offJobIds = lienJobIdsOffDesk(jobsRead, hideZzTestJobs ? zzTestJobIds(jobsRead) : null)
+        const kept = (jobId: string) => !offJobIds?.has(jobId)
+        const rows = offJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const affidavitRows = offJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
+        const jobs = offJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const jobIds = offJobIds ? jobIdsRead.filter(kept) : jobIdsRead
         const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id).filter((v): v is string => Boolean(v)))]
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
         const filings: JobLienFilingRow[] = []

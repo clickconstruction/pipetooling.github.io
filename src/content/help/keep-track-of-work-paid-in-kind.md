@@ -26,6 +26,8 @@ The customer's page now shows a card named **Pays in kind**. It says the deal in
 
 The bills of those jobs now read as scheduled in kind. The open balance stops reading as late. The collected line says how much of it was in kind. Pay speed leaves in kind payments out.
 
+Those jobs also leave the Lien desk. The desk treats them as paid and stops watching their lien dates. The dates still run. [A job paid in kind is off the desk](/help/send-lien-notices-from-the-lien-desk#a-job-paid-in-kind-is-off-the-desk) says what that means.
+
 The payment forecast and Money waiting leave those bills out. One line on each says how much is scheduled in kind. The emails of both say the same.
 
 ## Add a line when something is given
@@ -162,6 +164,6 @@ A line passes over a bill that went out through Stripe. The window names that bi
 
 In the ledger, press **Change the terms**. You can change the words and the jobs it pays.
 
-**End the arrangement** closes it. It takes no more lines. Its open bills read as ordinary bills again, so they can read as late.
+**End the arrangement** closes it. It takes no more lines. Its open bills read as ordinary bills again, so they can read as late. Its jobs with money still open are back on the Lien desk.
 
 **Remove it** shows only while no line stands on the arrangement. It is for one made by mistake.

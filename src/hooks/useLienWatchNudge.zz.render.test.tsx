@@ -11,7 +11,7 @@ const job = (id: string, jobName: string, customerName: string) => ({
   id, job_name: jobName, customer_name: customerName, status: 'billed', gc_customer_id: 'gc-1', last_work_date: '2026-08-01',
   lien_last_work_on: null, revenue: 500, payments_made: 0, customer_address_id: null,
 })
-const JOBS = [job('A', '101 Hill Street', 'Ann Lee'), job('Z', 'ZZ TEST lien', 'Ann Lee'), job('Y', 'Hill Street remodel', 'ZZ Test Customer')]
+const JOBS: Array<ReturnType<typeof job> & { in_kind_arrangement_id?: string | null }> = [job('A', '101 Hill Street', 'Ann Lee'), job('Z', 'ZZ TEST lien', 'Ann Lee'), job('Y', 'Hill Street remodel', 'ZZ Test Customer')]
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
@@ -42,5 +42,16 @@ describe('useLienWatchNudge · ZZ test jobs', () => {
 
   it('for a dev who shows ZZ jobs, the watch keeps every job', async () => {
     expect(await read(false)).toEqual(['A', 'Z', 'Y'])
+  })
+
+  it('a job an open in-kind deal pays leaves the watch, whoever looks, and is back once the link is cleared (v2.7253)', async () => {
+    JOBS.push({ ...job('K', '12 Rent Row', 'Ann Lee'), in_kind_arrangement_id: 'deal-1' })
+    try {
+      expect(await read(false)).toEqual(['A', 'Z', 'Y'])
+      JOBS[JOBS.length - 1] = { ...job('K', '12 Rent Row', 'Ann Lee'), in_kind_arrangement_id: null }
+      expect(await read(false)).toEqual(['A', 'Z', 'Y', 'K'])
+    } finally {
+      JOBS.pop()
+    }
   })
 })

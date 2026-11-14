@@ -34,6 +34,7 @@ import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
+import { lienJobIdsOffDesk, withLienInKindColumn } from '../lib/jobs/lienInKind'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -72,6 +73,8 @@ export type LienDeskJob = {
   lien_payment_bond?: string | null
   /** The job's trade (v2.3849) — the letters' "plumbing contractor" / "electrical contractor" and the form's default type of labor. */
   service_type?: { name: string } | null
+  /** The open in-kind deal that pays the job (punch list #301); set, the job is off the desk (v2.7253, `lienInKind.ts`). */
+  in_kind_arrangement_id?: string | null
 }
 
 /** The columns the desk reads from jobs_ledger. */
@@ -152,6 +155,9 @@ const EMPTY_QUEUE: LienDeskQueue = {
  * `hideZzTestJobs` (punch list #61, PR 3): ZZ test jobs leave all four lists (the due months, the items,
  * the affidavit and retainage windows) and the jobs, right after the jobs join, before any queue is built.
  * The joined rows carry the job's and the customer's names, so no shared read is needed.
+ *
+ * A job an open in-kind deal pays (v2.7253) leaves at the same seam, always: paid in kind is paid, as far as the
+ * desk goes (`lienInKind.ts`). Every list, count and total built below is without it.
  */
 export function useLienDeskData(
   enabled: boolean,
@@ -205,7 +211,7 @@ export function useLienDeskData(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY)
+                .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY))
                 .in('id', chunk),
             'lien desk: jobs',
           ).catch(() =>
@@ -213,22 +219,22 @@ export function useLienDeskData(
               () =>
                 supabase
                   .from('jobs_ledger')
-                  .select(LIEN_DESK_JOB_COLUMNS)
+                  .select(withLienInKindColumn(LIEN_DESK_JOB_COLUMNS))
                   .in('id', chunk),
               'lien desk: jobs (without the first work day)',
             ),
           )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
-        // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names.
-        const zzJobIds = hideZz ? zzTestJobIds(jobsRead) : null
-        const kept = (jobId: string) => !zzJobIds?.has(jobId)
-        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
-        const allItems = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
-        const affidavitRowsKept = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
-        const retainageRows = zzJobIds ? retainageRowsRead.filter((r) => kept(r.job_id)) : retainageRowsRead
-        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
-        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names; and (v2.7253) so does every job an open in-kind deal pays.
+        const offJobIds = lienJobIdsOffDesk(jobsRead, hideZz ? zzTestJobIds(jobsRead) : null)
+        const kept = (jobId: string) => !offJobIds?.has(jobId)
+        const rows = offJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const allItems = offJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
+        const affidavitRowsKept = offJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
+        const retainageRows = offJobIds ? retainageRowsRead.filter((r) => kept(r.job_id)) : retainageRowsRead
+        const jobs = offJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const jobIds = offJobIds ? jobIdsRead.filter(kept) : jobIdsRead
         const items = allItems.filter((i) => i.kind === 'notice_53_056')
         const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))

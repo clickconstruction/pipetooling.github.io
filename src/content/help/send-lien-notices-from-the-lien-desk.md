@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, to do, by date, by paper, by job, monthly notices, lien affidavits, retainage notices, timeline, do now, deadlines, all filings, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
+keywords: lien desk, to do, by date, by paper, by job, paid in kind, in kind, rent credit, missing from the desk, off the desk, monthly notices, lien affidavits, retainage notices, timeline, do now, deadlines, all filings, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
 where: /lien-desk
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
@@ -109,6 +109,18 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 - **A forecast row.** Its **Send notice…** opens the desk on that job.
 
 The button left of the × on Put a GC on notice makes that window full screen. The window opens the way you left it. Press the button again to go back to the window.
+
+## A job paid in kind is off the desk
+
+Some customers pay with something other than money, like a rent credit each month. That is an in kind arrangement. The desk treats a job on an open arrangement as paid.
+
+Such a job is on no tab of the desk. It is in no count and no total. No notice run, print run or shared summary names it. Its Pipeline row carries no lien date. Put a GC on notice leaves it out too.
+
+One thing to know before you rely on this. The law's lien dates still run on that job. The desk no longer watches them, and nobody is reminded. If the arrangement stops being honoured, a deadline can pass while the job is off the desk.
+
+The job's own Lien window still opens from the job. A line at the top reads **Paid in kind**. Every paper already on file is still there. You can still draft, sign and record a paper from that window.
+
+To bring a job back, end the arrangement or take the job off it. The job is on the desk again the next time the desk opens. Its dates are counted the way they always were. Nothing else is needed. [Keep track of work paid in kind](/help/keep-track-of-work-paid-in-kind) shows both presses.
 
 ## Find a job on the list
 
