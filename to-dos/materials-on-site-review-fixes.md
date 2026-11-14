@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: ready
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PR 5 built on his word (v2.7240, its migration and the box page's deploy wait on his yes) · PRs 6 to 9 not built
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built and merged the same day (#7986, #7990, #7988, #8019), with the Print labels window made wider on his ask (#8017) · PR 5 built on his word (v2.7240, #8074), LIVE 2026-11-14 on his yes: the migration pushed, `box-read` deployed, the types in #8083 · PRs 6 to 9 not built
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -12,10 +12,10 @@ summary: >
   file the public box page then streams. Four defects were fixed the same day. This card lists the
   rest as small PRs in the order they would hurt a person in the field or a number the office
   reads.
-next: The owner's yes to push PR 5's migration and deploy `box-read`, then the types. His try of a press on a real phone with its radio off, on the ZZ test job. PR 6, missing with no price, is next on his word.
+next: The owner's try of a press on a real phone with its radio off, on the ZZ test job: it is also the first press to land under PR 5's stamps. PR 6, missing with no price, is next on his word.
 size: L as a train of about nine (M · S · S · S · M · S · S · M · S); PRs 1 to 5 are built; left: PRs 6 to 9 (S · S · M · S)
-blocker: The owner's yes for PR 5's `supabase db push` and the `box-read` deploy; until then the tables and the box page are as they were. His word for PR 6.
-opinion: your call — say yes to the push and the deploy for PR 5 when someone is at hand; nothing a screen does today is refused by it
+blocker: None for what is built. The owner's word for PR 6.
+opinion: your call — PRs 1 to 5 are live; try a press on a phone with the radio off, then say the word on PR 6
 mockup: not required — PR 1 uses the outbox bar that is already on the phone; no new screen
 ---
 
@@ -151,7 +151,7 @@ guess too. A ledger row and a box move are stamped with the caller and the serve
 phone's is ahead, `recorded_at` keeps when a row reached the office, a box photo's Drive columns
 are the sweep's and its place in the bucket is its own, and a box keeps its job. Proved on a
 scratch Postgres with each trigger switched off in turn; the bed over the whole schema is CI's.
-Nothing is live until the push and the deploy. The check this card asked for first came back
+**Live 2026-11-14** on his yes (*Yes, push and deploy*): `supabase db push` applied this one file (the dry run named no other), `box-read` was deployed, and the types are #8083. `check:migration-drift` and `check:edge-drift` read clean. Read only after: the new column reads on prod, null on the rows from before; the box page refuses a malformed code and opens the ZZ test cage. No press was made, so the first real press is what shows the stamps on prod. The check this card asked for first came back
 clean for today's teams: the primary on the site's main job and a helper on its second each read
 their job's boxes. A superintendent or an estimator on a team is still let in only once clocked
 onto the job; none is on a team that holds boxes.
