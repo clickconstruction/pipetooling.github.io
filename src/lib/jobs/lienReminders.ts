@@ -3,7 +3,7 @@ import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './
 import { LIEN_MONTH_RULE } from './lienMonthRhythm'
 
 /**
- * The REMINDERS strip on the Lien desk's Do now (punch list #262, Grace's ask of 2026-11-04): a
+ * The REMINDERS strip on the Lien desk's To do (punch list #262, Grace's ask of 2026-11-04): a
  * sent § 53.056 notice walks its own ladder of four between the notice's run and the affidavit —
  * 1 *Reminder due* (nothing since the packet, from day 7), 2 *Reminder sent* (the courtesy went,
  * waiting a week), 3 *Letter two* (counsel's certified second letter, drafted or sent, from day
@@ -274,7 +274,7 @@ const OWNER_CALL: LienBriefMove = { press: 'Record the owner’s call', means: '
 const GC_OKAY: LienBriefMove = { press: 'The GC authorized direct pay', means: 'the GC told the owner in writing to pay us' }
 
 /**
- * The step brief a pressed rung opens on Do now (v2.6574; rewritten v2.6594 for a first-week employee,
+ * The step brief a pressed rung opens on To do (v2.6574; rewritten v2.6594 for a first-week employee,
  * punch list #274). Six parts, always in this order: in plain words · why a notice is here · what to do
  * now and what the press does · if that is not right, each other move with its meaning · what ends the
  * step on its own · what happens if nobody acts. The days are the clocks' own constants. The other moves

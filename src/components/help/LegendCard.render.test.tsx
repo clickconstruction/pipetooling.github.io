@@ -43,7 +43,7 @@ describe('LegendCard', () => {
     render(<DeskLegendCard legend={LIEN_DESK_LEGEND} phone={false} onClose={onClose} />)
     const card = screen.getByTestId('legend-card-lien-desk')
     expect(card.getAttribute('aria-label')).toBe('What this desk holds')
-    expect(card.textContent).toContain('Do now')
+    expect(card.textContent).toContain('To do')
     expect(card.textContent).toContain('Every lien paper that needs someone to act')
     const door = screen.getByTestId('legend-card-lien-desk-guide') as HTMLAnchorElement
     expect(door.getAttribute('href')).toBe('/help?g=send-lien-notices-from-the-lien-desk&via=legend')
@@ -111,7 +111,7 @@ describe('on a phone (punch list #187, checked live 2026-10-26)', () => {
       const card = screen.getByTestId('legend-card-lien-desk')
       expect(card.hasAttribute('data-stacked')).toBe(true)
       expect(card.style.gridTemplateColumns).toBe('1fr')
-      expect(card.textContent).toContain('Do now')
+      expect(card.textContent).toContain('To do')
       fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
     } finally {

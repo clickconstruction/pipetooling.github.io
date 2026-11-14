@@ -31,6 +31,14 @@ describe('buildStageFlow', () => {
     expect(build.weeksText).toBe('10 to 14 weeks to build what is already sold')
   })
 
+  it('gives Build a range only when the guess moves the rounded figure, as Bill does', () => {
+    const buildOf = (guessUsd: number) =>
+      buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: null, build: { pileUsd: 360_000, pileCount: 12, inPerWeekUsd: 20_000, outPerWeekUsd: 50_000, knownJobs: 12, guessUsd, guessJobs: 6 }, heldLinkId: null }).stages.find((s) => s.id === 'build')!
+    // $360k and $370k at $50k a week both round to 7: one figure, never "7 to 7 weeks".
+    expect(buildOf(20_000).weeksText).toBe('7.2 weeks to build what is already sold')
+    expect(buildOf(100_000).weeksText).toBe('7 to 8 weeks to build what is already sold')
+  })
+
   it('lights the most weeks to clear and names a close second as the pair', () => {
     const flow = today()
     expect(flow.linkId).toBe('bill')

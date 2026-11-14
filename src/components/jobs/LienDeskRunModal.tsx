@@ -85,7 +85,7 @@ export default function LienDeskRunModal({
    * to send with their approvals. The host writes it and re-reads; it returns how many it took back.
    */
   onTakeBack?: (itemIds: string[]) => Promise<number>
-  /** Open on the take-back confirm: Do now's run row pressed *Take back…* (punch list #101 PR 2). */
+  /** Open on the take-back confirm: To do's run row pressed *Take back…* (punch list #101 PR 2). */
   openOnTakeBack?: boolean
   /**
    * The run was started a moment ago by one click (Put a GC on notice's Approve all, v2.4541):

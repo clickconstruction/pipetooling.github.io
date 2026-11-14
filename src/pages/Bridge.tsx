@@ -1037,6 +1037,7 @@ export default function Bridge() {
           hoursLine: jobHours ? jobHoursLine(jobHours.get(j.id)) : null,
           hoursCell: jobHours ? jobHoursCell(jobHours.get(j.id)) : null,
           lastWorked: pctFacts.facts?.has(j.id) ? lastWorkedCell(pctFacts.facts.get(j.id)!, data.todayYmd, md) : null,
+          address: pctFacts.facts?.get(j.id)?.address || null,
         })),
       noPriceJobs: named(data.earned.noRevenueJobs).map((j) => ({ id: j.id, label: j.label })),
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
