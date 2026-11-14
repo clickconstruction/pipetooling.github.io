@@ -56,7 +56,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   // Renamed from "Digital twins" in v2.3705 (the View-as sample accounts moved in).
   { label: 'Digital twins & samples', marker: 'Mint a twin' },
   { label: 'Advanced', marker: 'Fix app', expand: 'Advanced' },
-  { label: 'Activity logs', marker: 'Most recent push notifications' },
+  // "push" left the heading in v2.7068, when app-only notices joined the list (v2.7258).
+  { label: 'Activity logs', marker: 'Most recent notifications' },
   { label: 'Guides', marker: 'How do I' },
   { label: 'Release notes', marker: 'Current version' },
   { label: 'How fast a change ships', marker: 'How long a change takes' },
