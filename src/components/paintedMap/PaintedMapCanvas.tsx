@@ -59,6 +59,8 @@ type Props = {
   me?: (PaintedPoint & { accuracyM: number | null }) | null
   /** Frame everything on the map again each time this number changes: a walk just ended, and the whole of it is to be looked over. */
   refit?: number
+  /** Keep the person and the whole map in the picture together: for a reader finding the line, where `follow` is for a painter making one. */
+  frameMe?: boolean
   /** Keep the person in view as they move: the map slides to them when they near its edge. For a walk being painted. */
   follow?: boolean
   onPlaceTap?: (id: string) => void
@@ -179,6 +181,28 @@ function Refit({ token, points }: { token: number; points: ReadonlyArray<Painted
     if (b.south === b.north && b.west === b.east) map.setView([b.south, b.west], 18, { animate: false })
     else map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [40, 40], maxZoom: NATIVE_ZOOM, animate: false })
   }, [map, token])
+  return null
+}
+
+/**
+ * Frames the person and the map together: once when they are first found, and again whenever they
+ * walk out of the picture. A reader looking for the line needs both on the screen at once, so the
+ * map zooms out to hold them and never slides the line away.
+ */
+function FrameMe({ me, points }: { me: PaintedPoint; points: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const framed = useRef(false)
+  const latest = useRef(points)
+  latest.current = points
+  const { lat, lng } = me
+  useEffect(() => {
+    if (framed.current && map.getBounds().pad(-0.08).contains([lat, lng])) return
+    framed.current = true
+    const b = boundsOfPoints([...latest.current, { lat, lng }])
+    if (!b) return
+    if (b.south === b.north && b.west === b.east) map.setView([b.south, b.west], 18, { animate: false })
+    else map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [40, 40], maxZoom: NATIVE_ZOOM, animate: true })
+  }, [map, lat, lng])
   return null
 }
 
@@ -530,7 +554,7 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, onPlaceTap, still, onTilesFailed, onGlass, onView }: Props) {
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, frameMe, onPlaceTap, still, onTilesFailed, onGlass, onView }: Props) {
   const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
   const [host, setHost] = useState<HTMLDivElement | null>(null)
@@ -585,6 +609,7 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         {onView ? <ViewTracker onView={onView} /> : null}
         {follow && me ? <Follow me={me} /> : null}
         {refit != null ? <Refit token={refit} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
+        {frameMe && me ? <FrameMe me={me} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         <Shapes lines={lines} places={places} draftPoints={draftShown} onPlaceTap={draft || dot ? undefined : onPlaceTap} />
         {me ? (
           <>

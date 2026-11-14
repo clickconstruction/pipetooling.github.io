@@ -9,7 +9,7 @@ import type { LienAffidavitNoticeRow } from './lienAffidavitNotices'
 
 /**
  * The § 53.054 affidavit as the Lien desk fills it. Pure. The desk draws the paper in three places: the Affidavits
- * pane, the paper preview behind a Do now row, and a timeline stop's window. Each handed `buildLienAffidavitFieldsForJob`
+ * pane, the paper preview behind a To do row, and a timeline stop's window. Each handed `buildLienAffidavitFieldsForJob`
  * its own list, and the lists drifted: the stop's window never passed what the sent bills owe, so its paper swore the
  * job's whole balance beside a pane that swore the bills. Now the three hand over what the desk holds for the job (its
  * row, its affidavit entry, the GC's row, the property as resolved, the claim set by hand) and this fills the paper.

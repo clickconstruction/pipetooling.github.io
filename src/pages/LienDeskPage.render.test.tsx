@@ -145,7 +145,7 @@ describe('LienDeskPage (/lien-desk)', () => {
     await settle()
     await waitFor(() => expect(container.querySelector('[data-lien-desk-panel="page"]')).not.toBeNull())
     expect(screen.getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'All filings' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'By paper' }).getAttribute('aria-selected')).toBe('true')
     expect(container.querySelector('[data-lien-desk-back]')).not.toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Lien desk' })).toBeNull()
     expect(screen.getByRole('region', { name: 'Lien desk' })).toBeTruthy()
@@ -158,19 +158,19 @@ describe('LienDeskPage (/lien-desk)', () => {
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=affidavits')
   })
 
-  it('a view press writes the address; Do now leaves it bare; Notices carries the open notice', async () => {
+  it('a view press writes the address; To do leaves it bare; Notices carries the open notice', async () => {
     renderWithProviders(<Harness start="/lien-desk" />)
     await settle()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /^Do now/ }).getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^To do/ }).getAttribute('aria-selected')).toBe('true'))
     expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
-    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=deadlines'))
-    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))
     // On a computer the Notices list opens on its first notice, and the address names it.
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
     fireEvent.click(screen.getByRole('tab', { name: /^Timeline/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=timeline'))
-    fireEvent.click(screen.getByRole('tab', { name: /^Do now/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^To do/ }))
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk'))
   })
 

@@ -4,7 +4,7 @@ import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
- * Do now — the paper behind a chip (v2.4632, the owner's ask). A layer over the desk: the
+ * To do — the paper behind a chip (v2.4632, the owner's ask). A layer over the desk: the
  * notice or the affidavit as it would print today, every statutory blank marked on the page
  * with a red number, and a rail beside it that lists the blanks by number with the button
  * that fills each. ‹ › and the arrow keys walk the rows; Esc closes this alone. The pages

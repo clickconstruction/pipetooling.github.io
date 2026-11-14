@@ -9,7 +9,7 @@ import { PCT_FACTS_LINES_SHOWN, pctFactsRows, pctRunAfterSave, pctRunPlace, show
  *
  * The percent window is the app's own (`FieldPctUpdateModal`), so a save files the same status report and mirrors the
  * same percent as a save anywhere else. Two things are added around it. Above the control, the facts a percent is
- * judged from: what we are charging, the job's lines, the last day worked and by whom, the next scheduled day, the
+ * judged from: where the job is, what we are charging, the job's lines, the last day worked and by whom, the next scheduled day, the
  * hours. And a save moves on to the next job on the list, so five jobs are two presses each: a percent, then Save.
  * *Skip* and *Back* move without saving. *Not now* closes the window.
  *
@@ -37,7 +37,7 @@ export function BridgePctFacts({ facts, error, todayYmd, dayLabel, jobHref }: { 
         {pctFactsRows(facts, todayYmd, dayLabel).map((r) => (
           <div key={r.key} style={{ display: 'contents' }} data-testid={`bridge-pct-fact-${r.key}`}>
             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{r.label}</span>
-            <span style={{ minWidth: 0, overflowWrap: 'anywhere', fontWeight: r.key === 'charge' && !r.warn ? 700 : 400, color: r.warn ? 'var(--text-amber-800)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{r.words}</span>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere', fontWeight: (r.key === 'charge' || r.key === 'address') && !r.warn ? 700 : 400, color: r.warn ? 'var(--text-amber-800)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{r.words}</span>
           </div>
         ))}
       </div>
