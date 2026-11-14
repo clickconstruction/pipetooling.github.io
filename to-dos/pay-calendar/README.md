@@ -450,8 +450,8 @@ answered. The rest stand as my picks unless she says otherwise. My pick is first
    job*, the calendar saved with Create Job, the job row's offer after the row was cleared,
    the second door from the bid whose job was open, and the Dispatch row's **Open the pay
    calendar**, whose save closed the row. **Not a calendar payer** was not pressed. The test
-   job, its calendar and the bid were deleted through the app. Two closed Dispatch rows named
-   ZZ Test stay as inbox history, since the app has no delete for them.
+   job, its calendar and the bid were deleted through the app. The walk's two closed Dispatch
+   rows were removed from the database on the owner's yes, since the app has no delete for them.
 5. **How early the cutoff asks.** Needs you from 7 days out, the Working row from 10. Or other
    numbers. Or no Needs you line at all.
 6. **A level for developments.** No, with *Also set on the other jobs in this development*. Or
