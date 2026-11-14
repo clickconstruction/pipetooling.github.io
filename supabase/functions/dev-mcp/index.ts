@@ -328,10 +328,16 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // paper would say today: its months, its notice to the owner, its claim, and the questions for the attorney. A draft
 // alone: never sent for approval, approved, printed or filed. No wrapper RPC, no migration.
 //
+// 0.88.0 (v2.7276; punch list #351, the owner's calls of 2026-11-14): a box's name is one to three letters and a number
+// from 1 to 999, one letter after it allowed, one of a kind across the site. plan_container's label and
+// plan_container_edit's label are held to the rule before the ask leaves, in the screens' words; the database holds it
+// too (box_name_words, the job_containers_name_rule trigger, 20261114100000), and the carry gives a clashing box the
+// site's next free name in place of `A1 (2)`.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.87.0'
+const SERVER_VERSION = '0.88.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -1053,7 +1059,7 @@ const TOOLS: McpTool[] = [
   {
     name: 'plan_container',
     description: "Dry-run a cage or box on a job (v2.6367): add one (its stencil, kind cage | box | loose, where it stands, its place — made when the job has none of that name), move one to another place, retire an empty one (a box with parts in it is refused, as on the phone: move them or mark them used first), or bring a retired one back (v2.6406's Bring back: refused while a live box on the job carries its stencil). The dry run replies with the box as it will read, the job, and a live row count under a plan_hash; nothing is written. Unsorted is the app's own row: never added, moved or retired here.",
-    inputSchema: { type: 'object', properties: { container: { type: 'object', description: "{ job_id (find_job), action: 'add' | 'move' | 'retire' | 'bring_back' (add when left out), agent_label (the robot's name as the row shows it); add: label, kind, where?, place?; move: container (a stencil or id), place; retire: container; bring_back: container (a retired box's stencil or id — read_on_site lists them under retired); at? (an ISO timestamp with its offset for a move or retire that happened earlier) }" } }, required: ['container'] },
+    inputSchema: { type: 'object', properties: { container: { type: 'object', description: "{ job_id (find_job), action: 'add' | 'move' | 'retire' | 'bring_back' (add when left out), agent_label (the robot's name as the row shows it); add: label (letters and a number, R76 — the site's next free name is one past its highest), kind, where?, place?; move: container (a stencil or id), place; retire: container; bring_back: container (a retired box's stencil or id — read_on_site lists them under retired); at? (an ISO timestamp with its offset for a move or retire that happened earlier) }" } }, required: ['container'] },
   },
   {
     name: 'apply_container',

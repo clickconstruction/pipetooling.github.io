@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import EditBoxForm from './EditBoxForm'
+import type { SiteBox } from '../../lib/materials/boxName'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
@@ -54,6 +55,8 @@ type Props = {
   container: Container
   /** Every container of the box's job. */
   containers: ReadonlyArray<Container>
+  /** Every box of the job's site when the host has read them (punch list #351), for the name rule in Edit. */
+  siteBoxes?: ReadonlyArray<SiteBox>
   places: ReadonlyArray<Place>
   /** The job's lines as the host page reads them, so the tab's numbers are the page's numbers. */
   lines: ReadonlyArray<ContainerLine>
@@ -63,7 +66,7 @@ type Props = {
   onSaved: (words: string) => void
 }
 
-export default function BoxTabs({ container, containers, places, lines, byName, byUserId, touch = false, onSaved }: Props) {
+export default function BoxTabs({ container, containers, siteBoxes, places, lines, byName, byUserId, touch = false, onSaved }: Props) {
   const [tab, setTab] = useState<'cage' | 'contents'>('cage')
   const [names, setNames] = useState<BoxNameChange[]>([])
   const [failed, setFailed] = useState<unknown>(null)
@@ -127,7 +130,7 @@ export default function BoxTabs({ container, containers, places, lines, byName, 
       </div>
       {tab === 'cage' ? (
         <div role="tabpanel" aria-label="Cage" style={{ display: 'grid', gap: '1rem' }}>
-          <EditBoxForm container={container} containers={containers} places={places} byName={byName} byUserId={byUserId} touch={touch} onSaved={onSaved} />
+          <EditBoxForm container={container} containers={containers} siteBoxes={siteBoxes} places={places} byName={byName} byUserId={byUserId} touch={touch} onSaved={onSaved} />
           <section style={{ display: 'grid', gap: '0.3rem' }}>
             <h3 style={head}>Its code</h3>
             <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, fontSize: '1.05rem' }} data-testid="box-tabs-code">{boxCodeWords(container.id)}</div>

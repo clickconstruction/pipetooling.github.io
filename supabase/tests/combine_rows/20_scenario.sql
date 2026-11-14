@@ -140,17 +140,20 @@ INSERT INTO public.drive_links (id, token_hash, jobs_ledger_id, drive_file_id, h
 INSERT INTO public.email_tag_threads (id, user_id, gmail_thread_id, jobs_ledger_id) VALUES ('00000000-0000-0000-0000-000000252e53', '00000000-0000-0000-0000-000000252a01', 'thr-combine-1', '00000000-0000-0000-0000-000000252b03');
 INSERT INTO public.supply_house_job_accounts (id, job_id, contact_label, contact_email) VALUES ('00000000-0000-0000-0000-000000252e54', '00000000-0000-0000-0000-000000252b03', 'Counter', 'counter@example.com');
 INSERT INTO public.supply_house_invoice_move_requests (id, invoice_id, job_id, supply_house_id, via) VALUES ('00000000-0000-0000-0000-000000252e55', '00000000-0000-0000-0000-000000252d11', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252d01', 'email');
--- Materials on site: Yard on both jobs; Unsorted on both; Cage B on both; Cage A on the source alone.
+-- Materials on site: Yard on both jobs; Unsorted on both; Cage B on both; Cage A on the source alone. The cage names are
+-- from before the name rule (punch list #351), so the rows are written with its trigger off, as prod's old rows were.
 INSERT INTO public.job_places (id, job_id, name) VALUES
   ('00000000-0000-0000-0000-000000252e61', '00000000-0000-0000-0000-000000252b03', 'Yard'),
   ('00000000-0000-0000-0000-000000252e62', '00000000-0000-0000-0000-000000252b03', 'Dock'),
   ('00000000-0000-0000-0000-000000252e63', '00000000-0000-0000-0000-000000252b01', 'Yard');
+ALTER TABLE public.job_containers DISABLE TRIGGER job_containers_name_rule;
 INSERT INTO public.job_containers (id, job_id, label, kind, place_id) VALUES
   ('c252e071-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252b03', 'Unsorted', 'unsorted', '00000000-0000-0000-0000-000000252e61'),
   ('c252e072-0000-0000-0000-000000252e72', '00000000-0000-0000-0000-000000252b03', 'Cage A', 'cage', '00000000-0000-0000-0000-000000252e62'),
   ('c252e073-0000-0000-0000-000000252e73', '00000000-0000-0000-0000-000000252b03', 'Cage B', 'cage', NULL),
   ('c252e074-0000-0000-0000-000000252e74', '00000000-0000-0000-0000-000000252b01', 'Unsorted', 'unsorted', NULL),
   ('c252e075-0000-0000-0000-000000252e75', '00000000-0000-0000-0000-000000252b01', 'Cage B', 'cage', NULL);
+ALTER TABLE public.job_containers ENABLE TRIGGER job_containers_name_rule;
 INSERT INTO public.job_material_movements (id, job_id, part_name, quantity, reason, from_container_id, to_container_id) VALUES
   ('00000000-0000-0000-0000-000000252e81', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 10, 'delivered', NULL, 'c252e071-0000-0000-0000-000000252e71'),
   ('00000000-0000-0000-0000-000000252e82', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 4, 'moved', 'c252e071-0000-0000-0000-000000252e71', 'c252e072-0000-0000-0000-000000252e72'),
@@ -391,7 +394,7 @@ SELECT cr.same('the target has one Yard and one Dock', (SELECT string_agg(name, 
 SELECT cr.same('the source''s Unsorted folded into the target''s', (SELECT count(*)::text FROM public.job_containers WHERE id = 'c252e071-0000-0000-0000-000000252e71'), '0');
 SELECT cr.same('Cage A moved', (SELECT job_id::text FROM public.job_containers WHERE id = 'c252e072-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('and stands in the Dock that moved', (SELECT place_id::text FROM public.job_containers WHERE id = 'c252e072-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252e62');
-SELECT cr.same('the source''s Cage B moved under a numbered label', (SELECT label FROM public.job_containers WHERE id = 'c252e073-0000-0000-0000-000000252e73'), 'Cage B (2)');
+SELECT cr.same('the source''s Cage B moved under the site''s next free name (no named box yet, so A1; punch list #351)', (SELECT label FROM public.job_containers WHERE id = 'c252e073-0000-0000-0000-000000252e73'), 'A1');
 SELECT cr.same('and keeps its code', (SELECT job_id::text FROM public.job_containers WHERE id = 'c252e073-0000-0000-0000-000000252e73'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a delivery into the source''s Unsorted now names the target''s', (SELECT to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e81'), 'c252e074-0000-0000-0000-000000252e74');
 SELECT cr.same('a move out of it names the target''s', (SELECT from_container_id::text || ' to ' || to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e82'), 'c252e074-0000-0000-0000-000000252e74 to c252e072-0000-0000-0000-000000252e72');

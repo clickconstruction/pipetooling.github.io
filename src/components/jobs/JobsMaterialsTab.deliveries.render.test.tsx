@@ -18,6 +18,8 @@ const data = vi.hoisted(() => ({
   answer: null as null | ((lines: SentLine[]) => Outcome),
   deliveries: [] as Array<{ source: string; lines: SentLine[] }>,
   prices: [] as Array<[string, number]>,
+  /** The boxes the Add row made (punch list #351). */
+  added: [] as Array<{ label: string; kind: string; where: string }>,
 }))
 const unsorted = { id: 'un', jobId: 'ja', label: 'Unsorted', kind: 'unsorted', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' }
 
@@ -35,6 +37,10 @@ vi.mock('../../lib/materials/onSiteStore', async (importOriginal) => ({
   loadBookPrices: async () => {},
   jobLoadState: () => ({ loaded: true, loading: false, error: null, raw: null }),
   rememberPrice: (key: string, price: number) => void data.prices.push([key, price]),
+  addContainer: (input: { label: string; kind: string; where: string }) => {
+    data.added.push({ label: input.label, kind: input.kind, where: input.where })
+    return { ...unsorted, id: 'new', label: input.label, kind: input.kind }
+  },
   addDelivery: (input: { source: string; lines: SentLine[] }) => {
     data.deliveries.push({ source: input.source, lines: [...input.lines] })
     return Promise.resolve(data.answer ? data.answer([...input.lines]) : data.outcome)
@@ -46,6 +52,7 @@ vi.mock('../../hooks/useOnSiteStore', () => ({
   useOnSiteStoreVersion: () => 0,
 }))
 vi.mock('../../hooks/useOnSiteSites', () => ({ useOnSiteSites: () => ({ siteOfJob: new Map(), siteNames: new Map(), loaded: true, failed: null, retry: () => {} }) }))
+vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 vi.mock('../../hooks/usePartTies', () => ({ usePartTies: () => ({ ties: [], available: false, failed: null, retry: () => {}, answer: async () => {}, undo: async () => {} }) }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -63,6 +70,7 @@ afterEach(() => {
   data.answer = null
   data.deliveries.length = 0
   data.prices.length = 0
+  data.added.length = 0
 })
 
 /** Open the job, its Deliveries panel and the paste box, paste the text and read it. */
@@ -173,5 +181,26 @@ describe('a job’s Deliveries panel', () => {
     expect(await screen.findByText('1 line from INV-ZZ1 landed in Unsorted as a delivery.')).toBeTruthy()
     expect(screen.queryByTestId('delivery-part')).toBeNull()
     expect(screen.queryAllByLabelText('Part')).toEqual([])
+  })
+})
+
+describe('the office’s Add a container row (punch list #351)', () => {
+  it('opens on the next free name with How it sits remembered, splits words off onto the where line, and says so', () => {
+    try { localStorage.setItem('pt.box.lastKind', 'box') } catch { /* no storage */ }
+    renderWithProviders(<JobsMaterialsTab jobs={jobs} byUserId="u1" byName="Sam" onOpenJobDetail={() => {}} driveBackfill={false} />, { route: '/materials?tab=on-site&job=ja' })
+    fireEvent.click(screen.getByTestId('materials-add-container'))
+    // The job holds Unsorted alone, so the site has no named box yet: the row asks for the letter once.
+    const name = screen.getByLabelText('Its name') as HTMLInputElement
+    expect(name.value).toBe('')
+    expect(screen.getByTestId('materials-add-say').textContent).toBe('This site has no named box yet. Type the letters painted on the steel and the number 1, like R1.')
+    expect((screen.getByRole('button', { name: 'Add it' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByLabelText('How it sits') as HTMLSelectElement).value).toBe('box')
+    fireEvent.change(name, { target: { value: 'r' } })
+    expect(screen.getByTestId('materials-add-say').textContent).toBe('R1 is the first R box on this site.')
+    fireEvent.change(name, { target: { value: 'R76 TOILETS' } })
+    expect(screen.getByTestId('materials-add-say').textContent).toBe('The name is R76. “Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    fireEvent.change(screen.getByLabelText('Where exactly'), { target: { value: 'by the north stair' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add R76' }))
+    expect(data.added).toEqual([{ label: 'R76', kind: 'box', where: 'by the north stair · Toilets' }])
   })
 })

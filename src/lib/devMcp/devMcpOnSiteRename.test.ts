@@ -39,7 +39,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     const withRpc = Object.values(WRITE_VERBS).filter((v) => v.rpc !== null)
     expect(withRpc).toHaveLength(51)
     expect(new Set(withRpc.map((v) => v.rpc)).size).toBe(21)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.87.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.88.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     expect(SERVER).toContain('fifty-one POST one of twenty-one hard-coded, dev-gated RPCs as the dev (dev_on_site_write and')
     expect(SERVER).toContain('plan_container_edit → apply_container_edit (a live box')
@@ -82,8 +82,12 @@ describe('plan_container_edit — the Edit window’s limits before the database
   it('refuses what the window refuses, and an edit of nothing', () => {
     expect(edit({})).toMatchObject({ ok: false, error: expect.stringContaining('at least one of') })
     expect(edit({ label: ' ' })).toMatchObject({ ok: false })
-    expect(edit({ label: 'X'.repeat(BOX_NAME_MAX) })).toMatchObject({ ok: true })
-    expect(edit({ label: 'X'.repeat(BOX_NAME_MAX + 1) })).toMatchObject({ ok: false })
+    // The name rule (punch list #351, v2.7276): letters and a number, before the ask leaves.
+    expect(edit({ label: 'X'.repeat(BOX_NAME_MAX) })).toMatchObject({ ok: false, error: `plan_container_edit: ${'X'.repeat(BOX_NAME_MAX)} is not a name. A name is one to three letters and a number from 1 to 999, like R76, and one of a kind across the site.` })
+    expect(edit({ label: 'G12 COPPER' })).toMatchObject({ ok: false, error: expect.stringContaining('G12 COPPER is not a name') })
+    expect(edit({ label: 'g24b' })).toMatchObject({ ok: true })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: 'R76 TOILETS', kind: 'cage' } })).toMatchObject({ ok: false, error: 'plan_container: R76 TOILETS is not a name. A name is one to three letters and a number from 1 to 999, like R76, and one of a kind across the site.' })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: ' r76 ', kind: 'cage' } })).toMatchObject({ ok: true, body: { p: expect.objectContaining({ label: 'r76' }) } })
     expect(edit({ kind: 'unsorted' })).toMatchObject({ ok: false })
     expect(edit({ kind: 'pallet' })).toMatchObject({ ok: false })
     expect(edit({ where: 'y'.repeat(BOX_WHERE_MAX) })).toMatchObject({ ok: true })

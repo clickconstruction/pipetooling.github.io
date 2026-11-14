@@ -2,7 +2,7 @@
 name: "Box names: a letter and a number, with what is inside on its own line"
 number: 351
 group: gated
-status: asked 2026-11-13 · the card and the mock-up the same day · six calls wait on the owner · nothing built but the print half of call 4 (v2.7195)
+status: asked 2026-11-13 · the owner's seven calls taken 2026-11-14 · PR 1 (the name) built the same day, v2.7276 · PR 2 next
 mockup: to-dos/box-names-and-what-is-inside/mockup.html
 summary: >
   A box's name is one free field of 24 characters, and nothing says what is in a box, so people type the
@@ -10,9 +10,9 @@ summary: >
   number from 1 to 999, and the app offers the next free one on the site, so nobody types it. What is in it
   is a line of its own, written by the app from the box's parts until a person says it better. Words typed
   into the name are moved to that line, not refused. Old names keep working, and one window tidies them.
-next: the owner's six calls on the mock-up, then PR 1 (the name) in its own session.
+next: PR 2 (what is in it) in its own session, after #329's PRs 2 and 3; then the stop to add ten boxes on a real site.
 size: M as a train of four (M · M · S · S); PRs 1 and 2 close the loop
-blocker: the owner's six calls
+blocker: none · PR 2 waits its turn behind #329's PRs 2 and 3 in the build order the owner approved
 opinion: build PRs 1 and 2, then add ten boxes on a real site before the tidy — whether the app's own line reads right is known only there
 ---
 
@@ -56,8 +56,8 @@ A2, retired within minutes. Every box was a cage.
 
 ### 1 · The name
 
-- **One to three capital letters, then a number from 1 to 999.** No zeros in front, no letter after the
-  number (call 1). `R7`, `R89`, `AB12`.
+- **One to three capital letters, then a number from 1 to 999.** No zeros in front; one letter after the
+  number allowed, `G24B` (call 1, the owner's change: Gun Dog has three such cages today). `R7`, `R89`, `AB12`.
 - **Offered, not typed.** Add opens on the next free name: the letter most live boxes on the site carry, and
   one past its highest number. A retired box's number is not offered again. The first box on a site with no
   boxes asks for the letter once.
@@ -122,7 +122,7 @@ Each is one card on the mock-up with my pick first.
 
 | Call | My pick | Also possible |
 |---|---|---|
-| 1 · the shape of a name | One to three letters, then 1 to 999 | One letter allowed after the number (`R24B`) |
+| 1 · the shape of a name | One to three letters, then 1 to 999 | One letter allowed after the number (`R24B`) — **taken as well** |
 | 2 · one of a kind across what | The whole site | One job, as today |
 | 3 · who writes the line | The app, until a person says it better | Always typed |
 | 4 · the line on a label | A loose pile's label only | Every label, or none |
@@ -149,3 +149,7 @@ Each is one card on the mock-up with my pick first.
 one place a name can be changed, to any text, until PR 1 holds it to the rule.
 
 2026-11-13, later: **a printed label carries the letters and number alone** since v2.7195, on the owner's word that a label should not depend on the rest of the name. `G12 COPPER 90` prints `G12` on tape, on the sheet and in the CSV (`labelPrintNames` in `labels.ts`). That settles half of call 4 ahead of the train: no words on a cage's or a box's label. Whether a loose pile's label adds the line is still the owner's call.
+
+2026-11-14: **the owner took the six calls, with one change and one addition**, quoted from the session that asked him: "Yes, as picked" to (1) one to three letters then a number from 1 to 999 **and one letter after the number allowed** (`G24B`; Gun Dog has three such cages today), (2) one of a kind across the whole site, (3) the line is the app's until a person says it better, (4) the line prints on a loose pile's label only, (5) old names stay and the Tidy window changes them when the office chooses, (6) the site's letter is the one most of its live boxes carry, asked once on a site with none, and (7) a new box made from a blank sticker (#329, its call 7) takes the site's next free name, not the sticker's number, with the number shown beside it. Build order approved: PR 1 here, then #329's PR 2 and PR 3, then PR 2 (the line) and PR 3 (Tidy).
+
+2026-11-14, later: **PR 1 built** (v2.7276, migration `20261114100000_box_name_rule.sql`, `docs/recent-features/v2.7276.md`). The kernel `boxName.ts`; both Add screens open on the site's next free name with *How it sits* remembered; words typed after a name ride the where line until PR 2; Edit holds the same rule; the trigger, the carry's renumber and the seat hold it in the database; `compareLabels` already sorted `G24B` as read. A lettered twin counts its number: when `G24B` stands the next is `G25`, and `G24` is never offered, since one past the highest is the rule. The stickers card's call 7 is amended.

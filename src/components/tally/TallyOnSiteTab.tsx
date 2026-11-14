@@ -35,11 +35,14 @@ import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
 import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
-import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
+import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
+import { addPressLabel, boxNameVerdict, movedWordsNote, nextFreeName, siteBoxesFor, whereWithWords, type SiteBox } from '../../lib/materials/boxName'
+import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
+import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
-import { boxKindWords, editBoxTitle } from '../../lib/materials/editBox'
+import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
@@ -131,6 +134,9 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   useEffect(() => { setOnSiteErrorHandler((m, tone) => showToast(m, tone)) }, [showToast])
   const job = jobs.find((j) => j.id === jobId) ?? null
   const containers = jobId ? listContainers(jobId).filter((c) => !c.retiredAt) : []
+  // The site's boxes for the name rule (punch list #351): the other jobs' from one read, this job's from the store.
+  const siteNames = useSiteBoxNames(jobId)
+  const siteBoxes: SiteBox[] = jobId ? siteBoxesFor(jobId, siteNames.rows, listContainers(jobId)) : []
   const movements = jobId ? listMovements(jobId) : []
   const places = jobId ? listPlaces(jobId) : []
   const lines = containerLines(movements)
@@ -436,7 +442,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
             {containers.length > 0 ? <button type="button" style={{ ...btn, ...btnBlock, borderStyle: 'dashed', background: 'transparent', color: 'var(--text-700)' }} onClick={() => setSheet({ kind: 'add-container', moveAfter: null })}><span aria-hidden style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Add a container</button> : null}
           </>
         )}
-        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} existing={containers} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); setView({ kind: 'container', id: c.id }) }} /> : null}
+        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); setView({ kind: 'container', id: c.id }) }} /> : null}
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>
             <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -630,13 +636,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <AddPartSheet container={sheet.container} names={onHandNames(lines, containers)} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { write('delivered', part, n, null, sheet.container.id, 'added on site'); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(`${n} ${part.partName} added to ${sheet.container.label}.`, 'success') }} />
       ) : null}
       {sheet?.kind === 'add-container' ? (
-        <AddContainerSheet jobId={jobId} existing={containers} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else setView({ kind: 'container', id: c.id }) }} />
+        <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else setView({ kind: 'container', id: c.id }) }} />
       ) : null}
       {pinSheet}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
-          <BoxTabs touch container={sheet.container} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
+          <BoxTabs touch container={sheet.container} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
         </Sheet>
       ) : null}
       {sheet?.kind === 'retire' ? (
@@ -806,22 +812,41 @@ function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { conta
   )
 }
 
-function AddContainerSheet({ jobId, existing, places, onClose, onMade }: { jobId: string; existing: Container[]; places: Place[]; onClose: () => void; onMade: (c: Container) => void }) {
-  const [kind, setKind] = useState<'cage' | 'box' | 'loose'>('cage')
-  const [label, setLabel] = useState(() => nextLabel(existing, 'A'))
+/**
+ * Add a container (punch list #351, PR 1): the name is offered from the site's boxes and holds to the rule in
+ * `boxName.ts`; words typed after it are split off and ride the where line until PR 2 gives them a line of their own.
+ * How it sits opens on the kind this phone added last.
+ */
+function AddContainerSheet({ jobId, siteBoxes, places, onClose, onMade }: { jobId: string; siteBoxes: ReadonlyArray<SiteBox>; places: Place[]; onClose: () => void; onMade: (c: Container) => void }) {
+  const [kind, setKind] = useState<BoxKindChoice>(() => readLastBoxKind())
+  /** What was typed into the name; null while the site's offer stands in the field. */
+  const [typed, setTyped] = useState<string | null>(null)
   const [where, setWhere] = useState('')
   const [placeId, setPlaceId] = useState<string | null>(places[0]?.id ?? null)
   const [newPlace, setNewPlace] = useState('')
-  const taken = existing.some((c) => c.label.trim().toLowerCase() === label.trim().toLowerCase())
+  const verdict = boxNameVerdict(typed ?? '', siteBoxes)
+  const shown = typed ?? nextFreeName(siteBoxes) ?? ''
+  const whereSaved = verdict.ok ? whereWithWords(where, verdict.words) : where.trim()
+  const longWhere = whereSaved.length > BOX_WHERE_MAX
+  const dead = !verdict.ok || longWhere
+  const add = () => {
+    if (!verdict.ok || longWhere) return
+    const loc = newPlace.trim() ? addPlace({ jobId, name: newPlace }).id : placeId
+    rememberBoxKind(kind)
+    onMade(addContainer({ jobId, label: verdict.name, kind, where: whereSaved, locationId: loc }))
+  }
   return (
-    <Sheet title="Add a container" sub="The stencil on the steel is its name. Say where it stands so the next crew finds it." onClose={onClose}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
-        {(['cage', 'box', 'loose'] as const).map((k) => (
-          <button key={k} type="button" style={{ ...btn, ...(k === kind ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setKind(k)}>{k === 'loose' ? 'Loose pile' : k[0]!.toUpperCase() + k.slice(1)}</button>
-        ))}
+    <Sheet title="Add a container" sub="The next free name on this site is ready. Change it only if the paint says something else." onClose={onClose}>
+      <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Its name<input type="text" value={shown} onChange={(e) => setTyped(e.target.value)} placeholder="R1" aria-label="Its name" autoCapitalize="characters" autoComplete="off" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} /></label>
+      <p data-testid="add-box-say" role={verdict.ok ? undefined : 'alert'} style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.45, color: !verdict.ok ? 'var(--text-red-700)' : verdict.tone === 'wait' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdict.say}{verdict.ok && verdict.words ? ` ${movedWordsNote(verdict.words)}` : ''}</p>
+      <div style={{ display: 'grid', gap: '0.25rem' }}>
+        <span style={{ fontWeight: 600 }}>How it sits</span>
+        <div role="group" aria-label="How it sits" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
+          {BOX_KIND_CHOICES.map((k) => (
+            <button key={k} type="button" aria-pressed={k === kind} style={{ ...btn, ...(k === kind ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setKind(k)}>{boxKindWords(k)}</button>
+          ))}
+        </div>
       </div>
-      <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>The stencil<input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="A1" aria-label="The stencil" style={{ ...input, fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase' }} /></label>
-      {taken ? <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{label.trim().toUpperCase()} is already on this job. Pick another stencil.</p> : null}
       <div style={{ display: 'grid', gap: '0.35rem' }}>
         <span style={{ fontWeight: 600 }}>Which place on site</span>
         {places.length > 0 ? (
@@ -834,7 +859,8 @@ function AddContainerSheet({ jobId, existing, places, onClose, onMade }: { jobId
         <input type="text" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} placeholder={places.length ? 'Or a new place: Laydown yard' : 'Building C · level 2'} aria-label="A new place" style={input} />
       </div>
       <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>Where exactly, if it helps<input type="text" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="by the north stair" aria-label="Where exactly" style={input} /></label>
-      <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(!label.trim() || taken) }} disabled={!label.trim() || taken} onClick={() => { const loc = newPlace.trim() ? addPlace({ jobId, name: newPlace }).id : placeId; onMade(addContainer({ jobId, label: label.trim().toUpperCase(), kind, where, locationId: loc })) }}>Add {label.trim().toUpperCase() || 'it'}</button>
+      {longWhere ? <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>The where line holds {BOX_WHERE_MAX} characters. This one is {whereSaved.length}.</p> : null}
+      <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52, ...dis(dead) }} disabled={dead} onClick={add}>{addPressLabel(verdict)}</button>
     </Sheet>
   )
 }

@@ -23,11 +23,12 @@ NAME="pgtest-on-site-move"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The move and the photos' due mark (#297), each applied a second time below, then the v2.7265 carry last: both older
 # files redefine on_site_carry_job (and the move on_site_job_counts and dev_on_site_move_job), so the newest bodies must
-# be re-applied after them or the scenario reads the older ones.
+# be re-applied after them or the scenario reads the older ones; the name rule (v2.7276) restates the carry again, last.
 PRESSES=(
   supabase/migrations/*_on_site_move_job.sql
   supabase/migrations/*_box_photo_refile_due.sql
   supabase/migrations/*_on_site_carry_job_renames_ties_prices_runs.sql
+  supabase/migrations/*_box_name_rule.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

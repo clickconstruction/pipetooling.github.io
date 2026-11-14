@@ -36,6 +36,8 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: true, loading: false, error: null, raw: null, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
+// The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
+vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 // Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.
 const desk = vi.hoisted(() => ({ jobs: [] as unknown[], asked: [] as boolean[] }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
@@ -262,5 +264,42 @@ describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
     expect(field.value).toBe('8')
     fireEvent.click(screen.getByRole('button', { name: 'One fewer' }))
     expect(field.value).toBe('7')
+  })
+})
+
+describe('Add a container under the name rule (punch list #351)', () => {
+  const list = () => renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
+  it('opens on the site’s next free name, splits words off a typed name onto the where line, and remembers the kind', async () => {
+    const storeMock = await import('../../lib/materials/onSiteStore')
+    vi.mocked(storeMock.addContainer).mockReset()
+    vi.mocked(storeMock.addContainer).mockImplementation(((input: { label: string }) => ({ ...box, id: 'new', label: input.label })) as never)
+    try { localStorage.removeItem('pt.box.lastKind') } catch { /* no storage */ }
+    list()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a container' }))
+    const name = screen.getByLabelText('Its name') as HTMLInputElement
+    expect(name.value).toBe('A3')
+    expect(screen.getByTestId('add-box-say').textContent).toBe('A3 is the next free name on this site.')
+    expect(screen.getByRole('button', { name: 'Add A3' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cage' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.change(name, { target: { value: 'a5 toilets' } })
+    expect(screen.getByTestId('add-box-say').textContent).toBe('The name is A5. “Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    fireEvent.click(screen.getByRole('button', { name: 'Loose pile' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add A5' }))
+    expect(vi.mocked(storeMock.addContainer)).toHaveBeenCalledWith({ jobId: 'j1', label: 'A5', kind: 'loose', where: 'Toilets', locationId: null })
+    expect(localStorage.getItem('pt.box.lastKind')).toBe('loose')
+  })
+
+  it('refuses a taken name and a number off the rule with the reason, and gives words alone the next free name', () => {
+    list()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a container' }))
+    const name = screen.getByLabelText('Its name')
+    fireEvent.change(name, { target: { value: 'a2' } })
+    expect(screen.getByRole('alert').textContent).toBe('A2 is already on this site. Pick another name, or take A3.')
+    expect((screen.getByRole('button', { name: 'Add it' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(name, { target: { value: 'T8678' } })
+    expect(screen.getByRole('alert').textContent).toBe('A number runs from 1 to 999. T8678 cannot be a name.')
+    fireEvent.change(name, { target: { value: 'concrete mix' } })
+    expect(screen.getByTestId('add-box-say').textContent).toBe('No letter and number in that. The next free name is A3. “Concrete mix” goes on the where line for now. Soon it will be the box’s own line.')
+    expect((screen.getByRole('button', { name: 'Add A3' }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

@@ -1,8 +1,8 @@
 -- Materials on site moved from one job to another (v2.6808, punch list #209): dev_on_site_move_job carries a job's
 -- places, cages and boxes, ledger, box moves and box photos to another job through on_site_carry_job, the rule the
 -- whole-job combine uses. Here: who may call it and every refusal; a dry run that does the move, reports and unwinds;
--- the apply, with a same-name place, Unsorted on both sides, a label the target already holds (and its first numbered
--- label taken too), a retired box, a box's own move and three photos; a replay refused; a move onto a job with nothing
+-- the apply, with a same-name place, Unsorted on both sides, a label the target already holds (it takes the site's next
+-- free name, punch list #351), a retired box, a box's own move and three photos; a replay refused; a move onto a job with nothing
 -- on site; two Unsorted piles whose fold changes what a line reads, said and not refused; and the trigger that gives a
 -- new ledger row or photo its container's job. Since v2.7265 the four tables of 2026-11-13 ride along: a part rename
 -- whose undo is asked against the target, a sticker run, the job's own Same part? answers and prices onto a job on
@@ -105,12 +105,15 @@ INSERT INTO public.on_site_prices (id, development_id, job_id, row_key, row_name
   ('00000000-0000-0000-0000-000000050991', NULL, '00000000-0000-0000-0000-0000000509a1', 'words:2in coupling', '2in coupling', 'price', 1.25, 'typed', '2026-11-05', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-05 08:00-06'),
   ('00000000-0000-0000-0000-000000050992', NULL, '00000000-0000-0000-0000-0000000509a2', 'words:2in coupling', '2in coupling', 'price', 0.99, 'typed', '2026-11-02', '00000000-0000-0000-0000-0000000509d1', 'Site Dev', '2026-11-02 08:00-06');
 
--- A: two places, an Unsorted pile, a cage in Arena, a box in the Yard, a cage with no place, a retired cage.
+-- A: two places, an Unsorted pile, a cage in Arena, a box in the Yard, a cage with no place, a retired cage. Two names
+-- are from before the name rule (G7 TOILETS, A1 (2)), so the rows are written with the rule's trigger off, as prod's
+-- old rows were (v2.7276).
 INSERT INTO public.job_places (id, job_id, name) VALUES
   ('00000000-0000-0000-0000-0000000509b1', '00000000-0000-0000-0000-0000000509a1', 'Arena'),
   ('00000000-0000-0000-0000-0000000509b2', '00000000-0000-0000-0000-0000000509a1', 'Yard'),
   ('00000000-0000-0000-0000-0000000509b3', '00000000-0000-0000-0000-0000000509a2', 'ARENA'),
   ('00000000-0000-0000-0000-0000000509b4', '00000000-0000-0000-0000-0000000509a2', 'Dock');
+ALTER TABLE public.job_containers DISABLE TRIGGER job_containers_name_rule;
 INSERT INTO public.job_containers (id, job_id, label, kind, place_id, retired_at) VALUES
   ('a5090c01-0000-0000-0000-0000000509c1', '00000000-0000-0000-0000-0000000509a1', 'Unsorted', 'unsorted', NULL, NULL),
   ('a5090c02-0000-0000-0000-0000000509c2', '00000000-0000-0000-0000-0000000509a1', 'A1', 'cage', '00000000-0000-0000-0000-0000000509b1', NULL),
@@ -122,6 +125,7 @@ INSERT INTO public.job_containers (id, job_id, label, kind, place_id, retired_at
   ('b5090c02-0000-0000-0000-0000000509e2', '00000000-0000-0000-0000-0000000509a2', 'a1', 'cage', '00000000-0000-0000-0000-0000000509b3', NULL),
   ('b5090c03-0000-0000-0000-0000000509e3', '00000000-0000-0000-0000-0000000509a2', 'A1 (2)', 'box', NULL, NULL),
   ('b5090c04-0000-0000-0000-0000000509e4', '00000000-0000-0000-0000-0000000509a2', 'C3', 'cage', NULL, NULL);
+ALTER TABLE public.job_containers ENABLE TRIGGER job_containers_name_rule;
 -- The ledger. A: 10 couplings into A1 then counted 8; 5 elbows into Unsorted, 2 of them put in B2; 4 valves into G7.
 -- B: 6 elbows in its Unsorted, 7 couplings in a1. On hand: A 8 + 3 + 2 + 4 = 17, B 13.
 INSERT INTO public.job_material_movements (id, job_id, part_name, quantity, reason, from_container_id, to_container_id, at) VALUES
@@ -222,7 +226,7 @@ BEGIN
   PERFORM osm.same('every ledger row, box move and photo moves', (r->'moved'->>'movements') || '/' || (r->'moved'->>'container_moves') || '/' || (r->'moved'->>'photos'), '6/1/3');
   PERFORM osm.same('Arena becomes one with the target''s, with its one box', r->'places_merged'->0->>'name' || ' ' || (r->'places_merged'->0->>'containers') || ' of ' || jsonb_array_length(r->'places_merged'), 'ARENA 1 of 1');
   PERFORM osm.same('the Unsorted pile folds with its rows and its photo', (r->'unsorted_folded'->>'code') || ' into ' || (r->'unsorted_folded'->>'into_code') || ' ' || (r->'unsorted_folded'->>'movements') || '/' || (r->'unsorted_folded'->>'container_moves') || '/' || (r->'unsorted_folded'->>'photos'), 'A5090C01 into B5090C01 2/0/1');
-  PERFORM osm.same('one label is renumbered, past the (2) the target already wears', jsonb_array_length(r->'labels_renamed') || ': ' || (r->'labels_renamed'->0->>'code') || ' ' || (r->'labels_renamed'->0->>'kind') || ' ' || (r->'labels_renamed'->0->>'from') || ' → ' || (r->'labels_renamed'->0->>'to'), '1: A5090C02 cage A1 → A1 (3)');
+  PERFORM osm.same('one label takes the site''s next free name (A, the target''s letter, one past A1; punch list #351)', jsonb_array_length(r->'labels_renamed') || ': ' || (r->'labels_renamed'->0->>'code') || ' ' || (r->'labels_renamed'->0->>'kind') || ' ' || (r->'labels_renamed'->0->>'from') || ' → ' || (r->'labels_renamed'->0->>'to'), '1: A5090C02 cage A1 → A2');
   PERFORM osm.same('the photos'' files are counted where they are', (r->'photos'->>'rows') || ' rows, ' || (r->'photos'->>'in_drive') || ' in Drive, ' || (r->'photos'->>'waiting') || ' waiting', '3 rows, 2 in Drive, 1 waiting');
   PERFORM osm.same('the photo words say the files stay', (position('2 files are already in Drive and stay in JQ901''s photo folder' IN r->'photos'->>'words') > 0)::text, 'true');
   PERFORM osm.same('and where a waiting one will be filed', (position('1 is still waiting for the photo sweep, which files by the row''s job: into JQ902''s photo folder' IN r->'photos'->>'words') > 0)::text, 'true');
@@ -230,7 +234,7 @@ BEGIN
   PERFORM osm.same('the plan commits to both jobs'' rows before', (r->'before'->'from'->>'containers') || '/' || (r->'before'->'from'->>'movements') || ' and ' || (r->'before'->'to'->>'containers') || '/' || (r->'before'->'to'->>'movements'), '5/6 and 4/2');
   PERFORM osm.same('and after: the source empty, the target with both', (r->'after'->'from'->>'containers') || '/' || (r->'after'->'from'->>'movements') || '/' || (r->'after'->'from'->>'places') || ' and ' || (r->'after'->'to'->>'containers') || '/' || (r->'after'->'to'->>'movements') || '/' || (r->'after'->'to'->>'places'), '0/0/0 and 8/8/3');
   PERFORM osm.same('the words say what moves', r->>'words', 'Everything on site on JQ901 moves to JQ902: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Every cage and box keeps its id and the code printed on its label; no ledger row is rewritten, only the job it sits under.');
-  PERFORM osm.same('the target''s note names the renumbered label', (position('A1 is now A1 (3)' IN r->'notes'->>'to') > 0)::text, 'true');
+  PERFORM osm.same('the target''s note names the renumbered label', (position('A1 is now A2' IN r->'notes'->>'to') > 0)::text, 'true');
   -- v2.7265: the job's own records.
   PERFORM osm.same('the rename, the run, the answers and the price are in the plan', (r->'moved'->>'part_renames') || '/' || (r->'moved'->>'sticker_runs') || '/' || (r->'moved'->>'ties') || '/' || (r->'moved'->>'prices'), '1/1/2/1');
   PERFORM osm.same('the answers land on the target job, the elbow pair keeping the source''s newer answer', (r->'ties'->>'into') || ' ' || jsonb_array_length(r->'ties'->'dropped') || ' ' || (r->'ties'->'dropped'->0->>'kept'), 'job 1 source');
@@ -276,7 +280,7 @@ SELECT osm.same('a filed photo is marked due a move of its file', osm.one($q$SEL
 SELECT osm.same('a waiting photo is not', osm.one($q$SELECT (refile_due_at IS NULL)::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000050932'$q$), 'true');
 SELECT osm.same('both filed photos are due, and nothing else on either job', osm.one($q$SELECT count(*)::text FROM public.job_box_photos WHERE refile_due_at IS NOT NULL$q$), '2');
 SELECT osm.same('the Unsorted pile''s photo names the target''s pile', osm.one($q$SELECT container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000050933'$q$), 'b5090c01-0000-0000-0000-0000000509e1');
-SELECT osm.same('a note on the target says where it came from', osm.one($q$SELECT body FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-0000000509a2'$q$), 'Materials on site moved here from JQ901 (Bed job A), where the count was recorded: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Every box keeps its printed code. 1 took a numbered label because this job already had that stencil: A1 is now A1 (3). The job''s 2 Same part? answers and 1 price now belong to JQ902, which is on no site. 1 pair was answered on both sides; the newer answer stands: 2in elbow and 2 inch elbow (JQ901''s).');
+SELECT osm.same('a note on the target says where it came from', osm.one($q$SELECT body FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-0000000509a2'$q$), 'Materials on site moved here from JQ901 (Bed job A), where the count was recorded: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Every box keeps its printed code. 1 took a numbered label because this job already had that stencil: A1 is now A2. The job''s 2 Same part? answers and 1 price now belong to JQ902, which is on no site. 1 pair was answered on both sides; the newer answer stands: 2in elbow and 2 inch elbow (JQ901''s).');
 SELECT osm.same('a note on the source says where it went, in the dev''s name', osm.one($q$SELECT u.name || ': ' || n.body FROM public.jobs_ledger_thread_notes n JOIN public.users u ON u.id = n.author_user_id WHERE n.job_id = '00000000-0000-0000-0000-0000000509a1'$q$), 'Site Dev: Materials on site moved to JQ902 (Bed job B), the job the material belongs to: 4 cages and boxes (1 retired), 2 places, 6 ledger rows, 1 box move, 3 photos, 1 part rename, 1 sticker run, 2 Same part? answers, 1 price. Nothing on site is left on this job.');
 -- v2.7265: the job's own records went too.
 SELECT osm.same('A is empty of its own records', osm.more('00000000-0000-0000-0000-0000000509a1'), '0 renames, 0 runs, 0 ties, 0 prices, 0 site ties, 0 site prices');

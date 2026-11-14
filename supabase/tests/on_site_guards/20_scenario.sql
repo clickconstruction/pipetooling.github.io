@@ -150,10 +150,10 @@ SELECT osg.same('the sweep files a photo as before', osg.one($q$SELECT status ||
 SELECT osg.as_user('00000000-0000-0000-0000-0000000609d2');
 SET LOCAL ROLE authenticated;
 SELECT osg.refused('moving a box to another job by a direct update', $q$UPDATE public.job_containers SET job_id = '00000000-0000-0000-0000-0000000609a2' WHERE id = 'a6090c02-0000-0000-0000-0000000609c2'$q$, 'changes job only when its job is combined or moved');
--- What the screens do to a box still lands: a new name, a retire, a pin.
-UPDATE public.job_containers SET label = 'A2 FITTINGS', retired_at = now(), lat = 29.5, lng = -98.4 WHERE id = 'a6090c02-0000-0000-0000-0000000609c2';
+-- What the screens do to a box still lands: a new name (on the rule of punch list #351), a retire, a pin.
+UPDATE public.job_containers SET label = 'A5', retired_at = now(), lat = 29.5, lng = -98.4 WHERE id = 'a6090c02-0000-0000-0000-0000000609c2';
 RESET ROLE;
-SELECT osg.same('the box is on its own job, renamed and retired', osg.one($q$SELECT job_id::text || ' · ' || label || ' · ' || (retired_at IS NOT NULL)::text FROM public.job_containers WHERE id = 'a6090c02-0000-0000-0000-0000000609c2'$q$), '00000000-0000-0000-0000-0000000609a1 · A2 FITTINGS · true');
+SELECT osg.same('the box is on its own job, renamed and retired', osg.one($q$SELECT job_id::text || ' · ' || label || ' · ' || (retired_at IS NOT NULL)::text FROM public.job_containers WHERE id = 'a6090c02-0000-0000-0000-0000000609c2'$q$), '00000000-0000-0000-0000-0000000609a1 · A5 · true');
 -- The office's own path (on_site_carry_job runs inside a definer function, as its owner) still changes a box's job.
 UPDATE public.job_containers SET job_id = '00000000-0000-0000-0000-0000000609a2' WHERE id = 'a6090c01-0000-0000-0000-0000000609c1';
 SELECT osg.same('the office''s own code still moves a box to another job', osg.one($q$SELECT job_id::text FROM public.job_containers WHERE id = 'a6090c01-0000-0000-0000-0000000609c1'$q$), '00000000-0000-0000-0000-0000000609a2');
