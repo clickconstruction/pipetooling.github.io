@@ -66,8 +66,8 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     }
     expect(isLastWorkDayVerb('plan_contract_ended')).toBe(false)
     expect(planVerbFor('apply_last_work_day')).toBe('plan_last_work_day')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.85.0'")
-    expect(SERVER).toContain('Writes are one hundred and three verbs and nothing else:')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.86.0'")
+    expect(SERVER).toContain('Writes are one hundred and seven verbs and nothing else:')
     expect(SERVER).toContain('plan_last_work_day → apply_last_work_day (a job\'s last day of work for the lien clocks')
     expect(SERVER).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     expect(README).toContain('`plan_last_work_day(day)` · `apply_last_work_day(day, plan_hash)`')
