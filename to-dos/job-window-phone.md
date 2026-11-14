@@ -1,7 +1,7 @@
 ---
 name: "The job window on a phone"
 number: 355
-group: ready
+group: waiting
 status: asked 2026-11-14 · measured on the dev server at 375 px the same day · drawn three ways · the owner's *is this the best we can do?* the same day · pass 2 reads nineteen days of presses on the window from prod and redraws the top from them · waiting on the owner's three picks before the first PR · the owner picked all as drawn 2026-11-14 · PR A built as v2.7271 the same day · PR B built as v2.7278 the same day
 summary: >
   The owner opened a job on his iPhone and did not like how it reads: the tab row wraps onto two
@@ -15,9 +15,9 @@ summary: >
   window from prod: the crew's bar is the live part, six of the eight icons were never pressed, and
   no office role pressed the window's chrome at all. So the name comes first with ⋯ and ✕ fixed at
   the right, every door goes behind ⋯, C waits, and three questions are left for the owner.
-next: both PRs to merge (A #8127, then B); then a month of `ui_nav_clicks` on the tabs and the sheet's rows before C is weighed.
+next: the owner's four picks on pass 3 (the six other tabs); D as the first small PR.
 size: L as a train (S for A · M for B · L for C); the first step is S
-blocker: none
+blocker: the owner's picks on pass 3
 opinion: A and B are built (v2.7271, v2.7278); C waits for the count
 mockup: job-window-phone-directions.html
 ---
@@ -385,6 +385,62 @@ pick after each is the drawing's own.
   rewritten with A; `src/lib/jobs/jobWindowLegend.ts`'s phone row names the press row.
 - No table, migration or edge function in any of the three.
 
+## The other six tabs on a phone (pass 3)
+
+The owner, after A and B went live (2026-11-14): "can you now look at the edit, bill, costs,
+history, documents, materials?" Measured the same way, on the ZZ test job at 375 × 812, signed in
+as the dev, each tab's body under the strip. The second mock-up is
+[`job-window-phone-tabs.html`](job-window-phone-tabs.html).
+
+| Tab | Screens | Presses | Under 32 px | What reads badly |
+|---|---|---|---|---|
+| Every tab | +0.5 | | | The shared band (the house photo, Paint a map, the photo banner) takes the first 340 px of every tab, so Edit, Bill, Costs, Documents and Materials each start a half screen down |
+| Edit | 3.3 | 64 | 40 | The Stages card and the status rail squeezed to 375 px; sixteen fact rows each with a 24 px ✎, nothing grouped |
+| Bill | 2.9 | 72 | 22 | A line item is five presses on three lines (name ✎, the ≈ budget line, × count, $ price, 🗑); the money card and Make a bill sit a screen and a half down; *Multiple Segment Generator* is a 13 px link |
+| Costs | 5.7 | 43 | 18 | The four numbers read well; the chart's legend and axes are 10 px; *Where the money went* is a three-column table whose header wraps to four lines; the dev's cost-move panel takes a screen with every row empty |
+| History | 1.4 | 16 | 3 | Reads well: the lien path's card is dense but whole, Days on the job is a calendar already drawn for a phone |
+| Documents | 4.7 | 56 | 41 | Eleven sections with 28 px outline presses (*+ New set*, *Keep a paper*, *New application*, *Contract window*…), and an empty section still takes four lines to say it is empty |
+| Materials | 1.0 | 16 | 2 | One paragraph and one press; only the band pushes it down |
+
+So the band is the one change every tab shares, three tabs are desk layouts at phone width (Edit,
+Bill, Costs), Documents is a list of small presses, and History and Materials are fine.
+
+**D · The band on the other tabs** (S, first). On every tab but Job the band is the Street View
+banner alone, 90 px with the address pinned, which the owner asked for on Edit; Paint a map and the
+photo banner stay on the Job tab's Where and Photos. Each tab gains back 250 px of its first screen.
+
+**E · Edit as grouped rows** (M). The identity fields stay first (C#, service type, name, kind,
+address). The Stages card draws each stage as a 44 px row (the name, the draw, the window) with *See
+it as the customer* and *Set stages on Bill →* under them. The status rail leaves the Edit tab on a
+phone: the bar's Status ▾ is the same rail. The sixteen fact rows are 44 px with the whole row the
+press and the ✎ gone, grouped under three section titles in B's shape: **The people** (account man,
+team, customer, phone, email, bills also go to, GC/builder, development), **The paper** (contract,
+sub work order, property record, pay calendar, plans, bid, project), **The folders** (files,
+pictures). Charging the customer stays last.
+
+**F · Bill in a phone's order** (M). On a phone the Bill tab opens on the money card (done, paid,
+billed open, left to bill, the draws as 44 px rows with their ticks), then Make a bill, then the
+bills and the payments, then the line items last, each one card: the name on the first line, *× 3 ·
+$24,000 ea · $72,000* on the second, the ≈ budget line under it, and 🗑 behind a ⋯ at the card's
+right. The desk's order stays: the office types the lines at a desk and sends the bill from a phone.
+
+**G · Costs with the table as rows** (M). The four numbers stay first. The chart folds behind *Show
+the chart*. *Where the money went* is rows, not a table: the source on the left, hours and cost on
+the right, the bar under the row. The accordions stay. The dev's cost-move panel folds behind *Move
+cost rows…* and draws nothing of its empty rows until opened.
+
+**H · Documents as one line per empty section** (S). A section with nothing in it is one 44 px row:
+the title at the left, its press at the right (*Plans · + New set*, *Pay applications · New
+application*). A section with something keeps its list, its presses 40 px. The order stays.
+
+### The questions for the owner, pass 3
+
+1. **D now, as its own small PR?** It is the one change every tab shares and the cheapest.
+2. **F's order on a phone**: the money first and the line items last, or the desk's order with the
+   line items first? The pick above is the money first.
+3. **E's status rail**: off the Edit tab on a phone, since the bar's Status ▾ is the same rail?
+4. **E, F, G, H as one PR each, in that order?**
+
 ## The plan
 
 1. **A** (S): **built, v2.7271** (`docs/recent-features/v2.7271.md`): the title row first with ⋯ over ✕,
@@ -397,7 +453,8 @@ pick after each is the drawing's own.
    links as presses, Copy beside the number, the summary's two lines renamed on every screen, the
    bubbles, the six folds remembered per device; `jobWindowPhoneSections.ts` with tests; a render
    smoke at 375 px; the guide.
-3. **C** (L), only when a master tech works from a phone or the tab count says the office's
+3. **D** (S), **E** (M), **F** (M), **G** (M), **H** (S): the six other tabs, pass 3 above, D first.
+4. **C** (L), only when a master tech works from a phone or the tab count says the office's
    phone use is real: `JobWindowPhone`, the role kernel for tabs and bar, the crew lead's Today's
    work.
 

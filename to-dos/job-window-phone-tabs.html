@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The job window on a phone — the other six tabs (pass 3)</title>
+<style>
+  /* Layout: one row of phone frames, each a scrolling 375 px screen; the frames stack at phone width. */
+  :root {
+    --ground: #F1F3F6; --surface: #FFFFFF; --subtle: #F6F8FA; --ink: #111827; --muted: #6B7280; --soft: #9CA3AF;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB; --blue: #2563EB; --blue-bg: #DBEAFE; --blue-ink: #1D4ED8;
+    --green: #16A34A; --green-bg: #DCFCE7; --green-ink: #15803D; --amber-bg: #FEF3C7; --amber-ink: #B45309;
+    --red: #DC2626; --red-bg: #FEE2E2; --brown: #92400E; --purple: #7C3AED;
+    --font: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1680px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  .lede { margin: 14px 0 0; color: var(--muted); max-width: 78ch; }
+  .lede b { color: var(--ink); }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; margin-top: 14px; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 9px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; }
+  .tag.before { background: var(--red-bg); color: var(--red); }
+  .tag.a { background: var(--green-bg); color: var(--green-ink); }
+  .tag.b { background: var(--blue-bg); color: var(--blue-ink); }
+  .tag.c { background: var(--amber-bg); color: var(--amber-ink); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 18px; }
+
+  /* The phone */
+  .phone { margin: 12px auto 0; width: 100%; max-width: 375px; height: 740px; border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; font-size: 14px; position: relative; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .status { height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 6px; } .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+  .mark { position: absolute; right: 8px; font-size: 10px; font-weight: 700; color: var(--red); background: var(--red-bg); border-radius: 999px; padding: 1px 6px; pointer-events: none; z-index: 1; }
+  .mark.ok { color: var(--green-ink); background: var(--green-bg); }
+
+  /* Tabs */
+  .tabs { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0; position: relative; }
+  .tabs.wrap { flex-wrap: wrap; }
+  .tab { padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .tab.on { background: var(--blue); color: #fff; }
+  .tabs .help { margin-left: auto; width: 26px; height: 26px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .tabs .x { font-size: 20px; padding: 2px 8px; color: var(--muted); }
+  .tabs.strip { padding: 0; gap: 0; }
+  .tabs.strip .rail { display: flex; gap: 2px; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; flex: 1; min-width: 0; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .tabs.strip .rail::-webkit-scrollbar { display: none; }
+  .tabs.strip .rail .tab { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; }
+  .tabs.four .rail { mask-image: none; -webkit-mask-image: none; }
+  .tabs.four .rail .tab.more { border: 1px solid var(--line-strong); color: var(--ink); }
+
+  /* The title row that comes first in A, B and C */
+  .head { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 6px 14px; flex-shrink: 0; }
+  .head .names { flex: 1; min-width: 0; }
+  .head .names b { font-size: 18px; line-height: 1.2; display: block; }
+  .head .names .quiet { margin: 2px 0 0; }
+  .head .pin { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; color: var(--muted); flex-shrink: 0; border-radius: 10px; }
+  .head .pins { display: flex; flex-direction: column; flex-shrink: 0; }
+  .head .pin.dots { font-size: 20px; letter-spacing: 1px; }
+
+  /* The header scrolls away (the owner's word, pass 2e): only a small ✕ floats at the corner. */
+  .floatx { position: absolute; top: 84px; right: 10px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.88); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 18px; color: var(--muted); z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .scroll > .head, .scroll > .tabs { flex-shrink: 0; }
+  .scroll > .head .pin.x { visibility: hidden; }
+
+  /* Body */
+  .body { padding: 8px 14px 16px; }
+  .title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 4px 0 6px; }
+  .title b { font-size: 18px; line-height: 1.2; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .chip.kind { background: var(--amber-bg); color: var(--amber-ink); }
+  .chip.status { background: var(--blue-bg); color: var(--blue-ink); }
+  .chip.num { background: var(--brown); color: #fff; border-radius: 6px; font-size: 12px; padding: 2px 8px; }
+  .quiet { color: var(--muted); font-size: 12.5px; margin: -2px 0 6px; }
+  .iconrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 8px; }
+  .iconrow .link { color: var(--link); font-size: 13px; white-space: nowrap; margin: 0 4px; }
+  .iconrow .spacer { flex: 1; }
+  .ic { width: 29px; height: 29px; display: grid; place-items: center; font-size: 17px; }
+  .ic.blue { color: var(--blue); } .ic.purple { color: var(--purple); } .ic.green { color: var(--green); }
+  .pressrow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; margin: 6px 0 10px; }
+  .press { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; background: var(--surface); padding: 0 10px; white-space: nowrap; }
+  .press.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .press.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .press.amber { background: var(--amber-bg); border-color: #F59E0B; color: var(--amber-ink); }
+  .who { display: grid; gap: 6px; margin-top: 6px; }
+  .who .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+  .who .press { justify-content: flex-start; min-width: 0; }
+  .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
+  .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
+  .who .press.sq { width: 56px; justify-content: center; }
+  .sv { position: relative; height: 104px; border-radius: 10px; overflow: hidden; margin: 2px 0 8px; background: linear-gradient(180deg, #bcd3ea 0%, #d9e4ee 48%, #8e9aa6 50%, #6b7480 100%); }
+  .sv::before { content: ''; position: absolute; left: 12%; right: 30%; top: 22%; height: 30%; background: #c9b79c; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .sv .pin { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; background: rgba(17,24,39,.6); color: #f9fafb; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .sv .pin .tag { margin-left: auto; font-size: 11px; font-weight: 700; opacity: .85; }
+  .addr { color: var(--link); text-decoration: underline; font-size: 13px; display: block; margin: 2px 0 6px; }
+  .maprow { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .maprow .dot { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: #F97316; margin-right: 8px; vertical-align: middle; }
+  .maprow .dist { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .paint { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; color: var(--link); font-weight: 600; margin-bottom: 8px; }
+  .label { font-size: 13px; color: var(--muted); margin: 10px 0 2px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+  .grid4 .ph, .photos .ph { height: 72px; border-radius: 8px; position: relative; overflow: hidden; background: linear-gradient(135deg, #cbd5e1, #64748b); }
+  .photos .ph { flex: 0 0 72px; border-radius: 10px; }
+  .ph .d { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 600; text-align: center; background: rgba(17,24,39,.55); color: #f9fafb; padding: 1px 0; }
+  .grid4 .more { height: 72px; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; color: var(--muted); font-size: 13px; }
+  .photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 6px -14px 0; padding: 0 14px 4px; -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); }
+  .photos::-webkit-scrollbar { display: none; }
+  .photos .add { flex: 0 0 72px; height: 72px; border-radius: 10px; border: 1.5px dashed var(--blue); display: grid; place-items: center; color: var(--link); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.2; }
+  .empty { color: var(--muted); font-size: 13px; }
+  .cust { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .cust b { font-size: 17px; }
+  .cust .icons { display: flex; gap: 10px; color: var(--blue); font-size: 17px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 12px; color: var(--link); font-size: 14px; margin: 4px 4px 0 0; }
+  .pill.copy { padding: 4px 8px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 10px 0 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .tile .k { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-weight: 800; font-size: 15px; }
+  .accounts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .04em; color: var(--muted); margin-bottom: 8px; }
+  .accounts .lab { text-transform: uppercase; font-weight: 700; }
+  .accounts .acc { border: 1px dashed var(--line-strong); border-radius: 999px; padding: 3px 10px; letter-spacing: 0; font-size: 13px; color: var(--muted); }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }
+  .card.subtle { background: var(--subtle); }
+  .card b.h { display: block; font-size: 15px; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .kv:last-of-type { border-bottom: 0; }
+  .kv .k { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+  .kv .v { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .kv .v .sub { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .kv .v .press { display: inline-block; margin-top: 6px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; color: var(--link); }
+  .card .right { float: right; border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 13px; }
+  .fold { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; min-height: 44px; font-weight: 700; }
+  .fold .n { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .fold .n.live { color: var(--blue-ink); }
+  .fold .chev { color: var(--soft); }
+  .fold .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; display: block; }
+  /* Section titles (the owner's word, pass 2f): Where, Who, What's happening and the thread stand out as sections, not labels. */
+  .sect { font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; margin: 18px -14px 8px; padding: 10px 14px 6px; border-top: 6px solid var(--ground); display: flex; align-items: center; gap: 8px; }
+  .sect .right { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--link); }
+  .sect .right .n { color: var(--muted); margin-right: 6px; }
+  .sect::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--blue); }
+  .sect:first-child, .body > .sect:first-of-type { border-top: none; margin-top: 2px; }
+  .line { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .line .m { color: var(--muted); }
+  .feed { font-size: 13px; }
+  .msgs { display: grid; gap: 8px; margin: 10px 0 4px; }
+  .msg { max-width: 86%; border-radius: 14px; padding: 8px 12px; font-size: 14px; line-height: 1.35; color: var(--ink); }
+  .msg.them { background: var(--amber-bg); border-bottom-left-radius: 4px; justify-self: start; }
+  .msg.us { background: var(--subtle); border: 1px solid var(--line); border-bottom-right-radius: 4px; justify-self: end; }
+  .msg .meta { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .msgs .open { justify-self: center; color: var(--link); font-weight: 700; font-size: 13px; padding: 6px 0 0; }
+  .feed .ev { padding: 6px 0; border-top: 1px solid var(--line); }
+  .feed .ev .who { color: var(--muted); font-size: 12px; }
+  .feed .ev.them { background: var(--amber-bg); border-radius: 8px; padding: 8px 10px; border: none; margin: 4px 0; }
+  .feed .all { color: var(--link); font-weight: 600; padding: 6px 0 0; }
+  .pct { height: 6px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .pct i { display: block; height: 100%; width: 17%; background: var(--green); }
+
+  /* The bar at the foot */
+  .bar { display: grid; gap: 6px; padding: 8px 10px 12px; border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+  .bar .press { min-height: 48px; }
+  .bar.three { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .bar.crew { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+  /* The sheet */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 8px 12px 14px; z-index: 2; }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 8px; }
+  .sheet .row { display: flex; align-items: center; gap: 12px; min-height: 48px; border-top: 1px solid var(--line); font-weight: 600; }
+  .sheet .row:first-of-type { border-top: none; }
+  .sheet .row .ic { width: 28px; }
+  .sheet .row .sub { color: var(--muted); font-weight: 400; font-size: 12.5px; margin-left: auto; text-align: right; }
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 1; }
+
+  /* Tables and the questions */
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--subtle); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+  .q ol { margin: 8px 0 0; padding-left: 22px; }
+  .q li { margin: 8px 0; }
+  .q li b { color: var(--ink); }
+  .q li .pick { color: var(--green-ink); font-weight: 600; }
+  .measure { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+  .measure p { margin: 0 0 8px; max-width: 80ch; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; }
+</style>
+<style>
+  .tabrow { display: flex; gap: 2px; padding: 6px 10px; border-bottom: 1px solid var(--line); overflow: hidden; }
+  .tabrow .tab { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; }
+  .sv.slim { height: 90px; }
+  .row44 { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .row44 .k { color: var(--muted); font-size: 13px; width: 108px; flex: none; }
+  .row44 .v { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row44 .v.link { color: var(--link); }
+  .row44 .r { margin-left: auto; flex: none; color: var(--soft); }
+  .row44 .act { margin-left: auto; flex: none; color: var(--link); font-weight: 700; font-size: 13px; }
+  .field { border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; margin: 4px 0 8px; font-size: 15px; }
+  .flabel { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .num { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .num .k { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .num .v { font-size: 18px; font-weight: 800; }
+  .num .s { font-size: 11px; color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
+  .bar2 { height: 6px; border-radius: 3px; background: var(--line); margin-top: 4px; overflow: hidden; }
+  .bar2 i { display: block; height: 100%; background: var(--blue); }
+  .draw { display: flex; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .draw .box { width: 22px; height: 22px; border: 1.5px solid var(--line-strong); border-radius: 5px; flex: none; }
+  .draw .amt { margin-left: auto; font-weight: 700; }
+  .draw .sub { display: block; color: var(--muted); font-size: 12px; }
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; position: relative; }
+  .item b { font-size: 15px; }
+  .item .m { color: var(--muted); font-size: 13px; }
+  .item .dots { position: absolute; right: 6px; top: 6px; width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); font-size: 18px; }
+  .acc { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin-bottom: 6px; font-weight: 700; font-size: 14px; }
+  .acc .amt { margin-left: auto; font-weight: 600; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
+</style>
+</head><body><div class="wrap">
+<header class="top"><div><p class="eyebrow">Punch list #355 · pass 3 · the other six tabs</p><h1>Edit, Bill, Costs, History, Documents and Materials on a phone</h1></div><div class="stamp">measured 2026-11-14 at 375 × 812<br>the ZZ test job, as the dev<br>made-up names and numbers</div></header>
+<p class="lede">After A and B went live the owner asked for the other six tabs. Measured the same way: <b>the shared band costs every tab a half screen</b>, <b>Edit, Bill and Costs are desk layouts at phone width</b> (3.3, 2.9 and 5.7 screens; 40, 22 and 18 presses under 32 px), <b>Documents is eleven sections of 28 px presses</b>, and History and Materials read fine. Five directions, D first.</p>
+<h2>The directions</h2><div class="grid"><div class="panel"><div class="cap">D · the band on the other tabs <span class="tag a">after</span></div><div class="phone"><div class="status"><span>10:53</span><span>●●● 42</span></div><div class="head"><div class="names"><b>Ridgeway Walk <span class="chip status" style="vertical-align:middle">Working</span></b><div class="quiet">1042 PLUM · Ridgeway Builders · Kind not set</div></div><span class="pins"><span class="pin dots">⋯</span><span class="pin x">✕</span></span></div><div class="tabrow"><span class="tab">Job</span><span class="tab on">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Docu</span></div><div class="scroll"><div class="body">
+<div class="sv slim"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
+<span class="mark ok" style="top:10px">90 px: the house and the address, nothing else</span>
+<div class="flabel">C#</div><div class="field" style="width:120px">1042</div>
+<div class="flabel">Job name</div><div class="field">Ridgeway Walk</div>
+<div class="flabel">Kind</div><div class="pressrow" style="grid-template-columns:1fr 1fr;margin:4px 0 8px"><span class="press">Service call</span><span class="press blue">Project</span></div>
+<div class="flabel">Job address</div><div class="field">4120 Cedar Bend Dr, Lockhart, TX</div>
+<div class="note">The tab's own first field is on the first screen again. Today it sits 340 px down, under Paint a map and the photo banner.</div>
+</div></div><div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div></div><div class="verdict"><b>What changes</b><ul><li>On every tab but Job the band is the Street View banner alone, 90 px with the address: the owner asked for the house on Edit, nothing asked for Paint a map or the photo banner there.</li><li>Each tab gets 250 px of its first screen back. S, the first PR.</li></ul></div></div><div class="panel"><div class="cap">E · Edit as grouped rows <span class="tag b">after</span></div><div class="phone"><div class="status"><span>10:53</span><span>●●● 42</span></div><div class="tabrow"><span class="tab">Job</span><span class="tab on">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Docu</span></div><div class="scroll"><div class="body"><div class="sect">Stages<span class="right"><span class="n">3 in order · 1 any time</span></span></div><div class="row44"><span class="v">① Rough In</span><span class="r" style="color:var(--muted);font-size:13px">draw 1 · $24,000 · no window yet</span></div><div class="row44"><span class="v">② Top Out</span><span class="r" style="color:var(--muted);font-size:13px">draw 2 · $16,000 · no window yet</span></div><div class="row44"><span class="v">③ Trim Set</span><span class="r" style="color:var(--muted);font-size:13px">draw 3 · $12,000 · no window yet</span></div><div class="row44"><span class="v">◆ Water heater, 50 gal</span><span class="r" style="color:var(--muted);font-size:13px">$4,000 · not scheduled</span></div><div class="pressrow" style="grid-template-columns:1fr 1fr"><span class="press blue">See it as the customer</span><span class="press">Set stages on Bill →</span></div><span class="mark ok" style="top:300px">the status rail is off this tab: the bar's Status ▾ is the same rail</span><div class="sect">The people</div><div class="row44"><span class="k">Account man</span><span class="v">—</span><span class="r">›</span></div><div class="row44"><span class="k">Team</span><span class="v">Sample leader</span><span class="r">›</span></div><div class="row44"><span class="k">Customer</span><span class="v link">Ridgeway Builders</span><span class="r">›</span></div><div class="row44"><span class="k">Phone</span><span class="v">(512) 555-0142</span><span class="r">›</span></div><div class="row44"><span class="k">Email</span><span class="v link">office@ridgewaybuilders.example</span><span class="r">›</span></div><div class="row44"><span class="k">Bills also go to</span><span class="v">nobody else</span><span class="r">›</span></div><div class="row44"><span class="k">GC/Builder</span><span class="v">—</span><span class="r">›</span></div><div class="row44"><span class="k">Development</span><span class="v">—</span><span class="r">›</span></div><div class="sect">The paper</div><div class="row44"><span class="k">Contract</span><span class="v">No contract · not needed</span><span class="act">Their paper…</span></div><div class="row44"><span class="k">Sub work order</span><span class="v">No agreement</span><span class="act">Draft…</span></div><div class="row44"><span class="k">Property record</span><span class="v">not linked</span><span class="r">›</span></div><div class="row44"><span class="k">Pay calendar</span><span class="v link">Set a pay calendar…</span></div><div class="row44"><span class="k">Plans</span><span class="v link">Job plans</span><span class="r">›</span></div><div class="row44"><span class="k">Bid</span><span class="v">—</span><span class="r">›</span></div><div class="row44"><span class="k">Project</span><span class="v">—</span><span class="r">›</span></div><div class="sect">The folders</div><div class="row44"><span class="k">Folders</span><span class="v link">Files · Pictures</span><span class="r">›</span></div><div class="sect">Charging the customer</div><div class="row44"><span class="k">Labor</span><span class="v">the company rule</span><span class="r">›</span></div><div class="row44"><span class="k">Materials</span><span class="v">markup 18% · margin 15%</span><span class="r">›</span></div></div></div><div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div></div><div class="verdict"><b>What changes</b><ul><li>The stages are 44 px rows; the status rail leaves the tab on a phone, since the bar’s Status ▾ is the same rail.</li><li>The sixteen fact rows are 44 px with the whole row the press and no ✎, under The people, The paper, The folders and Charging the customer. M.</li></ul></div></div><div class="panel"><div class="cap">F · Bill in a phone’s order <span class="tag b">after</span></div><div class="phone"><div class="status"><span>10:53</span><span>●●● 42</span></div><div class="tabrow"><span class="tab">Job</span><span class="tab">Edit</span><span class="tab on">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Docu</span></div><div class="scroll"><div class="body"><div class="sect">Where the money stands</div><div class="two"><div class="num"><div class="k">Done</div><div class="v">—</div><div class="s">set % done on the Job tab</div></div><div class="num"><div class="k">Paid</div><div class="v" style="color:var(--green-ink)">$0</div></div><div class="num"><div class="k">Billed, open</div><div class="v" style="color:var(--blue-ink)">$0</div></div><div class="num"><div class="k">Left to bill</div><div class="v">$56,000</div></div></div><div class="draw"><span class="box"></span><span>Draw 1 · Rough In<span class="sub">after it passes inspection</span></span><span class="amt">$24,000</span></div><div class="draw"><span class="box"></span><span>Draw 2 · Top Out<span class="sub">after it passes inspection</span></span><span class="amt">$16,000</span></div><div class="draw"><span class="box"></span><span>Draw 3 · Trim Set<span class="sub">after it passes inspection</span></span><span class="amt">$12,000</span></div><div class="draw"><span class="box"></span><span>◆ Water heater, 50 gal<span class="sub">not billed</span></span><span class="amt">$4,000</span></div><span class="mark ok" style="top:8px">the money first; the lines last</span><div class="sect">Make a bill</div><div class="note">$56,000 left to bill · the draws follow the stages</div><div class="pressrow" style="grid-template-columns:1fr"><span class="press blue">Move to Ready to Bill · $56,000</span></div><div class="note">All of it as one bill. The job moves to Ready to Bill. <b style="color:var(--link)">Bill part of it ▾</b></div><div class="sect">Bills and payments</div><div class="row44"><span class="v" style="color:var(--muted);font-weight:400">No bill has gone out yet.</span></div><div class="row44"><span class="k">Payments</span><span class="v">none yet</span><span class="act">Record a payment</span></div><div class="sect">Line items<span class="right"><span class="n">4 · $56,000</span>Add ▾</span></div><div class="item"><b>Rough In</b> <span class="chip status" style="font-size:11px">In order</span><span class="dots">⋯</span><div class="m">× 1 · $24,000.00 ea · <b style="color:var(--ink)">$24,000</b></div><div class="m">≈ 240 h · $10,800 labor · $9,600 materials</div></div><div class="item"><b>Top Out</b> <span class="chip status" style="font-size:11px">In order</span><span class="dots">⋯</span><div class="m">× 1 · $16,000.00 ea · <b style="color:var(--ink)">$16,000</b></div><div class="m">≈ 160 h · $7,200 labor · $6,400 materials</div></div><div class="item"><b>Trim Set</b> <span class="chip status" style="font-size:11px">In order</span><span class="dots">⋯</span><div class="m">× 1 · $12,000.00 ea · <b style="color:var(--ink)">$12,000</b></div></div><div class="item"><b>Water heater, 50 gal</b> <span class="chip kind" style="font-size:11px">Any time</span><span class="dots">⋯</span><div class="m">× 1 · $4,000.00 ea · <b style="color:var(--ink)">$4,000</b></div></div><div class="note">⋯ holds Edit, Move up, Move down and Remove, so the trash is not a 24 px press beside the price.</div></div></div><div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div></div><div class="verdict"><b>What changes</b><ul><li>The money first: done, paid, billed open, left to bill, the draws as 44 px rows. Then Make a bill, the bills and payments, and the line items last as cards with ⋯ for Edit, Move and Remove.</li><li>The desk keeps its order: the office types lines at a desk and sends the bill from a phone. M.</li></ul></div></div><div class="panel"><div class="cap">G · Costs with the table as rows <span class="tag b">after</span></div><div class="phone"><div class="status"><span>10:53</span><span>●●● 42</span></div><div class="tabrow"><span class="tab">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab on">Costs</span><span class="tab">History</span><span class="tab">Docu</span></div><div class="scroll"><div class="body"><div class="note" style="display:flex;justify-content:space-between;align-items:center"><span>$56,000 · 17% done (set on the job)</span><span class="press" style="min-height:36px;padding:0 10px;font-size:13px">Print</span></div><div class="num" style="margin-bottom:6px"><div class="k">Direct margin at completion</div><div class="v" style="color:var(--muted)">too early</div><div class="s">projection needs 3 field days and 10%</div></div><div class="two"><div class="num"><div class="k">Spent so far</div><div class="v">$6,200</div><div class="s">11% of the price · 0 h team · $6,200 materials</div></div><div class="num"><div class="k">Earned so far</div><div class="v">$9,520</div><div class="s">17% of $56,000 · $3,320 ahead on direct</div></div></div><div class="num" style="margin-bottom:6px"><div class="k">Time left</div><div class="v">—</div><div class="s">no field days yet</div></div><div class="fold"><span>Show the chart<span class="sub">cost against value earned, day by day</span></span><span class="chev">›</span></div><span class="mark ok" style="top:300px">the chart folds: its axes are 10 px at this width</span><div class="sect">Where the money went</div><div class="row44"><span class="v">Other job charges</span><span class="r" style="color:var(--muted);font-size:13px"><b style="color:var(--ink)">$6,200</b></span></div><div class="bar2" style="margin:-4px 0 6px"><i style="width:100%"></i></div><div class="row44"><span class="v">Team labor</span><span class="r" style="color:var(--muted);font-size:13px">0 h · $0</span></div><div class="row44"><span class="v">Supply-house invoices</span><span class="r" style="color:var(--muted);font-size:13px">$0</span></div><div class="row44"><span class="v">Parts from tally</span><span class="r" style="color:var(--muted);font-size:13px">0 parts · $0</span></div><div class="row44"><span class="v">Direct cost to date</span><span class="r" style="color:var(--muted);font-size:13px"><b style="color:var(--ink)">0 h · $6,200</b></span></div><div class="sect">The rows</div><div class="acc"><span>›</span>Supply house invoices<span class="amt">0.00</span></div><div class="acc"><span>›</span>Card charges<span class="amt">0.00</span></div><div class="acc"><span>›</span>Parts from tally<span class="amt">0.00</span></div><div class="acc"><span>⌄</span>Other job charges<span class="amt">6,200.00</span></div><div class="row44"><span class="v">&nbsp;&nbsp;ZZ test supply house</span><span class="r" style="color:var(--muted);font-size:13px">11/01 · $6,200.00</span></div><div class="fold"><span>Move cost rows…<span class="sub">every cost row by stream, tick and move · devs</span></span><span class="chev">›</span></div></div></div><div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div></div><div class="verdict"><b>What changes</b><ul><li>The four numbers stay first. The chart folds. Where the money went is rows with the bar under each, not a three-column table whose header wraps to four lines.</li><li>The dev’s cost-move panel folds behind Move cost rows… and draws nothing until opened. M.</li></ul></div></div><div class="panel"><div class="cap">H · Documents as one row per empty section <span class="tag a">after</span></div><div class="phone"><div class="status"><span>10:53</span><span>●●● 42</span></div><div class="tabrow"><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab on">Documents</span><span class="tab">Mat</span></div><div class="scroll"><div class="body"><div class="sect">Plans<span class="right">+ New set</span></div><div class="row44"><span class="v" style="white-space:normal;font-weight:400">Building from: <b>ZZ TEST set</b> · Issued set · came Nov 7</span><span class="act">Open ↗</span></div><div class="pressrow" style="grid-template-columns:1fr"><span class="press">Add our as-built</span></div><div class="row44"><span class="v" style="color:var(--muted);font-weight:400">Papers with the plans · none</span><span class="act">Keep a paper</span></div><span class="mark ok" style="top:8px">an empty section is one row with its press</span><div class="row44"><span class="v">Pay applications</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span><span class="act">New application</span></div><div class="row44"><span class="v">Bills</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none · Bill is the tab that sends one</span></div><div class="row44"><span class="v">Contract</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span><span class="act">Contract window</span></div><div class="row44"><span class="v">Test reports</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span><span class="act">New report</span></div><div class="row44"><span class="v">Lien paper</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span><span class="act">Lien window</span></div><div class="row44"><span class="v">Hours statements</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span></div><div class="row44"><span class="v">Stage checklists</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">3 · 2 of 9 answered</span><span class="act">Print</span></div><div class="row44"><span class="v">Sent from this job</span><span class="r" style="color:var(--muted);font-size:13px;font-weight:400">none</span></div><div class="sect">Job folders</div><div class="row44"><span class="k"></span><span class="v link">Job folder</span><span class="act">Add a file</span></div><div class="row44"><span class="k"></span><span class="v link">Plans</span><span class="act">Add a file</span></div><div class="row44"><span class="k"></span><span class="v link">Customer Pictures</span><span class="act">Add a file</span></div><div class="row44"><span class="k"></span><span class="v link">Team only › Photos</span><span class="act">Add a file</span></div></div></div><div class="bar three"><span class="press">Status ▾</span><span class="press blue">Ready to bill</span><span class="press">Note</span></div></div><div class="verdict"><b>What changes</b><ul><li>An empty section is one 44 px row: the title, <i>none</i>, its press at the right. A section with something keeps its list, its presses 40 px.</li><li>The order stays. S.</li></ul></div></div></div>
+<h2>The questions for the owner</h2><ol><li><b>D now, as its own small PR?</b> It is the one change every tab shares and the cheapest.</li><li><b>F’s order on a phone:</b> the money first and the line items last (drawn), or the desk’s order with the line items first?</li><li><b>E’s status rail:</b> off the Edit tab on a phone, since the bar’s Status ▾ is the same rail?</li><li><b>E, F, G, H as one PR each, in that order?</b></li></ol>
+<p class="lede" style="font-size:12.5px">History (1.4 screens, 3 small presses) and Materials (one screen, one press) are left as they are beyond D. The measure is in <code>to-dos/job-window-phone.md</code>, pass 3.</p>
+</div></body></html>
