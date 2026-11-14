@@ -239,7 +239,8 @@ describe('TallyTeamQueue', () => {
     expect(listReceiptRequestsByCharge).toHaveBeenCalledWith(['t-fuel', 't-parts'])
     const lines = within(card).getAllByTestId('tally-team-line')
     const fuelChip = within(lines[0]!).getByTestId('tally-team-receipt-chip')
-    expect(fuelChip.textContent).toMatch(/^Texted \d{1,2}:\d{2} [AP]M$/)
+    // An hour back is yesterday when the suite runs in the first hour after midnight, and the chip then names the weekday.
+    expect(fuelChip.textContent).toMatch(/^Texted (?:[A-Z][a-z]{2} )?\d{1,2}:\d{2} [AP]M$/)
     expect(fuelChip.getAttribute('data-tone')).toBe('waiting')
     expect(within(lines[0]!).getByTestId('tally-team-receipt-line').textContent).toBe('No receipt yet.')
     const partsChip = within(lines[1]!).getByTestId('tally-team-receipt-chip')
