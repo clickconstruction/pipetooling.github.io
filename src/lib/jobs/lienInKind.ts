@@ -13,7 +13,9 @@
  * Every reader of the desk's jobs goes through here, so the views cannot disagree: the desk's read
  * (`useLienDeskData`), By job's book (`useLienTimelineBook`), By date and the Pipeline's marks
  * (`lienCalendarRows.ts`), Put a GC on notice (`useGcOnNoticeData`), the Dashboard's lien watch
- * (`useLienWatchNudge`) and Materials' held line (`buildHeldLienLines`, v2.7257). Pure.
+ * (`useLienWatchNudge`), Materials' held line (`buildHeldLienLines`, v2.7257) and the firm's lien grid
+ * (`shapeLienBookForCounsel` in the `legal-portal` function, v2.7259, which reads this file's generated copy:
+ * `npm run gen:edge-kernels`). Pure.
  */
 import { jobIsScheduledInKind } from '../inKind/inKindLedger'
 
