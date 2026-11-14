@@ -8,18 +8,25 @@ export type OnSiteSites = {
   /** A site's name by its development id. */
   siteNames: ReadonlyMap<string, string>
   loaded: boolean
+  /** The read failed (v2.7175): the thrown value for the panel's class, null when it went through. The desk then has one row per job, and says so. */
+  failed: unknown
+  retry: () => void
 }
 
 /**
  * The sites behind the jobs that hold boxes (punch list #330): which development each job belongs
  * to, and the developments' names, so the desk groups a site's jobs under one row and the site's
  * screen knows its jobs. Two small reads over the ids the on-site store already holds, under the
- * viewer's own RLS. A read that fails leaves the desk as it was before sites, one row per job.
+ * viewer's own RLS. A read that fails leaves the desk as it was before sites, one row per job, and is
+ * handed back as `failed` so the screen can say so and ask again (v2.7175): a site's screen with no
+ * jobs read as an empty site before.
  */
 export function useOnSiteSites(jobIds: ReadonlyArray<string>, enabled = true): OnSiteSites {
   const [siteOfJob, setSiteOfJob] = useState<Map<string, string | null>>(new Map())
   const [siteNames, setSiteNames] = useState<Map<string, string>>(new Map())
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState<unknown>(null)
+  const [again, setAgain] = useState(0)
   const askedRef = useRef(new Set<string>())
   const idsKey = [...jobIds].sort().join('|')
 
@@ -39,6 +46,7 @@ export function useOnSiteSites(jobIds: ReadonlyArray<string>, enabled = true): O
         const siteIds = [...new Set(rows.map((r) => r.development_id).filter((id): id is string => Boolean(id)))]
         const sites = siteIds.length ? ((await withSupabaseRetry(() => supabase.from('developments').select('id, name').in('id', siteIds), 'load on-site site names')) ?? []) : []
         if (!live) return
+        setFailed(null)
         setSiteOfJob((prev) => {
           const next = new Map(prev)
           for (const r of rows) next.set(r.id, r.development_id)
@@ -49,9 +57,10 @@ export function useOnSiteSites(jobIds: ReadonlyArray<string>, enabled = true): O
           for (const s of sites as Array<{ id: string; name: string }>) next.set(s.id, s.name)
           return next
         })
-      } catch {
-        // The desk keeps one row per job; a later visit asks again.
+      } catch (e) {
+        // The desk keeps one row per job; Retry, or a later visit, asks again.
         missing.forEach((id) => askedRef.current.delete(id))
+        if (live) setFailed(e ?? new Error('The sites did not load.'))
       } finally {
         if (live) setLoaded(true)
       }
@@ -59,7 +68,7 @@ export function useOnSiteSites(jobIds: ReadonlyArray<string>, enabled = true): O
     return () => {
       live = false
     }
-  }, [idsKey, enabled])
+  }, [idsKey, enabled, again])
 
-  return useMemo(() => ({ siteOfJob, siteNames, loaded }), [siteOfJob, siteNames, loaded])
+  return useMemo(() => ({ siteOfJob, siteNames, loaded, failed, retry: () => setAgain((n) => n + 1) }), [siteOfJob, siteNames, loaded, failed])
 }

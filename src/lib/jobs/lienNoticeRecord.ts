@@ -68,7 +68,7 @@ export type LienNoticeRecordNotice = {
   months: string[]
   /** This job's amount on the notice; null when the row has none. */
   claim: number | null
-  /** The paper's total, when it was more than this job's amount. */
+  /** The paper's total, when it is not this job's amount: one paper over several jobs, or a figure set by hand. */
   printedClaim: number | null
   savedCopy: boolean
   savedNote: string

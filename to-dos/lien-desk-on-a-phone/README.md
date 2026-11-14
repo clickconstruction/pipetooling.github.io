@@ -1,27 +1,30 @@
 ---
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
-group: waiting
-status: drawn 2026-11-13 · three directions in the mock-up · nothing built · waits on the owner's pick
+group: ready
+status: the owner picked A, the one list, 2026-11-13 · PR 0 (the rows in reach) and PR 1 (one header row and More) are built, walked and in the merge queue · left: PR 2 to PR 7
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
-  a phone the header takes that window. On Do now the lien month's five cards fill what is left and
+  a phone the header takes that window. On To do the lien month's five cards fill what is left and
   the rows sit in a window 26 px tall that is off the screen, so the work cannot be reached at all.
-  On All filings seven header rows stay pinned and the list shows through about a third of the
+  On By paper seven header rows stay pinned and the list shows through about a third of the
   screen. Most presses are 20 to 30 px tall. The mock-up draws three whole directions on the same
   three moments: one list of jobs soonest first, the same desk made to fit, and a today card first.
-  The pick is the one list.
-next: The owner picks a direction on the mock-up. PR 0, the page scrolls as one page, is the same in all three and can go first.
-size: L as a train of eight (S · S · M · M · M · S · S · S)
-blocker: The owner's pick.
-opinion: build — direction A; PR 0 is a plain fix and should not wait
+  The owner picked the one list.
+next: PR 2, the lien month as one line with its cards as a sheet, cut from main once PR 0 has landed.
+size: L as a train of eight (S · S · M · M · M · S · S · S); left: PR 2 to PR 7 (M · M · M · S · S · S)
+blocker: None. PR 2 and PR 3 build on PR 0, so they wait for it to land.
 ---
 
 # The Lien desk on a phone
 
 Mock-up: [`mockup.html`](./mockup.html). Every name, address, count and amount in it is made up.
 The sizes on its first three phones were measured on the live desk.
+
+The desk's three views are named here as the owner renamed them the same day: **To do**, **By date**
+and **By paper**. On the day of the recording and the walk they read *Do now*, *Deadlines* and
+*All filings*, and the release notes of PR 0 and PR 1 use those names.
 
 ## The ask
 
@@ -32,7 +35,7 @@ it comes.
 
 ## What the recording showed
 
-Six and a half seconds, Safari on an iPhone, **All filings → Affidavits**. He scrolled the list of
+Six and a half seconds, Safari on an iPhone, **By paper → Affidavits**. He scrolled the list of
 affidavits that are ready to file, up and down, and did not open a row.
 
 - The desk's own header stayed pinned the whole time, in seven rows: the way back, the title and
@@ -44,7 +47,7 @@ affidavits that are ready to file, up and down, and did not open a row.
   bottom bar.
 - The row text is small, and the chips are too tight to press with a thumb.
 
-He was not on **Do now**, the view the desk opens on. The walk below says why that may be.
+He was not on **To do**, the view the desk opens on. The walk below says why that may be.
 
 ## What the walk measured
 
@@ -54,21 +57,21 @@ that sends, prints, approves or files.
 
 | How tall the working window is | 320 | 390 | 430 |
 |---|---|---|---|
-| Do now, the rows | 0 | 0 | 0 |
-| Deadlines, the list | 126 px | 290 px | 350 px |
-| All filings → Notices, the list | 72 px | 236 px | 296 px |
-| All filings → Affidavits, the list | 79 px | 268 px | 328 px |
+| To do, the rows | 0 | 0 | 0 |
+| By date, the list | 126 px | 290 px | 350 px |
+| By paper → Notices, the list | 72 px | 236 px | 296 px |
+| By paper → Affidavits, the list | 79 px | 268 px | 328 px |
 | One notice, the paper (4,943 px long) | | 153 px | |
 | The run window, its body (5,574 px long) | | 266 px | |
 | A job's Lien window, its body (4,607 px long) | | 119 px | |
 
-- **Do now cannot be worked on a phone.** The header is 181 px in six rows. The lien month is
+- **The To do view cannot be worked on a phone.** The header is 181 px in six rows. The lien month is
   544 px in five stacked cards. The find box and sixteen step tiles follow. The first row of work
   is 1,526 px down, inside a list whose window is 26 px tall and below the bottom of the panel.
   Pressing a month card’s *Show … liens* narrows a list nobody can scroll to. The layout is a grid
   of `auto auto minmax(0, 1fr)` in `LienDesk.tsx`: the month takes its full height and the list
   gets what is left, which on a phone is nothing.
-- **A Do now row is about 225 px** once reached: a kind chip and a date, the job, four named step
+- **A To do row is about 225 px** once reached: a kind chip and a date, the job, four named step
   tiles, a line of words and a full-width button. It carries no amount. The affidavit list's rows
   do, and that is the list the recording went to.
 - **Presses are small.** Of 26 presses on the first screen, 18 are under 44 px. The view tabs and
@@ -76,7 +79,7 @@ that sends, prints, approves or files.
   § Rules 25, the help key 26.
 - **Words are small.** Most are 11 to 13 px. Pile heads are 9.9 px.
 - **No page slides sideways** at any width. Three strips inside it do: the paper tabs at 390 and
-  under (Timeline is cut off), the Deadlines pills, and an open notice's pane, whose section heads
+  under (Timeline is cut off), the By date pills, and an open notice's pane, whose section heads
   are 539 px wide in 374 px so the fact at the right end is cut.
 - **The grey band** is the page's height, worked out once from the top of the desk
   (`LienDeskPage.tsx`). It is not worked out again when the banner above closes.
@@ -109,7 +112,7 @@ change at computer width.
 | Cost | L, eight small PRs. One row kernel, one job screen, the rest layout. | M, five small PRs. Layout only. | XL. A kernel that picks the day's pile, a stack with skip and back, and A behind the door. |
 | Risk | Low. Every press opens what it opens today. | Lowest | Highest. A wrong headline hides real work. |
 
-**The pick is A.** The recording is a person looking for a list of jobs with the money and the days,
+**My pick was A, and the owner picked A** (*"Build A, one list"*, 2026-11-13). The recording is a person looking for a list of jobs with the money and the days,
 and A makes that the first screen. B is the safe half of A, and their first two PRs are the same, so
 starting on A loses nothing if B turns out to be enough. C's headline is worth keeping, and A takes
 it as the month line.
@@ -121,12 +124,12 @@ change, release note and fragment, and is walked at phone and computer width.
 
 | PR | What | Size | Where |
 |---|---|---|---|
-| 0 | **The desk scrolls as one page on a phone.** The Do now rows are in reach and the grey band is gone. The same in all three directions. | S | The panel grid and the Do now grid in `LienDesk.tsx`; the height in `LienDeskPage.tsx` |
+| 0 | **The desk scrolls as one page on a phone.** The To do rows are in reach and the grey band is gone. The same in all three directions. | S | The panel grid and the To do grid in `LienDesk.tsx`; the height in `LienDeskPage.tsx` |
 | 1 | **One header row and the More sheet.** § Rules, the caller, the help key, Share, *An owner asked for records* and *Put a GC on notice* move into it. | S | New kernel for which doors show and in what order; the title bar's phone branch |
 | 2 | **The month as one line, the cards as a sheet.** The line says the day's headline. The step tiles sit in the sheet. | M | New kernel for the line's words over the month's zones; `LienMonthBar.tsx`, `LienDeskSteps.tsx` |
-| 3 | **The phone row, grouped by the day it is due, with chips.** Two lines: the job and the amount, then four dots, the state and the GC, and the press. | M | New row kernel over the Do now rows; `LienDeskNextUp.tsx` phone branch |
+| 3 | **The phone row, grouped by the day it is due, with chips.** Two lines: the job and the amount, then four dots, the state and the GC, and the press. | M | New row kernel over the To do rows; `LienDeskNextUp.tsx` phone branch |
 | 4 | **The job screen.** The due line, the four steps, the doors, and one pinned press that calls what the row's button calls today. | M | New component; no new write |
-| 5 | **Deadlines and All filings in the same rows.** The kinds of paper and the piles are chips. The notary's print box moves into More. | S | `LienDeskCalendarTab.tsx`, the list columns in `LienDesk.tsx` |
+| 5 | **By date and By paper in the same rows.** The kinds of paper and the piles are chips. The notary's print box moves into More. | S | `LienDeskCalendarTab.tsx`, the list columns in `LienDesk.tsx` |
 | 6 | **An open notice or affidavit.** Section heads wrap, the paper fits the width, the act bar is pinned. | S | The pane in `LienDesk.tsx`, `LienDeskAffidavitPane.tsx` |
 | 7 | **The Lien window and the run window.** The header folds on a phone so the body has the room. | S | `LienInstrumentsModal.tsx`, the run window |
 
@@ -141,15 +144,32 @@ the three on the Lien window.
 ## What was checked
 
 - The recording, frame by frame.
-- The live desk at three phone sizes: Do now, a pressed month zone, a pressed step and its brief,
-  Deadlines, All filings → Notices and one notice, Affidavits and one affidavit, the run window,
+- The live desk at three phone sizes: To do, a pressed month zone, a pressed step and its brief,
+  By date, By paper → Notices and one notice, Affidavits and one affidavit, the run window,
   § Rules, Share, and a job's Lien window on its three tabs. Reads only.
 - The mock-up in light and in dark, at computer width and at 390 wide: no script errors, no
   sideways slide, no press in the new frames under 40 px.
-- Not checked: Do now on the owner's own phone. The recording does not show that view. The zero is
+- Not checked: To do on the owner's own phone. The recording does not show that view. The zero is
   a measurement in a headless browser at phone sizes, and the layout code agrees with it.
 
 ## Where it stands
 
-Drawn, not built. The owner picks A, B or C on the mock-up, or says what to change. His cut-off
-sentence may change the pick, so it is asked for first.
+The owner picked A on 2026-11-13. His cut-off sentence is still unfinished. It is asked for again
+before PR 3, since its ending may change what the one list should do.
+
+| PR | State |
+|---|---|
+| 0 | Built and walked, in the merge queue. At 390 × 720 the room for the rows goes from 0 to 343 px, and to 410 px with PR 1. A pressed month card brings its rows to the top. No grey band. |
+| 1 | Built and walked, in the merge queue. The header at 390 wide is 114 px on To do and By date (was 181) and 173 px on Notices and Affidavits (was 235 and 207). No press in it is under 44 px. |
+| 2 to 7 | Not started. |
+
+Two things PR 1 taught, for the PRs after it:
+
+- **A thumb-tall row makes a pinned header taller.** With every press at 44 px the Affidavits header
+  first came out at 259 px against 207 before, because two pile chips wrapped. Whatever wraps goes
+  into the list's own scroller. Measure the header after every change.
+- **The computer check that works** is to read the same boxes on the dev server and on the live desk
+  at 1,400 × 900 and compare them. Both PRs matched to the pixel.
+
+*Put a GC on notice* moved into More in PR 1, which the table above did not plan. The paper tabs
+still slide sideways at 320 wide until PR 5.

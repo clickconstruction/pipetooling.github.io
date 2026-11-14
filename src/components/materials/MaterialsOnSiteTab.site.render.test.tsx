@@ -23,7 +23,7 @@ const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOStri
 const box = (id: string, jobId: string, label: string): Container => ({ id, jobId, label, kind: 'cage', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: ago(30) })
 const delivered = (id: string, jobId: string, name: string, quantity: number, to: string): Movement => ({ id, jobId, partId: null, partName: name, manufacturer: null, quantity, reason: 'delivered', fromContainerId: null, toContainerId: to, note: '', byUserId: null, byName: 'Priya', at: ago(2), source: null, itemId: null })
 
-const data = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]> }))
+const data = vi.hoisted(() => ({ containers: {} as Record<string, unknown[]>, movements: {} as Record<string, unknown[]>, failed: {} as Record<string, string>, reread: [] as string[] }))
 data.containers = { ja: [box('r12', 'ja', 'R12')], jb: [box('p1', 'jb', 'P1')], jc: [box('a1', 'jc', 'A1')] }
 data.movements = { ja: [delivered('m1', 'ja', '2" 90 pvc', 94, 'r12')], jb: [delivered('m2', 'jb', '2 inch 90 PVC', 28, 'p1')], jc: [delivered('m3', 'jc', 'Wax ring', 6, 'a1')] }
 
@@ -35,6 +35,15 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   priceOf: () => null,
   priceFor: () => null,
   loadBookPrices: async () => {},
+  setScopeTies: () => {},
+  // How each job's own read stands (v2.7175): a job whose read failed is said over the site's screen.
+  subscribe: () => () => {},
+  getVersion: () => 0,
+  jobLoadState: (id: string) => ({ loaded: !data.failed[id], loading: false, error: data.failed[id] ?? null, raw: data.failed[id] ? new TypeError('Failed to fetch') : null }),
+  loadJob: (id: string, opts?: { force?: boolean }) => {
+    data.reread.push(`${id}${opts?.force ? ' again' : ''}`)
+    return Promise.resolve()
+  },
 }))
 vi.mock('../../hooks/useOnSiteDeskJobs', () => ({
   useOnSiteDeskJobs: () => ({
@@ -76,6 +85,21 @@ describe('MaterialsOnSiteTab, the site row for a field role', () => {
     expect(screen.getByRole('link', { name: 'R12' }).getAttribute('href')).toBe('/tally?tab=on-site&job=ja&container=r12')
     fireEvent.click(screen.getByRole('button', { name: 'Back to On site' }))
     expect(screen.queryByTestId('site-materials-view')).toBeNull()
+  })
+
+  it('a job whose read failed is said over the site’s screen, and Retry reads that job again', () => {
+    data.failed = { jb: 'No connection. Check your signal.' }
+    data.reread.length = 0
+    try {
+      setup('superintendent')
+      fireEvent.click(screen.getByRole('button', { name: 'Open the site' }))
+      expect(screen.getByText('1 of this site’s 2 jobs did not load. Its boxes are not on this screen, and the figures leave them out.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: /Retry/ }))
+      expect(data.reread).toContain('jb again')
+      expect(data.reread).not.toContain('ja again')
+    } finally {
+      data.failed = {}
+    }
   })
 
   it('an estimator gets their jobs and no site row', () => {
