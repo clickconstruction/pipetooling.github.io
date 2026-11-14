@@ -9774,6 +9774,73 @@ export type Database = {
           },
         ]
       }
+      difficulty_criteria_versions: {
+        Row: {
+          body: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+          published_at: string | null
+          published_by: string | null
+          published_by_name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          body?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_by_name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_by_name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "difficulty_criteria_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "difficulty_criteria_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "difficulty_criteria_versions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_group_members: {
         Row: {
           user_id: string
