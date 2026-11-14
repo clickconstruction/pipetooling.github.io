@@ -16,6 +16,9 @@ export type LaborJobPayment = {
   sending_no?: number | null
   /** Credit kept with this row: what was sent past what the sheets needed. Resolved by the ledger hook. */
   credit_kept?: number | null
+  /** v2.7237: when this payment was ticked against the bank, and by whom. Null is not checked. */
+  checked_at?: string | null
+  checked_by_name?: string | null
 }
 
 /** v2.7235: one sending to record. `lines` are the sheets it pays, `credit` what is kept past them. */

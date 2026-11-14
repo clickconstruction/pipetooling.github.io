@@ -92,7 +92,14 @@ export function useSubLaborLedger({
         // refuses their names, and a refused read here would draw every sheet as unpaid. So a refusal reads the row
         // as it was before the two columns: the payments still load, and only the method is missing.
         // v2.7235: `sending_id` comes from migration 20261114020000, and is asked for first by the same rule.
+        // v2.7237: `checked_at` and `checked_by_name` come from 20261114030000, and lead the same chain.
         (async () => {
+          const withCheck = await supabase
+            .from('people_labor_job_payments')
+            .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref, sending_id, checked_at, checked_by_name' as 'id, job_id, amount, memo, created_at, payment_date')
+            .in('job_id', jobIds)
+            .order('sequence_order', { ascending: true })
+          if (!withCheck.error) return withCheck
           const withSending = await supabase
             .from('people_labor_job_payments')
             .select('id, job_id, amount, memo, created_at, payment_date, method, method_ref, sending_id' as 'id, job_id, amount, memo, created_at, payment_date')
@@ -184,7 +191,7 @@ export function useSubLaborLedger({
           eventsByJob.get(sheetId)!.push(ev)
         }
       }
-      type PaymentRead = { job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null; method?: string | null; method_ref?: string | null; sending_id?: string | null }
+      type PaymentRead = { job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null; method?: string | null; method_ref?: string | null; sending_id?: string | null; checked_at?: string | null; checked_by_name?: string | null }
       const paymentRows = (paymentsData ?? []) as unknown as PaymentRead[]
       // v2.7235: each sending's number and each person's credit. Both tables come from migration 20261114020000,
       // so a refused read means it is not pushed yet: no numbers, no credit, and every payment still loads.
@@ -217,6 +224,8 @@ export function useSubLaborLedger({
           sending_id: p.sending_id ?? null,
           sending_no: p.sending_id ? (sendingNoById.get(p.sending_id) ?? null) : null,
           credit_kept: creditKeptByPayment.get(p.id) ?? null,
+          checked_at: p.checked_at ?? null,
+          checked_by_name: p.checked_by_name ?? null,
         })
       }
       setLaborJobNamesByJobId(buildLaborJobNamesById((ledgerJobs ?? []) as Array<{ id: string; job_name: string | null }>))
@@ -324,11 +333,12 @@ export function useSubLaborLedger({
     else await loadLaborJobs()
   }
 
-  async function recordLaborJobBackcharge(jobId: string, amount: number, memo: string) {
+  /** v2.7237: a back-charge takes the day it was raised (`paymentDate`), so the ledger files it under that day and not the day it was typed. */
+  async function recordLaborJobBackcharge(jobId: string, amount: number, memo: string, paymentDate?: string | null) {
     setError(null)
     const { data: existing } = await supabase.from('people_labor_job_payments').select('sequence_order').eq('job_id', jobId).order('sequence_order', { ascending: false }).limit(1)
     const nextOrder = existing?.length ? (Number((existing[0] as { sequence_order: number }).sequence_order) + 1) : 0
-    const { error: err } = await supabase.from('people_labor_job_payments').insert({ job_id: jobId, amount: -Math.abs(amount), memo: memo.trim(), sequence_order: nextOrder })
+    const { error: err } = await supabase.from('people_labor_job_payments').insert({ job_id: jobId, amount: -Math.abs(amount), memo: memo.trim(), sequence_order: nextOrder, ...(paymentDate?.trim() ? { payment_date: paymentDate.trim() } : {}) })
     if (err) setError(err.message)
     else await loadLaborJobs()
   }
@@ -434,10 +444,35 @@ export function useSubLaborLedger({
     return { ok: true }
   }
 
+  /**
+   * v2.7237: tick or clear a payment against the bank (`set_sub_payment_checked`). Every row of the same sending
+   * goes with it, since one check is one line at the bank. The rows are marked here at once, so ticking down a
+   * list does not wait on a reload, and a refusal reads the truth back.
+   */
+  async function setSubPaymentChecked(paymentId: string, checked: boolean): Promise<SubSendingResult> {
+    setError(null)
+    let sendingId: string | null = null
+    for (const j of laborJobs) for (const p of j.payments ?? []) if (p.id === paymentId) sendingId = p.sending_id ?? null
+    const at = checked ? new Date().toISOString() : null
+    const who = checked ? (authUserName ?? null) : null
+    setLaborJobs((prev) =>
+      prev.map((j) => {
+        const hit = (j.payments ?? []).some((p) => p.id === paymentId || (sendingId && p.sending_id === sendingId))
+        if (!hit) return j
+        return { ...j, payments: (j.payments ?? []).map((p) => ((p.id === paymentId || (sendingId && p.sending_id === sendingId)) && Number(p.amount) > 0 && p.method !== 'credit' ? { ...p, checked_at: at, checked_by_name: who } : p)) }
+      }),
+    )
+    const { error: err } = await supabase.rpc('set_sub_payment_checked' as never, { p_payment_id: paymentId, p_checked: checked } as never)
+    if (!err) return { ok: true }
+    await loadLaborJobs()
+    return sendingRefusal(err)
+  }
+
   return {
     subCreditByPersonId,
     recordSubSending,
     applySubCredit,
+    setSubPaymentChecked,
     laborJobs,
     setLaborJobs,
     laborJobNamesByJobId,

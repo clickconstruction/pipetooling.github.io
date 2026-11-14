@@ -19,7 +19,8 @@ export function PeopleSubsLedger({ balanceDueByPersonId, sub, onSubChange }: { b
   const { user } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [by, setBy] = useState<LedgerGrouping>('sub')
-  const { laborJobs, laborJobsLoading, laborJobsLoadedOnce, laborJobNamesByJobId, laborJobAssigneesByJobId, loadLaborJobs } = useSubLaborLedger({ authUserId: user?.id, setError })
+  const { profileName } = useAuth()
+  const { laborJobs, laborJobsLoading, laborJobsLoadedOnce, laborJobNamesByJobId, laborJobAssigneesByJobId, loadLaborJobs, setSubPaymentChecked } = useSubLaborLedger({ authUserId: user?.id, authUserName: profileName, setError })
 
   useEffect(() => {
     if (user?.id) void loadLaborJobs()
@@ -42,6 +43,7 @@ export function PeopleSubsLedger({ balanceDueByPersonId, sub, onSubChange }: { b
         sub={sub}
         onSubChange={onSubChange}
         balanceDueByPersonId={balanceDueByPersonId}
+        onSetChecked={setSubPaymentChecked}
       />
     </div>
   )

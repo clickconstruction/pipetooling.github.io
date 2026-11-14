@@ -225,3 +225,93 @@ describe('SubPaymentsLedger · by sub (PR 3)', () => {
     narrow.on = false
   })
 })
+
+describe('SubPaymentsLedger · checked against the bank (PR 4)', () => {
+  const sheetWith = () => {
+    const job = makeLaborJob({ id: 'bank', assigned_to_name: 'Harlow Drywall', job_number: 'S-2300', address: '8 Cedar Ct' })
+    job.payments = [
+      { id: 'c-done', amount: 20, memo: 'draw', created_at: '2025-11-03T17:00:00Z', payment_date: '2025-11-03', method: 'check', method_ref: '1042', checked_at: '2025-11-20T18:00:00Z', checked_by_name: 'Dana Office' },
+      { id: 'c-open', amount: 15, memo: 'second', created_at: '2025-11-05T17:00:00Z', payment_date: '2025-11-05', method: 'zelle' },
+      { id: 'c-back', amount: -5, memo: 'damage', created_at: '2025-11-06T18:00:00Z', payment_date: null },
+      { id: 'c-credit', amount: 5, memo: null, created_at: '2025-11-07T18:00:00Z', payment_date: '2025-11-07', method: 'credit' },
+    ]
+    return job
+  }
+  const box = (id: string) => document.querySelector(`[data-ledger-check="${id}"]`) as HTMLInputElement | null
+
+  it('draws no ✓ column for a caller that cannot tick', async () => {
+    narrow.on = false
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [sheetWith()] })} />)
+    await settle()
+    showAll()
+    expect(document.querySelector('[data-ledger-check]')).toBeNull()
+    // The tile still counts: ticks made elsewhere are read.
+    expect(document.querySelector('[data-ledger-tile="bank"]')!.textContent).toContain('1 of 2')
+  })
+
+  it('a payment has a box, ticked or not, and a back-charge and a line paid from credit have none', async () => {
+    narrow.on = false
+    const onSetChecked = vi.fn(async () => ({ ok: true as const }))
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [sheetWith()], onSetChecked })} />)
+    await settle()
+    showAll()
+    expect(box('c-done')!.checked).toBe(true)
+    expect(box('c-open')!.checked).toBe(false)
+    expect(box('c-back')).toBeNull()
+    expect(box('c-credit')).toBeNull()
+    expect(box('c-done')!.title).toContain('by Dana Office')
+    const tile = document.querySelector('[data-ledger-tile="bank"]')!
+    expect(tile.textContent).toContain('1 of 2')
+    expect(tile.textContent).toContain('1 left to check · $15.00')
+    fireEvent.click(box('c-open')!)
+    expect(onSetChecked).toHaveBeenCalledWith('c-open', true)
+    fireEvent.click(box('c-done')!)
+    expect(onSetChecked).toHaveBeenCalledWith('c-done', false)
+  })
+
+  it('Not checked keeps what is left to tick, and the tile still counts the whole period', async () => {
+    narrow.on = false
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [sheetWith()], onSetChecked: vi.fn(async () => ({ ok: true as const })) })} />)
+    await settle()
+    showAll()
+    fireEvent.click(screen.getByRole('button', { name: 'Not checked' }))
+    expect(lineIds()).toEqual(['c-open'])
+    expect(document.querySelector('[data-ledger-tile="bank"]')!.textContent).toContain('1 of 2')
+    fireEvent.click(screen.getByRole('button', { name: 'Not checked' }))
+    expect(lineIds()).toHaveLength(4)
+  })
+
+  it('How paid narrows to one method', async () => {
+    narrow.on = false
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [sheetWith()] })} />)
+    await settle()
+    showAll()
+    const pick = screen.getByRole('combobox', { name: 'How paid' }) as HTMLSelectElement
+    expect([...pick.options].map((o) => o.textContent)).toEqual(['How paid: any', 'Check', 'From credit', 'Zelle'])
+    fireEvent.change(pick, { target: { value: 'Check' } })
+    expect(lineIds()).toEqual(['c-done'])
+  })
+
+  it('with everything ticked, Not checked says nothing is waiting and offers the way back', async () => {
+    narrow.on = false
+    const job = sheetWith()
+    job.payments = job.payments!.filter((p) => p.id === 'c-done')
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [job] })} />)
+    await settle()
+    showAll()
+    fireEvent.click(screen.getByRole('button', { name: 'Not checked' }))
+    expect(screen.getByText('Nothing waiting on a check against the bank in this period.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show every payment' }))
+    expect(lineIds()).toEqual(['c-done'])
+  })
+
+  it('a refusal to tick is said, with its reason', async () => {
+    narrow.on = false
+    const onSetChecked = vi.fn(async () => ({ ok: false as const, missing: true, message: 'x' }))
+    renderWithProviders(<SubPaymentsLedger {...props({ laborJobs: [sheetWith()], onSetChecked })} />)
+    await settle()
+    showAll()
+    fireEvent.click(box('c-open')!)
+    expect(await screen.findByText('Ticking a payment against the bank is not switched on yet.')).toBeTruthy()
+  })
+})

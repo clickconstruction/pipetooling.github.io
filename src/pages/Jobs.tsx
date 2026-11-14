@@ -335,6 +335,7 @@ export default function Jobs() {
     recordSubSending,
     applySubCredit,
     subCreditByPersonId,
+    setSubPaymentChecked,
   } = useSubLaborLedger({
     authUserId: authUser?.id,
     authUserName: authProfileName,
@@ -2058,6 +2059,7 @@ export default function Jobs() {
                     return next
                   })
                 }
+                onSetChecked={setSubPaymentChecked}
                 sub={searchParams.get('sub')}
                 onSubChange={(sub) =>
                   setSearchParams((p) => {
