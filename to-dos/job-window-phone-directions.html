@@ -97,6 +97,10 @@
   .who .press .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--link); }
   .who .press .verb { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; padding-left: 8px; }
   .who .press.sq { width: 56px; justify-content: center; }
+  .sv { position: relative; height: 104px; border-radius: 10px; overflow: hidden; margin: 2px 0 8px; background: linear-gradient(180deg, #bcd3ea 0%, #d9e4ee 48%, #8e9aa6 50%, #6b7480 100%); }
+  .sv::before { content: ''; position: absolute; left: 12%; right: 30%; top: 22%; height: 30%; background: #c9b79c; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .sv .pin { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; background: rgba(17,24,39,.6); color: #f9fafb; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .sv .pin .tag { margin-left: auto; font-size: 11px; font-weight: 700; opacity: .85; }
   .addr { color: var(--link); text-decoration: underline; font-size: 13px; display: block; margin: 2px 0 6px; }
   .maprow { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
   .maprow .dot { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: #F97316; margin-right: 8px; vertical-align: middle; }
@@ -304,6 +308,7 @@
       </div>
 
         <div class="body">
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
           <a class="addr" style="margin-top:4px">📍 4120 Cedar Bend Dr, Lockhart, TX</a>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
           <div class="paint">＋ Paint a map</div>
@@ -347,6 +352,7 @@
         <li><b>The header scrolls away.</b> The title row and the tab strip go up with the page, so a thumb's first flick gives the whole screen to the job. A small <b>✕</b> floats at the corner the whole way down, and a scroll back up brings the tabs back. The bar at the foot stays put.</li>
         <li>The icon row is gone. Every door is a named 48 px row in the <b>⋯</b> sheet, Share and Calendar first since they are the two anyone pressed, with the <b>?</b> card as its last row.</li>
         <li>The three money tiles and the job accounts fold to <b>one line each</b>; a tap opens the Bill tab or the accounts sheet.</li>
+        <li>The <b>Street View banner</b> draws on a phone as it does on a desk, under the tabs on <b>every tab, Edit included</b>, the address pinned on it, and scrolls away with the header. The <i>street view ▸</i> fold is gone.</li>
         <li>The photos are a <b>banner</b>: a row of 72 px tiles that flicks sideways, <b>Add a photo</b> the first tile, then every photo newest first with its day. A tap on a photo opens the viewer there; a tap on the first tile opens the camera on a phone, the picker on a desk. Today's three thumbnails and a <b>+ N</b> tile go.</li>
         <li>The tabs join the press count, so the second PR's tab question is answered by data.</li>
         <li>Nothing below moves. The bar is as today.</li>
@@ -371,9 +377,10 @@
 
         <div class="body">
           <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
-          <div class="quiet" style="margin:0 0 4px">＋ Paint a map · street view ▸</div>
+          <div class="quiet" style="margin:0 0 4px">＋ Paint a map</div>
 
           <div class="sect">Photos<span class="right"><span class="n">5</span>open all ›</span></div>
           <div class="photos"><span class="add">📷<br>Add a<br>photo</span><span class="ph" style="background:linear-gradient(135deg,#9bb0c6, #4b6584)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#c9b79c, #7a6448)"><span class="d">Nov 11</span></span><span class="ph" style="background:linear-gradient(135deg,#a9c4a3, #4f7a4a)"><span class="d">Nov 8</span></span><span class="ph" style="background:linear-gradient(135deg,#b8b8c8, #5b5b78)"><span class="d">Nov 7</span></span><span class="ph" style="background:linear-gradient(135deg,#d1b3a0, #8a5a44)"><span class="d">Nov 3</span></span></div>
@@ -415,7 +422,7 @@
     </div>
     <div class="verdict"><b>What changes, on top of A</b>
       <ul>
-        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside the number and Copy beside the address, so a glance says whether it is the right person, then the customer's three links as presses with their words: Portal, Files, Photos), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours), then <b>the thread</b>: three labelled rows (Last word, Their word, Our word, the live summary's own lines), the newest two messages with the customer as bubbles, theirs left and ours right, the door to the whole thread, and Reply by text and Note.</li>
+        <li>The Job tab reads in the order a phone needs: <b>Where</b> (the Street View banner, the address with Directions, the painted map), <b>Who</b> (the customer, then the phone number and the email address written out, each a 44 px press that calls or emails, with Text and Copy beside the number and Copy beside the address, so a glance says whether it is the right person, then the customer's three links as presses with their words: Portal, Files, Photos), <b>What's happening</b> (three labelled rows: Next on site, Waiting on, Hours), then <b>the thread</b>: three labelled rows (Last word, Their word, Our word, the live summary's own lines), the newest two messages with the customer as bubbles, theirs left and ours right, the door to the whole thread, and Reply by text and Note.</li>
         <li>Each part is a <b>section with a title of its own</b>: Where, Photos, Who, What's happening, the thread, More on this job, with a band between them, so a thumb can tell where one ends and the next begins.</li>
         <li><b>Photos</b> is a section of its own right after Where, the banner from A under its title, so the pictures are the second thing a thumb meets. Everything else folds under More on this job, each with its count: Questions, Money, Plans and papers, Work and time, Their journey. A fold opens in place and the phone remembers which were open.</li>
         <li>The first screen is one screen. The scroll ends near 1,300 px with every fold closed.</li>
@@ -442,6 +449,7 @@
 
         <div class="body">
           <div class="sect">Where</div>
+          <div class="sv"><span class="pin">📍 4120 Cedar Bend Dr, Lockhart, TX<span class="tag">Street View</span></span></div>
           <div class="maprow" style="min-height:48px"><span style="min-width:0"><span style="color:var(--link);text-decoration:underline">4120 Cedar Bend Dr, Lockhart, TX</span></span><span class="press" style="min-height:36px;font-size:13px;padding:0 10px">Directions</span></div>
           <div class="maprow"><span><span class="dot"></span>Test</span><span class="dist">about 640 ft ›</span></div>
 

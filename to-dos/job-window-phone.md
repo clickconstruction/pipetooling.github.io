@@ -145,6 +145,15 @@ Text, then Copy, the same ⧉ square the address has, and the live window gains 
 number* press beside the number on every screen: the clipboard with a *Phone number copied* toast,
 or the copy-from window when the app cannot reach the clipboard, as `copyEmail` does today.
 
+Also on pass 2: "In the edit job modal I think we should show the street view banner." On a desk the
+Street View banner is the window's shared header on every tab (v2.1676), the Edit tab included; on a
+phone it waits behind a *street view ▸* link (`streetViewShown` in `DetailJobModal`), so the Edit
+tab on his iPhone shows no picture of the house. So the banner draws on a phone as it does on a desk:
+in A under the tab strip on every tab, Edit included, the address pinned on it, scrolling away with
+the header; in B at the top of Where. The fold goes. The two places that open the Edit form alone,
+without the window (the customer's Agreements card and Dispatch Mode's schedule), have no header and
+no banner today; that stays as it is unless he asks.
+
 ## What the phone draws today, measured
 
 Measured on the dev server at the 375 × 812 preset on 2026-11-14, on the ZZ test job, signed in
@@ -217,12 +226,13 @@ the strip scroll away with the page; a small ✕ floats at the corner the whole 
 scroll back up brings the tabs back. The icon row is gone: every door is a named 48 px row in the ⋯ sheet (Share and
 Calendar first, since they are the two anyone pressed; Add job account with
 *none yet*; money story; Email the paid-in-full report; send as a task; Make change order; the ? card last). The three money tiles
-and the job accounts chips fold to one line each. The photos strip becomes the banner: Add a photo
+and the job accounts chips fold to one line each. The Street View banner draws under the strip on every tab, Edit
+included, as on a desk, and the *street view ▸* fold goes. The photos strip becomes the banner: Add a photo
 first, then the photos, flicked sideways. The tabs join the press count. Nothing below
 moves; the bar is as today.
 
 **B · The job on one screen** (a second PR on A). The Job tab under 640 px reads Where (the
-address with a Directions press, the painted map, the street view folded), Who (the customer, then
+Street View banner first, then the address with a Directions press, the painted map), Who (the customer, then
 the phone number and the email address written out, each a 44 px press that calls or emails, with
 Text and Copy beside the number and Copy beside the address, then Portal, Files and Photos as presses with their words), What's happening (three labelled rows: Next on site, Waiting on and Hours, each a
 plain label and its answer), then the thread (Last word, Their word and Our word as labelled rows, the newest two
@@ -266,7 +276,8 @@ pick after each is the drawing's own.
   the strip so each tab press is counted). Both move into `.job-window-body`'s scroll on a phone,
   with a floating ✕ over the corner and the strip drawn again at the top when the scroll turns
   upward (a `scroll` listener on the body, the strip `position: sticky` while scrolling up).
-- `src/components/jobs/DetailJobModal.tsx`: the action row (dossier D5, the eight presses with
+- `src/components/jobs/DetailJobModal.tsx`: the `streetViewShown` fold (the banner draws under
+  `phonePane` as under a desk, on every tab since the pane is the shared header), the action row (dossier D5, the eight presses with
   `data-navtrack="job-window"`), the phone-pane tiles and `JobAccountsStrip` in the top band
   (D7). A hides the action row under `phonePane` and hands its doors to the window's ⋯ sheet
   (the same handlers and satellite states, which stay in the pane; the sheet's rows keep the
