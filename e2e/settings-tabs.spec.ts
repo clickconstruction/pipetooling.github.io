@@ -50,6 +50,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Company', marker: 'Company documents' },
   // Dev doors (v2.5882): the card's title renders before anything loads — the list is a kernel.
   { label: 'Dev doors', marker: 'Only devs and the controller see these' },
+  // Difficulty criteria (v2.7275, punch list #357): the card's title renders before the versions are read.
+  { label: 'Difficulty criteria', marker: 'Difficulty criteria' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },
   { label: 'Email templates & testing', marker: 'Notification Templates' },
