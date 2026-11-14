@@ -260,7 +260,7 @@ BEGIN
 END $$;
 SELECT osm.same('A is empty', osm.counts('00000000-0000-0000-0000-0000000509a1'), '0 places, 0 containers, 0 rows, 0 box moves, 0 photos, 0 on hand');
 SELECT osm.same('B holds both jobs'' rows', osm.counts('00000000-0000-0000-0000-0000000509a2'), '3 places, 8 containers, 8 rows, 1 box moves, 3 photos, 29 on hand');
-SELECT osm.same('A1 keeps its id and code, wears a numbered label, stands in the target''s Arena', osm.box('a5090c02-0000-0000-0000-0000000509c2'), 'Bed job B · A1 (3) · A5090C02 · ARENA');
+SELECT osm.same('A1 keeps its id and code, wears the site''s next free name, stands in the target''s Arena', osm.box('a5090c02-0000-0000-0000-0000000509c2'), 'Bed job B · A2 · A5090C02 · ARENA');
 SELECT osm.same('B2 moved with the Yard it stands in', osm.box('a5090c03-0000-0000-0000-0000000509c3'), 'Bed job B · B2 · A5090C03 · Yard');
 SELECT osm.same('the cage with no place moved as it was', osm.box('a5090c04-0000-0000-0000-0000000509c4'), 'Bed job B · G7 TOILETS · A5090C04 · no place');
 SELECT osm.same('the retired C3 moved, still retired, its stencil untouched beside the live one', osm.box('a5090c05-0000-0000-0000-0000000509c5'), 'Bed job B · C3 · A5090C05 · no place · retired');

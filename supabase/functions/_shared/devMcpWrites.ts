@@ -346,7 +346,7 @@ const BOX_NAME_MAX = 24
 /** A box's name (punch list #351): one to three letters, a number from 1 to 999, one letter after it allowed — src/lib/materials/boxName.ts BOX_NAME_RULE and the database's box_name_words, which the seat says before the ask leaves. */
 const BOX_NAME_RULE = /^([A-Z]{1,3})([1-9][0-9]{0,2})([A-Z])?$/
 const BOX_NAME_RULE_WORDS = 'A name is one to three letters and a number from 1 to 999, like R76, and one of a kind across the site.'
-const boxNameHolds = (label: string) => BOX_NAME_RULE.test(label.trim().replace(/\s+/g, ' ').toUpperCase())
+const boxNameHolds = (label: string) => label.length <= BOX_NAME_MAX && BOX_NAME_RULE.test(label.trim().replace(/\s+/g, ' ').toUpperCase())
 const PART_NAME_MAX = 160
 const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
 const ON_SITE_LINES_MAX = 200
