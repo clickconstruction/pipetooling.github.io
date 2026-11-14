@@ -102,7 +102,8 @@ describe('the Banking ledger', () => {
     await settle()
     expect(chipIn(rowOf('Ridgeway Supply'))!.textContent).toBe('Receipt from the link')
     expect(chipIn(rowOf('Ridgeway Supply'))!.getAttribute('data-tone')).toBe('has')
-    expect(chipIn(rowOf('Corner Fuel'))!.textContent).toMatch(/^Texted \d{1,2}:\d{2} [AP]M$/)
+    // An hour back is yesterday when the suite runs in the first hour after midnight, and the chip then names the weekday.
+    expect(chipIn(rowOf('Corner Fuel'))!.textContent).toMatch(/^Texted (?:[A-Z][a-z]{2} )?\d{1,2}:\d{2} [AP]M$/)
     expect(chipIn(rowOf('Corner Fuel'))!.getAttribute('title')).toBe('No receipt yet.')
     expect(chipIn(rowOf('Cedar Bend Hardware'))!.textContent).toBe('No text')
     expect(chipIn(rowOf('Cedar Bend Hardware'))!.getAttribute('title')).toBe('Jordan has no cell on file. Add the cell on People, and the next charge texts them.')
