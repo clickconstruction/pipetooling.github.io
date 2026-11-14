@@ -142,7 +142,45 @@ export function JobFormPartsCostSection({
 
   return (
     <>
-          {moneyRows ? (
+          {moneyRows && narrowViewport ? (
+            /* Punch list #355 G (v2.7285): on a phone the table is rows, the source at the left, the hours and the cost at the
+               right, the share as a bar under the row; a row that opens something is a 44 px press with its door's words. */
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: '0.5rem' }} data-testid="job-money-table" data-money-rows="phone">
+              <div style={{ padding: '0.45rem 0.75rem', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', background: 'var(--bg-subtle)' }}>Where the money went</div>
+              {moneyRows.map((r) => {
+                const opens = rowOpens(r)
+                const cost = r.state === 'loading' ? 'Loading…' : r.state === 'failed' ? 'Couldn’t load' : `$${formatCurrency(r.usd)}`
+                const door = opens ? (r.key === 'team' || r.key === 'sub' ? 'Open on Jobs →' : r.accordion === materialsAccordionOpen ? 'shown below ▾' : 'show below ›') : ''
+                const total = r.key === 'total'
+                const inner = (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', minWidth: 0 }}>
+                      <span style={{ minWidth: 0, fontWeight: total ? 700 : 600, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+                        {r.label}
+                        {r.sub ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}> {r.sub}</span> : null}
+                      </span>
+                      <span style={{ marginLeft: 'auto', flex: 'none', fontVariantNumeric: 'tabular-nums', fontWeight: total ? 800 : 600, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+                        {r.hours != null ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{`${r.hours.toLocaleString('en-US', { maximumFractionDigits: 0 })} h · `}</span> : null}
+                        {cost}
+                      </span>
+                    </div>
+                    {r.sharePct != null ? <div style={{ height: 5, borderRadius: 3, background: 'var(--border)', marginTop: 6, overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: `${Math.max(2, Math.round(r.sharePct))}%`, background: '#2563eb', opacity: 0.7 }} /></div> : null}
+                    {door ? <div style={{ marginTop: 4, fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-link)' }}>{door}</div> : null}
+                  </>
+                )
+                const rowStyle = { display: 'block', width: '100%', textAlign: 'left' as const, padding: '0.6rem 0.75rem', minHeight: 44, borderTop: '1px solid var(--border)', background: total ? 'var(--bg-subtle)' : 'var(--surface)', border: 'none', font: 'inherit', color: 'inherit', cursor: opens ? 'pointer' : 'default' }
+                return opens ? (
+                  <button key={r.key} type="button" onClick={() => openRow(r)} style={{ ...rowStyle, borderTop: '1px solid var(--border)' }} data-money-row={r.key}>
+                    {inner}
+                  </button>
+                ) : (
+                  <div key={r.key} style={{ ...rowStyle, borderTop: '1px solid var(--border)' }} data-money-row={r.key}>
+                    {inner}
+                  </div>
+                )
+              })}
+            </div>
+          ) : moneyRows ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: '0.5rem' }} data-testid="job-money-table">
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>

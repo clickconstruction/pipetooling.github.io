@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
@@ -121,6 +122,9 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     return reported ?? inputs?.fallbackPercent ?? resolveJobCurrentPercentFallback(job)
   }, [inputs, job])
   const [detailOpen, setDetailOpen] = useState(readDetailPref)
+  // Punch list #355 G (v2.7285): on a phone the chart folds behind Show the chart; its axes are 10 px at 375 px.
+  const phone = useNarrowViewport640()
+  const [chartOpen, setChartOpen] = useState(false)
   const toggleDetail = () => {
     setDetailOpen((o) => {
       try {
@@ -242,7 +246,20 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
         )
       ) : null}
       {includeTeamLabor && inputs ? <JobCostsLineBudgets fixtures={job.fixtures ?? []} teamHours={inputs.teamHours ?? null} spend={spendByComponent(inputs.chargeEvents)} jobPctDone={pctDone} jobId={job.id} isProject={isProject} award={verdict?.baseline.award ? { hours: verdict.baseline.award.laborHours, kind: verdict.baseline.award.kind } : null} /> : null}
-      {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /> : null}
+      {includeTeamLabor && phone ? (
+        <div data-testid="job-costs-chart-fold">
+          <button type="button" onClick={() => setChartOpen((v) => !v)} aria-expanded={chartOpen} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', font: 'inherit', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', textAlign: 'left', cursor: 'pointer' }}>
+            <span style={{ minWidth: 0 }}>
+              {chartOpen ? 'Hide the chart' : 'Show the chart'}
+              <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>cost against value earned, day by day</span>
+            </span>
+            <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', transform: chartOpen ? 'rotate(90deg)' : undefined }}>›</span>
+          </button>
+          {chartOpen ? <div style={{ marginTop: '0.6rem' }}><JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /></div> : null}
+        </div>
+      ) : includeTeamLabor ? (
+        <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" />
+      ) : null}
       <div>
         <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }} data-testid="costs-detail-toggle">
           {detailOpen ? 'Hide' : 'Show'} the timeline · daily spend {detailOpen ? '▴' : '▾'}
