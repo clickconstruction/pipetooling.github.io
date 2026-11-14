@@ -24,6 +24,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { noticeDeadlineForMonth } from '../jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../jobs/lienTimelineDesk'
+import { lienBillMonths, type LienBill } from '../jobs/lienBillMonths'
 import type { LienTimeline } from '../jobs/lienTimeline'
 import type { JobWorkMonths, WorkMonth } from '../jobs/forecastWorkMonths'
 import { workMonthLabel, workMonthShort } from '../jobs/forecastWorkMonths'
@@ -90,15 +91,18 @@ export function workMonthsFromSessions(jobId: string, sessions: ReadonlyArray<Le
 /**
  * Where a job's last day of work comes from (item 25: one fallback chain for the lien clock and the
  * Paper tab, the same as the timeline kernel's): the last approved clock session, else the job's last
- * work date, else the day the job was created (the timeline runs its creation month), else nothing.
+ * work date, else the day of its latest sent, unpaid bill (v2.7224, `lienBillMonths`), else the day the job was
+ * created (the timeline runs that month), else nothing.
  */
-export type LegalLastWorkSource = 'sessions' | 'last_work_date' | 'created' | 'none'
+export type LegalLastWorkSource = 'sessions' | 'last_work_date' | 'bill' | 'created' | 'none'
 
-export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: { last_work_date?: string | null; created_at?: string | null }): { ymd: string | null; source: LegalLastWorkSource } {
+export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: { last_work_date?: string | null; created_at?: string | null; invoices?: ReadonlyArray<LienBill> | null }): { ymd: string | null; source: LegalLastWorkSource } {
   const days = [...approvedSessionDays].filter(Boolean).sort()
   if (days.length) return { ymd: days[days.length - 1] ?? null, source: 'sessions' }
   const lw = /^\d{4}-\d{2}-\d{2}/.test(job.last_work_date ?? '') ? String(job.last_work_date).slice(0, 10) : ''
   if (lw) return { ymd: lw, source: 'last_work_date' }
+  const billed = lienBillMonths(job.invoices).lastDay
+  if (billed) return { ymd: billed, source: 'bill' }
   const created = calendarYmdInAppTzFromIso(job.created_at ?? '')
   if (created) return { ymd: created, source: 'created' }
   return { ymd: null, source: 'none' }
@@ -108,6 +112,7 @@ export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, j
 export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSource | undefined): string {
   if (!ymd || source === 'none') return ''
   if (source === 'last_work_date') return `last work date on the job ${ymd} (no approved clock session)`
+  if (source === 'bill') return `no work date on file: dated from the bill's month, ${ymd.slice(0, 7)}`
   if (source === 'created') return `no work date on file: dated from the job's creation month, ${ymd.slice(0, 7)}`
   return `last approved clock day ${ymd}`
 }
@@ -125,7 +130,7 @@ export type LegalJobTimeline = {
   retainageWords: string
 }
 
-type LienJobRowLike = Pick<JobWithDetails, 'id' | 'created_at' | 'last_work_date'> & { lien_contract_ended_on?: string | null; lien_retainage_held?: number | null; lien_payment_bond?: string | null }
+type LienJobRowLike = Pick<JobWithDetails, 'id' | 'created_at' | 'last_work_date'> & { invoices?: ReadonlyArray<LienBill> | null; lien_contract_ended_on?: string | null; lien_retainage_held?: number | null; lien_payment_bond?: string | null }
 
 /** `Nov 30` / `Nov 30, 2027` — the timeline's own short date, kept local so the print needs no React. */
 function shortDay(ymd: string, todayYmd: string): string {
@@ -173,7 +178,7 @@ export function buildLegalJobTimelines(args: {
     const timeline = buildLienTimelineFromWindow({
       workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind }),
       filings: args.filings,
-      job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null },
+      job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null, invoices: j.invoices ?? null },
       isSub: args.isSub,
       propertyKind,
       openBalance,

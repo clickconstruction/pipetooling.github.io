@@ -15,7 +15,7 @@ import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
  * and the reason, asked there; the write happens on its *Set the day*.
  */
-const chip = (tone: 'hand' | 'hours' | 'created'): CSSProperties => ({
+const chip = (tone: 'hand' | 'hours' | 'bill' | 'created'): CSSProperties => ({
   display: 'inline-block',
   padding: '0 7px',
   borderRadius: 999,
