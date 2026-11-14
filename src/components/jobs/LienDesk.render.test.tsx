@@ -346,10 +346,10 @@ describe('LienDesk', () => {
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
   })
 
-  it('in a window of 1,500 px or more the tools end the title line, and only By paper keeps a second line (v2.7213)', async () => {
+  it('in a window of 1,540 px or more the tools end the title line, and only By paper keeps a second line (v2.7213; 1,500 until By job, v2.7219)', async () => {
     const before = window.matchMedia
     // A wide computer: the one-line query matches, the phone's does not.
-    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1500px)', media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1540px)', media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
     const shape = () => {
       const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
       return Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-run') ? 'run' : el.hasAttribute('data-lien-desk-tools') ? 'tools' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-paper-kinds') ? 'papers' : el.hasAttribute('data-lien-desk-right') ? 'right' : null)).filter(Boolean)

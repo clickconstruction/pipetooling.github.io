@@ -341,7 +341,7 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. A small bar rides on it. Green is what printed. Amber is what waits on the leader. The words beside it say who waits, like *1 waits on Robert*. When every notice in the run has printed, the button reads {{button:blue|Record the mailing · N}}.
+Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the four views. A small bar rides on it. Green is what printed. Amber is what waits on the leader. The words beside it say who waits, like *1 waits on Robert*. When every notice in the run has printed, the button reads {{button:blue|Record the mailing · N}}.
 
 The run opens with a journey across the top. It has six steps. They are **Built**, **Signed**, **Sent**, **In the mail**, **Recorded** and **Delivered**. Under each step is a count, like *2 of 3*. The step the run is on is blue. A step that blocks the run is amber, and it says why. The fill between the steps runs as far as every envelope has come. On a phone the six steps sit in two rows of three.
 

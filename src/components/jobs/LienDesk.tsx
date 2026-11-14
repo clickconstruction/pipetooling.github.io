@@ -3730,7 +3730,7 @@ export default function LienDesk({
   }
 
   // The tools (v2.6569): § Rules, ☎, ? and Share, with the owner-records door before them. On a computer they end the title line
-  // in a window of 1,500 px or more (v2.7213) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
+  // in a window of 1,540 px or more (v2.7213; 1,500 until By job widened the views, v2.7219) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
   // put them at the right; until v2.6569 they sat on the title line and fell under it when the window was narrower than about
   // 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places. Share (v2.4311) is the last of them.
   const headerTools = (
@@ -3829,7 +3829,7 @@ export default function LienDesk({
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer narrower than 1,500 px (v2.6569); on a phone, and on a wider computer (v2.7213), it comes only with the paper tabs. */}
+          {/* The second line is the tool row on a computer narrower than 1,540 px (v2.6569); on a phone, and on a wider computer (v2.7213), it comes only with the paper tabs. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}

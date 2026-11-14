@@ -185,6 +185,7 @@ const SENTENCES = [
   [DESK_GUIDE, 'They are **Monthly notices**, **Lien affidavits**, **Retainage notices** and **By job**.', 'They are **Monthly notices**, **Lien affidavits** and **Retainage notices**.\n- **By job** lists every job with its whole path. The job with the nearest date comes first.'],
   [DESK_GUIDE, 'This guide names those four tabs often.', 'This guide names those three tabs often.'],
   [DESK_GUIDE, 'and of the By job tab. On the Notices, Affidavits and Retainage tabs it is at', 'and of the **By job** tab. On the three tabs under **By paper** it is at'],
+  [DESK_GUIDE, "sits on the desk's title line, right after the three views.", "sits on the desk's title line, right after the four views."],
   [DESK_GUIDE, 'The three tabs sit under it, each as tall as a thumb.', 'The four tabs sit under it, each as tall as a thumb.'],
   [`${HELP}file-a-lien-and-never-miss-its-deadlines.md`, '{{button:outline|Open the Timeline}}', '{{button:outline|Open By job}}'],
   [`${HELP}see-which-supply-houses-are-owed-on-a-lien-job.md`, 'It also shows on the Notices, Affidavits and Retainage lists.', 'It also shows on the three lists under By paper.'],
