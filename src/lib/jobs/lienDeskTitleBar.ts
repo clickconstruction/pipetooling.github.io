@@ -6,12 +6,12 @@
  * by itself. A phone's one row and its More are `lienDeskPhoneMore.ts`.
  *
  * The width is a viewport rule on purpose, as `.lienDeskTitleBar`'s own is: every view and every kind of paper
- * answers it the same way, so the tools never change lines between Do now, Deadlines and All filings.
+ * answers it the same way, so the tools never change lines between To do, By date and By paper.
  */
 
 /**
  * What the title line holds at its widest, in px, measured on the live desk on 2026-11-13: the way back as
- * *← Pipeline*, the title, the three views with a three-figure Do now count, the run as *Send the run · 24* with
+ * *← Pipeline*, the title, the three views with a three-figure To do count, the run as *Send the run · 24* with
  * *12 sealed · 8 ready · 4 wait on* and a long first name (today's *Record the mailing · 7 sealed* is 270), and the
  * five tools. `gap` is `.lienDeskTitleBar`'s column gap; `chrome` is the page's 24 px margins and the bar's 20 px padding.
  */
@@ -37,7 +37,7 @@ export type LienDeskTitleBarLayout = {
 }
 
 /**
- * The title bar's shape. `wide` is the window answering `LIEN_DESK_ONE_LINE_QUERY`; `paperShown` is All filings,
+ * The title bar's shape. `wide` is the window answering `LIEN_DESK_ONE_LINE_QUERY`; `paperShown` is By paper,
  * whose four kinds of paper lead the second line; `gcNotice` is *Put a GC on notice…*, the second line's own door.
  */
 export function lienDeskTitleBarLayout(o: { isMobile: boolean; wide: boolean; paperShown: boolean; gcNotice: boolean }): LienDeskTitleBarLayout {
@@ -45,6 +45,6 @@ export function lienDeskTitleBarLayout(o: { isMobile: boolean; wide: boolean; pa
   if (o.isMobile) return { tools: 'more', breakLine: o.paperShown, rightSpan: true }
   // The two steady lines of v2.6569: the break is always there and the tools end the second line.
   if (!o.wide) return { tools: 'second_line', breakLine: true, rightSpan: true }
-  // One line: a second comes only with All filings, for the paper tabs, the piles and the GC door.
+  // One line: a second comes only with By paper, for the paper tabs, the piles and the GC door.
   return { tools: 'title_line', breakLine: o.paperShown, rightSpan: o.paperShown && o.gcNotice }
 }

@@ -85,7 +85,7 @@ export default function LienDeskRunModal({
    * to send with their approvals. The host writes it and re-reads; it returns how many it took back.
    */
   onTakeBack?: (itemIds: string[]) => Promise<number>
-  /** Open on the take-back confirm: Do now's run row pressed *Take back…* (punch list #101 PR 2). */
+  /** Open on the take-back confirm: To do's run row pressed *Take back…* (punch list #101 PR 2). */
   openOnTakeBack?: boolean
   /**
    * The run was started a moment ago by one click (Put a GC on notice's Approve all, v2.4541):
@@ -659,7 +659,8 @@ export default function LienDeskRunModal({
         closeUnlessHeld()
       }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: 'min(90vh, calc(100dvh - 2rem - var(--app-top-chrome, 0px)))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
+      {/* `lienRunWindow`: on a phone the window fills the screen and its presses and fields are a thumb tall (punch list #352, PR 7; index.css). */}
+      <div className="lienRunWindow" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: 'min(90vh, calc(100dvh - 2rem - var(--app-top-chrome, 0px)))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -275,7 +275,8 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     it('the row follows the Lien window on two clocks (v2.7047, PR 4): the late notice, and service with no desk open', () => {
       // The August notice window closed Oct 15 with nothing sent; the affidavit's day, Nov 16, is four days off.
       const closedNotice = buildLienPayRunway(runwayInput({ todayYmd: late, expectedPayYmd: '2026-10-04' }))
-      expect(closedNotice).toMatchObject({ state: 'closed', closedBy: 'notice', daysToLien: 4 })
+      // Since v2.7198 (punch list #335, row 4) the clock itself says a late notice can go; it answered `closed` by the notice before.
+      expect(closedNotice).toMatchObject({ state: 'late_notice', closedBy: null, daysToLien: 4 })
       // It read *Lien gone*. The window says a late notice can still go (v2.4708), and so does the row.
       const bare = build(null, closedNotice)
       expect(bare.rows[2]).toMatchObject({ key: 'lien', label: 'Send the late notice', joiner: 'by', date: 'Nov 16', far: '4d', tone: 'red', bold: true, dot: 'filled' })
@@ -287,7 +288,8 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
       expect(build(chip('affidavit', 'send_notice'), closedNotice).rows[2]?.label).toBe('Send the late notice')
       // An earlier month's notice did go: it carries the affidavit, so the row asks to file.
       const oneSent = buildLienPayRunway(runwayInput({ todayYmd: late, expectedPayYmd: '2026-10-04', workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }))
-      expect(oneSent.state).toBe('closed')
+      // The clock reads on to the lien's own day for such a job since v2.7198 (it answered `closed` and the row read past it).
+      expect(oneSent.state).toBe('no_pay')
       expect(build(null, oneSent).rows[2]).toMatchObject({ label: 'File the affidavit', date: 'Nov 16' })
       expect(build(null, oneSent).lienTab).toBe('affidavit')
       // Once the affidavit's own day has passed the lien is gone, as before.

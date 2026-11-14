@@ -34,6 +34,7 @@ import { chargeCell } from './pctFacts'
  *
  * It also says what we are charging, or that the job has no price, and the last day it was worked, by whom, and
  * whether that day is a clocked one or a scheduled one (v2.7221; `pctFacts.ts`). The percent window carries the rest.
+ * Under its name it says where it is, street and city (v2.7232), and so does a job with no price (v2.7243).
  *
  * Nothing is counted here. Every list is handed in from what the page has already read, in the order it is given.
  *
@@ -86,6 +87,8 @@ export type DiveItem = {
   todo?: CallTodo
   /** The line's facts as cells, for the card that draws a table. */
   row?: DiveRow
+  /** A line under the name that says which thing this is: a job's street and city (v2.7232). */
+  sub?: string
 }
 
 /** The page that opens one job. */
@@ -135,8 +138,10 @@ export type DiveFacts = {
     hoursCell?: { text: string; phone: string; by: string } | null
     /** The last day worked, which reading it is, and who (`lastWorkedCell`). Absent until read: the line keeps its people. */
     lastWorked?: { text: string; phone: string; muted: boolean } | null
+    /** Where the job is, as its street and city (`streetAndCity`). Absent until read, or when the job has none. */
+    address?: string | null
   }>
-  noPriceJobs: ReadonlyArray<{ id: string; label: string }>
+  noPriceJobs: ReadonlyArray<{ id: string; label: string; /** Where the job is, as its street and city (v2.7243). Absent until read, or when the job has none. */ address?: string | null }>
   /** What falls due on the day the cash call names, one row a supply house, largest first. */
   supplyBills: ReadonlyArray<{ houseId: string | null; name: string; usd: number; dueYmd: string | null; bills: number }>
   dayLabel: (ymd: string) => string
@@ -226,7 +231,8 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
           // read, the people with hours.
           ...(j.setPct != null ? { text: { text: `Set to ${Math.round(j.setPct)}% just now` } } : j.lastWorked ? { text: { text: j.lastWorked.text, phone: j.lastWorked.phone, ...(j.lastWorked.muted ? { muted: true } : {}) } } : j.hoursCell?.by ? { text: { text: j.hoursCell.by, muted: true } } : {}),
         }
-        return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row }
+        // The place under the name: the owner knows a job by where it is.
+        return { title: j.label, detail: `${contract}${j.setPct != null ? `Set to ${Math.round(j.setPct)}% just now.` : 'No percent set.'}`, target: { kind: 'page', to: jobPage(j.id) }, ...press, ...todo, row, ...(j.address ? { sub: j.address } : {}) }
       }),
       press: null,
       target: null,
@@ -236,7 +242,7 @@ export function moveDive(move: Pick<WeekMove, 'key' | 'title' | 'door'>, facts: 
   if (move.key === 'price') {
     if (facts.noPriceJobs.length === 0) return null
     // A price is set on the job itself, and each job named opens there. A press to the Jobs page would add nothing.
-    return { ...listed(facts.noPriceJobs, (j) => ({ title: j.label, detail: 'No price set.', target: { kind: 'page', to: jobPage(j.id) }, todo: priceTodo(j) })), press: null, target: null, columns: { name: 'Job', a: '', b: '', text: '' } }
+    return { ...listed(facts.noPriceJobs, (j) => ({ title: j.label, detail: 'No price set.', target: { kind: 'page', to: jobPage(j.id) }, todo: priceTodo(j), ...(j.address ? { sub: j.address } : {}) })), press: null, target: null, columns: { name: 'Job', a: '', b: '', text: '' } }
   }
   if (move.key === 'approve') {
     // Hours are not a list of things; the press is the whole of it.

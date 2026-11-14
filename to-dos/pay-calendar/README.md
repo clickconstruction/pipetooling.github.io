@@ -2,7 +2,7 @@
 name: "Pay calendar: a payer who pays on a set day of the month gets a cutoff and a due day, and the forecast keeps its honest guess"
 number: 323
 group: gated
-status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · merged: PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791), PR 4 (a job's own calendar and the accepted day, v2.7036 #7798), PR 5 (Cutoffs coming and the Working row's line, v2.7037 #7801) and PR 7 (Their paper's Pay calendar term, v2.7039 #7802) · both migrations pushed 2026-11-12 · the first half of PR 6 (the job window and Call mode, v2.7040 #7803) merged · the second half of PR 6 in two parts: Money waiting and Dashboard Accounts Receivable (v2.7127 #7913) merged 2026-11-13, the two emails parked · the Bridge's part waits for #318 · call 4 answered 2026-11-13: an estimator writes the pay terms on a won bid's job draft and the office sets them (v2.7201)
+status: asked 2026-11-12 · the card, the mock-up and a second pass that changed the design the same day · Grace's go on the revised train the same day · merged: PR 1 (the setting, v2.7024 #7784), PR 2 (Due on billed rows, v2.7028 #7788), PR 3 (the cutoff on Ready to Bill, v2.7031 #7791), PR 4 (a job's own calendar and the accepted day, v2.7036 #7798), PR 5 (Cutoffs coming and the Working row's line, v2.7037 #7801) and PR 7 (Their paper's Pay calendar term, v2.7039 #7802) · both migrations pushed 2026-11-12 · the first half of PR 6 (the job window and Call mode, v2.7040 #7803) merged · the second half of PR 6 in two parts: Money waiting and Dashboard Accounts Receivable (v2.7127 #7913) merged 2026-11-13, the two emails parked · the Bridge's part waits for #318 · call 4 answered 2026-11-13: an estimator writes the pay terms on a won bid's job draft and the office sets them (v2.7201), walked live the same day on a ZZ Test bid, both halves
 summary: >
   Some commercial payers pay on a calendar, not at a pace: a pay application in by the end of the
   month, or by an earlier day, is paid on a set day of the next month. A bill sent on the 1st and
@@ -445,6 +445,13 @@ answered. The rest stand as my picks unless she says otherwise. My pick is first
    estimator writes the winning GC's pay terms on the job draft a won bid sends to Dispatch,
    for this job or for every job the GC pays, and the office checks them against the payer's
    record and saves (v2.7201). Three drawings led there: [bid-door.html](bid-door.html).
+   Walked on the live site 2026-11-13 on a ZZ Test bid, as the sample estimator and then as
+   the office: the draft's line and its send, New Job's *Check and use* and *sets with the
+   job*, the calendar saved with Create Job, the job row's offer after the row was cleared,
+   the second door from the bid whose job was open, and the Dispatch row's **Open the pay
+   calendar**, whose save closed the row. **Not a calendar payer** was not pressed. The test
+   job, its calendar and the bid were deleted through the app. The walk's two closed Dispatch
+   rows were removed from the database on the owner's yes, since the app has no delete for them.
 5. **How early the cutoff asks.** Needs you from 7 days out, the Working row from 10. Or other
    numbers. Or no Needs you line at all.
 6. **A level for developments.** No, with *Also set on the other jobs in this development*. Or

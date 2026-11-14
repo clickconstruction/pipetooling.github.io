@@ -24,7 +24,7 @@ The row moves into the **Uncollectible** band at the bottom of Collections. A re
 
 - The Collections header counts only the jobs you still chase. The band carries its own count and dollars.
 - The Pipeline's In collections tile and the Dashboard's Accounts receivable card leave the money out. They still say the dollars in grey, so the number is never hidden.
-- The job is on no lien clock. It leaves the Lien desk's queues, the Deadlines calendar and any GC-on-notice run.
+- The job is on no lien clock. It leaves the Lien desk's queues, the By date view and any GC-on-notice run.
 - The row drops its expected pay date. Nobody is waiting on that money now.
 - The **Jobs on a map** card still pins the job. It counts nothing to collect and leaves the list of jobs to ask for money.
 - The job leaves the contract sweep. It also leaves the dev's count of Collections accounts awaiting review.

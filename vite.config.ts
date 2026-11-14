@@ -308,16 +308,19 @@ export default defineConfig({
       // the custom sw.ts (nothing called skipWaiting), leaving clients stale forever.
       registerType: 'prompt',
       injectManifest: {
-        // Workbox default is 2 MiB; the main chunk is ~7.4 MiB on 2026-11-03 (every public page is eager in App.tsx).
+        // Workbox default is 2 MiB; the main chunk is ~8.0 MiB on 2026-11-14 (every public page is eager in App.tsx).
         // A file over this cap fails the deploy build. The main chunk reached 6 MiB on 2026-10-20 by plain
         // growth (6,277 → 6,284 kB across v2.5332's merge, the same 259 chunks before and after), so the cap
         // is 7 MiB: ~0.7 MiB for growth, and it still trips on a regression like v2.4655's, which put every
         // help guide (now ~2.3 MB) in the main chunk (fixed v2.4695: LienRulesDoor lazy-loads its window).
         // Raise it only with a reason here; the main chunk itself is due a code-split pass. It crossed 7 MiB on
         // 2026-11-03 by plain growth (7,316 kB at 792c47d36, 7,348 kB at 61f7540fe, a merge queue landing a code
-        // change every few minutes), and every deploy build failed from 09:01Z, so the cap is 8 MiB: ~0.7 MiB for
-        // growth again, and it still trips on a regression like v2.4655's, until the split.
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // change every few minutes), and every deploy build failed from 09:01Z, so the cap went to 8 MiB. It crossed
+        // 8 MiB on 2026-11-14 the same way (8,407,622 bytes at 6dc103663, v2.7220's 1,900 new lines, against a
+        // cap of 8,388,608; 0419a5517 before it was the last good deploy), and every deploy build failed from
+        // 02:20Z, so the cap is 9 MiB: ~0.6 MiB for growth again, and it still trips on a regression like
+        // v2.4655's, until the split. Eleven days took the last MiB, so the split is due before December.
+        maximumFileSizeToCacheInBytes: 9 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**', '**/lensEngine-*.js'],
       },

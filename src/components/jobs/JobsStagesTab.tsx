@@ -1722,7 +1722,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
   const lienDeskLeaderFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
-  // The notice's state per job (v2.5491): Do now's rows once over the desk's data (light while the desk is closed: the
+  // The notice's state per job (v2.5491): To do's rows once over the desk's data (light while the desk is closed: the
   // queues and letter two, no filings or mail pieces — a sent notice reads from its desk item), then the AR chip kernel.
   const lienStateFor = useMemo((): ((jobId: string) => LienArChip | null) => {
     if (!lienDeskData) return () => null
@@ -4854,7 +4854,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // v2.7187, punch list #335, row 2: and the step an affidavit is on (to draft, waiting on approval, held, or held by a fact).
         deskAffidavit={lienWindowDeskAffidavit(lienInstrumentsModal ? lienDeskData?.affidavits.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
-        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
+        // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {
           setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()

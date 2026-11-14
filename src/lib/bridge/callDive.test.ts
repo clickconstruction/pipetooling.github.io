@@ -210,7 +210,7 @@ describe('moveDive', () => {
       {
         ...facts,
         noPctJobs: [
-          { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, hoursLine: '24 hours by Dana and Sam', hoursCell, lastWorked: { text: 'Mar 5, clocked · Sam and Dana', phone: 'Last clocked Mar 5 · Sam and Dana', muted: false } },
+          { id: 'j301', label: '301 · Pine Row', revenueUsd: 30_000, hoursLine: '24 hours by Dana and Sam', hoursCell, lastWorked: { text: 'Mar 5, clocked · Sam and Dana', phone: 'Last clocked Mar 5 · Sam and Dana', muted: false }, address: '14 Pine Row, Cedar Falls' },
           { id: 'j302', label: '302 · Spruce Hall', revenueUsd: null, lastWorked: { text: 'Not worked yet · next Mar 18', phone: 'Not worked yet · next Mar 18', muted: true } },
           // Set to 0% on this visit: it still has no percent, so it stays, and says what was set.
           { id: 'j303', label: '303 · Fir Lane', revenueUsd: 500, setPct: 0, lastWorked: { text: 'Mar 6, scheduled · Ana', phone: 'Last scheduled Mar 6 · Ana', muted: false } },
@@ -222,6 +222,12 @@ describe('moveDive', () => {
     expect(d?.items[0]?.row?.text).toEqual({ text: 'Mar 5, clocked · Sam and Dana', phone: 'Last clocked Mar 5 · Sam and Dana' })
     expect(d?.items[1]?.row).toEqual({ b: { text: 'No price', phone: 'No price yet', warn: true }, text: { text: 'Not worked yet · next Mar 18', phone: 'Not worked yet · next Mar 18', muted: true } })
     expect(d?.items[2]?.row?.text).toEqual({ text: 'Set to 0% just now' })
+    // Where the job is sits under its name (v2.7232). A job with no address has no such line.
+    expect(d?.items.map((i) => i.sub)).toEqual(['14 Pine Row, Cedar Falls', undefined, undefined])
+    // A job with no price says where it is the same way (v2.7243), and its to-do card is the one it had.
+    const price = moveDive({ key: 'price', title: '', door: null }, { ...facts, noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk', address: '7 Willow Walk, Cedar Falls' }, { id: 'j402', label: '402 · Alder Yard', address: null }] })
+    expect(price?.items.map((i) => i.sub)).toEqual(['7 Willow Walk, Cedar Falls', undefined])
+    expect(price?.items[0]?.todo?.key).toBe('price.j401')
   })
 
   it('hands every named thing a to-do card of its own', () => {

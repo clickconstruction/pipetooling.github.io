@@ -161,3 +161,35 @@ describe('BridgeMoveTable on a phone', () => {
     expect(screen.getAllByTestId('bridge-week-dive-project').map((p) => p.textContent)).toEqual(['201 · Maple Lofts$30.0k owedbilled 71 days ago · None yetSet a pay date', '202 · Oak Court$10.0k owedbilled 40 days ago · Said Mar 1, passedChange the pay date'])
   })
 })
+
+describe('BridgeMoveTable, a job’s address (v2.7232)', () => {
+  const placed = moveDive({ key: 'pct', title: 'Set a percent.', door: null }, { ...facts, noPctJobs: [{ ...facts.noPctJobs[0]!, address: '14 Pine Row, Cedar Falls' }, facts.noPctJobs[1]!] })!
+
+  it('says where the job is under its name at a desk, on one line, and leaves a job with no address as it was', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={placed} narrow={false} />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    const sub = within(rows[0]!).getByTestId('bridge-week-dive-sub')
+    expect(sub.textContent).toBe('14 Pine Row, Cedar Falls')
+    // In the name's own cell, under the name, cut with its whole text on hover.
+    expect(sub.closest('[role="cell"]')!.textContent).toBe('301 · Pine Row14 Pine Row, Cedar Falls')
+    expect(sub.style.whiteSpace).toBe('nowrap')
+    expect(sub.title).toBe('14 Pine Row, Cedar Falls')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+
+  it('says it under the name of a job with no price too (v2.7243)', () => {
+    const price = moveDive({ key: 'price', title: 'Price the jobs.', door: null }, { ...facts, noPriceJobs: [{ id: 'j401', label: '401 · Willow Walk', address: '7 Willow Walk, Cedar Falls' }, { id: 'j402', label: '402 · Alder Yard' }] })!
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={price} narrow={false} />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-sub').textContent).toBe('7 Willow Walk, Cedar Falls')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+
+  it('says it under the name on a phone, free to wrap', () => {
+    renderWithProviders(<BridgeMoveTable todoStates={null} dayLabel={dayLabel} dive={placed} narrow />)
+    const rows = screen.getAllByTestId('bridge-week-dive-item')
+    expect(rows[0]!.textContent).toBe('301 · Pine Row14 Pine Row, Cedar Falls24 hours$30.0k contract · Dana and SamSet the percent')
+    expect(within(rows[0]!).getByTestId('bridge-week-dive-sub').style.whiteSpace).toBe('')
+    expect(within(rows[1]!).queryByTestId('bridge-week-dive-sub')).toBeNull()
+  })
+})

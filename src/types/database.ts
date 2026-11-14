@@ -21472,6 +21472,67 @@ export type Database = {
           },
         ]
       }
+      job_part_renames: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          id: string
+          job_id: string
+          movement_ids: string[]
+          new_name: string
+          old_name: string
+          row_count: number
+          undo_of: string | null
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          id?: string
+          job_id: string
+          movement_ids?: string[]
+          new_name?: string
+          old_name?: string
+          row_count?: number
+          undo_of?: string | null
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          id?: string
+          job_id?: string
+          movement_ids?: string[]
+          new_name?: string
+          old_name?: string
+          row_count?: number
+          undo_of?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_part_renames_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_part_renames_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_part_renames_undo_of_fkey"
+            columns: ["undo_of"]
+            isOneToOne: false
+            referencedRelation: "job_part_renames"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_pay_applications: {
         Row: {
           application_date: string | null
@@ -28832,6 +28893,239 @@ export type Database = {
           {
             foreignKeyName: "paid_job_email_queue_job_ledger_id_fkey"
             columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      painted_map_lines: {
+        Row: {
+          fixed_by_hand: boolean
+          how: string
+          id: string
+          label: string
+          length_m: number
+          made_at: string
+          made_by: string | null
+          map_id: string
+          margin_m: number | null
+          measured_ft: number | null
+          measured_how: string | null
+          points: Json
+          poor_parts: Json
+        }
+        Insert: {
+          fixed_by_hand?: boolean
+          how: string
+          id?: string
+          label?: string
+          length_m: number
+          made_at?: string
+          made_by?: string | null
+          map_id: string
+          margin_m?: number | null
+          measured_ft?: number | null
+          measured_how?: string | null
+          points: Json
+          poor_parts?: Json
+        }
+        Update: {
+          fixed_by_hand?: boolean
+          how?: string
+          id?: string
+          label?: string
+          length_m?: number
+          made_at?: string
+          made_by?: string | null
+          map_id?: string
+          margin_m?: number | null
+          measured_ft?: number | null
+          measured_how?: string | null
+          points?: Json
+          poor_parts?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_lines_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_lines_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      painted_map_links: {
+        Row: {
+          code_hash: string
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          id: string
+          last_opened_at: string | null
+          made_at: string
+          made_by: string | null
+          map_id: string
+          open_count: number
+          opened_at: string | null
+        }
+        Insert: {
+          code_hash: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at: string
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          map_id: string
+          open_count?: number
+          opened_at?: string | null
+        }
+        Update: {
+          code_hash?: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          last_opened_at?: string | null
+          made_at?: string
+          made_by?: string | null
+          map_id?: string
+          open_count?: number
+          opened_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_links_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_links_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_links_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      painted_map_places: {
+        Row: {
+          accuracy_m: number | null
+          id: string
+          lat: number
+          lng: number
+          map_id: string
+          name: string
+          photo_path: string | null
+          set_at: string
+          set_by: string | null
+          words: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          id?: string
+          lat: number
+          lng: number
+          map_id: string
+          name: string
+          photo_path?: string | null
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          id?: string
+          lat?: number
+          lng?: number
+          map_id?: string
+          name?: string
+          photo_path?: string | null
+          set_at?: string
+          set_by?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_places_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_places_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      painted_maps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          name: string
+          words: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          name: string
+          words?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          name?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_maps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_maps_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_maps_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
@@ -46333,6 +46627,18 @@ export type Database = {
       owed_sent_done: {
         Args: { p_contact_id: string; p_message_id: string }
         Returns: undefined
+      }
+      painted_map_can_touch: {
+        Args: {
+          p_created_by: string
+          p_development_id: string
+          p_job_id: string
+        }
+        Returns: boolean
+      }
+      painted_map_on_development_team: {
+        Args: { p_development_id: string }
+        Returns: boolean
       }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {

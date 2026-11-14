@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, code to scan, qr, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard
 where: /jobs
 order: 123
 ---
@@ -196,6 +196,71 @@ Under a line you made:
 Under the lines, **Rename this map** and **Throw this map away** show for whoever painted the map.
 
 The office can change any line and any map.
+
+## Share a map
+
+A painted map can go to someone outside the company. A customer, a delivery driver or another trade opens it with no sign-in.
+
+Open the map and press {{button:outline|Share}}. The press shows for whoever painted the map, and for the office.
+
+:::steps
+
+1. Press {{button:blue|Make a link}}.
+2. Press {{button:outline|Copy the link}} and paste it into a text or an email.
+3. Or press **Send it another way…** to hand it to your phone's own share sheet.
+4. Or press **Show a code to scan** when the person is standing next to you.
+
+:::
+
+Anyone who has the link can open the map. Send it only to people who should have it.
+
+### What they see
+
+They see the map's name, its lines, and its places with their words and photos. They can press **Directions to the start**.
+
+They do not see who painted it or when. They see nothing else about the job.
+
+Never put a gate code on a painted map. A link shows everything on the map to whoever holds it.
+
+### Where they are
+
+The page has a press named **Show where I am**. It puts a blue dot on the map for the reader.
+
+That dot stays on their phone. We never see where a reader is.
+
+### End a link
+
+A link ends by itself after 90 days. The sheet says the day.
+
+Press **End this link now** to end it sooner. Anyone who opens it after that reads that the map is no longer shared.
+
+The sheet says how many times a link was opened. It does not say who opened it.
+
+A link can be read only on the device that made it. On another device, press {{button:blue|Make a link}} to make a new one.
+
+## Hand over a copy
+
+Some people will not open a link. Some places need paper. The Share sheet makes a copy for them.
+
+A copy cannot be taken back. It goes out of date when the map changes. Send the link when you can.
+
+### A picture
+
+Press **Make a picture**. The sheet draws the map, its places and the day as one image.
+
+Then press {{button:blue|Share the picture}} to send it from your phone. On a computer the press reads {{button:blue|Save the picture}}.
+
+A picture shows in a text thread without a press. The word Start marks where the first line begins.
+
+### A page to print
+
+Press **Print, or save as a PDF**. One page opens with the map, the places and their photos.
+
+Pick your printer, or pick Save as PDF in the print window.
+
+Make a link first, and the page carries a code to scan. The code opens the map as it is today.
+
+The app keeps a copy of every page you print. The office finds it on the job's **Documents** tab.
 
 ## When the picture is old
 

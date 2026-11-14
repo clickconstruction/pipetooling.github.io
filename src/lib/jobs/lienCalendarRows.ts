@@ -1,6 +1,6 @@
 /**
- * The Lien desk's Deadlines rows (pure): every billed job with the runway its Pipeline row carries,
- * as `LienCalendarJob` rows for the Deadlines grid (v2.4101, punch list #55). Until punch list #182
+ * The Lien desk's By date rows (pure): every billed job with the runway its Pipeline row carries,
+ * as `LienCalendarJob` rows for the By date grid (v2.4101, punch list #55). Until punch list #182
  * moved the desk to `/lien-desk` this lived inline in `JobsStagesTab` (`lienRunwayFor` and the
  * `lienCalendarRows` memo); the Pipeline and the page build the same rows through this one kernel,
  * so the grid cannot drift between the two.
@@ -92,7 +92,7 @@ export function lienRunwayForJob(job: JobWithDetails, inv: JobsLedgerInvoice | n
 }
 
 /**
- * The Deadlines rows: every billed job (never one given up on) whose runway says something, with the
+ * The By date rows: every billed job (never one given up on) whose runway says something, with the
  * one billed bill handed to the runway when the job has exactly one. The caller says when the rows are
  * ready (the billed scope merged, the clocks read); this only shapes them.
  */
@@ -100,7 +100,7 @@ export function buildLienCalendarRows(jobs: ReadonlyArray<JobWithDetails>, runwa
   const out: LienCalendarJob[] = []
   for (const job of jobs) {
     if (job.status !== 'billed') continue
-    if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the Deadlines list
+    if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the By date list
     const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
     const runway = runwayFor(job, billed.length === 1 ? billed[0]! : null)
     if (!runway || runway.state === 'none') continue
