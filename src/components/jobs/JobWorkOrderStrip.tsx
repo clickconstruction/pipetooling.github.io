@@ -33,7 +33,7 @@ export default function JobWorkOrderStrip({
 }: {
   /** Null while the job is unsaved (New Job): the row explains the door opens after the first save. */
   job: JobWithDetails | null
-  /** strip = boxed line (bill panels); inline = chip + buttons only (fact row value); row = one row of View bill's paperwork card (v2.4299). */
+  /** strip = boxed line (bill panels); inline = chip + small outlined presses (the job window's fact row); row = one row of View bill's paperwork card (v2.4299). */
   variant?: 'strip' | 'inline' | 'row'
   authUserId: string | undefined
   /** View bill: chip + View only — the money-out side is read there, not written. */
@@ -70,7 +70,8 @@ export default function JobWorkOrderStrip({
         <button
           type="button"
           style={
-            !readOnly && (coverage.kind === 'none' || coverage.kind === 'draft' || coverage.kind === 'declined')
+            // The job window's row draws every press outlined: nothing filled in a list of facts (the owner's pick, Draft C).
+            !readOnly && variant !== 'inline' && (coverage.kind === 'none' || coverage.kind === 'draft' || coverage.kind === 'declined')
               ? { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
               : btn
           }

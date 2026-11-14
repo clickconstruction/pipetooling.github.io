@@ -89,7 +89,7 @@ import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'
-import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
+import { LeaveSignIn, SignedOutGate } from './components/SignInReturn'
 import { wipeServiceWorkersAndCaches } from './lib/hardReload'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext'
@@ -157,8 +157,14 @@ function AuthGateLoadingScreen() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  // A visitor who arrives signed out asked for this address, and the gate keeps it across the sign-in (v2.7182).
+  // One who was signed in on this visit and is not now (Sign out, a session that ended) asked for nothing.
+  const [hadSession, setHadSession] = useState(false)
+  useEffect(() => {
+    if (user) setHadSession(true)
+  }, [user])
   if (loading) return <AuthGateLoadingScreen />
-  if (!user) return <Navigate to="/sign-in" replace />
+  if (!user) return <SignedOutGate hadSession={hadSession} />
   return <>{children}</>
 }
 
@@ -166,20 +172,11 @@ function SignInRoute() {
   const { user, loading, role } = useAuth()
   if (loading) return <AuthGateLoadingScreen />
   if (user) {
-    // Honor a one-shot post-login redirect (e.g. the standalone /task launch returns there
-    // after a sign-in instead of the landing). Only internal paths are allowed. The landing is
-    // the role's: a dev on the Bridge, everyone else on the Dashboard (v2.5879, `indexLandingPath`).
-    let dest = indexLandingPath(role)
-    try {
-      const saved = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
-      if (saved && saved.startsWith('/') && !saved.startsWith('//')) {
-        dest = saved
-        localStorage.removeItem(POST_LOGIN_REDIRECT_KEY)
-      }
-    } catch {
-      /* ignore */
-    }
-    return <Navigate to={dest} replace />
+    // The address the person asked for before signing in, once: the gate's, the standalone /task launch's, a box
+    // label's, a file link's, or the one an emailed sign-in link carries (`signInReturnAddress.ts` holds the rule: a
+    // path on this site and nothing else). With none waiting, the role's landing: a dev on the Bridge, everyone else
+    // on the Dashboard (v2.5879, `indexLandingPath`).
+    return <LeaveSignIn landing={indexLandingPath(role)} />
   }
   return <SignIn />
 }

@@ -195,7 +195,7 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
-import { lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
+import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../../lib/jobs/lienTimelineDesk'
 import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
@@ -2754,6 +2754,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
+      // Punch list #335, row 5: the desk's next act for the job, so the chip names the step the billed row names.
+      lienDesk: (() => {
+        if (stage !== 'billed' && stage !== 'collections') return null
+        const chip = lienStateFor(job.id)
+        return chip ? { act: chip.act, paper: chip.paper, dueOn: chip.dueOn } : null
+      })(),
     }
   }
   const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
@@ -2771,7 +2777,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
         else if (chip.action === 'payments') openPaymentsReceived(job)
         else if (chip.action === 'contract' && openJobContract) openJobContract(job)
-        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null })
+        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null, initialTab: chip.lienTab ?? undefined })
         else openStagesDetailJobModal(job)
       },
       onShowAll: () => setPhoneRowFilter('all'),
@@ -4845,6 +4851,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
         // v2.7077: the window's header names the step the row names (a notice waiting on its owner, its approval or its mailing).
         deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
+        // v2.7187, punch list #335, row 2: and the step an affidavit is on (to draft, waiting on approval, held, or held by a fact).
+        deskAffidavit={lienWindowDeskAffidavit(lienInstrumentsModal ? lienDeskData?.affidavits.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {

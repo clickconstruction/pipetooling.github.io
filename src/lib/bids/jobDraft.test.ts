@@ -58,6 +58,13 @@ describe('the draft on the request', () => {
     expect(jobDraftWords(draft(), 'Wendi')).toBe("Wendi's draft: GC Southern Pine · starts at $38,625.00 · wanted by Oct 30 · note: Slab pour is the 3rd")
     expect(jobDraftWords(draft({ gcName: null, carry: null, wantedBy: null, note: null }), null)).toBe('The draft: starts at $0')
   })
+  it('carries the GC’s pay terms when the estimator added them, and no key when not (punch list #323)', () => {
+    const payTerms = { scope: 'job' as const, calendar: { cutoffDay: 25, payDay: 10, monthsAfter: 1, payWhenPaid: false, clause: '§ 5.2', words: '' } }
+    expect(jobDraftFromPayload({ job_draft: draft({ payTerms }) })?.payTerms).toEqual(payTerms)
+    expect(parseJobDraft({ ...draft(), payTerms: { scope: 'job', calendar: { payDay: 99 } } })).not.toHaveProperty('payTerms')
+    expect(parseJobDraft({ ...draft(), payTerms: null })).not.toHaveProperty('payTerms')
+    expect(jobDraftWords(draft({ payTerms }), 'Wendi')).toBe("Wendi's draft: GC Southern Pine · starts at $38,625.00 · wanted by Oct 30 · note: Slab pour is the 3rd · pay terms: in by the 25th, paid the 10th, only this job")
+  })
   it('the Job block while Dispatch has it', () => {
     expect(draftSentLabel('2026-10-20T15:30:00Z')).toBe('Sent to Dispatch Oct 20 · waiting')
     expect(draftSentLabel(null)).toBe('Sent to Dispatch · waiting')

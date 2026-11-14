@@ -539,7 +539,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'bridge-weekly-sheet',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash low point $22.0k. Made last week $31.0k.',
+    subjectExample: 'The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash balance $48.4k. Made last week $31.0k.',
   },
   {
     id: 'people_week',

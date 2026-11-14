@@ -2,9 +2,9 @@
 name: "A site's materials: press the Worth, see everything with no price, and price it fast"
 number: 342
 group: close
-status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge) · PR 1 and PR 2 merged and the migration pushed 2026-11-13 · PR 3 the end and the old prices v2.7165 · left: PR 3's merge, a types regeneration, the owner's look on the real site
+status: asked 2026-11-13 by the owner · the site's screen read in the code and measured on the real site the same day, read only · the card and the mock-up the same day · the owner picked drawing A the same day, then changed his mind to B, one at a time · the plan redrawn for the window · the owner said build the entire train the same day, so calls 2 to 9 stand on their recommended answers · PR 1 the window and its offers v2.7156 · PR 2 a price of the site's own v2.7159 (migration 20261113160000, pushed right after its merge) · PR 3 the end and the old prices v2.7165 · all three LIVE 2026-11-13 and walked on clicktooling.com, read only · migration 20261113160000 pushed on the owner's yes · left: the owner's look on the real site and his first answers
 mockup: to-dos/site-materials-price-the-unpriced/mockup.html
-ver: v2.7156 · 7159 · 7165
+ver: v2.7156 · 7159 · 7165 · 7216
 summary: >
   On a site's materials screen the Worth figure says how little of the site has a price. A press
   on it already lists the rows with no price, and stops there: pricing one row is three presses
@@ -16,8 +16,8 @@ summary: >
   book where the book has the part, and otherwise a price kept for the site in one new table that
   every on-site money figure reads through the one price rule. Three drawings: the list priced in
   place, one name at a time, and a table grouped by where the price comes from.
-next: PR 3 merges. The owner prices the real site's rows in the window and says what the first offers got wrong. Then the folder is deleted.
-size: M · M · S as a train of three, built; left: the merges, the push and the owner's look (XS)
+next: The owner opens the site (Materials → On site → the site's name), presses Worth and prices the rows in the window. He says what the first offers got wrong. Then the folder is deleted.
+size: M · M · S as a train of three, shipped; left: the owner's look and the first answers (XS)
 blocker: None. The owner's look.
 opinion: your call — the train is built as you picked it; price the real site's rows and say what the first offers got wrong
 ---
@@ -311,6 +311,17 @@ then said *build the entire PR train*. So calls 2 to 9 stand on their recommende
   price**, **An old price** and **Left out**. **Check N old prices one at a time** walks the rows
   on a price older than 90 days against newer bills. Every list says so when it is empty.
 
+**Live and walked.** All three PRs were on main by 2026-11-13 (#7967, #7983, #7997) and the
+migration was pushed right after #7983. clicktooling.com was walked as the dev at 1400 and 375
+wide with every write to a table refused. Worth read its cover with *48 rows have an offer*. The
+chips read *No price · 96*, *An old price · 3* and *Left out · 0*. **Price 96 rows one at a time**
+opened on row 1 of 96 with three numbered answers, the price box and **Not a part**. **Check 3 old
+prices one at a time** opened on the price the first row reads now. The app's read of
+`on_site_prices` answered. No page error and no sideways scroll.
+
+**The generated types** name the new table in the types PR that was open at the time (#8011).
+`sitePricesIo.ts` reads it through an untyped cast, which the next pass over that file can drop.
+
 **What no walk did, because each is a write and prod is the only database:** an answer pressed in
 the window, its Undo, and Bring back. Render tests hold each of them end to end. The first real
 answers are the owner's to give on the real site.
@@ -320,6 +331,12 @@ counts in *known*. 4 **Not a part** leaves the cover, which says how many were l
 or bill price is flagged past 90 days. 6 a price belongs to the site. 7 the roles that tie, and
 read is held to them too. 8 the job's Missing table and the desk read the same price. 9 Worth
 lists the rows, and one press opens the window.
+
+**Just price (v2.7216), the owner's first ask after pricing a row.** A press on a parts-book offer
+ties the name to the part, so the row is re-labelled as well as priced. He asked for a press on
+the right of each offer that takes the price alone. It writes a row of the site's own prices with
+source `book` and no tie, so the row keeps its name and its own count. One small migration,
+`20261113233000`, widens the source check. The price is a copy dated the book's check day.
 
 ## How to verify (when it is built)
 

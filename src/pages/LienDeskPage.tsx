@@ -14,10 +14,11 @@
  * is known. On a phone (PR 3) the Notices list is the whole desk until a notice is open, and an open notice is the
  * whole desk with ← Notices on top; the address says which.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useTopEdge } from '../hooks/useTopEdge'
 import { buildJobsListCacheKey, useJobsListCache } from '../contexts/JobsListCacheContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -36,7 +37,7 @@ import { lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../l
 import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
 import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
-import { lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
+import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -207,19 +208,12 @@ export default function LienDeskPage() {
     else navigate(PIPELINE_HREF)
   }, [canGoBack, navigate])
 
-  // The page is the whole screen under the app's top chrome: measured once drawn, so the desk's lists and panes scroll
-  // inside it and the document never scrolls. `--app-bottom-chrome` is the phone dock when a mode shows one.
+  // The page is the whole screen under the app's top chrome, so the desk's lists and panes scroll inside it and the
+  // document never scrolls. The top edge is read again whenever something above it changes (punch list #352, PR 0: a
+  // banner that closed left a grey band its height above the phone dock). `--app-bottom-chrome` is the phone dock
+  // when a mode shows one.
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [top, setTop] = useState(0)
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = rootRef.current
-      if (el) setTop(Math.max(0, Math.round(el.getBoundingClientRect().top)))
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
+  const top = useTopEdge(rootRef)
 
   // The doors back. Edit job and the job window open over the page through their app-wide contexts; the desk re-reads
   // after a save and again when the window closes.
@@ -262,7 +256,7 @@ export default function LienDeskPage() {
   if (!isStagesOfficeRole(role)) return <Navigate to="/dashboard" replace />
 
   const backDoor = (
-    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={BACK_DOOR}>
+    <button type="button" onClick={goBack} data-lien-desk-back aria-label={canGoBack ? 'Back' : 'Back to the Pipeline'} style={isMobile ? { ...BACK_DOOR, height: 44 } : BACK_DOOR}>
       <span aria-hidden="true">←</span> {canGoBack ? 'Back' : 'Pipeline'}
     </button>
   )
@@ -323,6 +317,8 @@ export default function LienDeskPage() {
         noticeMonths={lienWindow?.noticeMonths ?? null}
         // v2.7077: the window's header names the step the desk's row names.
         deskNotice={lienWindowDeskNotice(lienWindow ? data?.queue.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
+        // v2.7187, punch list #335, row 2: and the step an affidavit is on.
+        deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         openLastWork={lienWindow?.openLastWork ?? false}
         // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
         onLastWorkSaved={() => {

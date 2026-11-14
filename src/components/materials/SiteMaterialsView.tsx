@@ -14,11 +14,14 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePartTies } from '../../hooks/usePartTies'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { TIES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { usePriceOffers } from '../../hooks/usePriceOffers'
 import { BookPartPicker } from './BookPartPicker'
 import { SitePricingWindow, type PricingAnswer, type TiePair } from './SitePricingWindow'
 import { countedLabel } from '../../lib/batchWords'
-import { offerRowsWords, siteOffers, type BillOffer } from '../../lib/materials/priceOffers'
+import { offerRowsWords, siteOffers, type BillOffer, type BookOffer } from '../../lib/materials/priceOffers'
 import { isLeftOut, rowSitePrices, sitePriceWords, type SitePrice } from '../../lib/materials/sitePrices'
 import type { SitePriceInput } from '../../lib/materials/sitePricesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -243,6 +246,8 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
     }
   }
   const billPrice = (row: SitePartRow, offer: BillOffer) => priceRow(row, { kind: 'price', unitPrice: Math.round(offer.priceEach * 10000) / 10000, source: 'bill', sourceLineId: offer.lineId, sourceWords: offer.houseName, pricedOn: offer.datedOn ?? today })
+  /** Just price: the part's price for one on this site, dated the day the book last checked it. No tie, so the row keeps its name. */
+  const bookPriceOnly = (row: SitePartRow, offer: BookOffer) => priceRow(row, { kind: 'price', unitPrice: offer.pick.price, source: 'book', sourceWords: offer.name, pricedOn: offer.pick.checkedOn ?? today })
   const undoPrice = async (id: string): Promise<boolean> => {
     setBusy(id)
     try {
@@ -293,6 +298,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
         </div>
         {developmentHref ? <Link to={`${developmentHref}?report=materials`} style={{ ...btn, fontWeight: 500 }} title="One Letter paper of every cage and box on the site, by job, by location or by part. It opens on the site’s Development page.">Print the material location report</Link> : null}
       </div>
+
+      {/* The names joined here did not load (v2.7175): the rows still add up, each spelling apart, and the screen says so. */}
+      <OfflineRetryPanel failure={ties.failed ? recoveryFailureFromError(ties.failed, TIES_NOT_LOADED_WORDS, TIES_NOT_LOADED_WORDS) : null} onRetry={ties.retry} surface="materials-site-ties" offlineMessage={TIES_NOT_LOADED_WORDS} idempotent />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '0.5rem' }} role="group" aria-label="This site at a glance">
         <Tile label="Last recorded" big={last.big} small={last.small} tone={glance.lastRecorded ? (quiet ? 'amber' : 'green') : undefined} />
@@ -419,6 +427,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           onUsePart={tieBook}
           canOwnPrice={canOwnPrice}
           onUseBill={billPrice}
+          onUseBookPrice={bookPriceOnly}
           onTypePrice={(row, price) => priceRow(row, { kind: 'price', unitPrice: price, source: 'typed', pricedOn: today })}
           onLeaveOut={(row) => priceRow(row, { kind: 'left_out', pricedOn: today })}
           onUndo={undoAnswer}

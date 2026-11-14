@@ -6125,6 +6125,7 @@ export type Database = {
           repeat_type: string
           roadmap_group_task_id: string | null
           show_until_completed: boolean
+          source_tag: string | null
           spot_photo_path: string | null
           start_date: string
           title: string
@@ -6155,6 +6156,7 @@ export type Database = {
           repeat_type: string
           roadmap_group_task_id?: string | null
           show_until_completed?: boolean
+          source_tag?: string | null
           spot_photo_path?: string | null
           start_date: string
           title: string
@@ -6185,6 +6187,7 @@ export type Database = {
           repeat_type?: string
           roadmap_group_task_id?: string | null
           show_until_completed?: boolean
+          source_tag?: string | null
           spot_photo_path?: string | null
           start_date?: string
           title?: string
@@ -28685,6 +28688,86 @@ export type Database = {
           },
         ]
       }
+      on_site_prices: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          kind: string
+          priced_on: string
+          row_key: string
+          row_name: string
+          source: string
+          source_line_id: string | null
+          source_words: string
+          unit_price: number | null
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          kind: string
+          priced_on?: string
+          row_key: string
+          row_name?: string
+          source?: string
+          source_line_id?: string | null
+          source_words?: string
+          unit_price?: number | null
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          priced_on?: string
+          row_key?: string
+          row_name?: string
+          source?: string
+          source_line_id?: string | null
+          source_words?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "on_site_prices_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_prices_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_prices_source_line_id_fkey"
+            columns: ["source_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_paper_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_prices_source_line_id_fkey"
+            columns: ["source_line_id"]
+            isOneToOne: false
+            referencedRelation: "supply_purchase_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_defaults: {
         Row: {
           key: string
@@ -29873,6 +29956,8 @@ export type Database = {
           id: string
           kind: string
           memo: string | null
+          method: string | null
+          method_ref: string | null
           payment_date: string | null
           payment_id: string | null
           reason: string | null
@@ -29890,6 +29975,8 @@ export type Database = {
           id?: string
           kind: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           payment_id?: string | null
           reason?: string | null
@@ -29907,6 +29994,8 @@ export type Database = {
           id?: string
           kind?: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           payment_id?: string | null
           reason?: string | null
@@ -29953,6 +30042,8 @@ export type Database = {
           id: string
           job_id: string
           memo: string | null
+          method: string | null
+          method_ref: string | null
           payment_date: string | null
           sequence_order: number
         }
@@ -29963,6 +30054,8 @@ export type Database = {
           id?: string
           job_id: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           sequence_order?: number
         }
@@ -29973,6 +30066,8 @@ export type Database = {
           id?: string
           job_id?: string
           memo?: string | null
+          method?: string | null
+          method_ref?: string | null
           payment_date?: string | null
           sequence_order?: number
         }
@@ -33530,6 +33625,8 @@ export type Database = {
           made_by: string | null
           mercury_transaction_id: string
           no_text_why: string | null
+          office_done_at: string | null
+          office_done_by: string | null
           opened_at: string | null
           reminded_at: string | null
           text_fail_why: string | null
@@ -33550,6 +33647,8 @@ export type Database = {
           made_by?: string | null
           mercury_transaction_id: string
           no_text_why?: string | null
+          office_done_at?: string | null
+          office_done_by?: string | null
           opened_at?: string | null
           reminded_at?: string | null
           text_fail_why?: string | null
@@ -33570,6 +33669,8 @@ export type Database = {
           made_by?: string | null
           mercury_transaction_id?: string
           no_text_why?: string | null
+          office_done_at?: string | null
+          office_done_by?: string | null
           opened_at?: string | null
           reminded_at?: string | null
           text_fail_why?: string | null
@@ -33598,6 +33699,13 @@ export type Database = {
             columns: ["mercury_transaction_id"]
             isOneToOne: true
             referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_requests_office_done_by_fkey"
+            columns: ["office_done_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -46596,6 +46704,8 @@ export type Database = {
           made_by: string | null
           mercury_transaction_id: string
           no_text_why: string | null
+          office_done_at: string | null
+          office_done_by: string | null
           opened_at: string | null
           reminded_at: string | null
           text_fail_why: string | null
@@ -46610,6 +46720,26 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      receipt_requests_set_done: {
+        Args: { p_done?: boolean; p_request_ids: string[] }
+        Returns: number
+      }
+      receipt_requests_to_chase: {
+        Args: never
+        Returns: {
+          amount: number
+          closes_at: string
+          holder_name: string
+          holder_user_id: string
+          mercury_transaction_id: string
+          posted_at: string
+          reminded_at: string
+          request_id: string
+          store: string
+          texted_at: string
+          why: string
+        }[]
       }
       receipt_texts_due: { Args: never; Returns: boolean }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }

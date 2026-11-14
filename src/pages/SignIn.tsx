@@ -11,6 +11,21 @@ import {
   recordFailedSignIn,
   shouldOfferMagicLink,
 } from '../lib/signInMagicLink'
+import {
+  browserReturnAddressStore,
+  magicLinkLandingPath,
+  readStoredReturnAddress,
+  signInHrefCarrying,
+  waitingReturnAddress,
+} from '../lib/signInReturnAddress'
+
+/** The address a signed-out visitor asked for, if one is waiting: this page's own `?next=`, else the stored one. */
+function waitingAddress(): string | null {
+  return waitingReturnAddress({
+    search: window.location.search,
+    stored: readStoredReturnAddress(browserReturnAddressStore()),
+  })
+}
 
 const SIGNIN_INPUT_CLASS = 'auth-public-landing__signin-input'
 const SIGNIN_PASSWORD_INPUT_CLASS = `${SIGNIN_INPUT_CLASS} auth-public-landing__signin-input--password`
@@ -77,6 +92,8 @@ export default function SignIn() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    // Read before the sign-in: the moment a session lands the sign-in route sends the person on and spends the address.
+    const back = signInHrefCarrying(waitingAddress())
     const { error: err } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (err) {
@@ -85,8 +102,13 @@ export default function SignIn() {
       return
     }
     localStorage.setItem('signin_email', email)
-    // Hard reload to clear cache (avoids stale data, service worker cache)
-    const reload = () => { location.reload() }
+    // Hard reload to clear cache (avoids stale data, service worker cache). With an address waiting (v2.7182) the
+    // reload is onto this page carrying it, never onto wherever the app has moved to by now: a page that opens a
+    // one-shot door from its address has already taken the door off, and a plain reload would lose it.
+    const reload = () => {
+      if (back) window.location.replace(back)
+      else location.reload()
+    }
     if (typeof caches !== 'undefined') {
       caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
         .then(reload, reload)
@@ -101,9 +123,12 @@ export default function SignIn() {
     // shouldCreateUser: false — accounts are office-provisioned; a typo'd email
     // must never create one. The emailed link lands on /dashboard and is consumed
     // by supabase-js detectSessionInUrl (same path the office's sign-in emails use).
+    // With an address waiting (a signed-out visitor asked for a page, v2.7182) it lands
+    // on this page carrying that address, and the sign-in route sends the person on:
+    // the link may open in a browser that shares no storage with this one.
     const { error: err } = await supabase.auth.signInWithOtp({
       email: normalizeSignInEmail(targetEmail),
-      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}${magicLinkLandingPath(waitingAddress())}` },
     })
     setMagicSending(false)
     if (err) {

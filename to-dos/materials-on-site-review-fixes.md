@@ -2,7 +2,7 @@
 name: "Materials on site: what the review found, in the order it would hurt"
 number: 344
 group: ready
-status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built the same day: PR 1 #7986, PR 2 #7990 and PR 3 #7988 open and armed, PR 4 on the branch `claude/on-site-reads-again`, which opens once #7986 merges · PRs 5 to 9 not built
+status: found 2026-11-13 by a review of Materials → On site (the code, the migrations, the edge side and a read-only walk of the live screens) · four small fixes merged the same day (#7968, #7969, #7970 and v2.7164) · the owner's word the same day (*Yes, build 1 to 4*) · PRs 1 to 4 built the same day: PR 1 #7986 and PR 2 #7990 merged, PR 3 #7988 and PR 4 (v2.7177) open and armed · PRs 5 to 9 not built
 summary: >
   The owner asked whether Materials → On site is good to go. The screens load on the real site and
   their totals agree from the desk to the site's tiles to the printed report. What the review found
@@ -35,9 +35,9 @@ and 375 wide, read only. Nothing was written to prod.
 ## What is sound
 
 - **The arithmetic.** `containerLines`, `countDiffs`, the week window, the 90-day price rule and
-  both SQL twins agree with each other. On the real site the desk's row (94 boxes, 116 lines), the
-  site's tiles (94, 116 lines, 2,230 pieces, $934.35 known on 3 of 116 lines) and the paper (94,
-  116, 2,230) agree, and the two jobs' pages add up to the site.
+  both SQL twins agree with each other. On the real site the desk's row, the site's tiles and the
+  paper give the same boxes, lines and pieces, the worth is the sum of its priced lines to the
+  cent, and the two jobs' pages add up to the site.
 - **The public box page.** It carries no job, customer, address, price, person or Drive id. A
   retired box, a blank sticker and a lost sticker each say only what the label already shows.
 - **The fences.** Every on-site table has the four fences. The ledger and the box moves take no
@@ -66,7 +66,7 @@ Each row is one PR. *Read* means found in the code and not walked. Line numbers 
 | ~~1 · presses through the outbox~~ built, #7986 | `addMovement` and every other write in `onSiteStore.ts` lands in the cache, the tab toasts green, and the insert is sent once (`afterWrite`, 349). Nothing queues it. The outbox #163 built for the clock, notes and reports (`src/lib/offline/`) does not carry an on-site press. | With no signal a count shows as saved. A red toast follows, five seconds long, perhaps after the person has walked on. The next good read puts the old number back. If the row did land and only the answer was lost, the toast says nothing was saved, and a second press doubles it, since each press mints a new id. | M |
 | ~~2 · a photo taken with no signal~~ built, #7990 | The photo's own row is a plain insert that fails with no signal, so it lives in memory alone (`PhotoPress.tsx` 64, `addPhoto` 487). On reconnect the job is read again and the note is gone, with its **Send now**. The bytes stay in the phone's store. The upload is `upsert: false` with no branch for *already exists* (`photoUpload.ts` 29), which is #338's fault in its 409 form: a send whose answer was lost is refused on every later try. *Read.* | A photo taken in a basement never reaches the job's Drive folder, and nothing says so the next day. | S |
 | ~~3 · a failed read is not a zero~~ built, #7988 | `loadJob` keeps its own error, so `loadDesk` succeeds around it (189). The desk never reads `jobLoadState`, so a job whose read failed draws 0 containers and $0.00. `useOnSiteSites` (52) and `usePartTies` (35) swallow a failure the same way: a site reads *across 0 jobs*, and joined names split with no word. *Read.* | The office reads a job as empty when the read failed. | S |
-| ~~4 · the store reads again~~ built, on its branch | A job or the desk is read once a page session (`loadJob` 126, `loadDesk` 179). Nothing reads again on focus or on opening a box. | The desk left open shows the morning's numbers all day. A second phone caps **Used** at a stale number and offers *40 is right* from it. | S |
+| ~~4 · the store reads again~~ built, v2.7177 | A job or the desk is read once a page session (`loadJob` 126, `loadDesk` 179). Nothing reads again on focus or on opening a box. | The desk left open shows the morning's numbers all day. A second phone caps **Used** at a stale number and offers *40 is right* from it. | S |
 
 ### Before the office leans on the numbers
 
@@ -136,10 +136,10 @@ what was wrong; this is what each PR did.
   **Read again**, its site's row counts it, and a site's screen names how many of its jobs are not
   on it. A failed read of which job is on which site, and of the joined names, is said. Walked on
   the dev server with one job's reads dropped on purpose.
-- **PR 4, branch `claude/on-site-reads-again`.** Every on-site screen reads again when the page
-  comes back to the front, the signal returns and every five minutes, and the phone when a box is
-  opened. The read is quiet, and a kept press stays on the screen through it. It sits on PR 1's
-  store, so its PR opens once #7986 merges.
+- **PR 4, v2.7177.** Every on-site screen reads again when the page comes back to the front, the
+  signal returns and every five minutes, and the phone when a box is opened. The read is quiet,
+  and a kept press stays on the screen through it. It sat on PR 1's store, so it opened once
+  #7986 had merged.
 
 **Not checked by any of the four:** a real phone with its radio off, a real camera, and what the
 database answers a resent row. The last is read from Postgres' own rule, a duplicate on the primary

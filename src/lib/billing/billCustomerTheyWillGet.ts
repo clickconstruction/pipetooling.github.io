@@ -5,6 +5,10 @@
  * email carries no pay link. This kernel holds the window's words for the two channels that reach a customer: the
  * caption under the tabs, the line under the address, the box above the press and the press itself. Pure: the window
  * (`SendRecordInvoiceModal`) hands it the payer as the composed job reads, and draws what comes back.
+ *
+ * PR 3 (one press): the Stripe tab's main press makes the bill and emails it, *Make the bill and email Dana*, and the
+ * quiet press beside it, *Make the bill, send later*, keeps the old way for a bill handed over or texted. Two screens
+ * had let a bill be made and never sent: Bills sent listed 24 open bills with no send on record on the day of the look.
  */
 import { countedLabel } from '../batchWords'
 import { greetingName } from '../contacts/names'
@@ -25,6 +29,8 @@ export interface TheyWillGetInput {
   phone?: string | null
   /** Every other address the send carries: ticked contacts, the copied other party, the one-off. Never the primary. */
   copyEmails: readonly string[]
+  /** Stripe only: the dev's test mode, where the bill email comes to the sender and one copy with it. */
+  testMode?: boolean
 }
 
 export interface TheyWillGet {
@@ -36,12 +42,14 @@ export interface TheyWillGet {
   phoneLine: string | null
   /** Under the address: what a ticked person gets. */
   copyHelp: string
-  /** The press, named for its act. */
+  /** The press, named for its act. On a Stripe bill it makes the bill and emails it. */
   press: string
   /** The box's first line. */
   pressTitle: string
   /** The box's sentences: what the press does, what it does not, where the copy is kept. */
   pressLines: string[]
+  /** Stripe only: the quiet press that makes the bill and sends nothing, and the box's line about it. Null elsewhere. */
+  later: { press: string; line: string } | null
 }
 
 export const BILL_CHANNEL_CAPTION: Record<BillSendChannel, string> = {
@@ -49,8 +57,8 @@ export const BILL_CHANNEL_CAPTION: Record<BillSendChannel, string> = {
   physical: 'An email with the invoice PDF attached. It has no pay link.',
 }
 
-/** The Stripe tab's press: the verb the Bills tab already uses for this act. */
-export const MAKE_STRIPE_BILL_PRESS = 'Make the Stripe bill'
+/** The Stripe tab's quiet press: the bill is made and nothing goes, as the one press did before PR 3. */
+export const MAKE_BILL_SEND_LATER_PRESS = 'Make the bill, send later'
 
 const PEOPLE = ['person', 'people'] as const
 
@@ -60,25 +68,28 @@ export function theyWillGet(input: TheyWillGetInput): TheyWillGet {
   const copies = input.copyEmails.length
   const caption = BILL_CHANNEL_CAPTION[input.channel]
 
+  const first = who ? greetingName(who) : ''
+
   if (input.channel === 'stripe') {
     const phone = input.phone === undefined ? undefined : phoneContact(input.phone)
+    const press = copies > 0 ? countedLabel('Make the bill and email', copies + 1, PEOPLE) : first ? `Make the bill and email ${first}` : 'Make the bill and email it'
+    const goes = input.testMode ? `Test mode: the bill email comes to you, not to ${email}.` : `The bill email goes now to ${email}.`
+    const copyLine = input.testMode ? 'One copy comes to you too. Nobody ticked gets one.' : `${copies === 1 ? '1 more person gets' : `${copies} more people get`} a copy of their own.`
     return {
       caption,
       who,
       phoneLine:
         phone === undefined ? null : phone ? `Phone ${phone.display}. A text can follow on the next screen.` : 'No phone on this job. A text needs a number on the customer.',
-      copyHelp: 'The bill email goes to that address from the next screen. Each person ticked below gets a copy of their own, with a Pay or view button.',
-      press: MAKE_STRIPE_BILL_PRESS,
-      pressTitle: `When you press ${MAKE_STRIPE_BILL_PRESS}`,
-      pressLines: [
-        'The bill is made and marked billed.',
-        `Nothing goes to ${who ?? 'the customer'} yet. The next screen sends it by email or by text.`,
-        'Every send is kept in Bills sent.',
-      ],
+      copyHelp: 'Each person ticked below gets a copy of their own, with a Pay or view button.',
+      press,
+      pressTitle: `When you press ${press}`,
+      pressLines: email
+        ? ['The bill is made and marked billed.', goes, ...(copies > 0 ? [copyLine] : []), 'A text is your choice on the next screen.', 'Every send is kept in Bills sent.']
+        : ['A Stripe bill goes by email. Add an email above first.'],
+      later: { press: MAKE_BILL_SEND_LATER_PRESS, line: `${MAKE_BILL_SEND_LATER_PRESS} makes the bill and sends nothing. Use it for a bill you hand over or text.` },
     }
   }
 
-  const first = who ? greetingName(who) : ''
   const press = copies > 0 ? countedLabel('Email the invoice to', copies + 1, PEOPLE) : first ? `Email the invoice to ${first}` : 'Email the invoice'
   const goes = !email
     ? 'This invoice goes by email. Add an email above first.'
@@ -93,6 +104,7 @@ export function theyWillGet(input: TheyWillGetInput): TheyWillGet {
     press,
     pressTitle: `When you press ${press}`,
     pressLines: email ? [goes, 'The bill is marked billed. No text goes with it.', 'The copy is kept in Bills sent.'] : [goes],
+    later: null,
   }
 }
 
