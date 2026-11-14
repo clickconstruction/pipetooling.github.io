@@ -203,7 +203,11 @@ describe('LienFilingTabs · the notice record and the copies of the notices prin
     expect(html).toContain('<strong>No number on record</strong>')
     // The paper's sentence 6 and the record agree, and the page says so.
     expect(html).toContain('6. Notice of the claim was sent to the owner by certified mail on December 1, 2026 and December 9, 2026.')
-    expect(html).toContain('The paper says certified mail on December 1, 2026 and December 9, 2026. The owner’s copies on record say the same.')
+    expect(html).toMatch(/<strong>The paper matches the record\.<\/strong> It swears [^<]+, and certified mail on December 1, 2026 and December 9, 2026\./)
+    // The page says how to read that line, once, and names no sentence by its number.
+    expect(html.match(/data-lien-record-how/g)).toHaveLength(1)
+    expect(html).toContain('<h3>How to read this page</h3>')
+    expect(html).not.toMatch(/Sentences? [56]/)
     // Both went after August's last day to mail on this commercial property, so the page asks first; no table of the months is drawn.
     expect(html).toContain('data-lien-record-verdict="ask"')
     expect(html).not.toContain('Each month the paper swears')

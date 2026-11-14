@@ -21,7 +21,7 @@ import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
  * the paper swears, each with its last day to mail and whether the owner's copy and the original contractor's went on
  * time (`lienAffidavitNoticeCheck`, so this record and the help sheet's check cannot disagree): the page prints the
  * check's lines and no table of the months, which the owner asked not to see. And the paper's two sentences read
- * against the record.
+ * against the record, as one line a reader can follow without the paper beside it (`lienNoticeRecordPaperLine`).
  */
 
 /** A recorded filing, as much of it as this reads. The desk and the Lien window both hold the whole row. */
@@ -82,7 +82,10 @@ export type LienNoticeRecordSide = { state: 'on_time' | 'late' | 'missing'; sent
 
 export type LienNoticeRecordMonth = { month: string; dueOn: string; owner: LienNoticeRecordSide; contractor: LienNoticeRecordSide }
 
-/** A line of the paper read against the record: `ok` they agree, `ask` they do not, `note` a fact beside them. */
+/**
+ * A line of the paper read against the record: `ok` they agree, `ask` they do not, `note` a fact beside them. The
+ * first line is always the paper's own (`lienNoticeRecordPaperLine`), the one `ok` or `ask`; the notes follow it.
+ */
 export type LienNoticeRecordLine = { state: 'ok' | 'ask' | 'note'; lead: string; words: string }
 
 export type LienNoticeRecord = {
@@ -279,6 +282,77 @@ export function lienNoticeRecordGaps(notices: ReadonlyArray<LienNoticeRecordNoti
   return gaps
 }
 
+/** The lead of the paper's line when its months and its notice days are the record's. */
+export const LIEN_RECORD_MATCH = 'The paper matches the record.'
+
+/** The lead when the paper says one thing and the record another. */
+export const LIEN_RECORD_DIFFER = 'The paper and the record differ.'
+
+/** The lead when nothing disagrees and the paper has a blank, because the record has nothing to fill it from. */
+export const LIEN_RECORD_BLANK = 'The paper is not complete.'
+
+/** What closes a line that does not match: one instruction, by what is wrong. */
+export const LIEN_RECORD_FIX_ONE = 'Fix one before this is signed.'
+export const LIEN_RECORD_FIX_BOTH = 'Fix both before this is signed.'
+export const LIEN_RECORD_ADD_MISSING = 'Add what is missing before this is signed.'
+
+type PaperHalf = { state: 'ok' | 'differ' | 'blank'; words: string }
+
+/**
+ * The paper read against the record, in one line (the owner, 2026-11-14, on *Sentences 5 and 6 match the record.*:
+ * *I don't understand… What does that mean? I need better context*). The short form's fifth sentence swears the months
+ * of work and its sixth the method and day each notice went to the owner. A reader of the record has the table in
+ * front of them and not the paper's sentence numbers, so the line says what the paper swears and never a number.
+ *
+ * What is compared is what always was: the paper's months against the months the job's notices name (`sworn`, each
+ * one backed by a notice in `noticed`), and the paper's method and days against the owner's copies on record. It is a
+ * proofreading check and says nothing of whether a notice was on time; the verdict at the record's foot says that.
+ *
+ * - Both agree: `ok`, *The paper matches the record.* and what it swears.
+ * - One or both do not: `ask`, one lead, what each says, and one instruction. The lead is said once however many differ.
+ * - A blank on the paper with nothing on record to fill it is not a difference, and is not called one. A blank the
+ *   record could fill is a difference.
+ */
+export function lienNoticeRecordPaperLine(input: {
+  paperMonthsWords: string
+  paperNoticesWords: string
+  /** The months the paper swears, as keys: what the notices name for this job. */
+  sworn: ReadonlyArray<string>
+  /** Every month a live notice names. */
+  noticed: ReadonlyArray<string>
+  /** The owner's copies on record, as the paper would say them (`lienAffidavitNoticesWords`). */
+  recordNoticesWords: string
+}): LienNoticeRecordLine {
+  const paperMonths = input.paperMonthsWords.trim()
+  const recordMonths = describeNoticeMonths([...input.sworn])
+  const unbacked = input.sworn.filter((m) => !input.noticed.includes(m))
+  const months: PaperHalf = !paperMonths
+    ? recordMonths
+      ? { state: 'differ', words: `The paper names no month. The record shows ${recordMonths}.` }
+      : { state: 'blank', words: 'The paper names no month. No notice on record names a month of this job’s work.' }
+    : paperMonths === recordMonths && unbacked.length === 0
+      ? { state: 'ok', words: paperMonths }
+      : paperMonths === recordMonths
+        ? { state: 'differ', words: `The paper says the work was in ${paperMonths}. No notice on record names ${describeNoticeMonths(unbacked)}.` }
+        : { state: 'differ', words: `The paper says the work was in ${paperMonths}. The record shows ${recordMonths || 'no month'}.` }
+
+  const paperNotices = input.paperNoticesWords.trim()
+  const recordNotices = input.recordNoticesWords.trim()
+  const days: PaperHalf = !paperNotices
+    ? recordNotices
+      ? { state: 'differ', words: `The paper has a blank where the day goes. The record shows ${recordNotices}.` }
+      : { state: 'blank', words: 'The paper has a blank where the day goes. No copy to the owner is on record with a day.' }
+    : paperNotices === recordNotices
+      ? { state: 'ok', words: paperNotices }
+      : { state: 'differ', words: `The paper says ${paperNotices}. The record shows ${recordNotices || 'no copy to the owner'}.` }
+
+  if (months.state === 'ok' && days.state === 'ok') return { state: 'ok', lead: LIEN_RECORD_MATCH, words: `It swears ${months.words}, and ${days.words}.` }
+  const wrong = [months, days].filter((h) => h.state !== 'ok')
+  const differs = wrong.some((h) => h.state === 'differ')
+  const close = !differs ? LIEN_RECORD_ADD_MISSING : wrong.length > 1 ? LIEN_RECORD_FIX_BOTH : LIEN_RECORD_FIX_ONE
+  return { state: 'ask', lead: differs ? LIEN_RECORD_DIFFER : LIEN_RECORD_BLANK, words: [...wrong.map((h) => h.words), close].join(' ') }
+}
+
 /**
  * The record behind one paper. `swornMonths` are the months the paper swears (`lienAffidavitSwornMonths`), and the two
  * `paper…Words` are sentences 5 and 6 as the paper prints them. Null on a job contracted with the owner: an original
@@ -310,20 +384,8 @@ export function lienNoticeRecord(input: {
   const noticed = [...new Set(notices.flatMap((n) => n.months))].sort()
   const lines: LienNoticeRecordLine[] = []
 
-  // Sentence 5: the months, the paper's words against the months the notices name for this job.
-  const paperMonths = input.paperMonthsWords.trim()
-  const recordMonths = describeNoticeMonths(sworn)
-  const unbacked = sworn.filter((m) => !noticed.includes(m))
-  if (!paperMonths) lines.push({ state: 'ask', lead: 'Sentence 5.', words: 'The paper names no month. No notice on record names a month of this job’s work.' })
-  else if (paperMonths === recordMonths && unbacked.length === 0) lines.push({ state: 'ok', lead: 'Sentence 5.', words: `The paper names ${paperMonths}. A notice on record names each of those months.` })
-  else lines.push({ state: 'ask', lead: 'Sentence 5.', words: `The paper names ${paperMonths}. The notices on record name ${recordMonths || 'no month'} for this job.` })
-
-  // Sentence 6: the days and the method, the paper's words against the owner's copies on the record.
-  const paperNotices = input.paperNoticesWords.trim()
-  const recordNotices = lienAffidavitNoticesWords(lienNoticeRecordOwnerSends(notices))
-  if (!paperNotices) lines.push({ state: 'ask', lead: 'Sentence 6.', words: 'The paper has a blank where the day goes. No copy to the owner is on record with a day.' })
-  else if (paperNotices === recordNotices) lines.push({ state: 'ok', lead: 'Sentence 6.', words: `The paper says ${paperNotices}. The owner’s copies on record say the same.` })
-  else lines.push({ state: 'ask', lead: 'Sentence 6.', words: `The paper says ${paperNotices}. The record shows ${recordNotices || 'no copy to the owner'}.` })
+  // The paper's own line first: its months (sentence 5) and its notice days (sentence 6) against the record.
+  lines.push(lienNoticeRecordPaperLine({ paperMonthsWords: input.paperMonthsWords, paperNoticesWords: input.paperNoticesWords, sworn, noticed, recordNoticesWords: lienAffidavitNoticesWords(lienNoticeRecordOwnerSends(notices)) }))
 
   // Beside them: a month a notice names that the paper leaves off, and a month of the job's work no notice names.
   const span = lienNoticeRecordSpanMonths(input.workStart, input.workEnd)

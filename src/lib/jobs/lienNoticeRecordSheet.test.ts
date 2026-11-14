@@ -9,7 +9,7 @@ import { lienAffidavitBatchHelpSheet, lienAffidavitBatchNoticeCopies, lienAffida
 import { lienAffidavitNoticesWords, lienAffidavitOwnerSends } from './lienAffidavitNotices'
 import { LIEN_HELP_BATCH_ASK_LEAD, LIEN_HELP_FOOT_PAPER_NEXT, LIEN_HELP_FOOT_RECORD_NEXT, LIEN_HELP_NOTICES_SEE_RECORD, lienHelpCoverSheetHtml, lienHelpPaperFromFields } from './lienHelpSheet'
 import { describeNoticeMonths } from './lienNoticeDraft'
-import { lienNoticeRecord, type LienNoticeRecordFiling } from './lienNoticeRecord'
+import { LIEN_RECORD_DIFFER, LIEN_RECORD_FIX_ONE, LIEN_RECORD_MATCH, lienNoticeRecord, type LienNoticeRecordFiling } from './lienNoticeRecord'
 import {
   LIEN_RECORD_ASK,
   LIEN_RECORD_BATCH_LEAD,
@@ -21,9 +21,12 @@ import {
   LIEN_RECORD_COPY_SAVED,
   LIEN_RECORD_ENVELOPE,
   LIEN_RECORD_FIX,
-  LIEN_RECORD_MATCH,
+  LIEN_RECORD_HOW,
+  LIEN_RECORD_HOW_BLOCK,
+  LIEN_RECORD_HOW_PAGE,
   LIEN_RECORD_NO_NOTICE,
   LIEN_RECORD_NOTE_ONLY,
+  LIEN_RECORD_NOTHING_MISSING,
   LIEN_RECORD_NOT_SUB,
   LIEN_RECORD_ON,
   LIEN_RECORD_SAVED_NOTE,
@@ -93,8 +96,8 @@ const CLEAN_MONTHS = ['2026-08', '2026-09']
 
 const HEAD: LienNoticeRecordHead = { jobLabel: '4417 · Quarry Bend rough-in', propertyAddress: '1408 Quarry Bend Rd, Marlow, TX 78000', ownerName: 'Hollis Family Trust', contractorName: 'Ridgeway Builders LLC', claim: '$5,260.00' }
 
-const recordOf = (filings: LienNoticeRecordFiling[], months: string[]) => {
-  const record = lienNoticeRecord({ isSub: true, propertyKind: 'residential', swornMonths: months, filings, paperMonthsWords: describeNoticeMonths(months), paperNoticesWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(filings)) })
+const recordOf = (filings: LienNoticeRecordFiling[], months: string[], over: { paperMonthsWords?: string; paperNoticesWords?: string } = {}) => {
+  const record = lienNoticeRecord({ isSub: true, propertyKind: 'residential', swornMonths: months, filings, paperMonthsWords: describeNoticeMonths(months), paperNoticesWords: lienAffidavitNoticesWords(lienAffidavitOwnerSends(filings)), ...over })
   if (!record) throw new Error('a sub has a record')
   return record
 }
@@ -192,10 +195,42 @@ describe('lienNoticeRecordSheetHtml · one page in front of one paper', () => {
     expect(html).not.toContain('days late')
   })
 
-  it('reads the paper’s two sentences against the record, and lists what is missing with where to add it', () => {
-    expect(html).toContain('<li data-state="ok"><span class="lien-help-mark">✓</span><span><strong>Sentence 6.</strong> The paper says certified mail on September 22, 2026 and October 14, 2026. The owner’s copies on record say the same.</span></li>')
+  it('reads the paper against the record in one line that says what it swears, and lists what is missing with where to add it', () => {
+    expect(html).toContain('<div class="lien-help-box" data-lien-record-lines style="margin-bottom:0"><h3>The paper against the record</h3>')
+    expect(html).toContain('<li data-state="ok"><span class="lien-help-mark">✓</span><span><strong>The paper matches the record.</strong> It swears April, May, June, July and August 2026, and certified mail on September 22, 2026 and October 14, 2026.</span></li>')
+    // The box beside it says what is missing, so the line carries no tail here.
+    expect(html).not.toContain(LIEN_RECORD_NOTHING_MISSING)
+    expect(html).not.toMatch(/Sentences? [56]/)
     expect(html).toContain('<li>Notice 2 has no mail number for the copy to the original contractor.</li>')
     expect(html).toContain(LIEN_RECORD_FIX)
+  })
+
+  it('says how to read the page once, above the table: what the paper swears, and that a ✓ is not “on time” (the owner, 2026-11-14)', () => {
+    expect(html.match(/data-lien-record-how/g)).toHaveLength(1)
+    expect(html).toContain(`<h3>${LIEN_RECORD_HOW_PAGE}</h3>`)
+    expect(html).not.toContain(LIEN_RECORD_HOW_BLOCK)
+    expect(html.indexOf('lien-help-facts')).toBeLessThan(html.indexOf('data-lien-record-how'))
+    expect(html.indexOf('data-lien-record-how')).toBeLessThan(html.indexOf('data-lien-record-notices'))
+    const text = textOf(html)
+    expect(text).toContain('Each lien paper swears two facts about notice. One is the months of work. The other is the day each notice was mailed to the owner.')
+    expect(text).toContain('A ✓ means the paper and the record say the same thing.')
+    expect(text).toContain('A ✓ does not mean the notice was on time.')
+    // The grey box is named by its own lead, in bold, so the reader finds the box the line points at.
+    expect(html).toContain('The grey box headed <strong>Ask the attorney first</strong> says when it was not.')
+    expect(`${LIEN_RECORD_ASK}`).toBe('Ask the attorney first.')
+    expect(text).toContain('Keep the receipts. They are the proof if the lien is ever questioned.')
+  })
+
+  it('a paper that differs from the record says so in the batch block’s own words', () => {
+    const record = recordOf(CLEAN, CLEAN_MONTHS, { paperNoticesWords: 'certified mail on October 12, 2026' })
+    const line = `<li data-state="ask"><span class="lien-help-mark">!</span><span><strong>${LIEN_RECORD_DIFFER}</strong> The paper says certified mail on October 12, 2026. The record shows certified mail on October 14, 2026. ${LIEN_RECORD_FIX_ONE}</span></li>`
+    const page = lienNoticeRecordSheetHtml(HEAD, record, '')
+    const block = lienNoticeRecordBatchHtml([{ head: HEAD, record }], '')
+    expect(page).toContain(line)
+    expect(block).toContain(line)
+    // Every month went on time, so the grey box has the line's own words and no sentence number.
+    expect(page).toContain(`<span class="lien-record-verdict-lead">Ask the attorney first.</span> ${LIEN_RECORD_DIFFER} The paper says certified mail on October 12, 2026.`)
+    expect(page + block).not.toMatch(/Sentences? [56]/)
   })
 
   it('the clean case says so in every place', () => {
@@ -280,7 +315,7 @@ describe('the record’s words', () => {
   })
 
   it('every sentence the page writes follows the plain-words rules', () => {
-    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ON, LIEN_RECORD_ENVELOPE, LIEN_RECORD_TOTAL_IN_ALL, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
+    const sentences = [LIEN_RECORD_CLEAR, LIEN_RECORD_ASK, LIEN_RECORD_ON, LIEN_RECORD_ENVELOPE, LIEN_RECORD_TOTAL_IN_ALL, LIEN_RECORD_FIX, LIEN_RECORD_WHOLE, LIEN_RECORD_NOT_SUB, LIEN_RECORD_BATCH_LEAD, LIEN_RECORD_MATCH, LIEN_RECORD_NOTHING_MISSING, LIEN_RECORD_HOW_BLOCK, LIEN_RECORD_HOW_PAGE, ...LIEN_RECORD_HOW.map((l) => l.replace(/\*\*/g, '')), LIEN_HELP_NOTICES_SEE_RECORD, LIEN_RECORD_COPY_DRAWN, LIEN_RECORD_COPY_BY_HAND, LIEN_RECORD_COPY_BY_HAND_NO_FILE, LIEN_RECORD_COPY_BY_HAND_NOTE, LIEN_RECORD_COPY_SAVED, lienRecordVoidedWords(1), lienRecordVoidedWords(3)]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
   })
 })
@@ -303,6 +338,19 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
     expect(html).toContain(`${LIEN_RECORD_BATCH_LEAD} ${LIEN_RECORD_ENVELOPE} ${LIEN_RECORD_FIX}`)
   })
 
+  it('says how to read a block once, under the lead and above the first block', () => {
+    expect(html.match(/data-lien-record-how/g)).toHaveLength(1)
+    expect(html).toContain(`<h3>${LIEN_RECORD_HOW_BLOCK}</h3>`)
+    expect(html).not.toContain(LIEN_RECORD_HOW_PAGE)
+    expect(html.indexOf('data-lien-record-batch-lead')).toBeLessThan(html.indexOf('data-lien-record-how'))
+    expect(html.indexOf('data-lien-record-how')).toBeLessThan(html.indexOf('data-lien-record-paper="1"'))
+    for (const l of LIEN_RECORD_HOW) expect(textOf(html)).toContain(l.replace(/\*\*/g, ''))
+    // A batch of jobs contracted with the owner has no table and no line to read, so nothing to explain.
+    const owners = lienNoticeRecordBatchHtml([papers[2]!, papers[2]!], '')
+    expect(owners).toContain(LIEN_RECORD_NOT_SUB)
+    expect(owners).not.toContain('data-lien-record-how')
+  })
+
   it('numbers each block as the batch sheet numbers its row', () => {
     expect([...html.matchAll(/data-lien-record-paper="(\d+)"/g)].map((m) => m[1])).toEqual(['1', '2', '3'])
     expect(html).toContain('<strong>2 · 4417 · Quarry Bend rough-in</strong>')
@@ -314,7 +362,8 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
     expect(block).toContain('data-lien-record-verdict="clear"')
     expect(block).toContain(`${LIEN_RECORD_ON}</span> ${LIEN_RECORD_CLEAR}`)
     expect(block).toContain('9589 0000 0000 0000 0000 24')
-    expect(block).toContain(`${LIEN_RECORD_MATCH} Nothing is missing from the record.`)
+    expect(block).toContain(`<li data-state="ok"><span class="lien-help-mark">✓</span><span><strong>${LIEN_RECORD_MATCH}</strong> It swears August and September 2026, and certified mail on October 14, 2026. ${LIEN_RECORD_NOTHING_MISSING}</span></li>`)
+    expect(LIEN_RECORD_NOTHING_MISSING).toBe('Nothing is missing from the record.')
     expect(block).not.toContain('lien-help-box" data-lien-record-lines')
   })
 
@@ -324,7 +373,7 @@ describe('lienNoticeRecordBatchHtml · a block for each paper, packed', () => {
     expect(block).toContain('<span class="lien-record-verdict-lead">Ask the attorney first.</span> Both copies went late for April to July 2026.</div>')
     expect(block).not.toContain('days late')
     expect(block.match(/data-lien-record-gap/g)).toHaveLength(3)
-    expect(block).toContain(LIEN_RECORD_MATCH)
+    expect(block).toContain(`<strong>${LIEN_RECORD_MATCH}</strong> It swears April, May, June, July and August 2026, and certified mail on September 22, 2026 and October 14, 2026.</span></li>`)
     expect(block).not.toContain('Nothing is missing')
   })
 

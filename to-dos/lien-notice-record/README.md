@@ -72,7 +72,8 @@ Mock-up: [`mockup.html`](./mockup.html), drawn by the app's own print code with 
    row keeps, COPY across it. A copy is drawn from the record and says so. It does not show the invoices that rode
    behind the notice.
 5. **The paper against the record.** Sentence 5's months and sentence 6's days are read against the rows and marked
-   ✓ or !. Two notes can sit beside them: a month the notices name that the paper leaves off, and a month of the
+   ✓ or !, in one line that names no sentence number since v2.7255 (*The paper matches the record.* and what it
+   swears). A box at the top, *How to read a block*, says what the ✓ means and that it is not *on time*. Two notes can sit beside them: a month the notices name that the paper leaves off, and a month of the
    job's work no notice names.
 6. **Missing from the record** lists what the office can add: a copy with no number, no copy to the contractor, no
    saved file, one number typed on both copies. It says where to add it.
