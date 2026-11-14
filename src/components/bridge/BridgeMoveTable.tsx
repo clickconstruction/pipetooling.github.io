@@ -131,11 +131,14 @@ export function BridgeMoveTable({ dive, narrow, todoStates, dayLabel, onDive, on
       </div>
     )
   }
+  // Under the middle of the table (the owner, 2026-11-13: "move these buttons over"): at the left edge it read as one more job name.
   const showAll =
     dive.items.length > dive.shown ? (
-      <button type="button" onClick={() => setAll((a) => !a)} data-testid="bridge-week-dive-all" style={{ ...wordPress(narrow), fontWeight: 400, fontSize: '0.8rem' }}>
-        {all ? `Show the first ${dive.shown}` : `Show all ${dive.items.length}`}
-      </button>
+      <div data-testid="bridge-week-dive-all-row" style={{ display: 'flex', justifyContent: 'center' }}>
+        <button type="button" onClick={() => setAll((a) => !a)} data-testid="bridge-week-dive-all" style={{ ...wordPress(narrow), fontWeight: 400, fontSize: '0.8rem' }}>
+          {all ? `Show the first ${dive.shown}` : `Show all ${dive.items.length}`}
+        </button>
+      </div>
     ) : null
 
   // ── a phone: no columns ────────────────────────────────────────────────────

@@ -39,7 +39,7 @@ import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from 
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { editBoxTitle } from '../../lib/materials/editBox'
-import EditBoxForm from '../materials/EditBoxForm'
+import BoxTabs from '../materials/BoxTabs'
 import { SHORT_MAX, shortAfterWords, shortLabel, shortRefusalWords, shortRequestRow, shortToast } from '../../lib/materials/shortRequest'
 import { sendShortRequest } from '../../lib/materials/shortRequestIo'
 import { boxClipboardWords, copiedLabelWords } from '../../lib/materials/labels'
@@ -626,7 +626,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (
         <Sheet title={editBoxTitle(sheet.container)} onClose={() => setSheet(null)}>
-          <EditBoxForm touch container={sheet.container} containers={containers} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
+          <BoxTabs touch container={sheet.container} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} />
         </Sheet>
       ) : null}
       {sheet?.kind === 'retire' ? (

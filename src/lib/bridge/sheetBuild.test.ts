@@ -75,10 +75,11 @@ const bank = { usd: 55_000, accounts: [{ id: 'op', name: 'Mercury Checking •�
 const tile = (mail: ReturnType<typeof buildWeekMailFromReads>, id: 'made' | 'cash' | 'step') => mail.model.tiles.find((t) => t.id === id)
 
 describe('buildWeekMailFromReads', () => {
-  it('with the Bridge data alone: three tiles not read, a card that says so, this pay week', () => {
+  it('with the Bridge data alone: the tiles and both balances not read, a card that says so, this pay week', () => {
     const mail = buildWeekMailFromReads(reads())
     expect(weekMailLine(mail)).toBe('the week of Oct 25–31, read Oct 26')
     expect(mail.model.tiles.map((t) => t.value)).toEqual(['not read', 'not read', 'not read'])
+    expect([mail.money.cash.value, mail.money.accrual.value, mail.money.foot]).toEqual(['not read', 'not read', ''])
     expect(mail.model.card.label).toBe('What to do now')
     expect(mail.model.link).toBeNull()
     expect(mail.model.card.lead).toBe('The five steps are not read yet.')
@@ -111,22 +112,42 @@ describe('buildWeekMailFromReads', () => {
     const withBank = buildWeekMailFromReads(reads({ data: data(typed), fin: fin(), bank }))
     expect(tile(withBank, 'cash')).toMatchObject({ value: '$55.0k', tone: 'green' })
     expect(tile(withBank, 'cash')?.note).toBeUndefined()
+    expect(withBank.money.cash).toMatchObject({ label: 'Cash balance', value: '$55.0k', tone: 'green' })
     const without = buildWeekMailFromReads(reads({ data: data(typed), fin: fin() }))
     expect(tile(without, 'cash')).toMatchObject({ value: '$40.0k', tone: 'green' })
+    expect(without.money.cash.value).toBe('$40.0k')
   })
 
-  it('an account the owner left out is off cash on hand, and the tile says which', () => {
+  it('the balances are the page’s: cash, plus what customers owe, less what the company owes, each with its runway (#334)', () => {
+    // Payroll $7k a week is $1k a day, plus $100 of overhead: $1.1k a day.
+    const owes = { ...fin([item('a', 10_000, '2026-10-20'), item('b', 30_000, '2026-10-22')]), ap: { ...fin().ap, total: 15_000 } }
+    const mail = buildWeekMailFromReads(reads({ data: data({ payrollWeeklyEstUsd: 7_000, dailyDrainUsd: 100 }), fin: owes, bank }))
+    expect(mail.money.cash).toMatchObject({ label: 'Cash balance', value: '$55.0k', runway: '50 days of runway' })
+    // $55k + $40k - $15k.
+    expect(mail.money.accrual).toMatchObject({ label: 'Accrual balance', value: '$80.0k', runway: '72 days of runway', sub: 'Adds $40.0k owed to you. Takes off $15.0k you owe, subs included.' })
+    expect(mail.money.foot).toBe('Runway counts payroll and overhead, $1.1k a day.')
+    expect(weekMailSubject(mail)).toContain('Cash balance $55.0k.')
+    expect(weekMailText(mail, 'u')).toContain('Accrual balance: $80.0k\n  72 days of runway\n')
+    // With what is owed not read, the accrual balance says so and cash still reads.
+    const noFin = buildWeekMailFromReads(reads({ data: data({ payrollWeeklyEstUsd: 7_000, dailyDrainUsd: 100 }), bank }))
+    expect(noFin.money.accrual.value).toBe('not read')
+    expect(noFin.money.cash.runway).toBe('50 days of runway')
+  })
+
+  it('an account the owner left out is off cash on hand, and the cash balance says which', () => {
     const mail = buildWeekMailFromReads(reads({ data: data(), fin: fin(), bank }), { accountsOut: ['ap'], bankNames: new Map([['ap', 'Accounts Payable']]) })
     expect(tile(mail, 'cash')).toMatchObject({ value: '$43.0k', note: 'Leaves out Accounts Payable, $12.0k.' })
+    expect(mail.money.cash).toMatchObject({ value: '$43.0k', note: 'Leaves out Accounts Payable, $12.0k.' })
     expect(weekMailHtml(mail, 'u')).toContain('Leaves out Accounts Payable, $12.0k.')
   })
 
-  it('cash under the floor leads when the bank is read: the tile takes the row and the call is on cash', () => {
+  it('cash under the floor leads when the bank is read: the card is on cash and the cash balance reads red', () => {
     const low = buildWeekMailFromReads(reads({ data: data({ ...flows(), floorUsd: 60_000 }), fin: fin([item('a', 10_000, '2026-09-01')]), bank }))
     expect(low.model.cashLeads).toBe(true)
     expect(low.model.link).toBe('capital')
     expect(low.model.tiles[0]).toMatchObject({ id: 'cash', wide: true })
-    expect(weekMailSubject(low)).toBe('The Bridge, the week of Oct 25–31: Keep cash above the floor. Under the floor today. Made last week not read.')
+    expect(low.money.cash).toMatchObject({ value: '$55.0k', sub: 'Under the $60.0k floor.', tone: 'red' })
+    expect(weekMailSubject(low)).toBe('The Bridge, the week of Oct 25–31: Keep cash above the floor. Cash balance $55.0k. Made last week not read.')
     // The typed figure is not the bank's word, so it never leads.
     const typed = buildWeekMailFromReads(reads({ data: data({ ...flows(), floorUsd: 60_000, cashSetting: { usd: 40_000, asOfYmd: '2026-10-26' } }), fin: fin([item('a', 10_000, '2026-09-01')]) }))
     expect(typed.model.cashLeads).toBe(false)

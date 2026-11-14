@@ -21,10 +21,12 @@ import { useToastContext } from '../../contexts/ToastContext'
 import BoxPhotoRefileStrip from '../materials/BoxPhotoRefileStrip'
 import { useOnSiteDesk, useOnSiteJob, useOnSiteStoreVersion } from '../../hooks/useOnSiteStore'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import OnSiteJobsNotLoaded from '../materials/OnSiteJobsNotLoaded'
+import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
-import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
+import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
@@ -46,9 +48,9 @@ import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
-import { EditBoxWindow } from '../materials/EditBoxForm'
+import { BoxWindow } from '../materials/BoxTabs'
 import { editBoxTitle } from '../../lib/materials/editBox'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
@@ -203,6 +205,10 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-site" idempotent />
+        {/* A read that failed is not an empty site (v2.7175): which job is on which site, and each job's own boxes. */}
+        <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITE_NOT_LOADED_WORDS, SITE_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-site-jobs" offlineMessage={SITE_NOT_LOADED_WORDS} idempotent />
+        <OnSiteJobsNotLoaded jobIds={siteJobs.map((j) => j.id)} surface="materials-site-job" />
+        {sites.failed && siteJobs.length === 0 ? null : (
         <SiteMaterialsView
           site={{ id: siteId, name: sites.siteNames.get(siteId) ?? 'This site' }}
           jobs={siteJobs}
@@ -215,13 +221,19 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />
+        )}
       </div>
     )
   }
 
   if (!jobId) {
-    const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now) }))
-    rows.sort((a, b) => b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
+    // A job whose own read failed keeps its reason (v2.7175): its row says so in place of figures, which would read as a job with nothing on site.
+    const rows = withData.map((id) => {
+      const st = jobLoadState(id)
+      // A lost signal reads the read's own sentence; the store's says *nothing was saved*, which is a write's.
+      return { id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummaryFor(id, now), failed: st.error ? (errorKindOf(st.raw) === 'network' ? OFFLINE_READ_MESSAGE : st.error) : null }
+    })
+    rows.sort((a, b) => Number(Boolean(b.failed)) - Number(Boolean(a.failed)) || b.sum.missingMoneyWeek - a.sum.missingMoneyWeek || b.sum.stale.length - a.sum.stale.length)
     const groups = groupDeskBySite(rows.map((r) => r.id), sites.siteOfJob, sites.siteNames)
     const anySite = groups.some((g) => g.kind === 'site')
     const rowOf = (id: string) => rows.find((r) => r.id === id)!
@@ -234,6 +246,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           <span style={muted}>{rows.length} {rows.length === 1 ? 'job' : 'jobs'} with containers · what is on every site, what went missing this week, which containers have not been counted in {STALE_COUNT_DAYS} days</span>
         </div>
         <OfflineRetryPanel failure={desk.error ? recoveryFailureFromError(desk.raw, 'The materials desk did not load.') : null} onRetry={desk.retry} surface="materials-desk" idempotent />
+        <OfflineRetryPanel failure={sites.failed ? recoveryFailureFromError(sites.failed, SITES_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS) : null} onRetry={sites.retry} surface="materials-desk-sites" offlineMessage={SITES_NOT_LOADED_WORDS} idempotent />
         <div style={sec}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
@@ -241,7 +254,17 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
               {rows.length === 0 ? (
                 <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : groups.flatMap((g, gi) => {
-                const jobRow = (r: (typeof rows)[number], under: boolean) => (
+                const jobRow = (r: (typeof rows)[number], under: boolean) => r.failed ? (
+                  <tr key={r.id} data-job-not-loaded={r.id} style={{ background: 'var(--bg-amber-100)' }}>
+                    <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}), fontWeight: under ? 600 : 700 }}>{jobLabel(r.job, r.id)}</td>
+                    <td style={td} colSpan={cols - 1}>
+                      <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{deskRowNotLoadedWords(r.failed)}</span>
+                        <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }} onClick={() => void loadJob(r.id, { force: true })} aria-label={`Read ${jobLabel(r.job, r.id)} again`}>Read again</button>
+                      </span>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={r.id} style={r.sum.missingMoneyWeek > 0 ? { background: 'var(--bg-amber-100)' } : under ? { background: 'var(--bg-subtle)' } : undefined}>
                   <td style={{ ...td, ...(under ? { paddingLeft: '1.6rem' } : {}) }}><button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: under ? 600 : 700, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setJob(r.id)}>{jobLabel(r.job, r.id)}</button></td>
                   <td style={{ ...td, ...num }}>{r.sum.containers}{listPlaces(r.id).length > 1 ? <span style={muted}> · {listPlaces(r.id).length} places</span> : null}</td>
@@ -268,6 +291,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                 }
                 // A site (punch list #330): one row with its jobs' totals, opening the site's screen; its jobs sit under it.
                 const members = g.jobIds.map(rowOf)
+                const notLoaded = members.filter((r) => r.failed).length
                 const boxes = members.reduce((n, r) => n + r.sum.containers, 0)
                 const lines = members.reduce((n, r) => n + r.sum.onSiteLines, 0)
                 const missing = members.reduce((n, r) => n + r.sum.missingMoneyWeek, 0)
@@ -278,6 +302,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                     <td style={td}>
                       <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 800, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setSite(g.siteId)} title="Everything on this site on one screen, across its jobs">{g.name}</button>
                       <span style={muted}> · {members.length === 1 ? '1 job' : `${members.length} jobs`} · the whole site</span>
+                      {notLoaded > 0 ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · {deskJobsNotLoadedWords(notLoaded)}</span> : null}
                     </td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{boxes}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{lines}</td>
@@ -584,7 +609,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const due = c.kind !== 'unsorted' && countIsDue(last, now)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}><span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span><span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${c.kind}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead><tr><th style={{ ...th, minWidth: 150 }}>Part</th><th style={{ ...th, ...num }}>On hand</th><th style={th}>Last count</th><th style={{ ...th, width: 160 }}></th></tr></thead>
@@ -881,7 +906,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <EditBoxWindow container={box} containers={containers} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )
