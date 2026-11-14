@@ -37,7 +37,7 @@ const TABLE_ROWS: Record<string, unknown[]> = {
 vi.mock('../../lib/supabase', () => {
   function makeBuilder(rows: unknown[]): Record<string, unknown> {
     const builder: Record<string, unknown> = {}
-    for (const m of ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'is', 'in', 'order', 'range', 'limit']) {
+    for (const m of ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'is', 'in', 'or', 'order', 'range', 'limit']) {
       builder[m] = () => builder
     }
     builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
@@ -148,5 +148,21 @@ describe('PeopleSubsTab with nobody on the roster', () => {
     } finally {
       Object.assign(TABLE_ROWS, saved)
     }
+  })
+})
+
+describe('PeopleSubsTab: Roster | Ledger (v2.7231)', () => {
+  it('opens on the roster, and Ledger shows what was paid to each sub with the roster left out', async () => {
+    renderWithProviders(<PeopleSubsTab />)
+    expect(await screen.findByText(/aren't linked to anyone on the roster/)).toBeTruthy()
+    const group = screen.getByRole('group', { name: 'Subs view' })
+    expect([...group.querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['Roster', 'true'], ['Ledger', 'false']])
+    fireEvent.click(screen.getByRole('button', { name: 'Ledger' }))
+    expect(document.querySelector('[data-people-subs-ledger]')).toBeTruthy()
+    expect(screen.queryByText(/aren't linked to anyone on the roster/)).toBeNull()
+    // The ledger opens on By sub here: this page is about people.
+    expect((await screen.findByRole('button', { name: 'By sub' })).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Roster' }))
+    expect(document.querySelector('[data-people-subs-ledger]')).toBeNull()
   })
 })
