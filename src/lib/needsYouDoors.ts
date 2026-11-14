@@ -264,6 +264,8 @@ export function needsYouSecondaryDoor(item: Pick<NeedsYouItem, 'key'>, key: stri
     return action ? { kind: 'nudge', nudge: item.key, action } : null
   }
   if (item.key === 'lien-notice-draft' && key === 'missed') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'missed' }) }
+  // The late-notice line (v2.7273) opens the same Missed lens: the desk drafts the late notice from the closed month's row.
+  if (item.key === 'lien-notice-draft' && key === 'late-notice') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'missed' }) }
   // Letter two is sent from a notice's Sent row (v2.4561).
   if (item.key === 'lien-notice-draft' && key === 'letter-two') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'sent' }) }
   return null

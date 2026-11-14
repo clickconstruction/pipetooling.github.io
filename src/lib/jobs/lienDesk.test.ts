@@ -111,13 +111,21 @@ describe('buildLienDeskQueue', () => {
     expect(q.entries[0]).toMatchObject({ pile: 'to_draft', missedMonths: ['2026-06'], missedUnrecorded: ['2026-06'] })
     expect(q.piles.missed).toEqual([])
     expect(q.counts.missed).toBe(1)
-    expect(summarizeLienDeskForNeedsYou(q).missed).toEqual({ jobs: 1, months: 1, dollars: 9_800, lines: [{ jobId: 'j258', gcCustomerId: 'gc-1', months: ['2026-06'], openBalance: 9_800, label: '' }] })
+    expect(summarizeLienDeskForNeedsYou(q).missed).toEqual({
+      jobs: 1,
+      months: 1,
+      dollars: 9_800,
+      // v2.7273: the job's affidavit day (Jul's filing deadline, Oct 15) is ahead, so a late notice can still go.
+      lines: [{ jobId: 'j258', gcCustomerId: 'gc-1', months: ['2026-06'], openBalance: 9_800, label: '', affidavitDay: '2026-10-15', lateNotice: true }],
+      lateNotice: { jobs: 1, months: 1, dollars: 9_800, by: '2026-10-15' },
+      gone: { jobs: 0, months: 0, dollars: 0 },
+    })
     // Noted (a reason-less `missed` row naming the month): still missed, no longer silent — the live draft is untouched.
     const noted = item({ job_id: 'j258', status: 'missed', months: ['2026-06'], fields: { notice: {}, gcEmail: '', windowClosed: { name: 'Taunya', at: '2026-09-12T15:00:00Z' } } as never })
     const q2 = buildLienDeskQueue(rows, [noted], {}, TODAY)
     expect(q2.entries[0]).toMatchObject({ pile: 'to_draft', missedMonths: ['2026-06'], missedUnrecorded: [] })
     expect(q2.counts.missed).toBe(1)
-    expect(summarizeLienDeskForNeedsYou(q2).missed).toEqual({ jobs: 0, months: 0, dollars: 0, lines: [] })
+    expect(summarizeLienDeskForNeedsYou(q2).missed).toEqual({ jobs: 0, months: 0, dollars: 0, lines: [], lateNotice: { jobs: 0, months: 0, dollars: 0, by: null }, gone: { jobs: 0, months: 0, dollars: 0 } })
     // v2.5087: the leader's signatures still owed — the Ready pile's unsigned notices.
     expect(summarizeLienDeskForNeedsYou(q2).leader.toSign).toBe(q2.piles.ready.length)
   })
@@ -305,9 +313,45 @@ describe('summarizeLienDeskForNeedsYou', () => {
     const s = summarizeLienDeskForNeedsYou(buildLienDeskQueue(rows, items, {}, TODAY))
     expect(s.office).toMatchObject({ jobs: 2, months: 4, dollars: 37_350, needsOwner: 1, earliestDeadline: '2026-09-15', ready: 0 })
     // The next deadline (v2.3704): both jobs close Sep 15; names are the hook's.
-    expect(s.office.next).toEqual({ deadline: '2026-09-15', notices: 2, dollars: 37_350, gcIds: ['gc-1'], gcNames: [], toDraft: 1, needsOwner: 1 })
-    expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15', toSign: expect.any(Number) })
+    expect(s.office.next).toEqual({ deadline: '2026-09-15', notices: 2, dollars: 37_350, gcIds: ['gc-1'], gcNames: [], toDraft: 1, needsOwner: 1, affidavitBy: '2026-09-15' })
+    expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15', affidavitBy: '2026-09-15', toSign: expect.any(Number) })
     expect(s.held).toBe(0)
+  })
+
+  it('tells a closed window apart by the affidavit’s day (v2.7273, punch list #335, row 4): a late notice can still go while that day is ahead', () => {
+    // Today is Sep 14. Jun's window closed Aug 17; its affidavit (kind unset, the 15th of the 3rd month after) is Sep 15 — a day ahead.
+    // May's window closed Jul 15 and its affidavit day, Aug 17, has passed too: that lien is gone.
+    const rows = [
+      row({ job_id: 'jLate', work_month: '2026-06', deadline: '2026-08-17', open_balance: 4_000 }),
+      row({ job_id: 'jGone', work_month: '2026-05', deadline: '2026-07-15', open_balance: 9_000 }),
+      // The affidavit windows know the job worked later (its true last month), so their day wins over the entry's last month.
+      row({ job_id: 'jRpc', work_month: '2026-06', deadline: '2026-08-17', open_balance: 2_000 }),
+    ]
+    const q = buildLienDeskQueue(rows, [], {}, TODAY, undefined, { jRpc: '2026-10-15' })
+    const by = Object.fromEntries(q.entries.map((e) => [e.jobId, [e.affidavitDay, e.affidavitDaysLeft]]))
+    expect(by).toEqual({ jLate: ['2026-09-15', 1], jGone: ['2026-08-17', -28], jRpc: ['2026-10-15', 31] })
+    const m = summarizeLienDeskForNeedsYou(q).missed
+    expect(m).toMatchObject({ jobs: 3, months: 3, dollars: 15_000 })
+    expect(m.lines.map((l) => [l.jobId, l.lateNotice])).toEqual([['jGone', false], ['jLate', true], ['jRpc', true]])
+    expect(m.lateNotice).toEqual({ jobs: 2, months: 2, dollars: 6_000, by: '2026-09-15' })
+    expect(m.gone).toEqual({ jobs: 1, months: 1, dollars: 9_000 })
+    // The desk's own Missed pile and count are what they were: every closed window, told apart or not.
+    expect(q.counts.missed).toBe(3)
+    expect(q.piles.missed.map((e) => e.jobId).sort()).toEqual(['jGone', 'jLate', 'jRpc'])
+    // Without the affidavit windows every entry takes its last month's filing deadline.
+    expect(buildLienDeskQueue(rows, [], {}, TODAY).entries.find((e) => e.jobId === 'jRpc')).toMatchObject({ affidavitDay: '2026-09-15', affidavitDaysLeft: 1 })
+  })
+
+  it('the office’s next deadline carries the earliest affidavit day of its jobs (v2.7273), for the money card’s closed window', () => {
+    // A draft naming a closed month keeps the job on To draft with its deadline past; the card then asks whether the affidavit can still be filed.
+    const rows = [row({ job_id: 'jDraft', work_month: '2026-06', deadline: '2026-08-17', open_balance: 5_000 }), row({ job_id: 'jDraft', work_month: '2026-07', deadline: '2026-09-15', open_balance: 5_000 })]
+    const draft = item({ job_id: 'jDraft', status: 'drafted', months: ['2026-06'] })
+    const q = buildLienDeskQueue(rows, [draft], {}, TODAY, undefined, { jDraft: '2026-10-15' })
+    expect(q.entries[0]).toMatchObject({ pile: 'to_draft', earliestDeadline: '2026-08-17', affidavitDay: '2026-10-15' })
+    expect(summarizeLienDeskForNeedsYou(q).office.next).toMatchObject({ deadline: '2026-08-17', notices: 1, affidavitBy: '2026-10-15' })
+    // The leader's pile carries the same day for its earliest window (job 891 on 2026-11-14, awaiting approval a month past its window).
+    const awaiting = buildLienDeskQueue(rows, [{ ...draft, status: 'awaiting_approval' }], {}, TODAY, undefined, { jDraft: '2026-10-15' })
+    expect(summarizeLienDeskForNeedsYou(awaiting).leader).toMatchObject({ jobs: 1, earliestDeadline: '2026-08-17', affidavitBy: '2026-10-15' })
   })
 })
 

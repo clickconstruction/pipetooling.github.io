@@ -13,6 +13,8 @@ function entry(over: Partial<LienDeskEntry> & { jobId: string; gcCustomerId: str
     dueMonths: ['2026-07'],
     missedMonths: [],
     missedUnrecorded: [],
+    affidavitDay: null,
+    affidavitDaysLeft: null,
     earliestDeadline: '2026-10-15',
     daysLeft: 20,
     severity: 'amber',

@@ -906,7 +906,17 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     const two = o.letterTwo && o.letterTwo.due > 0 ? o.letterTwo : null
     const twoLine = two ? `${two.due} sent ${two.due === 1 ? 'notice' : 'notices'} at day 10+ — the attorney’s letter${two.overdue ? ` (${two.overdue} past day 14)` : ''} ›` : null
     const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-    const missedLine = m.jobs > 0 ? `${m.months} ${m.months === 1 ? 'window' : 'windows'} closed with nothing recorded · ${usd(m.dollars)} · note ${m.months === 1 ? 'it' : 'them'} ›` : null
+    // The closed windows told apart (v2.7273, punch list #335, row 4): a job whose affidavit can still be filed reads *send the
+    // late notice by <day>* — the clock's own words (`lienPayRunway`'s `late_notice`) — and is not called gone; only a job whose
+    // affidavit day has passed too keeps the gone words. Both lines open the desk's Missed lens, where the late notice is drafted.
+    const late = m.lateNotice
+    const gone = m.gone
+    const lateDay = late.by ? formatYmdMonthDay(late.by) : null
+    const lateSoon = late.by ? daysUntilYmd(late.by) : null
+    const lateWhen = lateSoon == null ? '' : lateSoon <= 0 ? 'today' : lateSoon === 1 ? 'tomorrow' : `in ${lateSoon} days`
+    const lateLine = late.jobs > 0 && lateDay ? `${late.months} ${late.months === 1 ? 'window' : 'windows'} closed with nothing sent · ${usd(late.dollars)} · send the late notice by ${lateDay} ›` : null
+    const missedLine = gone.jobs > 0 ? `${gone.months} ${gone.months === 1 ? 'window' : 'windows'} closed with nothing recorded · ${usd(gone.dollars)} · note ${gone.months === 1 ? 'it' : 'them'} ›` : null
+    const closedLines = [...(lateLine ? [{ key: 'late-notice', label: lateLine }] : []), ...(missedLine ? [{ key: 'missed', label: missedLine }] : [])]
     const next = o.next
     if (next.deadline && next.notices > 0) {
       const soon = daysUntilYmd(next.deadline)
@@ -924,7 +934,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         detail: `${next.notices} ${next.notices === 1 ? 'notice' : 'notices'} to ${names.length === 1 ? '' : `${names.length} GCs — `}${gcWords}.${standing ? ` ${standing}.` : ''}${o.ready > 0 ? ` ${o.ready} approved and waiting to go out.` : ''}${urgent ? ` Mail by ${day} or the lien right on that work is gone.` : ''}`,
         figure: usd(next.dollars),
         actionLabel: 'Open the Lien desk',
-        ...(missedLine || twoLine ? { secondary: [...(twoLine ? [{ key: 'letter-two', label: twoLine }] : []), ...(missedLine ? [{ key: 'missed', label: missedLine }] : [])] } : {}),
+        ...(closedLines.length || twoLine ? { secondary: [...(twoLine ? [{ key: 'letter-two', label: twoLine }] : []), ...closedLines] } : {}),
       })
     } else if (two) {
       items.push({
@@ -935,7 +945,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         detail: `${two.due === 1 ? 'A notice' : `${two.due} notices`} went out 10 or more days ago and the GC has neither paid nor authorized the owner to pay us${two.overdue ? ` — ${two.overdue} past day 14` : ''}. Counsel's second letter (the paid-out or the unresponsive one) goes from the desk's Sent pile.`,
         figure: String(two.due),
         actionLabel: 'Open the Lien desk',
-        ...(missedLine ? { secondary: [{ key: 'missed', label: missedLine }] } : {}),
+        ...(closedLines.length ? { secondary: closedLines } : {}),
+      })
+    } else if (late.jobs > 0 && lateDay) {
+      // A late notice can still go (v2.7273): the card leads with the affidavit's day, amber, red inside a week as the clock is,
+      // and any window closed for good follows as a second sentence.
+      const goneWords = gone.jobs > 0 ? ` ${gone.months} more ${gone.months === 1 ? 'window' : 'windows'} closed for good: ${usd(gone.dollars)} on ${gone.jobs === 1 ? 'one job' : `${gone.jobs} jobs`}, and the lien right on that work is gone. Note ${gone.months === 1 ? 'it' : 'them'} on the desk so the record says who saw ${gone.months === 1 ? 'it' : 'them'}.` : ''
+      items.push({
+        key: 'lien-window-missed',
+        severity: lateSoon != null && lateSoon <= 7 ? 'red' : 'amber',
+        kicker: 'Lien deadlines',
+        title: `Send ${late.months === 1 ? 'the late lien notice' : `${late.months} late lien notices`} by ${lateDay}${lateWhen ? ` · ${lateWhen}` : ''}`,
+        detail: `${usd(late.dollars)} still owed on ${late.jobs === 1 ? 'one job' : `${late.jobs} jobs`} whose notice ${late.months === 1 ? 'window' : 'windows'} closed with nothing sent. A late notice still carries the lien until ${lateDay}, the affidavit's last day. Draft it from the desk's Missed pile.${goneWords}`,
+        figure: usd(m.dollars),
+        actionLabel: 'Open the Missed pile',
       })
     } else if (m.jobs > 0) {
       items.push({
