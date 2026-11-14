@@ -125,6 +125,8 @@ Some invoices print one figure on a line. The app does not guess whether that is
 
 An invoice that already landed on this job is named above the button. Press the button and a window asks before the lines land a second time.
 
+A line the app cannot save stays on the table with its reason under it. The lines that landed leave the table. Fix the line or leave it out, then press the button again. It sends only the lines still on the table, so no line lands twice.
+
 ## Print a label
 
 Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. On the Materials page, press **Print labels** at the right end of the tabs and pick the job. A job's row there has **Labels** too. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.

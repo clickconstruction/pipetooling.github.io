@@ -306,14 +306,35 @@ describe('a delivery off an invoice is one press (v2.7250)', () => {
     expect(tables.job_material_movements).toHaveLength(3)
   })
 
-  it('a refusal is answered as one, said once with its reason, and taken back off the screen', async () => {
+  it('a refusal is answered line by line with its reason, left to the panel to say, and taken back off the screen', async () => {
     const b = await bench()
-    nextInsert.push({ lands: false, answer: { data: null, error: { code: '42501', message: 'new row violates row-level security policy for table "job_material_movements"' }, status: 403 } })
+    const no = { data: null, error: { code: '42501', message: 'new row violates row-level security policy for table "job_material_movements"' }, status: 403 }
+    nextInsert.push({ lands: false, answer: no }, { lands: false, answer: no }, { lands: false, answer: no })
     const outcome = await b.store.addDelivery(delivery)
     expect(outcome.kind).toBe('refused')
+    expect(outcome.kind === 'refused' && outcome.rows).toMatchObject({ landed: [], refused: [{ code: '42501' }, { code: '42501' }, { code: '42501' }] })
     await settle()
-    expect(b.said).toHaveLength(1)
-    expect(b.said[0]!.message).toMatch(/^3 lines from INV-ZZ1 did not save: /)
+    // The panel has the lines' names and says it (v2.7267); the store's one toast was for a press refused whole.
+    expect(b.said).toEqual([])
     expect(b.store.listMovements('j1')).toEqual([])
+    expect(tables.job_material_movements ?? []).toEqual([])
+  })
+
+  it('refused part way, the lines before and after still land, and the same press again lands every line once (v2.7267)', async () => {
+    const b = await bench()
+    const withIds = { ...delivery, lines: lines.map((l, i) => ({ ...l, id: `d${i + 1}` })) }
+    nextInsert.push({ lands: true, answer: { data: null, error: null, status: 201 } }, { lands: false, answer: { data: null, error: { code: '23514', message: 'new row violates check constraint "job_material_movements_quantity_check"' }, status: 400 } })
+    const first = await b.store.addDelivery(withIds)
+    expect(first).toEqual({ kind: 'refused', message: '2 of 3 landed. 1 was refused: new row violates check constraint "job_material_movements_quantity_check"', rows: { landed: ['d1', 'd3'], refused: [{ id: 'd2', message: 'new row violates check constraint "job_material_movements_quantity_check"', code: '23514' }] } })
+    await settle()
+    expect(tables.job_material_movements!.map((r) => r.id)).toEqual(['d1', 'd3'])
+    // Read again after the refusal: the landed lines are the office's, the refused one is gone from the screen.
+    expect(b.store.listMovements('j1').map((m) => m.id).sort()).toEqual(['d1', 'd3'])
+    expect(b.said).toEqual([])
+    // The same lines again, under the same ids: the two that landed meet their own rows, the third lands.
+    expect(await b.store.addDelivery(withIds)).toEqual({ kind: 'landed' })
+    await settle()
+    expect(tables.job_material_movements!.map((r) => r.id)).toEqual(['d1', 'd3', 'd2'])
+    expect(inserts.filter((i) => i.startsWith('job_material_movements'))).toHaveLength(6)
   })
 })
