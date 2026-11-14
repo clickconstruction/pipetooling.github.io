@@ -50,7 +50,7 @@ describe('the desks’ legends', () => {
   it('the job window shows the icons on a desk and the bar on a phone', () => {
     expect(legendRowsFor(JOB_WINDOW_LEGEND, false).map((r) => r.key)).toEqual(['job', 'edit', 'bill', 'costs', 'history', 'documents', 'icons'])
     expect(legendRowsFor(JOB_WINDOW_LEGEND, true).map((r) => r.key)).toEqual(['job', 'edit', 'bill', 'costs', 'history', 'documents', 'bar'])
-    expect(legendRowsFor(LIEN_DESK_LEGEND, true)).toHaveLength(7)
+    expect(legendRowsFor(LIEN_DESK_LEGEND, true)).toHaveLength(8)
   })
 
   it('the door names the legend as its door, the press row names the desk, and the pressed key the person', () => {

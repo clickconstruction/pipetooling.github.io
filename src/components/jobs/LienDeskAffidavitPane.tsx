@@ -212,7 +212,7 @@ export default function LienDeskAffidavitPane({
   )
 
   // A stop's paper (v2.4793): what the window shows for each stop, from the affidavit's side — this pane's own affidavit,
-  // the retainage notice as its pane prints it, a filing's snapshot once it went out; the notice is read on Notices.
+  // the retainage notice as its pane prints it, a filing's snapshot once it went out; the notice is read on Monthly notices.
   const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
     const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
     const filings = (data.filingsByJob[entry.jobId] ?? []).filter((f) => !f.voided_at)
@@ -229,7 +229,7 @@ export default function LienDeskAffidavitPane({
       const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
       if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`, { envelope })
       if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
-      return { ...none, envelope, act: { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Notices, where its pages are.' }
+      return { ...none, envelope, act: { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Monthly notices, where its pages are.' }
     }
     if (kind === 'retainage') {
       const sent = filings.find((f) => f.kind === 'retainage_53_057')
@@ -429,7 +429,7 @@ export default function LienDeskAffidavitPane({
               if ((step.kind !== 'affidavit' && step.kind !== 'serve') || step.state === 'done' || step.state === 'missed') return null
               const gate = entry.gates.find((g) => !g.ok) ?? null
               if (!gate) return null
-              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : onFixProperty && gate.key === 'homestead_answer' ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, 'homestead_answer') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
+              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : onFixProperty && gate.key === 'homestead_answer' ? { label: HOMESTEAD_QUESTION_DOOR, onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, 'homestead_answer') } } : gate.key === 'notice' ? { label: 'Open it on Monthly notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : gate.key === 'contractor' && contractorDoor ? { label: 'Add the address ›', onPress: () => { setStopOpen(null); contractorDoor() } } : null
               return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
             }}
           />

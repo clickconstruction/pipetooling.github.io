@@ -237,7 +237,7 @@ export type LienDeskProps = {
   onOpenLegalDesk?: () => void
   /** Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask. Absent when the board has no legal matters. */
   legalSignoff?: { stateFor: (jobId: string) => LegalSignoffState | null; ask: (jobId: string, text: string) => Promise<string | null> } | null
-  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753), the Timeline tab (v2.3768) or the Calendar (v2.4101). */
+  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753), the By job tab (v2.3768) or the Calendar (v2.4101). */
   initialKind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
   /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while it reads its billed jobs and their clocks. */
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
@@ -269,7 +269,7 @@ export type LienDeskProps = {
   onShowList?: () => void
   /** The page's way back, drawn before the title. */
   backDoor?: ReactNode
-  /** The page's address follows the desk: the view, and on Notices the open notice and the pile (never from an empty desk). */
+  /** The page's address follows the desk: the view, and on Monthly notices the open notice and the pile (never from an empty desk). */
   onAddressChange?: (address: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => void
   /** A phone: the row whose job is open as its own screen (punch list #352, PR 4). The page keeps it in the history entry, so the phone's Back closes the screen; without the two handlers the desk keeps it itself. */
   openRowKey?: string | null
@@ -506,7 +506,7 @@ export default function LienDesk({
   const [shareOpen, setShareOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
   const [kind, setKind] = useState<'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
-  // The tab row scrolls sideways on a phone (v2.4311); its cut end fades and the picked tab is scrolled into view (v2.4441) — a door can open the desk on Timeline, the last tab.
+  // The tab row scrolls sideways on a phone (v2.4311); its cut end fades and the picked tab is scrolled into view (v2.4441) — a door can open the desk on By job, the last tab.
   const kindTabs = useScrollEdgeFade<HTMLDivElement>()
   const kindShownRef = useRef('')
   // Every render, but it acts only when the picked tab or the row's width changed (a count loading widens a label), so it never fights a hand on the row.
@@ -523,7 +523,7 @@ export default function LienDesk({
     if (picked && typeof picked.scrollIntoView === 'function') picked.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     kindTabs.onScroll()
   })
-  // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
+  // The By job tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
   // The address is the truth (punch list #182): a view word changed from outside (Back, a pasted link) moves the desk, and
   // the desk's own press writes the same word back, so this never fights it.
@@ -545,11 +545,12 @@ export default function LienDesk({
       if (initialKind === 'affidavit') setAffSelectedJobId(initialJobId)
     }
   }, [initialJobId, initialKind, aimKey])
-  // By paper (punch list #82, PR 5; All paper until v2.4630, All filings until v2.7207): the four lists share one view; it reopens on the list last looked at.
-  const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
-  const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
+  // By paper (punch list #82, PR 5; All paper until v2.4630, All filings until v2.7207): the three papers share one view; it reopens on the list last looked at.
+  // Four lists until v2.7219, when the job-by-job book left the row for a view of its own, By job: it is every job's path, not a kind of paper.
+  const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage'
+  const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage'>('notice')
   useEffect(() => {
-    if (kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline') setLastPaperKind(kind)
+    if (kind === 'notice' || kind === 'affidavit' || kind === 'retainage') setLastPaperKind(kind)
   }, [kind])
   const [bookGcId, setBookGcId] = useState<string | null>(null)
   const [bookShow, setBookShow] = useState<LienBookShow>('due')
@@ -615,7 +616,7 @@ export default function LienDesk({
   }, [kind, selectedJobId, affSelectedJobId, retSelectedJobId, mobileListShown])
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
-  // a loop the Affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
+  // a loop the Lien affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
@@ -729,7 +730,7 @@ export default function LienDesk({
 
   const selected = visible.find((e) => e.jobId === selectedJobId) ?? entries.find((e) => e.jobId === selectedJobId) ?? null
   useEffect(() => setStopOpen(null), [selectedJobId])
-  // The page's address (punch list #182): the view, and on Notices the open notice and the pile. The notice a door named
+  // The page's address (punch list #182): the view, and on Monthly notices the open notice and the pile. The notice a door named
   // counts before the selection catches up to it, so a pasted `&job=` is never dropped on the way in; the callback is read
   // through a ref so a changed callback alone never rewrites the address.
   const onAddressChangeRef = useRef(onAddressChange)
@@ -2222,7 +2223,7 @@ export default function LienDesk({
         return asSent(filed, words, { envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}` : null })
       }
       const pages = affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYmd }) ?? []
-      return { pages, envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing` : null, before: [], record: null, act: pages.length ? go('affidavit', 'Open it on Affidavits ›') : null, note: pages.length ? (kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope.' : null) : 'The affidavit window has not opened on this job yet.' }
+      return { pages, envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing` : null, before: [], record: null, act: pages.length ? go('affidavit', 'Open it on Lien affidavits ›') : null, note: pages.length ? (kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope.' : null) : 'The affidavit window has not opened on this job yet.' }
     }
     if (kind === 'release') {
       const filed = filings.find((f) => f.kind === 'release_of_record' && !f.voided_at)
@@ -3757,7 +3758,7 @@ export default function LienDesk({
   }
 
   // The tools (v2.6569): § Rules, ☎, ? and Share, with the owner-records door before them. On a computer they end the title line
-  // in a window of 1,500 px or more (v2.7213) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
+  // in a window of 1,540 px or more (v2.7213; 1,500 until By job widened the views, v2.7219) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
   // put them at the right; until v2.6569 they sat on the title line and fell under it when the window was narrower than about
   // 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places. Share (v2.4311) is the last of them.
   const headerTools = (
@@ -3835,13 +3836,13 @@ export default function LienDesk({
             </button>
           ) : null}
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
-          {/* Three views (punch list #82, PR 5): To do, By date, By paper (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the four lists that were tabs of their own, as a second row. */}
+          {/* Four views: To do, By date, By paper, By job. The first three are punch list #82, PR 5 (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the three papers' lists as a second row. By job is the list that was Timeline in that row until v2.7219, the owner's pick of 2026-11-13: it is every job's path, not a kind of paper. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
-            {(['next', 'calendar', 'paper'] as const).map((v) => {
+            {(['next', 'calendar', 'paper', 'timeline'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
               return (
-                <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
-                  {v === 'next' ? `To do${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'By date' : 'By paper'}
+                <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={v === 'paper' ? 'Every monthly notice, lien affidavit and retainage notice by its state' : v === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                  {v === 'next' ? `To do${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'By date' : v === 'paper' ? 'By paper' : 'By job'}
                 </button>
               )
             })}
@@ -3868,16 +3869,16 @@ export default function LienDesk({
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer narrower than 1,500 px (v2.6569); on a phone, and on a wider computer (v2.7213), it comes only with the paper tabs. */}
+          {/* The second line is the tool row on a computer narrower than 1,540 px (v2.6569); on a phone, and on a wider computer (v2.7213), it comes only with the paper tabs. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {/* With the tools up on the title line (v2.7213) the paper tabs are the tallest thing some kinds have here: 2px above and below keeps this line as tall as it is with the GC door, so the bar does not move between Notices and Affidavits. */}
           {paperShown ? (
             <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), ...(titleBar.tools === 'title_line' ? { marginBlock: 2 } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden' }}>
-              {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                  {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
+              {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
+                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'notice' ? 'The § 53.056 notice — one for every unpaid month of work on a job with a GC' : k === 'affidavit' ? 'The § 53.052 affidavit, which is the lien itself — one per job' : 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends'}>
+                  {k === 'notice' ? `Monthly notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Lien affidavits${data ? ` · ${affCount}` : ''}` : `Retainage notices${data ? ` · ${retCount}` : ''}`}
                 </button>
               ))}
             </div>
