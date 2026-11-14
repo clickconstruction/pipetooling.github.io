@@ -1,8 +1,8 @@
 ---
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
-group: gated
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added: what sending it further could look like, where in the app to offer it, and a magnifying glass for drawing by hand · nothing built · waits on the owner's calls
+group: close
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped, step 5 (a task's place carries the map) and *Text it…* not built · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,10 +14,10 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: The owner reads the mock-up and answers the thirteen calls. A yes to call 3 starts the one-day try on his own phones.
+next: The owner's try on a real phone: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it. Then his word on step 5 and on *Text it…*.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
-blocker: The owner's calls, first of all whether walking with the screen on is good enough to build.
-opinion: build the one-day try, then PRs 1 to 4, then count. Strong for the way in and what is where, weak for measuring.
+blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
+opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
 mockup: to-dos/paint-a-map/mockup.html
 ---
 
@@ -34,7 +34,37 @@ The owner, 2026-11-13:
 > you can confirm or stop or restart the line later. What are your thoughts on this?
 
 He asked for thoughts. This card is the thinking, the plan and the calls, and
-[mockup.html](mockup.html) is the picture. Nothing is built.
+[mockup.html](mockup.html) is the picture.
+
+## What is built
+
+2026-11-14: the owner said *Build it all* and that he would test it once it was live. Every call
+below was taken at the card's pick. The guide is `/help/paint-a-map`.
+
+| Step | PR | Version | What went in |
+|---|---|---|---|
+| 1 and 2 | #8029, #8043 | v2.7202, v2.7211 | The three tables, drawing by hand with the magnifying glass, places with a photo, the line under the address |
+| 3 | #8047 | v2.7220 | Walk or drive it, on a tech's own job card and on *On my way* |
+| 4 | #8052 | v2.7223 | The link, the page at `/way/<code>`, *Show where I am*, a code to scan, *End this link now* |
+| 4b | #8053 | v2.7225 | A picture and a page to print, which files itself on the job as a sent copy |
+| 5b | #8054 | v2.7226 | A `.kml` and a `.gpx` file |
+| 6 | #8056, #8057 | v2.7227, v2.7228 | The search door, a map on no job with *Put it on a job…*, and the layer on the Map page and the site map |
+
+Both migrations are pushed and `painted-map-link` is deployed, each on the owner's yes. Each
+version's fragment says what changed from this card and why.
+
+Not built, each on purpose:
+
+- **Step 0, the one-day try.** Skipped, since he asked for all of it and said he would test it
+  live. His first real walk stands in for it.
+- **Step 5, a task's place carries the map.** It needs a migration and is after the count.
+- ***Text it…* from the company's number.** The link is copied, shared by the phone's own sheet or
+  scanned. Texting it from the app waits on his word.
+- ***File it on the job* as a press.** A print files itself, so the press had nothing left to do.
+
+Not tried anywhere: a real phone. The walk, the screen held on, the pause on lock and the share
+sheet were walked in a headless browser with a made-up location. A real print and a `.kml` opened
+in another app are untried too.
 
 ## My thoughts, in short
 
