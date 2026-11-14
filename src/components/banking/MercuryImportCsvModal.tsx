@@ -173,7 +173,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
           }}
           onClick={() => inputRef.current?.click()}
           style={{
-            border: `2px dashed ${dragOver ? '#2563eb' : '#cbd5e1'}`,
+            border: `2px dashed ${dragOver ? '#2563eb' : 'var(--border-strong)'}`,
             borderRadius: 8,
             padding: '1rem',
             textAlign: 'center',

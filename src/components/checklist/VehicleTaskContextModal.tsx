@@ -102,7 +102,7 @@ export default function VehicleTaskContextModal({
 
   const todayYmd = todayYmdInAppTz()
   const factBox = (k: string, v: string, m: string, warn = false) => (
-    <div style={{ border: `1px solid ${warn ? '#fde68a' : 'var(--border)'}`, background: warn ? 'var(--bg-amber-tint)' : undefined, borderRadius: 8, padding: '0.4rem 0.6rem' }}>
+    <div style={{ border: `1px solid ${warn ? 'var(--border-amber-soft)' : 'var(--border)'}`, background: warn ? 'var(--bg-amber-tint)' : undefined, borderRadius: 8, padding: '0.4rem 0.6rem' }}>
       <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</div>
       <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: 1, color: warn ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>{v}</div>
       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m}</div>

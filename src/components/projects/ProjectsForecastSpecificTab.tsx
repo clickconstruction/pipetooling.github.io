@@ -2144,7 +2144,7 @@ function StageGutterLabel({
             height: 18,
             borderRadius: '50%',
             background: 'var(--surface)',
-            border: `1px solid ${insertButtonDisabled ? '#cbd5e1' : '#2563eb'}`,
+            border: `1px solid ${insertButtonDisabled ? 'var(--border-strong)' : '#2563eb'}`,
             color: insertButtonDisabled ? 'var(--text-slate-400)' : 'var(--text-link)',
             fontSize: '0.875rem',
             fontWeight: 700,

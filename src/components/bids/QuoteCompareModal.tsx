@@ -607,7 +607,7 @@ export function QuoteCompareModal({
             })()}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {houseCols.map((h) => (
-                <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : '#bbf7d0'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : 'var(--text-green-700)', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : 'var(--border-green)'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : 'var(--text-green-700)', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
                   {h.houseName} · {h.quotedLines} of {h.totalLines} lines{h.expired ? ' · expired' : ''}
                   {h.commonLinesTotalCents != null ? ` · ${money(h.commonLinesTotalCents)}${comparison.commonLineCount > 0 ? ` on ${comparison.commonLineCount} common` : ''}` : ''}
                   {h.freightCents != null && h.freightCents > 0 ? ` + ${money(h.freightCents)} freight${h.commonWithFreightCents != null ? ` = ${money(h.commonWithFreightCents)}` : ''}` : ''}
