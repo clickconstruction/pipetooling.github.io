@@ -2,9 +2,11 @@
  * The Lien grid's rows, stripped (punch list #85, item 2): a whole table row in,
  * dates and dollars out — and the client's grid still assembles from what is left.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from './legalLienBookShape'
-import { assembleLienBookInput, parseLienBookRaw } from '../jobs/lienTimelineBookAssemble'
+import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_JOB_COLUMNS_SENT, shapeLienBookForCounsel } from './legalLienBookShape'
+import { assembleLienBookInput, LIEN_BOOK_JOB_COLUMNS, parseLienBookRaw } from '../jobs/lienTimelineBookAssemble'
 
 const deskItem = {
   id: 'it1', job_id: 'j1', kind: 'notice', status: 'held', months: ['2026-05'], sent_at: null, sent_filing_id: null, hold_until: '2026-10-20', created_at: '2026-09-01T00:00:00Z', voided_at: null,
@@ -104,5 +106,75 @@ describe('shapeLienBookForCounsel · ZZ test jobs (punch list #61, v2.5124)', ()
     const flat = JSON.stringify(shaped)
     expect(flat).not.toContain('customer_name')
     expect(flat).not.toMatch(/zz/i)
+  })
+})
+
+describe('shapeLienBookForCounsel · a job paid in kind (the owner’s rule of 2026-11-14)', () => {
+  const job = (id: string, gcId: string, addressId: string, deal: string | null) => ({
+    id, hcp_number: id, click_number: null, job_name: `${id} Hill Street`, customer_name: 'Ann Lee', job_address: '', gc_customer_id: gcId, customer_address_id: addressId,
+    revenue: 1000, payments_made: 0, last_work_date: '2026-08-01', lien_payment_bond: null, lien_contract_ended_on: null, in_kind_arrangement_id: deal,
+  })
+  const month = (jobId: string) => ({ job_id: jobId, work_month: '2026-08', deadline: '2026-10-15', open_balance: 1000 })
+  const forJob = (jobId: string) => ({ ...deskItem, id: `it-${jobId}`, job_id: jobId })
+  // j1 is on no deal. j2 is on an open deal and shares j1's GC and property. j3 is on the deal with a GC and a property of its own.
+  const book = (deal: string | null) =>
+    shapeLienBookForCounsel({
+      rows: ['j1', 'j2', 'j3'].map(month),
+      affidavitRows: ['j1', 'j2'].map(month),
+      items: ['j1', 'j2', 'j3'].map(forJob),
+      filings: [filing, { ...filing, id: 'f2', job_id: 'j2' }],
+      jobs: [job('j1', 'g1', 'a1', null), job('j2', 'g1', 'a1', deal), job('j3', 'g2', 'a2', deal)],
+      gcs: [gc, { ...gc, id: 'g2', name: 'Second Contracting' }],
+      addresses: ['a1', 'a2'].map((id) => ({ ...address, id })),
+      owners: ['j1', 'j2', 'j3'].map((id) => ({ ...owner, job_id: id })),
+    })
+  const jobIds = (list: unknown[]) => list.map((r) => (r as { job_id: string }).job_id)
+  const ids = (list: unknown[]) => list.map((r) => (r as { id: string }).id)
+
+  it('drops a job on an open deal from every list, as the office’s By job book does', () => {
+    const shaped = book('deal-1')
+    expect(ids(shaped.jobs)).toEqual(['j1'])
+    expect(jobIds(shaped.rows)).toEqual(['j1'])
+    expect(jobIds(shaped.affidavitRows)).toEqual(['j1'])
+    expect(jobIds(shaped.items)).toEqual(['j1'])
+    expect(jobIds(shaped.filings)).toEqual(['j1'])
+    expect(jobIds(shaped.owners)).toEqual(['j1'])
+  })
+
+  it('drops a GC and a property only such jobs point at, and keeps the ones a job on the book shares', () => {
+    const shaped = book('deal-1')
+    expect(ids(shaped.gcs)).toEqual(['g1'])
+    expect(ids(shaped.addresses)).toEqual(['a1'])
+  })
+
+  it('brings the job back when the deal ends and its link is cleared', () => {
+    const shaped = book(null)
+    expect(ids(shaped.jobs)).toEqual(['j1', 'j2', 'j3'])
+    expect(jobIds(shaped.rows)).toEqual(['j1', 'j2', 'j3'])
+    expect(jobIds(shaped.affidavitRows)).toEqual(['j1', 'j2'])
+    expect(jobIds(shaped.items)).toEqual(['j1', 'j2', 'j3'])
+    expect(jobIds(shaped.filings)).toEqual(['j1', 'j2'])
+    expect(ids(shaped.gcs)).toEqual(['g1', 'g2'])
+    expect(ids(shaped.addresses)).toEqual(['a1', 'a2'])
+  })
+
+  it('sends the firm no link to a deal, with the link set or cleared', () => {
+    for (const deal of ['deal-1', null]) {
+      const flat = JSON.stringify(book(deal))
+      expect(flat).not.toContain('in_kind_arrangement_id')
+      expect(flat).not.toContain('deal-1')
+      expect(flat).not.toContain('customer_name')
+    }
+  })
+
+  it('reads the jobs with the app’s own columns, the deal’s link among them', () => {
+    expect(LIEN_BOOK_COUNSEL_SELECT.jobs).toBe(LIEN_BOOK_JOB_COLUMNS)
+    expect(LIEN_BOOK_COUNSEL_SELECT.jobs.split(', ')).toEqual([...LIEN_BOOK_JOB_COLUMNS_SENT, 'customer_name', 'in_kind_arrangement_id'])
+    expect(Object.keys((book(null).jobs as Record<string, unknown>[])[0] ?? {})).toEqual([...LIEN_BOOK_JOB_COLUMNS_SENT])
+  })
+
+  it('is the select the function runs: no column list of its own, so the link cannot be forgotten', () => {
+    const source = readFileSync(resolve(__dirname, '../../../supabase/functions/legal-portal/index.ts'), 'utf8')
+    expect(source).toContain(".from('jobs_ledger').select(LIEN_BOOK_COUNSEL_SELECT.jobs).in('id', jobIds)")
   })
 })

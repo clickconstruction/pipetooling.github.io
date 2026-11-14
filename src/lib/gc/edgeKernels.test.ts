@@ -157,6 +157,8 @@ describe('what the index does not carry', () => {
     'lib/jobs/zzTestJobReads.ts',
     'lib/bridge/weeklySend.ts',
   ]
+  /** The firm's lien grid: legal-portal reads the Lien desk's paid-in-kind rule by path, through `_shared/legalLienBookShape.ts`. */
+  const FIRM_BOOK_ENTRIES = ['lib/jobs/lienInKind.ts']
 
   it('reaches no Bridge kernel: the weekly email reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send a second time, punch list #318)', () => {
     expect(offIndexEntries().filter((entry) => SHEET_ENTRIES.includes(entry))).toEqual(SHEET_ENTRIES)
@@ -169,7 +171,7 @@ describe('what the index does not carry', () => {
   })
 
   it('reaches no submittal kernel: the dev seat reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send)', () => {
-    const offIndex = offIndexEntries().filter((entry) => !SHEET_ENTRIES.includes(entry))
+    const offIndex = offIndexEntries().filter((entry) => !SHEET_ENTRIES.includes(entry) && !FIRM_BOOK_ENTRIES.includes(entry))
     expect(offIndex).toEqual([
       'lib/submittals/standingRows.ts',
       'lib/submittals/procurementItemSources.ts',
@@ -219,6 +221,14 @@ describe('what the index does not carry', () => {
     // And the seat still reaches every one of them by its own import.
     const seat = walk(ROOT, 'supabase/functions/dev-mcp/index.ts', disk).files
     for (const entry of offIndex) expect(seat).toContain(`${g.OUT_DIR}/${entry}`)
+  })
+
+  it('reaches no kernel of the firm’s lien grid: legal-portal reads the paid-in-kind rule by path, and nothing else of the copy', () => {
+    expect(offIndexEntries().filter((entry) => FIRM_BOOK_ENTRIES.includes(entry))).toEqual(FIRM_BOOK_ENTRIES)
+    const portal = walk(ROOT, 'supabase/functions/legal-portal/index.ts', disk).files
+    for (const entry of FIRM_BOOK_ENTRIES) expect(portal).toContain(`${g.OUT_DIR}/${entry}`)
+    expect(portal).not.toContain(`${g.OUT_DIR}/index.ts`)
+    expect(portal.filter((f) => f.startsWith(`${g.OUT_DIR}/`)).sort()).toEqual([`${g.OUT_DIR}/lib/inKind/inKindLedger.ts`, `${g.OUT_DIR}/lib/jobs/lienInKind.ts`])
   })
 })
 

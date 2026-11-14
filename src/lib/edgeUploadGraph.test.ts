@@ -63,10 +63,11 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(edgeUpload('supabase/functions/dev-mcp/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
   })
 
-  it('legal-portal uploads neither the sample fixtures, the kernel copy nor the generated types', () => {
+  it('legal-portal uploads neither the sample fixtures, the kernel copy’s index nor the generated types', () => {
     const u = edgeUpload('supabase/functions/legal-portal/index.ts')
     expect(u.via('supabase/functions/_shared/customerSampleFixtures.ts')).toBeNull()
-    expect(u.files.some((f) => f.includes('_shared/gcKernels/'))).toBe(false)
+    // Of the copy it holds the Lien desk's paid-in-kind rule and the one file that rule reads (v2.7259, 18 KB), by path.
+    expect(u.files.filter((f) => f.includes('_shared/gcKernels/')).sort()).toEqual(['supabase/functions/_shared/gcKernels/lib/inKind/inKindLedger.ts', 'supabase/functions/_shared/gcKernels/lib/jobs/lienInKind.ts'])
     expect(u.via('src/types/database.ts')).toBeNull()
     expect(u.via('supabase/functions/_shared/customerSampleLegal.ts')).toEqual(['supabase/functions/legal-portal/index.ts', 'supabase/functions/_shared/customerSampleLegal.ts'])
     // 0.22 MB on 2026-11-13; a tenth of the limit leaves room for the portal to grow.

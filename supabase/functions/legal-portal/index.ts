@@ -120,7 +120,8 @@ type Row = Record<string, unknown>
  * so counsel's grid on the portal is the office's book, live. Covers every
  * billed job with money open and a lien month (owner call, 2026-09-24 and again
  * 2026-10-05: the whole book, not only referred matters — dates and dollars,
- * nothing anyone said). Since v2.4616 the selects name their columns and
+ * nothing anyone said), less the jobs the office's book leaves off: the ZZ test
+ * jobs and a job paid in kind (the owner's rule of 2026-11-14). Since v2.4616 the selects name their columns and
  * `shapeLienBookForCounsel` cuts every row again before it is sent: no desk
  * item `fields`, hold reason or spoken word, no filing note, sends or link, no
  * owner email, no address note. Null on any failure so the portal still opens.
@@ -139,14 +140,15 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
     const jobIds = [...new Set([...rows.map((r) => r.job_id as string), ...affidavitRows.map((r) => r.job_id as string)])]
     if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [] }
     const [jobsRes, itemsRes, filingsRes, ownersRes] = await Promise.all([
-      // The same columns as the app's LIEN_BOOK_JOB_COLUMNS (src/lib/jobs/lienTimelineBookAssemble.ts, v2.5124). customer_name
-      // is read for the ZZ test-job rule only: shapeLienBookForCounsel drops ZZ jobs and cuts the column before the book is sent.
-      admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name').in('id', jobIds),
+      // The same columns as the app's LIEN_BOOK_JOB_COLUMNS (src/lib/jobs/lienTimelineBookAssemble.ts). customer_name and
+      // in_kind_arrangement_id are read for a rule only: shapeLienBookForCounsel drops the ZZ test jobs (v2.5124) and the
+      // jobs paid in kind (the Lien desk's lienInKind.ts), and cuts both columns before the book is sent.
+      admin.from('jobs_ledger').select(LIEN_BOOK_COUNSEL_SELECT.jobs).in('id', jobIds),
       admin.from('job_lien_desk_items').select(LIEN_BOOK_COUNSEL_SELECT.deskItems).in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
       admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
       admin.from('job_property_owners').select(LIEN_BOOK_COUNSEL_SELECT.owners).in('job_id', jobIds),
     ])
-    // Without the jobs no ZZ test job can be told apart, so the book is not sent (v2.5124).
+    // Without the jobs no ZZ test job and no job paid in kind can be told apart, so the book is not sent (v2.5124).
     if (jobsRes.error) throw jobsRes.error
     const jobs = (jobsRes.data ?? []) as Row[]
     const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id as string | null).filter((v): v is string => Boolean(v)))]

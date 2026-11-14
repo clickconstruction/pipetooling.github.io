@@ -52,6 +52,7 @@ export const IMPORTERS = [
   'gmail-count',
   'gmail-mine',
   'gmail-sync',
+  'legal-portal',
   'mercury-webhook',
   'messages-email',
   'messages-notify',
@@ -277,6 +278,9 @@ export const ENTRIES = {
   'lib/jobs/lienClaimCorrection.ts': { values: [], types: [] },
   'lib/jobs/lienProperty.ts': { values: [], types: [] },
   'lib/jobs/lienAffidavitForm.ts': { values: [], types: [] },
+  // The firm's lien grid (legal-portal, through _shared/legalLienBookShape.ts): a job paid in kind is off the book, by
+  // the Lien desk's own rule and its own column helper.
+  'lib/jobs/lienInKind.ts': { values: [], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
   'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },
