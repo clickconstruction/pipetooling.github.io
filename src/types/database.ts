@@ -42848,6 +42848,10 @@ export type Database = {
           quantity: number
         }[]
       }
+      dev_on_site_rename: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_on_site_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
@@ -46586,6 +46590,7 @@ export type Database = {
         }
         Returns: string
       }
+      on_site_by_name: { Args: never; Returns: string }
       on_site_caller_name: { Args: never; Returns: string }
       on_site_can_read_ties: {
         Args: { p_development_id: string; p_job_id: string }
@@ -46608,6 +46613,10 @@ export type Database = {
           p_part_id?: string
           p_part_name?: string
         }
+        Returns: number
+      }
+      on_site_typed_names_on_hand: {
+        Args: { p_container_id: string; p_names: string[] }
         Returns: number
       }
       open_ar_rejected_check_cases: { Args: never; Returns: Json }
