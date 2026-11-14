@@ -45042,6 +45042,12 @@ export type Database = {
         Returns: Json
       }
       license_expiry_notices_sweep: { Args: never; Returns: Json }
+      lien_bill_months: {
+        Args: { p_job_id: string }
+        Returns: {
+          work_month: string
+        }[]
+      }
       lien_billed_open: {
         Args: {
           p_job_id: string
