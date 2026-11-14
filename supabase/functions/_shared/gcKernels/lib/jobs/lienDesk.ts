@@ -4,6 +4,7 @@ import type { Database } from '../../types/database.ts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { daysBetweenYmd } from './billedExpectedPay.ts'
 import { NOTICE_CLOSING_DAYS, NOTICE_DUE_DAYS } from './forecastWorkMonths.ts'
+import { filingDeadlineForMonth } from './lienDeadlines.ts'
 import { ownerKind } from './ownerConfirm.ts'
 import { lienChipSigned, lienFieldsHash, signatureColumnsOf } from './lienNoticeSignature.ts'
 
@@ -158,6 +159,15 @@ export type LienDeskEntry = {
   missedMonths: string[]
   /** Of those, the ones nobody has recorded — no skip, no noted miss (v2.3679). These are the silent losses the Dashboard names. */
   missedUnrecorded: string[]
+  /**
+   * The last day the § 53.052 affidavit can be filed on the job (v2.7273, punch list #335, row 4): the affidavit windows'
+   * day when they list the job, else the filing deadline for the entry's last month under the job's property kind;
+   * null with no months. A closed notice window is a lien lost only once this day has passed too — while it is ahead a
+   * late notice can still go and the affidavit follow it (v2.4708, the clock's `late_notice`).
+   */
+  affidavitDay: string | null
+  /** Whole days from today to `affidavitDay` (negative once past); null when unknown. */
+  affidavitDaysLeft: number | null
   /** Earliest open deadline among `dueMonths` (or the item's months), null when none. */
   earliestDeadline: string | null
   daysLeft: number | null
@@ -253,6 +263,12 @@ export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: s
  * sent bills still owe (`billed_open`, v2.6380), so the row never reads $0 beside
  * *letter two overdue* and gate 5 never says *Nothing billed* over a sent bill. A
  * month row still wins.
+ *
+ * `affidavitDayByJob` (v2.7273): the § 53.052 day per job as the affidavit windows read it
+ * (`list_lien_affidavit_windows`, the job's true last month). A job they do not list — its
+ * day more than the lead window ahead, or more than a week past — takes the filing deadline
+ * of the entry's last month under the job's kind, the same rule a month later. Absent, every
+ * entry takes that rule.
  */
 export function buildLienDeskQueue(
   rows: ReadonlyArray<LienNoticeMonthRow>,
@@ -260,6 +276,7 @@ export function buildLienDeskQueue(
   policyByCustomer: Readonly<Record<string, LienNoticePolicy>>,
   todayYmd: string,
   jobs?: Readonly<Record<string, LienDeskQueueJob | undefined>>,
+  affidavitDayByJob?: Readonly<Record<string, string | null | undefined>>,
 ): LienDeskQueue {
   const byJob = new Map<string, LienNoticeMonthRow[]>()
   for (const r of rows) {
@@ -321,6 +338,10 @@ export function buildLienDeskQueue(
     const deadlines = months.filter((m) => named.includes(m.key)).map((m) => m.deadline)
     const earliestDeadline = deadlines.length ? deadlines.slice().sort()[0]! : null
     const daysLeft = earliestDeadline ? daysBetweenYmd(todayYmd, earliestDeadline) : null
+    // The affidavit's day (v2.7273): the affidavit windows' when they list the job, else the last month's filing deadline.
+    const lastMonthKey = months[months.length - 1]?.key ?? null
+    const affidavitDay: string | null = affidavitDayByJob?.[jobId] ?? (lastMonthKey ? filingDeadlineForMonth(lastMonthKey, first?.property_kind ?? '') || null : null)
+    const affidavitDaysLeft = affidavitDay ? daysBetweenYmd(todayYmd, affidavitDay) : null
     // Months due outrank a notice that went (v2.6624, punch list #248): a sent notice's thirty days used to hide the next
     // months to draft — job 650 on 2026-11-02, Aug + Sep due in 14 days, sat in Sent with letter two's doors and no draft door
     // until the sent item aged out three days before Aug's window closed. A month's notice is a statutory deadline; the
@@ -348,6 +369,8 @@ export function buildLienDeskQueue(
       dueMonths,
       missedMonths,
       missedUnrecorded,
+      affidavitDay,
+      affidavitDaysLeft,
       earliestDeadline,
       daysLeft,
       severity: pile === 'sent' ? 'quiet' : severityForDaysLeft(daysLeft),
@@ -478,19 +501,31 @@ export type LienDeskNeedsYou = {
     jobs: number
     dollars: number
     earliestDeadline: string | null
+    /** The earliest affidavit day among the awaiting jobs at `earliestDeadline` (v2.7273), for the money card when that window is the one already closed. */
+    affidavitBy: string | null
     /** Put a GC on notice (v2.3479): awaiting items the office prepared as one run per GC, one card each for the leader. Set by the hooks (`lienDeskBatches`). */
     batches?: LienDeskBatch[]
     /** Approved notices the leader has not signed (v2.5087): the run holds them until his name is on them. */
     toSign?: number
   }
   held: number
-  /** Windows that closed with nothing recorded (v2.3679) — the loss the Dashboard names until someone notes it. */
+  /**
+   * Windows that closed with nothing recorded (v2.3679) — what the Dashboard names until someone notes it. Since v2.7273
+   * (punch list #335, row 4) the count is split by the job's affidavit day: `lateNotice` holds the jobs whose affidavit
+   * can still be filed, so a late notice still carries the lien and the card says *send the late notice by <day>*;
+   * `gone` the jobs whose affidavit day has passed too, the loss the card has always named.
+   */
   missed: {
+    /** Every job with a closed, unrecorded window — `lateNotice` and `gone` together. */
     jobs: number
     months: number
     dollars: number
     /** One line per job, worst first; `label` is filled by the hook (the kernel has no job names). */
     lines: LienDeskMissedLine[]
+    /** The jobs whose affidavit day is still ahead: a late notice can go. `by` is the earliest of those days. */
+    lateNotice: { jobs: number; months: number; dollars: number; by: string | null }
+    /** The jobs whose affidavit day has passed too, or is unknown: the lien right on that work is gone. */
+    gone: { jobs: number; months: number; dollars: number }
   }
 }
 
@@ -505,6 +540,12 @@ export type LienDeskNextDeadline = {
   toDraft: number
   /** Still waiting on the owner of record. */
   needsOwner: number
+  /**
+   * The earliest affidavit day among those jobs (v2.7273), for a `deadline` already closed: while it is ahead the
+   * Pipeline's money card says *send the late notice by <day>* instead of calling the window closed for good; null
+   * when none of them has one.
+   */
+  affidavitBy: string | null
 }
 
 /** A job with a closed, unrecorded window — the Dashboard's line and the desk's deep link (v2.3679). */
@@ -514,6 +555,10 @@ export type LienDeskMissedLine = {
   months: string[]
   openBalance: number
   label: string
+  /** The job's § 53.052 day (v2.7273); null when unknown. */
+  affidavitDay: string | null
+  /** That day is still ahead: a late notice can still go and the lien is not gone. */
+  lateNotice: boolean
 }
 
 /** A run the office prepared for one GC and sent to the leader — every awaiting item carrying the same batch reason. */
@@ -544,6 +589,7 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
       jobs: queue.piles.awaiting.length,
       dollars: queue.piles.awaiting.reduce((s, e) => s + e.openBalance, 0),
       earliestDeadline: awaitingDeadlines[0] ?? null,
+      affidavitBy: queue.piles.awaiting.filter((e) => e.earliestDeadline === (awaitingDeadlines[0] ?? null)).map((e) => e.affidavitDay).filter((d): d is string => Boolean(d)).sort()[0] ?? null,
       toSign: queue.piles.ready.filter((e) => e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned').length,
     },
     held: queue.piles.held.length,
@@ -565,20 +611,39 @@ export function lienDeskNextDeadline(queue: LienDeskQueue): LienDeskNextDeadline
     gcNames: [],
     toDraft: at.filter((e) => e.pile === 'to_draft').length,
     needsOwner: at.filter((e) => e.pile === 'needs_owner').length,
+    affidavitBy: at.map((e) => e.affidavitDay).filter((d): d is string => Boolean(d)).sort()[0] ?? null,
   }
 }
 
-/** Every job with a closed window nobody recorded, biggest balance first (v2.3679). */
+/**
+ * Every job with a closed window nobody recorded, biggest balance first (v2.3679), told apart by the affidavit's day
+ * (v2.7273): while it is ahead a late notice can still go, so the job counts under `lateNotice` and is not called gone;
+ * once it has passed too, or is unknown, the job counts under `gone`.
+ */
 export function lienDeskMissedSummary(queue: LienDeskQueue): LienDeskNeedsYou['missed'] {
   const lines: LienDeskMissedLine[] = queue.entries
     .filter((e) => e.missedUnrecorded.length > 0)
-    .map((e) => ({ jobId: e.jobId, gcCustomerId: e.gcCustomerId, months: e.missedUnrecorded.slice(), openBalance: e.openBalance, label: '' }))
+    .map((e) => ({
+      jobId: e.jobId,
+      gcCustomerId: e.gcCustomerId,
+      months: e.missedUnrecorded.slice(),
+      openBalance: e.openBalance,
+      label: '',
+      affidavitDay: e.affidavitDay,
+      lateNotice: e.affidavitDaysLeft != null && e.affidavitDaysLeft >= 0,
+    }))
     .sort((a, b) => b.openBalance - a.openBalance)
+  const count = (list: LienDeskMissedLine[]) => ({
+    jobs: list.length,
+    months: list.reduce((s, l) => s + l.months.length, 0),
+    dollars: list.reduce((s, l) => s + l.openBalance, 0),
+  })
+  const late = lines.filter((l) => l.lateNotice)
   return {
-    jobs: lines.length,
-    months: lines.reduce((s, l) => s + l.months.length, 0),
-    dollars: lines.reduce((s, l) => s + l.openBalance, 0),
+    ...count(lines),
     lines,
+    lateNotice: { ...count(late), by: late.map((l) => l.affidavitDay).filter((d): d is string => Boolean(d)).sort()[0] ?? null },
+    gone: count(lines.filter((l) => !l.lateNotice)),
   }
 }
 
