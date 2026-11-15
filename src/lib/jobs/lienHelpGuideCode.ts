@@ -3,6 +3,7 @@ import { bytesToBase64, qrPngBytes } from '../../../supabase/functions/_shared/q
 import { APP_ORIGIN } from '../appOrigin'
 import { helpShareUrl } from '../helpShareCard'
 import { lienDeskHref } from '../lien/lienDeskRoute'
+import { lienRunMailLink } from './lienRunChecklist'
 import { lienWindowHref } from './stagesDeepLinks'
 
 /**
@@ -93,4 +94,12 @@ export function lienRunGuideUrl(): string {
 /** The code on *Today's mail*, the run's first page; '' when the address cannot be drawn. */
 export function lienRunGuideCode(): string {
   return codeFor(lienRunGuideUrl())
+}
+
+/**
+ * The run's checklist sheet (v2.7328): one code per row, opening the desk with the run on that envelope's Mailed box,
+ * so the number is typed on the phone that scanned the slip. '' when the address cannot be drawn.
+ */
+export function lienRunMailCode(itemId: string): string {
+  return itemId.trim() ? codeFor(lienRunMailLink(itemId.trim()), LIEN_HELP_RECORD_CODE_QUIET) : ''
 }

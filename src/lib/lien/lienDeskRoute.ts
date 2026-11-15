@@ -50,6 +50,8 @@ export type LienDeskAddress = {
   pile: LienDeskPile | null
   /** Records for an owner, opened over the desk: the job whose property to open on, or null for the window alone; absent when not asked. */
   records: { jobId: string | null } | null
+  /** The run, opened over the desk (v2.7328): `&run=<item id>` from the sheet's code, `&mail=1` landing on that notice's Mailed box; a door the page consumes once. */
+  run: { itemId: string; mail: boolean } | null
 }
 
 /** The view an address word names, or null for a word the desk does not know. */
@@ -67,12 +69,16 @@ function pileFromWord(word: string | null | undefined): LienDeskPile | null {
 }
 
 /** The address of a view, a notice and a pile: `/lien-desk?tab=notices&job=…&pile=…`; the default view is never written. */
-export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null } = {}): string {
+export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null } = {}): string {
   const q = new URLSearchParams()
   if (parts.kind && parts.kind !== LIEN_DESK_DEFAULT_KIND) q.set('tab', WORD_BY_KIND[parts.kind])
   if (parts.job) q.set('job', parts.job)
   if (parts.pile) q.set('pile', parts.pile)
   if (parts.records) q.set('records', parts.records.jobId ?? '1')
+  if (parts.run) {
+    q.set('run', parts.run.itemId)
+    if (parts.run.mail) q.set('mail', '1')
+  }
   const s = q.toString()
   return s ? `${LIEN_DESK_PATH}?${s}` : LIEN_DESK_PATH
 }
@@ -84,11 +90,14 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
   const word = search.get('tab')
   const kind = word ? lienDeskKindFromWord(word) : job || pile ? 'notice' : null
   const records = search.get('records')
+  const run = (search.get('run') ?? '').trim()
+  const mail = search.get('mail')
   return {
     kind,
     job,
     pile,
     records: records == null || records === '' ? null : { jobId: records === '1' || records === 'true' ? null : records },
+    run: run ? { itemId: run, mail: mail === '1' || mail === 'true' } : null,
   }
 }
 

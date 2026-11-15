@@ -53,7 +53,7 @@ describe('buildLienBoard — the bins', () => {
     const board = build({})
     expect(board.notices.map((b) => b.stage)).toEqual(LIEN_BOARD_NOTICE_STAGES)
     expect(board.affidavits.map((b) => b.stage)).toEqual(LIEN_BOARD_AFFIDAVIT_STAGES)
-    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send', 'Awaiting approval', 'In the mail', 'Sent', 'Held', 'Missed'])
+    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send', 'Awaiting approval', 'In the run', 'Sent', 'Held', 'Missed'])
     expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'To send', 'Awaiting approval', 'Ready to file', 'Filed · Served', 'Held', 'Missed'])
     expect(board.notices.filter((b) => b.beside).map((b) => b.stage)).toEqual(['held', 'missed'])
     expect(board.empty).toBe(true)
@@ -230,12 +230,12 @@ describe('buildLienBoard — the tiles', () => {
       affidavits: [affidavit('1', 'awaiting', { openBalance: 100 }), affidavit('4', 'to_draft', { openBalance: 1000 })],
     })
     expect(board.tiles[1]).toMatchObject({ key: 'waiting', figure: '2', label: 'waiting on Malachi', line: null, tone: 'violet', destination: { kind: 'stage', stage: 'awaiting' } })
-    expect(board.tiles[2]).toMatchObject({ key: 'in_mail', figure: '2', label: 'in the mail', line: 'Type the tracking number.', tone: 'amber', destination: { kind: 'run' } })
+    expect(board.tiles[2]).toMatchObject({ key: 'in_mail', figure: '2', label: 'in the run', line: 'Type the tracking number.', tone: 'amber', destination: { kind: 'run' } })
     expect(board.tiles[3]).toMatchObject({ key: 'unpaid', figure: '$1,600', label: 'unpaid on the desk', tone: 'quiet', destination: null })
     const quiet = build({ notices: [notice('3', 'ready', { item: item('i3', 'approved') })], leaderName: null })
     expect(quiet.tiles[1]).toMatchObject({ figure: '0', label: 'waiting on the leader', line: 'Nothing waits on the leader.', tone: 'quiet', destination: null })
     expect(quiet.tiles[2]).toMatchObject({ figure: '1', line: 'Print the run.' })
-    expect(build({}).tiles[2]).toMatchObject({ figure: '0', line: 'Nothing is in the mail.', tone: 'quiet', destination: null })
+    expect(build({}).tiles[2]).toMatchObject({ figure: '0', line: 'Nothing is in the run.', tone: 'quiet', destination: null })
   })
   it('every line a person reads keeps to plain words, and every label stays short', () => {
     const boards = [
@@ -281,7 +281,7 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(lienBoardDots(board)).toEqual([
       { key: 'by_day', figure: '2', words: 'by tomorrow', tone: 'red' },
       { key: 'waiting', figure: '1', words: 'waiting on Malachi', tone: 'violet' },
-      { key: 'in_mail', figure: '0', words: 'in the mail', tone: 'quiet' },
+      { key: 'in_mail', figure: '0', words: 'in the run', tone: 'quiet' },
       { key: 'unpaid', figure: '$3,000', words: 'unpaid on the desk', tone: 'quiet' },
     ])
     expect(lienBoardDots(build({}))[0]).toEqual({ key: 'by_day', figure: '0', words: 'nothing dated', tone: 'quiet' })

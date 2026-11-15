@@ -66,8 +66,8 @@ describe('lienPaperGaps (v2.4632)', () => {
   })
   it('the banner counts the blanks, or says the paper is whole and what is next', () => {
     const gaps = lienPaperGaps('notice', { ...whole, ownerName: '' })
-    expect(lienPaperBannerWords('notice', gaps, 'Draft notice', 'In the mail by Oct 15 · 10 days left')).toEqual({ tone: 'red', words: '1 detail missing before this notice can go. In the mail by Oct 15 · 10 days left.' })
-    expect(lienPaperBannerWords('affidavit', lienPaperGaps('affidavit', { ...whole, county: '', ownerName: '' }), 'Draft affidavit', 'File by Oct 15 · 10 days left').words).toBe('2 details missing before this affidavit can be filed. File by Oct 15 · 10 days left.')
+    expect(lienPaperBannerWords('notice', gaps, 'Open the notice', 'In the mail by Oct 15 · 10 days left')).toEqual({ tone: 'red', words: '1 detail missing before this notice can go. In the mail by Oct 15 · 10 days left.' })
+    expect(lienPaperBannerWords('affidavit', lienPaperGaps('affidavit', { ...whole, county: '', ownerName: '' }), 'Open the affidavit', 'File by Oct 15 · 10 days left').words).toBe('2 details missing before this affidavit can be filed. File by Oct 15 · 10 days left.')
     expect(lienPaperBannerWords('notice', [], 'Approve', 'In the mail by Oct 15 · 10 days left')).toEqual({ tone: 'green', words: 'Nothing missing. Ready for the next step: Approve. In the mail by Oct 15 · 10 days left.' })
   })
 })
