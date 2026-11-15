@@ -123,6 +123,8 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
   /** The run as it goes: how many strips are out, and the run's strips so the line can name the box printing. */
   const [progress, setProgress] = useState<{ done: number; total: number; strips: RunStrip[] } | null>(null)
   const [sentWords, setSentWords] = useState<string | null>(null)
+  /** After a run that ended part way: which boxes are done, which is part way and what the press does now, on a line of its own. */
+  const [restWords, setRestWords] = useState<string | null>(null)
   /** The one box a stopped run left part way through its copies; the next press prints only what it is missing. */
   const [partialState, setPartial] = useState<PartialBox | null>(null)
   /** Stop printing was pressed: the loop reads the ref before each strip, the press reads the state. */
@@ -195,6 +197,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
     setUsbBusy('printing')
     setUsbSlip(null)
     setSentWords(null)
+    setRestWords(null)
     setProgress({ done: 0, total: labels.length, strips: test ? [] : strips })
     stopRef.current = false
     setStopping(false)
@@ -220,15 +223,19 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
       setTapeDay(today)
       setChoosing(false)
       // Stop printing was pressed: the printer fed the last strip out and cut it, so nothing is left inside.
-      if (done < labels.length) setSentWords([tapeStoppedWords(done, labels.length), keepTheRest()].filter(Boolean).join(' '))
-      else {
+      if (done < labels.length) {
+        setSentWords(tapeStoppedWords(done, labels.length))
+        setRestWords(keepTheRest() || null)
+      } else {
         setSentWords(tapeSentWords(done, labels.length))
         if (!test) setPartial(null)
       }
     } catch (e) {
       // A run that stops part way leaves its last printed strip short of the cutter: the strips share one lead-in (v2.6881).
       const inside = done > 0 && done < labels.length ? ` ${PTOUCH_STRIP_INSIDE}` : ''
-      setUsbSlip([`${tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`, keepTheRest()].filter(Boolean).join(' '))
+      setUsbSlip(`${tapeSentWords(done, labels.length, formatErrorMessage(e, PTOUCH_NOT_ANSWERING))}${inside}`)
+      // What is kept reads on its own line under the printer's reason, which is long enough alone.
+      setRestWords(keepTheRest() || null)
       // A printer that stopped answering needs connecting again.
       void link.close()
       setLink(null)
@@ -461,6 +468,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             </div>
           ) : null}
           {sentWords && !progress ? <div role="status" style={{ color: 'var(--text-green-700)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-usb-sent">{sentWords}</div> : null}
+          {restWords && !progress ? <div role="status" style={{ color: 'var(--text-strong)', fontSize: '0.85rem', fontWeight: 600 }} data-testid="labels-rest">{restWords}</div> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {direct && !link ? (
               /* Not connected yet: the press is the connection, since a print with no printer does nothing. */
