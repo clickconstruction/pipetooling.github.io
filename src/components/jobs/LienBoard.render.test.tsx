@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import LienBoard, { lienBoardArrowPaths } from './LienBoard'
-import { buildLienBoard, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardForLeader, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
@@ -176,5 +176,40 @@ describe('LienBoard', () => {
     expect(lienBoardArrowPaths(b.arrows, withColumns, false)[8]!.d).toBe('M 200 430 H 270 V 30 L 299 30')
     // A bin not drawn (Missed while empty) has no box and so no arrow; nothing throws.
     expect(lienBoardArrowPaths([{ from: 'notice:held', to: 'notice:missed', kind: 'down' }], boxes, false)).toEqual([])
+  })
+  it('the leader’s view (v2.7334): only his two bins under the tiles, the one counted press with its foot, the held papers as chips with their reasons, and the switch to every bin', () => {
+    const b = board({ notices: [notice('1', 'awaiting'), notice('2', 'to_draft')], affidavits: [affidavit('3', 'awaiting'), affidavit('4', 'awaiting', { deadline: '2026-11-10', daysLeft: -5 }), affidavit('5', 'ready')] })
+    const onApprove = vi.fn()
+    const onToggleMine = vi.fn()
+    const onChip = vi.fn()
+    const { rerender } = render(<LienBoard board={b} isMobile={false} onChip={onChip} leader={{ view: lienBoardForLeader(b), mine: true, onToggleMine, onApprove }} />)
+    const section = screen.getByRole('region', { name: 'The Board' })
+    expect(Array.from(section.querySelectorAll('[data-lien-board-bin]')).map((el) => el.getAttribute('data-lien-board-bin'))).toEqual(['notice:awaiting', 'affidavit:awaiting'])
+    expect(section.querySelector('[data-lien-board-leader-bar]')!.textContent).toContain('Only the bins that wait on you.')
+    const press = section.querySelector('[data-lien-board-approve]') as HTMLButtonElement
+    expect(press.textContent).toBe('Approve 1 affidavit · 2 are held ▸')
+    expect(press.disabled).toBe(false)
+    expect(section.querySelector('[data-lien-board-approve-foot]')!.textContent).toBe('2 are held. They stay here with the reason. The 1 ready one approves now.')
+    const held = Array.from(section.querySelectorAll('[data-lien-board-held-row]'))
+    expect(held.map((el) => el.textContent)).toEqual(['JP4is past its day', 'JP1!needs your signature'])
+    fireEvent.click(held[1]!.querySelector('[data-lien-board-chip]') as HTMLElement)
+    expect(onChip.mock.calls[0]![0]).toMatchObject({ jobId: '1', kind: 'notice' })
+    fireEvent.click(press)
+    expect(onApprove).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Every bin' }))
+    expect(onToggleMine).toHaveBeenCalledTimes(1)
+    // Busy: the press waits. Nothing ready: the press is dead with its words.
+    rerender(<LienBoard board={b} isMobile={false} leader={{ view: lienBoardForLeader(b), mine: true, onToggleMine, onApprove, busy: true }} />)
+    expect((section.querySelector('[data-lien-board-approve]') as HTMLButtonElement).disabled).toBe(true)
+    expect(section.querySelector('[data-lien-board-approve]')!.textContent).toBe('Approving…')
+    const none = board({ notices: [notice('1', 'awaiting')], affidavits: [] })
+    rerender(<LienBoard board={none} isMobile={false} leader={{ view: lienBoardForLeader(none), mine: true, onToggleMine, onApprove }} />)
+    expect((section.querySelector('[data-lien-board-approve]') as HTMLButtonElement).disabled).toBe(true)
+    expect(section.querySelector('[data-lien-board-approve]')!.textContent).toBe('Approve ▸')
+    // Every bin: the whole Board with the switch back, no press.
+    rerender(<LienBoard board={b} isMobile={false} leader={{ view: lienBoardForLeader(b), mine: false, onToggleMine, onApprove }} />)
+    expect(section.querySelectorAll('[data-lien-board-bin]').length).toBeGreaterThan(2)
+    expect(screen.getByRole('button', { name: 'Only my bins' })).toBeTruthy()
+    expect(section.querySelector('[data-lien-board-approve]')).toBeNull()
   })
 })

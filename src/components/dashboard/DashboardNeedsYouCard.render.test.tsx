@@ -5,7 +5,7 @@
  * and walk mode's Skip rotation.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import type { NeedsYouItem } from '../../lib/dashboardNeedsYou'
 
@@ -204,5 +204,23 @@ describe('DashboardNeedsYouCard: While you were off (v2.6060, punch list #141 PR
     expect(screen.getByText('Since 8 PM. Evan answered Dana at 11:50 PM.')).toBeTruthy()
     fireEvent.click(screen.getByText('See them'))
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'while-off' }))
+  })
+  it('the Lien desk’s Board as four dots on one line (v2.7334): drawn for the office when the desk hands them, one press that opens the Board; absent without them', () => {
+    const onOpenBoard = vi.fn()
+    const dots = [
+      { key: 'by_day' as const, figure: '21', words: 'by tomorrow', tone: 'red' as const },
+      { key: 'waiting' as const, figure: '3', words: 'waiting on Malachi', tone: 'violet' as const },
+      { key: 'in_mail' as const, figure: '7', words: 'in the mail', tone: 'amber' as const },
+      { key: 'unpaid' as const, figure: '$202,575', words: 'unpaid on the desk', tone: 'quiet' as const },
+    ]
+    render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={dots} onOpenBoard={onOpenBoard} />)
+    const strip = screen.getByRole('button', { name: /Lien desk.*The Board/ })
+    expect(strip.getAttribute('data-needs-you-lien-board')).not.toBeNull()
+    expect(Array.from(strip.querySelectorAll('[data-needs-you-lien-dot]')).map((el) => `${el.getAttribute('data-needs-you-lien-dot')}:${el.getAttribute('data-tone')}:${el.textContent}`)).toEqual(['by_day:red:21by tomorrow', 'waiting:violet:3waiting on Malachi', 'in_mail:amber:7in the mail', 'unpaid:quiet:$202,575unpaid on the desk'])
+    fireEvent.click(strip)
+    expect(onOpenBoard).toHaveBeenCalledTimes(1)
+    cleanup()
+    render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={null} />)
+    expect(document.querySelector('[data-needs-you-lien-board]')).toBeNull()
   })
 })

@@ -88,6 +88,8 @@ vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const redrawOneMock = vi.fn(async (..._args: unknown[]) => undefined)
+// The leader's one press on the Board (v2.7334): each approval is a seam.
+const approveLotMock = vi.fn(async (_id: string) => undefined)
 const redrawManyMock = vi.fn(async (papers: Array<{ jobId: string }>, _userId: unknown) => ({ done: papers.map((p) => p.jobId), failed: [] as Array<{ jobId: string; reason: string }> }))
 const submitManyMock = vi.fn(async (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => ({ done: papers.map((p) => p.jobId), failed: [] as Array<{ jobId: string; reason: string }> }))
 // The list's print (v2.6918): the window it opens and the copy it files on each job.
@@ -111,7 +113,7 @@ const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leade
 const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
+  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellAffMock(papers), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -1936,6 +1938,44 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     const current = Array.from(document.querySelectorAll('button[aria-current="true"]')).map((b) => b.textContent ?? '')
     expect(current.some((t) => t.includes('651'))).toBe(true)
     expect(current.some((t) => t.includes('650'))).toBe(false)
+  })
+
+  it('the leader’s Board (v2.7334): a master opens on his two Awaiting approval bins with one counted press that asks, approves the affidavits one by one and re-reads; Every bin shows the whole Board; a dev opens on every bin', async () => {
+    approveLotMock.mockClear()
+    const awaiting = (id: string, job_id: string) => ({ ...draftedAff(id, job_id), status: 'awaiting_approval', submitted_at: '2026-09-13T14:00:00Z' }) as LienDeskItemRow
+    const onChanged = vi.fn()
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={threeAsked([awaiting('aff1', 'j650'), awaiting('aff2', 'j651')])} initialKind="next" onChanged={onChanged} />)
+    await settle()
+    const board = () => document.querySelector('[data-lien-board]') as HTMLElement
+    expect(Array.from(board().querySelectorAll('[data-lien-board-bin]')).map((el) => el.getAttribute('data-lien-board-bin'))).toEqual(['notice:awaiting', 'affidavit:awaiting'])
+    expect(board().querySelector('[data-lien-board-mine]')!.textContent).toBe('Every bin')
+    expect(board().querySelectorAll('[data-lien-board-chips="affidavit:awaiting"] [data-lien-board-chip]')).toHaveLength(2)
+    const press = board().querySelector('[data-lien-board-approve]') as HTMLButtonElement
+    expect(press.textContent).toBe('Approve 2 affidavits')
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    expect(await screen.findByText('Approve 2 affidavits?')).toBeTruthy()
+    const confirms = screen.getAllByRole('button', { name: 'Approve 2 affidavits' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(approveLotMock).toHaveBeenCalledTimes(2))
+    expect(approveLotMock.mock.calls.map((c) => c[0]).sort()).toEqual(['aff1', 'aff2'])
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    // Every bin: the whole Board, and back.
+    fireEvent.click(board().querySelector('[data-lien-board-mine]') as HTMLButtonElement)
+    expect(board().querySelectorAll('[data-lien-board-bin]').length).toBeGreaterThan(2)
+    expect(board().querySelector('[data-lien-board-approve]')).toBeNull()
+    desk.unmount()
+    // A dev reads every job, so opens on every bin, with the switch to his own.
+    renderWithProviders(<LienDesk {...baseProps} authRole="dev" data={threeAsked([awaiting('aff1', 'j650')])} initialKind="next" />)
+    await settle()
+    expect(board().querySelectorAll('[data-lien-board-bin]').length).toBeGreaterThan(2)
+    expect(board().querySelector('[data-lien-board-mine]')!.textContent).toBe('Only my bins')
+    // The office has no switch and no press.
+    cleanup()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([awaiting('aff1', 'j650')])} initialKind="next" />)
+    await settle()
+    expect(board().querySelector('[data-lien-board-mine]')).toBeNull()
+    expect(board().querySelector('[data-lien-board-approve]')).toBeNull()
   })
 
   it('the list prints every ready short-form affidavit in one press: one window, each paper on its own sheet, and each job files its own copy (v2.6918)', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -175,6 +175,7 @@ export default function LienBoard({
   columnsOnly,
   foot,
   onLayout,
+  leader,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -194,6 +195,11 @@ export default function LienBoard({
   foot?: ReactNode
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
+  /**
+   * The leader's Board (v2.7334): with `mine` on, only his two Awaiting approval bins stand under the tiles, with one
+   * counted press for the lot and what it holds, each held paper a chip to its own door; a toggle shows every bin.
+   */
+  leader?: { view: LienBoardLeaderView; mine: boolean; onToggleMine: () => void; onApprove: () => void; busy?: boolean }
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -202,8 +208,9 @@ export default function LienBoard({
   // On a phone the bins stand behind one press (2026-11-15): stacked they run a screen and a half, and the tiles
   // already say the day; a pressed bin keeps them open. Session-only.
   const [binsShown, setBinsShown] = useState(false)
-  const notices = lienBoardBinsShown(board.notices)
-  const affidavits = lienBoardBinsShown(board.affidavits)
+  const mine = Boolean(leader?.mine)
+  const notices = mine && leader ? leader.view.bins.filter((b) => b.kind === 'notice') : lienBoardBinsShown(board.notices)
+  const affidavits = mine && leader ? leader.view.bins.filter((b) => b.kind === 'affidavit') : lienBoardBinsShown(board.affidavits)
   const chipCount = [...board.notices, ...board.affidavits].reduce((n, b) => n + b.chips.length, 0)
   const binsOpen = !isMobile || binsShown || Boolean(pick)
   const layout = columnsOnly ? false : stacked
@@ -238,7 +245,7 @@ export default function LienBoard({
     const ro = new ResizeObserver(() => measure())
     ro.observe(grid)
     return () => ro.disconnect()
-  }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen])
+  }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen, mine])
 
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {
     const flow = bins.filter((b) => !b.beside)
@@ -269,6 +276,14 @@ export default function LienBoard({
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
         {board.tiles.map((t) => <Tile key={t.key} tile={t} isMobile={isMobile} onTile={onTile} />)}
       </div>
+      {leader ? (
+        <div data-lien-board-leader-bar style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+          <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{mine ? 'Only the bins that wait on you.' : 'Every bin.'}</span>
+          <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
+            {mine ? 'Every bin' : 'Only my bins'}
+          </button>
+        </div>
+      ) : null}
       {board.empty ? (
         <div data-lien-board-empty-board style={{ fontSize: '0.875rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>
           Nothing is on the desk. Every lien paper is sent, filed or waiting on its day.
@@ -292,6 +307,26 @@ export default function LienBoard({
         {column('notice', 'Monthly notices', notices, retainage)}
         {column('affidavit', 'Lien affidavits', affidavits, null)}
       </div>
+      {leader && mine ? (
+        <div data-lien-board-leader style={{ display: 'grid', gap: 6, padding: '2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button type="button" data-lien-board-approve disabled={leader.view.press.dead || leader.busy} onClick={leader.onApprove} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '6px 14px', borderRadius: 7, border: 'none', background: leader.view.press.dead || leader.busy ? 'var(--bg-muted)' : LIT, color: leader.view.press.dead || leader.busy ? 'var(--text-muted)' : '#fff', cursor: leader.view.press.dead || leader.busy ? 'default' : 'pointer', minHeight: isMobile ? 40 : undefined }}>
+              {leader.busy ? 'Approving…' : leader.view.press.button}
+            </button>
+            {leader.view.press.foot ? <span data-lien-board-approve-foot style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{leader.view.press.foot}</span> : null}
+          </div>
+          {leader.view.held.length ? (
+            <div data-lien-board-held style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {leader.view.held.map((h) => (
+                <span key={`${h.chip.kind}:${h.chip.jobId}`} data-lien-board-held-row={h.chip.jobId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Chip chip={h.chip} lit={false} onChip={onChip} onHover={setPairLit} />
+                  {h.reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {pickWords && onPick ? (
         <div data-lien-board-pick style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)', padding: '2px 0' }}>
           <span data-lien-board-pick-words style={{ fontWeight: 600 }}>{pickWords.head}</span>

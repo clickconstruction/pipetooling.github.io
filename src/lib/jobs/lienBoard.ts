@@ -538,25 +538,46 @@ export function lienBoardDots(board: Pick<LienBoard, 'tiles' | 'dayWords'>): Lie
   }))
 }
 
+export type LienBoardLeaderHeld = { chip: LienBoardChip; reason: string }
+
 export type LienBoardLeaderView = {
-  /** His two bins: the notices and the affidavits awaiting his approval. */
+  /** His two bins: the notices and the affidavits awaiting his approval, each holding only the jobs he leads. */
   bins: LienBoardBin[]
-  /** The one press for the lot, in the run's shape: *Approve 5 papers*, dead when nothing waits. */
+  /** The one press for the lot, in the run's shape: *Approve 2 papers · 3 need your signature ▸*, dead when nothing is ready. */
   press: BatchWords
-  /** The chips the press acts on, by due day. */
+  /** The chips the press acts on, by due day: the affidavits waiting on him and still inside their window. */
   chips: LienBoardChip[]
+  /** What the press leaves where it is, each with its reason: a notice, which only his signature approves, and a paper past its day. */
+  held: LienBoardLeaderHeld[]
 }
 
+/** Why the press holds a paper: a notice is approved by his signature on it, never by a batch; a paper past its day sends nothing on time. */
+export const LIEN_BOARD_LEADER_HOLDS = {
+  signature: 'needs your signature',
+  late: 'is past its day',
+} as const
+
 /**
- * The leader's Board: only the bins that wait on him, and one counted press for the lot. A paper
- * past its window is held out of the press with its reason, since approving it sends nothing on time.
+ * The leader's Board: only the bins that wait on him, holding only the jobs he leads (`leads`, absent: every job), and
+ * one counted press for the lot. The press approves the affidavits that wait inside their window; a notice is held with
+ * its reason, since the law wants his signature on each, and so is a paper past its day. What is held keeps its chip,
+ * a press to its own door.
  */
-export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavits'>): LienBoardLeaderView {
-  const bins = [...board.notices, ...board.affidavits].filter((b) => b.stage === 'awaiting')
-  const chips = bins.flatMap((b) => b.chips).sort(compareLienBoardChips)
-  const late = chips.filter((c) => c.daysLeft != null && c.daysLeft < 0).length
-  const press = batchWords({ verb: 'Approve', ready: chips.length - late, held: late, heldWhy: { one: 'is past its day', many: 'are past their day' }, noun: 'paper' })
-  return { bins, press, chips }
+export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavits'>, opts: { leads?: (jobId: string) => boolean } = {}): LienBoardLeaderView {
+  const leads = opts.leads ?? (() => true)
+  const bins = [...board.notices, ...board.affidavits].filter((b) => b.stage === 'awaiting').map((b) => ({ ...b, chips: b.chips.filter((c) => leads(c.jobId)) }))
+  const all = bins.flatMap((b) => b.chips).sort(compareLienBoardChips)
+  const held: LienBoardLeaderHeld[] = []
+  const chips: LienBoardChip[] = []
+  for (const c of all) {
+    if (c.daysLeft != null && c.daysLeft < 0) held.push({ chip: c, reason: LIEN_BOARD_LEADER_HOLDS.late })
+    else if (c.kind === 'notice') held.push({ chip: c, reason: LIEN_BOARD_LEADER_HOLDS.signature })
+    else chips.push(c)
+  }
+  const signatures = held.filter((h) => h.reason === LIEN_BOARD_LEADER_HOLDS.signature).length
+  const heldWhy = signatures === held.length ? { one: 'needs your signature', many: 'need your signature' } : signatures === 0 ? { one: 'is past its day', many: 'are past their day' } : { one: 'is held', many: 'are held' }
+  const press = batchWords({ verb: 'Approve', ready: chips.length, held: held.length, heldWhy, noun: ['affidavit', 'affidavits'] })
+  return { bins, press, chips, held }
 }
 
 /** A pressed bin, or a tile's stage across both columns: what the list under the Board is narrowed to. */

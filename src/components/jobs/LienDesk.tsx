@@ -85,14 +85,15 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
 import LienMailPieceDoors from './LienMailPieceDoors'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, clearLienDeskItemPrinted, markLienDeskItemsPrinted, redrawLienAffidavitsShort, submitLienAffidavits, takeBackLienDeskItems, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
+import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
 import { LienPileHead, lienPileHeadCount, useLienPileHeads } from './LienPileHeads'
@@ -854,6 +855,47 @@ export default function LienDesk({
     [data, todayYmd, boardLeaderName],
   )
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
+  // The leader's Board (v2.7334): a master opens on his two Awaiting approval bins alone, the jobs he leads, with one
+  // counted press for the lot; a dev, who reads every job, opens on every bin. Session-only; the bar's press switches.
+  const [boardMine, setBoardMine] = useState<boolean>(() => authRole === 'master_technician')
+  const leaderView = useMemo(() => (board && leader ? lienBoardForLeader(board, { leads: (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId) }) : null), [board, leader, authRole, authUserId, data])
+  const [approvingLot, setApprovingLot] = useState(false)
+  /**
+   * The leader's one press (v2.7334): approves every affidavit that waits on him inside its window, one by one, keeps
+   * going past one that fails and names it after, and leaves what is held where it is with its reason (a notice takes
+   * his signature on its own pane; a paper past its day sends nothing on time). Asks first with the count.
+   */
+  const approveTheLot = async () => {
+    if (!leaderView || leaderView.press.dead || approvingLot) return
+    const ready = leaderView.chips.filter((c) => c.kind === 'affidavit')
+    const items = ready.map((c) => data?.affidavits.entries.find((e) => e.jobId === c.jobId)?.item?.id ?? null).filter((id): id is string => Boolean(id))
+    if (items.length === 0) return
+    const n = items.length
+    const ok = await confirmDialog({
+      title: `Approve ${n} ${n === 1 ? 'affidavit' : 'affidavits'}?`,
+      message: `${ready.map((c) => c.label).join(', ')}. Each is marked approved and moves to Ready to file. ${leaderView.held.length ? `${leaderView.held.length} ${leaderView.held.length === 1 ? 'stays' : 'stay'} where ${leaderView.held.length === 1 ? 'it is' : 'they are'} with the reason.` : ''}`.trim(),
+      confirmLabel: leaderView.press.button.replace(/ ·.*$/, ''),
+    })
+    if (!ok) return
+    setApprovingLot(true)
+    let done = 0
+    const failed: string[] = []
+    try {
+      for (const [i, id] of items.entries()) {
+        try {
+          await approveLienDeskItem(id)
+          done += 1
+        } catch (e) {
+          failed.push(`${ready[i]?.label ?? id}: ${formatErrorMessage(e, 'did not approve')}`)
+        }
+      }
+      const words = batchOutcomeWords({ verb: 'approve', past: 'approved', done, failed: failed.length, noun: 'affidavit' })
+      showToast(failed.length ? `${words.line} ${failed.join(' · ')}` : words.line, words.tone)
+      if (done > 0) onChanged()
+    } finally {
+      setApprovingLot(false)
+    }
+  }
   const boardPick = useMemo(() => (board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins])
   // To do on a phone scrolls the Board, the find box and the list as one page (punch list #352, PR 0): under five
   // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached. The
@@ -4222,7 +4264,7 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
+            {board ? <LienBoard board={board} isMobile={isMobile} onLayout={setBoardStacked} onChip={zoomTo} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: () => setBoardMine((v) => !v), onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={(d) => { if (d.kind === 'run') { if (office) { setRunTakeBack(false); setRunOpen(true) } } else pickBoardBins(lienBoardStageBins(board, d.stage)) }} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
