@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunChecklistWords, lienRunFootWords, lienRunMailLink, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
+import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunChecklistWords, lienRunFootWords, lienRunMailLink, lienRunNothingToClaim, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import type { LienNoticeSignature } from './lienNoticeSignature'
 
@@ -79,6 +79,25 @@ describe('lienRunChecklistRows', () => {
     const [held] = lienRunChecklistRows({ notices: [noAddress] })
     expect(held!.held).toMatch(/^Owner of record:/)
     expect(held!.waitsOn).toBe('print')
+    expect(held!.nothingToClaim).toBe(false)
+  })
+
+  it('a job that owes nothing now holds its row (v2.7337): the words name what the paper says, and the hold comes before an address', () => {
+    // Printed with a claim, paid since: the run's amount is the open balance today, the fields are the paper.
+    const [paid] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0, fields: { ...notice().fields, claimAmount: '6150.75' } })] })
+    expect(paid!.nothingToClaim).toBe(true)
+    expect(paid!.held).toBe('Nothing to claim: the job owes $0 now. The paper says $6,151.')
+    // The ticks stay facts: it printed, nobody signed it.
+    expect(paid!.printed).toEqual({ at: '2026-10-09T15:32:00Z', by: null })
+    expect(paid!.line).toBe('printed · not signed')
+    // Never printed, or a paper that said $0 itself: nothing to quote.
+    expect(lienRunNothingToClaim(notice({ amount: 0 }))).toBe('Nothing to claim: the job owes $0 now.')
+    expect(lienRunNothingToClaim(notice({ amount: 0, printedAt: '2026-10-09T15:32:00Z', fields: { ...notice().fields, claimAmount: '0.00' } }))).toBe('Nothing to claim: the job owes $0 now.')
+    expect(lienRunNothingToClaim(notice({ amount: 0.004 }))).not.toBeNull()
+    expect(lienRunNothingToClaim(notice())).toBeNull()
+    const both = notice({ amount: 0 })
+    both.recipients[0] = { ...both.recipients[0]!, name: '', address: '' }
+    expect(lienRunChecklistRows({ notices: [both] })[0]!.held).toBe('Nothing to claim: the job owes $0 now.')
   })
 })
 
@@ -127,6 +146,38 @@ describe('lienRunBatchPlans', () => {
     expect(plans.mail.words.foot).toBe('4 are held. They stay here with the reason. The 1 ready one records now.')
   })
 
+  it('a row with nothing to claim is held from every press and never picks the signer (v2.7337)', () => {
+    const paid = (itemId: string, extra: Partial<RunNotice> = {}) => notice({ itemId, label: itemId.toUpperCase(), amount: 0, signature: null, fields: { ...notice().fields, claimAmount: '2400.00' }, ...extra })
+    const plans = lienRunBatchPlans(
+      lienRunChecklistRows({
+        notices: [
+          // First in the run, printed, another leader's: it must not make Dale the signer.
+          paid('p1', { printedAt: '2026-10-09T15:32:00Z', leader: { userId: 'u-dale', name: 'Dale' } }),
+          notice({ itemId: 'b', label: 'B', printedAt: '2026-10-08T16:00:00Z', signature: null }),
+          // Numbered before the job was paid: it does not record either.
+          paid('p2', { printedAt: '2026-10-09T15:32:00Z', signature: typed, recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] }),
+          paid('p3', { printedAt: null }),
+        ],
+      }),
+    )
+    const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
+    expect(plans.sign.ready.map((r) => r.itemId)).toEqual(['b'])
+    expect(plans.sign.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['p1', why],
+      ['p3', 'Nothing to claim: the job owes $0 now.'],
+    ])
+    expect(plans.sign.words.button).toBe('Mark 1 signed · 2 wait ▸')
+    expect(plans.print.ready).toEqual([])
+    expect(plans.print.held.map((h) => h.itemId)).toEqual(['p3'])
+    expect(plans.mail.ready).toEqual([])
+    expect(plans.mail.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['p1', why],
+      ['b', 'no tracking numbers yet'],
+      ['p2', why],
+      ['p3', 'Nothing to claim: the job owes $0 now.'],
+    ])
+  })
+
   it('dead only when nothing is ready: bare verbs with nothing to do, a ▸ with only holds', () => {
     const none = lienRunBatchPlans([])
     expect(none.print.words).toEqual({ button: 'Mark printed', foot: null, dead: true })
@@ -147,6 +198,16 @@ describe('the words around the checklist', () => {
     expect(lienRunChecklistWords([])).toBe('')
     expect(lienRunFootWords(rs)).toEqual({ line1: '1 to print · 1 owes a number · 1 ready to record', line2: 'Print the packet, or tick Printed on a paper printed elsewhere.' })
     expect(lienRunFootWords([]).line1).toBe('Nothing is in this run.')
+  })
+
+  it('the foot leaves a paid job out of its counts, and says so when nothing else is left (v2.7337)', () => {
+    const paid = (itemId: string) => notice({ itemId, printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0 })
+    const live = (itemId: string) => notice({ itemId, printedAt: '2026-10-08T16:00:00Z', signature: null })
+    // The desk of 2026-11-15: seven printed, five paid since.
+    const seven = lienRunChecklistRows({ notices: [live('a'), live('b'), paid('c'), paid('d'), paid('e'), paid('f'), paid('g')] })
+    expect(lienRunFootWords(seven)).toEqual({ line1: '2 to sign · 5 held', line2: 'Tick Signed when the leader has signed the paper, and say how you know.' })
+    expect(lienRunBatchPlans(seven).sign.words.button).toBe('Mark 2 signed · 5 wait ▸')
+    expect(lienRunFootWords(lienRunChecklistRows({ notices: [paid('c'), paid('d')] }))).toEqual({ line1: '2 held', line2: 'Nothing is owed on these jobs now, so nothing here goes out.' })
   })
 
   it('the pile row’s line names the tick it waits on', () => {

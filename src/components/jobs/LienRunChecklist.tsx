@@ -64,7 +64,9 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
         const gc = r.recipients.find((x) => x.key === 'original_contractor')
         const who = [owner ? `Owner: ${owner.name || '—'}` : '', gc ? `GC: ${gc.name || '—'}` : ''].filter(Boolean).join(' · ')
         const printedOk = r.printed != null || r.paperless
-        const canSign = !!viewer && !!r.leader?.name && printedOk
+        // Nothing to claim (v2.7337): the job owes $0 now, so the row's own Signed and Mailed are closed with it.
+        const closed = r.nothingToClaim
+        const canSign = !!viewer && !!r.leader?.name && printedOk && !closed
         const boxes = r.recipients.filter((x) => x.needsNumber)
         return (
           <div key={r.itemId} className="lienRunCheckRow" data-testid={`run-check-${r.itemId}`} data-waits={r.waitsOn ?? 'none'} data-held={r.held ? 'yes' : 'no'}>
@@ -108,7 +110,7 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
                     Signed ▸
                   </button>
                 ) : (
-                  <span className="lienRunCheckWait" data-testid={`run-check-sign-${r.itemId}`}>{!printedOk ? 'print first' : r.leader?.name ? `waits on ${r.leader.name}` : 'no leader named'}</span>
+                  <span className="lienRunCheckWait" data-testid={`run-check-sign-${r.itemId}`}>{closed ? 'nothing to sign' : !printedOk ? 'print first' : r.leader?.name ? `waits on ${r.leader.name}` : 'no leader named'}</span>
                 )}
               </div>
               <div className="lienRunCheckTick" data-tick="mailed" data-on={r.mailed ? 'yes' : 'no'}>
@@ -126,15 +128,15 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
                           <input
                             value={x.tracking}
                             onChange={(ev) => onTracking(r, x.key, ev.target.value)}
-                            disabled={!printedOk}
-                            placeholder={!printedOk ? 'print first' : x.method === 'hand' ? 'who signed for it' : x.method === 'traceable_courier' ? 'the courier’s number' : '9407 1118 …'}
+                            disabled={!printedOk || closed}
+                            placeholder={closed ? 'nothing to mail' : !printedOk ? 'print first' : x.method === 'hand' ? 'who signed for it' : x.method === 'traceable_courier' ? 'the courier’s number' : '9407 1118 …'}
                             aria-label={`${r.label} — ${short} tracking`}
                             inputMode={x.method === 'certified_mail' ? 'numeric' : undefined}
                             className="lienRunTracking"
                             style={field}
                             data-run-mail-box={i === 0 ? r.itemId : undefined}
                           />
-                          {besideBox?.(r, x.key)}
+                          {closed ? null : besideBox?.(r, x.key)}
                           {x.tracking.trim() && shape.hint ? (
                             <span className="lienRunCheckShape" data-ok={shape.ok ? 'yes' : 'no'}>
                               {shape.ok ? '✓ ' : ''}
