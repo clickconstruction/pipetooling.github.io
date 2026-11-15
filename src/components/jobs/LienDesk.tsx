@@ -1667,7 +1667,7 @@ export default function LienDesk({
 
   // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sat on the title line
   // left of § Rules on every view (v2.4740 off By paper; v2.4786 there too, the owner's ask — the title line had the room) until v2.7311, the owner's ask of 2026-11-15:
-  // on By paper it ends the pile line, at the right under Share; off By paper it keeps v2.7277's place. On a phone it is a row of More. Its height is the presses'
+  // it ends the second line on every view, at the right under Share, after the paper tabs and the piles on By paper. On a phone it is a row of More. Its height is the presses'
   // (`headDoor`), so the pile line is as tall beside it as beside Put a GC on notice.
   const ownerRecordsDoor = office && onOpenOwnerRecords ? (
     <button
@@ -4022,7 +4022,7 @@ export default function LienDesk({
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
           {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs — and on By paper it is the pile line, ending with the door (v2.7311). */}
+          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs — since v2.7311 it is always there on a computer with the door, ending with it, the pile line on By paper. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
@@ -4041,9 +4041,9 @@ export default function LienDesk({
             <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *show every pile*. */}
-          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every By paper line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
+          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
           {/* Drawn only when it holds something (v2.7213): empty, it would still take a column gap and push the title line's tools off the edge. */}
-          {/* On By paper the span ends the pile line with the owner-records door (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
+          {/* The span ends the second line with the owner-records door on every view (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
           {titleBar.pileBreak ? <span aria-hidden data-lien-desk-pile-break style={{ flexBasis: '100%', height: 0 }} /> : null}
           {titleBar.rightSpan ? <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {gcNoticeShown && onPutGcOnNotice ? (

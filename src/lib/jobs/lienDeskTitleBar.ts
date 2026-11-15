@@ -9,11 +9,11 @@
  * `lienDeskPhoneMore.ts`.
  *
  * Since v2.7311 (the owner's ask of 2026-11-15, his screenshot of By paper: the door crowded the title line's right
- * end while the pile line ended with nothing) the door ends the pile line on By paper, whatever the title line had
- * room for: the three kinds of paper and the piles at the left, *Put a GC on notice…* and the door at the right. The
- * bar measures that line too — `readLienDeskPileLine`, `lienDeskPileLineFit` — and when it cannot hold the piles and
- * the right span together, the span falls under the piles as one piece, right-aligned, never a press at a time. Off
- * By paper there is no pile line, so the door keeps the place v2.7277 gave it.
+ * end while the pile line ended with nothing) the door ends the second line on every view, whatever the title line
+ * had room for: on By paper the three kinds of paper and the piles at the left, *Put a GC on notice…* and the door at
+ * the right; off By paper the door alone at the right, under Share. The bar measures the pile line too —
+ * `readLienDeskPileLine`, `lienDeskPileLineFit` — and when it cannot hold the piles and the right span together, the
+ * span falls under the piles as one piece, right-aligned, never a press at a time.
  *
  * Until v2.7277 the width was a viewport rule (1,540 px, the longest line the desk can draw) so the tools never moved
  * between views. The bar now measures the line it drew — `readLienDeskTitleLine` — because the longest line is 210 px
@@ -144,7 +144,7 @@ export function readLienDeskPileLine(bar: HTMLElement): { width: number; parts: 
 export type LienDeskTitleBarLayout = {
   /** Where the four presses are drawn: under More on a phone, at the right end of the title line, or at the right end of the second line. */
   tools: 'more' | 'title_line' | 'second_line'
-  /** Where the owner-records door is drawn: just before the presses, or at the right end of the second line — under them (v2.7277), or ending the pile line on By paper (v2.7311). */
+  /** Where the owner-records door is drawn: just before the presses (a phone's More, or a computer's tool row when the title line has no room), or at the right end of the second line (under the presses since v2.7277; on every view since v2.7311). */
   door: 'with_tools' | 'second_line'
   /** Whether the bar breaks after the title line. */
   breakLine: boolean
@@ -167,11 +167,9 @@ export function lienDeskTitleBarLayout(o: { isMobile: boolean; fit: LienDeskTitl
   const pileBreak = (rightSpan: boolean) => rightSpan && o.paperShown && o.pileFit === 'right_below'
   // The two steady lines of v2.6569: the break is always there and the tools end the second line.
   if (o.fit === 'none') return { tools: 'second_line', door: 'with_tools', breakLine: true, rightSpan: true, pileBreak: pileBreak(true) }
-  // The presses up and the door under them (v2.7277): the second line is always there, for the door.
-  if (o.fit === 'presses' && o.recordsDoor) return { tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: pileBreak(true) }
-  // By paper with the door (v2.7311, the owner's ask): the door ends the pile line whatever room the title line has.
-  if (o.paperShown && o.recordsDoor) return { tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: pileBreak(true) }
-  // One line: a second comes only with By paper, for the paper tabs, the piles and the GC door.
+  // The presses up and the door under them (v2.7277; on every view and whatever room the title line has since v2.7311, the owner's ask): the second line is always there, for the door.
+  if (o.recordsDoor) return { tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: pileBreak(true) }
+  // One line, with no door to end a second: a second comes only with By paper, for the paper tabs, the piles and the GC door.
   const rightSpan = o.paperShown && o.gcNotice
   return { tools: 'title_line', door: 'with_tools', breakLine: o.paperShown, rightSpan, pileBreak: pileBreak(rightSpan) }
 }

@@ -149,12 +149,10 @@ describe('the pile line read off the bar (v2.7311)', () => {
   })
 })
 
-describe('the Lien desk title bar on a computer (v2.7213; the door under the presses since v2.7277; off By paper since v2.7311)', () => {
-  it('when the line holds all five, the tools end the title line, and the bar has no second line off By paper', () => {
+describe('the Lien desk title bar on a computer (v2.7213; the door under the presses since v2.7277; on every view since v2.7311)', () => {
+  it('when the line holds all five and there is no door, the tools end the title line and the bar has no second line off By paper', () => {
     for (const gcNotice of [false, true]) {
-      for (const recordsDoor of [false, true]) {
-        expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'all', recordsDoor, paperShown: false, gcNotice })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: false, rightSpan: false, pileBreak: false })
-      }
+      expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'all', recordsDoor: false, paperShown: false, gcNotice })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: false, rightSpan: false, pileBreak: false })
     }
   })
 
@@ -163,14 +161,14 @@ describe('the Lien desk title bar on a computer (v2.7213; the door under the pre
     expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'all', recordsDoor: false, paperShown: true, gcNotice: true })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: true, rightSpan: true, pileBreak: false })
   })
 
-  it('on By paper the door ends the pile line whatever the title line holds (v2.7311, the owner’s ask): the four presses stay up and the span is drawn for the door', () => {
+  it('with a door, the door ends the second line on every view whatever the title line holds (v2.7311, the owner’s ask): the four presses stay up and the span is drawn for the door', () => {
     for (const fit of ['all', 'presses'] as const) {
-      for (const gcNotice of [false, true]) {
-        expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit, recordsDoor: true, paperShown: true, gcNotice })).toEqual({ tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: false })
+      for (const paperShown of [false, true]) {
+        for (const gcNotice of [false, true]) {
+          expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit, recordsDoor: true, paperShown, gcNotice })).toEqual({ tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: false })
+        }
       }
     }
-    // Off By paper there is no pile line: a line with room for all five keeps the door before § Rules, as v2.7277 left it.
-    expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'all', recordsDoor: true, paperShown: false, gcNotice: false })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: false, rightSpan: false, pileBreak: false })
   })
 
   it('a pile line too narrow for the piles and the span together breaks before the span, on every shape that draws the span on By paper, and nowhere else', () => {
@@ -186,12 +184,7 @@ describe('the Lien desk title bar on a computer (v2.7213; the door under the pre
     expect(lienDeskTitleBarLayout({ pileFit: 'right_below', isMobile: true, fit: 'none', recordsDoor: true, paperShown: true, gcNotice: true }).pileBreak).toBe(false)
   })
 
-  it('when the line holds the four presses, they end the title line and the door slides under them at the right end of the second line, on every view', () => {
-    for (const paperShown of [false, true]) {
-      for (const gcNotice of [false, true]) {
-        expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'presses', recordsDoor: true, paperShown, gcNotice })).toEqual({ tools: 'title_line', door: 'second_line', breakLine: true, rightSpan: true, pileBreak: false })
-      }
-    }
+  it('when the line holds the four presses alone, they end the title line; with no door to slide under them the presses are the whole of the tools', () => {
     // With no door to slide, the presses alone are the whole of the tools: the one-line shape.
     expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'presses', recordsDoor: false, paperShown: false, gcNotice: false })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: false, rightSpan: false, pileBreak: false })
     expect(lienDeskTitleBarLayout({ pileFit: 'one_line', isMobile: false, fit: 'presses', recordsDoor: false, paperShown: true, gcNotice: true })).toEqual({ tools: 'title_line', door: 'with_tools', breakLine: true, rightSpan: true, pileBreak: false })
