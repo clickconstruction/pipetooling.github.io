@@ -871,6 +871,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Job thread notes** (v2.5526, `20261014220000_helper_on_job_thread_notes.sql`): a helper or a subcontractor on a job's crew (`jobs_ledger_team_members`) reads and posts its `jobs_ledger_thread_notes`, Job Mode's **Something else** note among them, and so does one with a schedule block on it this week or last. The field branch of both policies asks the SECURITY DEFINER `helper_on_job(job)`, since `jobs_ledger_team_members`' SELECT policy hides a helper's own crew row and the old in-policy check never saw it. The branch's own dispatch check (a block on any day) stays as it was.
 
+**The job's own row** (v2.7375, `20261116020000_jobs_ledger_crew_reads.sql`): the same `helper_on_job(job)` opens the job's `jobs_ledger` row to a person on its crew, so a helper, a superintendent or an estimator reads the customer, the status and the plans before their first clock-in there. Until then the row opened to a field role only through a clock session of their own on the job, or through the subcontractor's team-or-schedule rule. Read only.
+
 ---
 
 ### estimator (Estimator)
