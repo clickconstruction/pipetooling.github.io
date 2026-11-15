@@ -45,6 +45,8 @@ import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
 import BidScoreHoldChip from './BidScoreHoldChip'
+import DifficultyRateSheet from './DifficultyRateSheet'
+import { GcDifficultyAsksPress } from './GcDifficultyAsk'
 import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
 import BidDifficultyPriceModal from './BidDifficultyPriceModal'
 import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
@@ -372,6 +374,8 @@ export function BidsBidBoardTab({
   const boardRole = useOptionalAuth()?.role
   const canRateGc = difficultyCanRate(difficultyPrice?.body ?? null, boardRole)
   const [pricingRulesOpen, setPricingRulesOpen] = useState(false)
+  // #357 PR 5: the master's sheet, opened from a row's GC chip (or Rate them on an opened row) for that bid.
+  const [rateSheetBid, setRateSheetBid] = useState<BidWithBuilder | null>(null)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
   // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
   const toolsRow = bidBoardToolsRowLayout(narrowViewport)
@@ -1382,7 +1386,7 @@ export function BidsBidBoardTab({
           <div>
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
-            {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} /></span> : null}
+            {bid.customer_id ? <span style={{ marginLeft: '0.4rem' }}><GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} canRate={canRateGc} onRate={canRateGc ? () => setRateSheetBid(bid) : undefined} /></span> : null}
             {scoreHolds.get(bid.id) ? <span style={{ marginLeft: '0.4rem' }}>{renderScoreHoldChip(bid)}</span> : null}
           </div>
           {bidDevelopmentName(bid) ? (
@@ -1524,7 +1528,7 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
-              {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+              {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} onRate={canRateGc ? () => setRateSheetBid(bid) : undefined} /> : null}
               {renderScoreHoldChip(bid)}
               {bidDevelopmentName(bid) ? (
                 <span
@@ -1781,7 +1785,7 @@ export function BidsBidBoardTab({
               {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
             </button>
           ) : null}
-          {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} /> : null}
+          {bid.customer_id ? <GcDifficultyChip standing={gcDifficulty.get(bid.customer_id)} customerId={bid.customer_id} onRate={canRateGc ? () => setRateSheetBid(bid) : undefined} /> : null}
           {renderScoreHoldChip(bid)}
           {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -1886,6 +1890,8 @@ export function BidsBidBoardTab({
             </svg>
             {workingBoardArchivedBids.length > 0 ? `(${workingBoardArchivedBids.length})` : ''}
           </button>
+          {/* #357 PR 5: the asks at the end of a job, for the job's master; nothing with none open. */}
+          <GcDifficultyAsksPress style={{ padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap', font: 'inherit', fontWeight: 600 }} />
           <button
             type="button"
             onClick={() => setPricingRulesOpen(true)}
@@ -2380,6 +2386,24 @@ export function BidsBidBoardTab({
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
       {pricingRulesOpen ? <BidDifficultyPriceModal role={boardRole} onClose={() => setPricingRulesOpen(false)} /> : null}
+      {rateSheetBid?.customer_id ? (
+        <DifficultyRateSheet
+          customerId={rateSheetBid.customer_id}
+          customerName={rateSheetBid.customers?.name ?? rateSheetBid.bids_gc_builders?.name ?? ''}
+          bid={{
+            id: rateSheetBid.id,
+            label: rateSheetBid.bid_number?.trim() ? formatBidLedgerNumberLabel(resolveBidLedgerPrefix(rateSheetBid.service_type_id, ledgerPrefixMap), rateSheetBid.bid_number.trim()) : null,
+            project: rateSheetBid.project_name,
+            serviceTypeId: rateSheetBid.service_type_id,
+            bidValue: rateSheetBid.bid_value != null ? Number(rateSheetBid.bid_value) : null,
+            pricedRevenueUsd: rateSheetBid.priced_revenue_usd,
+            pricedCostUsd: rateSheetBid.priced_cost_usd,
+            pricedDifficultyUsd: rateSheetBid.priced_difficulty_usd,
+          }}
+          role={boardRole}
+          onClose={() => setRateSheetBid(null)}
+        />
+      ) : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
       {filesWindow
         ? (() => {
