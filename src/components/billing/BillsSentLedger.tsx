@@ -28,6 +28,8 @@ import {
   billsSentSumWords,
   billsSentTiles,
   billsSentTime,
+  byHandDayOffered,
+  byHandDayPicks,
   byHandFiling,
   byHandProblem,
   type BillsSentByHandDraft,
@@ -292,15 +294,33 @@ const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,
 const fieldLabel: CSSProperties = { display: 'grid', gap: '0.15rem', fontSize: '0.75rem', color: 'var(--text-700)', minWidth: 0 }
 const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0, boxSizing: 'border-box', width: '100%' }
 
+/** A day one press away under the form's date; the pressed one is the day the form holds. */
+function dayPick(picked: boolean, phone: boolean): CSSProperties {
+  return {
+    font: 'inherit',
+    fontSize: phone ? '0.8125rem' : '0.75rem',
+    padding: '0.15rem 0.6rem',
+    minHeight: phone ? 40 : undefined,
+    borderRadius: 999,
+    cursor: 'pointer',
+    fontWeight: picked ? 700 : 500,
+    border: `1px solid ${picked ? 'var(--text-strong)' : 'var(--border-strong)'}`,
+    background: picked ? 'var(--text-strong)' : 'var(--surface)',
+    color: picked ? 'var(--surface)' : 'var(--text-700)',
+  }
+}
+
 /**
  * The small form under a row of the strip: how the bill went, to whom, the day, and a note. Saving files a record
- * made by hand; the list reads again and the bill moves from the strip to its day.
+ * made by hand; the list reads again and the bill moves from the strip to its day. The day opens on the day the bill
+ * was made, with **Today** one press away (punch list #340, R1): a bill in the strip may be weeks old, and a record
+ * cannot be changed once saved.
  */
 function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; waysCtl: BillHandWaysCtl; onSaved: () => void; onClose: () => void }) {
   const phone = useIsMobile()
   const { showToast } = useToastContext()
   const today = todayYmdInAppTz()
-  const [draft, setDraft] = useState<BillsSentByHandDraft>({ how: '', toWhom: gap.payer, wentOnYmd: today, note: '' })
+  const [draft, setDraft] = useState<BillsSentByHandDraft>(() => ({ how: '', toWhom: gap.payer, wentOnYmd: byHandDayOffered(gap.billedYmd, today), note: '' }))
   const [saving, setSaving] = useState(false)
   const ways = waysCtl.ways
   const problem = byHandProblem(draft, today, ways)
@@ -324,10 +344,19 @@ function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; way
         Who it went to
         <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
       </label>
-      <label style={fieldLabel}>
-        The day it went
-        <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
-      </label>
+      <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0, alignContent: 'start' }}>
+        <label style={fieldLabel}>
+          The day it went
+          <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+        </label>
+        <div role="group" aria-label="Days one press away" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+          {byHandDayPicks(gap.billedYmd, today).map((p) => (
+            <button key={p.ymd} type="button" aria-pressed={draft.wentOnYmd === p.ymd} onClick={() => setDraft((d) => ({ ...d, wentOnYmd: p.ymd }))} style={dayPick(draft.wentOnYmd === p.ymd, phone)}>
+              {phone ? p.short : p.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label style={fieldLabel}>
         A note, if you want one
         <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
