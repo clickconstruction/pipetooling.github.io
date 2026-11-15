@@ -83,7 +83,7 @@ describe('the copy of the kernels', () => {
     expect(byPath.flatMap((b) => b.unresolved)).toEqual([])
     const reached = new Set([...bundle.files, ...byPath.flatMap((b) => b.files)].filter((f) => f.startsWith(`${g.OUT_DIR}/`)))
     expect(reached.size).toBe(files.size - typeFiles.length)
-    expect(bundle.files.some((f) => f === 'supabase/functions/_shared/billTruth.ts')).toBe(true)
+    expect(byPath.some((b) => b.files.includes('supabase/functions/_shared/billTruth.ts'))).toBe(true)
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
     // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
     // The database's types are held slim (v2.7256), for their types alone.
@@ -145,93 +145,88 @@ describe('the slim database types (v2.7256: a deploy uploads a type import too, 
   })
 })
 
-describe('what the index does not carry', () => {
-  /** The weekly email's kernels: bridge-weekly-sheet reads them by path (your-week-email takes the send's switch the same way). */
-  const SHEET_ENTRIES = [
-    'lib/bridge/sheetReads.ts',
-    'lib/bridge/sheetBuild.ts',
-    'lib/bridge/weekMail.ts',
-    'lib/bridge/moneyCard.ts',
-    'lib/bridge/cashAccounts.ts',
-    'lib/bridge/mercuryCash.ts',
-    'lib/jobs/zzTestJobReads.ts',
-    'lib/bridge/weeklySend.ts',
+describe('what the index carries (v2.7288, punch list #359: only what a function imports through it)', () => {
+  /** The entries a function reads through the index: the schedule kernels the portals' two readers and the trade sample take, and the photo kernels. */
+  const INDEX_ENTRIES = [
+    'lib/gc/schedule/portalSchedule.ts',
+    'lib/gc/projectRows.ts',
+    'lib/gc/boardRows.ts',
+    'lib/gc/drawRows.ts',
+    'lib/gc/schedule/rows.ts',
+    'lib/gc/schedule/tellTrades.ts',
+    'lib/gc/schedule/lateNotices.ts',
+    'lib/gc/schedule/crewCounts.ts',
+    'lib/gc/portal.ts',
+    'lib/gc/schedule/customerSchedule.ts',
+    'lib/gc/lateFinish.ts',
+    'lib/gc/changeOrderOfficeRows.ts',
+    'lib/photos/photoName.ts',
+    'lib/photos/photoSave.ts',
+    'lib/photos/photoRows.ts',
   ]
-  /** The firm's lien grid: legal-portal reads the Lien desk's paid-in-kind rule by path, through `_shared/legalLienBookShape.ts`. */
-  const FIRM_BOOK_ENTRIES = ['lib/jobs/lienInKind.ts']
+  const FUNCTIONS = join(ROOT, 'supabase/functions')
+  /** Every .ts file under the functions, the copy left out. */
+  const edgeFiles = (dir = FUNCTIONS, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name)
+      if (p === join(ROOT, g.OUT_DIR)) continue
+      if (e.isDirectory()) edgeFiles(p, out)
+      else if (p.endsWith('.ts')) out.push(p)
+    }
+    return out
+  }
+  /** The names each edge file imports through the index, `type` stripped. */
+  const importedThroughIndex = () => {
+    const out = new Map<string, string[]>()
+    for (const file of edgeFiles()) {
+      for (const m of readFileSync(file, 'utf8').matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+'[^']*gcKernels\/index\.ts'/g)) {
+        const names = (m[1] ?? '').split(',').map((n) => n.trim().replace(/^type\s+/, '')).filter(Boolean)
+        out.set(file.slice(ROOT.length + 1), [...(out.get(file.slice(ROOT.length + 1)) ?? []), ...names])
+      }
+    }
+    return out
+  }
+  /** The names the index on disk exports. */
+  const exportedByIndex = () => {
+    const names = new Set<string>()
+    for (const m of readFileSync(join(ROOT, g.OUT_DIR, 'index.ts'), 'utf8').matchAll(/^export (?:type )?\{([^}]*)\} from/gm)) for (const n of (m[1] ?? '').split(',').map((x) => x.trim()).filter(Boolean)) names.add(n)
+    return names
+  }
 
-  it('reaches no Bridge kernel: the weekly email reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send a second time, punch list #318)', () => {
-    expect(offIndexEntries().filter((entry) => SHEET_ENTRIES.includes(entry))).toEqual(SHEET_ENTRIES)
-    const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
-    expect(fromIndex.filter((f) => f.includes('/lib/bridge/'))).toEqual([])
-    // And the email still reaches every one of them by its own import.
-    const sheet = walk(ROOT, 'supabase/functions/bridge-weekly-sheet/index.ts', disk).files
-    for (const entry of SHEET_ENTRIES) expect(sheet).toContain(`${g.OUT_DIR}/${entry}`)
-    expect(sheet).not.toContain(`${g.OUT_DIR}/index.ts`)
+  it('exports the fifteen entries read through it and nothing of the rest, which their functions read by path', () => {
+    const onIndex = Object.entries(g.ENTRIES as Record<string, { values: string[]; types: string[] }>)
+      .filter(([, e]) => e.values.length > 0 || e.types.length > 0)
+      .map(([entry]) => entry)
+    expect(onIndex).toEqual(INDEX_ENTRIES)
+    expect(offIndexEntries().length).toBe(Object.keys(g.ENTRIES).length - INDEX_ENTRIES.length)
   })
 
-  it('reaches no submittal kernel: the dev seat reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send)', () => {
-    const offIndex = offIndexEntries().filter((entry) => !SHEET_ENTRIES.includes(entry) && !FIRM_BOOK_ENTRIES.includes(entry))
-    expect(offIndex).toEqual([
-      'lib/submittals/standingRows.ts',
-      'lib/submittals/procurementItemSources.ts',
-      'lib/submittals/procurementLog.ts',
-      'lib/submittals/procurementBoard.ts',
-      'lib/submittals/productStatus.ts',
-      // The dev seat's plan_last_work_day (v2.7206): the Lien window's rule for a day set by hand and its table of dates.
-      'lib/jobs/lienLastWorkDay.ts',
-      'lib/jobs/lienLastWorkDayPreview.ts',
-      // The dev seat's plan_notice_by_hand (v2.7229): the rows one mailed paper becomes, the item's day, the nine values and the signer.
-      'lib/jobs/lienNoticeByHand.ts',
-      'lib/jobs/lienSentAt.ts',
-      'lib/jobs/lienNoticeJobFields.ts',
-      'lib/jobs/lienSigner.ts',
-      // The dev seat's plan_affidavit_draft (v2.7247): the desk's affidavit queue and gates, the paper's months and sends, the attorney's questions, the claim set by hand, the property as resolved and the form's mark.
-      'lib/jobs/lienDeskAffidavits.ts',
-      'lib/jobs/lienAffidavitNotices.ts',
-      'lib/jobs/lienAffidavitNoticeCheck.ts',
-      // Punch list #353, part 2: the last work month's own notice still due, the pane's line said by the seat too.
-      'lib/jobs/lienNoticeOwed.ts',
-      'lib/jobs/lienAffidavitMonthsByHand.ts',
-      'lib/jobs/lienMonthCheck.ts',
-      'lib/jobs/lienClaimCorrection.ts',
-      'lib/jobs/lienProperty.ts',
-      'lib/jobs/lienAffidavitForm.ts',
-      // The dev seat's plan_bid_update (v2.6945): the outcome line, the loss categories and the Board's sections.
-      'lib/outcomeChangeBidNote.ts',
-      'lib/bidLossCategories.ts',
-      'lib/bids/submissionSections.ts',
-      // The dev seat's plan_bid_counts (v2.6967): the Count Sheet's rules.
-      'lib/bids/countSheet.ts',
-      'lib/bids/countRowUnit.ts',
-      'lib/bids/parseCountsImportText.ts',
-      'lib/bids/pickActiveVersion.ts',
-      // The dev seat's plan_bid_takeoff: the materials total and how a part is sold.
-      'lib/bids/bidMaterials.ts',
-      'lib/materials/orderIncrement.ts',
-      // The dev seat's plan_bid_labor: the tab's cost line and the sync's fixture key.
-      'lib/bids/bidTotalCostBreakdown.ts',
-      'lib/bids/laborSyncPlan.ts',
-      // The dev seat's priced total: the grid's projection and the tab's picks.
-      'lib/bids/scenarioPricingRows.ts',
-      'lib/bids/legacyTemplatePricing.ts',
-      'lib/bids/pickDefaultPriceBookTemplateId.ts',
-      'lib/bids/pricingWriteTarget.ts',
-      // The dev seat's plan_bid_pricing: which book entry a row prices from.
-      'lib/bids/resolvePricingEntry.ts',
+  it('exports every name a function imports through it, and no name none does (a name exported for no reader rides every portal’s deploy)', () => {
+    const imported = new Set([...importedThroughIndex().values()].flat())
+    const exported = exportedByIndex()
+    expect([...importedThroughIndex().keys()].sort()).toEqual([
+      'supabase/functions/_shared/gcCustomerSchedule.ts',
+      'supabase/functions/_shared/gcTradePortalSample.ts',
+      'supabase/functions/_shared/gcTradePortalSchedule.ts',
+      'supabase/functions/drive-link/index.ts',
+      'supabase/functions/photo-save/index.ts',
     ])
-    const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
-    expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])
-    // And the seat still reaches every one of them by its own import.
-    const seat = walk(ROOT, 'supabase/functions/dev-mcp/index.ts', disk).files
-    for (const entry of offIndex) expect(seat).toContain(`${g.OUT_DIR}/${entry}`)
+    expect([...imported].filter((n) => !exported.has(n)).sort()).toEqual([])
+    expect([...exported].filter((n) => !imported.has(n)).sort()).toEqual([])
   })
 
-  it('reaches no kernel of the firm’s lien grid: legal-portal reads the paid-in-kind rule by path, and nothing else of the copy', () => {
-    expect(offIndexEntries().filter((entry) => FIRM_BOOK_ENTRIES.includes(entry))).toEqual(FIRM_BOOK_ENTRIES)
+  it('reaches no kernel of the morning run, My email, the Monday email, the Bridge, the submittals or the bids: customer-portal uploaded 3.01 MB with them and 1.64 MB without', () => {
+    const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
+    const off = ['/lib/flows/', '/lib/myMail/', '/lib/techWeek/', '/lib/bridge/', '/lib/submittals/', '/lib/bids/', '/lib/rfq/', '/lib/emailIn/', '/lib/quo/', '/lib/walk/', '/lib/charges/']
+    expect(fromIndex.filter((f) => off.some((dir) => f.includes(dir)))).toEqual([])
+  })
+
+  it('every entry it exports nothing of is reached by an importer by the file’s own path, so nothing in the copy is dead', () => {
+    const reached = new Set<string>()
+    for (const slug of g.IMPORTERS) for (const f of walk(ROOT, `supabase/functions/${slug}/index.ts`, disk).files) reached.add(f)
+    expect(offIndexEntries().filter((entry) => !reached.has(`${g.OUT_DIR}/${entry}`))).toEqual([])
+    // The firm's portal reads the Lien desk's paid-in-kind rule and nothing else of the copy (v2.7259).
     const portal = walk(ROOT, 'supabase/functions/legal-portal/index.ts', disk).files
-    for (const entry of FIRM_BOOK_ENTRIES) expect(portal).toContain(`${g.OUT_DIR}/${entry}`)
-    expect(portal).not.toContain(`${g.OUT_DIR}/index.ts`)
     expect(portal.filter((f) => f.startsWith(`${g.OUT_DIR}/`)).sort()).toEqual([`${g.OUT_DIR}/lib/inKind/inKindLedger.ts`, `${g.OUT_DIR}/lib/jobs/lienInKind.ts`])
   })
 })
