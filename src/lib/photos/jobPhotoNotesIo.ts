@@ -13,6 +13,7 @@ import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
 import { supabaseJobPhotosIo, type JobPhotosIo } from './jobPhotosIo'
 import { supabaseUploadedPhotosIo, type UploadedPhotosIo } from './uploadedPhotosIo'
 import { postJobThreadNoteBody } from '../jobs/postJobThreadNote'
+import { bytesAlreadyThere } from './shotTiles'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -46,13 +47,15 @@ export interface ShotIo {
 
 /**
  * The bytes to the bucket, then the row. Throws with the reason when the phone has no signal or the bucket refuses
- * (over 2 MB, no door to the job); the caller keeps the tile with Retry.
+ * (over 2 MB, no door to the job); the caller keeps the tile with Retry. The upload is never an upsert: the bucket has
+ * no update policy and refuses one onto an object that is there, every try. A resend that finds its own bytes there
+ * (the first upload landed and its answer was lost) goes on to the row, an upsert on the shot's id (punch list #338).
  */
 export async function sendJobPhotoNote(input: SendShotInput): Promise<{ storagePath: string }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new PhotoSendError('The phone has no signal.', 'network')
   const storagePath = jobPhotoNotePath(input.jobId, input.id)
-  const { error } = await db.storage.from(JOB_PHOTO_NOTES_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
+  const { error } = await db.storage.from(JOB_PHOTO_NOTES_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
+  if (error && !bytesAlreadyThere(error)) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const { error: rowError } = await db.from('job_photo_notes').upsert(
     {
       id: input.id,
