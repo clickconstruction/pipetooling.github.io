@@ -112,6 +112,8 @@ describe('rateSheetPayingWords', () => {
   })
   it('a by-hand point says whose words set it', () => {
     expect(rateSheetPayingWords({ pick: { points: 1, reason: 'By hand: They hold retainage for a year.' }, read: null })).toBe('1 point, set by hand: They hold retainage for a year. Not yours to pick.')
+    // The walk of part 5 read a reason typed with no full stop run into the next sentence.
+    expect(rateSheetPayingWords({ pick: { points: 1, reason: 'By hand: their bills are on another system' }, read: null })).toBe('1 point, set by hand: their bills are on another system. Not yours to pick.')
   })
   it('no point: why the bills give none, or not read yet', () => {
     const few = readDifficultyPaying({ readable: true, own: { medianDays: 20, samples: 1 }, receipts: [], gcPace: null, calendar: null, todayYmd: '2026-11-15' })
