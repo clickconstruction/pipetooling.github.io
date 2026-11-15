@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -31,7 +31,7 @@ import { lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import { LIEN_MONTH_FLAG_DOOR_WORDS, LIEN_MONTH_CHECK_CANCEL_WORDS, LIEN_MONTH_CHECK_CHANGE_WORDS, LIEN_MONTH_CHECK_NOTE_HINT, LIEN_MONTH_CHECK_SAVES_WORDS, LIEN_MONTH_SET_LAST_DAY_WORDS, lienMonthAskWords, lienMonthCheckProblem, lienMonthCheckState, lienMonthCheckedRowWords, lienMonthCheckedWords, lienMonthConfirmWords, lienMonthName, lienMonthQuestion, lienMonthYesWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { saveLienMonthCheck } from '../../lib/jobs/lienMonthCheckIo'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
-import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLienAffidavitShort, LIEN_DRAFT_AUTOSAVE_MS, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem, tellLeaderOfLienAffidavits } from '../../lib/jobs/lienDeskIo'
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
@@ -53,6 +53,7 @@ import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
 import type { LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The affidavit pane of the Lien desk (v2.3412): the § 53.052 gate (owner of
@@ -157,6 +158,19 @@ export default function LienDeskAffidavitPane({
   const leader = isLienLeader(authRole)
   const office = isLienOffice(authRole)
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  // Autosave (v2.7327): the draft row is written about 800 ms after a change to the paper — the months set by hand — never
+  // on open. `draftTouch` counts the changes; a forward press saves first, after any save in flight, so no second row is made.
+  const [draftTouch, setDraftTouch] = useState(0)
+  const [draftSave, setDraftSave] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const draftIdRef = useRef<string | null>(null)
+  const autosaveRef = useRef<Promise<void> | null>(null)
+  const touchDraft = () => setDraftTouch((n) => n + 1)
+  useEffect(() => {
+    setDraftTouch(0)
+    setDraftSave('idle')
+    draftIdRef.current = null
+  }, [entry.jobId])
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -303,6 +317,7 @@ export default function LienDeskAffidavitPane({
   const run = async (labelText: string, fn: () => Promise<void | { said: string; tone: 'success' | 'warning' }>, done: string) => {
     if (busy) return
     setBusy(true)
+    busyRef.current = true
     try {
       const own = await fn()
       showToast(own ? own.said : done, own ? own.tone : 'success')
@@ -311,10 +326,45 @@ export default function LienDeskAffidavitPane({
       showToast(e instanceof Error && e.message ? `${labelText}: ${e.message}` : `${labelText} failed.`, 'error')
     } finally {
       setBusy(false)
+      busyRef.current = false
     }
   }
   const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd, serviceTypeName: job?.service_type?.name }), gcEmail: gc?.email ?? '', ...(entry.lastMonthFromCreation ? { monthsDatedFromCreation: true as const } : {}), ...(form === 'short' ? LIEN_AFFIDAVIT_SHORT_FORM_MARK : {}) })
-  const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
+  const ensureDraft = async (fromAutosave = false): Promise<string> => {
+    if (!fromAutosave && autosaveRef.current) await autosaveRef.current.catch(() => undefined)
+    const id = await saveLienDeskDraft({ itemId: item?.id ?? draftIdRef.current, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
+    draftIdRef.current = id
+    return id
+  }
+  const canAutosave = office && entry.ready && (!item || item.status === 'drafted')
+  useEffect(() => {
+    if (draftTouch === 0 || !canAutosave) return
+    const t = window.setTimeout(() => {
+      if (busyRef.current) return
+      const p = (async () => {
+        setDraftSave('saving')
+        try {
+          await ensureDraft(true)
+          setDraftSave('saved')
+          onChanged()
+        } catch (e) {
+          setDraftSave('idle')
+          showToast(formatErrorMessage(e, 'The draft did not save.'), 'error')
+        }
+      })()
+      autosaveRef.current = p
+      void p.finally(() => {
+        if (autosaveRef.current === p) autosaveRef.current = null
+      })
+    }, LIEN_DRAFT_AUTOSAVE_MS)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the count is the signal; the save reads the latest state when it fires
+  }, [draftTouch])
+  useEffect(() => {
+    if (draftSave !== 'saved') return
+    const t = window.setTimeout(() => setDraftSave('idle'), 2500)
+    return () => window.clearTimeout(t)
+  }, [draftSave])
   const policy = gc?.policy ?? 'ask'
   const submit = () =>
     run(
@@ -355,7 +405,7 @@ export default function LienDeskAffidavitPane({
         await redrawLienAffidavitShort(item, authUserId)
         setRedrawOpen(false)
       },
-      'Redrawn on the short form. It is back in To draft and needs approval again.',
+      'Redrawn on the short form. It is back in To send and needs approval again.',
     )
 
   // The door on the contractor's-address gate (punch list #305): the GC's own customer record.
@@ -472,6 +522,7 @@ export default function LienDeskAffidavitPane({
         {noticeDue ? <div data-lien-affidavit-notice-due style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{lienAffidavitNoticeDueLine(noticeDue, formatYmdMonthDay)}</div> : null}
         {/* One press per footer (v2.7324): the leader's own okay with the notary line, or the office's ask with one line on his phone; his word waits behind He already okayed it ▾. The line says what the press on screen will do. */}
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-affidavit-foot-line>
+          {draftSave !== 'idle' ? <span data-lien-affidavit-saved={draftSave}>{draftSave === 'saving' ? 'Saving… ' : '✓ Saved · '}</span> : null}
           {blocked ? `Blocked until every gate above is clear.` : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between filing and their word.` : foot.primary?.line} {forfeit}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -746,8 +797,8 @@ export default function LienDeskAffidavitPane({
                 named={namedMonthKeys}
                 canEdit={office}
                 busy={busy}
-                onSave={(input) => run('Set the months by hand', async () => void (await saveLienAffidavitMonthsByHand({ jobId: entry.jobId, months: input.months, reason: input.reason, userId: authUserId, userName: authName })), 'The paper names the months set by hand.')}
-                onClear={() => run('Clear the months set by hand', async () => void (await clearLienAffidavitMonthsByHand(entry.jobId)), 'Back to the months the record names.')}
+                onSave={(input) => run('Set the months by hand', async () => { await saveLienAffidavitMonthsByHand({ jobId: entry.jobId, months: input.months, reason: input.reason, userId: authUserId, userName: authName }); touchDraft() }, 'The paper names the months set by hand.')}
+                onClear={() => run('Clear the months set by hand', async () => { await clearLienAffidavitMonthsByHand(entry.jobId); touchDraft() }, 'Back to the months the record names.')}
               />
             ) : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -769,7 +820,7 @@ export default function LienDeskAffidavitPane({
         <div data-lien-affidavit-form="long" style={{ ...boxStyle, fontSize: '0.8125rem' }}>
           {redrawOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span>The affidavit goes back to To draft on the short form. It needs approval again before it is filed.</span>
+              <span>The affidavit goes back to To send on the short form. It needs approval again before it is filed.</span>
               <span style={{ flex: 1 }} />
               <button type="button" onClick={redrawShort} disabled={busy} style={btn('amber', busy)}>Redraw on the short form</button>
               <button type="button" onClick={() => setRedrawOpen(false)} style={btn('plain')}>Cancel</button>

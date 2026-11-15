@@ -37,8 +37,8 @@ describe('lienAffidavitRedrawWords · the button says exactly what it will do', 
   it('names the count on the button, in the confirm window and on its own button', () => {
     const w = lienAffidavitRedrawWords(plan(12))
     expect(w).toMatchObject({ button: 'Redraw 12 on the short form…', title: 'Redraw 12 affidavits on the short form?', confirmLabel: 'Redraw 12 on the short form', foot: null, dead: false })
-    expect(w.message).toBe('Each affidavit goes back to To draft on the short form. Each needs approval again before it is filed.')
-    expect(lienAffidavitRedrawWords(plan(1))).toMatchObject({ button: 'Redraw 1 on the short form…', title: 'Redraw 1 affidavit on the short form?', message: 'The affidavit goes back to To draft on the short form. It needs approval again before it is filed.' })
+    expect(w.message).toBe('Each affidavit goes back to To send on the short form. Each needs approval again before it is filed.')
+    expect(lienAffidavitRedrawWords(plan(1))).toMatchObject({ button: 'Redraw 1 on the short form…', title: 'Redraw 1 affidavit on the short form?', message: 'The affidavit goes back to To send on the short form. It needs approval again before it is filed.' })
   })
 
   it('says what it leaves, and is dead when nothing is ready', () => {

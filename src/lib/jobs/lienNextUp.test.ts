@@ -39,7 +39,7 @@ describe('buildLienNextUp — notices', () => {
   it('each pile names its one move and opens the Notices pane on that job and pile', () => {
     const cases: Array<[LienDeskPile, string, string]> = [
       ['needs_owner', 'find_owner', 'Find the owner'],
-      ['to_draft', 'draft', 'Draft notice'],
+      ['to_draft', 'draft', 'Open the notice'],
       ['printed', 'add_tracking', 'Add tracking'],
       ['held', 'review_hold', 'Review the hold'],
     ]
@@ -103,7 +103,7 @@ describe('buildLienNextUp — affidavits and retainage', () => {
   it('affidavit piles: fix the property, draft, approve, file, review; filed and missed ask nothing', () => {
     const act = (pile: LienAffidavitPile, role = 'assistant') => build({ affidavits: [affidavit('j1', pile)], role }).map((r) => [r.action, r.button])
     expect(act('needs_property')).toEqual([['fix_property', 'Fix the property']])
-    expect(act('to_draft')).toEqual([['draft', 'Draft affidavit']])
+    expect(act('to_draft')).toEqual([['draft', 'Open the affidavit']])
     expect(act('awaiting')).toEqual([['approve', null]])
     expect(act('awaiting', 'dev')).toEqual([['approve', 'Approve']])
     expect(act('ready')).toEqual([['file_affidavit', 'File the affidavit']])
@@ -171,7 +171,7 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
   it('every window closed, the affidavit still open: the notice row drafts it late, the affidavit row says send the notice first', () => {
     const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-10-15', daysLeft: 10, severity: 'amber', gates: gates(false) })] })
     const n = rows.find((r) => r.kind === 'notice')!
-    expect([n.action, n.button, n.sub, n.dueOn, n.daysLeft]).toEqual(['draft_late', 'Draft it late', 'Late notice to draft · the window closed, the affidavit is still open', '2026-10-15', 10])
+    expect([n.action, n.button, n.sub, n.dueOn, n.daysLeft]).toEqual(['draft_late', 'Draft it late', 'Late notice to send · the window closed, the affidavit is still open', '2026-10-15', 10])
     expect(n.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
     const a = rows.find((r) => r.kind === 'affidavit')!
     expect([a.action, a.button]).toEqual(['send_notice', 'Send the notice first'])
@@ -416,14 +416,14 @@ describe('buildLienNextUp — a notice on record that still owes a month (punch 
   it('the To draft row names the owed month beside the months on record, and offers the two ways it may be wrong', () => {
     const r = one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: named })
     expect(r.sub).toBe('September 2026 has no notice. The one on record names April, June, July and August 2026.')
-    expect([r.action, r.button]).toEqual(['draft', 'Draft notice'])
+    expect([r.action, r.button]).toEqual(['draft', 'Open the notice'])
     expect(r.doors).toEqual([
       { words: 'The paper named September 2026 too', target: { open: 'notice_record_months', jobId: 'j1', months: ['2026-09'] } },
       { words: 'The last day of work is wrong', target: { open: 'lien_window', jobId: 'j1', tab: 'notice', openLastWork: true } },
     ])
   })
   it('with no notice on record, or no months handed in, the row keeps its plain words and no doors', () => {
-    expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: {} })).toMatchObject({ sub: 'Notice to draft' })
+    expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })], noticeMonthsByJob: {} })).toMatchObject({ sub: 'Notice to send' })
     expect(one({ notices: [notice('j1', 'to_draft', { dueMonths: ['2026-09'] })] }).doors).toBeUndefined()
   })
   it('a viewer with no press gets the words and no doors', () => {
