@@ -5,6 +5,7 @@
  * Customer Pictures — so the person never picks a half. Until now a file on someone's computer reached a job's folder
  * only by hand in Drive, or through Messages' Save to Drive once it had been emailed.
  */
+import { photoDriveName } from '../photos/photoName'
 
 /** Where a `put` from the Documents tab lands, by the Job folders row pressed; `sent` is Team only → Sent by us, where the Hours statements section puts a signed PDF (v2.6634). */
 export type AddFileWhere = 'top' | 'plans' | 'pictures' | 'sent'
@@ -51,6 +52,28 @@ export const ADD_FILE_WORDS = {
 } as const
 
 /** The confirm press names the act and the folder: never OK. */
+/**
+ * The phone's Add ▾ sheet (punch list #355 H, v2.7282): a folder row ends in Add ▾, which opens three rows. Take a photo
+ * opens the camera and the shot goes straight into the folder, named as the photo sweep names one; Choose a file is the
+ * picker and the panel; Open in Google Drive is the folder in a tab.
+ */
+export const ADD_SHEET_WORDS = {
+  button: 'Add ▾',
+  title: (folder: string) => `Add to ${folder}`,
+  photo: 'Take a photo',
+  photoSub: 'The camera. The shot goes into the folder by itself.',
+  file: 'Choose a file',
+  fileSub: 'A file on this phone, up to 10 MB.',
+  drive: 'Open in Google Drive',
+  shrinking: 'Shrinking the photo…',
+  sending: 'Adding the photo…',
+} as const
+
+/** *2026-11-14 Robert · Plans.jpg*: the day, who, and the folder, as the photo sweep names a shot. */
+export function folderPhotoFileName(input: { at: string; byName: string; folder: string; mime: string | null }): string {
+  return photoDriveName({ at: input.at, sender: input.byName, fileName: 'photo', mime: input.mime || 'image/jpeg', words: input.folder, place: 1 })
+}
+
 export function addFileConfirmLabel(folder: string): string {
   return `Add it to ${folder}`
 }

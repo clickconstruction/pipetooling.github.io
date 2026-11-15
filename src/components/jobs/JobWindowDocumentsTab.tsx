@@ -78,7 +78,7 @@ export function JobWindowDocumentsTab({
   /** Called before a door leaves the window for another page (the Plans section's site door, #239). */
   onLeave?: () => void
 }) {
-  const { role } = useAuth()
+  const { role, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
   // Everything sent from the job, read once: the pay application workbooks go under their applications, the rest to Sent from this job.
@@ -176,7 +176,7 @@ export function JobWindowDocumentsTab({
   const held = apps && apps.length > 0 ? apps[apps.length - 1]!.retainageHeld : 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '0.5rem' }}>
+    <div data-documents-phone="" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '0.5rem' }}>
       {/* Plans first (v2.6791, the owner's ask on job 879): what a person opens most from this tab sat below the papers, off the screen on most jobs. */}
       <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
 
@@ -358,6 +358,16 @@ export function JobWindowDocumentsTab({
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 
 
+      {/* Punch list #355 H (v2.7282): on a phone every section's press stands 40 px and a folder's row 44 px, so a thumb lands on them. */}
+      <style>{`
+        @media (max-width: 640px) {
+          [data-documents-phone] section button { min-height: 40px; font-size: 0.875rem; }
+          [data-documents-phone] section h3 { font-size: 1.0625rem; }
+          [data-documents-phone] [data-documents-folder-row] { min-height: 44px; align-items: center; }
+          [data-documents-phone] [data-documents-folder-row] > a { display: inline-flex; align-items: center; min-height: 40px; font-size: 0.9375rem; font-weight: 600; }
+          [data-documents-phone] [data-empty-state] { min-height: 44px; }
+        }
+      `}</style>
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>
           Job folders
@@ -379,12 +389,12 @@ export function JobWindowDocumentsTab({
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {folders.map((f) => (
-              <li key={f.label} style={{ fontSize: '0.875rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.6rem' }}>
+              <li key={f.label} data-documents-folder-row="" style={{ fontSize: '0.875rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.6rem' }}>
                 <a href={f.url} target="_blank" rel="noopener noreferrer">
                   {f.label}
                 </a>
                 {/* Add a file from this computer into this folder, as the app (v2.6303); the office roles the folder press names. */}
-                {canMakeJobDriveFolders(role) ? <JobDocumentsAddFile jobId={job.id} folder={f} /> : null}
+                {canMakeJobDriveFolders(role) ? <JobDocumentsAddFile jobId={job.id} folder={f} byName={profileName ?? null} /> : null}
               </li>
             ))}
           </ul>

@@ -1,6 +1,10 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import type { JobDocumentFolderLink } from '../../lib/jobs/jobDocumentsTab'
-import { ADD_FILE_WORDS, addFileConfirmLabel, addFileSizeWords, addFileTooBig, addFileWhereFor, addedWords } from '../../lib/jobs/jobFolderAddFile'
+import { ADD_FILE_WORDS, ADD_SHEET_WORDS, addFileConfirmLabel, addFileSizeWords, addFileTooBig, addFileWhereFor, addedWords, folderPhotoFileName } from '../../lib/jobs/jobFolderAddFile'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { PhoneSheet } from '../PhoneSheet'
+import { shrinkPhoto } from '../../lib/materials/photoShrink'
+import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import { supabaseJobFolderAddFileIo, type JobFolderAddFileIo } from '../../lib/jobs/jobFolderAddFileIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -19,6 +23,9 @@ const panel: CSSProperties = {
   maxWidth: '34rem',
 }
 const linkPress: CSSProperties = { border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--text-link)', fontWeight: 600 }
+/** The phone's sheet rows (punch list #355 H): 48 px each, the words and a quiet line. */
+const sheetRow: CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, width: '100%', minHeight: 48, padding: '0.5rem 1rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '1rem', fontWeight: 600, textAlign: 'left', cursor: 'pointer', textDecoration: 'none' }
+const sheetSub: CSSProperties = { fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }
 
 /**
  * Add a file to one of a job's Drive folders from the Documents tab (v2.6303, the owner's ask after punch list #236):
@@ -33,14 +40,22 @@ export function JobDocumentsAddFile({
   folder,
   io = supabaseJobFolderAddFileIo,
   onAdded,
+  byName = null,
 }: {
   jobId: string
   folder: JobDocumentFolderLink
   io?: JobFolderAddFileIo
   onAdded?: () => void
+  /** Who takes the photo (punch list #355 H): the shot's name carries it; *Someone* with no name. */
+  byName?: string | null
 }) {
   const where = addFileWhereFor(folder.label)
   const input = useRef<HTMLInputElement>(null)
+  // Punch list #355 H (v2.7282): on a phone the press is Add ▾ and opens a sheet; Take a photo goes straight into the folder.
+  const phone = useNarrowViewport640()
+  const camera = useRef<HTMLInputElement>(null)
+  const [sheet, setSheet] = useState(false)
+  const [shot, setShot] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -72,6 +87,30 @@ export function JobDocumentsAddFile({
     }
   }
   const tooBig = file != null && addFileTooBig(file.size)
+  const shotTaken = async (f: File | null) => {
+    if (!f || busy) return
+    setProblem(null)
+    setAdded(null)
+    setShot(ADD_SHEET_WORDS.shrinking)
+    try {
+      const at = await readTakenAt(f)
+      const small = await shrinkPhoto(f)
+      const type = small.shrunk ? 'image/jpeg' : f.type || 'image/jpeg'
+      const named = new File([small.blob], folderPhotoFileName({ at, byName: byName?.trim() || 'Someone', folder: folder.label, mime: type }), { type })
+      if (addFileTooBig(named.size)) {
+        setProblem(ADD_FILE_WORDS.tooBig)
+        return
+      }
+      setShot(ADD_SHEET_WORDS.sending)
+      const r = await io.put(jobId, where, named)
+      setAdded({ name: named.name, url: r.url })
+      onAdded?.()
+    } catch (e) {
+      setProblem(formatErrorMessage(e, ADD_FILE_WORDS.failed))
+    } finally {
+      setShot(null)
+    }
+  }
 
   return (
     <>
@@ -85,10 +124,32 @@ export function JobDocumentsAddFile({
           e.target.value = ''
         }}
       />
-      {!file && !added ? (
+      <input ref={camera} type="file" accept="image/*" capture="environment" aria-label={`${ADD_SHEET_WORDS.photo}: ${folder.label}`} tabIndex={-1} style={{ display: 'none' }} onChange={(e) => { void shotTaken(e.target.files?.[0] ?? null); e.target.value = '' }} />
+      {!file && !added && phone ? (
+        <button type="button" style={{ ...documentsQuietButton, minHeight: 40, padding: '0 0.8rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-link)', marginLeft: 'auto' }} onClick={() => setSheet(true)} aria-haspopup="dialog" aria-label={ADD_SHEET_WORDS.title(folder.label)} disabled={shot != null}>
+          {shot ?? ADD_SHEET_WORDS.button}
+        </button>
+      ) : !file && !added ? (
         <button type="button" style={{ ...documentsQuietButton, padding: '0.1rem 0.5rem', fontSize: '0.75rem' }} onClick={pick} title={ADD_FILE_WORDS.where[where]}>
           {ADD_FILE_WORDS.button}
         </button>
+      ) : null}
+      {sheet ? (
+        <PhoneSheet label={ADD_SHEET_WORDS.title(folder.label)} title={ADD_SHEET_WORDS.title(folder.label)} width={420} onClose={() => setSheet(false)}>
+          <div role="menu" aria-label={ADD_SHEET_WORDS.title(folder.label)} style={{ display: 'grid', paddingBottom: '0.25rem' }} data-add-sheet={folder.label}>
+            <button type="button" role="menuitem" style={sheetRow} onClick={() => { setSheet(false); camera.current?.click() }}>
+              📷 {ADD_SHEET_WORDS.photo}
+              <span style={sheetSub}>{ADD_SHEET_WORDS.photoSub}</span>
+            </button>
+            <button type="button" role="menuitem" style={sheetRow} onClick={() => { setSheet(false); pick() }}>
+              📎 {ADD_SHEET_WORDS.file}
+              <span style={sheetSub}>{ADD_SHEET_WORDS.fileSub}</span>
+            </button>
+            <a role="menuitem" href={folder.url} target="_blank" rel="noopener noreferrer" style={{ ...sheetRow, borderBottom: 'none', color: 'var(--text-link)' }} onClick={() => setSheet(false)}>
+              ▲ {ADD_SHEET_WORDS.drive}
+            </a>
+          </div>
+        </PhoneSheet>
       ) : null}
       {added ? (
         <span data-added-file={folder.label} style={{ ...small, ...muted }}>
