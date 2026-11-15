@@ -14,6 +14,7 @@ import { boxPagePath } from '../lib/materials/boxPage'
 import MaterialsGroupStrip from '../components/materials/MaterialsGroupStrip'
 import MaterialsOnSiteTab from '../components/materials/MaterialsOnSiteTab'
 import PrintLabelsWindow from '../components/materials/PrintLabelsWindow'
+import PrintStickersWindow from '../components/materials/PrintStickersWindow'
 import ScanLabelWindow from '../components/materials/ScanLabelWindow'
 import { useMaterialsOnSiteNeeds } from '../hooks/useMaterialsOnSiteNeeds'
 import { useOnSiteDeskJobs } from '../hooks/useOnSiteDeskJobs'
@@ -86,6 +87,8 @@ export default function Materials() {
   const [scanLabelOpen, setScanLabelOpen] = useState(false)
   /** The labels window: null closed, else the job it opens on (null = ask which job). */
   const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
+  /** Print blank stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
+  const [printStickers, setPrintStickers] = useState(false)
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
@@ -1423,6 +1426,7 @@ export default function Materials() {
   }
   const onStripPress = (press: MaterialsPress) => {
     if (press === 'scan-label') setScanLabelOpen(true)
+    else if (press === 'print-stickers') setPrintStickers(true)
     else setPrintLabels({ jobId: null })
   }
 
@@ -1494,6 +1498,16 @@ export default function Materials() {
           jobId={printLabels.jobId}
           onAddFirst={() => { setPrintLabels(null); openTab('on-site') }}
           onClose={() => setPrintLabels(null)}
+        />
+      ) : null}
+      {printStickers ? (
+        <PrintStickersWindow
+          jobs={onSiteDesk.jobs}
+          role={myRole}
+          loading={onSiteDesk.loading && !onSiteDesk.loaded}
+          failure={{ error: onSiteDesk.error, raw: onSiteDesk.raw, retry: onSiteDesk.retry }}
+          onAddFirst={() => { setPrintStickers(false); openTab('on-site') }}
+          onClose={() => setPrintStickers(false)}
         />
       ) : null}
 

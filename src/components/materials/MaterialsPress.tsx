@@ -5,7 +5,7 @@
  * A tab or a filter chip carries no glyph, so a glyph says "this does something" at a glance. The pill's style is
  * `lib/materials/materialsPressStyle.ts`.
  */
-export type MaterialsPressKind = 'print-labels' | 'scan-label' | 'add' | 'manifest'
+export type MaterialsPressKind = 'print-labels' | 'scan-label' | 'add' | 'manifest' | 'print-stickers'
 
 export function MaterialsPressGlyph({ kind, dead = false }: { kind: MaterialsPressKind; dead?: boolean }) {
   const common = { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, style: { display: 'block', color: dead ? 'currentColor' : 'var(--text-muted)' } }
@@ -22,6 +22,16 @@ export function MaterialsPressGlyph({ kind, dead = false }: { kind: MaterialsPre
     return (
       <svg {...common}>
         <path d="M8 3v10M3 8h10" />
+      </svg>
+    )
+  }
+  if (kind === 'print-stickers') {
+    // A sticker: a rounded label with its square code and the number's line (punch list #329).
+    return (
+      <svg {...common}>
+        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+        <rect x="3.5" y="5.5" width="4" height="5" />
+        <path d="M9.5 7h3M9.5 9.5h3" />
       </svg>
     )
   }

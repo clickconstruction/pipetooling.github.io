@@ -2173,6 +2173,7 @@ export default function Jobs() {
           byUserId={authUser?.id ?? null}
           byName={materialsProfileName ?? 'the office'}
           onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+          role={authRole ?? myRole}
         />
       )}
 
