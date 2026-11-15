@@ -6,6 +6,9 @@
  * (the database takes the number and freezes the row). Bids priced under the old version keep their lines. **Every
  * version** lists what each one said. The try-it line runs the kernel on the canvas's example, so a change is read
  * in dollars before it is saved.
+ *
+ * Under the list sits **The score's target** (punch list #360, PR 3): the profit per paid field hour the Scores tab's
+ * hurdle is built from, set by the owner.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { ModalShell } from './ModalShell'
@@ -27,6 +30,7 @@ import {
 import { draftDifficultyPrice, publishedDifficultyPrice, supabaseDifficultyPriceIo, type DifficultyPriceIo, type DifficultyPriceVersion } from '../../lib/bids/difficultyPriceIo'
 import { difficultyLines } from '../../lib/bids/difficultyLines'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import ScorecardTargetRule, { type ScorecardTargetIo } from './ScorecardTargetRule'
 
 const DEFAULT_IO = supabaseDifficultyPriceIo()
 
@@ -72,7 +76,7 @@ function tryItWords(p: DifficultyPriceList): string {
 
 type Field = { key: DifficultyPriceNumberKey; label: string; step?: number }
 
-export function BidDifficultyPriceModal({ role, onClose, io = DEFAULT_IO }: { role: string | null | undefined; onClose: () => void; io?: DifficultyPriceIo }) {
+export function BidDifficultyPriceModal({ role, onClose, io = DEFAULT_IO, targetIo }: { role: string | null | undefined; onClose: () => void; io?: DifficultyPriceIo; /** The score's target's reads, for a test. */ targetIo?: ScorecardTargetIo }) {
   const { showToast } = useToastContext()
   const canEdit = difficultyCanEditPrice(role)
   const [versions, setVersions] = useState<DifficultyPriceVersion[] | null>(null)
@@ -262,6 +266,8 @@ export function BidDifficultyPriceModal({ role, onClose, io = DEFAULT_IO }: { ro
               ))}
           </div>
         ) : null}
+        {/* #360 PR 3: the score's target, a pricing rule the owner sets; one setting with its own press, not a version of the list. */}
+        <ScorecardTargetRule role={role} canSeeScores={role === 'dev' || role === 'master_technician'} io={targetIo} />
       </div>
     </ModalShell>
   )

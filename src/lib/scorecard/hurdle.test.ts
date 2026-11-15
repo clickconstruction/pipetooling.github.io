@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildHurdle, clearsHurdle, hurdleWords, parseHurdleSetting, serializeHurdleSetting, DEFAULT_HURDLE_SETTING } from './hurdle'
+import { buildHurdle, clearsHurdle, hurdleWords, parseHurdleSetting, serializeHurdleSetting, DEFAULT_HURDLE_SETTING, HURDLE_TARGET_WORDS, canSetHurdleTarget, hurdleTargetFromText } from './hurdle'
 
 describe('hurdle', () => {
   it('break-even is overhead over paid field hours; the hurdle adds the target', () => {
@@ -24,5 +24,14 @@ describe('hurdle', () => {
     expect(parseHurdleSetting('{"targetProfitPerHourUsd":-3}')).toEqual(DEFAULT_HURDLE_SETTING)
     expect(parseHurdleSetting('not json')).toEqual(DEFAULT_HURDLE_SETTING)
     expect(parseHurdleSetting(null)).toEqual(DEFAULT_HURDLE_SETTING)
+  })
+
+  it('the owner and a dev set the target, and a typed target is dollars from 0 to 1,000 (PR 3)', () => {
+    expect(['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', null].filter((r) => canSetHurdleTarget(r))).toEqual(['dev', 'master_technician'])
+    expect(hurdleTargetFromText('30')).toEqual({ setting: { targetProfitPerHourUsd: 30 } })
+    expect(hurdleTargetFromText('27.456')).toEqual({ setting: { targetProfitPerHourUsd: 27.46 } })
+    expect(hurdleTargetFromText('0')).toEqual({ setting: { targetProfitPerHourUsd: 0 } })
+    for (const bad of ['', ' ', '-1', '1001', 'abc']) expect('problem' in hurdleTargetFromText(bad)).toBe(true)
+    expect(HURDLE_TARGET_WORDS.saved({ targetProfitPerHourUsd: 30 })).toBe('The score’s target is $30/h.')
   })
 })

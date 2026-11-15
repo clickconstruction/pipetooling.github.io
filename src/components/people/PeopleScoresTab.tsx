@@ -1,13 +1,11 @@
-import { useMemo, useState, type CSSProperties, type FormEvent } from 'react'
-import { useAuth } from '../../hooks/useAuth'
+import { useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useScorecard } from '../../hooks/useScorecard'
-import { useToastContext } from '../../contexts/ToastContext'
-import { hurdleWords, usdPerHour } from '../../lib/scorecard/hurdle'
+import { HURDLE_TARGET_HREF, HURDLE_TARGET_WORDS, hurdleWords, usdPerHour } from '../../lib/scorecard/hurdle'
 import { fieldByOwner, fieldRowNote, type FieldOwnerLine, type FieldScoreJobRow } from '../../lib/scorecard/fieldScore'
 import { STALE_PROPOSAL_DAYS, type EstimatorRow } from '../../lib/scorecard/estimatorScore'
-import { SCORECARD_WINDOWS, saveHurdleSetting } from '../../lib/scorecard/loadScorecard'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { SCORECARD_WINDOWS } from '../../lib/scorecard/loadScorecard'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 
@@ -33,41 +31,14 @@ const who = (r: Pick<EstimatorRow, 'estimatorName' | 'accountManagerName'>): str
 const bidLabel = (r: Pick<EstimatorRow, 'bidNumber' | 'projectName'>): string => [r.bidNumber ? `B${r.bidNumber}` : null, r.projectName].filter(Boolean).join(' ') || 'A bid'
 
 export function PeopleScoresTab() {
-  const { role } = useAuth()
-  const { showToast } = useToastContext()
-  // The target's write rides the devs' app_settings policy for now; the owner's own policy on the key is the train's PR 3 (punch list #360).
-  const canSetTarget = role === 'dev'
   const jobDetail = useJobDetailModal()
   const todayYmd = todayYmdInAppTz()
   const [windowDays, setWindowDays] = useState(56)
-  const { read, loading, error, reload } = useScorecard({ windowDays, todayYmd })
+  const { read, loading, error } = useScorecard({ windowDays, todayYmd })
   const [open, setOpen] = useState<'field' | 'bids' | null>(null)
-  const [target, setTarget] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const targetShown = target ?? (read ? String(read.setting.targetProfitPerHourUsd) : '')
 
   const estimatorAwarded = useMemo(() => read?.estimator.awarded ?? [], [read])
   const ownerLines = useMemo(() => (read ? fieldByOwner(read.field.rows, read.ownersByJob, read.hurdle) : []), [read])
-
-  async function saveTarget(e: FormEvent) {
-    e.preventDefault()
-    const n = Number(targetShown)
-    if (!Number.isFinite(n) || n < 0) {
-      showToast('The target is dollars per paid field hour, zero or more.', 'error')
-      return
-    }
-    setSaving(true)
-    try {
-      await saveHurdleSetting({ targetProfitPerHourUsd: Math.round(n * 100) / 100 })
-      setTarget(null)
-      reload()
-      showToast(`The hurdle's target is ${usdPerHour(n)}.`, 'success')
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'The target could not be saved.'), 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem', padding: '0.5rem 0' }} data-testid="team-scores">
@@ -193,17 +164,13 @@ export function PeopleScoresTab() {
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', display: 'grid', gap: 6 }} data-testid="scores-rule">
             <b style={{ fontSize: '0.86rem' }}>The hurdle</b>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }}>{hurdleWords(read.hurdle)}</div>
-            {canSetTarget ? (
-              <form onSubmit={saveTarget} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <label style={{ fontSize: '0.8rem' }}>
-                  Target profit on each paid field hour{' '}
-                  <input type="number" min={0} step={1} value={targetShown} onChange={(e) => setTarget(e.target.value)} style={{ width: 80, fontFamily: 'inherit', fontSize: '0.86rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} aria-label="Target profit per paid field hour, dollars" />
-                </label>
-                <button type="submit" style={btn} disabled={saving || target == null}>
-                  {saving ? 'Saving…' : 'Save the target'}
-                </button>
-              </form>
-            ) : null}
+            {/* #360 PR 3: the target is a pricing rule now, set by the owner on the Bid Board beside what difficulty costs. */}
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="scores-target-door">
+              {HURDLE_TARGET_WORDS.setOnBoard}{' '}
+              <Link to={HURDLE_TARGET_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>
+                {HURDLE_TARGET_WORDS.boardDoor}
+              </Link>
+            </div>
             <b style={{ fontSize: '0.86rem', marginTop: 4 }}>How it is scored</b>
             {RULE_LINES.map((line) => (
               <div key={line} style={{ fontSize: '0.8rem', color: 'var(--text-700)' }}>
