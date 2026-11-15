@@ -48,6 +48,7 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
 import { penWordApproval } from '../../lib/jobs/lienPenRecord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
@@ -1122,6 +1123,8 @@ export default function LienDesk({
   const openBalance = selected?.openBalance ?? 0
   // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
+  // The draft footer's presses name the leader as the app has him on the job (v2.7308).
+  const press = lienLeaderPressWords(leaderName, 'notice')
   // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
   // signature line is then his — his name in cursive, his signing code or his hand — never the signed-in user's name.
   const masterId = job?.master_user_id ?? null
@@ -3566,8 +3569,8 @@ export default function LienDesk({
               <div className="lienFootActions">
                 <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
                 {canSendOnWord(authRole) && !blocked ? (
-                  <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
-                    The leader said to send it…
+                  <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title={press.onWordTitle}>
+                    {press.onWord}
                   </button>
                 ) : null}
                 {canSendOnWord(authRole) && !blocked && monthsList.length > 0 ? (
@@ -3586,7 +3589,7 @@ export default function LienDesk({
                   </button>
                 ) : (
                   <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
-                    {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                    {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : press.ask}
                   </button>
                 )}
               </div>

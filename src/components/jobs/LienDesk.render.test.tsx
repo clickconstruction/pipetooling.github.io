@@ -807,7 +807,7 @@ describe('LienDesk', () => {
     expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1Owner of record')
     expect(gatesBox.querySelector('[data-gate-detail="gc"]')).toBeNull()
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
-    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /to approve ▸/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
@@ -828,9 +828,9 @@ describe('LienDesk', () => {
     // The passing gate is a chip; the whole sentence rides in its tooltip (v2.3522).
     expect(screen.getByTitle(/Owner of record with a mailing address — Elwick Holdings LLC/)).toBeTruthy()
     expect((document.querySelector('[data-gate="owner"]') as HTMLElement).textContent).toBe('1Owner of record✓ Elwick Holdings LLC')
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Goes to the leader · first notice we've sent this GC")
-    fireEvent.click(screen.getByRole('button', { name: /The leader said to send it/ }))
+    fireEvent.click(screen.getByRole('button', { name: /said to send it/ }))
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
@@ -1007,7 +1007,7 @@ describe('LienDesk', () => {
     tellLeaderMock.mockClear()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: /Send for approval/ }))
+    fireEvent.click(screen.getByRole('button', { name: /to approve ▸/ }))
     await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
     expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
     await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledWith('it-new', '2026-09-15'))
@@ -1020,7 +1020,7 @@ describe('LienDesk', () => {
     const withRule: LienDeskData = { ...d, gcsById: { lowbeck }, queue: buildLienDeskQueue(d.rows, d.items, { lowbeck: 'send' }, TODAY) }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withRule} />)
     await settle()
-    expect(screen.getByRole('button', { name: /Send for approval/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /to approve ▸/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Put it in the run/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Goes to the leader · first notice to this GC — the rule starts with the next one')
   })
@@ -1310,7 +1310,7 @@ describe('LienDesk reads the roll (v2.3450)', () => {
     expect(screen.getByRole('button', { name: 'Find the owner ›' })).toBeTruthy()
     // Still blocked until Use — the roll's answer is a proposal, not the record.
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
-    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /to approve ▸/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
@@ -1331,11 +1331,11 @@ describe('LienDesk reads the roll (v2.3450)', () => {
     expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('public')
     expect(screen.getAllByText(/a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond/).length).toBeGreaterThanOrEqual(2)
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
-    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /to approve ▸/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. This is public property, so no lien notice can go.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /The leader said to send it/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /said to send it/ })).toBeNull()
     expect(lookupMock).not.toHaveBeenCalled()
   })
 
@@ -1347,7 +1347,7 @@ describe('LienDesk reads the roll (v2.3450)', () => {
     expect(screen.getByText(/Owner from the roll \(2025\) · unconfirmed/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /confirm on Guadalupe CAD/ })).toBeTruthy()
     // Drafting is allowed on it; only the run refuses (lienDeskRun.test.ts).
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(screen.getByTestId('lien-desk-owner-confirm'))
     await waitFor(() => expect(stampMock).toHaveBeenCalledWith('addr1', 'u-taunya'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
@@ -1777,7 +1777,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     tellAffMock.mockClear()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={threeAsked([])} initialKind="affidavit" />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    fireEvent.click(screen.getByRole('button', { name: /to approve ▸/ }))
     await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
     expect((submitMock.mock.calls[0] as unknown as [string, { status: string }])[1].status).toBe('awaiting_approval')
     await waitFor(() => expect(tellAffMock).toHaveBeenCalledTimes(1))
@@ -1790,7 +1790,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     tellAffMock.mockClear()
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([])} initialKind="affidavit" />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Send for approval ▸' }))
+    fireEvent.click(screen.getByRole('button', { name: /to approve ▸/ }))
     expect(await screen.findByText('Approved by the standing rule — ready to file.')).toBeTruthy()
     expect(tellAffMock).not.toHaveBeenCalled()
   })
@@ -2369,7 +2369,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(paper).toContain('Tex. Prop. Code § 53.057')
     fireEvent.click(screen.getAllByRole('button', { name: 'Change ›' })[0]!)
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
-    expect(((await screen.findByRole('button', { name: /Send for approval/ })) as HTMLButtonElement).disabled).toBe(false)
+    expect(((await screen.findByRole('button', { name: /to approve ▸/ })) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('a job whose contract is still open sits in Clock not started with the door to set the day', async () => {
@@ -2589,7 +2589,7 @@ describe('LienDesk the attorney’s letter (v2.3760)', () => {
     expect(doors.textContent).toContain('Sent')
     expect(doors.textContent).toContain('day 12 · the attorney’s letter')
     expect(doors.querySelector('[data-lien-letter-two-door]')).toBeTruthy()
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)
     expect(document.querySelector('[data-lien-since-sent]')).toBeNull()
   })
 
@@ -3223,7 +3223,7 @@ describe('LienDesk — find on the list (v2.4721)', () => {
     expect(unbilled.textContent).toContain('$8,500 of the job’s $33,500 · not claimed until it is billed')
     // No fifth gate while the sent bills still owe money.
     expect(document.querySelector('[data-gate="billed"]')).toBeNull()
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)
     // The door opens the app's own Bill Customer window on this job; once the bill goes, the desk reads the job and the queue again.
     fireEvent.click(within(unbilled).getByRole('button', { name: 'Bill it from here ›' }))
     expect(openBillCustomerMock).toHaveBeenCalledTimes(1)
@@ -3244,7 +3244,7 @@ describe('LienDesk — find on the list (v2.4721)', () => {
     expect(gate.textContent).toBe('5Nothing billed✗ Bill the work first')
     expect((document.querySelector('[data-lien-gate-billed-fact]') as HTMLElement).textContent).toContain('Nothing is billed on this job yet. A notice claims what is billed.')
     expect(screen.getByRole('button', { name: /Go to gate 5/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /to approve ▸/ })).toBeNull()
     expect(document.body.textContent).toContain("Don't send yet. Bill the work first. A notice claims what is billed.")
     // The gate's own door bills from the desk too.
     fireEvent.click(document.querySelector('[data-lien-gate-bill-from-here]') as HTMLElement)

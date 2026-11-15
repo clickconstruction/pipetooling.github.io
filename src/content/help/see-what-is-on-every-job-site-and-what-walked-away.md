@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, retire every box, archive a job's materials, job done, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
+keywords: materials on site, materials desk, move everything on site, wrong job, move boxes to another job, read the plan, retire every box, archive a job's materials, job done, blank stickers, print blank stickers, sticker run, stickers before boxes, reprint, print the rest, whole site, site's materials, every part on a site, by part, by place, spellings, last recorded, materials page, on site tab, track, find a part on any job, scan a label, needs you, procure step, walked away this week, boxes due a count, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price, price rows one at a time, no price, offer, price a site
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -102,6 +102,24 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
+
+## Move everything on site to another job
+
+A crew can start a count under the wrong job. The boxes then sit on a job that is not theirs. This press moves them to the right job in one go.
+
+Open the wrong job's page and look under its boxes. Press **Move everything on site to another job…**. Only a dev, a master technician, an assistant or a controller can press it. For everyone else the press is grey and says why.
+
+Pick the job the material belongs on. The jobs on the same site are listed first. Type a number or a name in **Find another job** to reach any other job. Then press {{button:blue|Read the plan}}.
+
+The plan says what moves, table by table. It names a place that becomes one with a place of the same name. It names a box whose stencil the other job already has, and the new name that box takes. It reads each job's boxes and parts before and after. Nothing has moved yet.
+
+The button names the move with its counts, such as {{button:blue|Move 91 boxes and 284 presses to JP1091}}. Press it and the boxes move. Every box keeps its code, its label and its history. Only the job it sits under changes. A note lands on both jobs.
+
+The wrong job's page then reads empty. The right job's page reads the boxes. The box photos' files follow to that job's Drive folder by themselves. A strip above the boxes shows them on their way.
+
+A refusal is said with its reason, and nothing moves. A phone that still has the wrong job open should open the right one. A press it sends lands on the box's job now.
+
+On the Materials desk, a site that holds boxes under two jobs has the same press on its row. There you pick both jobs from that site's jobs.
 
 ## Missing
 
