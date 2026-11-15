@@ -121,7 +121,7 @@ export default function LienRunScanPress({ onRead, label }: { onRead: (tracking:
         </span>
       ) : null}
       {open ? (
-        <div role="dialog" aria-modal="true" aria-label="Scan the slip" data-testid="run-scan-camera" onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.85)', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#fff' }}>
+        <div role="dialog" aria-modal="true" aria-label="Scan the slip" data-testid="run-scan-camera" onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', inset: 0, paddingTop: 'var(--app-top-chrome, 0px)', zIndex: 900, background: 'rgba(0,0,0,0.85)', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#fff' }}>
           <div style={{ padding: '0.8rem 1rem', fontSize: '0.9rem', fontWeight: 700 }}>Hold the receipt’s barcode in the frame</div>
           <video ref={videoRef} muted playsInline autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 0 }} />
           <div style={{ padding: '0.8rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
