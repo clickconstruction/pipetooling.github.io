@@ -77,6 +77,16 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(portal.via(lang)?.slice(-2)).toEqual([i18n, lang])
   })
 
+  it('dev-mcp uploads no Quo send kernel: the texts switch takes the purpose from sendPurpose.ts (v2.7290, punch list #359)', () => {
+    const u = edgeUpload('supabase/functions/dev-mcp/index.ts')
+    expect(u.via('supabase/functions/_shared/gcKernels/lib/quo/send.ts')).toBeNull()
+    expect(u.via('supabase/functions/_shared/gcKernels/lib/quo/events.ts')).toBeNull()
+    // The purpose's file imports nothing, so the copy points at it in src (the generator's rule for such a file): 1 KB.
+    expect(u.via('src/lib/quo/sendPurpose.ts')?.slice(-2)).toEqual(['supabase/functions/_shared/gcKernels/lib/quo/textsSwitch.ts', 'src/lib/quo/sendPurpose.ts'])
+    // quo-send sends, so it keeps the kernel and takes the purpose through it.
+    expect(edgeUpload('supabase/functions/quo-send/index.ts').via('supabase/functions/_shared/gcKernels/lib/quo/send.ts')).not.toBeNull()
+  })
+
   it('legal-portal uploads neither the sample fixtures, the kernel copy’s index nor the generated types', () => {
     const u = edgeUpload('supabase/functions/legal-portal/index.ts')
     expect(u.via('supabase/functions/_shared/customerSampleFixtures.ts')).toBeNull()

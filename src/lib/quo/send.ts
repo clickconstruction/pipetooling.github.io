@@ -12,17 +12,13 @@ import { numberName, type Mailbox } from '../messages/boxes'
 import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/textOut'
 import type { ThreadMessage } from '../messages/thread'
 import { type QuoLine, toE164 } from './events'
+import type { SendPurpose } from './sendPurpose'
+
+/** Why a text goes: in sendPurpose.ts (punch list #359), so the texts switch takes the type without this file; re-exported here. */
+export type { SendPurpose } from './sendPurpose'
 
 /** The most a text sent by Quo's API carries. */
 export const QUO_MAX_CHARACTERS = 1600
-
-/**
- * Why a text goes. A person's reply, the app's nudge and the text back after a missed call (`missed`, punch list #195)
- * follow the opt-out line's rules. The app's answer to HELP and its confirmation of a stop carry their own STOP or
- * START words, so they take no line. A `missed` text is the app's own: its line is marked `auto`, which Follow up and
- * the thread read as nobody's move.
- */
-export type SendPurpose = 'reply' | 'nudge' | 'answer' | 'confirm' | 'missed'
 
 export interface QuoSendInput {
   purpose: SendPurpose
