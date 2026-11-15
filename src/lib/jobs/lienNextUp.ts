@@ -17,6 +17,7 @@ import { COURTESY_BUTTON, PROMISE_BUTTON, courtesyIsDue, type CourtesyStatus } f
 import { lienReminderAt, type LienReminderAt } from './lienReminders'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
+import { lienRunRowLine } from './lienRunChecklist'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_NOTICE_OWED_DOORS, lienNoticeOwedMonths, lienNoticeOwedWords } from './lienNoticeOwed'
@@ -288,7 +289,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'printed':
         // Two or more printed are one run row below (punch list #101); one keeps its own row.
         if (printedCount > 1) break
-        push({ ...base, key: `notice:${e.jobId}`, sub: 'In the mail · tracking owed', action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
+        // In the run (v2.7328): the row names the tick the notice waits on, as the pile's row does.
+        push({ ...base, key: `notice:${e.jobId}`, sub: `In the run · ${lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)}`, action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', action: 'review_hold', target: pane('held') })
@@ -339,7 +341,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       jobId: null,
       gcId: null,
       title: `${printedCount} notices ${lienPrintedDaysWords(printed.map((e) => (e.item as { printed_at?: string | null } | null)?.printed_at ?? null))}`.trim(),
-      sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.',
+      sub: 'The run as a checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the run back.',
       dueOn: first?.earliestDeadline ?? null,
       daysLeft: first?.daysLeft ?? null,
       severity: printed.some((e) => e.severity === 'red') ? 'red' : printed.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',

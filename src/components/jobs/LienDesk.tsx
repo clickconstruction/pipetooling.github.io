@@ -11,7 +11,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
-import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { daysBetweenYmd, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
@@ -68,6 +68,7 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { lienRunPill, lienRunRowLine } from '../../lib/jobs/lienRunChecklist'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
@@ -266,6 +267,8 @@ export type LienDeskProps = {
   initialPile?: LienDeskPile | null
   /** Bumped by a door that re-aims an open desk (v2.4612): the tab is applied even when the job is the one already named. */
   aimKey?: number
+  /** The sheet's code (v2.7328, `?run=<item id>&mail=1`): open the run, and with `mail` land on that notice's Mailed box. `key` makes a second scan open it again. */
+  openRun?: { itemId: string; mail: boolean; key: number } | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
   /**
@@ -400,6 +403,7 @@ export default function LienDesk({
   onOpenCalendarLastWork,
   initialPile,
   aimKey,
+  openRun,
   onPutGcOnNotice,
   onOpenCompanySettings,
   onOpenCustomerRecord,
@@ -517,6 +521,14 @@ export default function LienDesk({
   const [runOpen, setRunOpen] = useState(false)
   // The run row's Take back… (punch list #101) opens the run on its confirm.
   const [runTakeBack, setRunTakeBack] = useState(false)
+  // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
+  const [runFocus, setRunFocus] = useState<string | null>(null)
+  useEffect(() => {
+    if (!openRun) return
+    setRunTakeBack(false)
+    setRunFocus(openRun.mail ? openRun.itemId : null)
+    setRunOpen(true)
+  }, [openRun])
   // Share where the liens stand (v2.4311): the title bar's panel; the numbers are read each time it opens.
   const [shareOpen, setShareOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
@@ -1854,9 +1866,18 @@ export default function LienDesk({
   const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
   // *Record the mailing · 7 sealed*, not *· 7  7 sealed* (v2.6569): the pill's words drop the count the door already says.
   const runTail = runDoorTail(runDoor.count, runPill.words)
+  // The pill reads the run's count (v2.7328, the owner's ask): *The run · 3 of 7 mailed*, the meter mailed · printed · to print.
+  // Mailed is what this run's notices the desk recorded as sent in the last week: they left the pile with their print stamp on.
+  const mailedRecent = (data?.queue.piles.sent ?? []).filter((e) => {
+    const it = e.item as { printed_at?: string | null; sent_at?: string | null } | null
+    if (!it?.printed_at || !it.sent_at) return false
+    const days = daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd)
+    return days != null && days >= 0 && days <= 7
+  }).length
+  const runMeter = lienRunPill({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0, mailed: mailedRecent })
   // The run door shows on every view but Affidavits, to the office, while a notice waits. On a phone it is the first row of More and the More button wears its count (punch list #352, PR 1).
   const runDoorShown = kind !== 'affidavit' && office && runCount > 0
-  const runDoorHint = runDoor.label === 'Record the mailing' ? 'The printed notices are in the mail: type each envelope’s tracking number in the run to record the mailing' : 'Every approved notice — monthly and retainage — as one packet and one tracking form'
+  const runDoorHint = runDoor.label === 'Record the mailing' ? 'The run as a checklist: each printed notice with its Printed, Signed and Mailed ticks; type each envelope’s tracking number to record the mailing' : 'Every approved notice — monthly and retainage — as one packet, then a checklist with Printed, Signed and Mailed ticks per notice'
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
   // Affidavits hides the run's pill without taking the run away: the line keeps the pill's last width there, so no view moves the door.
@@ -1994,6 +2015,9 @@ export default function LienDesk({
                             ? 'standing rule'
                             : 'approved'
                       }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
+                    : e.pile === 'printed'
+                      // In the run (v2.7328): the row names the tick it waits on, as the run's checklist does.
+                      ? lienRunRowLine(true, !!e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) !== 'unsigned', false)
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
@@ -3772,7 +3796,7 @@ export default function LienDesk({
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper already went out by hand — record it instead of sending the run">
             Already mailed? Record it ›
           </button>
-          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="The run, where the tracking numbers are typed and the mailing is recorded">
+          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="The run as a checklist: this notice's Printed, Signed and Mailed ticks, the tracking box under Mailed">
             Record the mailing · {runCount} ▸
           </button>
         </div>
@@ -4012,9 +4036,9 @@ export default function LienDesk({
           {/* The run sits beside the views on every view (v2.4740, the owner's ask; on the second line's left end since v2.4629). */}
           {!isMobile && runDoorShown ? (
             <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), ...headDoor }} data-lien-desk-run title={runDoorHint}>
-              <span className="lienRunDoorBar" aria-hidden="true"><i className="lienRunDoorSealed" style={{ width: `${runPill.sealedPct}%` }} /><i className="lienRunDoorWait" style={{ width: `${runPill.waitPct}%` }} /></span>
-              {runDoor.label} · {runDoor.count}
-              {runTail ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runTail}</span> : null}
+              <span className="lienRunDoorBar" aria-hidden="true" data-lien-desk-run-meter><i className="lienRunDoorSealed" style={{ width: `${runMeter.mailedPct}%` }} /><i className="lienRunDoorPrinted" style={{ width: `${runMeter.printedPct}%` }} /></span>
+              {runMeter.words || `${runDoor.label} · ${runDoor.count}`}
+              {runTail && runPill.waitPct > 0 ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runTail}</span> : null}
             </button>
           ) : null}
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
@@ -4376,8 +4400,10 @@ export default function LienDesk({
           onClose={() => {
             setRunOpen(false)
             setRunTakeBack(false)
+            setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}
+          focusMailItemId={runFocus}
           onRecorded={onChanged}
           viewer={{ userId: authUserId, name: authName }}
         />
