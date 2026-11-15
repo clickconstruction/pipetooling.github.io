@@ -2,7 +2,7 @@
 name: "Paint a map: walk it, drive it or draw it by hand, keep the line on the job, and share it by a link"
 number: 345
 group: close
-status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338) · step 5 (a task's place carries the map) and the map on a checklist item not built · not yet tried on a real phone
+status: asked 2026-11-13 · the card and the mock-up the same day · the owner liked the basics and asked three things the same day, each added · the owner's word the same day (*Build it all*), every call taken at the card's pick · nine PRs built and merged 2026-11-13 and 14 (#8029, #8043, #8047, #8052, #8053, #8054, #8056, #8057 and the types in #8073), both migrations pushed and `painted-map-link` deployed on his yes · step 0 (the one-day try) skipped · Taunya's pick 2026-11-15: build *Text it…* and step 5, and add a painted map to a checklist item · *Text it…* built 2026-11-15 (v2.7338, #8202) · step 5 built the same day: the column and its gate (v2.7340, #8204, pushed) and the screen (v2.7342) · the map on a checklist item is designed on this card and in the mock-up's section 11 (#8206) and waits on Taunya's yes · not yet tried on a real phone
 summary: >
   The owner's idea: a person walks with precise location on, the phone draws their line on a map,
   and they share it. For measuring, for showing where to drive, how to get into a place, and what
@@ -14,7 +14,7 @@ summary: >
   above, and drawing by hand is the better way for a drive and for a length. One link with no
   sign-in shows it to a customer or a driver, with a dot for where they are. Location is read
   only while a red bar says Painting, and nothing leaves the phone until the person saves.
-next: Step 5, a task's place carries its painted map. Then the design for a painted map on a checklist item, shown to Taunya before it is built. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
+next: Taunya's yes on *A map on a task* and its five calls, then steps 7 to 10 as that section draws them. The owner's try on a real phone still stands: walk a short line on his own job card with the screen on, lock the phone mid-walk, save, share the link to a second phone and end it.
 size: L as a train of eight after a one-day try (S · S · M · M · M · M · S · S · S)
 blocker: None for what is built. The walk, the screen held on, the pause on lock and the phone's share sheet have only been walked in a headless browser, so the first real walk is the proof.
 opinion: built as carded. Strong for the way in and what is where, weak for measuring. Count the maps painted and the links opened for two weeks before step 5.
@@ -50,16 +50,19 @@ below was taken at the card's pick. The guide is `/help/paint-a-map`.
 | 5b | #8054 | v2.7226 | A `.kml` and a `.gpx` file |
 | 6 | #8056, #8057 | v2.7227, v2.7228 | The search door, a map on no job with *Put it on a job…*, and the layer on the Map page and the site map |
 | *Text it…* | #8202 | v2.7338 | The link texted to the job's customer from the company's number, on the Share sheet, for the office |
+| 5, the column | #8204 | v2.7340 | `painted_map_id` on a task and a roadmap task, a second way to read a map (whoever reads the task), and a guard so a task points only at a map its writer can open |
+| 5, the screen | this PR | v2.7342 | **＋ Add the way in** on *Where is it?*, the paint's stroke on a place chip, and on the task the line, **Directions to the start** and **Open the map** |
 
-Both migrations are pushed and `painted-map-link` is deployed, each on the owner's yes. Each
-version's fragment says what changed from this card and why.
+The first two migrations are pushed and `painted-map-link` is deployed, each on the owner's yes.
+The third, `20261115063000_task_painted_maps.sql`, was pushed on 2026-11-15 after #8204 merged.
+Each version's fragment says what changed from this card and why.
 
 Not built, each on purpose:
 
 - **Step 0, the one-day try.** Skipped, since he asked for all of it and said he would test it
   live. His first real walk stands in for it.
-- **Step 5, a task's place carries the map.** It needs a migration. Taunya picked it on 2026-11-15
-  ("I want to build both"), ahead of the count. It is next.
+- **A painted map on a task with no place, and painting one from a task.** Designed in *A map on a
+  task* below. It waits on Taunya's yes.
 - ***File it on the job* as a press.** A print files itself, so the press had nothing left to do.
 
 Not tried anywhere: a real phone. The walk, the screen held on, the pause on lock and the share
@@ -607,8 +610,9 @@ Read on main, 2026-11-15.
   the task next week.
 - **No place is needed.** A trench, a route for a camera, a run of pipe: each is a line, not a
   dot. A task may carry a place, a map, both or neither.
-- **This is step 5's column.** Step 5 sets it from a task's place. This sets it by itself. The
-  migration is the same one (`20261115063000_task_painted_maps.sql`, v2.7340).
+- **This is step 5's column.** Step 5 sets it from a task's place (built, v2.7342: **＋ Add the way
+  in** on *Where is it?*). This sets it by itself. The migration is the same one
+  (`20261115063000_task_painted_maps.sql`, v2.7340, pushed 2026-11-15).
 
 ### Where the giver adds it
 

@@ -6298,6 +6298,7 @@ export type Database = {
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          painted_map_id: string | null
           place_accuracy_m: number | null
           place_lat: number | null
           place_lng: number | null
@@ -6329,6 +6330,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6360,6 +6362,7 @@ export type Database = {
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          painted_map_id?: string | null
           place_accuracy_m?: number | null
           place_lat?: number | null
           place_lng?: number | null
@@ -6394,6 +6397,13 @@ export type Database = {
             columns: ["notify_on_complete_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -6457,6 +6467,7 @@ export type Database = {
           estimated_days: number | null
           group_id: string
           id: string
+          painted_map_id: string | null
           percent_complete: number
           pinned_at: string | null
           place_accuracy_m: number | null
@@ -6477,6 +6488,7 @@ export type Database = {
           estimated_days?: number | null
           group_id: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6497,6 +6509,7 @@ export type Database = {
           estimated_days?: number | null
           group_id?: string
           id?: string
+          painted_map_id?: string | null
           percent_complete?: number
           pinned_at?: string | null
           place_accuracy_m?: number | null
@@ -6522,6 +6535,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
           {
@@ -47327,6 +47347,10 @@ export type Database = {
           p_development_id: string
           p_job_id: string
         }
+        Returns: boolean
+      }
+      painted_map_on_a_task_i_read: {
+        Args: { p_map_id: string }
         Returns: boolean
       }
       painted_map_on_development_team: {
