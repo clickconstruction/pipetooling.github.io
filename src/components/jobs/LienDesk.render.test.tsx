@@ -1219,8 +1219,8 @@ describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
     expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
     const wideHeads = [...document.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
     expect(wideHeads.length).toBeGreaterThan(1)
-    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 30))
-    expect(wideHeads.every((h) => h.style.height === '')).toBe(true)
+    expect(wideHeads.map((h) => parseFloat(h.style.top))).toEqual(wideHeads.map((_, i) => i * 24))
+    expect(wideHeads.every((h) => h.style.height === '24px')).toBe(true)
     desk.unmount()
 
     const before = window.matchMedia
@@ -2945,7 +2945,9 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
     expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
     // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
-    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '120px'], ['30px', '90px'], ['60px', '60px'], ['90px', '30px'], ['120px', '0px']])
+    // 24 px a head since v2.7323 (30 before): the owner's ask that the bars sit closer with the words as they are.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '96px'], ['24px', '72px'], ['48px', '48px'], ['72px', '24px'], ['96px', '0px']])
+    expect(heads.every((h) => h.style.height === '24px')).toBe(true)
     expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no', 'no'])
     // Every head sits before its section, as a sibling in the pane's grid.
     for (const key of ['path', 'gates', 'houses', 'months', 'envelope']) {
@@ -3061,10 +3063,10 @@ describe('LienDesk · By paper on a phone (punch list #352, PR 5)', () => {
     await settle()
     const heads = [...document.querySelectorAll<HTMLElement>('[data-lien-pile-head]')]
     expect(heads.length).toBeGreaterThanOrEqual(1)
-    // i bars from the top, n-1-i from the bottom, 30 px each (`lienPhoneLists.test.ts` holds a list of five).
-    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 30))
-    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 30))
-    expect(heads.every((h) => h.style.height === '30px')).toBe(true)
+    // i bars from the top, n-1-i from the bottom, 24 px each since v2.7323 (`lienPhoneLists.test.ts` holds a list of five).
+    expect(heads.map((h) => parseFloat(h.style.top))).toEqual(heads.map((_, i) => i * 24))
+    expect(heads.map((h) => parseFloat(h.style.bottom))).toEqual(heads.map((_, i) => (heads.length - 1 - i) * 24))
+    expect(heads.every((h) => h.style.height === '24px')).toBe(true)
     const wide = document.querySelector<HTMLElement>('[data-lien-desk-paper-kinds] [role="tab"]')!
     expect(wide.style.whiteSpace).toBe('nowrap')
     desk.unmount()
@@ -3164,8 +3166,10 @@ describe('LienDesk — the page labels stick (v2.4726)', () => {
     // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
     const headCount = document.querySelectorAll('[data-lien-pane-head]').length
     expect(headCount).toBe(4)
-    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 30}px`))
+    // 24 px a bar since v2.7323 (30 before), the same number as the pane's heads over them.
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 24}px`))
     expect(labels.map((l) => l.style.bottom)).toEqual(labels.map(() => 'auto'))
+    expect(labels.every((l) => l.style.height === '24px')).toBe(true)
     expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
     expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
     // Each is a button that goes to its page and lights up.
