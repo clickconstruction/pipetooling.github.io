@@ -63,8 +63,8 @@ export type LienNextUpTarget =
   /** The recorded notice's months, corrected (punch list #353): the paper as mailed named these months too, so they join its record. */
   | { open: 'notice_record_months'; jobId: string; months: string[] }
 
-/** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
+/** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. Since v2.7371 (punch list #362, step 2) `risk` holds the `now` rows that will not make their day as they stand, first, and `waiting` (on the leader) stands right after it, above the rest of `now`. */
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'risk' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
 
 export type LienNextUpRow = {
   key: string
@@ -452,31 +452,94 @@ export function isLienReminderRow(r: Pick<LienNextUpRow, 'action'>): boolean {
   return r.action === 'courtesy' || r.action === 'letter_two' || r.action === 'promise'
 }
 
+export type LienNextUpGrouped = {
+  group: LienNextUpGroup
+  label: string
+  rows: LienNextUpRow[]
+  /** One of the parts *Needs you now* reads in (v2.7371): drawn under that head, with its own smaller one. */
+  part?: true
+}
+
+export type LienNextUpGroupOpts = {
+  waitingOn?: string | null
+  /** The stages a row's paper still has to pass when it will not make its day, else null (`lienBoardRowRisk`). Absent, no row is at risk. */
+  risk?: (row: LienNextUpRow) => number | null
+  /** The head over the rows at risk, in the Board's own words for that many: *Will not make tomorrow as they stand*. */
+  riskLabel?: (n: number) => string
+  /** What a row's job still owes, for *largest first* inside a day; absent, a day's rows keep the desk's order. */
+  amount?: (row: LienNextUpRow) => number | null
+}
+
+/** The part of a row's key before the colon: the paper's kind as the desk's order knows it (`affidavit`, `notice`, `retainage`, `run`, `serve`). */
+const keyKind = (r: LienNextUpRow) => r.key.slice(0, r.key.indexOf(':') < 0 ? r.key.length : r.key.indexOf(':'))
+
+/** By the last day, a row with none after the dated ones; then the kind of paper; then the largest first; then the key. */
+function compareByDay(amount: LienNextUpGroupOpts['amount']) {
+  return (a: LienNextUpRow, b: LienNextUpRow): number => {
+    if (a.dueOn && b.dueOn && a.dueOn !== b.dueOn) return a.dueOn < b.dueOn ? -1 : 1
+    if (!!a.dueOn !== !!b.dueOn) return a.dueOn ? -1 : 1
+    const ka = keyKind(a)
+    const kb = keyKind(b)
+    if (ka !== kb) return ka < kb ? -1 : 1
+    const na = amount?.(a) ?? null
+    const nb = amount?.(b) ?? null
+    if (na != null && nb != null && na !== nb) return nb - na
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0
+  }
+}
+
 /**
  * The groups, in order, each with its rows — what the view draws. The leader's approvals lead as
  * *Only you can approve*; the rest run by day (*Needs you now*, *Coming up*), with the sent
  * notices' reminders between them as *Reminders* (punch list #262) so the red group holds dated
- * work; the approvals the office waits on close the list as *Waiting on <leader>* (`waitingOn`,
- * else *the leader*).
+ * work.
+ *
+ * Since v2.7371 (punch list #362, step 2; Taunya's order of 2026-11-15) *Needs you now* reads in
+ * up to three parts. First the rows that will not make their day as they stand (`risk`), the
+ * longest road first: a paper that needs a fact needs it today to go out with the rest. Then the
+ * approvals the office waits on, *Waiting on <leader>* (`waitingOn`, else *the leader*), where a
+ * person can act on them. Then the rest, *On track*. A desk with nothing at risk and nothing
+ * waiting keeps the one group, *Needs you now*. Inside a day the kinds stay together and the
+ * largest comes first (`amount`).
  */
-export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { waitingOn?: string | null } = {}): Array<{ group: LienNextUpGroup; label: string; rows: LienNextUpRow[] }> {
+export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: LienNextUpGroupOpts = {}): LienNextUpGrouped[] {
   const sign = rows.filter((r) => approvalGroup(r) === 'sign')
   const pen = rows.filter((r) => approvalGroup(r) === 'pen')
   const mine = rows.filter((r) => approvalGroup(r) === 'mine')
   const waiting = rows.filter((r) => approvalGroup(r) === 'waiting')
   const rest = rows.filter((r) => approvalGroup(r) == null)
   const reminders = rest.filter(isLienReminderRow)
-  const now = rest.filter((r) => r.group === 'now' && !isLienReminderRow(r))
-  const coming = rest.filter((r) => r.group === 'coming' && !isLienReminderRow(r))
+  const byDay = compareByDay(opts.amount)
+  const nowAll = rest.filter((r) => r.group === 'now' && !isLienReminderRow(r))
+  const steps = (r: LienNextUpRow) => opts.risk?.(r) ?? null
+  const risk = nowAll.filter((r) => steps(r) != null).sort((a, b) => steps(b)! - steps(a)! || byDay(a, b))
+  const track = nowAll.filter((r) => steps(r) == null).sort(byDay)
+  const coming = rest.filter((r) => r.group === 'coming' && !isLienReminderRow(r)).sort(byDay)
+  // In parts when there is something to put above the rest: a row at risk, or an approval waiting over rows on track.
+  const parts = risk.length > 0 || (waiting.length > 0 && track.length > 0)
+  const part = parts ? { part: true as const } : {}
   return [
     ...(sign.length ? [{ group: 'sign' as const, label: 'Only you can sign', rows: sign }] : []),
     ...(pen.length ? [{ group: 'pen' as const, label: pen.every((r) => r.sub.startsWith('Signed with your code')) ? 'Signed with your code, as recorded' : pen.some((r) => r.sub.startsWith('Signed with your code')) ? 'Signed by pen or code, as recorded' : 'Signed by pen, as recorded', rows: pen }] : []),
     ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
-    ...(now.length ? [{ group: 'now' as const, label: 'Needs you now', rows: now }] : []),
+    ...(risk.length ? [{ group: 'risk' as const, label: opts.riskLabel?.(risk.length).trim() || `Will not make ${risk.length === 1 ? 'its day as it stands' : 'their day as they stand'}`, rows: risk, ...part }] : []),
+    ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'}`, rows: waiting, ...part }] : []),
+    ...(track.length ? [{ group: 'now' as const, label: parts ? 'On track' : 'Needs you now', rows: track, ...part }] : []),
     ...(reminders.length ? [{ group: 'reminders' as const, label: 'Reminders', rows: reminders }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),
-    ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'}`, rows: waiting }] : []),
   ]
+}
+
+/**
+ * The head over the parts of *Needs you now* (v2.7371), or null when the list has no parts: how many rows this
+ * viewer can move (the ones at risk and the ones on track), and how many more wait on the leader, in a few words.
+ */
+export function lienNextUpNowHead(groups: ReadonlyArray<Pick<LienNextUpGrouped, 'group' | 'label' | 'rows' | 'part'>>): { label: string; count: number; waiting: string | null } | null {
+  const parts = groups.filter((g) => g.part)
+  if (parts.length === 0) return null
+  const count = parts.filter((g) => g.group !== 'waiting').reduce((n, g) => n + g.rows.length, 0)
+  const waiting = parts.find((g) => g.group === 'waiting')
+  return { label: 'Needs you now', count, waiting: waiting ? `${waiting.rows.length} ${waiting.label.charAt(0).toLowerCase()}${waiting.label.slice(1)}` : null }
 }
 
 /** To do's count (punch list #101 PR 3): every row but the ones waiting on the leader — what this viewer can move. */

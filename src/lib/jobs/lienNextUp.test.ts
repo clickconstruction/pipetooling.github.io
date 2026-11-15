@@ -4,7 +4,7 @@ import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import type { CourtesyStatus } from './lienCourtesyNotice'
-import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienNextUpCount, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
+import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -246,17 +246,18 @@ describe('groupLienNextUp — only you can approve, first (punch list #101 PR 3)
     ])
     expect(lienNextUpCount(rows)).toBe(3)
   })
-  it('the office: the approvals wait last, under the leader’s name, and leave the count', () => {
+  it('the office: the approvals wait under the leader’s name, above the rows on track, and leave the count (v2.7371; last until then)', () => {
     const rows = build({ notices, role: 'assistant', leaderName: (id) => (id === 'j2' || id === 'j3' ? 'Sam' : null) })
     expect(rows.find((r) => r.jobId === 'j2')!.sub).toBe('Waiting on Sam · since Oct 4')
     expect(rows.find((r) => r.jobId === 'j3')!.sub).toBe('Waiting on Sam')
     const groups = groupLienNextUp(rows, { waitingOn: 'Sam' })
-    expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.jobId)])).toEqual([
-      ['now', 'Needs you now', ['j1']],
-      ['waiting', 'Waiting on Sam', ['j2', 'j3']],
+    expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.jobId), g.part ?? false])).toEqual([
+      ['waiting', 'Waiting on Sam', ['j2', 'j3'], true],
+      ['now', 'On track', ['j1'], true],
     ])
+    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 1, waiting: '2 waiting on Sam' })
     const plain = groupLienNextUp(rows)
-    expect(plain[plain.length - 1]!.label).toBe('Waiting on the leader')
+    expect(plain[0]!.label).toBe('Waiting on the leader')
     expect(lienNextUpCount(rows)).toBe(1)
   })
   it('an affidavit or retainage notice waiting on the leader names him too', () => {
@@ -431,5 +432,60 @@ describe('buildLienNextUp — a notice on record that still owes a month (punch 
     expect(r.sub).toContain('has no notice')
     expect(r.button).toBeNull()
     expect(r.doors).toBeUndefined()
+  })
+})
+
+describe('Needs you now in three parts (v2.7371, punch list #362 step 2)', () => {
+  const awaiting = { id: 'i-w', status: 'awaiting_approval', submitted_at: '2026-10-02T15:00:00Z' } as unknown as LienDeskEntry['item']
+  const soon = { earliestDeadline: '2026-10-06', daysLeft: 1, severity: 'red' as const }
+  const rows = () =>
+    build({
+      leaderName: () => 'Sam',
+      notices: [notice('owner', 'needs_owner', soon), notice('send', 'to_draft', soon), notice('wait', 'awaiting', { ...soon, item: awaiting }), notice('later', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 41, severity: 'quiet' })],
+      affidavits: [
+        affidavit('big', 'ready', { deadline: '2026-10-06', daysLeft: 1, severity: 'red' }),
+        affidavit('small', 'ready', { deadline: '2026-10-06', daysLeft: 1, severity: 'red' }),
+        affidavit('facts', 'needs_property', { deadline: '2026-10-06', daysLeft: 1, severity: 'red', gates: [{ key: 'homestead_answer', ok: false, label: '' }] }),
+      ],
+    })
+  // The Board's rule, handed in: the stages a paper still has to pass when it will not make its day.
+  const risk = (r: LienNextUpRow) => ({ 'notice:owner': 4, 'notice:send': 3, 'affidavit:facts': 4 })[r.key] ?? null
+  const amount = (r: LienNextUpRow) => ({ big: 9400, small: 610, owner: 1900, send: 900, facts: 240, later: 700 })[r.jobId ?? ''] ?? null
+
+  it('the rows that will not make their day come first, the longest road first; then the approvals the office waits on; then the rest, on track', () => {
+    const groups = groupLienNextUp(rows(), { waitingOn: 'Sam', risk, riskLabel: (n) => `Will not make tomorrow as ${n === 1 ? 'it stands' : 'they stand'}`, amount })
+    expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.key), g.part ?? false])).toEqual([
+      // Four stages each for the owner and the facts; the day and the kind settle it: the affidavit's key sorts first.
+      ['risk', 'Will not make tomorrow as they stand', ['affidavit:facts', 'notice:owner', 'notice:send'], true],
+      ['waiting', 'Waiting on Sam', ['notice:wait'], true],
+      ['now', 'On track', ['affidavit:big', 'affidavit:small'], true],
+      ['coming', 'Coming up', ['notice:later'], false],
+    ])
+    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 5, waiting: '1 waiting on Sam' })
+  })
+
+  it('inside a day the kinds stay together and the largest comes first; with no money the desk’s own order stands', () => {
+    const track = (opts: Parameters<typeof groupLienNextUp>[1]) => groupLienNextUp(rows(), opts).find((g) => g.group === 'now')!.rows.map((r) => r.key)
+    expect(track({ risk, amount })).toEqual(['affidavit:big', 'affidavit:small'])
+    expect(track({ risk, amount: (r) => (r.jobId === 'small' ? 5000 : r.jobId === 'big' ? 100 : null) })).toEqual(['affidavit:small', 'affidavit:big'])
+    expect(track({ risk })).toEqual(['affidavit:big', 'affidavit:small'])
+  })
+
+  it('with nothing at risk and nothing waiting the list keeps its one group, and has no head of parts', () => {
+    const plain = groupLienNextUp(build({ affidavits: [affidavit('big', 'ready', { deadline: '2026-10-06', daysLeft: 1, severity: 'red' })] }), { risk: () => null })
+    expect(plain.map((g) => [g.group, g.label, g.part ?? false])).toEqual([['now', 'Needs you now', false]])
+    expect(lienNextUpNowHead(plain)).toBeNull()
+  })
+
+  it('a row at risk alone is still a part, under the head, and names itself without the Board’s words when none are given', () => {
+    const groups = groupLienNextUp(build({ notices: [notice('owner', 'needs_owner', soon)] }), { risk: () => 4 })
+    expect(groups.map((g) => [g.group, g.label, g.part ?? false])).toEqual([['risk', 'Will not make its day as it stands', true]])
+    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 1, waiting: null })
+  })
+
+  it('approvals waiting with nothing else to do stand alone, above what is coming', () => {
+    const groups = groupLienNextUp(build({ leaderName: () => 'Sam', notices: [notice('wait', 'awaiting', { item: awaiting }), notice('later', 'to_draft', { earliestDeadline: '2026-11-15', daysLeft: 41, severity: 'quiet' })] }), { waitingOn: 'Sam' })
+    expect(groups.map((g) => [g.group, g.part ?? false])).toEqual([['waiting', false], ['coming', false]])
+    expect(lienNextUpNowHead(groups)).toBeNull()
   })
 })

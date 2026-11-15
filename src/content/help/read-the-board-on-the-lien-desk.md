@@ -2,14 +2,14 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
 
 ## The four tiles
 
-The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days.
+The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
 
 The second tile counts the papers waiting on the leader, by name. Press it and the list shows only those rows.
 
@@ -64,13 +64,27 @@ The Board never sends, files or moves anything. Every press on a row below still
 
 The Board fills most of the screen. Scroll down and the Board moves away as the list comes up. The list then has the whole screen.
 
-The find box stays at the top while you read the list. Beside it sit the Board's numbers, like *21 by tomorrow*. The waiting number and the run number are presses. They go where their tiles go.
+The find box stays at the top while you read the list. Beside it sit the Board's numbers, like *21 by tomorrow*. The waiting number and the run number are presses. They go where their tiles go. The red count of what will not make its day is a press too.
 
 When a bin is pressed, that line says what the list is showing instead. It reads like *Showing 4 rows in To send*. {{button:outline|Show every row}} sits beside it.
 
 Press {{button:outline|↑ The Board}} to go back to the top.
 
 On a very tall screen the Board and the list fit together. There the Board stays put and the list scrolls under it.
+
+## Needs you now, in three parts
+
+The list starts with **Needs you now**. It reads in three parts.
+
+The first part is the papers that will not make their day as they stand. Its heading uses the tile's own words. These are the chips with the red mark. The paper with the most stages left comes first. Start here. A paper that needs a fact needs it today to go out with the rest.
+
+The second part is **Waiting on** the leader, by name. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A notice is one message each. The affidavits share one message. Nothing on the papers changes. After a send the button says when, like *Reminded at 2:14 PM*.
+
+The third part is **On track**. These papers will make their day. Inside a day the largest comes first.
+
+**Coming up** follows the three parts. A desk with nothing at risk and nothing waiting keeps the one heading, **Needs you now**.
+
+On a phone the list is drawn by day. The papers at risk lead their day. The waiting rows follow the days that need you.
 
 ## Held, Missed and retainage
 

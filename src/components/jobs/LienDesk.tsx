@@ -12,7 +12,7 @@ import { LienRulesDoor } from './LienRulesDoor'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
 import { daysBetweenYmd, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, workMonthShort, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
@@ -96,7 +96,7 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRowInPick, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardChipFor, lienBoardDoorWords, lienBoardForLeader, lienBoardPick, lienBoardPickWords, lienBoardRiskPapers, lienBoardRiskPhrase, lienBoardRiskPick, lienBoardRowInPick, lienBoardRowRisk, lienBoardStageBins, type LienBoardBinKey, type LienBoardChip, type LienBoardKind, type LienBoardTileDestination } from '../../lib/jobs/lienBoard'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { LIEN_PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
@@ -119,6 +119,7 @@ import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import { LIEN_DO_NOW_ROWS_SELECTOR, lienDoNowFrame, lienDoNowListTop } from '../../lib/jobs/lienDoNowFrame'
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
+import { lienReminderOutcome, lienReminderPlan, lienReminderWords } from '../../lib/jobs/lienLeaderReminder'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDoNowRoom } from './useLienDoNowRoom'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -931,7 +932,19 @@ export default function LienDesk({
       setApprovingLot(false)
     }
   }
-  const boardPick = useMemo(() => (board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins])
+  // The day tile's red line, pressed (v2.7371): the list shows only the papers that will not make their day as they stand.
+  const [boardRisk, setBoardRisk] = useState(false)
+  const boardPick = useMemo(() => (board && boardRisk ? lienBoardRiskPick(board) : board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins, boardRisk])
+  // The same rule orders the list (punch list #362, step 2): a row whose paper the Board marks stands first under Needs you now.
+  const riskPapers = useMemo(() => (board ? lienBoardRiskPapers(board) : new Map<string, number>()), [board])
+  const rowRisk = useCallback((row: LienNextUpRow) => lienBoardRowRisk(riskPapers, row), [riskPapers])
+  const riskLabel = useCallback(
+    (n: number) => {
+      const phrase = lienBoardRiskPhrase(board?.dayWords ?? null, n)
+      return `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}`
+    },
+    [board],
+  )
   // To do on a phone scrolls the Board, the find box and the list as one page (punch list #352, PR 0): under five
   // stacked month cards a list that took what was left got a window 26 px tall, and no row could be reached. The
   // same holds wherever the Board's columns stack (the 768 px tablet, 2026-11-15): the Board is then taller than
@@ -950,11 +963,18 @@ export default function LienDesk({
   const [pickBringsRows, setPickBringsRows] = useState(0)
   const pickBoardBins = useCallback((bins: LienBoardBinKey[] | null) => {
     setBoardBins((prev) => (bins && prev && prev.join('|') === bins.join('|') ? null : bins))
+    setBoardRisk(false)
     if (bins) setPickBringsRows((n) => n + 1)
   }, [])
-  // A tile's press, and the same count's press on the pinned find box (v2.7367): the run, or the stage on both columns.
+  const pickBoardRisk = () => {
+    setBoardBins(null)
+    setBoardRisk(!boardRisk)
+    if (!boardRisk) setPickBringsRows((n) => n + 1)
+  }
+  // A tile's press, and the same count's press on the pinned find box (v2.7367): the run, the stage on both columns, or (v2.7371) the red line's papers.
   const openBoardTile = (d: LienBoardTileDestination) => {
-    if (d.kind === 'run') {
+    if (d.kind === 'risk') pickBoardRisk()
+    else if (d.kind === 'run') {
       if (office) {
         setRunTakeBack(false)
         setRunOpen(true)
@@ -988,6 +1008,55 @@ export default function LienDesk({
     const names = new Set(nextUpRows.filter((r) => r.action === 'approve' && !r.button && r.jobId).map((r) => leaderNameFor(data.jobsById[r.jobId!]?.master_user_id ?? null)?.trim() || ''))
     return names.size === 1 ? [...names][0] || null : null
   }, [data, nextUpRows, leaderNameFor])
+  /**
+   * The press on the waiting rows' head (v2.7371, punch list #362 step 2; Taunya's ask that *Waiting on the leader* be
+   * something a person can act on): reminds the leader of every paper that waits on an approval, by the message its
+   * send for approval sent. A notice is one message, the affidavits one for the lot; a paper with nothing to point at
+   * stays out with its reason. Asks first, keeps going past one that fails, and names it after. Nothing is written.
+   */
+  const waitingRows = useMemo(() => nextUpRows.filter((r) => r.action === 'approve' && !r.button && r.jobId), [nextUpRows])
+  const reminderPlan = useMemo(() => {
+    if (!data) return null
+    return lienReminderPlan(
+      waitingRows.map((r) => {
+        const notice = r.kind === 'notice' ? data.queue.entries.find((e) => e.jobId === r.jobId) : undefined
+        const affidavit = r.kind === 'affidavit' ? data.affidavits.entries.find((e) => e.jobId === r.jobId) : undefined
+        return { kind: r.kind, label: r.title, itemId: notice?.item?.id ?? affidavit?.item?.id ?? null, dueYmd: notice?.earliestDeadline ?? affidavit?.deadline ?? null }
+      }),
+    )
+  }, [data, waitingRows])
+  const [reminding, setReminding] = useState(false)
+  // When this session last sent the reminder, and for which rows: the press then says so and is dead until the rows change.
+  const [reminded, setReminded] = useState<{ at: string; keys: string } | null>(null)
+  const waitingKeys = waitingRows.map((r) => r.key).join('|')
+  const reminderWords = reminderPlan ? lienReminderWords(reminderPlan, nextUpWaitingOn, reminded && reminded.keys === waitingKeys ? reminded.at : null) : null
+  const remindLeader = async () => {
+    if (!reminderPlan || !reminderWords || reminderWords.dead || reminding) return
+    if (!(await confirmDialog({ title: reminderWords.title, message: reminderWords.message, confirmLabel: reminderWords.confirmLabel }))) return
+    setReminding(true)
+    let done = 0
+    const failed: Array<{ label: string; reason: string }> = []
+    try {
+      for (const p of reminderPlan.notices) {
+        try {
+          await tellLeaderOfLienApproval(p.itemId, p.dueYmd)
+          done += 1
+        } catch (e) {
+          failed.push({ label: p.label, reason: formatErrorMessage(e, 'The message could not be sent.') })
+        }
+      }
+      if (reminderPlan.affidavits.length > 0) {
+        const told = await tellLeaderOfLienAffidavits(reminderPlan.affidavits.map((p) => ({ itemId: p.itemId, dueYmd: p.dueYmd })))
+        if (told && !told.ok) failed.push({ label: reminderPlan.affidavits.length === 1 ? reminderPlan.affidavits[0]!.label : `the ${reminderPlan.affidavits.length} affidavits`, reason: told.reason })
+        else done += reminderPlan.affidavits.length
+      }
+      const said = lienReminderOutcome({ done, failed }, nextUpWaitingOn)
+      showToast(said.line, said.tone)
+      if (done > 0) setReminded({ at: formatDenverTimeOnly(Date.now()), keys: waitingKeys })
+    } finally {
+      setReminding(false)
+    }
+  }
   // The paper behind a To do chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   // A stop's paper (v2.4793): the index of the timeline stop whose window is open on the notice pane; null when closed.
@@ -2139,7 +2208,8 @@ export default function LienDesk({
     else if (key === 'owner_records') onOpenOwnerRecords?.()
   }
   // What each row's job still owes, for a phone's rows and its days' totals (punch list #352, PR 3): the open balance each list already draws.
-  const phoneAmountFor = isMobile && data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
+  // What each row's job owes. A phone's row draws it (punch list #352); since v2.7371 a computer's list orders a day's rows by it, largest first.
+  const phoneAmountFor = data ? lienPhoneAmounts({ notices: data.queue.entries, affidavits: data.affidavits.entries, retainage: data.retainage.entries }) : undefined
   // What a To do row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
@@ -4496,7 +4566,7 @@ export default function LienDesk({
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
-            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab

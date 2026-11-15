@@ -335,14 +335,93 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
 })
 
 describe('LienDeskNextUp · only you can approve, first (punch list #101 PR 3)', () => {
-  it('the leader’s approvals lead under their own title; the office’s close the list under the leader’s name', () => {
+  it('the leader’s approvals lead under their own title; the office’s stand under the leader’s name, above the rows on track (v2.7371; last until then)', () => {
     const approve = row({ key: 'notice:j2', jobId: 'j2', title: '744 · Pecan St', action: 'approve', button: 'Approve', sub: 'Waiting on your approval', dueOn: '2026-11-15', daysLeft: 41, severity: 'quiet', group: 'coming' })
     render(<LienDeskNextUp rows={[row({}), approve]} loading={false} isMobile={false} onAct={() => {}} />)
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Only you can approve · 1', 'Needs you now · 1'])
     cleanup()
     render(<LienDeskNextUp rows={[row({}), { ...approve, button: null, sub: 'Waiting on Sam' }]} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" />)
-    expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['Needs you now · 1', 'Waiting on Sam · 1'])
+    // One head over the parts, then each part's own: the approvals that wait, then what is on track.
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 1and 1 waiting on Sam')
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-group]')).map((g) => [g.getAttribute('data-lien-next-up-group'), g.getAttribute('data-part'), g.querySelector('h4')?.textContent])).toEqual([
+      ['waiting', 'yes', 'Waiting on Sam · 1'],
+      ['now', 'yes', 'On track · 1'],
+    ])
+  })
+})
+
+describe('LienDeskNextUp · Needs you now in three parts (v2.7371, punch list #362 step 2)', () => {
+  const owner = row({ key: 'notice:j1', jobId: 'j1', title: '372 · ZZ Cedar Row', sub: 'Needs the owner of record', action: 'find_owner', button: 'Find the owner' })
+  const facts = row({ key: 'affidavit:j9', kind: 'affidavit', jobId: 'j9', title: '1077 · ZZ Locks', sub: 'Affidavit · the property record is not complete', action: 'fix_property', button: 'Fix the property' })
+  const waits = row({ key: 'notice:j2', jobId: 'j2', title: '891 · ZZ Builders', action: 'approve', button: null, sub: 'Waiting on Sam · since Oct 7' })
+  const small = row({ key: 'affidavit:j3', kind: 'affidavit', jobId: 'j3', title: '1052 · ZZ Sample Rd', sub: 'Affidavit approved · ready to file', action: 'file_affidavit', button: 'File the affidavit' })
+  const big = row({ key: 'affidavit:j4', kind: 'affidavit', jobId: 'j4', title: '1024 · ZZ Marlow', sub: 'Affidavit approved · ready to file', action: 'file_affidavit', button: 'File the affidavit' })
+  const later = row({ key: 'notice:j5', jobId: 'j5', title: '1123 · ZZ Lake Dr', dueOn: '2026-11-16', daysLeft: 42, severity: 'quiet', group: 'coming' })
+  const risk = (r: LienNextUpRow) => ({ 'notice:j1': 4, 'affidavit:j9': 3 })[r.key] ?? null
+  const amountFor = (r: LienNextUpRow) => ({ j3: 610, j4: 9400 })[r.jobId ?? ''] ?? null
+  const rows = [small, owner, waits, big, facts, later]
+  const riskLabel = (n: number) => `Will not make tomorrow as ${n === 1 ? 'it stands' : 'they stand'}`
+  const parts = () => Array.from(document.querySelectorAll('[data-lien-next-up-group]')).map((g) => [g.getAttribute('data-lien-next-up-group'), (g.querySelector('h4, h3') as HTMLElement).textContent, Array.from(g.querySelectorAll('[data-lien-next-up-row]')).map((r) => r.getAttribute('data-lien-next-up-row'))])
+
+  it('first what will not make its day, the longest road first; then waiting on the leader; then on track, largest first; Coming up follows', () => {
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} riskLabel={riskLabel} amountFor={amountFor} />)
+    expect((document.querySelector('[data-lien-next-up-now-head]') as HTMLElement).textContent).toBe('Needs you now · 4and 1 waiting on Sam')
+    expect(parts()).toEqual([
+      ['risk', 'Will not make tomorrow as they stand · 2', ['notice:j1', 'affidavit:j9']],
+      ['waiting', 'Waiting on Sam · 1', ['notice:j2']],
+      ['now', 'On track · 2', ['affidavit:j4', 'affidavit:j3']],
+      ['coming', 'Coming up · 1', ['notice:j5']],
+    ])
+    // The head stands once, before the first part.
+    expect(document.querySelectorAll('[data-lien-next-up-now-head]')).toHaveLength(1)
+    expect(document.querySelector('[data-lien-next-up-group="coming"]')!.getAttribute('data-part')).toBeNull()
+  })
+
+  it('the waiting head carries one press that reminds the leader; dead it reads why and does nothing; busy it says so', () => {
+    const onPress = vi.fn()
+    const view = render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} remind={{ button: 'Remind Sam of 1 paper', dead: false, onPress }} />)
+    const press = () => document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    expect(press().textContent).toBe('Remind Sam of 1 paper')
+    // It sits on the waiting head and nowhere else, and the head keeps its own words.
+    expect(document.querySelectorAll('[data-lien-next-up-remind]')).toHaveLength(1)
+    expect(document.querySelector('[data-lien-next-up-group="waiting"]')!.contains(press())).toBe(true)
+    expect((document.querySelector('[data-lien-next-up-group="waiting"] h4') as HTMLElement).textContent).toBe('Waiting on Sam · 1')
+    fireEvent.click(press())
+    expect(onPress).toHaveBeenCalledTimes(1)
+    view.rerender(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} remind={{ button: 'Reminded at 2:14 PM', dead: true, onPress }} />)
+    expect(press().textContent).toBe('Reminded at 2:14 PM')
+    expect(press().disabled).toBe(true)
+    fireEvent.click(press())
+    expect(onPress).toHaveBeenCalledTimes(1)
+    view.rerender(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} remind={{ button: 'Remind Sam of 1 paper', dead: false, busy: true, onPress }} />)
+    expect(press().textContent).toBe('Reminding…')
+    expect(press().disabled).toBe(true)
+  })
+
+  it('with no press handed in the waiting head is words alone, and a desk with nothing at risk or waiting keeps its one head', () => {
+    const view = render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" risk={risk} />)
+    expect(document.querySelector('[data-lien-next-up-remind]')).toBeNull()
+    view.unmount()
+    render(<LienDeskNextUp rows={[small, big, later]} loading={false} isMobile={false} onAct={() => {}} risk={() => null} />)
+    expect(document.querySelector('[data-lien-next-up-now-head]')).toBeNull()
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['Needs you now · 2', 'Coming up · 1'])
+  })
+
+  it('on a phone the rows at risk lead their day, the waiting rows follow the days that need a person, and the press sits under their head a thumb tall', () => {
+    const onPress = vi.fn()
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} waitingOn="Sam" risk={risk} amountFor={amountFor} remind={{ button: 'Remind Sam of 1 paper', dead: false, onPress }} />)
+    const groups = Array.from(document.querySelectorAll('[data-lien-phone-group]')).map((g) => [g.getAttribute('data-lien-phone-group'), Array.from(g.querySelectorAll('[data-lien-next-up-row]')).map((r) => r.getAttribute('data-lien-next-up-row'))])
+    expect(groups).toEqual([
+      ['day:2026-10-09', ['notice:j1', 'affidavit:j9', 'affidavit:j4', 'affidavit:j3']],
+      ['waiting', ['notice:j2']],
+      ['day:2026-11-16', ['notice:j5']],
+    ])
+    const press = document.querySelector('[data-lien-next-up-remind]') as HTMLButtonElement
+    expect(press.style.minHeight).toBe('40px')
+    expect(document.querySelector('[data-lien-phone-group="waiting"]')!.contains(press)).toBe(true)
+    fireEvent.click(press)
+    expect(onPress).toHaveBeenCalledTimes(1)
   })
 })
 

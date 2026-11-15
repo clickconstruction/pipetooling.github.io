@@ -1,6 +1,7 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { groupLienNextUp, lienNextUpNowHead, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienPhoneGroups, lienPhoneStepWords, type LienPhoneGroup } from '../../lib/jobs/lienPhoneRows'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -18,6 +19,10 @@ import { LienStepCardView, LienStepMark, useLienStepCard } from './LienDeskSteps
  * writes the row's ladder out (`lienNextUpSteps.ts`). The rails of rungs above the rows, the step brief a
  * pressed rung opened (v2.6574) and the REMINDERS rail (punch list #262) stood here until v2.7332, when the
  * Board took the top of To do (`LienBoard.tsx`): a bin's head narrows the list the way a rung did.
+ *
+ * Since v2.7371 (punch list #362, step 2) *Needs you now* reads in up to three parts under one head: the rows that
+ * will not make their day as they stand (the Board's marked chips, `risk`), then the approvals the office waits on,
+ * with one press that reminds the leader of them (`remind`), then the rest, *On track*. The order is the kernel's.
  *
  * A table on a computer; the same rows as cards on a phone.
  */
@@ -73,6 +78,9 @@ export default function LienDeskNextUp({
   amountFor,
   onOpenRow,
   zoomFor,
+  risk,
+  riskLabel,
+  remind,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -103,6 +111,12 @@ export default function LienDeskNextUp({
   onOpenRow?: (row: LienNextUpRow) => void
   /** The job's number as a zoom (v2.7333): the press to the right place for the paper's stage, with its hover words; null for a job not on the Board. Absent, the number and the name are one door to the job. */
   zoomFor?: (row: LienNextUpRow) => { press: () => void; words: string } | null
+  /** The stages a row's paper still has to pass when it will not make its day, else null (v2.7371; the Board's rule, `lienBoardRowRisk`). Absent, no row is at risk. */
+  risk?: (row: LienNextUpRow) => number | null
+  /** The head over the rows at risk, in the Board's words for that many. */
+  riskLabel?: (n: number) => string
+  /** The press on the waiting rows' head (v2.7371): reminds the leader of them. Absent, or for a viewer who cannot send it, the head has no press. */
+  remind?: { button: string; dead: boolean; busy?: boolean; onPress: () => void } | null
 }) {
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
@@ -110,7 +124,7 @@ export default function LienDeskNextUp({
   // A run row's list of jobs (punch list #101), folded until pressed; the find opens them all.
   const [folds, setFolds] = useState<ReadonlySet<string>>(() => new Set())
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
-  const byDay = groupLienNextUp(rows, { waitingOn })
+  const byDay = groupLienNextUp(rows, { waitingOn, risk, riskLabel, amount: amountFor })
   const groups = byDay
   if (byDay.length === 0) {
     return (
@@ -269,6 +283,25 @@ export default function LienDeskNextUp({
       {r.button ?? 'Open'}
     </button>
   )
+  // The parts of Needs you now (v2.7371): one head over them, each part with a smaller one of its own.
+  const nowHead = lienNextUpNowHead(groups)
+  const firstPart = groups.findIndex((g) => g.part)
+  const lastPart = groups.reduce((at, g, i) => (g.part ? i : at), -1)
+  const remindOff = Boolean(remind && (remind.dead || remind.busy))
+  const remindPress = remind ? (
+    <button
+      type="button"
+      data-lien-next-up-remind
+      disabled={remindOff}
+      onClick={(ev) => {
+        ev.stopPropagation()
+        remind.onPress()
+      }}
+      style={{ ...openBtn, flex: 'none', padding: '2px 10px', fontSize: '0.78rem', ...(isMobile ? PHONE_PRESS : null), ...(remindOff ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'default' } : null) }}
+    >
+      {remind.busy ? 'Reminding…' : remind.button}
+    </button>
+  ) : null
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   // A phone's list (punch list #352, PR 3): the day-driven groups by the day itself, each head with how long is left
@@ -307,6 +340,7 @@ export default function LienDeskNextUp({
           {g.left ? <span data-lien-phone-left>{g.left}</span> : null}
           {g.amount != null ? <span data-lien-phone-group-amount style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: 0 }}>{formatUsdNoCents(g.amount)}</span> : null}
         </h3>
+        {g.group === 'waiting' && remindPress ? <div data-lien-next-up-remind-row style={{ display: 'flex', padding: '6px 0.75rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>{remindPress}</div> : null}
         {g.rows.map((r, i) => {
           const amount = amountFor?.(r) ?? null
           const at = lienStepOfRow(r)
@@ -342,11 +376,27 @@ export default function LienDeskNextUp({
   }
   return (
     <div ref={card.hostRef} data-lien-next-up="list" data-scrolls={scrolls ? 'yes' : 'no'} style={{ position: 'relative', overflowY: scrolls ? 'auto' : 'visible', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
-      {isMobile ? phoneGroups.map(phoneGroup) : groups.map((g) => (
-        <section key={g.group} aria-label={g.label} data-lien-next-up-group={g.group} style={{ marginBottom: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
-            {g.label} · {g.rows.length}
+      {isMobile ? phoneGroups.map(phoneGroup) : groups.map((g, gi) => (
+        <Fragment key={g.group}>
+        {nowHead && gi === firstPart ? (
+          <h3 data-lien-next-up-now-head style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-600)' }}>
+            {nowHead.label} · {nowHead.count}
+            {nowHead.waiting ? <span data-lien-next-up-now-waiting style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>and {nowHead.waiting}</span> : null}
           </h3>
+        ) : null}
+        <section aria-label={g.label} data-lien-next-up-group={g.group} data-part={g.part ? 'yes' : undefined} style={{ marginBottom: g.part && gi !== lastPart ? '0.65rem' : '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: g.part ? '0 0 0.35rem' : '0 0 0.4rem', minHeight: g.group === 'waiting' && remindPress ? 26 : undefined }}>
+            {g.part ? (
+              <h4 data-lien-next-up-part-head style={{ flex: 1, minWidth: 0, margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: g.group === 'risk' ? 'var(--text-red-600)' : g.group === 'waiting' ? 'var(--text-violet-700)' : 'var(--text-700)' }}>
+                {g.label} · {g.rows.length}
+              </h4>
+            ) : (
+              <h3 style={{ flex: 1, minWidth: 0, margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || g.group === 'waiting' ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+                {g.label} · {g.rows.length}
+              </h3>
+            )}
+            {g.group === 'waiting' ? remindPress : null}
+          </div>
           <div style={{ display: 'grid', gap: 0, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
             {g.rows.map((r, i) => {
               const due = lienNextUpDueWords(r)
@@ -385,6 +435,7 @@ export default function LienDeskNextUp({
             })}
           </div>
         </section>
+        </Fragment>
       ))}
       {openCard ? (
         <LienStepCardView card={openCard.card} place={openCard.place} onClose={card.close} onMouseEnter={card.cancelHide} onMouseLeave={card.hide}>
