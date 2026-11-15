@@ -6,7 +6,7 @@ import { parseBidPricedMargin, type BidPricedMargin, type PricedMarginStampInput
 const db = supabase as unknown as SupabaseClient
 
 /** The `bids` columns a stamp lives in (v2.5043). */
-export const BID_PRICED_MARGIN_COLUMNS = 'id, priced_margin_pct, priced_revenue_usd, priced_cost_usd, priced_uncosted_usd, priced_rate_set, priced_bid_version_id, priced_at'
+export const BID_PRICED_MARGIN_COLUMNS = 'id, priced_margin_pct, priced_revenue_usd, priced_cost_usd, priced_uncosted_usd, priced_rate_set, priced_bid_version_id, priced_at, priced_difficulty_usd'
 
 export type StampBidPricedMarginResult = { ok: true; marginPct: number; pricedAt: string | null } | { ok: false; reason: 'sent' | 'no_revenue' | 'refused' | string }
 
@@ -23,6 +23,7 @@ export async function stampBidPricedMargin(args: { bidId: string; bidVersionId: 
       p_cost_usd: args.input.costUsd,
       p_uncosted_usd: args.input.uncostedUsd,
       p_rate_set: args.input.rateSet,
+      p_difficulty_usd: args.input.difficultyUsd ?? 0,
     })
     if (error || data == null || typeof data !== 'object') return null
     const o = data as { ok?: unknown; reason?: unknown; margin_pct?: unknown; priced_at?: unknown }

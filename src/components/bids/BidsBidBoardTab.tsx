@@ -44,7 +44,9 @@ import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
-import { isOfficeRole } from '../../lib/doorRoles'
+import BidDifficultyPriceModal from './BidDifficultyPriceModal'
+import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
+import { DIFFICULTY_PRICE_WORDS, difficultyCanRate } from '../../lib/bids/difficultyPrice'
 import { bidBoardSearchPlaceholder, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
@@ -363,7 +365,11 @@ export function BidsBidBoardTab({
   const narrowViewport = useNarrowViewport660()
   // GC difficulty (punch list #357 PR 2): the rated GCs, for the chip beside the GC's name; Rate them for the office on the opened row only (PR 3: twenty links on one screen was loud).
   const gcDifficulty = useGcDifficultyStandings(true)
-  const canRateGc = isOfficeRole(useOptionalAuth()?.role)
+  // #357 PR 4: the Bid Board's price list says who may rate; the Pricing rules door opens it.
+  const difficultyPrice = useDifficultyPrice(true)
+  const boardRole = useOptionalAuth()?.role
+  const canRateGc = difficultyCanRate(difficultyPrice?.body ?? null, boardRole)
+  const [pricingRulesOpen, setPricingRulesOpen] = useState(false)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
   // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
   const toolsRow = bidBoardToolsRowLayout(narrowViewport)
@@ -1869,6 +1875,28 @@ export function BidsBidBoardTab({
           </button>
           <button
             type="button"
+            onClick={() => setPricingRulesOpen(true)}
+            title="Pricing rules: what a GC's difficulty rating costs on a bid"
+            aria-label={DIFFICULTY_PRICE_WORDS.door}
+            style={{
+              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            {narrowViewport ? null : DIFFICULTY_PRICE_WORDS.door}
+          </button>
+          <button
+            type="button"
             onClick={() => setReplyBookOpen(true)}
             title="Reply book: wording the team reuses"
             aria-label={`Reply book${replyBook.entries.length > 0 ? ` (${replyBook.entries.length})` : ''}`}
@@ -2338,6 +2366,7 @@ export function BidsBidBoardTab({
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
+      {pricingRulesOpen ? <BidDifficultyPriceModal role={boardRole} onClose={() => setPricingRulesOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
       {filesWindow
         ? (() => {

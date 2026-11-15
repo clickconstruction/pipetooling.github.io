@@ -16,7 +16,7 @@ vi.mock('../supabase', () => ({
 
 import { BID_PRICED_MARGIN_COLUMNS, loadBidPricedMargins, stampBidPricedMargin } from './pricedMarginIo'
 
-const input = { revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true }
+const input = { revenueUsd: 48_700, costUsd: 33_400, uncostedUsd: 0, rateSet: true, difficultyUsd: 0 }
 
 beforeEach(() => {
   rpc.mockReset()
@@ -28,7 +28,7 @@ describe('stampBidPricedMargin', () => {
   it('calls the function with the strip’s numbers and reads its answer', async () => {
     rpc.mockResolvedValue({ data: { ok: true, margin_pct: '31.42', priced_at: '2026-10-09T15:00:00Z' }, error: null })
     expect(await stampBidPricedMargin({ bidId: 'b1', bidVersionId: 'v1', input })).toEqual({ ok: true, marginPct: 31.42, pricedAt: '2026-10-09T15:00:00Z' })
-    expect(rpc).toHaveBeenCalledWith('stamp_bid_priced_margin', { p_bid_id: 'b1', p_bid_version_id: 'v1', p_revenue_usd: 48_700, p_cost_usd: 33_400, p_uncosted_usd: 0, p_rate_set: true })
+    expect(rpc).toHaveBeenCalledWith('stamp_bid_priced_margin', { p_bid_id: 'b1', p_bid_version_id: 'v1', p_revenue_usd: 48_700, p_cost_usd: 33_400, p_uncosted_usd: 0, p_rate_set: true, p_difficulty_usd: 0 })
   })
   it('a sent bid comes back refused with its reason; an answer that does not say ok is not a stamp', async () => {
     rpc.mockResolvedValue({ data: { ok: false, reason: 'sent' }, error: null })

@@ -33,11 +33,15 @@ describe('stamp_bid_priced_margin (v2.5043)', () => {
   it('runs as the caller, so the bid’s own policies and fences decide', () => {
     expect(sql).toMatch(/stamp_bid_priced_margin[\s\S]*SECURITY INVOKER/)
     expect(sql).toContain("SET search_path = ''")
-    expect(sql).toContain('REVOKE EXECUTE ON FUNCTION public.stamp_bid_priced_margin(uuid, uuid, numeric, numeric, numeric, boolean) FROM PUBLIC, anon;')
+    // v2.7301 (punch list #357, PR 4): the seventh argument is the difficulty cost, defaulted so the older client still stamps.
+    expect(sql).toContain('REVOKE EXECUTE ON FUNCTION public.stamp_bid_priced_margin(uuid, uuid, numeric, numeric, numeric, boolean, numeric) FROM PUBLIC, anon;')
+    expect(sql).toContain('DROP FUNCTION IF EXISTS public.stamp_bid_priced_margin(uuid, uuid, numeric, numeric, numeric, boolean);')
+    expect(sql).toContain('p_difficulty_usd numeric DEFAULT 0')
   })
   it('writes and adds every column the client reads back', () => {
+    const everyMigration = files.map((f) => readFileSync(resolve(MIGRATIONS, f), 'utf8')).join('\n')
     for (const col of BID_PRICED_MARGIN_COLUMNS.split(', ').filter((c) => c !== 'id')) {
-      expect(sql).toContain(`ADD COLUMN IF NOT EXISTS ${col} `)
+      expect(everyMigration).toContain(`ADD COLUMN IF NOT EXISTS ${col} `)
       expect(body).toContain(`${col} = `)
     }
   })
