@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Box label scan, signed out: three shapes</title>
+<style>
+  :root { --ink:#16283c; --paper:#f6f3ec; --card:#fdfcf9; --muted:#5a6b7e; --faint:#5e6d7c; --hair:#ddd6c8; --copper:#9a5b2b; --band:#f1ece2; --blue:#2563eb; --amber:#8a5a00; --green:#1f7a3a; --red:#b42318; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e5db; color: var(--ink); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 22px 16px 40px; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 18px; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 820px; }
+  .row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .col { flex: 1 1 320px; min-width: 300px; max-width: 356px; }
+  .tag { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; font-size: 17px; font-weight: 800; }
+  .tag .pick { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--green); border-radius: 999px; padding: 2px 9px; }
+  .tag .now { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: #d9d2c2; border-radius: 999px; padding: 2px 9px; }
+  .sub { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; line-height: 1.4; min-height: 38px; }
+  .phone { background: var(--paper); border: 1px solid #c9c1b0; border-radius: 26px; padding: 18px 14px 20px; display: grid; gap: 14px; box-shadow: 0 8px 22px rgba(22,40,60,.10); }
+  .co { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--copper); }
+  .plate { border-radius: 16px; overflow: hidden; background: var(--ink); color: #fff; }
+  .photo { height: 112px; background: linear-gradient(135deg, #6b7f8f 0%, #8d9aa3 40%, #56646f 100%); position: relative; }
+  .photo::before { content: ""; position: absolute; inset: 14px 24px 0; border: 3px solid rgba(255,255,255,.35); border-bottom: 0; border-radius: 4px 4px 0 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.22) 0 2px, transparent 2px 16px), repeating-linear-gradient(0deg, rgba(255,255,255,.22) 0 2px, transparent 2px 16px); }
+  .photo span { position: absolute; left: 10px; bottom: 8px; font-size: 11px; font-weight: 600; background: rgba(15,23,42,.66); border-radius: 999px; padding: 3px 10px; }
+  .plate .top { padding: 14px 14px 12px; display: grid; gap: 4px; }
+  .plate .name { display: flex; justify-content: space-between; align-items: center; }
+  .plate .name b { font-size: 44px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .chip { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 3px 10px; }
+  .says { font-size: 16px; font-weight: 700; }
+  .place { font-size: 15px; font-weight: 600; }
+  .code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; letter-spacing: .04em; color: rgba(255,255,255,.72); }
+  .verdict { display: flex; gap: 8px; align-items: baseline; font-size: 14px; padding: 9px 14px; background: rgba(255,255,255,.07); border-top: 1px solid rgba(255,255,255,.16); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #4ade80; flex: 0 0 auto; }
+  .verdict span.d { color: rgba(255,255,255,.72); font-size: 12.5px; }
+  .lab { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+  .lab i { font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; }
+  .line { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--hair); font-size: 14.5px; line-height: 1.3; }
+  .line:first-child { border-top: 0; }
+  .line small { display: block; color: var(--muted); font-size: 12px; }
+  .line small.cf { color: var(--amber); font-weight: 600; }
+  .line b { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .line.gone { background: var(--band); color: var(--muted); }
+  .pill { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px solid var(--hair); border-radius: 999px; padding: 2px 8px; background: var(--card); white-space: nowrap; align-self: center; }
+  .small { margin: 6px 0 0; color: var(--faint); font-size: 12px; line-height: 1.4; }
+  .find { display: flex; gap: 6px; padding: 5px; align-items: center; }
+  .find span { flex: 1; padding: 0 10px; color: #8b97a3; font-size: 15px; }
+  .find b { background: var(--blue); color: #fff; border-radius: 10px; padding: 10px 18px; font-size: 15px; }
+  .nrow { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-top: 1px solid var(--hair); }
+  .nrow:first-child { border-top: 0; }
+  .badge { width: 32px; height: 32px; border-radius: 10px; background: var(--band); display: flex; align-items: center; justify-content: center; font-size: 15px; flex: 0 0 auto; }
+  .nrow .t { flex: 1; min-width: 0; }
+  .nrow .t b { display: block; font-size: 14.5px; line-height: 1.25; }
+  .nrow .t span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+  .nrow .chev { color: var(--faint); font-size: 20px; }
+  .nrow.primary { background: var(--blue); color: #fff; }
+  .nrow.primary .t span, .nrow.primary .chev { color: rgba(255,255,255,.86); }
+  .nrow.primary .badge { background: rgba(255,255,255,.18); }
+  .belongs { font-size: 15.5px; line-height: 1.45; margin: 0; }
+  .foot { text-align: center; color: var(--faint); font-size: 12px; line-height: 1.4; margin: 0; padding-top: 10px; border-top: 1px solid var(--hair); }
+  .cut { border: 1px dashed #b9b0a0; border-radius: 12px; padding: 9px 12px; color: var(--faint); font-size: 12.5px; line-height: 1.45; background: rgba(255,255,255,.4); }
+  .cut b { color: var(--red); }
+  table.who { width: 100%; border-collapse: collapse; margin-top: 26px; background: var(--card); border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; font-size: 14px; line-height: 1.45; }
+  table.who th, table.who td { text-align: left; vertical-align: top; padding: 10px 12px; border-top: 1px solid var(--hair); }
+  table.who thead th { border-top: 0; background: var(--band); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table.who th[scope=row] { width: 17%; font-weight: 800; }
+  table.who td.a { background: #f0f7f1; }
+  h2 { font-size: 17px; margin: 26px 0 6px; }
+  .note { color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 860px; margin: 0 0 8px; }
+  .scrollx { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>A box label scanned with no sign-in: three shapes</h1>
+  <p class="lede">The link on the label and its code stay as printed. Only what a signed-out scan is shown changes. Signed in, a scan opens the box's own screen in the app, as today. Every name, part and count here is made up.</p>
+
+  <div class="row">
+    <!-- C: today -->
+    <div class="col">
+      <div class="tag">C · Today's page <span class="now">now</span></div>
+      <p class="sub">Everything in the cage, with counts, the photo, the place and a search over the whole site.</p>
+      <div class="phone">
+        <div class="co">Click Plumbing &amp; Electrical</div>
+        <div class="plate">
+          <div class="photo"><span>Photo from Friday, Nov 13 · tap to see it whole</span></div>
+          <div class="top">
+            <div class="name"><b>B3</b><span class="chip">Cage</span></div>
+            <div class="says">Copper fittings and valves</div>
+            <div class="place">Level 2 · by the north stair</div>
+            <div class="code">4F2A-9C18</div>
+          </div>
+          <div class="verdict"><span class="dot"></span><b>Counted 2 days ago</b><span class="d">Friday, Nov 13</span></div>
+        </div>
+        <div>
+          <div class="lab"><span>What is in it</span><i>4 parts</i></div>
+          <div class="card">
+            <div class="line"><span>2 in. brass ball valve<small>Apollo</small></span><b>12</b></div>
+            <div class="line"><span>3/4 in. copper 90<small>Mueller</small><small class="cf">2 could not be found since the count</small></span><b>140</b></div>
+            <div class="line"><span>3/4 in. PEX-A, 300 ft coil<small>Uponor</small></span><b>4</b></div>
+            <div class="line"><span>3 in. no-hub coupling<small>Charlotte</small></span><b>36</b></div>
+            <div class="line gone"><span>1 in. copper tee<small>Mueller</small></span><span class="pill">None left</span></div>
+          </div>
+          <p class="small">These are the app's counts as of right now.</p>
+        </div>
+        <div>
+          <div class="lab"><span>Not in this cage?</span></div>
+          <div class="card find"><span>A part, a maker or a stencil</span><b>Find</b></div>
+          <p class="small">Looks in every cage and box on this site.</p>
+        </div>
+        <div class="card">
+          <div class="nrow"><span class="badge">✉</span><span class="t"><b>Text the office about Cage B3</b><span>Something missing or wrong?</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">☎</span><span class="t"><b>Call the office</b><span>(512) 555-0142</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">👤</span><span class="t"><b>Sign in to record a use or a count</b><span>On Click's crew? Once on this phone.</span></span><span class="chev">›</span></div>
+        </div>
+        <p class="foot">This cage belongs to Click Plumbing &amp; Electrical. The page shows what is in it, not whose job it is.</p>
+      </div>
+    </div>
+
+    <!-- A -->
+    <div class="col">
+      <div class="tag">A · Sign in to see inside <span class="pick">my pick</span></div>
+      <p class="sub">The name the label already prints, whose it is, and how to reach the office. Nothing about what is inside.</p>
+      <div class="phone">
+        <div class="co">Click Plumbing &amp; Electrical</div>
+        <div class="plate">
+          <div class="top">
+            <div class="name"><b>B3</b><span class="chip">Cage</span></div>
+            <div class="code">4F2A-9C18</div>
+          </div>
+        </div>
+        <p class="belongs"><b>This cage belongs to Click Plumbing &amp; Electrical.</b> Found it somewhere it should not be, or need something from it? Text or call the office.</p>
+        <div class="card">
+          <div class="nrow primary"><span class="badge">👤</span><span class="t"><b>Sign in to see what is inside</b><span>On Click's crew? Once on this phone.</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">✉</span><span class="t"><b>Text the office about Cage B3</b><span>The text opens with this cage's name in it.</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">☎</span><span class="t"><b>Call the office</b><span>(512) 555-0142</span></span><span class="chev">›</span></div>
+        </div>
+        <div class="cut"><b>Gone from the page and from the function's answer:</b> the parts, the counts, None left, could not be found, the photo, how fresh the count is, the place, the one-line contents, and the search.</div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="col">
+      <div class="tag">B · Part names, no counts</div>
+      <p class="sub">Says what kind of material is inside, never how much. No photo, no place, no search.</p>
+      <div class="phone">
+        <div class="co">Click Plumbing &amp; Electrical</div>
+        <div class="plate">
+          <div class="top">
+            <div class="name"><b>B3</b><span class="chip">Cage</span></div>
+            <div class="code">4F2A-9C18</div>
+          </div>
+        </div>
+        <div>
+          <div class="lab"><span>What is in it</span><i>4 parts</i></div>
+          <div class="card">
+            <div class="line"><span>2 in. brass ball valve</span></div>
+            <div class="line"><span>3/4 in. copper 90</span></div>
+            <div class="line"><span>3/4 in. PEX-A, 300 ft coil</span></div>
+            <div class="line"><span>3 in. no-hub coupling</span></div>
+          </div>
+          <p class="small">Sign in to see how many.</p>
+        </div>
+        <div class="card">
+          <div class="nrow primary"><span class="badge">👤</span><span class="t"><b>Sign in to see the counts</b><span>On Click's crew? Once on this phone.</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">✉</span><span class="t"><b>Text the office about Cage B3</b><span>The text opens with this cage's name in it.</span></span><span class="chev">›</span></div>
+          <div class="nrow"><span class="badge">☎</span><span class="t"><b>Call the office</b><span>(512) 555-0142</span></span><span class="chev">›</span></div>
+        </div>
+        <p class="foot">This cage belongs to Click Plumbing &amp; Electrical.</p>
+        <div class="cut"><b>Gone:</b> the counts, None left, could not be found, the photo, how fresh the count is, the place and the search. <b>Stays:</b> the part names.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scrollx">
+  <table class="who">
+    <thead><tr><th></th><th>C · Today</th><th>A · Sign in to see inside</th><th>B · Names, no counts</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">A thief</th>
+        <td>A shopping list. Which cage holds the copper and the brass, how much, a photo of it and where it stands. One label opens a search of every cage on the site. A photo of the label works from anywhere, for as long as the cage is live.</td>
+        <td class="a">That a cage named B3 is Click's. The label on the bars already says that.</td>
+        <td>Which cage is worth opening, without how much. Brass ball valve is enough to pick the cage. He has to walk to each label, since there is no search.</td></tr>
+      <tr><th scope="row">The GC</th>
+        <td>Your stock on their site, live. How much material you have brought, how fresh your counts are, what ran out and what your crew could not find. Usable in a pay application or backcharge argument.</td>
+        <td class="a">Whose cage it is and a number to call. Nothing to quote back at you.</td>
+        <td>What you stock, not how much. No shortage notes and no count dates.</td></tr>
+      <tr><th scope="row">Another trade</th>
+        <td>What to borrow and which cage it is in. The search finds it for them.</td>
+        <td class="a">Who to ask before touching it.</td>
+        <td>What is in each cage they walk up to.</td></tr>
+      <tr><th scope="row">A crew member with no sign-in</th>
+        <td>Nothing. They read the cage without signing in.</td>
+        <td class="a">One sign-in per phone, then every scan opens the box's own screen. Someone with no account at all sees no contents and has to ask the office or a teammate.</td>
+        <td>They see what is in the cage they scan but not how many, and cannot search the site.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Who scans without an account today</h2>
+  <p class="note">Read from the live accounts on 2026-11-15. Click's own crew can sign in: 9 of the 10 live helpers have signed in, 4 of them in the last month, and both superintendents and both master technicians have. The subcontractor rows are the gap: 16 of the 19 live ones have never signed in. So under A or B, a sub's people see no counts until the office gets them online. Since v2.6796 every field role lands on the box's own screen once signed in.</p>
+
+  <h2>What does not change in any shape</h2>
+  <p class="note">The link <b>prts.co/b/&lt;code&gt;</b> and the code. Labels already printed keep working. A blank, lost or retired sticker's page says what it says today. Signed in, a scan opens the box in the app with Used, Move to, Count and the rest. The guess guard and the view ledger stay. The page still never names the job, the customer, a price or a person.</p>
+</div>
+</body>
+</html>

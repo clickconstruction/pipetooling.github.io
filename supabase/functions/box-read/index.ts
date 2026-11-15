@@ -1,41 +1,41 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
-import { googleAccessToken } from '../_shared/driveUpload.ts'
-import { driveMedia } from '../_shared/driveJobFolder.ts'
 import { ESTIMATE_LINK_LOCKED_CODE, readEstimateLinkLock, recordEstimateLinkMiss, type EstimateMissReader } from '../_shared/estimateLinkMisses.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageEarlyAnswer, boxPageFind, boxPageFindWords, boxPageKind, boxPageOfficePhone, boxPagePhotoUrl, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPagePhoto, type BoxPageServerLine, type BoxPageStickerRow } from '../_shared/boxPage.ts'
+import { BOX_PAGE_LOCKED_WORDS, BOX_PAGE_SIGN_IN_ERROR, boxPageAsksInside, boxPageCode, boxPageEarlyAnswer, boxPageKind, boxPageOfficePhone, boxPagePlate, boxPageStickerAnswer, buildBoxPagePayload, type BoxPageContainerRow, type BoxPageStickerRow } from '../_shared/boxPage.ts'
 
 /**
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
  * `PRTS.CO/B/<eight hex>`; prts.co forwards it to the app's `/b/:code`, and signed out the page asks here.
  *
- *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, line, lines, gone, lastCountedOn, photo, stickerNumber? }, office }
- *                                             the live container by its code, its lines from `on_site_job_summary` (the
- *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
- *                                             Since v2.6874 a line carries its Can't find presses since its count, `gone` is
- *                                             the lines emptied since the box's last count, and `office.phone` is the
- *                                             office's number: the team box's line from Settings since v2.6910, the
- *                                             letterhead's before. Never the job, the customer, a price or a person's name.
- *   GET ?code=<code>&find=<words>            → (v2.6799, PR 3) the live boxes of the same job whose stencil, place or lines
- *                                             hold every word, each with the lines that matched: the search a scanned code
- *                                             opens, that site and no other. No code, no search.
- *   GET ?code=<code>&photo=<photo id>        → the photo's bytes: streamed from Drive by `drive_file_id` through the service
- *                                             account once the sweep has filed it, else from the box-photos bucket while it
- *                                             waits, with an hour's cache. No Drive link ever reaches the page.
+ *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, stickerNumber? }, office }
+ *                                             the live container by its code: its name as the label prints it
+ *                                             (`boxPagePlate`), its kind, and `office.phone`, the office's number
+ *                                             (the team box's line from Settings since v2.6910, the letterhead's before).
+ *   GET ?code=<code>&find=<words>            → 401 { error: 'sign_in' }
+ *   GET ?code=<code>&photo=<photo id>        → 401 { error: 'sign_in' }
+ *
+ * **What is inside needs a sign-in (v2.7379, Taunya's call of 2026-11-15).** From v2.6797 the answer carried the place,
+ * the newest photo, every line with its count, the lines that ran out, the Can't find marks and the day of the last
+ * count; `?find=` searched every box of the same job (v2.6799) and `?photo=` streamed a photo's bytes from Drive. All of
+ * it was a list of what is worth taking and where, open to a photo of the label from anywhere. None of it is read here
+ * now: the function selects the container's name, kind and code and no more, and answers the two old doors with 401
+ * before the database is touched, whatever the code, so the refusal says nothing about the code. Someone signed in
+ * reads the box in the app under its own gate and never comes through here. Never the job, the customer, a price or a
+ * person's name, as before.
  *
  * No auth (`verify_jwt = false`): the code is the capability, as the estimate and bill links are. Eight hex characters
- * is 32 bits against a few hundred live boxes, and the page carries nothing worth a guess; a code that opens nothing
- * counts a miss against its source through the estimate link's guard (`estimate_link_miss`), and past 20 misses in the
- * hour the function answers 429 `locked` to every code from that source — a hit too since v2.7240, and a sticker's blank
- * or lost answer too since v2.7264, the lock read before anything else (`readEstimateLinkLock`, `boxPageEarlyAnswer`:
- * eight characters is short enough that a lock which still answered anything held nothing). A retired box answers 410 `retired` with no lines, and since v2.6874 its stencil,
- * kind and the office's number, which the label in the hand already prints or the letterhead already carries. Each read that opens lands
- * one `public_page_views` row (surface `box_page`); a staff session or `?preview=1` is stamped and not counted, as the
- * portals do. Rate limit: 60 reads a minute per client address and 600 across the isolate, in memory, best effort.
+ * is 32 bits against a few hundred live boxes; a code that opens nothing counts a miss against its source through the
+ * estimate link's guard (`estimate_link_miss`), and past 20 misses in the hour the function answers 429 `locked` to
+ * every code from that source — a hit too since v2.7240, and a sticker's blank or lost answer too since v2.7264, the
+ * lock read before anything else (`readEstimateLinkLock`, `boxPageEarlyAnswer`: eight characters is short enough that
+ * a lock which still answered anything held nothing). A retired box answers 410 `retired` with its name as the label
+ * printed it, its kind and the office's number (v2.6874). Each read that opens lands one `public_page_views` row
+ * (surface `box_page`); a staff session or `?preview=1` is stamped and not counted, as the portals do. Rate limit: 60
+ * reads a minute per client address and 600 across the isolate, in memory, best effort.
  *
  * Since v2.7072 (punch list #329) the code may be a sticker's (`box_stickers.code`, cut from the sticker's own id by the
  * rule a box's code follows). The sticker is read first. One on a box answers that box, every branch above included,
@@ -43,10 +43,6 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageEarlyAnswer, boxPageFind, bo
  * number }` and nothing else, and counts no miss: it is a real code. A lost one answers 410 `{ error: 'sticker_lost',
  * number, lostOn }`. A sticker read that fails is logged and the code is read as a box's own, so a label printed before
  * stickers opens whatever happens to that read. A locked source is answered before the sticker is read.
- *
- * Since v2.7348 (punch list #351, PR 2) `box.line` is what is in the box on one line: a person's own words
- * (`job_containers.description`), else the app's from the parts (`_shared/boxLine.ts`), '' for an empty box nobody
- * described. A search's box carries its `line` too, and the words typed are matched against a person's words as well.
  */
 
 const corsHeaders = {
@@ -98,10 +94,6 @@ async function officePhone(admin: any): Promise<string> {
   return boxPageOfficePhone([team, Deno.env.get('QUO_COMPANY_PHONE'), PORTAL_COMPANY.phone])
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-type PhotoRow = { id: string; container_id: string; taken_at: string; status: string; storage_path: string | null; drive_file_id: string | null }
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
@@ -112,6 +104,13 @@ serve(async (req) => {
 
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || 'unknown'
     if (rateLimited(ip, Date.now())) return json({ error: 'Too many requests. Try again in a minute.' }, 429)
+
+    // What is inside needs a sign-in (v2.7379): the search and the photo are refused before anything is read, whatever
+    // the code is, so the refusal tells a guesser nothing about the code.
+    if (boxPageAsksInside({ find: url.searchParams.get('find'), photo: url.searchParams.get('photo') })) {
+      console.log(JSON.stringify({ event: 'box_page_open', code, state: 'sign_in' }))
+      return json({ error: BOX_PAGE_SIGN_IN_ERROR }, 401)
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
@@ -136,7 +135,7 @@ serve(async (req) => {
       return json(early.body, early.status)
     }
 
-    const boxQuery = admin.from('job_containers').select('id, job_id, label, kind, where_note, description, place_id, retired_at, code')
+    const boxQuery = admin.from('job_containers').select('id, label, kind, retired_at, code')
     const { data: rowRaw, error: rowErr } = await (sticker.kind === 'box' ? boxQuery.eq('id', sticker.containerId) : boxQuery.eq('code', code)).maybeSingle()
     if (rowErr) throw new Error(rowErr.message)
     const row = rowRaw as BoxPageContainerRow | null
@@ -153,88 +152,13 @@ serve(async (req) => {
     }
     if (row.retired_at) {
       console.log(JSON.stringify({ event: 'box_page_open', code, state: 'retired' }))
-      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: row.label, kind: boxPageKind(row.kind), phone: await officePhone(admin) }, 410)
+      return json({ error: 'retired', retiredOn: calendarYmdInAppTzFromIso(row.retired_at), stencil: boxPagePlate(row.label), kind: boxPageKind(row.kind), phone: await officePhone(admin) }, 410)
     }
 
-    // The photo's bytes, for the page's <img>: Drive once filed, the bucket while it waits.
-    const photoId = url.searchParams.get('photo')
-    if (photoId) {
-      if (!UUID_RE.test(photoId)) return json({ error: 'bad_photo' }, 400)
-      const { data: pRaw, error: pErr } = await admin
-        .from('job_box_photos')
-        .select('id, container_id, taken_at, status, storage_path, drive_file_id')
-        .eq('id', photoId)
-        .eq('container_id', row.id)
-        .maybeSingle()
-      if (pErr) throw new Error(pErr.message)
-      const p = pRaw as PhotoRow | null
-      if (!p) return json({ error: 'not_found' }, 404)
-      const imgHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=3600', 'Content-Type': 'image/jpeg', 'X-Content-Type-Options': 'nosniff' }
-      if (p.drive_file_id) {
-        const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-        if (saJson) {
-          const google = await googleAccessToken(saJson)
-          const file = await driveMedia(google, p.drive_file_id)
-          if (file.ok && file.body) {
-            const type = file.headers.get('Content-Type') ?? 'image/jpeg'
-            return new Response(file.body, { status: 200, headers: { ...imgHeaders, 'Content-Type': type.startsWith('image/') ? type : 'image/jpeg' } })
-          }
-          console.warn('box-read: Drive did not answer the photo', p.id, file.status)
-        }
-      }
-      if (p.storage_path) {
-        const { data: blob, error: dl } = await admin.storage.from('box-photos').download(p.storage_path)
-        if (!dl && blob) return new Response(blob, { status: 200, headers: imgHeaders })
-      }
-      return json({ error: 'not_found' }, 404)
-    }
-
-    // Find a part on this site (PR 3): the same job's live boxes, the words typed, nothing of another job.
-    const findRaw = url.searchParams.get('find')
-    if (findRaw != null) {
-      const words = boxPageFindWords(findRaw)
-      const [boxesRes, placesRes, sumRes] = await Promise.all([
-        admin.from('job_containers').select('id, job_id, label, kind, where_note, description, place_id, retired_at, code').eq('job_id', row.job_id).is('retired_at', null),
-        admin.from('job_places').select('id, name').eq('job_id', row.job_id),
-        admin.rpc('on_site_job_summary', { p_job_id: row.job_id }),
-      ])
-      if (boxesRes.error) throw new Error(boxesRes.error.message)
-      if (sumRes.error) throw new Error(sumRes.error.message)
-      const sum = (sumRes.data ?? {}) as { lines?: BoxPageServerLine[] }
-      const find = boxPageFind({ thisCode: row.code, words, containers: (boxesRes.data ?? []) as BoxPageContainerRow[], places: (placesRes.data ?? []) as Array<{ id: string; name: string }>, lines: sum.lines ?? [] })
-      console.log(JSON.stringify({ event: 'box_page_find', code, words: words.length, boxes: find.total }))
-      return json({ ok: true, find })
-    }
-
-    const [phone, placeRes, summaryRes, photoRes] = await Promise.all([
-      officePhone(admin),
-      row.place_id ? admin.from('job_places').select('name').eq('id', row.place_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-      admin.rpc('on_site_job_summary', { p_job_id: row.job_id }),
-      admin
-        .from('job_box_photos')
-        .select('id, container_id, taken_at, status, storage_path, drive_file_id')
-        .eq('container_id', row.id)
-        .in('status', ['sending', 'filed'])
-        .order('taken_at', { ascending: false })
-        .limit(5),
-    ])
-    if (summaryRes.error) throw new Error(summaryRes.error.message)
-    const summary = (summaryRes.data ?? {}) as { lines?: BoxPageServerLine[]; last_counts?: Array<{ container_id: string; at: string }> }
-    const place = ((placeRes.data as { name?: string | null } | null)?.name ?? '').trim()
-    const lastCount = (summary.last_counts ?? []).find((c) => c.container_id === row.id)
-    const photos = ((photoRes.data ?? []) as PhotoRow[]).filter((p) => p.drive_file_id || p.storage_path)
-    const newest = photos[0]
-    const photo: BoxPagePhoto | null = newest ? { id: newest.id, takenOn: calendarYmdInAppTzFromIso(newest.taken_at), url: boxPagePhotoUrl(supabaseUrl, code, newest.id) } : null
-
+    // The name the label prints, the kind and the office's number. Nothing the box holds is read (v2.7379).
     const payload = buildBoxPagePayload({
       container: row,
-      place,
-      lines: summary.lines ?? [],
-      lastCountedOn: lastCount ? calendarYmdInAppTzFromIso(lastCount.at) : null,
-      photo,
-      lastCountAt: lastCount?.at ?? null,
-      now: new Date().toISOString(),
-      officePhone: phone,
+      officePhone: await officePhone(admin),
       scannedCode: sticker.kind === 'box' ? code : null,
       stickerNumber: sticker.kind === 'box' ? sticker.number : null,
     })
@@ -245,7 +169,7 @@ serve(async (req) => {
       .from('public_page_views')
       .insert({ surface: 'box_page', entity_id: row.id, via: 'token', viewer: decision.viewer, viewer_user_id: decision.staffUserId })
       .then(() => {}, () => {})
-    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', sticker: sticker.kind === 'box', lines: payload.box.lines.length, gone: payload.box.gone.length, photo: Boolean(photo), viewer: decision.viewer }))
+    console.log(JSON.stringify({ event: 'box_page_open', code, state: 'open', sticker: sticker.kind === 'box', viewer: decision.viewer }))
     return json(payload)
   } catch (e) {
     console.error('box-read failed', e)

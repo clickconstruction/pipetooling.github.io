@@ -2,8 +2,8 @@
  * Materials on site (punch list #209): the door a box label's code opens. `prts.co/b/7D759246` is the
  * short address printed on the label, forwarded here as `/b/7D759246`. Signed in, it finds the box by its
  * code and goes to its screen on the On site tab; a code no box carries says so and offers the tab. Signed
- * out (v2.6797, punch list #294) it is the box page: what is in the box with its counts and newest photo,
- * read through the `box-read` function, with Sign in to record a use or a count coming back here with a session.
+ * out (v2.6797, punch list #294) it is the box page, read through the `box-read` function: since v2.7379 the box's
+ * name and how to reach the office, with Sign in to see what is inside coming back here with a session.
  * The route sits outside the Layout, so the sign-in gate never swallows a scan.
  *
  * Since v2.7072 (punch list #329) the code may be a sticker's: a printed code that points at a box, or at nothing yet.
