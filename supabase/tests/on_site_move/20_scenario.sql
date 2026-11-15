@@ -410,7 +410,11 @@ SELECT osm.same('B is empty of its own records', osm.more('00000000-0000-0000-00
 SELECT osm.same('C holds the renames and the run, and its site the answers and prices', osm.more('00000000-0000-0000-0000-0000000509a3'), '2 renames, 1 runs, 0 ties, 0 prices, 3 site ties, 2 site prices');
 SELECT osm.same('the site''s own tee answer stands, the folded rows beside it', osm.one($q$SELECT string_agg(id::text, ',' ORDER BY id) FROM public.on_site_part_ties WHERE development_id = '00000000-0000-0000-0000-0000000509f2' AND job_id IS NULL$q$), '00000000-0000-0000-0000-000000050981,00000000-0000-0000-0000-000000050982,00000000-0000-0000-0000-000000050983');
 
--- Two Unsorted piles where a count on one resets a line the other fed: said in the plan, and not refused.
+-- Two Unsorted piles where a count on one resets a line the other fed: said in the plan, and not refused. Back at the
+-- seat's door as the dev (the move above ran as the controller).
+RESET ROLE;
+SELECT osm.as_user('00000000-0000-0000-0000-0000000509d1');
+SET LOCAL ROLE authenticated;
 DO $$
 DECLARE r jsonb;
 BEGIN
