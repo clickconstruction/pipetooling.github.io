@@ -1382,11 +1382,11 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
-    fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: /Fill in the record ›/ })[0]!)
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
     expect(onOpenEditJob).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
-    expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Send the notice first ›/ })).toBeTruthy()
   })
 
   it('the pane says which months the affidavit claims, and a missed month is worked but unsecured (v2.3681)', () => {
@@ -1464,7 +1464,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(paper().getAttribute('data-lien-affidavit-paper')).toBe('short')
     expect(paper().querySelector('[data-top-notice]')).toBeNull()
     const door = document.querySelector('[data-lien-affidavit-homestead-door]') as HTMLElement
-    expect(door.textContent).toBe('Answer it ›')
+    expect(door.textContent).toContain('Answer it ›')
     fireEvent.click(door)
     await settle()
     const question = document.querySelector('[data-homestead-question]') as HTMLElement
@@ -1501,7 +1501,7 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     // The paper names the owner, never the attention line.
     expect(paper().textContent).toContain('The owner or reputed owner is SAMPLE CITY OF')
     expect(paper().textContent).not.toContain('ATTN REAL ESTATE MANAGER')
-    expect(screen.queryByRole('button', { name: 'Fill in the record ›' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Fill in the record ›/ })).toBeNull()
   })
 
   it('a sworn month whose notice went late, with no copy to the contractor, is flagged for the attorney and holds nothing (punch list #314)', async () => {
@@ -1551,6 +1551,28 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(paper().textContent).toContain('Claimant did so under a contract with Lowbeck Contracting')
     fireEvent.click(document.querySelector('[data-lien-affidavit-contractor-door]') as HTMLElement)
     expect(onOpenCustomerRecord).toHaveBeenCalledWith('lowbeck')
+  })
+
+  it('every gate row is a press (v2.7313): a passed owner row ends in Change › and opens the property window, the notice row ends in See it › and opens Monthly notices', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={desk([])} initialKind="affidavit" />)
+    await settle()
+    const owner = document.querySelector('[data-lien-gate-row="owner"]') as HTMLButtonElement
+    expect(owner.getAttribute('data-lien-gate-ok')).toBe('yes')
+    expect(owner.textContent).toContain('Change ›')
+    expect(owner.title).toBe('Opens the property record at the owner of record')
+    // A failed gate's chips are gone from a passed row: the row itself is the press.
+    expect(screen.queryByRole('button', { name: /Fill in the record ›/ })).toBeNull()
+    const noticeRow = document.querySelector('[data-lien-gate-row="notice"]') as HTMLButtonElement
+    expect(noticeRow.textContent).toContain('sent Aug 14')
+    expect(noticeRow.textContent).toContain('See it ›')
+    fireEvent.click(owner)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
+    fireEvent.click(noticeRow)
+    await settle()
+    // The desk is on Monthly notices for the job now, so the affidavit's gate list is gone.
+    expect(document.querySelector('[data-lien-gate-row="owner"]')).toBeNull()
+    expect(screen.getByRole('tab', { name: /Monthly notices/ })).toBeTruthy()
   })
 
   it('the address gate offers no door to a role that cannot edit the record, and none without the page’s handler', async () => {
@@ -2471,6 +2493,54 @@ describe('LienDesk footer hand-off (v2.3753)', () => {
       expect(strip.textContent).toContain(kind === 'affidavit' ? 'Blocked until every gate above is clear' : 'One line on the leader’s phone')
     })
   }
+})
+
+describe('LienDesk · the footer is the pane’s own bottom bar (the owner’s ask of 2026-11-15)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+  const withPaper = () => {
+    const d = data(J650, [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+    return d
+  }
+
+  for (const kind of ['notice', 'affidavit', 'retainage'] as const) {
+    it(`on a computer the ${kind} footer sits inside the pane column, not under the list, and the list has nothing below it`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind={kind} initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector(`[data-lien-desk-footer="${kind}"]`)).not.toBeNull())
+      const strip = document.querySelector<HTMLElement>(`[data-lien-desk-footer="${kind}"]`)!
+      const column = strip.closest<HTMLElement>('[data-lien-desk-pane-column]')!
+      expect(column).not.toBeNull()
+      expect(column.style.gridTemplateRows).toBe('minmax(0, 1fr) auto')
+      // The pane scrolls above the footer, the footer is the column's last child.
+      expect(column.lastElementChild).toBe(strip)
+      expect(column.contains(document.querySelector('[data-lien-desk-find-column]'))).toBe(false)
+      expect(strip.closest('[data-lien-desk-find-column]')).toBeNull()
+      // The list column and the pane column are the grid's two children: nothing spans under both.
+      const grid = column.parentElement!
+      expect(grid.querySelector('[data-lien-desk-find-column]')).not.toBeNull()
+      expect(grid.parentElement!.querySelector(':scope > [data-lien-desk-footer]')).toBeNull()
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+    })
+  }
+
+  it('a phone keeps the strip as the desk’s, right after the fold bar, with no column around the pane', async () => {
+    const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    const orig = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind="affidavit" initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull())
+      const fold = document.querySelector<HTMLElement>('[data-lien-desk-foot-fold]')!
+      expect(fold.nextElementSibling?.getAttribute('data-lien-desk-footer')).toBe('affidavit')
+      expect(document.querySelector('[data-lien-desk-pane-column]')).toBeNull()
+    } finally {
+      window.matchMedia = orig
+    }
+  })
 })
 
 describe('LienDesk · the pay page in the pane (punch list #35, PR 3)', () => {
