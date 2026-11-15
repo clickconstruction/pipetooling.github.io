@@ -14,6 +14,7 @@ import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYo
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
 import { EmptyState } from '../EmptyState'
+import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
@@ -48,6 +49,8 @@ export function DashboardNeedsYouCard({
   onAction,
   onSecondary,
   fillIn,
+  lienBoardStrip,
+  onOpenBoard,
 }: {
   userId: string | undefined
   role: UserRole | null
@@ -65,6 +68,9 @@ export function DashboardNeedsYouCard({
    * and draws the other lines under it.
    */
   fillIn?: { rowCount: number; opensFirst?: boolean; render: (opts: { startKind: FillInKind | null; onExit: () => void }) => ReactNode }
+  /** The Lien desk's Board as four dots on one line (v2.7334), for the office; the strip is one press that opens the desk at the Board. */
+  lienBoardStrip?: LienBoardDot[] | null
+  onOpenBoard?: () => void
 }) {
   const isPhone = useIsMobile()
   const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
@@ -303,6 +309,28 @@ export function DashboardNeedsYouCard({
         boxSizing: 'border-box',
       }}
     >
+      {lienBoardStrip && lienBoardStrip.length ? (
+        <button
+          type="button"
+          data-needs-you-lien-board
+          onClick={() => {
+            recordNavClick(userId, role, 'needs-you', '#lien-board')
+            onOpenBoard?.()
+          }}
+          title="Open the Lien desk at the Board"
+          style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', width: '100%', margin: '0 0 0.75rem', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+        >
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Lien desk</span>
+          {lienBoardStrip.map((d) => (
+            <span key={d.key} data-needs-you-lien-dot={d.key} data-tone={d.tone} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, fontSize: '0.8125rem' }}>
+              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', alignSelf: 'center', background: d.tone === 'red' ? 'var(--text-red-700)' : d.tone === 'amber' ? 'var(--text-amber-800)' : d.tone === 'violet' ? 'var(--text-violet-700)' : 'var(--border-strong)' }} />
+              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{d.figure}</strong>
+              <span style={{ color: 'var(--text-muted)' }}>{d.words}</span>
+            </span>
+          ))}
+          <span style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>The Board ›</span>
+        </button>
+      ) : null}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.75rem' }}>
         <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>Needs you</h2>
         <span

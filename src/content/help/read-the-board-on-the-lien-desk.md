@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, chips, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -65,6 +65,18 @@ The Board never sends, files or moves anything. Every press on a row below still
 A **Held** bin and a **Missed** bin stand beside a column only while a job is in one. A dashed border marks them. When they are empty they are not drawn.
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. The retainage list on **By paper** has the rows.
+
+## The leader's Board
+
+A master opens the desk on his own Board. Only the two **Awaiting approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
+
+A notice stays out of the press. Its reason reads *needs your signature*. The law wants the leader's signature on each notice, and the notice's own pane signs it. A paper past its day stays out too, as *is past its day*. Each held paper keeps its chip. Press the chip to open it.
+
+Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outline|Only my bins}} to come back. A dev opens on every bin with the same switch. The office sees neither the switch nor the press.
+
+## On the Dashboard
+
+The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 in the run · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
 
 ## The title is a door
 

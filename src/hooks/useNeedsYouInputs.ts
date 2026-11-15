@@ -1,4 +1,7 @@
 import { useMemo } from 'react'
+import { buildLienBoard, lienBoardDots, type LienBoardDot } from '../lib/jobs/lienBoard'
+import { isLienOffice } from '../lib/jobs/lienDesk'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { UserRole } from './useAuth'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from './useTallyUnlinkedCounts'
@@ -164,6 +167,20 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { watch: lienWatch } = useLienWatchNudge(lienEnabled, hideZzTestJobs)
   const docsmit = useDocsmitSettings()
   const { data: lienDeskData } = useLienDeskData(lienEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
+  // The Board's four numbers as dots (v2.7334): the Needs you card's one-line strip for the office, a door to the desk at the Board.
+  const lienBoardStrip = useMemo<LienBoardDot[] | null>(() => {
+    if (!lienEnabled || !lienDeskData || !isLienOffice(role)) return null
+    const board = buildLienBoard({
+      todayYmd: todayYmdInAppTz(),
+      notices: lienDeskData.queue.entries,
+      affidavits: lienDeskData.affidavits.entries,
+      retainage: lienDeskData.retainage.entries,
+      jobNumber: (jobId) => { const j = lienDeskData.jobsById[jobId]; return j ? effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—' : jobId.slice(0, 8) },
+      jobName: (jobId) => (lienDeskData.jobsById[jobId]?.job_name ?? '').trim(),
+      gcName: (gcId) => lienDeskData.gcsById[gcId]?.name ?? '',
+    })
+    return board.empty ? null : lienBoardDots(board)
+  }, [lienEnabled, lienDeskData, role])
   const ownerRecordsSignedEnabled = lienEnabled
   const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
 
@@ -431,6 +448,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     inputs,
     doorData,
     officeEligible,
+    /** The Board's four dots for the Needs you card's strip (v2.7334); null off the office, with no desk, or with nothing on it. */
+    lienBoardStrip,
     /** The hosts' windows and nudges: what a press opens, what a close refetches, what a secondary link snoozes. */
     handles: {
       tallyUnlinkedCount,
