@@ -1,0 +1,50 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { blankCountOf, stickersByBoxOf } from '../lib/materials/stickerPlace'
+import { fetchStickersOnBoxes } from '../lib/materials/stickerPlaceIo'
+import { fetchStickerRuns } from '../lib/materials/stickerRunsIo'
+
+export type JobStickers = {
+  /** The stickers on each of the job's boxes, lowest first. Empty until read. */
+  byBox: ReadonlyMap<string, number[]>
+  /** The job's stickers still on no box, across its runs. */
+  blank: number
+  loaded: boolean
+  /** Reads again: after a sticker is placed here. */
+  refresh: () => void
+}
+
+/**
+ * A job's stickers for its screens (punch list #329, PR 3): the numbers beside each box's name and how many of the
+ * job's stickers are not yet on a box. Two small reads under the viewer's own RLS, the stickers on the job's boxes and
+ * the job's runs; a read that fails leaves the numbers off, since a box reads the same without them. Read once per
+ * job and set of boxes, and again on `refresh`.
+ */
+export function useJobStickers(jobId: string | null, containerIds: ReadonlyArray<string>, reads: { onBoxes?: typeof fetchStickersOnBoxes; runs?: typeof fetchStickerRuns } = {}): JobStickers {
+  const [state, setState] = useState<{ forJob: string | null; byBox: Map<string, number[]>; blank: number; loaded: boolean }>({ forJob: null, byBox: new Map(), blank: 0, loaded: false })
+  const [tick, setTick] = useState(0)
+  const idsKey = [...containerIds].sort().join('|')
+  const onBoxes = reads.onBoxes ?? fetchStickersOnBoxes
+  const runs = reads.runs ?? fetchStickerRuns
+
+  useEffect(() => {
+    if (!jobId) return
+    let live = true
+    const ids = idsKey ? idsKey.split('|') : []
+    void (async () => {
+      const [boxesRead, runsRead] = await Promise.allSettled([onBoxes(ids), runs(jobId)])
+      if (!live) return
+      setState((prev) => {
+        const same = prev.forJob === jobId
+        const byBox = boxesRead.status === 'fulfilled' ? stickersByBoxOf(boxesRead.value) : same ? prev.byBox : new Map<string, number[]>()
+        const blank = runsRead.status === 'fulfilled' ? blankCountOf(runsRead.value) : same ? prev.blank : 0
+        return { forJob: jobId, byBox, blank, loaded: true }
+      })
+    })()
+    return () => {
+      live = false
+    }
+  }, [jobId, idsKey, tick, onBoxes, runs])
+
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
+  return useMemo(() => (state.forJob === jobId ? { byBox: state.byBox, blank: state.blank, loaded: state.loaded, refresh } : { byBox: new Map(), blank: 0, loaded: false, refresh }), [state, jobId, refresh])
+}

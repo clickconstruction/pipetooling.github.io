@@ -49,7 +49,8 @@ import {
   type StickerRunRequest,
   type StickerStrip,
 } from '../../lib/materials/stickerRun'
-import { fetchLastStickerNumber, mintStickerRun } from '../../lib/materials/stickerRunsIo'
+import { fetchLastStickerNumber, fetchStickerRuns, mintStickerRun } from '../../lib/materials/stickerRunsIo'
+import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
 import { stickerRangeWords } from '../../lib/materials/stickers'
 import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
 import { printRootCss } from '../../lib/printRoot'
@@ -79,10 +80,12 @@ type Props = {
   /** The mint, the last number read and the print itself; a test hands spies. */
   mint?: (request: StickerRunRequest) => Promise<MintedRun>
   lastNumber?: () => Promise<number | null>
+  /** How many of the job's stickers are not yet on a box (v2.7298); a test hands a spy. */
+  blankCount?: (jobId: string) => Promise<number>
   print?: () => void
 }
 
-export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, lastNumber = fetchLastStickerNumber, print = () => window.print() }: Props) {
+export default function PrintStickersModal({ jobId, jobLabel, role, run: given = null, onClose, onMinted, mint = mintStickerRun, lastNumber = fetchLastStickerNumber, blankCount = (id) => fetchStickerRuns(id).then(blankCountOf), print = () => window.print() }: Props) {
   const [countText, setCountText] = useState<string>(String(STICKER_COUNT_PRESETS[3]))
   const [copiesState, setCopiesState] = useState<number>(() => (given ? given.run.copies : readTapeCopies()))
   const copies = clampTapeCopies(copiesState)
@@ -108,6 +111,14 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
     lastNumber().then((n) => { if (live) setLast(n) }).catch(() => { if (live) setLast(null) })
     return () => { live = false }
   }, [given, lastNumber])
+  /** The job's stickers still on no box (v2.7298): said before a new run is minted, so nobody prints 200 more over 96 unused. */
+  const [blank, setBlank] = useState<number>(0)
+  useEffect(() => {
+    if (given) return
+    let live = true
+    blankCount(jobId).then((n) => { if (live) setBlank(n) }).catch(() => { if (live) setBlank(0) })
+    return () => { live = false }
+  }, [given, jobId, blankCount])
   /** The test strip: the list holds it alone while the print window is open. */
   const [testOnly, setTestOnly] = useState(false)
   useEffect(() => {
@@ -362,7 +373,7 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
                 <span style={muted}>{copies > 1 ? 'A set is one sticker printed more than once, for a box with more than one side. Every copy opens the same box.' : 'For a box with more than one side, print each sticker more than once.'}</span>
               </div>
               <p style={{ ...muted, margin: 0 }} data-testid="stickers-last-run">
-                {last === undefined ? 'Reading the last run…' : lastRunWords(last)} New boxes made from these stickers go on {jobLabel}.
+                {last === undefined ? 'Reading the last run…' : lastRunWords(last)} New boxes made from these stickers go on {jobLabel}.{blank > 0 ? <> <span data-testid="stickers-blank-count">{jobBlankWords(blank)}</span></> : null}
               </p>
               {!verdict.ok ? <p role="note" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-red-700)', fontWeight: 600 }} data-testid="stickers-refusal">{verdict.words}</p> : null}
             </div>

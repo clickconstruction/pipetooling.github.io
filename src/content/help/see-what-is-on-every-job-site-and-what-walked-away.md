@@ -133,7 +133,7 @@ Press **Label** on a box to print that box alone, or **Print labels** for every 
 
 ## Print blank stickers
 
-A sticker is a label printed before its box. The sticker carries a code to scan and a short number to read, such as 0147. Stick one on each cage or box on site. Scanning a sticker to say which box it is comes in the next release. For now you print the run and the stickers wait.
+A sticker is a label printed before its box. The sticker carries a code to scan and a short number to read, such as 0147. Stick one on each cage or box on site. The crew then scans it on the phone and says which box it is on. Read [stick a sticker on a box](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#stick-a-sticker-on-a-box) for that part.
 
 On a job's page, press **Print blank stickers** beside **Print labels**. On the Materials page, press **Print blank stickers** at the right end of the tabs and pick the job. New boxes made from the stickers go on that job. The office, a primary and a superintendent can print a run. For everyone else the press is grey and says why.
 
@@ -143,7 +143,7 @@ Stickers print on Brother tape. The window connects to the P-touch as the Labels
 
 If the printer stops part way, the window says how many stickers printed. The press becomes **Print the rest, 0163 to 0300**. Connect the printer again and press it. The stickers already printed are not printed twice.
 
-Under the job's boxes, a fold lists every run of stickers. Each run shows its numbers, who printed it and when. The run also shows how many stickers are on boxes and how many are not used yet. Press **Reprint 200 stickers** to print the whole run again. A reprint prints the same codes, so nothing can collide. Press **Print the rest, 0205 to 0300** to print only the stickers still blank. In the window, **Export the stickers as a CSV** writes the run for a label editor.
+Under the job's boxes, a fold lists every run of stickers. Each run shows its numbers, who printed it and when. The run also shows how many stickers are on boxes and how many are not used yet. Above the boxes, a line counts the stickers not yet on a box. Press **Runs** beside it to open the fold. The window says the same count before a new run, so nobody prints 200 more over 96 unused. A box's name reads its sticker numbers beside it, as *R76 · 0147*. Press **Reprint 200 stickers** to print the whole run again. A reprint prints the same codes, so nothing can collide. Press **Print the rest, 0205 to 0300** to print only the stickers still blank. In the window, **Export the stickers as a CSV** writes the run for a label editor.
 
 ## Print a manifest
 

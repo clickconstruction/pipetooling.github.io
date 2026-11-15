@@ -53,15 +53,16 @@ describe('BoxCode, signed in', () => {
     expect((await screen.findByTestId('tally')).textContent).toBe('?tab=on-site&job=job-juniper&container=box-r76')
   })
 
-  it('a blank sticker gets a plain page that says it is on no box yet', async () => {
+  it('a blank sticker opens the Sticker is new sheet on the job its run was printed for (v2.7298)', async () => {
     resolveBoxCode.mockResolvedValue({ kind: 'blank', sticker: blank })
     mount()
-    const title = await screen.findByTestId('box-code-title')
-    expect(title.textContent).toBe('Sticker 0147 is not on a box yet')
-    expect(title.getAttribute('data-kind')).toBe('blank')
-    expect(screen.getByTestId('box-code-detail').textContent).toBe('Nobody has said which box it is on.')
-    expect(screen.getByText('Open On site').getAttribute('href')).toBe('/tally?tab=on-site')
-    expect(screen.queryByTestId('tally')).toBeNull()
+    expect((await screen.findByTestId('tally')).textContent).toBe('?tab=on-site&job=job-juniper&sticker=9B1C0D2E')
+  })
+
+  it('a blank sticker whose run has no job any more opens the sheet on the job already chosen', async () => {
+    resolveBoxCode.mockResolvedValue({ kind: 'blank', sticker: { ...blank, runJobId: null } })
+    mount()
+    expect((await screen.findByTestId('tally')).textContent).toBe('?tab=on-site&sticker=9B1C0D2E')
   })
 
   it('a lost sticker says where it was', async () => {

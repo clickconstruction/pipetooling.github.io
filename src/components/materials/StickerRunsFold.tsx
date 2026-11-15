@@ -18,6 +18,8 @@ type Props = {
   jobId: string
   /** Ticks when a run was minted here, so the fold reads again. */
   refreshKey?: number
+  /** Ticks when the page's *stickers not yet on a box* line is pressed (v2.7298): the fold opens. */
+  openKey?: number
   /** Opens the stickers window on a run: the whole run, or the stickers handed. */
   onPrint: (run: StickerRun, stickers: MintedSticker[], title: string) => void
   /** The read; a test hands a spy. */
@@ -30,7 +32,9 @@ const row: CSSProperties = { display: 'flex', alignItems: 'center', justifyConte
 const press: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 
-export default function StickerRunsFold({ jobId, refreshKey = 0, onPrint, fetch = fetchStickerRuns }: Props) {
+export default function StickerRunsFold({ jobId, refreshKey = 0, openKey = 0, onPrint, fetch = fetchStickerRuns }: Props) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => { if (openKey > 0) setOpen(true) }, [openKey])
   const [runs, setRuns] = useState<StickerRunWithStickers[] | null>(null)
   const [failure, setFailure] = useState<unknown>(null)
   const [tick, setTick] = useState(0)
@@ -47,7 +51,7 @@ export default function StickerRunsFold({ jobId, refreshKey = 0, onPrint, fetch 
   }
   if (!runs || runs.length === 0) return null
   return (
-    <details style={wrap} data-testid="sticker-runs-fold">
+    <details style={wrap} data-testid="sticker-runs-fold" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
       <summary style={summary}>
         <span>{runsFoldWords(runs.length)}</span>
         <span style={{ ...muted, fontWeight: 400 }}>Blank stickers printed for this job, and how many are on boxes.</span>
