@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stickers before boxes: a run that names its boxes</title>
+<style>
+  /* Punch list #329, the owner's ask of 2026-11-15: print stickers that already carry the box's name, G1 to G200 or
+     G78 to G300, so a scan on site says what is in the box and where, and the name is the one painted on the cage.
+     Drawn 2026-11-15, with that day as today. Nothing here is built. The site is a made-up development, Juniper Ridge,
+     with 77 live G boxes on two made-up jobs. The QR squares are random dots and open nothing. The Names field under
+     1 and the table under 4 are live: type into them. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #172a46;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: start; }
+  .col > * { width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; max-width: 420px; }
+  .col.sug .frame { border: 2px solid var(--new); }
+  .pad { padding: 12px; display: grid; gap: 10px; }
+  .new { outline: 2px solid var(--new); outline-offset: 2px; border-radius: 8px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+  .pick p { margin: 8px 0 0; }
+  .pick p.b { font-weight: 600; color: var(--text-strong); }
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .hdr b { color: var(--text-strong); font-size: 14px; }
+  .hdr .x { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 10px; font-weight: 600; color: var(--text-strong); background: var(--surface); }
+  .sheet { background: var(--surface); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; padding: 14px 12px 12px; display: grid; gap: 10px; }
+  .sheet h4 { margin: 0; font-size: 17px; color: var(--text-strong); }
+  .sub { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .lab { font-weight: 600; font-size: 13px; color: var(--text-strong); }
+  .btn { min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 6px 12px; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; min-height: 50px; }
+  .btn.dead { background: #d1d5db; border-color: #d1d5db; color: #4b5563; }
+  .btn.quiet { border: 0; background: none; color: var(--text-link); min-height: 30px; padding: 0; justify-content: flex-start; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { min-height: 32px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .chip.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .chip.off { color: var(--text-muted); border-color: var(--border); background: var(--bg-muted); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg .btn { font-size: 13px; }
+  .seg .on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  .field { min-height: 46px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); color: var(--text-strong); padding: 8px 12px; display: flex; align-items: center; font-size: 14px; }
+  .field.big { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+  .field.ph { color: var(--text-muted); }
+  input.field { font: inherit; font-size: 20px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; width: 100%; outline: none; }
+  input.field:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
+  .read { font-size: 13px; color: var(--text-700); margin: 0; }
+  .read b { color: var(--text-strong); }
+  .read.bad { color: var(--text-red-700); font-weight: 600; }
+  .ok { background: var(--bg-green-tint); border: 1px solid var(--border-green); color: var(--text-green-700); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+  .wait { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+  .num { display: inline-block; font: 700 12px/1.5 var(--mono); padding: 0 7px; border-radius: 6px; border: 1px solid var(--new); color: var(--new); background: var(--new-tint); white-space: nowrap; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+  .box.sel { border: 2px solid #2563eb; background: var(--bg-blue-tint); }
+  .box .t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 800; font-size: 15px; color: var(--text-strong); }
+  .box .t span.k { font-weight: 500; color: var(--text-muted); font-size: 13px; }
+  .box .m { color: var(--text-muted); font-size: 12.5px; }
+  /* the fold */
+  details.fold { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 6px 12px; }
+  details.fold summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-muted); min-height: 30px; display: flex; align-items: center; }
+  details.fold .in { display: grid; gap: 6px; padding: 4px 0 6px; }
+  /* paper: a strip, a run of strips. Paper stays light in both themes. */
+  .paperbg { background: #d9dde3; padding: 12px; display: grid; gap: 8px; justify-items: start; }
+  .strip { background: #fff; color: #000; border: 1px solid #9aa1ab; border-radius: 3px; display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; padding: 5px 8px 5px 5px; width: 100%; max-width: 250px; min-width: 0; }
+  .strip svg { width: 58px; height: 58px; display: block; background: #fff; }
+  .strip > div { min-width: 0; }
+  .strip .big { font-size: 28px; font-weight: 900; line-height: 1; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .big.s { font-size: 20px; }
+  .strip .ad { font: 9px/1.3 var(--mono); margin-top: 4px; white-space: nowrap; }
+  .strip .w { font-size: 9px; line-height: 1.2; }
+  .strip.half { max-width: 150px; grid-template-columns: 34px 1fr; gap: 5px; padding: 3px 5px 3px 3px; }
+  .strip.half svg { width: 34px; height: 34px; }
+  .strip.half .big { font-size: 16px; }
+  .strip.half .big.s { font-size: 12px; }
+  .strip.half .ad { font-size: 6px; margin-top: 2px; }
+  .strip.half .w { font-size: 6px; }
+  .roll { display: grid; gap: 0; width: 100%; max-width: 250px; }
+  .roll .strip { border-radius: 0; border-bottom: 1px dashed #9aa1ab; }
+  .roll .strip + .strip { border-top: 0; }
+  .more { font-size: 12px; color: #374151; }
+  /* the rule table */
+  table.rule { width: 100%; border-collapse: collapse; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13.5px; }
+  table.rule th, table.rule td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.rule th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+  table.rule td.typed { font: 700 14px var(--mono); color: var(--text-strong); white-space: nowrap; }
+  table.rule td.bad { color: var(--text-red-700); }
+  table.rule tr.try td { background: var(--new-tint); }
+  table.rule input { font: 700 14px var(--mono); width: 100%; min-width: 120px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 8px; background: var(--surface); color: var(--text-strong); text-transform: uppercase; }
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .card p { margin: 0; font-size: 13px; }
+  .card .scr { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text-strong); }
+  .card .rec { border-left: 3px solid var(--new); padding-left: 8px; }
+  .card .rec b { color: var(--new); }
+  .card .alt { border-left: 3px solid var(--border-strong); padding-left: 8px; color: var(--text-muted); }
+  .train { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+  .train > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .train b { display: block; color: var(--text-strong); font-size: 14px; }
+  .train .sz { font: 700 11px var(--mono); color: var(--copper); }
+  .train .push { background: var(--bg-amber-tint); border-color: var(--border-amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #329 · a decision mock-up · nothing here is built · every name and number is made up</p>
+    <h1>A run that names its boxes</h1>
+    <p><b>The ask, 2026-11-15:</b> print stickers that already say G1 to G200, or G78 to G300, so the sticker on the cage is the name painted on it and a scan on site only says what is inside and where. <b>My recommendation:</b> one typed field in the Print blank stickers window, <b>Names</b>. Type a start like <b>G78</b> and keep How many, or a range like <b>G78-300</b> and the count follows. The name prints large where the number prints today, and the number stays small, since it is the one thing that survives a rename. The box's row is still made on the first scan, so an unused sticker leaves nothing behind.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump" aria-label="On this page">
+  <a href="#short">The short of it</a>
+  <a href="#print">1 · The window</a>
+  <a href="#sticker">2 · The strip</a>
+  <a href="#first">3 · The first scan</a>
+  <a href="#rule">4 · The rule and the limits</a>
+  <a href="#calls">Your calls</a>
+  <a href="#plan">The plan</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div class="sug">
+    <h3>One field, Names</h3>
+    <ul>
+      <li><b>G78</b> alone: the names start there and How many says how far.</li>
+      <li><b>G78-300</b>: the count follows the range. How many goes grey and reads 223.</li>
+      <li><b>A1-D50</b>: the letter and the number both step. Four rows of fifty.</li>
+      <li>Leave it empty and the run is numbered only, as today.</li>
+    </ul>
+    <p class="b">The parts of the two ends that differ step. The parts that match stay.</p>
+  </div>
+  <div>
+    <h3>The maximum</h3>
+    <ul>
+      <li>A name is the box rule's: one to three letters, 1 to 999, one letter after. <b>Seven characters at most.</b></li>
+      <li>Up to four characters print at the full size. Five to seven print smaller, as a long stencil does on a label.</li>
+      <li>A run is 1 to 500 stickers, as today. A range past that is refused with its count.</li>
+    </ul>
+  </div>
+  <div>
+    <h3>What does not change</h3>
+    <ul>
+      <li>The number is still one company-wide count, printed small.</li>
+      <li>The code is still cut from the sticker's own id when the run prints.</li>
+      <li>A scan still makes the box's row, with the kind and the place. An unused sticker is still just a sticker.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="print">1 · The window <small>type into the Names field</small></h2>
+<p class="lede">The spot is the Print blank stickers window as it stands after v2.7304. Today it asks only how many.</p>
+<div class="two">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="hdr"><b>Print blank stickers · 224 · Materials: Phase 2 draws</b><span class="x">Close</span></div>
+      <div class="pad">
+        <p class="sub">200 stickers, one strip each.</p>
+        <div class="chips"><span class="lab">How many</span><span class="chip">30</span><span class="chip">60</span><span class="chip">100</span><span class="chip on">200</span><span class="field" style="min-height:32px;padding:0 10px;font-weight:700">200</span></div>
+        <div class="chips"><span class="lab">Copies of each</span><span class="chip">−</span><b>1</b><span class="chip">+</span></div>
+        <p class="sub">The last run ended at 0224. New boxes made from these stickers go on 224 · Materials: Phase 2 draws, Jul 2025.</p>
+        <details class="fold"><summary>What the stickers will look like</summary></details>
+        <div class="btn pri">Print 200 stickers</div>
+        <div class="btn">Print 1 test strip</div>
+      </div>
+    </div>
+    <p class="say">A run is a count. The number on the sticker is the only name it has until someone scans it and types one.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · live</div>
+    <div class="frame">
+      <div class="hdr"><b>Print stickers · 224 · Materials: Phase 2 draws</b><span class="x">Close</span></div>
+      <div class="pad">
+        <p class="sub" id="countWords">223 stickers, one strip each.</p>
+        <div class="new" style="display:grid;gap:6px;padding:6px">
+          <span class="lab">Names <span class="tag">new</span></span>
+          <input class="field" id="names" value="G78-300" aria-label="Names" placeholder="G78, or G78-300" spellcheck="false" autocomplete="off">
+          <p class="read" id="readback"></p>
+          <p class="read" id="overlap"></p>
+        </div>
+        <div class="chips" id="howMany"><span class="lab">How many</span><span class="chip">30</span><span class="chip">60</span><span class="chip">100</span><span class="chip">200</span><span class="field" id="howManyField" style="min-height:32px;padding:0 10px;font-weight:700">223</span></div>
+        <div class="chips"><span class="lab">Copies of each</span><span class="chip" id="copyLess">−</span><b id="copies">1</b><span class="chip" id="copyMore">+</span></div>
+        <p class="sub">The last run ended at 0224. New boxes made from these stickers go on 224 · Materials: Phase 2 draws, Jul 2025.</p>
+        <details class="fold" open>
+          <summary>What the stickers will look like</summary>
+          <div class="in">
+            <span class="sub" id="headWords"></span>
+            <div class="paperbg" style="padding:8px;gap:4px"><div class="roll" id="headStrips"></div><span class="more" id="moreWords"></span></div>
+            <span class="sub">The names and numbers are the run's. Each sticker's code is given when the run prints.</span>
+          </div>
+        </details>
+        <div class="btn pri" id="press">Print 223 stickers, G78 to G300</div>
+        <div class="btn">Print 1 test strip</div>
+      </div>
+    </div>
+    <p class="say">Try <b>G78</b>, <b>G1-200</b>, <b>A1-D50</b>, <b>G24A-G24D</b>, <b>G900-1100</b> or nothing. The strips redraw, the press renames itself, and a range that breaks the rule says why in the same spot.</p>
+  </div>
+</div>
+<p class="note"><b>Why one typed field and not three.</b> A letter, a from and a to as three boxes is the same ask spread out, and a person with a list in hand already thinks <i>G78 to 300</i>. The read line under the field says what was understood, as the Add sheet says what it made of a typed name. The three pieces are still there in the words, so nothing is hidden.</p>
+
+<h2 id="sticker">2 · The strip <small>the name large, the number small</small></h2>
+<p class="lede">The spot is one strip of tape. Today the number is the only large thing on it.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="paperbg">
+      <div class="strip"><svg class="qr" data-seed="225"></svg><div><div class="big">0225</div><div class="ad">PRTS.CO/B/4F2A-9C18</div><div class="w">Scan for what is inside</div></div></div>
+    </div></div>
+    <p class="say">A number nobody painted on the cage. The name comes later, typed on the phone.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame"><div class="paperbg">
+      <div class="roll">
+        <div class="strip"><svg class="qr" data-seed="225"></svg><div><div class="big">G78</div><div class="ad">0225 · PRTS.CO/B/4F2A-9C18</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="226"></svg><div><div class="big">G79</div><div class="ad">0226 · PRTS.CO/B/B31E-07A4</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="447"></svg><div><div class="big">G300</div><div class="ad">0447 · PRTS.CO/B/1C09-E5D2</div><div class="w">Scan for what is inside</div></div></div>
+      </div>
+      <span class="more">The name as painted. The number small, before the address.</span>
+    </div></div>
+    <p class="say">The name is the promise. The number is the identity: it is what the Runs fold, the CSV and a typed scan use, and it still opens the box after a rename.</p>
+  </div>
+  <div class="col">
+    <div class="cap">The longest names</div>
+    <div class="frame"><div class="paperbg">
+      <div class="roll">
+        <div class="strip"><svg class="qr" data-seed="301"></svg><div><div class="big">AB12</div><div class="ad">0301 · PRTS.CO/B/7D75-9246</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="302"></svg><div><div class="big s">AB300B</div><div class="ad">0302 · PRTS.CO/B/8E11-44C0</div><div class="w">Scan for what is inside</div></div></div>
+        <div class="strip"><svg class="qr" data-seed="303"></svg><div><div class="big s">ABC999Z</div><div class="ad">0303 · PRTS.CO/B/0F6A-2B19</div><div class="w">Scan for what is inside</div></div></div>
+      </div>
+      <span class="more">Four characters at the full size. Five to seven, smaller. Nothing longer exists under the rule.</span>
+    </div></div>
+    <p class="say">Over USB the strip grows to fit. Through the print window it is 72 mm, so the smaller size for long names is the one that keeps every name on the tape.</p>
+  </div>
+</div>
+
+<h2 id="first">3 · The first scan <small>on a phone, on site</small></h2>
+<p class="lede">The spot is the Sticker is new sheet from v2.7298. Today it offers the site's next free name and asks which box.</p>
+<div class="three">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame"><div class="sheet">
+      <h4>Sticker 0225 is new</h4>
+      <div class="seg"><div class="btn">It is on a box I know</div><div class="btn on">It is a new box</div></div>
+      <span class="lab">Its name</span>
+      <div class="field big">G78 <span class="num" style="margin-left:8px">Sticker 0225</span></div>
+      <div class="chips"><span class="lab">How it sits</span><span class="chip on">Cage</span><span class="chip">Box</span><span class="chip">Loose pile</span></div>
+      <div class="chips"><span class="lab">Place</span><span class="chip on">Arena</span><span class="chip">Lot 4</span></div>
+      <div class="btn pri">Save box G78</div>
+    </div></div>
+    <p class="say">The name is offered, not read off the sticker. If the cage is painted G80 and the next free name is G78, the person has to notice and retype.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · a new box</div>
+    <div class="frame"><div class="sheet">
+      <h4>Sticker G78 is new <span class="num">0225</span></h4>
+      <p class="sub">Printed as G78 for 224 · Materials: Phase 2 draws. No box on the site has that name yet.</p>
+      <div class="new" style="padding:6px;display:grid;gap:6px">
+        <span class="lab">Its name</span>
+        <div class="field big">G78</div>
+        <p class="sub">Read off the sticker. Press Change to give it another.</p>
+      </div>
+      <div class="chips"><span class="lab">How it sits</span><span class="chip on">Cage</span><span class="chip">Box</span><span class="chip">Loose pile</span></div>
+      <div class="chips"><span class="lab">Place</span><span class="chip on">Arena</span><span class="chip">Lot 4</span></div>
+      <div class="btn pri">Save box G78</div>
+      <div class="btn quiet">It is on a box I know instead</div>
+    </div></div>
+    <p class="say">One press. The name on the tape and the name in the app cannot drift, because the app read it off the sticker.</p>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion · a box already here</div>
+    <div class="frame"><div class="sheet">
+      <h4>Sticker G12 is new <span class="num">0159</span></h4>
+      <p class="sub">The site has a G12 already. This sticker was printed for it.</p>
+      <div class="box sel new"><div class="t">G12 <span class="k">cage · Arena</span></div><div class="m">14 parts · counted 3 days ago by Malachi · no sticker yet</div></div>
+      <div class="btn pri">Put 0159 on G12</div>
+      <div class="btn quiet">It is a different box</div>
+    </div></div>
+    <p class="say">The backfill case from the card's section 7, now the default. A run of G1 to G200 on a site with 77 G boxes puts 77 stickers on the cages that have those names and makes 123 new ones.</p>
+  </div>
+</div>
+<p class="note"><b>A rename afterwards</b> can outrun the sticker: G78 is renamed G80 under #329's PR 4, and the tape still reads G78. The sheet on a later scan says <b>This sticker reads G78. The box is now G80.</b> and opens the box. The number is why that still works. <b>A run moved to another job</b> (section 6) carries names that may already stand on that site; the scan says so, as it does for any taken name.</p>
+
+<h2 id="rule">4 · The rule and the limits <small>the last row is yours to type</small></h2>
+<p class="lede">A range is two names under the box rule with a dash between, or one name and the count. The parts that differ step. Letters step outside, numbers inside, the letter after innermost.</p>
+<table class="rule" id="ruleTable">
+  <thead><tr><th>Typed</th><th>Read as</th><th>Count</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr data-try="G78-300"></tr>
+    <tr data-try="G78" data-count="200"></tr>
+    <tr data-try="G1-200"></tr>
+    <tr data-try="A1-D50"></tr>
+    <tr data-try="G24A-G24D"></tr>
+    <tr data-try="g78 to g300"></tr>
+    <tr data-try="R7"></tr>
+    <tr data-try="G900-1100"></tr>
+    <tr data-try="A1-D200"></tr>
+    <tr data-try="A1A-D50B"></tr>
+    <tr data-try="G300-78"></tr>
+    <tr data-try="GATE1-GATE9"></tr>
+    <tr data-try="G0-10"></tr>
+    <tr class="try"><td class="typed"><input id="tryInput" value="GA1-GD12" aria-label="Try a range" spellcheck="false" autocomplete="off"></td><td id="tryRead"></td><td id="tryCount"></td><td id="tryWhy"></td></tr>
+  </tbody>
+</table>
+<p class="note"><b>Why seven characters and not a setting.</b> The maximum is the box rule's, which the site already holds in the database and on every Add sheet. A sticker that could carry a longer name than a box can hold would make a name the scan then refuses. <b>Why the letter after is the innermost step</b>: G24A to G24D is a set of twins at one spot, which is what that letter means on the paint.</p>
+
+<h2 id="calls">Your calls <small>four, my pick first</small></h2>
+<div class="cards">
+  <div class="card">
+    <h3>1 · The number on a named strip</h3>
+    <p class="rec"><b>Keep it, printed small</b> before the address. It is the identity the Runs fold, the CSV and a typed scan use, and it still opens the box after a rename.</p>
+    <p class="alt">Or leave it off a named strip and the number lives only in the app. A damaged QR then has nothing to type.</p>
+  </div>
+  <div class="card">
+    <h3>2 · Names the site already has</h3>
+    <p class="rec"><b>A notice at print, not a refusal.</b> <i>77 of these are boxes on this site already. Their stickers go on those boxes.</i> That is the backfill, and it is wanted.</p>
+    <p class="alt">Or refuse the overlap and make the person start the range after the last G.</p>
+  </div>
+  <div class="card">
+    <h3>3 · A grid range</h3>
+    <p class="rec"><b>In.</b> A1-D50 is four rows of fifty, printed row by row, for a yard laid out in rows and bays. It costs nothing extra once the parser steps one part.</p>
+    <p class="alt">Or the number alone steps, and a yard in rows prints four runs.</p>
+  </div>
+  <div class="card">
+    <h3>4 · Numbered-only runs</h3>
+    <p class="rec"><b>Stay.</b> An empty Names field prints today's run. Grace's case, a count of boxes nobody knows yet, is still real.</p>
+    <p class="alt">Or every run is named, and a site with no paint picks a letter before it prints.</p>
+  </div>
+</div>
+
+<h2 id="plan">The plan <small>three PRs, one migration</small></h2>
+<div class="train">
+  <div class="push"><b>PR 1 · the run carries names</b><span class="sz">M · migration · push right after the merge</span>
+    A name range on <code>sticker_runs</code>, a nullable <code>box_name</code> on each sticker, <code>mint_sticker_run</code> takes the range under the box rule and names each sticker, <code>place_sticker</code> names a new box by the sticker's own name when none is typed. The parser as a pure kernel with the table above as its tests, and its SQL twin.</div>
+  <div><b>PR 2 · the window and the strip</b><span class="sz">M · client</span>
+    The Names field with its read line and the overlap notice, How many following a range, the press <i>Print 223 stickers, G78 to G300</i>, the strip with the name large and the number small, the preview fold drawing the names, the Runs fold's title and the CSV's Name column. The press reads <b>Print stickers</b>.</div>
+  <div><b>PR 3 · the first scan</b><span class="sz">S · client</span>
+    The sheet opens on the sticker's name, a box already here is offered first when the site has that name, and a later scan of a renamed box says what the tape reads.</div>
+</div>
+<p class="note"><b>Not built on purpose:</b> a setting for the longest name, names longer than the box rule allows, a run that makes its boxes at print time, and a name that changes which job a box is on.</p>
+</div>
+<script>
+  // The QR is random dots with three finder corners. It opens nothing.
+  function drawQr(svg) {
+    var seed = Number(svg.getAttribute('data-seed') || 1), s = seed * 7919 + 13;
+    function rnd() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }
+    var n = 25, out = '';
+    function corner(x, y) {
+      out += '<rect x="' + x + '" y="' + y + '" width="7" height="7" fill="#000"/><rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="5" height="5" fill="#fff"/><rect x="' + (x + 2) + '" y="' + (y + 2) + '" width="3" height="3" fill="#000"/>';
+    }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      var inCorner = (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+      if (!inCorner && rnd() < 0.45) out += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="#000"/>';
+    }
+    corner(0, 0); corner(n - 7, 0); corner(0, n - 7);
+    svg.setAttribute('viewBox', '0 0 ' + n + ' ' + n);
+    svg.setAttribute('shape-rendering', 'crispEdges');
+    svg.innerHTML = out;
+  }
+
+  // The rule, as boxName.ts holds it: one to three letters, 1 to 999 with no zeros in front, one letter after or none.
+  var RULE = /^([A-Z]{1,3})([1-9][0-9]{0,2})([A-Z])?$/;
+  var RUN_MAX = 500, NUMBER_MAX = 999;
+  function parseName(s) { var m = RULE.exec(s); return m ? { letters: m[1], number: Number(m[2]), tail: m[3] || '' } : null; }
+  function nameWords(n) { return n.letters + n.number + n.tail; }
+  function stepLetters(a, b) {
+    // Letters step only on the last letter, the rest the same: A..D, GA..GD.
+    if (a.length !== b.length) return null;
+    if (a.slice(0, -1) !== b.slice(0, -1)) return null;
+    var from = a.charCodeAt(a.length - 1), to = b.charCodeAt(b.length - 1);
+    if (to < from) return null;
+    var out = [];
+    for (var c = from; c <= to; c++) out.push(a.slice(0, -1) + String.fromCharCode(c));
+    return out;
+  }
+  var RULE_WORDS = 'A name is one to three letters and a number from 1 to 999, like R76.';
+  /**
+   * What a typed range means: { kind: 'numbered' } for nothing typed, { kind: 'names', names, from, to, rows, why } for a
+   * run, or { kind: 'bad', why }. `howMany` is the count when one name is typed alone.
+   */
+  function readRange(text, howMany) {
+    var t = String(text || '').toUpperCase().replace(/\s+TO\s+/g, '-').replace(/\s+/g, '').replace(/[–—]/g, '-');
+    if (!t) return { kind: 'numbered' };
+    var parts = t.split('-');
+    if (parts.length > 2) return { kind: 'bad', why: 'A range is two names with one dash between, like G78-300.' };
+    var a = parseName(parts[0]);
+    if (!a) return { kind: 'bad', why: RULE_WORDS };
+    if (parts.length === 1) {
+      var count = Math.max(1, Math.min(RUN_MAX, Number(howMany) || 1));
+      var last = a.number + count - 1;
+      var cut = last > NUMBER_MAX;
+      if (cut) last = NUMBER_MAX;
+      var names1 = [];
+      for (var i = a.number; i <= last; i++) names1.push(a.letters + i + a.tail);
+      return { kind: 'names', names: names1, from: names1[0], to: names1[names1.length - 1], rows: 1,
+        why: cut ? 'Names stop at ' + a.letters + '999' + a.tail + ', so the run is ' + names1.length + '.' : 'From ' + nameWords(a) + ', How many says how far.' };
+    }
+    var b = /^[1-9][0-9]{0,2}$/.test(parts[1]) ? { letters: a.letters, number: Number(parts[1]), tail: a.tail }
+      : /^[A-Z]$/.test(parts[1]) && a.tail ? { letters: a.letters, number: a.number, tail: parts[1] }
+      : parseName(parts[1]);
+    if (!b) return { kind: 'bad', why: RULE_WORDS };
+    var lettersStep = a.letters !== b.letters, numberStep = a.number !== b.number, tailStep = a.tail !== b.tail;
+    var axes = (lettersStep ? 1 : 0) + (numberStep ? 1 : 0) + (tailStep ? 1 : 0);
+    if (axes === 3) return { kind: 'bad', why: 'A range steps the number, the letter or both. Not all three.' };
+    var letters = lettersStep ? stepLetters(a.letters, b.letters) : [a.letters];
+    if (!letters) return { kind: 'bad', why: 'The letters step on the last letter only, A to D or GA to GD, upward.' };
+    if (b.number < a.number) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
+    if ((a.tail && !b.tail) || (!a.tail && b.tail)) return { kind: 'bad', why: 'Both ends carry the letter after the number, or neither does.' };
+    if (tailStep && b.tail < a.tail) return { kind: 'bad', why: 'The range runs upward: ' + nameWords(b) + ' to ' + nameWords(a) + '.' };
+    var tails = tailStep ? stepLetters(a.tail, b.tail) : [a.tail];
+    var names = [];
+    letters.forEach(function (L) { for (var n = a.number; n <= b.number; n++) tails.forEach(function (T) { names.push(L + n + T); }); });
+    if (names.length > RUN_MAX) return { kind: 'bad', why: 'A run is 1 to ' + RUN_MAX + ' stickers. ' + nameWords(a) + ' to ' + nameWords(b) + ' is ' + names.length + '.' };
+    var rows = letters.length > 1 ? letters.length : 1;
+    var why = rows > 1 ? rows + ' rows of ' + (names.length / rows) + ', ' + letters[0] + ' to ' + letters[letters.length - 1] + ', row by row.'
+      : tails.length > 1 ? 'The letter after the number steps: a set of twins at one spot.'
+      : 'The number steps.';
+    return { kind: 'names', names: names, from: names[0], to: names[names.length - 1], rows: rows, why: why };
+  }
+
+  // The made-up site: 77 live G boxes, G1 to G77, with G40 retired and made again, and R1 to R12.
+  var SITE_LIVE = {};
+  for (var g = 1; g <= 77; g++) SITE_LIVE['G' + g] = true;
+  for (var r = 1; r <= 12; r++) SITE_LIVE['R' + r] = true;
+  var LAST_NUMBER = 224;
+  function pad(n) { return n < 10000 ? String(n).padStart(4, '0') : String(n); }
+
+  // The live window.
+  var names = document.getElementById('names'), readback = document.getElementById('readback'), overlap = document.getElementById('overlap');
+  var howMany = document.getElementById('howMany'), howManyField = document.getElementById('howManyField'), press = document.getElementById('press');
+  var countWords = document.getElementById('countWords'), headWords = document.getElementById('headWords'), headStrips = document.getElementById('headStrips'), moreWords = document.getElementById('moreWords');
+  var copies = 1, howManyCount = 200;
+  function strip(big, number, half) {
+    var cls = big.length > 4 ? 'big s' : 'big';
+    var ad = number != null ? pad(number) + ' · PRTS.CO/B/0000-0000' : 'PRTS.CO/B/0000-0000';
+    return '<div class="strip' + (half ? ' half' : '') + '"><svg class="qr" data-seed="' + (number || 1) + '"></svg><div><div class="' + cls + '">' + big + '</div><div class="ad">' + ad + '</div><div class="w">Scan for what is inside</div></div></div>';
+  }
+  function redraw() {
+    var read = readRange(names.value, howManyCount);
+    var chips = howMany.querySelectorAll('.chip');
+    var ranged = read.kind === 'names' && names.value.indexOf('-') >= 0 || /\bto\b/i.test(names.value);
+    chips.forEach(function (c) { c.classList.toggle('off', ranged); c.classList.toggle('on', !ranged && c.textContent === String(howManyCount)); });
+    overlap.textContent = '';
+    var list = [];
+    if (read.kind === 'bad') {
+      readback.className = 'read bad'; readback.textContent = read.why;
+      howManyField.textContent = String(howManyCount);
+      press.textContent = 'Print stickers'; press.className = 'btn pri dead';
+      countWords.textContent = 'Nothing to print until the names read.';
+      headWords.textContent = ''; headStrips.innerHTML = ''; moreWords.textContent = '';
+      return;
+    }
+    press.className = 'btn pri';
+    if (read.kind === 'numbered') {
+      readback.className = 'read'; readback.innerHTML = 'Nothing typed: the stickers carry their number only, as today.';
+      howManyField.textContent = String(howManyCount);
+      for (var i = 0; i < howManyCount; i++) list.push({ big: pad(LAST_NUMBER + 1 + i), number: LAST_NUMBER + 1 + i });
+      press.textContent = 'Print ' + howManyCount + (copies > 1 ? ' sets' : ' stickers');
+    } else {
+      readback.className = 'read';
+      readback.innerHTML = '<b>' + read.from + ' to ' + read.to + '</b> · ' + read.names.length + (read.names.length === 1 ? ' sticker' : ' stickers') + '. ' + read.why;
+      howManyField.textContent = String(read.names.length);
+      var taken = read.names.filter(function (n) { return SITE_LIVE[n]; });
+      if (taken.length) overlap.innerHTML = taken.length + ' of these ' + (taken.length === 1 ? 'is a box' : 'are boxes') + ' on this site already, ' + taken[0] + (taken.length > 1 ? ' to ' + taken[taken.length - 1] : '') + '. Their stickers go on those boxes.';
+      read.names.forEach(function (n, i) { list.push({ big: n, number: LAST_NUMBER + 1 + i }); });
+      press.textContent = 'Print ' + read.names.length + (copies > 1 ? ' sets' : ' stickers') + ', ' + read.from + ' to ' + read.to;
+    }
+    var n = list.length;
+    countWords.textContent = n + ' stickers, ' + (copies > 1 ? copies + ' strips each. ' + n * copies + ' strips.' : 'one strip each.');
+    var head = [];
+    for (var k = 0; k < n && head.length < 6; k++) for (var c = 0; c < copies && head.length < 6; c++) head.push(list[k]);
+    var headStickers = head.length ? list.indexOf(head[head.length - 1]) + 1 : 0;
+    headWords.textContent = head.length + ' strips of ' + n + ' stickers, ' + head[0].big + ' to ' + head[head.length - 1].big + '.';
+    headStrips.innerHTML = head.map(function (s) { return strip(s.big, s.number, false); }).join('');
+    var more = n - headStickers;
+    moreWords.textContent = more > 0 ? 'and ' + more + ' more, to ' + list[n - 1].big + '. Show all ' + n : '';
+    headStrips.querySelectorAll('svg.qr').forEach(drawQr);
+  }
+  names.addEventListener('input', redraw);
+  howMany.querySelectorAll('.chip').forEach(function (c) { c.addEventListener('click', function () { if (c.classList.contains('off')) return; howManyCount = Number(c.textContent); redraw(); }); });
+  document.getElementById('copyLess').addEventListener('click', function () { copies = Math.max(1, copies - 1); document.getElementById('copies').textContent = copies; redraw(); });
+  document.getElementById('copyMore').addEventListener('click', function () { copies = Math.min(6, copies + 1); document.getElementById('copies').textContent = copies; redraw(); });
+
+  // The rule table.
+  function fillRow(tr, typed, count) {
+    var read = readRange(typed, count || 200);
+    var cells = read.kind === 'bad' ? ['<td class="typed">' + typed + '</td>', '<td class="bad">refused</td>', '<td></td>', '<td class="bad">' + read.why + '</td>']
+      : read.kind === 'numbered' ? ['<td class="typed">' + (typed || '(nothing)') + '</td>', '<td>numbered only</td>', '<td>' + count + '</td>', '<td>As today.</td>']
+      : ['<td class="typed">' + typed + '</td>', '<td><b>' + read.from + ' to ' + read.to + '</b></td>', '<td>' + read.names.length + '</td>', '<td>' + read.why + '</td>'];
+    tr.innerHTML = cells.join('');
+  }
+  document.querySelectorAll('#ruleTable tr[data-try]').forEach(function (tr) { fillRow(tr, tr.getAttribute('data-try'), Number(tr.getAttribute('data-count')) || 200); });
+  var tryInput = document.getElementById('tryInput');
+  function fillTry() {
+    var read = readRange(tryInput.value, 200);
+    document.getElementById('tryRead').innerHTML = read.kind === 'bad' ? '<span class="bad" style="color:var(--text-red-700)">refused</span>' : read.kind === 'numbered' ? 'numbered only' : '<b>' + read.from + ' to ' + read.to + '</b>';
+    document.getElementById('tryCount').textContent = read.kind === 'names' ? read.names.length : read.kind === 'numbered' ? '200' : '';
+    document.getElementById('tryWhy').textContent = read.kind === 'bad' ? read.why : read.kind === 'numbered' ? 'As today.' : read.why;
+  }
+  tryInput.addEventListener('input', fillTry);
+  fillTry();
+
+  document.querySelectorAll('svg.qr').forEach(drawQr);
+  redraw();
+  var buttons = document.querySelectorAll('.themes button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === t)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.getAttribute('data-set')); }); });
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+</script>
+</body>
+</html>
