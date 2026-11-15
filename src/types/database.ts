@@ -1059,6 +1059,55 @@ export type Database = {
           },
         ]
       }
+      bid_difficulty_picks: {
+        Row: {
+          bid_id: string
+          criteria_version_id: string
+          picked_at: string
+          picked_by: string | null
+          picked_by_name: string
+          picks: Json
+        }
+        Insert: {
+          bid_id: string
+          criteria_version_id: string
+          picked_at?: string
+          picked_by?: string | null
+          picked_by_name?: string
+          picks?: Json
+        }
+        Update: {
+          bid_id?: string
+          criteria_version_id?: string
+          picked_at?: string
+          picked_by?: string | null
+          picked_by_name?: string
+          picks?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_difficulty_picks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_picks_criteria_version_id_fkey"
+            columns: ["criteria_version_id"]
+            isOneToOne: false
+            referencedRelation: "difficulty_criteria_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_difficulty_picks_picked_by_fkey"
+            columns: ["picked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_estimators_extra_users: {
         Row: {
           added_at: string
