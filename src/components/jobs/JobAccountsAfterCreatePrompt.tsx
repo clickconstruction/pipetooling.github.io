@@ -8,6 +8,8 @@
  * twice. Office roles and estimators (v2.3451 — the estimator who won the bid
  * gets the same question, with the houses that quoted the bid first and an
  * "Ask {rep} by email" lane); jobs with no expecting house never see it.
+ * *None needed* asks why before it writes: a one-tap reason or the office's own
+ * words, kept as each row's note, as every other not-needed door keeps it.
  * Mounted once by JobFormModalProvider, chained after JobContractAfterCreatePrompt,
  * and reopened from a won bid's Job block (openJobAccountsPrompt).
  */
@@ -22,9 +24,11 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeAddressForMatch } from '../../lib/jobs/lienProperty'
 import { groupJobAccountStrip, type JobAccountStripEntry, type JobAccountStripRow } from '../../lib/jobs/jobAccountStrip'
 import { submitOpenJobAccountRequest } from '../../lib/jobs/openJobAccountDispatchRequest'
+import { countedLabel } from '../../lib/batchWords'
 import {
-  NEW_JOB_NOT_NEEDED_NOTE,
+  NEW_JOB_NOT_NEEDED_REASONS,
   buildNewJobAccountsPlan,
+  newJobNotNeededRows,
   reuseNote,
   samePropertyOffers,
   type NewJobAccountsChoice,
@@ -72,6 +76,9 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
   const [others, setOthers] = useState<SamePropertyJob[]>([])
   const [picks, setPicks] = useState<Map<string, NewJobAccountsChoice>>(() => new Map())
   const [busy, setBusy] = useState(false)
+  /** *None needed* opens the reason step; nothing is written until a reason is given. */
+  const [whyOpen, setWhyOpen] = useState(false)
+  const [reason, setReason] = useState('')
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -82,6 +89,8 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
     setPicks(new Map())
     setQuotedHouseIds(new Set())
     setEmailOpen(false)
+    setWhyOpen(false)
+    setReason('')
     if (!jobId) return
     if (!eligible) {
       onCloseRef.current()
@@ -159,6 +168,7 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
   const askable = entries.filter((e) => e.state === 'none')
   const plan = buildNewJobAccountsPlan(entries, offers, picks)
   const nothingPicked = plan.ask.length === 0 && plan.reuse.length === 0
+  const notNeededRows = newJobNotNeededRows(job.id, askable, reason)
 
   const toggle = (houseId: string, choice: NewJobAccountsChoice) =>
     setPicks((prev) => {
@@ -210,15 +220,12 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
   }
 
   async function noneNeeded() {
-    if (busy) return
+    if (busy || notNeededRows.length === 0) return
     setBusy(true)
     try {
-      const { error } = await supabase.from('job_supply_house_accounts').upsert(
-        askable.map((e) => ({ job_id: job!.id, supply_house_id: e.houseId, status: 'not_needed', note: NEW_JOB_NOT_NEEDED_NOTE })),
-        { onConflict: 'job_id,supply_house_id', ignoreDuplicates: true },
-      )
+      const { error } = await supabase.from('job_supply_house_accounts').upsert(notNeededRows, { onConflict: 'job_id,supply_house_id', ignoreDuplicates: true })
       if (error) throw error
-      showToast('Marked not needed — no job account signals for this job.', 'success')
+      showToast(`Marked not needed: ${notNeededRows[0]!.note}. No job account signals for this job.`, 'success')
       onClose()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save that.'), 'error')
@@ -268,7 +275,7 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
           <span style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
             <button type="button" disabled={busy || askable.length === 0} onClick={() => setEmailOpen(true)} style={{ ...quiet, color: '#0f766e', textDecoration: 'underline dotted' }} data-testid="job-accounts-prompt-email" title="A draft to the house's job-accounts rep from your own inbox, composed from the bid">Ask the rep by email…</button>
-            <button type="button" disabled={busy} onClick={() => void noneNeeded()} style={quiet} data-testid="job-accounts-prompt-none">None needed</button>
+            <button type="button" disabled={busy} aria-expanded={whyOpen} onClick={() => setWhyOpen((v) => !v)} style={quiet} data-testid="job-accounts-prompt-none">None needed…</button>
             <button type="button" disabled={busy} onClick={onClose} style={{ ...quiet, textDecoration: 'none' }}>Later</button>
           </span>
           <button type="button" disabled={busy || nothingPicked} onClick={() => void save()} style={{ ...primary, opacity: nothingPicked ? 0.5 : 1, cursor: nothingPicked ? 'not-allowed' : 'pointer' }} data-testid="job-accounts-prompt-save">
@@ -276,6 +283,39 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
           </button>
         </div>
       </div>
+      {whyOpen ? (
+        <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.7rem', padding: '0.6rem 0.7rem', borderRadius: 8, background: 'var(--bg-muted)', border: '1px solid var(--border)', fontSize: '0.85rem' }} data-job-accounts-prompt-why>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Why no job account?</div>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }} role="group" aria-label="Why no job account">
+            {NEW_JOB_NOT_NEEDED_REASONS.map((r) => (
+              <button key={r} type="button" aria-pressed={reason.trim() === r} disabled={busy} onClick={() => setReason(r)} style={chip(reason.trim() === r)}>
+                {r}
+              </button>
+            ))}
+          </div>
+          <input
+            value={reason}
+            disabled={busy}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Or say it in your own words"
+            aria-label="Why this job needs no job account"
+            data-testid="job-accounts-prompt-why-input"
+            style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 7, font: 'inherit', fontSize: '0.85rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+          />
+          <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The reason shows on the job’s Job accounts line.</span>
+            <button
+              type="button"
+              disabled={busy || notNeededRows.length === 0}
+              onClick={() => void noneNeeded()}
+              style={{ ...primary, opacity: notNeededRows.length === 0 ? 0.5 : 1, cursor: notNeededRows.length === 0 ? 'not-allowed' : 'pointer' }}
+              data-testid="job-accounts-prompt-none-save"
+            >
+              {busy ? 'Saving…' : `${countedLabel('Mark', askable.length, 'house')} not needed`}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {emailOpen ? (
         <JobAccountRepEmailSheet
           jobId={job.id}
