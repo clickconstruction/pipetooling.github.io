@@ -22,11 +22,15 @@ describe('bankLinesFromRows', () => {
       { id: 'd', amount: -90, posted_at: '2026-11-07T15:00:00Z', status: 'Cancelled' },
       { id: 'e', amount: -90, posted_at: '2026-11-07T15:00:00Z', duplicate_of_transaction_id: 'a' },
       { id: 'f', amount: '-1500.5000', posted_at: null, created_at: '2026-11-08T15:00:00Z', note: 'wire' },
+      // Money moved between the company's own accounts paid nobody.
+      { id: 'g', amount: -400, posted_at: '2026-11-05T15:00:00Z', kind: 'internalTransfer', counterparty_name: 'Mercury Savings' },
+      { id: 'h', amount: -62, posted_at: '2026-11-05T15:00:00Z', kind: 'debitCardTransaction', counterparty_name: 'Cash App' },
     ]
     expect(bankLinesFromRows(rows)).toEqual([
       // 03:30 UTC on the 6th is the evening of the 5th in Central time.
       { id: 'a', amount: 400, ymd: '2026-11-05', payee: 'Calloway Tile LLC', memo: 'inv 4' },
       { id: 'f', amount: 1500.5, ymd: '2026-11-08', payee: '', memo: 'wire' },
+      { id: 'h', amount: 62, ymd: '2026-11-05', payee: 'Cash App', memo: '' },
     ])
   })
 })

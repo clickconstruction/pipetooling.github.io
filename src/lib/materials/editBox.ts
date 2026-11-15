@@ -10,12 +10,14 @@
  * trigger of `20261113020000_box_stickers.sql`).
  *
  * Since punch list #351 (PR 1) a new name holds to the box-name rule (`boxName.ts`): letters and a number, one of a kind
- * across the site, with words typed after it moved to the where line until PR 2 gives them a line of their own. A box's
- * old name stays as it is until the name itself is changed.
+ * across the site. A box's old name stays as it is until the name itself is changed. Since PR 2 the form also holds
+ * **What is in it**, the box's own line (`boxLine.ts`): a person's words win over the app's line from the parts,
+ * clearing them hands the line back, and words typed after a name land there.
  *
  * Pure rules and words only. The write is `editContainer` in `onSiteStore.ts`.
  */
-import { BOX_NAME_RULE_WORDS, BOX_NUMBER_MAX, movedWordsNote, nameTakenBy, nextFreeName, readTypedName, whereWithWords, type SiteBox } from './boxName'
+import { BOX_LINE_MAX, boxLineSavedWords, cleanBoxLine, nameWordsNote } from './boxLine'
+import { BOX_NAME_RULE_WORDS, BOX_NUMBER_MAX, nameTakenBy, nextFreeName, readTypedName, type SiteBox } from './boxName'
 import type { Container, ContainerKind, Place } from './onSite'
 
 /** `job_containers.label`'s own limit. */
@@ -37,8 +39,11 @@ function aKind(kind: ContainerKind): string {
   return `a ${boxKindWords(kind).toLowerCase()}`
 }
 
-/** What the sheet holds while someone types. */
-export type BoxDraft = { label: string; kind: ContainerKind; where: string }
+/**
+ * What the sheet holds while someone types. `said` is the line field: null or absent while nobody has touched it, so
+ * the box's own words stand in it, or the words just typed after a new name.
+ */
+export type BoxDraft = { label: string; kind: ContainerKind; where: string; said?: string | null }
 
 export function boxDraftOf(c: Pick<Container, 'label' | 'kind' | 'where'>): BoxDraft {
   return { label: c.label, kind: c.kind, where: c.where }
@@ -57,19 +62,28 @@ export function cleanBoxWhere(typed: string): string {
 /** The database's own rule for one live name a job: `lower(trim(label))`. */
 const nameKey = (label: string) => label.trim().toLowerCase()
 
-/** Only what changed, so a press sends nothing it did not mean to. */
-export type BoxPatch = { label?: string; kind?: BoxKindChoice; where?: string }
+/** Only what changed, so a press sends nothing it did not mean to. `said` null hands the line back to the app. */
+export type BoxPatch = { label?: string; kind?: BoxKindChoice; where?: string; said?: string | null }
 
 export type EditBoxVerdict =
-  | { ok: true; patch: BoxPatch; renamed: boolean; /** Words typed after the new name, moved to the where line (punch list #351). */ movedWords: string }
-  | { ok: false; reason: 'gone' | 'unsorted' | 'retired' | 'no-name' | 'bad-name' | 'taken' | 'long-where' | 'same'; words: string }
+  | { ok: true; patch: BoxPatch; renamed: boolean; /** Words typed after the new name, moved to the box's line (punch list #351). */ movedWords: string }
+  | { ok: false; reason: 'gone' | 'unsorted' | 'retired' | 'no-name' | 'bad-name' | 'taken' | 'long-where' | 'long-line' | 'same'; words: string }
+
+/** What the line field shows: the person's typing once it is touched, else the words just typed after a name, else the box's own. */
+export function editBoxLineShown(box: Pick<Container, 'label' | 'said'>, draft: BoxDraft): string {
+  if (draft.said != null) return draft.said
+  const typed = cleanBoxName(draft.label)
+  // An old name that still stands is never read for words: only a name typed over it is.
+  const read = typed && typed !== box.label ? readTypedName(typed) : null
+  return (read?.kind === 'name' && read.words) || cleanBoxLine(box.said)
+}
 
 /**
  * Whether the draft can be saved, and the words when it cannot. `same` carries no words: nothing was changed
  * yet, so the press is dead and there is nothing to say. A name typed over the box's own holds to the rule
- * (`boxName.ts`): `R76 TOILETS` renames the box R76 and puts *Toilets* on the where line, `R` alone takes the next
- * free R name, and words alone are refused with the rule, since a box in Edit has a name already. The box's old
- * name is never judged while it stands. `siteBoxes` is every box of the site when the screen has read them, so a
+ * (`boxName.ts`): `R76 TOILETS` renames the box R76 and puts *Toilets* on the box's line, unless the line field was
+ * typed in, which then wins; `R` alone takes the next free R name, and words alone are refused with the rule, since a
+ * box in Edit has a name already. The box's old name is never judged while it stands. `siteBoxes` is every box of the site when the screen has read them, so a
  * name a live box on another job of the site carries is refused too; without them the job's own boxes are the check.
  */
 export function editBoxVerdict(containers: ReadonlyArray<Container>, id: string, draft: BoxDraft, siteBoxes?: ReadonlyArray<SiteBox>): EditBoxVerdict {
@@ -93,18 +107,22 @@ export function editBoxVerdict(containers: ReadonlyArray<Container>, id: string,
     } else if (read.kind === 'big-number') {
       return { ok: false, reason: 'bad-name', words: `A number runs from 1 to ${BOX_NUMBER_MAX}. ${read.typed} cannot be a name.` }
     } else {
-      return { ok: false, reason: 'bad-name', words: `${BOX_NAME_RULE_WORDS} Words about what is inside go on the where line.` }
+      return { ok: false, reason: 'bad-name', words: `${BOX_NAME_RULE_WORDS} Words about what is inside go in What is in it.` }
     }
     const clash = containers.find((c) => c.id !== id && c.jobId === box.jobId && !c.retiredAt && nameKey(c.label) === nameKey(label))
     if (clash) return { ok: false, reason: 'taken', words: `${label} is already on this job. Pick another name.` }
     if (siteBoxes && nameTakenBy(siteBoxes, label, id)) return { ok: false, reason: 'taken', words: `${label} is already on this site. Pick another name.` }
   }
-  const where = cleanBoxWhere(whereWithWords(draft.where, movedWords))
+  const where = cleanBoxWhere(draft.where)
   if (where.length > BOX_WHERE_MAX) return { ok: false, reason: 'long-where', words: `The where line holds ${BOX_WHERE_MAX} characters. This one is ${where.length}.` }
+  const saidNow = cleanBoxLine(box.said)
+  const said = draft.said != null ? cleanBoxLine(draft.said) : movedWords || saidNow
+  if (said.length > BOX_LINE_MAX) return { ok: false, reason: 'long-line', words: `The line holds ${BOX_LINE_MAX} characters. This one is ${said.length}.` }
   const patch: BoxPatch = {}
   if (label !== box.label) patch.label = label
   if (draft.kind !== box.kind && (BOX_KIND_CHOICES as readonly string[]).includes(draft.kind)) patch.kind = draft.kind as BoxKindChoice
   if (where !== box.where) patch.where = where
+  if (said !== saidNow) patch.said = said || null
   if (Object.keys(patch).length === 0) return { ok: false, reason: 'same', words: '' }
   return { ok: true, patch, renamed: patch.label !== undefined, movedWords }
 }
@@ -128,9 +146,9 @@ export function editBoxPressLabel(box: Pick<Container, 'label'>, draft: BoxDraft
   return 'Rename'
 }
 
-/** Under the name while words were typed after it: where they go (punch list #351, until PR 2 gives them a line). */
-export function editBoxMovedNote(verdict: { ok: true; movedWords: string } | { ok: false }): string | null {
-  return verdict.ok && verdict.movedWords ? movedWordsNote(verdict.movedWords) : null
+/** Under the name while words were typed after it: they are on the line below (punch list #351), or the line was typed and wins. */
+export function editBoxMovedNote(verdict: { ok: true; movedWords: string } | { ok: false }, draft?: Pick<BoxDraft, 'said'>): string | null {
+  return verdict.ok ? nameWordsNote(verdict.movedWords, draft?.said ?? null) : null
 }
 
 /** Under the name while it differs: what happens to a label that is already stuck on. */
@@ -142,6 +160,7 @@ export function renameLabelNote(box: Pick<Container, 'label'>): string {
 export function editedBoxWords(before: Pick<Container, 'label' | 'kind'>, patch: BoxPatch): string {
   if (patch.label !== undefined) return `${before.label} is now ${patch.label}. Its printed label still opens it.`
   if (patch.kind !== undefined) return `${before.label} is ${aKind(patch.kind)} now.`
+  if (patch.said !== undefined && patch.where === undefined) return boxLineSavedWords(before, patch.said)
   return `${before.label} saved.`
 }
 

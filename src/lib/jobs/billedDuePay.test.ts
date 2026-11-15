@@ -118,6 +118,21 @@ describe('billedPayModel', () => {
     expect(billedPayModel({ billedAtIso: null, estBillYmd: '2026-11-02', customerId: null }, null, TODAY, null, null, read)).toMatchObject({ dueYmd: '2027-02-15', source: 'terms' })
   })
 
+  it('reads terms in days after the bill: due that many days after it went in, or after they accepted it (punch list #341, PR 5)', () => {
+    const net45: PayCalendar = { ...PAY_CALENDAR_DEFAULT, clause: '§ 7.1', daysAfter: 45 }
+    const m = billedPayModel(row('2026-11-03', 'newco'), DATA, TODAY, null, null, net45)!
+    expect(m).toMatchObject({ source: 'terms', dueYmd: '2026-12-18', expectedYmd: '2026-12-18', clockYmd: '2026-11-03', clockFrom: 'billed' })
+    expect(m.label).toBe('Due Dec 18 · their pay terms')
+    expect(m.title).toBe('Billed Nov 3. Newco Builders pays a set number of days after a bill (§ 7.1): A bill is paid 45 days after it is accepted. Due Dec 18. No payment on record yet. The due day is the best guess there is.')
+    // Accepted a month later, it is due a month later: no cutoff, so day for day.
+    const accepted = billedPayModel({ ...row('2026-11-03', 'newco'), acceptedYmd: '2026-12-02' }, DATA, TODAY, null, null, net45)!
+    expect(accepted).toMatchObject({ dueYmd: '2027-01-16', clockFrom: 'accepted' })
+    // A job's own terms say so, and a payer with a record lands after the due day, not a pay day.
+    const own = billedPayModel(row('2026-11-03'), DATA, TODAY, null, null, { calendar: net45, from: 'job', payerCalendar: null })!
+    expect(own.title).toContain('This job is on its own terms (§ 7.1): A bill is paid 45 days after it is accepted.')
+    expect(own.label).toMatch(/^Due Dec 18 · (their pay terms|lands ~\d+d after their due day)$/)
+  })
+
   it('reads past due while the money is not yet expected', () => {
     // Billed Oct 27: the pace guess says Dec 7, in 25 days. The contract made it due Nov 10.
     expect(billedExpectedPayModel(row('2026-10-27'), DATA, TODAY)).toMatchObject({ expectedYmd: '2026-12-07', state: 'upcoming' })

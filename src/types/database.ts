@@ -20628,6 +20628,7 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string | null
+          description: string | null
           id: string
           job_id: string
           kind: string
@@ -20642,6 +20643,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           id?: string
           job_id: string
           kind: string
@@ -20656,6 +20658,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           id?: string
           job_id?: string
           kind?: string
@@ -43532,6 +43535,7 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string | null
+          description: string | null
           id: string
           job_id: string
           kind: string
@@ -45257,6 +45261,10 @@ export type Database = {
       }
       job_activity_line_demand_letter: {
         Args: { d: Database["public"]["Tables"]["job_demand_letters"]["Row"] }
+        Returns: undefined
+      }
+      job_activity_line_lien_closed_paid: {
+        Args: { it: Database["public"]["Tables"]["job_lien_desk_items"]["Row"] }
         Returns: undefined
       }
       job_activity_line_lien_courtesy: {

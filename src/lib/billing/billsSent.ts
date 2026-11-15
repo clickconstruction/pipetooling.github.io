@@ -616,6 +616,8 @@ export interface BillsSentGap {
   paid: boolean
   /** *Billed Mon, Nov 9 at 3:26 PM.* */
   billedWords: string
+  /** The day the bill was made, YYYY-MM-DD in the company's time; '' when the stamp does not read. */
+  billedYmd: string
   haystack: string
 }
 
@@ -645,6 +647,7 @@ export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, li
         amount: u.amount,
         paid: u.status === 'paid',
         billedWords,
+        billedYmd: ymd,
         haystack: [jobWords, payer, (job?.job_address ?? '').trim()].filter(Boolean).join(' ').toLowerCase(),
       }
     })
@@ -1029,12 +1032,41 @@ export interface BillsSentByHandDraft {
   note: string
 }
 
+const YMD = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * The day the form opens on (punch list #340, R1): the day the bill was made. A bill in the strip may be weeks old,
+ * and a record cannot be changed once saved, so the form must not open on today's date for it. Today stands in when
+ * the bill's day does not read or is somehow after today.
+ */
+export function byHandDayOffered(billedYmd: string, todayYmd: string): string {
+  return YMD.test(billedYmd) && billedYmd <= todayYmd ? billedYmd : todayYmd
+}
+
+/** A day one press away under the form's date. `short` is the phone's label. */
+export interface ByHandDayPick {
+  ymd: string
+  label: string
+  short: string
+}
+
+/** The days one press away: the day the bill was made, when it is an earlier day, then **Today**. */
+export function byHandDayPicks(billedYmd: string, todayYmd: string): ByHandDayPick[] {
+  const picks: ByHandDayPick[] = []
+  if (YMD.test(billedYmd) && billedYmd < todayYmd) {
+    const day = formatWorkDateYmdWeekdayShortFriendly(billedYmd)
+    picks.push({ ymd: billedYmd, label: `${day} · the day it was billed`, short: `${day} · billed` })
+  }
+  picks.push({ ymd: todayYmd, label: 'Today', short: 'Today' })
+  return picks
+}
+
 /** What the form still needs, as one sentence; '' when the record can be saved. */
 export function byHandProblem(draft: BillsSentByHandDraft, todayYmd: string, ways: ReadonlyArray<BillHandWay> = BILL_HAND_WAYS_BUILT_IN): string {
   // A way taken off the list while the form was open is no pick.
   if (!draft.how || !liveBillHandWays(ways).some((w) => w.key === draft.how)) return 'Pick how the bill went.'
   if (!draft.toWhom.trim()) return 'Say who the bill went to.'
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.wentOnYmd)) return 'Pick the day the bill went.'
+  if (!YMD.test(draft.wentOnYmd)) return 'Pick the day the bill went.'
   if (draft.wentOnYmd > todayYmd) return 'The day cannot be after today.'
   return ''
 }

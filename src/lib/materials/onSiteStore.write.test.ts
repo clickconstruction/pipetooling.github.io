@@ -226,6 +226,30 @@ describe('an on-site press through the store', () => {
     await b.replay()
     expect(tables.job_containers![0]).toEqual({ ...before, label: 'R70', kind: 'loose' })
   })
+
+  it('what is in a box is a person’s words in its own column, null when they are cleared, and absent from an add nobody described (punch list #351, PR 2)', async () => {
+    const b = await bench()
+    b.store.sayBoxLine('j1', 'a1', 'A1', '  PVC fittings,   mixed ')
+    expect(b.store.listContainers('j1')[0]).toMatchObject({ said: 'PVC fittings, mixed' })
+    await settle()
+    expect(tables.job_containers![0]).toMatchObject({ description: 'PVC fittings, mixed' })
+    // Edit holds the same line: cleared words are null, which hands the line back to the app.
+    b.store.editContainer('a1', { said: null })
+    expect(b.store.listContainers('j1')[0]!.said).toBe('')
+    await settle()
+    expect(tables.job_containers![0]!.description).toBeNull()
+    const made = b.store.addContainer({ jobId: 'j1', label: 'R90', kind: 'loose', where: '', said: 'Toilets' })
+    const bare = b.store.addContainer({ jobId: 'j1', label: 'R91', kind: 'cage', where: '' })
+    expect(made.said).toBe('Toilets')
+    await settle()
+    expect(tables.job_containers!.find((r) => r.id === made.id)).toMatchObject({ label: 'R90', description: 'Toilets' })
+    expect(Object.keys(tables.job_containers!.find((r) => r.id === bare.id)!)).not.toContain('description')
+    // A box this phone has not read (one a sticker just made at the office) still gets its line.
+    tables.job_containers!.push({ ...box, id: 'made-elsewhere', label: 'R92' })
+    b.store.sayBoxLine('j1', 'made-elsewhere', 'R92', 'Lavs')
+    await settle()
+    expect(tables.job_containers!.find((r) => r.id === 'made-elsewhere')).toMatchObject({ description: 'Lavs' })
+  })
 })
 
 describe('the store reads a job again by itself (v2.7177)', () => {

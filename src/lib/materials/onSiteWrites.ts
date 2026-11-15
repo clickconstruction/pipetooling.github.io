@@ -66,7 +66,7 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
     } else if (w.table === 'job_containers') {
       if (w.op === 'insert') {
         if (containers.some((c) => c.id === w.id)) continue
-        containers = [...containers, { id: w.id, jobId, label: str(r.label), kind: (str(r.kind) || 'box') as ContainerKind, where: str(r.where_note), locationId: strOrNull(r.place_id), lat: null, lng: null, retiredAt: null, createdAt: at }]
+        containers = [...containers, { id: w.id, jobId, label: str(r.label), kind: (str(r.kind) || 'box') as ContainerKind, where: str(r.where_note), said: str(r.description), locationId: strOrNull(r.place_id), lat: null, lng: null, retiredAt: null, createdAt: at }]
       } else {
         containers = containers.map((c) =>
           c.id !== w.id
@@ -81,6 +81,8 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
                 ...(has(r, 'label') && str(r.label) ? { label: str(r.label) } : {}),
                 ...(has(r, 'kind') && str(r.kind) ? { kind: str(r.kind) as ContainerKind } : {}),
                 ...(has(r, 'where_note') ? { where: str(r.where_note) } : {}),
+                // What is in it (punch list #351): a person's words, or null when they were cleared.
+                ...(has(r, 'description') ? { said: str(r.description) } : {}),
               },
         )
       }

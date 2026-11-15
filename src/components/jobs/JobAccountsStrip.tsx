@@ -15,7 +15,7 @@ import {
   type JobAccountStripEntry,
   type JobAccountStripState,
 } from '../../lib/jobs/jobAccountStrip'
-import { changeNotNeededExisting, notNeededChipTitle, notNeededSheetWords } from '../../lib/jobs/jobAccountsNewJob'
+import { changeNotNeededExisting, notNeededChipTitle, notNeededSheetWords, notNeededStampWords } from '../../lib/jobs/jobAccountsNewJob'
 import { submitOpenJobAccountRequest } from '../../lib/jobs/openJobAccountDispatchRequest'
 import { MarkJobAccountOpenedModal } from '../materials/MarkJobAccountOpenedModal'
 
@@ -222,6 +222,7 @@ function JobAccountOpenSheet({
   const tel = telHref(entry.rep?.phone)
   const notNeeded = entry.state === 'not_needed'
   const canChange = notNeeded && isOfficeRole(role) && entry.accountId != null
+  const stamp = notNeeded ? notNeededStampWords(entry.notNeededBy, entry.notNeededAt) : null
 
   async function takeOff() {
     if (takingOff || !entry.accountId) return
@@ -262,6 +263,11 @@ function JobAccountOpenSheet({
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }} data-job-account-not-needed-words>
               {notNeededSheetWords(entry.houseName, entry.note)}
             </p>
+            {stamp ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }} data-job-account-not-needed-stamp>
+                {stamp}
+              </p>
+            ) : null}
             {canChange ? (
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Change this… marks it opened or takes the reason. Take the mark off puts {entry.houseName} back to none yet.

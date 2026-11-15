@@ -4,6 +4,7 @@ import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
 import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
+import { canClosePaidItem, fieldsWithClosedPaid, paperClaimOf } from './lienRunClosePaid'
 import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
 import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
@@ -374,6 +375,60 @@ export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: 
     ),
   )
   return live.length
+}
+
+/**
+ * Close paid notices (v2.7353): each listed monthly notice still live is set aside (`voided_at`), so every
+ * reader of the desk skips it, and it keeps one line saying who closed it and what the paper said
+ * (`fields.runClosedPaid`). One write per notice, and a notice that fails does not stop the rest: it comes
+ * back in `failed` with its reason. A row sent or closed meanwhile is left alone and named there too.
+ */
+export async function closePaidLienDeskItems(
+  itemIds: ReadonlyArray<string>,
+  by: { userId: string | null; userName: string | null },
+): Promise<{ closed: string[]; failed: Array<{ itemId: string; why: string }> }> {
+  const closed: string[] = []
+  const failed: Array<{ itemId: string; why: string }> = []
+  if (itemIds.length === 0) return { closed, failed }
+  const rows = await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').select('id, kind, fields, printed_at, status, voided_at').in('id', [...itemIds]),
+    'lien desk: read paid',
+  )
+  const byId = new Map(((rows ?? []) as Array<{ id: string; kind: string | null; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null }>).map((r) => [r.id, r]))
+  const at = new Date().toISOString()
+  const gone = 'It was sent or closed already.'
+  await Promise.all(
+    itemIds.map(async (id) => {
+      const r = byId.get(id)
+      if (!r || !canClosePaidItem(r)) {
+        failed.push({ itemId: id, why: gone })
+        return
+      }
+      try {
+        const moved = await withSupabaseRetry(
+          () =>
+            supabase
+              .from('job_lien_desk_items')
+              .update({ voided_at: at, fields: fieldsWithClosedPaid(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at, paperClaim: paperClaimOf(r.fields) }) } as never)
+              .eq('id', id)
+              .eq('kind', 'notice_53_056')
+              .is('voided_at', null)
+              .in('status', ['drafted', 'awaiting_approval', 'approved', 'held'])
+              .select('id'),
+          'lien desk: close paid',
+        )
+        if (((moved ?? []) as unknown as Array<{ id: string }>).length > 0) closed.push(id)
+        else failed.push({ itemId: id, why: gone })
+      } catch (e) {
+        failed.push({ itemId: id, why: formatErrorMessage(e, 'try again') })
+      }
+    }),
+  )
+  // The order the caller gave, whatever order the writes answered in.
+  const order = new Map(itemIds.map((id, i) => [id, i]))
+  closed.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
+  failed.sort((a, b) => (order.get(a.itemId) ?? 0) - (order.get(b.itemId) ?? 0))
+  return { closed, failed }
 }
 
 /**

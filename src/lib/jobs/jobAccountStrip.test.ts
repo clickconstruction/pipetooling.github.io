@@ -50,6 +50,18 @@ describe('groupJobAccountStrip', () => {
     expect(map.get('j2')!.map((e) => e.state)).toEqual(['none'])
   })
 
+  it('carries a not-needed row’s stamp, and null where the row or the database has none', () => {
+    const map = groupJobAccountStrip([
+      row({ job_id: 'j1', supply_house_id: 'moore', house_name: 'Moore Supply', status: 'not_needed', account_note: 'Service call', not_needed_at: '2026-11-13T19:24:44Z', not_needed_by_name: ' Tess ' }),
+      row({ job_id: 'j1', supply_house_id: 'reece', house_name: 'Reece', status: 'not_needed', not_needed_at: '2026-10-07T22:13:03Z', not_needed_by_name: null }),
+      row({ job_id: 'j1', supply_house_id: 'ferguson', house_name: 'Ferguson', status: 'not_needed' }),
+    ])
+    const byHouse = new Map(map.get('j1')!.map((e) => [e.houseId, e]))
+    expect([byHouse.get('moore')!.notNeededBy, byHouse.get('moore')!.notNeededAt]).toEqual(['Tess', '2026-11-13T19:24:44Z'])
+    expect([byHouse.get('reece')!.notNeededBy, byHouse.get('reece')!.notNeededAt]).toEqual([null, '2026-10-07T22:13:03Z'])
+    expect([byHouse.get('ferguson')!.notNeededBy, byHouse.get('ferguson')!.notNeededAt]).toEqual([null, null])
+  })
+
   it('summarises and reports open', () => {
     const map = groupJobAccountStrip([
       row({ job_id: 'j1', supply_house_id: 'ferguson', house_name: 'Ferguson', status: 'open' }),

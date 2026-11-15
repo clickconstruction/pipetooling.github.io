@@ -103,6 +103,7 @@ describe('bankSideRead', () => {
     row('in', 400, '2026-11-05'),
     row('failed', -400, '2026-11-05', '', { status: 'failed' }),
     row('dupe', -400, '2026-11-05', '', { duplicate_of_transaction_id: 'lone' }),
+    row('own', -400, '2026-11-05', 'Mercury Savings', { kind: 'internalTransfer' }),
     row('stranger', -62.18, '2026-11-05', 'Corner Fuel'),
   ]
 

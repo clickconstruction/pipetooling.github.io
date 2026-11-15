@@ -64,6 +64,7 @@ import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { changedPayLines, payLineField, payLineInvoiceId, payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
+import { closePaidLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobHeading } from './LienJobNumber'
@@ -4664,6 +4665,11 @@ export default function LienDesk({
             const n = await takeBackLienDeskItems(ids, { userId: authUserId, userName: authName || null })
             onChanged()
             return n
+          }}
+          onClosePaid={async (ids) => {
+            const out = await closePaidLienDeskItems(ids, { userId: authUserId, userName: authName || null })
+            onChanged()
+            return out
           }}
           notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}

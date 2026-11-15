@@ -41,6 +41,23 @@ describe('the payload', () => {
     expect(parseBoxPageResponse(JSON.parse(JSON.stringify(p)))).toEqual(p)
   })
 
+  it('answers what is in it on one line: a person’s own words, else the app’s from the parts (v2.7348, punch list #351)', () => {
+    const lines = [
+      { container_id: CONTAINER.id, part_name: 'Kohler toilets', manufacturer: 'Kohler', on_hand: 24 },
+      { container_id: CONTAINER.id, part_name: 'wax rings', manufacturer: null, on_hand: 0 },
+      { container_id: 'other', part_name: 'tee', manufacturer: null, on_hand: 9 },
+    ]
+    const app = buildBoxPagePayload({ container: CONTAINER, place: 'Level 2', lines, lastCountedOn: null, photo: null })
+    expect(app.box.line).toBe('Kohler toilets · 24')
+    const said = buildBoxPagePayload({ container: { ...CONTAINER, description: '  Toilets for   building C ' }, place: 'Level 2', lines, lastCountedOn: null, photo: null })
+    expect(said.box.line).toBe('Toilets for building C')
+    expect(buildBoxPagePayload({ container: { ...CONTAINER, description: null }, place: '', lines: [], lastCountedOn: null, photo: null }).box.line).toBe('')
+    // It round-trips, and an answer from a function deployed before the line is read from the lines it did answer.
+    expect(parseBoxPageResponse(JSON.parse(JSON.stringify(said)))!.box.line).toBe('Toilets for building C')
+    const { line: _line, ...old } = app.box
+    expect(parseBoxPageResponse(JSON.parse(JSON.stringify({ ok: true, box: old, office: null })))!.box.line).toBe('Kohler toilets · 24')
+  })
+
   it('names the kind for a person and the photo address on the function', () => {
     expect(boxPageNoun('cage')).toBe('Cage')
     expect(boxPageNoun('box', false)).toBe('box')
@@ -117,6 +134,15 @@ describe('find a part on this site (PR 3, v2.6799)', () => {
     expect(boxPageFind({ thisCode: 'X', words: ['b3', 'pex'], containers: boxes, places, lines }).boxes.map((b) => [b.stencil, b.lines.map((l) => l.partName)])).toEqual([['B3', ['1/2" PEX crimp rings']]])
     expect(boxPageFind({ thisCode: 'X', words: ['wax', 'copper'], containers: boxes, places, lines }).boxes).toEqual([])
     expect(boxPageFind({ thisCode: 'X', words: [], containers: boxes, places, lines })).toEqual({ words: [], boxes: [], total: 0 })
+  })
+
+  it('finds a box by what a person said is in it, and every hit carries its line from all its parts (v2.7348)', () => {
+    const said = boxes.map((c) => (c.id === 'c-a10' ? { ...c, description: 'Toilet rough-in kit' } : c))
+    const found = boxPageFind({ thisCode: CONTAINER.code, words: ['rough-in'], containers: said, places, lines })
+    expect(found.boxes.map((b) => [b.stencil, b.line])).toEqual([['A10', 'Toilet rough-in kit']])
+    const tees = boxPageFind({ thisCode: CONTAINER.code, words: ['elbows'], containers: said, places, lines })
+    expect(tees.boxes.map((b) => [b.stencil, b.line, b.lines.length])).toEqual([['B3', '2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows', 1]])
+    expect(parseBoxPageFindResponse(JSON.parse(JSON.stringify({ ok: true, find: tees })))!.find.boxes[0]!.line).toBe('2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows')
   })
 
   it('caps the boxes and says how many there were, and the answer round-trips', () => {

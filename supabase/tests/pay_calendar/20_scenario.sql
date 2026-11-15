@@ -214,5 +214,37 @@ SELECT pcal.same('clearing it', (public.set_invoice_due_day('00000000-0000-0000-
 SELECT pcal.same('leaves no row', pcal.due_day(), 'none');
 RESET ROLE;
 
+-- 10 · A number of days after the bill (punch list #341, PR 5, migration *_pay_calendar_days_after): the office sets
+-- a payer's terms as days after the bill, with no cutoff and no pay day; a job carries its own the same way; a set
+-- back to a calendar replaces it; a number out of range is refused in words; and below the function a row is a
+-- calendar or days after the bill, never both and never neither.
+CREATE FUNCTION pcal.terms(p_job uuid DEFAULT NULL) RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce((SELECT concat_ws(' ', CASE WHEN days_after IS NOT NULL THEN 'days ' || days_after::text END, 'pay', coalesce(pay_day::text, 'none'), 'cutoff', coalesce(cutoff_day::text, 'none'), CASE WHEN pay_when_paid THEN 'pwp' END, nullif(clause, ''))
+                     FROM public.payer_pay_calendars
+                    WHERE payer_customer_id = '00000000-0000-0000-0000-0000000cac01' AND job_id IS NOT DISTINCT FROM p_job), 'nothing')
+$$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pcal TO anon, authenticated, service_role;
+SET LOCAL ROLE authenticated;
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+SELECT pcal.same('Rosa sets the payer''s terms as 45 days after the bill', (public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"daysAfter": 45, "payWhenPaid": true, "clause": " § 7.1 ", "words": "Paid 45 days after an approved application."}'::jsonb))->>'days_after', '45');
+SELECT pcal.same('the row holds the days and no pay day', pcal.terms(), 'days 45 pay none cutoff none pwp § 7.1');
+SELECT pcal.same('a pay day sent beside the days is not kept', (public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"daysAfter": 30, "payDay": 10, "cutoffDay": 25}'::jsonb))->>'pay_day', NULL);
+SELECT pcal.same('one row, the new days', pcal.terms(), 'days 30 pay none cutoff none');
+SELECT pcal.same('a job carries its own days', (public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', '00000000-0000-0000-0000-0000000caf01', '{"daysAfter": 60}'::jsonb))->>'days_after', '60');
+SELECT pcal.same('the job''s row beside the payer''s', pcal.terms('00000000-0000-0000-0000-0000000caf01'), 'days 60 pay none cutoff none');
+SELECT pcal.same('a set back to a calendar replaces the days', (public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"payDay": 10}'::jsonb))->>'days_after', NULL);
+SELECT pcal.same('the row is a calendar again', pcal.terms(), 'pay 10 cutoff none');
+SELECT pcal.refused('no days', $q$SELECT public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"daysAfter": 0}'::jsonb)$q$, 'The number of days after the bill is 1 to 180');
+SELECT pcal.refused('too many days', $q$SELECT public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"daysAfter": 181}'::jsonb)$q$, 'The number of days after the bill is 1 to 180');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca103');
+SELECT pcal.refused('Pat, a primary, cannot set days either', $q$SELECT public.set_payer_pay_calendar('00000000-0000-0000-0000-0000000cac01', NULL, '{"daysAfter": 45}'::jsonb)$q$, 'Not allowed to set a pay calendar');
+SELECT pcal.as_user('00000000-0000-0000-0000-0000000ca101');
+RESET ROLE;
+-- Below the function: the shape. A refused set above deleted the payer's row first and rolled back with it, so the calendar stands.
+SELECT pcal.same('a refused set leaves the row as it was', pcal.terms(), 'pay 10 cutoff none');
+SELECT pcal.refused('a row with a pay day and days', $q$UPDATE public.payer_pay_calendars SET days_after = 45 WHERE payer_customer_id = '00000000-0000-0000-0000-0000000cac01' AND job_id IS NULL$q$, 'payer_pay_calendars_shape_check');
+SELECT pcal.refused('a row with neither', $q$UPDATE public.payer_pay_calendars SET pay_day = NULL WHERE payer_customer_id = '00000000-0000-0000-0000-0000000cac01' AND job_id IS NULL$q$, 'payer_pay_calendars_shape_check');
+SELECT pcal.refused('days out of range under a direct write', $q$UPDATE public.payer_pay_calendars SET days_after = 400, pay_day = NULL WHERE payer_customer_id = '00000000-0000-0000-0000-0000000cac01' AND job_id IS NULL$q$, 'payer_pay_calendars_days_after_check');
+
 DO $$ BEGIN RAISE NOTICE 'pay_calendar PASSED'; END $$;
 ROLLBACK;

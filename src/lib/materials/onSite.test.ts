@@ -130,6 +130,12 @@ describe('places', () => {
     const cs = [c('B1', null), c('B12', null), c('B120', null), c('A12', null)]
     expect(searchContainers(cs, 'b 12').map((x) => x.label)).toEqual(['B12', 'B120'])
     expect(searchContainers(cs, '')).toEqual([])
+    // Since punch list #351 a box is also found by what a person said is in it, every word typed.
+    const said = [c('R76', null), { ...c('R12', null), said: 'Kohler toilets, white' }, { ...c('R9', null), said: 'Toilet seats', retiredAt: '2026-11-01T00:00:00Z' }]
+    expect(searchContainers(said, 'toilet').map((x) => x.label)).toEqual(['R12'])
+    expect(searchContainers(said, 'white kohler').map((x) => x.label)).toEqual(['R12'])
+    expect(searchContainers(said, 'kohler lav')).toEqual([])
+    expect(searchContainers(said, 'r').map((x) => x.label)).toEqual(['R12', 'R76'])
     expect(placeName([p('l1', 'Level 1')], 'l1')).toBe('Level 1')
     expect(placeName([], null)).toBe('no place yet')
   })

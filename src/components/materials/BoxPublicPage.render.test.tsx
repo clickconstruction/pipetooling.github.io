@@ -65,6 +65,21 @@ describe('BoxPublicPage', () => {
     await waitFor(() => expect(document.title).toBe('Cage B3 · Click Plumbing & Electrical'))
   })
 
+  it('says what is in it under the name: the function’s line, or the app’s from the lines when an older function answers none (punch list #351, PR 2)', async () => {
+    answer(200, { ...box, box: { ...box.box, line: 'Elbows and rings for level 2' } })
+    mount()
+    expect((await screen.findByTestId('box-page-says')).textContent).toBe('Elbows and rings for level 2')
+    cleanup()
+    answer(200, box)
+    mount()
+    expect((await screen.findByTestId('box-page-says')).textContent).toBe('2 parts: 1/2" PEX crimp rings and 3/4" copper 90° elbows')
+    cleanup()
+    answer(200, { ...box, box: { ...box.box, lines: [], photo: null, line: '' } })
+    mount()
+    await screen.findByTestId('box-page-title')
+    expect(screen.queryByTestId('box-page-says')).toBeNull()
+  })
+
   it('a cage last counted 14 days ago or more is due a count', async () => {
     answer(200, { ...box, box: { ...box.box, lastCountedOn: '2026-10-19' } })
     mount()

@@ -11,12 +11,12 @@ import { drawMoney, payAppKnown, payApplication } from './building'
 import { backChargeOf } from './backChargeRows'
 import type { BackCharge, ChangeOrder, Draw, DrawSentBack, GcState, Partner, Sow, SovLine } from './types'
 
-type Tables = Database['public']['Tables']
-export type DrawTableRow = Tables['gc_draws']['Row']
-export type DrawLineRow = Tables['gc_draw_lines']['Row']
-export type LineReportRow = Tables['gc_sow_line_reports']['Row']
-export type TradeSendRow = Tables['gc_change_order_trade_sends']['Row']
-export type BackChargeRow = Tables['gc_back_charges']['Row']
+// Each row as one alias (punch list #359, v2.7294): the edge copy inlines an alias written this way and holds no table list for it.
+export type DrawTableRow = Database['public']['Tables']['gc_draws']['Row']
+export type DrawLineRow = Database['public']['Tables']['gc_draw_lines']['Row']
+export type LineReportRow = Database['public']['Tables']['gc_sow_line_reports']['Row']
+export type TradeSendRow = Database['public']['Tables']['gc_change_order_trade_sends']['Row']
+export type BackChargeRow = Database['public']['Tables']['gc_back_charges']['Row']
 
 /** The rows of the trades' money for some projects, as `loadGcDraws` reads them. */
 export interface DrawTables {

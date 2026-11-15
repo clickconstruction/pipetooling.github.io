@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { dueDayFor, payCalendarMonthDay, payCalendarWords, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { dueDayFor, payCalendarMonthDay, payCalendarWords, paysDaysAfter, type PayCalendar } from '../../lib/jobs/payCalendar'
 import { saveInvoiceAcceptance } from '../../lib/jobs/payCalendarIo'
 
 /**
@@ -91,7 +91,7 @@ export default function PayerAcceptedModal({
           {billLabel} · {payerName}
         </p>
         <p style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-          {payCalendarWords(calendar)} Their cutoff counts from the day they accept a bill. Set this only when that is not the day it went in.
+          {payCalendarWords(calendar)} {paysDaysAfter(calendar) ? 'The days count' : 'Their cutoff counts'} from the day they accept a bill. Set this only when that is not the day it went in.
         </p>
 
         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', margin: '0.9rem 0 4px' }}>

@@ -97,6 +97,8 @@ Press **undo** beside it to take the match off. The payment's tick is cleared wi
 
 A bank line that one payment took is offered to no other payment. Nothing is matched by itself here either.
 
+A transfer between the company's own accounts is never offered. It paid nobody.
+
 Only the people who run Banking's Ledger see the picker. They are the controller and the developer.
 
 {{button:outline|Download CSV}} saves the lines to sort in a spreadsheet. The file has a column for the day each was checked.

@@ -24,6 +24,8 @@ import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
 import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
+import { RUN_CLOSE_PAID_CAUTION, runClosePaidConfirm, runClosedPaidWords, runNoticesClosed, runPaidNotices } from '../../lib/jobs/lienRunClosePaid'
+import { batchOutcomeWords } from '../../lib/batchWords'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
 import { lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode } from '../../lib/jobs/lienDeskSignIo'
 import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienFirstName, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
@@ -69,6 +71,7 @@ export default function LienDeskRunModal({
   onRecorded,
   onPrinted,
   onTakeBack,
+  onClosePaid,
   openOnTakeBack = false,
   undo,
   stripeMode = 'live',
@@ -89,6 +92,11 @@ export default function LienDeskRunModal({
    * to send with their approvals. The host writes it and re-reads; it returns how many it took back.
    */
   onTakeBack?: (itemIds: string[]) => Promise<number>
+  /**
+   * Close paid notices (v2.7353): the job owes $0 now, so these items leave the run and the desk with
+   * nothing mailed. The host writes it and re-reads; it returns which closed and which did not, with the reason.
+   */
+  onClosePaid?: (itemIds: string[]) => Promise<{ closed: string[]; failed: Array<{ itemId: string; why: string }> }>
   /** Open on the take-back confirm: To do's run row pressed *Take back…* (punch list #101 PR 2). */
   openOnTakeBack?: boolean
   /**
@@ -140,6 +148,9 @@ export default function LienDeskRunModal({
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
   const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null } | null>(null)
   const [takeBackOpen, setTakeBackOpen] = useState(openOnTakeBack)
+  // Close paid notices (v2.7353): the items the confirm is asking about, then what the close did.
+  const [closePaidIds, setClosePaidIds] = useState<string[] | null>(null)
+  const [closedPaid, setClosedPaid] = useState<{ count: number; head: string | null; failed: Array<{ label: string; why: string }> } | null>(null)
   const recording = opening.step === 'record' && takenBack == null
   const [printedAt, setPrintedAt] = useState<string | null>(opening.printedAt)
   // The items whose every copy printed in this sitting: with the ones printed before it, what a take-back clears.
@@ -672,6 +683,28 @@ export default function LienDeskRunModal({
       setBusy(false)
     }
   }
+  // Close paid notices (v2.7353): a notice whose job owes $0 leaves the run and the desk; one that fails stays, named with its reason.
+  const paidSplit = useMemo(() => runPaidNotices(notices), [notices])
+  const paidHeldWhy = useMemo(() => new Map(paidSplit.held.map((h) => [h.itemId, h.why])), [paidSplit])
+  const closePaidAsk = useMemo(() => (closePaidIds ?? []).filter((id) => paidSplit.ready.includes(id)), [closePaidIds, paidSplit])
+  const closePaidWords = runClosePaidConfirm({ count: closePaidAsk.length, printed: closePaidAsk.filter((id) => printedIds.includes(id)).length })
+  const closePaid = async () => {
+    if (!onClosePaid || busy || closePaidAsk.length === 0) return
+    setBusy(true)
+    try {
+      const labelOf = new Map(notices.map((n) => [n.itemId, n.label]))
+      const out = await onClosePaid(closePaidAsk)
+      const words = batchOutcomeWords({ verb: 'close', past: 'Closed', done: out.closed.length, failed: out.failed.length, noun: 'paid notice' })
+      setNotices((prev) => runNoticesClosed(prev, out.closed))
+      setClosePaidIds(null)
+      setClosedPaid({ count: out.closed.length, head: words.head, failed: out.failed.map((f) => ({ label: labelOf.get(f.itemId) ?? 'A notice', why: f.why })) })
+      showToast(words.line, words.tone)
+    } catch (e) {
+      showToast(`Not closed: ${formatErrorMessage(e, 'try again')}`, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
   // Record N mailings ▸ (v2.7328): the rows whose every envelope has its number, and are printed — the checklist's own count.
   const readyToRecord = useMemo(() => new Set(plans.mail.ready.map((r) => r.itemId)), [plans])
   const recordable = useMemo(() => split.mailed.filter((n) => (partsOf(n) ?? [{ itemId: n.itemId }]).every((p) => readyToRecord.has(p.itemId))), [split, readyToRecord])
@@ -725,11 +758,15 @@ export default function LienDeskRunModal({
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape' || ev.defaultPrevented || !isTopmostModal()) return
       const hold = holdNow()
-      const action = runEscapeAction({ busy: working, overlayOpen: preview != null || reviewOpen, signing: signingOnScreen, takeBackOpen: takeBackOpen && printedIds.length > 0, moreOpen, hold })
+      const action = runEscapeAction({ busy: working, overlayOpen: preview != null || reviewOpen, signing: signingOnScreen, takeBackOpen: (takeBackOpen && printedIds.length > 0) || closePaidAsk.length > 0, moreOpen, hold })
       if (action === 'ignore') return
       ev.preventDefault()
       if (action === 'wait-signing') showToast(SIGNING_WORDS, 'info')
-      else if (action === 'close-take-back') setTakeBackOpen(false)
+      else if (action === 'close-take-back') {
+        // The confirm on screen: the paid notices' first, since it opens over the take-back's.
+        if (closePaidAsk.length > 0) setClosePaidIds(null)
+        else setTakeBackOpen(false)
+      }
       else if (action === 'close-more') setMoreOpen(false)
       else if (action === 'hold' && hold) showToast(runHoldWords(hold), hold === 'docsmit' ? 'warning' : 'info')
       else onClose()
@@ -828,6 +865,41 @@ export default function LienDeskRunModal({
             </div>
           </div>
         ) : null}
+        {closePaidAsk.length > 0 ? (
+          <div data-testid="run-close-paid-confirm" role="group" aria-label={closePaidWords.title} style={{ margin: '0.6rem 1.25rem 0', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{closePaidWords.title}</div>
+            <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{closePaidAsk.map((id) => notices.find((n) => n.itemId === id)?.label ?? '').filter(Boolean).join(', ')}</div>
+            <ul style={{ margin: '0 0 0.3rem', paddingLeft: '1.1rem' }}>
+              {closePaidWords.lines.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+            <div style={{ color: 'var(--text-muted)' }}>{RUN_CLOSE_PAID_CAUTION}</div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button type="button" data-testid="run-close-paid-yes" onClick={() => void closePaid()} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #2563eb', background: '#2563eb', color: '#ffffff', font: 'inherit', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
+                {busy ? 'Closing…' : closePaidWords.button}
+              </button>
+              <button type="button" onClick={() => setClosePaidIds(null)} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
+                {closePaidAsk.length === 1 ? 'Keep it here' : 'Keep them here'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {closedPaid && closedPaid.count > 0 ? (
+          <div data-testid="run-closed-paid" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
+            {runClosedPaidWords(closedPaid.count)}
+          </div>
+        ) : null}
+        {closedPaid && closedPaid.failed.length > 0 ? (
+          <div data-testid="run-close-paid-failed" role="alert" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', fontSize: '0.8125rem' }}>
+            <div style={{ fontWeight: 700 }}>{closedPaid.head}</div>
+            <ul style={{ margin: '0.2rem 0 0', paddingLeft: '1.1rem' }}>
+              {closedPaid.failed.map((f) => (
+                <li key={`${f.label}:${f.why}`}>{f.label}: {f.why}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {takenBack ? (
           <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
             {runTakenBackWords(takenBack.count, takenBack.printedAt)}
@@ -855,6 +927,8 @@ export default function LienDeskRunModal({
             besideBox={isMobile ? (row, key) => <LienRunScanPress label={`${row.label} — ${key === 'owner' ? 'owner' : 'GC'}`} onRead={(value) => trackingFor(row, key, value)} /> : undefined}
             paneFor={(row) => (penOpen === `item:${row.itemId}` ? penPaneFor(penOpen, true) : null)}
             focusMailItemId={focusMailItemId}
+            // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
+            paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setClosePaidIds(ids) } } : undefined}
           />
           {penOpen === 'batch' ? <div data-testid="run-sign-batch">{penPaneFor('batch', false)}</div> : null}
           {showDocsmit && sendBy ? (

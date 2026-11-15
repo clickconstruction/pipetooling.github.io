@@ -1,6 +1,7 @@
-import type { Tables } from '../types/database'
+import type { Database } from '../types/database'
 
-export type CustomerRow = Tables<'customers'>
+// One alias of the row (punch list #359, v2.7294), so the edge copy inlines it and holds no table list for it.
+export type CustomerRow = Database['public']['Tables']['customers']['Row']
 
 export function getCustomerDisplay(c: Pick<CustomerRow, 'name' | 'address'>): string {
   if (c.address) return `${c.name} - ${c.address}`

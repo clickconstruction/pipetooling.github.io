@@ -9,8 +9,8 @@
  * the development, or the one job when the job is on no development. **Offered, not typed**: Add opens on the next free
  * name, the letters most of the site's live boxes carry and one past the highest number any box, live or retired,
  * carries under them. **Words are moved, not refused**: `R76 TOILETS` typed into the name becomes the name R76 and the
- * words *Toilets*, which the sheet hands on (PR 2 gives them a line of their own; until then they ride the where line).
- * Words alone take the next free name. Old names stay as they are until the office tidies them (PR 3).
+ * words *Toilets*, which the sheet hands on to the box's own line (`boxLine.ts`, PR 2; PR 1 parked them on the where
+ * line). Words alone take the next free name. Old names stay as they are until the office tidies them (PR 3).
  *
  * Pure rules and words only. The same rule in SQL is `box_name_words` and the trigger `job_containers_name_rule`
  * (`20261114100000_box_name_rule.sql`), and `on_site_next_box_name` is this file's `nextFreeName`. The screens are the
@@ -131,11 +131,6 @@ export function nameTakenBy(boxes: ReadonlyArray<SiteBox>, name: string, selfId?
   return boxes.find((b) => !b.retiredAt && b.id !== selfId && b.label.trim().toLowerCase() === key) ?? null
 }
 
-/** The sentence under the name when words were split off it: where they go until PR 2 gives them a line. */
-export function movedWordsNote(words: string): string {
-  return `“${words}” goes on the where line for now. Soon it will be the box’s own line.`
-}
-
 /** The verdict on what was typed, against the site's boxes. `tone` says how the line under the name reads. */
 export type BoxNameVerdict =
   | { ok: true; name: string; words: string; say: string; tone: 'ok' | 'wait' }
@@ -174,13 +169,6 @@ export function boxNameVerdict(typed: string, boxes: ReadonlyArray<SiteBox>, sel
   }
   const said = `${read.zerosDropped ? 'Zeros in front are dropped. ' : ''}The name is ${read.name}.`
   return { ok: true, name: read.name, words: read.words, say: said, tone: 'ok' }
-}
-
-/** The where line with the split-off words on it: the words alone when it was empty, after it otherwise. */
-export function whereWithWords(where: string, words: string): string {
-  const w = where.trim().replace(/\s+/g, ' ')
-  if (!words) return w
-  return w ? `${w} · ${words}` : words
 }
 
 /** The press under the sheet: *Add R89*, or *Add it* while there is no name. */
