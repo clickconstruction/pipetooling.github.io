@@ -156,8 +156,9 @@ instead of stickers anyone can use.
 - **The number** is what a person reads: `0147`. One company-wide count, four digits, five past
   9999. A second run starts where the last ended, so two runs never collide and a leftover sticker
   works on any site. A site prefix (`JR-0147`) is call 2's other way.
-- **Printed on it**: the QR, the number large, the dashed address small (`prts.co/b/4F2A-9C18`) and
-  *Scan for what is inside*, on the strip the app already draws. When the code will not scan, a
+- **Printed on it**: the QR, the number large and the dashed address small on two lines (`prts.co/b/`,
+  then `4F2A-9C18`), on the strip the app already draws. The line *Scan for what is inside* came off
+  every strip in v2.7373, at Taunya's ask of 2026-11-15, so a strip is shorter. When the code will not scan, a
   signed-in person types the number into **Scan a label**; signed out, the eight characters, as
   today.
 - **Blank** means it points at no box. Signed out, a blank sticker's page reads *Sticker 0147 is not

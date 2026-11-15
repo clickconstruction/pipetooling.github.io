@@ -6,7 +6,7 @@
  * on the page; a refusal is said and nothing prints; a run handed in prints and mints nothing.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { MintedRun, StickerRunRequest } from '../../lib/materials/stickerRun'
 
@@ -123,9 +123,10 @@ describe('PrintStickersModal · the run', () => {
     expect(screen.getAllByTestId('stickers-tape-copy')).toHaveLength(60)
     const first = screen.getAllByTestId('stickers-tape')[0]!
     expect(first.textContent).toContain('0101')
-    expect(first.textContent).toContain('PRTS.CO/B/4F2A-9C00')
-    expect(first.textContent).toContain('Scan for what is inside')
-    expect(first.style.width).toBe('72mm')
+    // the address on two lines, the code on the second, and no line of words under it (Taunya's ask of 2026-11-15)
+    expect(within(first).getAllByTestId('stickers-tape-address-line').map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C00'])
+    expect(first.textContent).toBe('0101PRTS.CO/B/4F2A-9C00')
+    expect(first.style.width).toBe('54mm')
     expect(first.style.height).toBe('24mm')
     // the ask is gone; the press prints the same run again, and the day is remembered
     expect(screen.queryByTestId('stickers-ask')).toBeNull()

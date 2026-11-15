@@ -7,7 +7,7 @@
  * refused before its numbers takes none.
  *
  * The strip is the tape label's own (`TapeStripBitmap`, `tapeStrip.ts`): the QR of `HTTPS://PRTS.CO/B/<CODE>` with its
- * quiet zone, the number large where a box's stencil goes, the dashed address and *Scan for what is inside*, sent
+ * quiet zone, the number large where a box's stencil goes and the dashed address on two lines, sent
  * over USB one at a time with the run chained behind one lead-in (`ptouchUsb.ts`), or through the browser's print
  * window behind **Use the print window instead**, as the labels window keeps it. A run that stops part way says how
  * many went and the press becomes *Print the rest, 0163 to 0300*. Opened on a run already minted (the fold's
@@ -53,7 +53,8 @@ import {
 import { fetchLastStickerNumber, fetchStickerRuns, mintStickerRun } from '../../lib/materials/stickerRunsIo'
 import { blankCountOf, jobBlankWords } from '../../lib/materials/stickerPlace'
 import { stickerRangeWords } from '../../lib/materials/stickers'
-import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { TAPE_COPIES_LABEL, TAPE_COPIES_MAX, TAPE_TEST_STRIP_LABEL, TAPE_VIA_USB_LABEL, TAPE_VIA_WINDOW_LABEL, TAPE_WIDTHS_MM, clampTapeCopies, isTapeWidth, longestNameChars, repeatEach, tapeLayout, tapePrintCss, tapeProgressWords, tapeReadyWords, tapeSetupSteps, type TapeWidthMm } from '../../lib/materials/tapeLabel'
+import { tapeAddressLines } from '../../lib/materials/tapeStrip'
 import { printRootCss } from '../../lib/printRoot'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -94,7 +95,6 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const setCopies = (n: number) => { const c = clampTapeCopies(n); setCopiesState(c); writeTapeCopies(c) }
   const [width, setWidthState] = useState<TapeWidthMm>(() => readTapeWidth())
   const setWidth = (w: TapeWidthMm) => { setWidthState(w); writeTapeWidth(w) }
-  const layout = tapeLayout(width)
   /** The day this computer last printed tape; the first-time steps fold away once it has (punch list #304). */
   const [tapeDay, setTapeDay] = useState<string | null>(() => readTapePrintedDay())
   const [setupOpen, setSetupOpen] = useState(false)
@@ -296,20 +296,25 @@ export default function PrintStickersModal({ jobId, jobLabel, role, run: given =
   const countWords = minted ? runStripsWords(minted.run, printing.length) : stickerRunCountWords(count, copies)
   /** The strips on the page: the run's, or the test strip alone while it prints. */
   const shownStrips: StickerStrip[] = testOnly ? [STICKER_TEST_STRIP] : strips
+  /** The print window cuts every strip of a run to one length: what the run's longest number needs. */
+  const nameChars = longestNameChars(shownStrips.map((s) => s.stencil))
+  const layout = tapeLayout(width, nameChars)
   const domStrip = (s: StickerStrip, copy: number) => (
     <div key={`${s.id}:${copy}`} className={copy === 0 ? 'on-site-tape' : 'on-site-tape on-site-tape-copy'} data-testid={copy === 0 ? 'stickers-tape' : 'stickers-tape-copy'} style={{ ...(copy === 0 ? { display: 'grid' } : { display: 'none' }), width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>
       <QRCodeSVG value={s.value} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
       <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
         <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stencil}</div>
-        <div style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', marginTop: `${layout.padMm}mm` }}>{s.address}</div>
-        <div style={{ fontSize: `${layout.wordsMm}mm`, lineHeight: 1.1 }}>{s.words}</div>
+        {tapeAddressLines(s.address).map((line, i) => (
+          <div key={line} data-testid="stickers-tape-address-line" style={{ fontSize: `${layout.codeMm}mm`, lineHeight: 1.1, fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap', ...(i === 0 ? { marginTop: `${layout.padMm}mm` } : {}) }}>{line}</div>
+        ))}
+        {s.words ? <div style={{ fontSize: `${layout.wordsMm}mm`, lineHeight: 1.1 }}>{s.words}</div> : null}
       </div>
     </div>
   )
   return createPortal(
     <div className="on-site-stickers" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printed alone at full size, as the labels window is (lib/printRoot.ts, v2.6432); the tape's @page rule comes last so it wins. */}
-      <style>{`${printRootCss('on-site-stickers')} @media print { .on-site-stickers-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-stickers-chrome { display: none !important; } .on-site-stickers-list { display: block !important; } .on-site-tape-copy { display: grid !important; } } ${tapePrintCss(width, 'on-site-tape')}`}</style>
+      <style>{`${printRootCss('on-site-stickers')} @media print { .on-site-stickers-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-stickers-chrome { display: none !important; } .on-site-stickers-list { display: block !important; } .on-site-tape-copy { display: grid !important; } } ${tapePrintCss(width, 'on-site-tape', nameChars)}`}</style>
       <div role="dialog" aria-modal="true" aria-label={given ? given.title : 'Print blank stickers'} className="on-site-stickers-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-stickers-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
