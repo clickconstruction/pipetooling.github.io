@@ -12,6 +12,7 @@
 
 export type PeopleTab =
   | 'scoreboard'
+  | 'scores'
   | 'review'
   | 'hr'
   | 'person'
@@ -65,6 +66,7 @@ export const PEOPLE_TABS: readonly PeopleTab[] = [
   'housing',
   'review',
   'scoreboard',
+  'scores',
   'activity',
   'feedback',
 ]
@@ -91,6 +93,7 @@ export const PEOPLE_TAB_LABELS: Record<PeopleTab, string> = {
   housing: 'Housing',
   review: 'Review',
   scoreboard: 'Scoreboard',
+  scores: 'Scores',
   activity: 'Activity',
   feedback: 'Feedback',
 }
@@ -100,7 +103,7 @@ export const PEOPLE_TAB_GROUPS: readonly PeopleTabGroup[] = [
   { id: 'pay', label: 'Pay', views: ['hours', 'pay_stubs', 'offsets', 'employment', 'overhead'] },
   { id: 'paperwork', label: 'Paperwork', views: ['contracts', 'licenses', 'writeups', 'hr'] },
   { id: 'fleet', label: 'Fleet & Housing', views: ['vehicles', 'housing'] },
-  { id: 'review', label: 'Review', views: ['review', 'scoreboard', 'activity'] },
+  { id: 'review', label: 'Review', views: ['review', 'scoreboard', 'scores', 'activity'] },
   { id: 'feedback', label: 'Feedback', views: ['feedback'] },
 ]
 

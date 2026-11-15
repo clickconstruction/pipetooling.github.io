@@ -9,7 +9,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
-import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
+import { holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
 import { useJobRetainage } from '../../hooks/useJobRetainage'
 import { retainageReleaseWords, retainageSourceWords } from '../../lib/ar/retainageHeld'
@@ -17,6 +17,8 @@ import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDesk
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
+import { lienFooter } from '../../lib/jobs/lienFooterMenu'
+import { LienFootMenu } from './LienFootMenu'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
 import { coverLetterKindFor } from '../../lib/jobs/gcOnNotice'
@@ -97,7 +99,6 @@ export default function LienDeskRetainagePane({
   const { showToast } = useToastContext()
   const leader = isLienLeader(authRole)
   const office = isLienOffice(authRole)
-  const canWord = canSendLienOnWord(authRole)
   const [busy, setBusy] = useState(false)
   // Punch list #165 (PR 4): the figure's source and, once a release exists, the door to it.
   const { retainage: jobRetainage } = useJobRetainage(entry.jobId)
@@ -197,6 +198,7 @@ export default function LienDeskRetainagePane({
     )
   } else if (entry.pile === 'needs_owner' || entry.pile === 'to_draft') {
     const blocked = !entry.ready
+    const foot = lienFooter({ role: authRole, paper: 'retainage', leaderName, blocked, route: policy === 'send' && !promise ? 'run' : 'leader' })
     footer = wordOpen ? (
       <LienWordRecordRow
         note={wordNote}
@@ -216,15 +218,18 @@ export default function LienDeskRetainagePane({
     ) : (
       <>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          ✉ Certified mail to <strong style={{ color: 'var(--text-700)' }}>{ownerName || 'the owner of record'}</strong> and <strong style={{ color: 'var(--text-700)' }}>{gc?.name ?? 'the original contractor'}</strong> · {blocked ? 'Blocked until every gate above is clear.' : leader ? press.approveLine : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between paper and their word.` : press.askLine} {fuse}
+          ✉ Certified mail to <strong style={{ color: 'var(--text-700)' }}>{ownerName || 'the owner of record'}</strong> and <strong style={{ color: 'var(--text-700)' }}>{gc?.name ?? 'the original contractor'}</strong> · {blocked ? 'Blocked until every gate above is clear.' : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit, into the run.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between paper and their word.` : foot.primary?.line} {fuse}
         </div>
+        {/* One press per footer (v2.7324): his word waits behind He already okayed it ▾; the one press is the leader's okay or the office's ask. */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)} title={press.onWordTitle}>{press.onWord}</button> : null}
+          {foot.menus.map((m) => (
+            <LienFootMenu key={m.key} menu={m} disabled={busy} style={btn('plain', busy)} onPick={(k) => { if (k === 'word') { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) } }} />
+          ))}
           {leader ? (
-            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={press.approveLine}>{press.approve}</button>
+            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={foot.primary?.line} data-lien-retainage-approve>{press.approve}</button>
           ) : (
-            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={press.askLine}>{press.ask}</button>
+            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={foot.primary?.line} data-lien-retainage-ask>{press.ask}</button>
           )}
         </div>
       </>
