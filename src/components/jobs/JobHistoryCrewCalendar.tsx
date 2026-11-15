@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { EmptyState } from '../EmptyState'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { peopleCountColor } from '../../lib/projectsJobHistoryData'
 import { crewDayLabel, crewEmptyWords, crewHoursWords, crewQuietWords, crewRangeWords, crewSummaryWords, type CrewCalendar, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
 import type { LienMonthLine, LienMonthLineTone } from '../../lib/jobs/lienMonthLines'
@@ -61,6 +62,8 @@ const DATE_INPUT: CSSProperties = { font: 'inherit', padding: '0.2rem 0.4rem', b
 
 /** The range as one word with a chevron: a native select, so a phone opens its own picker. */
 function RangeMenu({ mode, onRangeMode }: { mode: CrewRangeMode; onRangeMode: (mode: CrewRangeMode) => void }) {
+  // Punch list #355 (v2.7309): 16 px and 40 px tall on a phone, so an iPhone neither zooms the page nor misses it.
+  const phone = useNarrowViewport640()
   return (
     <span data-crew-range style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
       <select
@@ -71,14 +74,15 @@ function RangeMenu({ mode, onRangeMode }: { mode: CrewRangeMode; onRangeMode: (m
           appearance: 'none',
           WebkitAppearance: 'none',
           font: 'inherit',
-          fontSize: '0.78rem',
+          fontSize: phone ? '1rem' : '0.78rem',
           fontWeight: 600,
           lineHeight: 1.3,
+          minHeight: phone ? 40 : undefined,
           color: 'var(--text-700)',
           background: 'var(--bg-subtle)',
           border: '1px solid var(--border)',
           borderRadius: 6,
-          padding: '0.15rem 1.25rem 0.15rem 0.5rem',
+          padding: phone ? '0.3rem 1.5rem 0.3rem 0.6rem' : '0.15rem 1.25rem 0.15rem 0.5rem',
           cursor: 'pointer',
           maxWidth: '100%',
         }}
