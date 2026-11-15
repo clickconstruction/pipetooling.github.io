@@ -1,4 +1,4 @@
-import type { OverheadPartsDetailLine } from './overheadOfficePartsReads'
+import type { OverheadPartsDetailLine } from './overheadPartsDetailLine'
 
 /**
  * Four-bucket accounting view used in the Field Total ($) / Hours modal's
