@@ -5,7 +5,7 @@
  * CSV press hands a file to the download.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LabelsPrintModal from './LabelsPrintModal'
 import type { Container, ContainerLine } from '../../lib/materials/onSite'
@@ -46,12 +46,15 @@ describe('LabelsPrintModal', () => {
     fireEvent.click(screen.getByTestId('labels-output-tape'))
     const strips = screen.getAllByTestId('labels-tape')
     expect(strips).toHaveLength(2)
-    expect(strips[0]!.style.width).toBe('72mm')
+    // A1 and B3 are two characters: the strip is cut to the address's first line, 41 mm where it was 72
+    expect(strips[0]!.style.width).toBe('41mm')
     expect(strips[0]!.style.height).toBe('24mm')
-    expect(strips[1]!.textContent).toContain('PRTS.CO/B/4F2A-9C18')
-    expect(strips[1]!.textContent).toContain('Scan for what is inside')
+    // the address on two lines, the code on the second, and no line of words under it (Taunya's ask of 2026-11-15)
+    expect(within(strips[1]!).getAllByTestId('labels-tape-address-line').map((el) => el.textContent)).toEqual(['PRTS.CO/B/', '4F2A-9C18'])
+    expect(strips[1]!.textContent).toBe('B3PRTS.CO/B/4F2A-9C18')
+    expect(document.body.textContent).not.toContain('Scan for what is inside')
     expect(screen.getByTestId('labels-print').textContent).toBe('Print 2 tape labels')
-    expect((document.head.textContent ?? '') + (document.body.textContent ?? '')).toContain('size: 72mm 24mm')
+    expect((document.head.textContent ?? '') + (document.body.textContent ?? '')).toContain('size: 41mm 24mm')
     fireEvent.click(screen.getByRole('button', { name: '18 mm' }))
     expect(screen.getAllByTestId('labels-tape')[0]!.style.height).toBe('18mm')
     expect(localStorage.getItem('pt.labels.format')).toBe('tape')

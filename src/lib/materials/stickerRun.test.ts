@@ -133,8 +133,9 @@ describe('what one sticker prints', () => {
       stencil: '0147',
       address: 'PRTS.CO/B/4F2A-9C18',
       value: 'HTTPS://PRTS.CO/B/4F2A9C18',
-      words: 'Scan for what is inside',
     })
+    // no line of words on a sticker (Taunya's ask of 2026-11-15); the test strip keeps its own
+    expect(stickerStrip({ id: 's-147', number: 147, code: '4F2A9C18' }).words).toBeUndefined()
   })
 
   it('the test strip mints nothing and its code lands on Scan a label', () => {

@@ -9,7 +9,7 @@
  */
 import { stickerNumberWords, stickerRangeWords } from './stickers'
 import { stickerAddressWords, stickerUrl, type StickerStrip } from './stickerRun'
-import { clampTapeCopies, TAPE_WORDS } from './tapeLabel'
+import { clampTapeCopies } from './tapeLabel'
 
 /** The fold's summary. */
 export const STICKER_PREVIEW_TITLE = 'What the stickers will look like'
@@ -40,7 +40,7 @@ export const STICKER_SAMPLE_CODE = '00000000'
 
 /** One strip of the preview: the number as it will print, the QR and the address from the sample code. */
 export function previewStrip(number: number): StickerStrip {
-  return { id: `preview-${stickerNumberWords(number)}`, stencil: stickerNumberWords(number), address: stickerAddressWords(STICKER_SAMPLE_CODE), value: stickerUrl(STICKER_SAMPLE_CODE), words: TAPE_WORDS }
+  return { id: `preview-${stickerNumberWords(number)}`, stencil: stickerNumberWords(number), address: stickerAddressWords(STICKER_SAMPLE_CODE), value: stickerUrl(STICKER_SAMPLE_CODE) }
 }
 
 /** The run's numbers from where the last run ended and how many: 0003 to 0202 after a last of 2; 0001 on for the first run. */

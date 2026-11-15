@@ -31,7 +31,11 @@ import {
   byHandDayOffered,
   byHandDayPicks,
   byHandFiling,
+  byHandOthers,
+  byHandOthersHeading,
+  byHandOutcome,
   byHandProblem,
+  byHandRecordLabel,
   type BillsSentByHandDraft,
   type BillsSentChip,
   type BillsSentGap,
@@ -294,6 +298,9 @@ const gapRow: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,
 const fieldLabel: CSSProperties = { display: 'grid', gap: '0.15rem', fontSize: '0.75rem', color: 'var(--text-700)', minWidth: 0 }
 const field: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0, boxSizing: 'border-box', width: '100%' }
 
+/** A bill a press of several did not record, with the reason the database or the signal gave. */
+type ByHandFailure = { billId: string; why: string }
+
 /** A day one press away under the form's date; the pressed one is the day the form holds. */
 function dayPick(picked: boolean, phone: boolean): CSSProperties {
   return {
@@ -315,28 +322,66 @@ function dayPick(picked: boolean, phone: boolean): CSSProperties {
  * made by hand; the list reads again and the bill moves from the strip to its day. The day opens on the day the bill
  * was made, with **Today** one press away (punch list #340, R1): a bill in the strip may be weeks old, and a record
  * cannot be changed once saved.
+ *
+ * R2: the person's other bills with no send on record are listed to tick. The button counts what it will record,
+ * each bill gets its own record, and the press keeps going past a bill that is refused: the rest save, and the
+ * refused bill stays on the strip with its reason (`onRan`).
  */
-function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; waysCtl: BillHandWaysCtl; onSaved: () => void; onClose: () => void }) {
+function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: BillsSentGap; others: BillsSentGap[]; waysCtl: BillHandWaysCtl; onSaved: () => void; onRan: (ran: string[], failed: ByHandFailure[]) => void; onClose: () => void }) {
   const phone = useIsMobile()
   const { showToast } = useToastContext()
   const today = todayYmdInAppTz()
   const [draft, setDraft] = useState<BillsSentByHandDraft>(() => ({ how: '', toWhom: gap.payer, wentOnYmd: byHandDayOffered(gap.billedYmd, today), note: '' }))
   const [saving, setSaving] = useState(false)
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set())
   const ways = waysCtl.ways
   const problem = byHandProblem(draft, today, ways)
+  // A bill recorded since it was ticked has left the strip, and its tick with it.
+  const also = others.filter((g) => ticked.has(g.billId))
   const save = async () => {
     if (problem || saving) return
     setSaving(true)
     try {
-      await recordBillByHand(byHandFiling(gap, draft, ways))
-      showToast('Recorded. The bill is on the list on the day it went.', 'success')
-      onSaved()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'The record was not saved.'), 'error')
+      if (also.length === 0) {
+        try {
+          await recordBillByHand(byHandFiling(gap, draft, ways))
+          showToast('Recorded. The bill is on the list on the day it went.', 'success')
+          onRan([gap.billId], [])
+          onSaved()
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'The record was not saved.'), 'error')
+        }
+        return
+      }
+      // Each bill is its own record. A bill that is refused is named with its reason, and the rest still save.
+      const bills = [gap, ...also]
+      const failed: ByHandFailure[] = []
+      for (const bill of bills) {
+        try {
+          await recordBillByHand(byHandFiling(bill, draft, ways))
+        } catch (e) {
+          failed.push({ billId: bill.billId, why: formatErrorMessage(e, 'The record was not saved.') })
+        }
+      }
+      const done = bills.length - failed.length
+      const outcome = byHandOutcome(done, failed.length)
+      showToast(outcome.line, outcome.tone)
+      onRan(
+        bills.map((b) => b.billId),
+        failed,
+      )
+      if (done > 0) onSaved()
     } finally {
       setSaving(false)
     }
   }
+  const tick = (billId: string, on: boolean) =>
+    setTicked((was) => {
+      const next = new Set(was)
+      if (on) next.add(billId)
+      else next.delete(billId)
+      return next
+    })
   return (
     <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <BillHandWayPicker ctl={waysCtl} value={draft.how} onPick={(key) => setDraft((d) => ({ ...d, how: key }))} />
@@ -361,6 +406,26 @@ function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; way
         A note, if you want one
         <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
       </label>
+      {others.length > 0 ? (
+        <div data-testid="bills-sent-by-hand-others" style={{ gridColumn: '1 / -1', display: 'grid', gap: '0.2rem', minWidth: 0, padding: '0.45rem 0.55rem', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-700)', maxHeight: '15rem', overflowY: 'auto' }}>
+          <b style={{ color: 'var(--text-strong)' }}>{byHandOthersHeading(others.length, gap.payer)}</b>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Tick the ones that went the same way, to the same person, on the same day.</span>
+          {others.map((g) => (
+            <label key={g.billId} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0 0.5rem', alignItems: 'center', minHeight: phone ? THUMB : undefined, cursor: 'pointer', overflowWrap: 'anywhere' }}>
+              <input type="checkbox" checked={ticked.has(g.billId)} onChange={(ev) => tick(g.billId, ev.target.checked)} style={{ width: phone ? 20 : undefined, height: phone ? 20 : undefined }} />
+              <span>
+                <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{g.jobWords || 'Bill'}</span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {' · '}
+                  {g.billedWords}
+                  {g.paid ? ' Paid since.' : ''}
+                </span>
+              </span>
+              <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{g.amount != null ? billsSentMoney(g.amount) : ''}</b>
+            </label>
+          ))}
+        </div>
+      ) : null}
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <button
           type="button"
@@ -368,7 +433,7 @@ function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; way
           disabled={!!problem || saving}
           style={{ font: 'inherit', fontSize: phone ? '0.875rem' : '0.8125rem', fontWeight: 700, padding: phone ? '0 0.9rem' : '0.35rem 0.8rem', minHeight: phone ? THUMB : undefined, borderRadius: phone ? 8 : 6, border: '1px solid transparent', cursor: problem || saving ? 'default' : 'pointer', background: problem || saving ? DEAD_PRESS_FILL : '#2563eb', color: problem || saving ? DEAD_PRESS_TEXT : '#fff' }}
         >
-          {saving ? 'Saving…' : 'Record how it went'}
+          {saving ? 'Saving…' : byHandRecordLabel(1 + also.length)}
         </button>
         <button type="button" onClick={onClose} style={phone ? phoneButton : press}>
           Cancel
@@ -379,7 +444,7 @@ function ByHandForm({ gap, waysCtl, onSaved, onClose }: { gap: BillsSentGap; way
   )
 }
 
-function GapRow({ gap, waysCtl, onSaved }: { gap: BillsSentGap; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
+function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentGap; others: BillsSentGap[]; why: string | undefined; waysCtl: BillHandWaysCtl; onSaved: () => void; onRan: (ran: string[], failed: ByHandFailure[]) => void }) {
   const phone = useIsMobile()
   const [saying, setSaying] = useState(false)
   return (
@@ -411,7 +476,12 @@ function GapRow({ gap, waysCtl, onSaved }: { gap: BillsSentGap; waysCtl: BillHan
           </button>
         )}
       </div>
-      {saying ? <ByHandForm gap={gap} waysCtl={waysCtl} onSaved={onSaved} onClose={() => setSaying(false)} /> : null}
+      {why ? (
+        <div data-testid="bills-sent-not-recorded" style={{ gridColumn: '1 / -1', color: 'var(--text-red-700)', fontWeight: 600 }}>
+          {why}
+        </div>
+      ) : null}
+      {saying ? <ByHandForm gap={gap} others={others} waysCtl={waysCtl} onSaved={onSaved} onRan={onRan} onClose={() => setSaying(false)} /> : null}
     </div>
   )
 }
@@ -420,18 +490,38 @@ function GapRow({ gap, waysCtl, onSaved }: { gap: BillsSentGap; waysCtl: BillHan
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
+function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; every: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
+  // The bills a press of several did not record, each with its reason, until a later press records them.
+  const [notRecorded, setNotRecorded] = useState<Readonly<Record<string, string>>>({})
+  const onRan = (ran: string[], failed: ByHandFailure[]) => {
+    setNotRecorded((was) => {
+      const next = { ...was }
+      for (const id of ran) delete next[id]
+      for (const f of failed) next[f.billId] = f.why
+      return next
+    })
+    // A bill that was not recorded is shown, wherever on the strip it sat.
+    if (failed.length > 0) {
+      setAll(true)
+      if (failed.some((f) => paid.some((g) => g.billId === f.billId))) setShowPaid(true)
+    }
+  }
   if (open.length === 0 && paid.length === 0) return null
+  const stayed = [...open, ...paid].filter((g) => notRecorded[g.billId]).length
+  const row = (g: BillsSentGap) => <GapRow key={g.billId} gap={g} others={byHandOthers(g, every)} why={notRecorded[g.billId]} waysCtl={waysCtl} onSaved={onSaved} onRan={onRan} />
   const shown = all || expanded ? open : open.slice(0, GAPS_SHOWN)
   return (
     <div style={gapBox} data-testid="bills-sent-gaps">
       <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
       {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
-      {shown.map((g) => (
-        <GapRow key={g.billId} gap={g} waysCtl={waysCtl} onSaved={onSaved} />
-      ))}
+      {stayed > 0 ? (
+        <div data-testid="bills-sent-not-recorded-head" style={{ marginTop: '0.3rem', color: 'var(--text-red-700)', fontWeight: 600 }}>
+          {byHandOutcome(0, stayed).head}
+        </div>
+      ) : null}
+      {shown.map(row)}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
           <button type="button" style={press} onClick={() => setAll(true)}>
@@ -447,7 +537,7 @@ function GapStrip({ open, paid, expanded, waysCtl, onSaved }: { open: BillsSentG
           </button>
         </div>
       ) : null}
-      {showPaid ? paid.map((g) => <GapRow key={g.billId} gap={g} waysCtl={waysCtl} onSaved={onSaved} />) : null}
+      {showPaid ? paid.map(row) : null}
     </div>
   )
 }
@@ -562,6 +652,8 @@ export function BillsSentLedger() {
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])
   const missed = useMemo(() => lines.filter((l) => l.stillMissed).length, [lines])
   const gaps = useMemo(() => (data ? billsSentGaps(data, lines) : { open: [], paid: [] }), [data, lines])
+  // Every bill with no send, whatever the search leaves: the form offers a person's other bills from all of them.
+  const everyGap = useMemo(() => [...gaps.open, ...gaps.paid], [gaps])
   const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
   const stripVisible = (route === 'all' || route === 'gap') && gapsShown.open.length + gapsShown.paid.length > 0
@@ -669,7 +761,7 @@ export function BillsSentLedger() {
           </button>
         ) : null
       ) : stripVisible ? (
-        <GapStrip open={gapsShown.open} paid={gapsShown.paid} expanded={route === 'gap'} waysCtl={waysCtl} onSaved={retry} />
+        <GapStrip open={gapsShown.open} paid={gapsShown.paid} every={everyGap} expanded={route === 'gap'} waysCtl={waysCtl} onSaved={retry} />
       ) : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
