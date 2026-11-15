@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -13,6 +13,8 @@ import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkM
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
+import { useLienPaneHeads } from './useLienPaneHeads'
+import { lienAffidavitPaneSections, lienAffidavitWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
@@ -22,7 +24,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
-import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
+import { holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
 import { lienStandInSourceOf } from '../../lib/jobs/lienBillMonths'
 import { LIEN_MONTH_FLAG_DOOR_WORDS, LIEN_MONTH_CHECK_CANCEL_WORDS, LIEN_MONTH_CHECK_CHANGE_WORDS, LIEN_MONTH_CHECK_NOTE_HINT, LIEN_MONTH_CHECK_SAVES_WORDS, LIEN_MONTH_SET_LAST_DAY_WORDS, lienMonthAskWords, lienMonthCheckProblem, lienMonthCheckState, lienMonthCheckedRowWords, lienMonthCheckedWords, lienMonthConfirmWords, lienMonthName, lienMonthQuestion, lienMonthYesWords, parseLienMonthCheck } from '../../lib/jobs/lienMonthCheck'
 import { saveLienMonthCheck } from '../../lib/jobs/lienMonthCheckIo'
@@ -31,6 +33,8 @@ import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, redrawLien
 import { lienAffidavitToldWords } from '../../lib/jobs/lienAffidavitApprovalTell'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { lienLeaderPressWords } from '../../lib/jobs/lienLeaderPress'
+import { lienFooter } from '../../lib/jobs/lienFooterMenu'
+import { LienFootMenu } from './LienFootMenu'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSwornMonths } from '../../lib/jobs/lienNoticeDraft'
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
@@ -71,7 +75,8 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
   whiteSpace: 'nowrap',
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
-const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+// The one small caption left (v2.7320): the months worked with no notice, a row group inside the months section. The section titles are the pane's grey heads (`useLienPaneHeads`).
+const rowGroupHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
 export function affidavitDeadlineWords(e: LienAffidavitEntry): string {
   if (e.daysLeft < 0) return 'window closed'
@@ -146,7 +151,6 @@ export default function LienDeskAffidavitPane({
   const { showToast } = useToastContext()
   const leader = isLienLeader(authRole)
   const office = isLienOffice(authRole)
-  const canWord = canSendLienOnWord(authRole)
   const [busy, setBusy] = useState(false)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
@@ -233,6 +237,8 @@ export default function LienDeskAffidavitPane({
   // The stand-in month (v2.7224) and where it stands (v2.7280): a question with two doors, or the quiet line once a person confirmed it. Never a hold.
   const monthState = lienMonthCheckState({ source: lienStandInSourceOf(entry.lastMonthFromCreation, entry.lastMonthFromBill), month: entry.lastMonth, check: parseLienMonthCheck(job) })
   const monthChecked = monthState.kind === 'checked' ? monthState.check : null
+  // The months the paper swears (v2.7302), for the months head: the same call the fields and the notice check make.
+  const swornMonths = useMemo(() => lienAffidavitSwornMonths({ isSub: entry.isSub, workDays: job ?? null, lastMonth: entry.lastMonth, todayYmd, filings: data.filingsByJob[entry.jobId] ?? [], monthsByHand: byHand?.months ?? null }), [entry.isSub, job, entry.lastMonth, todayYmd, data.filingsByJob, entry.jobId, byHand])
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
     [fields, issuer, job, entry.lastMonth, todayYmd],
@@ -355,11 +361,36 @@ export default function LienDeskAffidavitPane({
   const lastOwnerSend = ownerSends[ownerSends.length - 1]
   const gateFacts: LienGateRowFacts = { isSub: entry.isSub, ownerName, county: property.county, legalDescription: property.legalDescription, gcName: gc?.name, gcAddress: gc?.address, noticeSentWords: lastOwnerSend ? `sent ${formatYmdMonthDay(lastOwnerSend.sentOn)}` : '' }
 
+  // Which months the lien will cover (v2.3681), lifted out of the months section so its head can count the months worked with no notice (v2.7320); null when the pane draws no months.
+  const monthRows = entry.isSub && workMonths && workMonths.months.length ? (() => {
+    const rpcMonths = data.rows
+      .filter((r) => r.job_id === entry.jobId)
+      .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) }))
+    const rows = affidavitMonthRows(workMonths.months, buildLienMonthHistory(entry.jobId, data.items, rpcMonths))
+    return { rows, unsecured: rows.filter((r) => r.status === 'unsecured') }
+  })() : null
+  // The pane's stacked heads (v2.7320, the owner's ask of 2026-11-15): the notice pane's grey bars, one per section, where the boxes wore a tiny caption.
+  const paneRef = useRef<HTMLDivElement | null>(null)
+  const paneHeads = lienAffidavitPaneSections({
+    nextWords: timeline.next.words,
+    gates: entry.gates,
+    window: { lastMonth: entry.lastMonth, fromCreation: Boolean(entry.lastMonthFromCreation), fromBill: Boolean(entry.lastMonthFromBill) },
+    ownerCall,
+    bond,
+    months: monthRows ? { sworn: swornMonths, unsecured: monthRows.unsecured.length } : null,
+    claimWords: formatUsdNoCents(claimed.claim),
+    form,
+    signer: signerNameFor(job?.master_user_id ?? null),
+    monthLabel: workMonthLabel,
+  })
+  const heads = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile })
+
   // ---------- footer ----------
   let footer: React.ReactNode = null
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
   if (entry.pile === 'needs_property' || entry.pile === 'to_draft') {
     const blocked = !entry.ready
+    const foot = lienFooter({ role: authRole, paper: 'affidavit', leaderName, blocked, route: policy === 'send' && !promise ? 'run' : 'leader' })
     footer = wordOpen ? (
       <LienWordRecordRow
         note={wordNote}
@@ -380,17 +411,19 @@ export default function LienDeskAffidavitPane({
       <>
         {/* The last work month's own notice is still due (punch list #353, part 2): a line, not a gate. The owner and the attorney decide the paper. */}
         {noticeDue ? <div data-lien-affidavit-notice-due style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>{lienAffidavitNoticeDueLine(noticeDue, formatYmdMonthDay)}</div> : null}
-        {/* The line matches the press on screen (v2.7308): the leader's own okay, else where the paper goes and why. Each press names whose okay it is. */}
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {blocked ? `Blocked until every gate above is clear.` : leader ? press.approveLine : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between filing and their word.` : press.askLine} {forfeit}
+        {/* One press per footer (v2.7324): the leader's own okay with the notary line, or the office's ask with one line on his phone; his word waits behind He already okayed it ▾. The line says what the press on screen will do. */}
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-affidavit-foot-line>
+          {blocked ? `Blocked until every gate above is clear.` : leader ? foot.primary?.line : policy === 'send' && !promise ? `${gc?.name ?? 'This GC'} has a standing "send" rule — approved on submit.` : promise ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — ${press.name} decides between filing and their word.` : foot.primary?.line} {forfeit}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)} title={press.onWordTitle} data-lien-affidavit-on-word>{press.onWord}</button> : null}
+          {foot.menus.map((m) => (
+            <LienFootMenu key={m.key} menu={m} disabled={busy} style={btn('plain', busy)} onPick={(k) => { if (k === 'word') { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) } }} />
+          ))}
           {leader ? (
-            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={press.approveLine} data-lien-affidavit-approve>{press.approve}</button>
+            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)} title={foot.primary?.line} data-lien-affidavit-approve>{press.approve}</button>
           ) : (
-            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={press.askLine} data-lien-affidavit-ask>{press.ask}</button>
+            <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)} title={foot.primary?.line} data-lien-affidavit-ask>{press.ask}</button>
           )}
         </div>
       </>
@@ -454,13 +487,22 @@ export default function LienDeskAffidavitPane({
   return (
     <>
     {footerEl && footer ? createPortal(footer, footerEl) : null}
-    <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
+    <div
+      ref={paneRef}
+      data-lien-affidavit-pane
+      data-lien-pane-phone={isMobile ? 'yes' : undefined}
+      onScroll={heads.onScroll}
+      // The pane is the scrolling box its heads stick in (v2.7320), the notice pane's shape: its gutter is the pane's padding, which the heads cancel to run across; a phone holds the one column to the pane's width.
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0, ...(isMobile ? { gridTemplateColumns: 'minmax(0, 1fr)' } : null) }}
+    >
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? '0.6rem' : '0.9rem' }}>
         <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{entry.isSub ? `· GC ${gc?.name ?? ''}` : '· contracted with the owner'} {job?.job_address ? `· ${job.job_address}` : ''}</span>
         {/* Steps · Windows on the title line (v2.7317): the owner's ask, out of the timeline box's corner. */}
         {!isMobile ? <span style={{ marginLeft: 'auto', alignSelf: 'center' }}><LienTimelineViewSwitch /></span> : null}
       </div>
+      {heads.head('path')}
+      <div data-lien-pane-body="path">
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
         <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
         {stopOpen != null ? (
@@ -483,8 +525,10 @@ export default function LienDeskAffidavitPane({
           />
         ) : null}
       </div>
-      <div style={boxStyle}>
-        <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? (entry.lastMonthFromBill ? 'the month of the bill, since the job has no clock hours' : 'the month the job was created — it has no clock hours') : 'the last month worked'})</div>
+      </div>
+      {heads.head('gates')}
+      <div data-lien-pane-body="gates" data-lien-affidavit-gates style={{ display: 'grid', gap: '0.35rem' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-affidavit-window>{lienAffidavitWindowWords({ lastMonth: entry.lastMonth, fromCreation: Boolean(entry.lastMonthFromCreation), fromBill: Boolean(entry.lastMonthFromBill) }, workMonthLabel)}</div>
         {/* Every row is a press (v2.7313, `lienGateRow`): it opens the fact's own home at the right line. A failed gate keeps its named door; a passed one shows its fact and ends in Change ›. */}
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           {entry.gates.map((g) => {
@@ -572,8 +616,9 @@ export default function LienDeskAffidavitPane({
         const tone = pile === 'A' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : pile === 'B' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-red-tint)', 'var(--text-red-600)')
         const hold = ownerCall?.originalContractCompletedOn ? reservationHoldEndsOn(ownerCall.originalContractCompletedOn) : ''
         return (
-          <div style={boxStyle} data-lien-affidavit-owner-answers data-pile={pile ?? 'none'}>
-            <div style={boxHead}>The owner's answers</div>
+          <>
+          {heads.head('owner')}
+          <div data-lien-pane-body="owner" data-lien-affidavit-owner-answers data-pile={pile ?? 'none'} style={{ display: 'grid', gap: '0.35rem' }}>
             {ownerCall ? (
               <div style={{ fontSize: '0.8125rem', display: 'grid', gap: '0.25rem' }}>
                 <div>{ownerCallWords(ownerCall, formatYmdMonthDay, formatUsdNoCents)}{ownerCall.originalContractCompletedOn ? ` · their contract completed ${formatYmdMonthDay(ownerCall.originalContractCompletedOn)}${hold ? ` · the 10% hold (§ 53.101) ends ${formatYmdMonthDay(hold)}` : ''}` : ' · their contract still open'}{ownerCall.note ? ` · “${ownerCall.note}”` : ''}</div>
@@ -594,23 +639,19 @@ export default function LienDeskAffidavitPane({
               {onOpenLienContract ? <button type="button" onClick={() => onOpenLienContract(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{bond === 'unknown' ? 'Check the project ›' : 'Change ›'}</button> : null}
             </div>
           </div>
+          </>
         )
       })()}
       {/* Which months the lien will cover (v2.3681): a month whose notice window closed with nothing sent is worked but unsecured — named here, left off the lien, never re-dated. */}
-      {entry.isSub && workMonths && workMonths.months.length ? (() => {
-        const rpcMonths = data.rows
-          .filter((r) => r.job_id === entry.jobId)
-          .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) }))
-        const rows = affidavitMonthRows(workMonths.months, buildLienMonthHistory(entry.jobId, data.items, rpcMonths))
+      {monthRows ? (() => {
+        const { rows, unsecured } = monthRows
         const tone = (s: (typeof rows)[number]['status']) => (s === 'lien' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : s === 'open' ? chip('var(--bg-blue-tint)', 'var(--text-blue-800)') : chip('var(--bg-amber-tint)', 'var(--text-amber-800)'))
         const word = (s: (typeof rows)[number]['status']) => (s === 'lien' ? 'on the lien' : s === 'open' ? 'window open' : 'unsecured')
-        const unsecured = rows.filter((r) => r.status === 'unsecured')
         return (
-          <div style={boxStyle} data-lien-affidavit-months>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.2rem 0.6rem' }}>
-              <strong style={{ fontSize: '0.9rem' }}>Months the affidavit claims</strong>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The lien covers the months a § 53.056 notice went out for. It must state each month the work was performed.</span>
-            </div>
+          <>
+          {heads.head('months')}
+          <div data-lien-pane-body="months" data-lien-affidavit-months style={{ display: 'grid', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The lien covers the months a § 53.056 notice went out for. It must state each month the work was performed.</span>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.3rem 0.8rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
               {rows
                 .filter((r) => r.status !== 'unsecured')
@@ -625,7 +666,7 @@ export default function LienDeskAffidavitPane({
             </div>
             {unsecured.length ? (
               <div style={{ display: 'grid', gap: '0.3rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-                <span style={boxHead}>Worked, not noticed</span>
+                <span style={rowGroupHead}>Worked, not noticed</span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.3rem 0.8rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
                   {unsecured.map((r) => (
                     <div key={r.key} style={{ display: 'contents' }}>
@@ -660,8 +701,11 @@ export default function LienDeskAffidavitPane({
               ) : null}
             </div>
           </div>
+          </>
         )
       })() : null}
+      {heads.head('paper')}
+      <div data-lien-pane-body="paper" style={{ display: 'grid', gap: '0.7rem', paddingBottom: '0.9rem' }}>
       {form === 'long' && item ? (
         <div data-lien-affidavit-form="long" style={{ ...boxStyle, fontSize: '0.8125rem' }}>
           {redrawOpen ? (
@@ -682,6 +726,7 @@ export default function LienDeskAffidavitPane({
       ) : null}
       <div data-theme="light" data-lien-affidavit-paper={form} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
+      </div>
       </div>
     </div>
     </>

@@ -6995,6 +6995,18 @@ button.developmentCountChip:focus-visible {
   mask-image: none;
 }
 
+/* The Lien desk's scrolled strip (v2.7318): every chip is a press, so it underlines on hover as a link does. The chip's
+   own look (fill, colour, size) rides inline from `chip()`. */
+.lienStripChip {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lienStripChip:hover,
+.lienStripChip:focus-visible {
+  text-decoration: underline;
+}
+
 /* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */
 .lienGateRow { display: flex; gap: 0.5rem; align-items: baseline; width: 100%; border: none; background: none; padding: 0.1rem 0; margin: 0; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
 .lienGateRow:disabled { cursor: default; }

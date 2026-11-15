@@ -14,8 +14,8 @@ export const LIEN_PANE_HEAD_H = LIEN_PILE_HEAD_H
 
 export type LienPaneSectionKey = 'path' | 'gates' | 'houses' | 'months' | 'envelope'
 
-export type LienPaneSection = {
-  key: LienPaneSectionKey
+export type LienPaneSection<K extends string = LienPaneSectionKey> = {
+  key: K
   /** The uppercase label at the left. */
   label: string
   /** The bold fact at the right. */
