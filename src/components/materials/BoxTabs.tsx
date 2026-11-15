@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { boxLineFromParts } from '../../lib/materials/boxLine'
 import EditBoxForm from './EditBoxForm'
 import type { SiteBox } from '../../lib/materials/boxName'
 import OfflineRetryPanel from '../OfflineRetryPanel'
@@ -130,7 +131,7 @@ export default function BoxTabs({ container, containers, siteBoxes, places, line
       </div>
       {tab === 'cage' ? (
         <div role="tabpanel" aria-label="Cage" style={{ display: 'grid', gap: '1rem' }}>
-          <EditBoxForm container={container} containers={containers} siteBoxes={siteBoxes} places={places} byName={byName} byUserId={byUserId} touch={touch} onSaved={onSaved} />
+          <EditBoxForm container={container} containers={containers} siteBoxes={siteBoxes} appLine={boxLineFromParts(mine)} places={places} byName={byName} byUserId={byUserId} touch={touch} onSaved={onSaved} />
           <section style={{ display: 'grid', gap: '0.3rem' }}>
             <h3 style={head}>Its code</h3>
             <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, fontSize: '1.05rem' }} data-testid="box-tabs-code">{boxCodeWords(container.id)}</div>

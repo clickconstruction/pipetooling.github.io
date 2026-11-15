@@ -84,6 +84,7 @@ export function JobWindowWho({
   onText,
   onEmail,
   links,
+  emailRow = true,
 }: {
   name: string
   phone: string
@@ -98,6 +99,8 @@ export function JobWindowWho({
   onEmail?: () => void
   /** Customer Files and Customer Photos: the link, or the add-link box for the roles that may; absent, not drawn. */
   links: Array<{ key: 'files' | 'photos'; label: string; url: string; onAdd?: () => void }>
+  /** False leaves the email row out: the crew's window for a helper or a sub (punch list #355, the crew half). */
+  emailRow?: boolean
 }) {
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
@@ -148,7 +151,7 @@ export function JobWindowWho({
           <span style={{ ...wide, color: 'var(--text-faint)', borderStyle: 'dashed', cursor: 'default' }}>📞 no phone</span>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={emailRow ? { display: 'flex', gap: 6 } : { display: 'none' }}>
         {email ? (
           <>
             <button type="button" onClick={onEmail ?? (() => void copy('email'))} aria-label={onEmail ? `Email ${email}` : `Copy ${email}`} style={wide}>

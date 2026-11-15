@@ -110,7 +110,7 @@ export function matchList(boxes: ReadonlyArray<MatchBox>, query: string): MatchB
         const label = fold(b.container.label).replace(/\s+/g, '')
         if (label.startsWith(stencil)) return true
         if (/^\d/.test(stencil) && label.replace(/^[a-z]+/, '').startsWith(stencil)) return true
-        const hay = [b.place, b.container.where, b.jobLabel, ...b.partNames].map(fold)
+        const hay = [b.place, b.container.where, b.container.said ?? '', b.jobLabel, ...b.partNames].map(fold)
         return hay.some((h) => h.includes(q))
       })
     : [...boxes]

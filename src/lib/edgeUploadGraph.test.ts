@@ -60,11 +60,14 @@ describe('edgeUpload (what a deploy uploads)', () => {
     const uploading = slugs.filter((slug) => edgeUpload(`supabase/functions/${slug}/index.ts`).via('src/types/database.ts') !== null)
     expect(uploading).toEqual([])
     // dev-mcp reached the slim file through nine type imports until punch list #359 inlined their aliases: it now uploads the
-    // core (every enum and helper, 7 KB) and no slim file; the portals still reach the slim file through the GC kernels.
+    // core (every enum and helper, 7 KB) and no slim file.
     const seat = edgeUpload('supabase/functions/dev-mcp/index.ts')
     expect(seat.via('supabase/functions/_shared/gcKernels/types/database.ts')).toBeNull()
     expect(seat.via('supabase/functions/_shared/gcKernels/types/databaseCore.ts')).not.toBeNull()
-    expect(edgeUpload('supabase/functions/customer-portal/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
+    // The portals dropped it too once their four kernels wrote each row as one alias (v2.7294); the Bridge's email still
+    // takes its client type from it and runs the overhead reads, so it keeps it.
+    expect(edgeUpload('supabase/functions/customer-portal/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).toBeNull()
+    expect(edgeUpload('supabase/functions/bridge-weekly-sheet/index.ts').via('supabase/functions/_shared/gcKernels/types/database.ts')).not.toBeNull()
   })
 
   it('dev-mcp and quo-send upload no portal translations: the language and the Spanish switch sit in portalLang.ts (v2.7289, punch list #359)', () => {

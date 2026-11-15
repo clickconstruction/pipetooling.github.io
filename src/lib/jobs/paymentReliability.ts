@@ -111,6 +111,8 @@ export function buildReliabilityLine(
    * calendar's doing: a bill sent early in the month waits longer than one sent late.
    */
   calendarWords?: string | null,
+  /** Those words are terms in days after the bill (punch list #341, PR 5), not a cutoff and a pay day: the hover says so. */
+  daysAfter?: boolean,
 ): ReliabilityLine {
   const spread = paySpeedSpread(receipts)
   const paysIn = calendarWords?.trim() || formatPaysIn(spread)
@@ -118,7 +120,7 @@ export function buildReliabilityLine(
   const slip = record ? formatUsualSlip(record) : null
   const parts = [paysIn, kept, slip, bounced ?? null].filter((x): x is string => x != null)
   const titleParts: string[] = []
-  if (calendarWords?.trim()) titleParts.push('They pay on a calendar, so days from bill to money swing with the day of the month a bill went in.')
+  if (calendarWords?.trim()) titleParts.push(daysAfter ? 'Their contract names the days from bill to money, so the row reads the due day, not how long they have taken.' : 'They pay on a calendar, so days from bill to money swing with the day of the month a bill went in.')
   else if (spread) titleParts.push(`Days from bill to money over their last ${spread.samples} measurable payments (last 12 months): typically ${spread.loDays}–${spread.hiDays}, median ${spread.medianDays}.`)
   if (record && record.decided > 0) titleParts.push(`Promises: ${record.kept} kept, ${record.late} late, ${record.broken} broken${record.open ? `, ${record.open} open` : ''}${record.usualSlipDays != null && record.usualSlipDays >= 1 ? ` — money usually lands ~${Math.round(record.usualSlipDays)} days after the date they give` : ''}.`)
   else if (record && record.open > 0) titleParts.push(`${record.open} promise${record.open === 1 ? '' : 's'} open, none decided yet.`)

@@ -2,10 +2,12 @@
  * Materials on site (punch list #209): a box as a door in Go anywhere. Type a stencil ("A1"), a part that
  * is in it ("3/4 copper") or its place ("level 2"), and the header's box lists the box with its job and
  * opens it: the office lands on the job's materials page, with the phone screen a second press away; a
- * crew lands on the box itself. Pure: the screens hand in what the store holds.
+ * crew lands on the box itself. Since punch list #351 a box also answers to what a person said is in it
+ * ("toilets"), and its row reads that line first. Pure: the screens hand in what the store holds.
  */
 import type { Door } from '../search/doors'
 import { boxDeskLink } from './boxDeskLink'
+import { boxLineShort } from './boxLine'
 import { containerWords, linesOf, placeName, type Container, type ContainerLine, type Place } from './onSite'
 
 export type BoxSearchJob = { id: string; label: string }
@@ -50,6 +52,9 @@ export function boxDoors(input: { jobs: ReadonlyArray<BoxSearchJob>; containers:
       const words = new Set<string>([c.label.toLowerCase(), c.kind, job.toLowerCase()])
       if (place) words.add(place.toLowerCase())
       if (c.where) words.add(c.where.toLowerCase())
+      if (c.said) words.add(c.said.toLowerCase())
+      // The short line, with no count: a count beside a job's number reads as one figure.
+      const line = c.kind === 'unsorted' ? '' : boxLineShort(c.said, parts)
       for (const l of parts) {
         words.add(l.partName.toLowerCase())
         if (l.manufacturer) words.add(l.manufacturer.toLowerCase())
@@ -59,7 +64,7 @@ export function boxDoors(input: { jobs: ReadonlyArray<BoxSearchJob>; containers:
         id: `box:${c.id}`,
         kind: 'box',
         label: containerWords(c),
-        where: [job, place, c.where].filter(Boolean).join(' · '),
+        where: [line, job, place, c.where].filter(Boolean).join(' · '),
         words: [...words],
         to: input.forField ? phone : boxDeskLink(c.jobId),
         gate: () => true,

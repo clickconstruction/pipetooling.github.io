@@ -106,6 +106,8 @@
   .group-head .btn + .sum { margin-left: 0; }
   .sub-head { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; min-height: 28px; font-size: 0.82rem; font-weight: 700; color: var(--text); }
   .sub-head.red { color: var(--red); }
+  .sub-head.violet { color: var(--violet); }
+  .sub-head .btn + .sum { margin-left: 0; font-variant-numeric: tabular-nums; color: var(--muted); }
   .sub-head .hint { font-weight: 500; color: var(--faint); font-size: 0.8rem; }
   .sub-head .btn { margin-left: auto; }
   .band { margin: 18px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--red-bg); color: var(--red); font-weight: 700; display: flex; gap: 10px; align-items: baseline; }
@@ -251,8 +253,9 @@
   <section class="option on" id="opt-b">
     <div class="what"><b>B · One page, clearer rows.</b> The Board stays whole. The Board and the list scroll as one page, so the list gets the whole screen as you move down.
       <ul>
-        <li><b>Waiting on the leader</b> sits right under <b>Needs you now</b>, above Coming up. Each row says how long it has waited, and one press reminds the leader of all of them.</li>
-        <li>Inside Needs you now, the papers that will not make their day come first, under the tile's own words. They are the Board's <b>!</b> chips. The rest are on track.</li>
+        <li>Needs you now reads in three parts. First come the papers that will not make their day, under the tile's own words. They are the Board's <b>!</b> chips.</li>
+        <li>Then <b>Waiting on the leader</b>, above On track. Each row says how long it has waited, and one press reminds the leader of all of them.</li>
+        <li>Then <b>On track</b>, largest first. Coming up follows.</li>
         <li>Every row starts with its bin's name, so the list and the Board use the same words. A paper that waits on a fact asks its one question, on the row and on its button.</li>
         <li>The head carries the day, so no row repeats it and no job name is cut off. Every row carries dollars. Every affidavit says where its notice stands.</li>
         <li>The Board's numbers are presses: the tile's red line, the waiting tile, and the same numbers on the pinned find box. Scroll down to see it pin, with <b>↑ The Board</b>.</li>
@@ -418,10 +421,10 @@
     const ok = now.filter((p) => !p.risk)
     const total = (list) => money(list.reduce((t, p) => t + amtOf(p), 0))
     const sub = (cls, words, hint, press) => `<div class="sub-head ${cls}">${words}${hint ? ` <span class="hint">${hint}</span>` : ''}${press || ''}</div>`
-    return `<div class="group-head red">Needs you now · ${now.length} <span class="hint red">due Mon Nov 16 · 1 day left</span><span class="sum">${total(now)}</span></div>
+    return `<div class="group-head red">Needs you now · ${now.length} <span class="hint red">due Mon Nov 16 · 1 day left · and 2 waiting on the leader</span><span class="sum">${total(now)}</span></div>
       ${sub('red', `Will not make tomorrow as they stand · ${risk.length}`, 'the Board’s ! chips · the longest road first')}${risk.map((p) => clearRow(p)).join('')}
+      ${sub('violet', 'Waiting on the leader · 2', 'will not make tomorrow as they stand', `<button class="btn plain small">Remind the leader of 2</button><span class="sum">${money(3480)}</span>`)}${of('wait').map((p) => clearRow(p)).join('')}
       ${sub('', `On track · ${ok.length}`, 'largest first', '<button class="btn plain small">Print the 10 affidavits</button>')}${ok.map((p) => clearRow(p)).join('')}
-      <div class="group-head violet">Waiting on the leader · 2 <span class="hint">will not make tomorrow as they stand</span><button class="btn plain small">Remind the leader of 2</button><span class="sum">${money(3480)}</span></div>${of('wait').map((p) => clearRow(p, { due: true })).join('')}
       <div class="group-head">Coming up · ${of('later').length} <span class="hint">due Tue Dec 15 · 30 days left</span><span class="sum">${money(10050)}</span></div>${of('later').map((p) => clearRow(p)).join('')}`
   }
   const gh = (key, label, n, total, hint) => `<div class="group-head" id="a-${key}">${label} · ${n}${hint ? ` <span class="hint">${hint}</span>` : ''}<span class="sum">${money(total)}</span></div>`

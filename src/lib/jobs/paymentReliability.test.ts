@@ -58,6 +58,10 @@ describe('buildReliabilityLine', () => {
     expect(line.paysIn).toBe('In by month end, paid the 10th')
     expect(line.text).toBe('In by month end, paid the 10th')
     expect(line.title).toBe('They pay on a calendar, so days from bill to money swing with the day of the month a bill went in.')
+    // Terms in days after the bill are not a calendar, and the hover does not call them one (punch list #341, PR 5).
+    const days = buildReliabilityLine([receipt(12), receipt(68)], null, null, 'Paid 45 days after the bill', true)
+    expect(days.paysIn).toBe('Paid 45 days after the bill')
+    expect(days.title).toBe('Their contract names the days from bill to money, so the row reads the due day, not how long they have taken.')
     // With no calendar the same payments read as the range, as before.
     expect(buildReliabilityLine([receipt(12), receipt(68)], null, null, null).paysIn).toBe('Pays in 12–68d')
   })

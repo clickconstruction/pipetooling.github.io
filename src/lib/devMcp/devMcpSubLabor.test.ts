@@ -4,6 +4,10 @@ import {
   DEFAULT_LABOR_RATE_KEY,
   LABOR_ASSIGNED_DELIMITER,
   SHEET_PAYMENT_REMOVE_RPC,
+  SHEET_PAY_METHODS,
+  SHEET_PAY_METHODS_WITH_REF,
+  SHEET_PAY_METHOD_LABEL,
+  SHEET_SENDING_RPC,
   SUB_LABOR_PAYMENT_VERBS,
   SUB_LABOR_VERBS,
   bankLinesLikeThisPay,
@@ -20,9 +24,13 @@ import {
   sheetItemRows,
   sheetJobCostCents,
   sheetOwedCents,
+  sheetPayHowWords,
+  sheetPayMethodFrom,
   sheetPaymentInsertRow,
   sheetPaymentMemo,
   sheetRateFor,
+  sheetSendingArgs,
+  sheetSentTo,
   subLaborAppliedWords,
   subLaborCommitment,
   subLaborDryRun,
@@ -42,7 +50,8 @@ import { CATALOG_RPCS } from '../../../supabase/functions/dev-mcp/catalog'
 import { LABOR_ASSIGNED_DELIMITER as APP_DELIMITER } from '../combinePeople'
 import { lineLaborCost } from '../peopleLaborJobItemLineCost'
 import { DEFAULT_LABOR_RATE_KEY as APP_RATE_KEY } from '../settings/jobsBillingValueLines'
-import { ALLOC, BANK, BENCH_ROW, DEV, GONE_ROW, JOB, MASTER_USER, MONEY, OTHER_JOB, PRIMARY_ROW, PRIMARY_USER, SHEET, SHEET_PAY, SUB_ROW, SUB_USER, TODAY, TWIN_USER, bank, bankLine, fakeRest, job, masterUser, otherJob, sheet, sheetLine, sheetPay, standingWorld, subRow, subUser, worldWithSheet } from './subLaborFixture'
+import { SUB_PAY_METHODS, subPayMethodLabel, subPayMethodRefField } from '../subWorkOrders/subPaymentWindow'
+import { ALLOC, BANK, BENCH_ROW, DEV, GONE_ROW, JOB, MASTER_ROW, MASTER_USER, MONEY, OTHER_JOB, PRIMARY_ROW, PRIMARY_USER, SHEET, SHEET_PAY, SUB_ROW, SUB_USER, TODAY, TWIN_USER, bank, bankLine, fakeRest, job, masterRow, masterUser, otherJob, sheet, sheetLine, sheetPay, standingWorld, subRow, subUser, worldWithSheet } from './subLaborFixture'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -119,7 +128,7 @@ const payReply = async (payment: Record<string, unknown>, data: Data = worldWith
   if (!dry.ok) throw new Error(dry.refused)
   return dry.reply
 }
-const PAID = { sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', method: 'ACH', reference: 'ZZ-1001' }
+const PAID = { sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', method: 'Mercury', reference: 'ZZ-1001' }
 /** The job as it stands once the bank row that paid the sub was allocated to it as cost. */
 const allocated = (over: Data = {}): Data => worldWithSheet({ mercury_transaction_job_allocations: [bankLine()], ...over })
 
@@ -139,7 +148,7 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.89.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.90.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
     expect(README).toContain('one hundred and nine `plan_` / `apply_` / `revert_` verbs')
@@ -159,6 +168,13 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(Object.keys(CATALOG_RPCS[SHEET_PAYMENT_REMOVE_RPC]![0]!.args)).toEqual(['p_payment_id', 'p_reason?'])
     expect(LEDGER).toContain(`supabase.rpc('${SHEET_PAYMENT_REMOVE_RPC}' as never, { p_payment_id: paymentId, p_reason: reason } as never)`)
     expect(SERVER).toContain('rpc/${SHEET_PAYMENT_REMOVE_RPC}`, { p_payment_id: p.payment_id, p_reason: p.reason }')
+    // The record's door is the Record payment window's: the same function, called with the arguments the catalog has.
+    expect(SHEET_SENDING_RPC).toBe('record_sub_sending')
+    expect(LEDGER).toContain(`supabase.rpc('${SHEET_SENDING_RPC}' as never, {`)
+    expect(SERVER).toContain('restPost(session, `rpc/${SHEET_SENDING_RPC}`, sheetSendingArgs(p, world))')
+    const args = sheetSendingArgs(shapedPay(PAID) as SheetPaymentRecord, { sentTo: null })
+    expect(Object.keys(args).sort()).toEqual(Object.keys(CATALOG_RPCS[SHEET_SENDING_RPC]![0]!.args).map((k) => k.replace('?', '')).sort())
+    for (const k of Object.keys(args)) expect(LEDGER).toContain(`      ${k}: `)
     expect(LABOR_ASSIGNED_DELIMITER).toBe(APP_DELIMITER)
     expect(DEFAULT_LABOR_RATE_KEY).toBe(APP_RATE_KEY)
   })
@@ -503,7 +519,7 @@ describe('devMcpSubLabor — the sheet’s math is the screens’', () => {
 
 describe('devMcpSubLabor — a payment on a sheet', () => {
   it('shapes a record and a remove, and sends a backcharge to the app', () => {
-    expect(shapedPay({ ...PAID, mercury_transaction_id: BANK.toUpperCase(), hidden_from_sub: true })).toEqual({ action: 'record', sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', method: 'ACH', reference: 'ZZ-1001', mercury_transaction_id: BANK, hidden_from_sub: true })
+    expect(shapedPay({ ...PAID, mercury_transaction_id: BANK.toUpperCase(), hidden_from_sub: true })).toEqual({ action: 'record', sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', method: 'mercury', reference: 'ZZ-1001', mercury_transaction_id: BANK, hidden_from_sub: true })
     expect(payError({ ...PAID, amount: -5 })).toContain('more than 0')
     expect(payError({ ...PAID, paid_on: '2026-11-30' })).toContain('ahead of today')
     expect(payError({ ...PAID, mercury_transaction_id: 'the October transfer' })).toContain('mercury_transactions.id')
@@ -511,26 +527,92 @@ describe('devMcpSubLabor — a payment on a sheet', () => {
     expect(payError({ action: 'remove', payment_id: SHEET_PAY })).toContain('a remove needs reason')
     expect(payError({ sheet_id: 'x' })).toContain('needs payment')
   })
-  it('lands as Make Payment’s row, the method and reference in the memo, after the sheet’s last payment', async () => {
+  it('takes the window’s methods by key or by words, and a reference only where the window has a box for one', () => {
+    // The seat's list is the window's own, with the window's words and the window's rule for which carry a number.
+    expect([...SHEET_PAY_METHODS]).toEqual([...SUB_PAY_METHODS])
+    for (const m of SHEET_PAY_METHODS) {
+      expect(SHEET_PAY_METHOD_LABEL[m]).toBe(subPayMethodLabel(m))
+      expect(SHEET_PAY_METHODS_WITH_REF.includes(m)).toBe(subPayMethodRefField(m) !== null)
+      expect(sheetPayMethodFrom(m)).toBe(m)
+      expect(sheetPayMethodFrom(SHEET_PAY_METHOD_LABEL[m].toUpperCase())).toBe(m)
+    }
+    expect(sheetPayMethodFrom('cash app')).toBe('cashapp')
+    expect(sheetPayMethodFrom('Apple-Pay')).toBe('apple_pay')
+    expect(sheetPayMethodFrom('ACH')).toBeNull()
+    // Never the stored word for a payment made from a credit: no money left for one.
+    expect(sheetPayMethodFrom('credit')).toBeNull()
+    expect(payError({ ...PAID, method: 'ACH' })).toContain('one of the Record payment window\'s chips: Check, Zelle, Mercury, Cash App, Apple Pay, Cash, Client direct, Other. A transfer out of the Mercury account is Mercury')
+    expect(payError({ sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', reference: '1187' })).toContain('so it needs method')
+    expect(payError({ ...PAID, method: 'cash' })).toContain('Cash carries no number of its own in the window. Put "ZZ-1001" in note.')
+    expect(shapedPay({ sheet_id: SHEET, amount: 400, paid_on: '2026-10-20', method: 'CHECK', reference: '1187', note: 'second half' })).toMatchObject({ method: 'check', reference: '1187', note: 'second half' })
+    expect(sheetPayHowWords({ method: 'check', method_ref: '1187' })).toBe('Check 1187')
+    expect(sheetPayHowWords({ method: 'credit' })).toBe('From credit')
+    expect(sheetPayHowWords({ method: null, method_ref: '1187' })).toBe('')
+  })
+  it('lands as the Record payment window’s sending: one line, the method and its number in their columns, the note as the memo', async () => {
     const { p, world, dry } = await planPay(PAID)
     if (!dry.ok) throw new Error(dry.refused)
-    expect(sheetPaymentInsertRow(p as SheetPaymentRecord, world)).toEqual({ job_id: SHEET, amount: 400, memo: 'ACH · ref ZZ-1001', sequence_order: 0, payment_date: '2026-10-20' })
-    expect(dry.reply.records).toEqual({ job_id: SHEET, amount: 400, memo: 'ACH · ref ZZ-1001', sequence_order: 0, payment_date: '2026-10-20' })
+    const row = { job_id: SHEET, amount: 400, memo: null, sequence_order: 0, payment_date: '2026-10-20', hidden_from_sub: false, method: 'mercury', method_ref: 'ZZ-1001' }
+    expect(sheetPaymentInsertRow(p as SheetPaymentRecord, world)).toEqual(row)
+    expect(sheetSendingArgs(p as SheetPaymentRecord, world)).toEqual({ p_person_id: SUB_ROW, p_lines: [{ job_id: SHEET, amount: 400 }], p_credit: 0, p_payment_date: '2026-10-20', p_method: 'mercury', p_method_ref: 'ZZ-1001', p_memo: null, p_hidden_from_sub: false })
+    expect(dry.reply.records).toEqual({
+      sending: { to: 'ZZ Sample Sub', person_id: SUB_ROW, who_reads: 'ZZ Sample Sub, the sheet\'s one sub, on the roster', sent: 400, lines: 1, credit_kept: 0, number: 'minted on apply, never reused' },
+      payment: row,
+      how_paid: 'Mercury ZZ-1001',
+    })
+    expect(String(dry.reply.door)).toContain('record_sub_sending as you, the Record payment window\'s own door')
+    expect((dry.reply.sets_off as string[]).join(' ')).toContain('how it was paid and its sending\'s number')
     expect(dry.reply.sheet).toMatchObject({ id: SHEET, who: 'ZZ Sample Sub', owed: 600, paid: 0, open: 600 })
     expect(dry.reply.after).toEqual({ paid: 400, open: 200, reads: '$200.00 still owed' })
     expect(String(dry.reply.job_profit)).toContain('unchanged')
-    expect((dry.reply.warnings as string[]).join(' ')).toContain('The memo "ACH · ref ZZ-1001" shows to ZZ Sample Sub on their portal')
+    // The method is in its own column, so nothing of it is in the memo the sub reads.
+    expect((dry.reply.warnings as string[]).join(' ')).not.toContain('shows to ZZ Sample Sub')
     expect((dry.reply.warnings as string[]).join(' ')).toContain('No bank row was named')
-    // The window's row, as the hook builds it: the same five fields. Since v2.7176 the window adds `method` and
-    // `method_ref` only when a chip was picked; the seat still says the method in the memo and names neither column.
-    expect(LEDGER).toContain('      job_id: jobId,\n      amount,\n      memo: memo?.trim() || null,\n      sequence_order: nextOrder,\n      payment_date: paymentDate?.trim() || null,\n')
-    expect(LEDGER).toContain("...(extras.method ? { method: extras.method, method_ref: extras.method_ref?.trim() || null } : {}),")
-    expect(LEDGER).toContain(".from('people_labor_job_payments').insert(row as never)")
-    const second = await planPay({ ...PAID, amount: 400, hidden_from_sub: true, note: 'second half' }, worldWithSheet({ people_labor_job_payments: [sheetPay()] }))
+    expect((dry.reply.does_not as string[]).join(' ')).toContain('It matches no bank row.')
+    const second = await planPay({ ...PAID, amount: 400, hidden_from_sub: true, note: 'second half' }, worldWithSheet({ people_labor_job_payments: [sheetPay({ method: 'check', method_ref: '1187', sending_id: 'eeeeeeee-0000-4000-8000-000000000001' })] }))
     if (!second.dry.ok) throw new Error(second.dry.refused)
-    expect(second.dry.reply.records).toEqual({ job_id: SHEET, amount: 400, memo: 'ACH · ref ZZ-1001 · second half', sequence_order: 1, payment_date: '2026-10-20', hidden_from_sub: true })
+    expect((second.dry.reply.records as { payment: unknown }).payment).toEqual({ ...row, memo: 'second half', sequence_order: 1, hidden_from_sub: true })
+    expect(sheetSendingArgs(second.p as SheetPaymentRecord, second.world)).toMatchObject({ p_memo: 'second half', p_hidden_from_sub: true })
     expect(second.dry.reply.after).toEqual({ paid: 600, open: 0, reads: 'paid in full: the Pay ledger shows it Paid by itself' })
+    // The payments already on the sheet say how each was paid and which sending it is part of.
+    expect(second.dry.reply.payments).toEqual([{ id: SHEET_PAY, amount: 200, kind: 'payment', paid_on: '2026-10-20', how_paid: 'Check 1187', memo: 'ACH', hidden_from_sub: false, sending_id: 'eeeeeeee-0000-4000-8000-000000000001', typed_in_on: '2026-10-21' }])
+    // A note with no method: the memo shows to the sub, and the plan says How paid will read blank.
+    const bare = await payReply({ sheet_id: SHEET, amount: 100, paid_on: '2026-10-20', note: 'cash draw' })
+    expect((bare.records as { how_paid: unknown }).how_paid).toBeNull()
+    expect((bare.warnings as string[]).join(' ')).toContain('The memo "cash draw" shows to ZZ Sample Sub on their portal')
+    expect((bare.warnings as string[]).join(' ')).toContain('How paid reads blank')
     expect(sheetPaymentMemo({})).toBeNull()
+  })
+  it('names who the sending is to by the Pay view’s rule', async () => {
+    const sub = subRow()
+    const mate = masterRow()
+    const users = [subUser(), masterUser()]
+    const on = (ids: string[]) => ids.map((person_id) => ({ labor_job_id: SHEET, person_id }))
+    // One sub on the roster, with a teammate riding along: the sub.
+    expect(sheetSentTo(sheet(), on([SUB_ROW, MASTER_ROW]), [sub, mate], users)).toEqual({ person_id: SUB_ROW, name: 'ZZ Sample Sub', reads: 'ZZ Sample Sub, the sheet\'s one sub, on the roster' })
+    // A roster sub row behind a teammate's login is a teammate: crew pay, nobody.
+    expect(sheetSentTo(sheet({ assigned_to_name: 'ZZ Sample Master' }), on([MASTER_ROW]), [masterRow({ kind: 'sub' })], users)).toMatchObject({ person_id: null, reads: expect.stringContaining('crew pay sheet') })
+    // Two subs share the sheet: no one person.
+    expect(sheetSentTo(sheet(), on([SUB_ROW, BENCH_ROW]), [sub, { ...sub, id: BENCH_ROW, name: 'ZZ Bench Sub', account_user_id: null }], users)).toMatchObject({ person_id: null, name: 'ZZ Sample Sub | ZZ Bench Sub', reads: '2 subs share the sheet, so the sending names no one person' })
+    // No assignee row: the typed name, found on the roster in any case, or not found.
+    expect(sheetSentTo(sheet({ assigned_to_name: 'zz sample sub' }), [], [sub], users)).toMatchObject({ person_id: SUB_ROW, name: 'ZZ Sample Sub' })
+    expect(sheetSentTo(sheet({ assigned_to_name: 'ZZ Walk-up Tile' }), [], [], [])).toEqual({ person_id: null, name: 'ZZ Walk-up Tile', reads: 'ZZ Walk-up Tile is not on the roster, so the sending names no person' })
+    // Read through the fake: a sheet with no assignee row is matched by its typed name, and a name with a wildcard by nobody.
+    const typed = await planPay(PAID, worldWithSheet({ people_labor_job_assignees: [] }))
+    expect(typed.world.sentTo).toMatchObject({ person_id: SUB_ROW })
+    const wild = await planPay(PAID, worldWithSheet({ people_labor_job_assignees: [], people_labor_jobs: [sheet({ assigned_to_name: 'ZZ Sample %' })] }))
+    expect(wild.world.sentTo).toMatchObject({ person_id: null })
+    // A remove reads nobody.
+    const gone = await planPay({ action: 'remove', payment_id: SHEET_PAY, reason: 'wrong sheet' }, worldWithSheet({ people_labor_job_payments: [sheetPay()] }))
+    expect(gone.world.sentTo).toBeNull()
+  })
+  it('refuses an amount past what the sheet still owes, with the figure it takes', async () => {
+    expect(await payRefusal({ ...PAID, amount: 700 })).toBe('$700.00 is $100.00 more than this sheet still owes ZZ Sample Sub ($600.00). The Record payment window places what is sent past a sheet on their other open sheets or keeps it as their credit; the seat records one sheet\'s line. Record up to $600.00 here.')
+    const paid = worldWithSheet({ people_labor_job_payments: [sheetPay({ amount: 600 })] })
+    expect(await payRefusal({ ...PAID, amount: 50 }, paid)).toContain('has nothing left to pay: it owes $600.00 and holds $600.00 paid.')
+    // A sheet with no priced line takes a payment, and the plan says how the ledger reads it.
+    const unpriced = await payReply(PAID, worldWithSheet({ people_labor_job_items: [] }))
+    expect((unpriced.warnings as string[]).join(' ')).toContain('The sheet has no priced line')
   })
   it('warns in words when the bank row is already allocated to a job as cost, naming the allocation', async () => {
     const r = await payReply({ ...PAID, mercury_transaction_id: BANK }, allocated())
@@ -550,7 +632,8 @@ describe('devMcpSubLabor — a payment on a sheet', () => {
   it('a bank row allocated nowhere counts once, and the plan says so by saying nothing', async () => {
     const r = await payReply({ ...PAID, amount: 600, mercury_transaction_id: BANK }, worldWithSheet({ mercury_transactions: [bank({ amount: -600 })] }))
     expect(r.counts_twice).toEqual([])
-    expect((r.warnings as string[]).join(' ')).not.toContain('count twice')
+    // Nothing to warn of at all: the method is named, the bank row checks out and the memo is empty.
+    expect(r.warnings).toBeUndefined()
     expect(r.after).toMatchObject({ open: 0 })
   })
   it('with no bank row named, lists the job’s allocated rows that may be this payment', async () => {
@@ -564,10 +647,9 @@ describe('devMcpSubLabor — a payment on a sheet', () => {
     expect(await payRefusal(ask, worldWithSheet({ mercury_transactions: [bank({ status: 'failed' })] }))).toContain('The bank returned that payment')
     expect(await payRefusal(ask, worldWithSheet({ mercury_transactions: [] }))).toContain('No bank row')
     expect(await payRefusal(PAID, standingWorld())).toContain('No sheet')
-    const twice = worldWithSheet({ people_labor_job_payments: [sheetPay({ amount: 400 })] })
-    expect(await payRefusal(PAID, twice)).toContain('pays it twice')
-    expect((await payReply({ ...PAID, duplicate_ok: true }, twice)).after).toMatchObject({ paid: 800, open: -200, reads: 'overpaid by $200.00' })
-    expect(((await payReply({ ...PAID, duplicate_ok: true }, twice)).warnings as string[]).join(' ')).toContain('overpaid by $200.00')
+    const twice = worldWithSheet({ people_labor_job_payments: [sheetPay({ amount: 200 })] })
+    expect(await payRefusal({ ...PAID, amount: 200 }, twice)).toContain('pays it twice')
+    expect((await payReply({ ...PAID, amount: 200, duplicate_ok: true }, twice)).after).toMatchObject({ paid: 400, open: 200, reads: '$200.00 still owed' })
     expect(((await payReply(ask, worldWithSheet({ mercury_transactions: [bank({ counterparty_name: 'ZZ Supply House', posted_at: '2026-09-01T12:00:00+00:00' })] }))).warnings as string[]).join(' ')).toMatch(/does not read like ZZ Sample Sub.*|more than ten days apart/)
   })
   it('removes a payment through its own RPC, the reason kept on its trace', async () => {

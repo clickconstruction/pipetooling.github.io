@@ -1,12 +1,14 @@
 /**
  * Edit a box (v2.7179, the owner's ask of 2026-11-13): a cage's or a box's name, its kind and its where line,
- * changed after it was made. Since v2.7199 the same form also moves it to another place on the site, and it sits
+ * changed after it was made. Since punch list #351's PR 2 it also holds **What is in it**, the box's own line: a
+ * person's words over the app's line from the parts, and the place words typed after a name land. Since v2.7199 the same form also moves it to another place on the site, and it sits
  * on the Cage tab of the box window (`BoxTabs.tsx`), which both pages host. The rules and every word are `editBox.ts`; the write is the store's
  * `editContainer`, so a press made with no signal is kept and sent later like any other on-site press.
  */
 import { useState, type CSSProperties } from 'react'
 import type { Container, Place } from '../../lib/materials/onSite'
-import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxMovedNote, editBoxPlan, editBoxPressLabel, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
+import { BOX_KIND_CHOICES, BOX_NAME_MAX, BOX_WHERE_MAX, EDIT_BOX_HINT, PLACE_NAME_MAX, boxDraftOf, boxKindWords, boxPlaceDraftOf, cleanBoxName, editBoxLineShown, editBoxMovedNote, editBoxPlan, editBoxPressLabel, renameLabelNote, savedBoxWords, type BoxDraft, type BoxPlaceDraft } from '../../lib/materials/editBox'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_MAX, BOX_LINE_SAID_NOTE } from '../../lib/materials/boxLine'
 import type { SiteBox } from '../../lib/materials/boxName'
 import { addPlace, editContainer, moveContainer } from '../../lib/materials/onSiteStore'
 
@@ -21,6 +23,8 @@ type Props = {
   containers: ReadonlyArray<Container>
   /** Every box of the job's site when the screen has read them (punch list #351): a name is one of a kind across the site. */
   siteBoxes?: ReadonlyArray<SiteBox>
+  /** The line the app writes from the box's parts (punch list #351), shown in the empty line field so a person sees what their words would replace. */
+  appLine?: string
   /** The job's places, for **Which place on site**. */
   places: ReadonlyArray<Place>
   /** Who moves the box, kept on the move as the phone's Move box keeps it. */
@@ -31,12 +35,13 @@ type Props = {
   onSaved: (words: string) => void
 }
 
-export default function EditBoxForm({ container, containers, siteBoxes, places, byName, byUserId, touch = false, onSaved }: Props) {
+export default function EditBoxForm({ container, containers, siteBoxes, appLine = '', places, byName, byUserId, touch = false, onSaved }: Props) {
   const [draft, setDraft] = useState<BoxDraft>(() => boxDraftOf(container))
   const h = touch ? 48 : 38
   const [placeDraft, setPlaceDraft] = useState<BoxPlaceDraft>(() => boxPlaceDraftOf(container))
   const plan = editBoxPlan(containers, places, container.id, draft, placeDraft, siteBoxes)
-  const movedNote = editBoxMovedNote(plan)
+  const movedNote = editBoxMovedNote(plan, draft)
+  const lineShown = editBoxLineShown(container, draft)
   const renaming = cleanBoxName(draft.label) !== container.label && cleanBoxName(draft.label) !== ''
   const save = () => {
     if (!plan.ok) return
@@ -66,6 +71,11 @@ export default function EditBoxForm({ container, containers, siteBoxes, places, 
         </div>
         <p style={note}>A pallet, or a thing too big for a box, is a loose pile.</p>
       </div>
+      <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>
+        {BOX_LINE_FIELD_LABEL}
+        <input type="text" value={lineShown} maxLength={BOX_LINE_MAX + 20} onChange={(e) => setDraft({ ...draft, said: e.target.value })} placeholder={appLine || 'Kohler toilets'} aria-label={BOX_LINE_FIELD_LABEL} style={field(h)} data-testid="edit-box-line" />
+        <span style={{ ...note, fontWeight: 400 }}>{lineShown.trim() ? BOX_LINE_SAID_NOTE : appLine ? 'Empty, so the app writes this line from the parts.' : 'Empty until a part is added. Then the app writes this line from the parts.'}</span>
+      </label>
       <label style={{ display: 'grid', gap: '0.25rem', fontWeight: 600 }}>
         Where exactly, if it helps
         <input type="text" value={draft.where} maxLength={BOX_WHERE_MAX + 20} onChange={(e) => setDraft({ ...draft, where: e.target.value })} placeholder="on a pallet by the north door" aria-label="Where exactly" style={field(h)} />

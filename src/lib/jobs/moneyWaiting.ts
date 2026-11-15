@@ -225,7 +225,7 @@ export function moneyWaitingLead(row: Pick<MoneyWaitingRow, 'calendar' | 'pastEx
 
 /** What the lead is measured against: "usually ~41d" · "no history — vs company ~33d" · "pay calendar · lands ~6d after the pay day". */
 export function moneyWaitingBasis(row: Pick<MoneyWaitingRow, 'calendar' | 'calendarOwn' | 'pastExpectedDays' | 'lateness' | 'ownMedianDays' | 'billOwn'>, companyMedianDays: number): string {
-  if (readsCalendar(row)) return calendarBasisWords(row.lateness, row.calendarOwn === true, row.billOwn === true)
+  if (readsCalendar(row)) return calendarBasisWords(row.lateness, row.calendarOwn === true, row.billOwn === true, row.calendar)
   return row.ownMedianDays != null ? `usually ~${row.ownMedianDays}d` : `no history — vs company ~${companyMedianDays}d`
 }
 

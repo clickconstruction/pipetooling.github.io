@@ -8,9 +8,11 @@
  *
  * Since v2.7072 (punch list #329) a code may be a sticker's: a printed code that points at a box, or at nothing yet.
  * The function reads the sticker first (`boxPageStickerAnswer`). One on a box answers that box's page as a label does;
- * a blank one answers its number and nothing else; a lost one says so. Since v2.7264 the guess lock is read before the
+ * a blank one answers its number and nothing else; a lost one says so. Since v2.7348 (punch list #351) a box answers
+ * what is in it on one line (`boxLine.ts`): a person's own words, else the app's from the parts. Since v2.7264 the guess lock is read before the
  * sticker (`boxPageEarlyAnswer`): a locked source hears `locked` for every code, a sticker's included.
  */
+import { boxLine, boxLineFromParts } from './boxLine.ts'
 import { ESTIMATE_LINK_LOCKED_CODE } from './estimateLinkMisses.ts'
 
 /** A box's code: the container id's first eight hex characters, as `job_containers.code` keeps them (capitals). */
@@ -57,6 +59,8 @@ export type BoxPagePayload = {
     /** The place on site, '' when nobody said. */
     place: string
     where: string
+    /** What is in it on one line (v2.7348, punch list #351): a person's own words, else the app's from the parts, '' for an empty box nobody described. */
+    line: string
     lines: BoxPageLine[]
     /** The lines emptied since the box's last count (v2.6874): the page reads them *None left*. A count clears them. */
     gone: BoxPageLine[]
@@ -102,7 +106,7 @@ export function boxPageStickerAnswer(row: BoxPageStickerRow | null, lostOn: stri
 }
 
 /** The container row as the function reads it. */
-export type BoxPageContainerRow = { id: string; job_id: string; label: string; kind: string; where_note: string | null; place_id: string | null; retired_at: string | null; code: string }
+export type BoxPageContainerRow = { id: string; job_id: string; label: string; kind: string; where_note: string | null; /** A person's own words for what is in it (v2.7348); null or absent when nobody said. */ description?: string | null; place_id: string | null; retired_at: string | null; code: string }
 
 /** A line of `on_site_job_summary`'s answer, the part the page needs. Its `*_by` names are never read. */
 export type BoxPageServerLine = {
@@ -207,6 +211,7 @@ export function buildBoxPagePayload(input: {
   const c = input.container
   const phone = (input.officePhone ?? '').trim()
   const stickerNumber = typeof input.stickerNumber === 'number' && input.stickerNumber > 0 ? input.stickerNumber : null
+  const lines = boxPageLines(input.lines, c.id)
   return {
     ok: true,
     box: {
@@ -215,7 +220,8 @@ export function buildBoxPagePayload(input: {
       kind: boxPageKind(c.kind),
       place: input.place,
       where: (c.where_note ?? '').trim(),
-      lines: boxPageLines(input.lines, c.id),
+      line: boxLine(c.description, lines).text,
+      lines,
       gone: boxPageGoneLines(input.lines, c.id, input.lastCountAt ?? null, input.now ?? ''),
       lastCountedOn: input.lastCountedOn,
       photo: input.photo,
@@ -270,6 +276,8 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
       kind: boxPageKind(typeof x.kind === 'string' ? x.kind : ''),
       place: typeof x.place === 'string' ? x.place : '',
       where: typeof x.where === 'string' ? x.where : '',
+      // An answer from before v2.7348 carries no line: the app's own is written from the lines it did answer.
+      line: typeof x.line === 'string' ? x.line : boxLineFromParts(lines),
       lines,
       gone,
       lastCountedOn: typeof x.lastCountedOn === 'string' ? x.lastCountedOn : null,
@@ -317,6 +325,8 @@ export type BoxPageFindBox = {
   kind: BoxPageKind
   place: string
   where: string
+  /** What is in it on one line (v2.7348), from every line of the box and not only the ones that matched. */
+  line: string
   /** The lines that matched a word; every line on hand when the box matched by its stencil or place alone. */
   lines: BoxPageLine[]
   /** True for the box the code named, so the page can mark it. */
@@ -347,7 +357,7 @@ function fold(s: string | null | undefined): string {
 }
 
 /**
- * The boxes of the job whose stencil, place, where-note or lines hold every word typed: the scanned box first, then
+ * The boxes of the job whose stencil, place, where-note, own words for what is in it (v2.7348) or lines hold every word typed: the scanned box first, then
  * stencil order. A box that matched on a line carries the matching lines; one that matched on its name alone carries
  * every line on hand, so a person who typed a stencil sees what is in it. Retired boxes and the Unsorted row never match.
  */
@@ -359,7 +369,7 @@ export function boxPageFind(input: BoxPageFindInput): BoxPageFindPayload['find']
     for (const c of input.containers) {
       if (c.retired_at || c.kind === 'unsorted') continue
       const place = (c.place_id && placeName.get(c.place_id)) || ''
-      const own = `${fold(c.label)} ${fold(place)} ${fold(c.where_note)}`
+      const own = `${fold(c.label)} ${fold(place)} ${fold(c.where_note)} ${fold(c.description)}`
       const all = boxPageLines(input.lines, c.id)
       const byLine = all.filter((l) => words.every((w) => `${fold(l.partName)} ${fold(l.manufacturer)}`.includes(w)))
       const byName = words.every((w) => own.includes(w))
@@ -372,6 +382,7 @@ export function boxPageFind(input: BoxPageFindInput): BoxPageFindPayload['find']
         kind: boxPageKind(c.kind),
         place,
         where: (c.where_note ?? '').trim(),
+        line: boxLine(c.description, all).text,
         lines: byLine.length > 0 ? byLine : mixed.length > 0 ? mixed : all,
         thisBox: c.code === input.thisCode,
       })
@@ -412,7 +423,7 @@ export function parseBoxPageFindResponse(body: unknown): BoxPageFindPayload | nu
       if (!line) return null
       lines.push(line)
     }
-    boxes.push({ code: r.code, stencil: r.stencil, kind: boxPageKind(typeof r.kind === 'string' ? r.kind : ''), place: typeof r.place === 'string' ? r.place : '', where: typeof r.where === 'string' ? r.where : '', lines, thisBox: r.thisBox === true })
+    boxes.push({ code: r.code, stencil: r.stencil, kind: boxPageKind(typeof r.kind === 'string' ? r.kind : ''), place: typeof r.place === 'string' ? r.place : '', where: typeof r.where === 'string' ? r.where : '', line: typeof r.line === 'string' ? r.line : '', lines, thisBox: r.thisBox === true })
   }
   return { ok: true, find: { words: Array.isArray(f.words) ? (f.words as unknown[]).filter((w): w is string => typeof w === 'string') : [], boxes, total: typeof f.total === 'number' ? f.total : boxes.length } }
 }

@@ -41,7 +41,7 @@
  */
 import { billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { billedPayModel, type BilledPayRowInput } from './billedDuePay'
-import { billOwnDueShort, billOwnDueWords, recordLandsShort, recordLandsWords, type PayCalendarArg } from './payCalendar'
+import { billOwnDueShort, billOwnDueWords, payTermsNoun, recordLandsShort, recordLandsWords, type PayCalendarArg } from './payCalendar'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 import { LIEN_LATE_NOTICE_ACT, LIEN_ROW_PRESS_SENTENCE, lienActFor, lienDayGuessSentence, lienRowTip, type LienAct } from './lienActWords'
@@ -281,7 +281,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       dot: 'filled',
       action: moneyAction,
       title: moneyTitle,
-      sub: promised && promised.dueYmd ? `due ${formatYmdMonthDay(promised.dueYmd)} by ${promised.ownDue ? 'this bill’s own day' : 'their pay calendar'}` : promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
+      sub: promised && promised.dueYmd ? `due ${formatYmdMonthDay(promised.dueYmd)} by ${promised.ownDue ? 'this bill’s own day' : `their ${payTermsNoun(promised.calendar)}`}` : promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
     })
   }
 

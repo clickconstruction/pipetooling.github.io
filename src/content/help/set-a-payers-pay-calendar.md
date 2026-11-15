@@ -2,7 +2,7 @@
 title: set a payer's pay calendar
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary, estimator
-keywords: pay calendar, pay terms, estimator, won bid, send to dispatch, check and use, cutoff, pay day, due, due date, pay application, 10th of the month, contract terms, payer, general contractor, GC, pay when paid, net 30, expected payment
+keywords: pay calendar, pay terms, estimator, won bid, send to dispatch, check and use, cutoff, pay day, due, due date, pay application, 10th of the month, contract terms, payer, general contractor, GC, pay when paid, net 30, net 45, days after the bill, expected payment
 ---
 Some customers pay on a set day of the month. You record that once on the customer, and the app keeps both days.
 
@@ -40,11 +40,12 @@ Once a calendar is set, the line reads like *In by month end, paid the 10th*. Pr
 ## Fill it in
 
 :::steps
-1. Pick the cutoff under **Bills must be in by**.
-2. Pick the pay day under **They pay on the**. Then pick the month the pay day falls in.
-3. Tick **They pay when the owner pays them** if the contract says so.
-4. Type the clause number and a few of its words under **Where the contract says it**.
-5. Press {{button:blue|Save pay calendar}}.
+1. Under **How they pay**, keep **On a set day of the month**.
+2. Pick the cutoff under **Bills must be in by**.
+3. Pick the pay day under **They pay on the**. Then pick the month the pay day falls in.
+4. Tick **They pay when the owner pays them** if the contract says so.
+5. Type the clause number and a few of its words under **Where the contract says it**.
+6. Press {{button:blue|Save pay calendar}}.
 :::
 
 The blue box says the calendar back in dates. Read the box before you save.
@@ -70,9 +71,34 @@ The contract says when a bill is due. The record says when the money lands. The 
 
 The record uses their newest 12 payments. Change a choice and the box works the record out again.
 
+## A number of days after the bill
+
+Some contracts name no day of the month. Such a contract says a bill is paid a number of days after it is accepted, like 45.
+
+:::steps
+1. Under **How they pay**, pick **A number of days after the bill**.
+2. Type the number under **Days after the bill is accepted**.
+3. Tick **They pay when the owner pays them** if the contract says so.
+4. Type the clause number and a few of its words.
+5. Press {{button:blue|Save pay calendar}}.
+:::
+
+:::example The blue box
+**A bill accepted today, Nov 12, is due Dec 27.**
+Each bill has its own due day. No cutoff decides a month.
+:::
+
+These terms have no cutoff. So the *Send by* lines and **Cutoffs coming** do not show for them.
+
+The line then reads like *Paid 45 days after the bill*. Everything else works as it does for a calendar.
+
+The days count from the day the customer accepts the bill. See [When they accepted a bill later](#when-they-accepted-a-bill-later).
+
+Use it for a job whose contract names the number. One job can have these terms on its own. See [One job on a different calendar](#one-job-on-a-different-calendar).
+
 ## When to leave it unset
 
-Leave the calendar unset for a customer who pays some days after each bill. The app's usual guess is better for them.
+Leave the calendar unset for a customer whose contract names no pay terms. The app's usual guess is better for them.
 
 A calendar holds one cutoff and one pay day. A customer with two pay days a month does not fit one.
 
@@ -152,7 +178,7 @@ The estimator does this on the sheet they already send to Dispatch.
 
 Pick **Only this job** when this job's contract says it. Pick every job when their standard subcontract says it. The estimator sees the dates said back. The estimator never sees the customer's payments.
 
-Leave the line alone for a customer who pays some days after each bill.
+Leave the line alone for a customer whose contract names no pay terms.
 
 The office meets the terms in New Job. Dispatch presses {{button:outline|Open the job}} on the won bid's row, as always.
 

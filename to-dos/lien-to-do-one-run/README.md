@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: gated
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction and B was refined the same day · the owner leaned to D, not yet picked · nothing built
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · the owner leaned to D, not yet picked · B's three steps in build
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -45,7 +45,8 @@ in place. The first mock-up drew the list alone, under the step strip the Board 
 
 Taunya, later the same day, on the redrawn mock-up: "I like the idea of B but waiting on the leader
 should be below needs you above coming up to make it more actionable", and she asked that B be refined
-by asking whether it is the best we can do. What that changed is under B below.
+by asking whether it is the best we can do. What that changed is under B below. On the refined B:
+"Waiting on the leader should be above on track", and then the go to build all of B.
 
 ## What exists today
 
@@ -78,8 +79,8 @@ Each keeps the Board whole and is the start of the next.
 
 - **B · One page, clearer rows.** Taunya's direction. The Board and the list scroll as one page. Once
   the Board is out of view the find box pins to the top with the Board's numbers and **↑ The Board**.
-  The groups run *Needs you now*, *Waiting on the leader*, *Coming up*. What asking "is this the best
-  we can do" changed:
+  Needs you now reads in three parts, *Will not make tomorrow as they stand*, *Waiting on the leader*,
+  *On track*, and *Coming up* follows. What asking "is this the best we can do" changed:
   - **The papers that will not make their day come first** inside Needs you now, under the tile's own
     words (*Will not make tomorrow as they stand*), the longest road first; the rest read *On track*,
     largest first. This turns the first drawing's "ready before held" around: a paper that needs a
@@ -135,9 +136,9 @@ go further toward the batch; D is that. He has not picked between A and D.
 1. **One page** (S): To do scrolls as one page wherever the Board leaves the list too little room, and
    the find box pins with the Board's numbers, each a press, the line that says what the list is
    narrowed to, and the way back.
-2. **The order** (S): *Waiting on the leader* between *Needs you now* and *Coming up* with its reminder
-   press; inside Needs you now, the papers the Board marks **!** first, then the rest largest first;
-   the tile's red line as a press. Kernel work in `lienNextUp.ts` over `lienBoard.ts`.
+2. **The order** (S): inside Needs you now, the papers the Board marks **!** first, then *Waiting on the
+   leader* with its reminder press, then the rest as *On track*, largest first; the tile's red line as
+   a press. Kernel work in `lienNextUp.ts` over `lienBoard.ts`.
 3. **The clearer rows** (S): the bin's name first, the one question from `gateAct`, the notice line on
    every affidavit row, dollars on the desktop row, the day on the head. With step 2 this is B.
 4. **The list by bin** (M): the groups under the Board's own names and the batch rows. This is A.

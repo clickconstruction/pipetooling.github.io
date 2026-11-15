@@ -20,6 +20,12 @@
  * Pure: no React, no supabase. `payCalendarIo.ts` beside it does the reads and
  * the save. A calendar is held on the payer (`jobId` null), and a job can carry
  * its own or switch the payer's off (`calendarFor`).
+ *
+ * Since punch list #341's PR 5 the terms have a second shape: paid a number of
+ * days after the bill is accepted (`daysAfter`). It has no cutoff and no pay
+ * day, so `dueDayFor` adds the days and `nextCutoff` answers none. Everything
+ * built on the due day (the record, the expected day, the waiting lists) reads
+ * it unchanged.
  */
 
 /** The three numbers and the note. */
@@ -36,6 +42,12 @@ export type PayCalendar = {
   clause: string
   /** The clause in a few words. */
   words: string
+  /**
+   * Paid this many days after the bill is accepted, 1 to 180 (punch list #341, PR 5): the other
+   * shape of terms. Set, the cutoff, the pay day and the month count are not read. Absent or null
+   * on a calendar of the first shape.
+   */
+  daysAfter?: number | null
 }
 
 /**
@@ -71,6 +83,10 @@ export type PayCalendarRow = {
 
 export const PAY_CALENDAR_CUTOFF_MAX = 28
 export const PAY_CALENDAR_MONTHS_AFTER_MAX = 2
+/** The most days after the bill a contract's terms can name here. */
+export const PAY_CALENDAR_DAYS_AFTER_MAX = 180
+/** What the window's days box starts on when the office picks days after the bill: the commonest term past a month. */
+export const PAY_CALENDAR_DAYS_AFTER_DEFAULT = 45
 export const PAY_CALENDAR_CLAUSE_MAX = 40
 export const PAY_CALENDAR_WORDS_MAX = 240
 
@@ -147,6 +163,14 @@ const whole = (v: unknown): number | null => (typeof v === 'number' && Number.is
  */
 export function normalizePayCalendar(raw: Partial<Record<keyof PayCalendar, unknown>> | null | undefined): PayCalendar | null {
   if (!raw) return null
+  const clauseOf = (): Pick<PayCalendar, 'payWhenPaid' | 'clause' | 'words'> => ({
+    payWhenPaid: raw.payWhenPaid === true,
+    clause: typeof raw.clause === 'string' ? raw.clause.trim().slice(0, PAY_CALENDAR_CLAUSE_MAX) : '',
+    words: typeof raw.words === 'string' ? raw.words.trim().slice(0, PAY_CALENDAR_WORDS_MAX) : '',
+  })
+  // Days after the bill (punch list #341, PR 5): no pay day is needed. The first shape's fields keep their defaults, so a switch back in the window starts somewhere sane.
+  const daysAfter = whole(raw.daysAfter)
+  if (daysAfter != null && daysAfter >= 1 && daysAfter <= PAY_CALENDAR_DAYS_AFTER_MAX) return { cutoffDay: null, payDay: PAY_CALENDAR_DEFAULT.payDay, monthsAfter: PAY_CALENDAR_DEFAULT.monthsAfter, ...clauseOf(), daysAfter }
   const payDay = whole(raw.payDay)
   if (payDay == null || payDay < 1 || payDay > 31) return null
   const cutoff = whole(raw.cutoffDay)
@@ -155,10 +179,30 @@ export function normalizePayCalendar(raw: Partial<Record<keyof PayCalendar, unkn
     cutoffDay: cutoff != null && cutoff >= 1 && cutoff <= PAY_CALENDAR_CUTOFF_MAX ? cutoff : null,
     payDay,
     monthsAfter: months != null && months >= 0 && months <= PAY_CALENDAR_MONTHS_AFTER_MAX ? months : 1,
-    payWhenPaid: raw.payWhenPaid === true,
-    clause: typeof raw.clause === 'string' ? raw.clause.trim().slice(0, PAY_CALENDAR_CLAUSE_MAX) : '',
-    words: typeof raw.words === 'string' ? raw.words.trim().slice(0, PAY_CALENDAR_WORDS_MAX) : '',
+    ...clauseOf(),
   }
+}
+
+/** The terms are a number of days after the bill, not a cutoff and a pay day (punch list #341, PR 5). */
+export function paysDaysAfter(cal: PayCalendar | null | undefined): cal is PayCalendar & { daysAfter: number } {
+  return cal != null && typeof cal.daysAfter === 'number' && cal.daysAfter >= 1
+}
+
+/** What the terms are called where a line names them: a pay calendar, or pay terms when they are days after the bill. */
+export function payTermsNoun(cal: PayCalendar | null | undefined): 'pay calendar' | 'pay terms' {
+  return paysDaysAfter(cal) ? 'pay terms' : 'pay calendar'
+}
+
+/**
+ * What a save sends for a calendar. Days after the bill go with no pay day, so a database from
+ * before migration 20261115190000 refuses the save in words, where it would have stored the
+ * default pay day and read the terms as a calendar.
+ */
+export function payCalendarSavePayload(cal: PayCalendar): Record<string, unknown> {
+  const clause = cal.clause.trim()
+  const words = cal.words.trim()
+  if (paysDaysAfter(cal)) return { daysAfter: cal.daysAfter, payWhenPaid: cal.payWhenPaid, clause, words }
+  return { cutoffDay: cal.cutoffDay, payDay: cal.payDay, monthsAfter: cal.monthsAfter, payWhenPaid: cal.payWhenPaid, clause, words }
 }
 
 /** A `payer_pay_calendars` row as the database returns it. Every column optional: a read from before the push has none. */
@@ -173,6 +217,8 @@ export type PayCalendarDbRow = {
   clause?: string | null
   words?: string | null
   set_at?: string | null
+  /** Days after the bill (punch list #341, PR 5); absent on a read from before the column. */
+  days_after?: number | null
 }
 
 /** One stored row, read for a screen; null when it names no payer, or is neither a calendar nor a job's off switch. */
@@ -183,7 +229,7 @@ export function parsePayCalendarRow(row: PayCalendarDbRow | null | undefined, se
   const off = row.off === true
   const calendar = off
     ? null
-    : normalizePayCalendar({ cutoffDay: row.cutoff_day, payDay: row.pay_day, monthsAfter: row.months_after, payWhenPaid: row.pay_when_paid, clause: row.clause, words: row.words })
+    : normalizePayCalendar({ cutoffDay: row.cutoff_day, payDay: row.pay_day, monthsAfter: row.months_after, payWhenPaid: row.pay_when_paid, clause: row.clause, words: row.words, daysAfter: row.days_after })
   if (!calendar && !(off && jobId)) return null
   return { payerCustomerId: payer, jobId, off, calendar, setByName: setByName?.trim() || null, setAt: typeof row.set_at === 'string' ? row.set_at : null }
 }
@@ -361,7 +407,7 @@ export function jobPayCalendarWords(read: PayCalendarRead, payerName: string | n
       title: 'This job reads the usual guess: the bill date plus how long they take to pay.',
     }
   }
-  return canSet ? { lead: null, press: 'Set a pay calendar…', tail: null, title: 'For a job whose payer pays on a set day of the month' } : null
+  return canSet ? { lead: null, press: 'Set a pay calendar…', tail: null, title: 'For a job whose contract says when its payer pays: a set day of the month, or a number of days after the bill' } : null
 }
 
 /** The year and month whose cutoff a bill received on `receivedYmd` makes. */
@@ -374,6 +420,8 @@ function cutoffMonthOf(received: Parts, cal: PayCalendar): { y: number; m: numbe
 export function dueDayFor(receivedYmd: string | null | undefined, cal: PayCalendar): string | null {
   const received = parts(receivedYmd)
   if (!received) return null
+  // Days after the bill: the day it was received plus the days. No cutoff, so no month is lost by a day.
+  if (paysDaysAfter(cal)) return addDays(ymdOf(received.y, received.m, received.d), cal.daysAfter)
   const cut = cutoffMonthOf(received, cal)
   const pay = monthPlus(cut.y, cut.m, cal.monthsAfter)
   const due = ymdOf(pay.y, pay.m, Math.min(cal.payDay, daysInMonth(pay.y, pay.m)))
@@ -400,7 +448,8 @@ export type PayCutoff = {
 /** The next cutoff on or after `todayYmd`, with both due days; null on a bad day. */
 export function nextCutoff(todayYmd: string, cal: PayCalendar): PayCutoff | null {
   const today = parts(todayYmd)
-  if (!today) return null
+  // Terms in days after the bill have no cutoff: every line that speaks of one draws nothing.
+  if (!today || paysDaysAfter(cal)) return null
   const cut = cutoffMonthOf(today, cal)
   const cutoffYmd = ymdOf(cut.y, cut.m, cal.cutoffDay ?? daysInMonth(cut.y, cut.m))
   const dayAfter = addDays(cutoffYmd, 1)
@@ -417,16 +466,23 @@ const MONTH_WORDS = ['the same month', 'the next month', 'the month after that']
 
 /** The calendar in one sentence: "A bill in by the last day of the month is paid the 10th of the next month." */
 export function payCalendarWords(cal: PayCalendar): string {
+  if (paysDaysAfter(cal)) return `A bill is paid ${counted(cal.daysAfter, 'day', 'days')} after it is accepted.`
   return `A bill in by ${cutoffWords(cal)} is paid ${payDayWords(cal)} of ${MONTH_WORDS[cal.monthsAfter] ?? MONTH_WORDS[1]}.`
 }
 
 /** The calendar in a few words, for a line with little room: "In by the 25th, paid the 30th". */
 export function payCalendarShort(cal: PayCalendar): string {
+  if (paysDaysAfter(cal)) return `Paid ${counted(cal.daysAfter, 'day', 'days')} after the bill`
   return `In by ${cal.cutoffDay == null ? 'month end' : `the ${ordinalDay(cal.cutoffDay)}`}, paid ${payDayWords(cal)}`
 }
 
 /** The window's preview, said back in plain dates: a bill in by the cutoff, and one a day late. */
 export function payCalendarPreview(cal: PayCalendar, todayYmd: string): { inBy: string; dayLate: string } | null {
+  if (paysDaysAfter(cal)) {
+    const due = dueDayFor(todayYmd, cal)
+    if (!due) return null
+    return { inBy: `A bill accepted today, ${payCalendarMonthDay(todayYmd)}, is due ${payCalendarMonthDay(due)}.`, dayLate: 'Each bill has its own due day. No cutoff decides a month.' }
+  }
   const cut = nextCutoff(todayYmd, cal)
   const dayAfter = cut ? addDays(cut.cutoffYmd, 1) : null
   if (!cut || !dayAfter) return null
@@ -710,18 +766,23 @@ export function calendarBillWords(read: CalendarBillRead): string {
 }
 
 /** What a calendar payer's waits are measured against, in a list's small line: "pay calendar · lands ~6d after the pay day". */
-export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined, own = false, billOwn = false): string {
+export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined, own = false, billOwn = false, cal?: PayCalendar | null): string {
   if (billOwn) return 'a bill’s own due day'
-  const whose = own ? 'a job’s own pay calendar' : 'pay calendar'
+  // Terms in days after the bill have a due day and no pay day (punch list #341, PR 5).
+  const noun = payTermsNoun(cal)
+  const day = paysDaysAfter(cal) ? 'due day' : 'pay day'
+  const whose = own ? `a job’s own ${noun}` : noun
   if (!lateness) return `${whose} · no payment on record yet`
-  if (lateness.medianDays <= 0) return `${whose} · lands by the pay day`
-  return `${whose} · lands ~${lateness.medianDays}d after the pay day`
+  if (lateness.medianDays <= 0) return `${whose} · lands by the ${day}`
+  return `${whose} · lands ~${lateness.medianDays}d after the ${day}`
 }
 
 /** A summary line's hover on a payer whose line reads a calendar: whose calendar it is, in one sentence before the calendar's own. */
-export function payerCalendarLead(name: string | null | undefined, own: boolean): string {
+export function payerCalendarLead(name: string | null | undefined, own: boolean, cal?: PayCalendar | null): string {
   const who = (name ?? '').trim()
-  if (own) return who ? `One of ${who}’s jobs is on its own pay calendar.` : 'One of their jobs is on its own pay calendar.'
+  const noun = payTermsNoun(cal)
+  if (own) return who ? `One of ${who}’s jobs is on its own ${noun}.` : `One of their jobs is on its own ${noun}.`
+  if (paysDaysAfter(cal)) return who ? `${who} pays a set number of days after a bill.` : 'Pays a set number of days after a bill.'
   return who ? `${who} pays on a calendar.` : 'Pays on a calendar.'
 }
 
@@ -756,6 +817,11 @@ export function payCutoffLine(todayYmd: string, cal: PayCalendar, verb: PayCutof
 
 /** The cutoff at the moment of sending (PR 3): what sending today makes the bill, and what waiting costs. */
 export function sendTodayCutoffWords(todayYmd: string, cal: PayCalendar): { due: string; cutoff: string; soon: boolean } | null {
+  if (paysDaysAfter(cal)) {
+    const due = dueDayFor(todayYmd, cal)
+    // Said where the bill goes out: the day counts from the day they accept it, so today is the soonest.
+    return due ? { due: `Sent today, this bill is due ${payCalendarMonthDay(due)}.`, cutoff: `They pay ${counted(cal.daysAfter, 'day', 'days')} after they accept it.`, soon: false } : null
+  }
   const cut = nextCutoff(todayYmd, cal)
   if (!cut) return null
   return {

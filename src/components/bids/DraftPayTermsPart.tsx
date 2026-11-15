@@ -46,7 +46,7 @@ export default function DraftPayTermsPart({ gcName, value, onChange }: { gcName:
             <button type="button" onClick={start} style={pressStyle}>
               + Add their pay terms
             </button>
-            <span>if they pay on a set day of the month</span>
+            <span>if their contract says when they pay</span>
           </>
         )}
       </div>
