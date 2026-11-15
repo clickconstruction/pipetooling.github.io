@@ -89,15 +89,15 @@ export async function savePayCalendar(db: Db, args: { payerId: string; jobId?: s
 }
 
 /**
- * The payer's measured payments, newest first, at most 12: the day each bill went in and the day
- * its money landed. Empty when the payer has none, when the reader may not see pay speeds, or
+ * The payer's measured payments, newest first, at most 12: the day each bill went in, the day
+ * its money landed and the job it was for, so a job's own can be picked out (`recordFor`). Empty when the payer has none, when the reader may not see pay speeds, or
  * when the read fails: the window then says there is no payment on record, never an error.
  */
 export async function loadPayerReceipts(db: Db, payerId: string): Promise<PayCalendarReceipt[]> {
   try {
     const { data, error } = await db.rpc('get_customer_pay_speeds' as never, { p_customer_ids: [payerId] } as never)
     if (error) return []
-    return (parsePaySpeedsRpc(data as unknown)?.receipts[payerId] ?? []).map((r) => ({ billedYmd: r.billedYmd, paidYmd: r.paidYmd }))
+    return (parsePaySpeedsRpc(data as unknown)?.receipts[payerId] ?? []).map((r) => ({ billedYmd: r.billedYmd, paidYmd: r.paidYmd, jobId: r.jobId }))
   } catch {
     return []
   }

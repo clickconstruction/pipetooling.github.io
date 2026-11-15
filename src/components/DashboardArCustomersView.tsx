@@ -21,7 +21,7 @@ import {
 } from '../lib/arCustomerRollup'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 import type { OpenBillTone } from '../lib/jobs/moneyWaiting'
-import { calendarBillWords, payCalendarWords } from '../lib/jobs/payCalendar'
+import { calendarBillWords, payCalendarWords, payerCalendarLead } from '../lib/jobs/payCalendar'
 import type { CustomerSegment } from '../lib/jobs/billedExpectedPay'
 import { lienArCustomerChip, lienArLensCounts, lienArLensMatch, type LienArChip, type LienArLens } from '../lib/jobs/lienArChip'
 import { LienArChipLine, LienArCustomerChipTag } from './LienArChipTag'
@@ -255,7 +255,7 @@ export default function DashboardArCustomersView({
     const avgDays = row.ownMedianDays ?? row.baselineDays
     const paceTitle =
       row.calendar != null
-        ? `Pays on a calendar. ${payCalendarWords(row.calendar)} ${row.pastExpectedDays != null ? `A bill is ${row.pastExpectedDays}d past the day it was expected.` : 'No bill is past the day it was expected.'}`
+        ? `${payerCalendarLead(null, row.calendarOwn === true)} ${payCalendarWords(row.calendar)} ${row.pastExpectedDays != null ? `A bill is ${row.pastExpectedDays}d past the day it was expected.` : 'No bill is past the day it was expected.'}`
         : row.ownMedianDays != null
         ? `Waiting ${row.oldestWaitDays ?? '—'}d — usually pays in ~${row.ownMedianDays}d (their own median)`
         : row.baselineDays != null

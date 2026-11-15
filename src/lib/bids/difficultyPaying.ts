@@ -123,6 +123,13 @@ export function difficultyPayingByHandReason(reason: string): string {
   return `${DIFFICULTY_PAYING_BY_HAND}${reason.trim()}`
 }
 
+/** The median days a stored read's words carry ("Paid in 52 days, …"); null for a by-hand point or no read. */
+export function difficultyPayingMedianOf(reason: string | null | undefined): number | null {
+  if (!reason || difficultyPayingByHandOf(reason) != null) return null
+  const m = /Paid in (\d+) days?/.exec(reason)
+  return m ? Number(m[1]) : null
+}
+
 /** A stored reason that was set by hand gives the person's words back; null for a read. */
 export function difficultyPayingByHandOf(reason: string | null | undefined): string | null {
   if (!reason || !reason.startsWith(DIFFICULTY_PAYING_BY_HAND)) return null

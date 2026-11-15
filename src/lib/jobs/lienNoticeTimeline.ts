@@ -152,7 +152,7 @@ export function lienNoticeTimeline(f: LienNoticeTimelineFacts): LienTimelineRow[
   if (f.lienDay && weekStart) {
     if (!paidInFull && !f.affidavitFiled) {
       const base = { key: 'week', kind: 'ours' as const, from: weekStart, to: f.lienDay, dayFrom: dayOf(weekStart), dayTo: dayOf(f.lienDay), title: 'The affidavit’s week: draft it, the leader signs it before a notary, file it at the county.', detail: `Our rule. The paper takes about a week, so from ${fmt(weekStart)} this notice’s row offers Draft affidavit instead of a reminder. A courtesy may still be sent by hand from the footer.`, chip: 'our rule' }
-      if (today < weekStart) rows.push({ ...base, status: 'soon', statusWords: `starts in ${plural(between(today, weekStart), 'day')}`, next: `on ${fmt(weekStart)} the button here becomes Draft affidavit` })
+      if (today < weekStart) rows.push({ ...base, status: 'soon', statusWords: `starts in ${plural(between(today, weekStart), 'day')}`, next: `on ${fmt(weekStart)} the button here becomes Open the affidavit` })
       else if (today <= f.lienDay) rows.push({ ...base, status: 'now', statusWords: 'this week', next: 'draft it, the leader signs before a notary, file it at the county' })
     }
     const left = between(today, f.lienDay)

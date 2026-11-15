@@ -197,6 +197,8 @@ export type PayCalendarRead = {
   from: PayCalendarSource
   /** The payer's own calendar, whatever the job carries: what the job would follow without a row of its own. */
   payerCalendar: PayCalendar | null
+  /** The job whose own row this is, so its record can be picked out of the payer's payments (`recordFor`); absent on the payer's, and with none. */
+  jobId?: string | null
 }
 
 const NO_CALENDAR: PayCalendarRead = { calendar: null, from: 'none', payerCalendar: null }
@@ -210,7 +212,7 @@ export function calendarSourceFor(index: PayCalendarIndex | null | undefined, bi
   if (!index || !bill.payerId) return NO_CALENDAR
   const payerCalendar = index.byPayer.get(bill.payerId)?.calendar ?? null
   const own = bill.jobId ? index.byPayerJob.get(`${bill.payerId}|${bill.jobId}`) : undefined
-  if (own) return own.off || !own.calendar ? { calendar: null, from: 'off', payerCalendar } : { calendar: own.calendar, from: 'job', payerCalendar }
+  if (own) return own.off || !own.calendar ? { calendar: null, from: 'off', payerCalendar, jobId: own.jobId } : { calendar: own.calendar, from: 'job', payerCalendar, jobId: own.jobId }
   return payerCalendar ? { calendar: payerCalendar, from: 'payer', payerCalendar } : NO_CALENDAR
 }
 
@@ -343,8 +345,8 @@ export function cutoffWordsFor(cut: PayCutoff, verb: PayCutoffVerb = 'Send'): { 
   return { sendBy: `${verb} by ${payCalendarMonthDay(cut.cutoffYmd)} to be due ${payCalendarMonthDay(cut.dueYmd)}.`, after: `After that, ${payCalendarMonthDay(cut.nextDueYmd)}.` }
 }
 
-/** A measured payment: the day its bill went in and the day the money landed. */
-export type PayCalendarReceipt = { billedYmd: string; paidYmd: string }
+/** A measured payment: the day its bill went in, the day the money landed, and the job it was for when the read carries one. */
+export type PayCalendarReceipt = { billedYmd: string; paidYmd: string; jobId?: string | null }
 
 /** The payer's record against a calendar: how its measured payments landed against their own due days. */
 export type PayCalendarLateness = {
@@ -378,6 +380,43 @@ export function latenessAgainst(receipts: ReadonlyArray<PayCalendarReceipt> | nu
   return { count: late.length, medianDays: Math.max(0, Math.round(median)), minDays: late[0]!, maxDays: late[late.length - 1]!, onTime: late.filter((d) => d <= 0).length }
 }
 
+/** A job's own payments make a record of their own once it has this many (punch list #341, the owner's call 2 at its first pick). */
+export const JOB_RECORD_MIN_PAYMENTS = 2
+
+/**
+ * Whose payments scored a calendar (punch list #341, PR 3).
+ *  - `payer`: the payer's calendar, scored on the payer's payments on every job. As before #341.
+ *  - `job`: a job's own calendar, scored on that job's payments alone.
+ *  - `borrowed`: a job's own calendar with fewer than `JOB_RECORD_MIN_PAYMENTS` payments of its own,
+ *    so the payer's payments on every job stand in, replayed through the job's calendar.
+ */
+export type PayCalendarRecordOf = 'payer' | 'job' | 'borrowed'
+
+/** The record a due day is scored on, and whose it is. */
+export type PayCalendarRecord = {
+  lateness: PayCalendarLateness | null
+  of: PayCalendarRecordOf
+  /** The job's own measured payments among the payer's; 0 on the payer's calendar, where nobody counts them. */
+  jobPayments: number
+}
+
+/**
+ * The record behind one bill's due day. A job on its own calendar pays under its own terms, so the
+ * payer's payments on other jobs say little about it: once the job has two payments of its own it is
+ * scored on those alone. Until then the payer's record stands in, and `of` says so. Null with no
+ * calendar. The receipts are the newest the pay-speeds read returns, at most 12 a payer, so a job's
+ * older payments are not counted.
+ */
+export function recordFor(receipts: ReadonlyArray<PayCalendarReceipt> | null | undefined, read: PayCalendarRead): PayCalendarRecord | null {
+  const cal = read.calendar
+  if (!cal) return null
+  if (read.from !== 'job' || !read.jobId) return { lateness: latenessAgainst(receipts, cal), of: 'payer', jobPayments: 0 }
+  const own = (receipts ?? []).filter((r) => r.jobId === read.jobId)
+  const ownLateness = own.length >= JOB_RECORD_MIN_PAYMENTS ? latenessAgainst(own, cal) : null
+  if (ownLateness && ownLateness.count >= JOB_RECORD_MIN_PAYMENTS) return { lateness: ownLateness, of: 'job', jobPayments: ownLateness.count }
+  return { lateness: latenessAgainst(receipts, cal), of: 'borrowed', jobPayments: own.length }
+}
+
 /** The honest guess: the due day plus how late the payer usually runs; the due day itself with no record. */
 export function expectedFromDue(dueYmd: string, lateness: PayCalendarLateness | null | undefined): string {
   const days = lateness?.medianDays ?? 0
@@ -390,19 +429,59 @@ const counted = (n: number, one: string, many: string): string => `${n} ${n === 
  * The record in the window's words, at most two short sentences. With nothing measured it
  * says so, and says what the due day is then worth.
  */
-export function latenessWords(lateness: PayCalendarLateness | null | undefined): string {
+export function latenessWords(lateness: PayCalendarLateness | null | undefined, whose: 'Their' | 'This job’s' = 'Their'): string {
   if (!lateness) return 'No payment on record yet. The due day is the best guess there is.'
   const { count, minDays, maxDays, medianDays, onTime } = lateness
   if (count === 1) {
-    if (maxDays <= 0) return 'Their one payment on record landed by its due day.'
-    return `Their one payment on record landed ${counted(maxDays, 'day', 'days')} after its due day.`
+    if (maxDays <= 0) return `${whose} one payment on record landed by its due day.`
+    return `${whose} one payment on record landed ${counted(maxDays, 'day', 'days')} after its due day.`
   }
-  if (maxDays <= 0) return `Their last ${count} payments all landed by the due day.`
+  if (maxDays <= 0) return `${whose} last ${count} payments all landed by the due day.`
   const from = Math.max(0, minDays)
   const range = from === maxDays ? `${counted(maxDays, 'day', 'days')}` : `${from} to ${counted(maxDays, 'day', 'days')}`
   const usual = medianDays > 0 ? ` Usually about ${medianDays}.` : ' Usually on the day.'
   const kept = onTime > 0 && onTime < count ? ` ${onTime} of ${count} were on time.` : ''
-  return `Their last ${count} payments landed ${range} after the due day.${usual}${kept}`
+  return `${whose} last ${count} payments landed ${range} after the due day.${usual}${kept}`
+}
+
+/**
+ * The record in the window's and the hover's words, saying whose it is (punch list #341, PR 3). On the
+ * payer's calendar these are `latenessWords` as they always were. A job scored on its own payments says
+ * *This job's last 3 payments…*. A job still on its payer's record says so first, and how many payments
+ * it has of its own.
+ */
+export function recordWords(record: PayCalendarRecord | null | undefined, payerName?: string | null): string {
+  if (!record) return latenessWords(null)
+  if (record.of === 'payer') return latenessWords(record.lateness)
+  if (record.of === 'job') return latenessWords(record.lateness, 'This job’s')
+  const who = (payerName ?? '').trim() || 'the payer'
+  if (!record.lateness) return `No payment on this job yet, and none on record for ${who}. The due day is the best guess there is.`
+  const lead = record.jobPayments > 0 ? `One payment on this job so far. Until it has ${JOB_RECORD_MIN_PAYMENTS}, the record is ${who}’s on all their jobs.` : `No payment on this job yet. The record is ${who}’s on other jobs.`
+  return `${lead} ${latenessWords(record.lateness)}`
+}
+
+/** Whose record a row's line stands on, in the fewest words, for the tail of a narrow line; null on the payer's own, which needs no word. */
+export function recordOfShort(record: PayCalendarRecord | null | undefined): string | null {
+  if (!record || record.of === 'payer') return null
+  return record.of === 'job' ? 'this job’s record' : 'their record on other jobs'
+}
+
+/** A dates row's line under a due day: the day the money usually lands, then whose record says so. "Usually lands about Dec 16 · this job’s record". */
+export function recordLandsShort(dueYmd: string, record: PayCalendarRecord | null | undefined): string {
+  const lands = usuallyLandsShort(dueYmd, record?.lateness)
+  if (!lands) return record && record.of !== 'payer' ? 'No payment on this job yet' : 'No payment on record yet'
+  const of = recordOfShort(record)
+  return of ? `${lands} · ${of}` : lands
+}
+
+/** That line's hover, with the math and whose record it is. */
+export function recordLandsWords(dueYmd: string, record: PayCalendarRecord | null | undefined, payerName?: string | null): string {
+  const lands = usuallyLandsWords(dueYmd, record?.lateness)
+  if (!record || record.of === 'payer') return lands ?? 'No payment of theirs is measured yet, so the due day is the best guess there is.'
+  const who = (payerName ?? '').trim() || 'the payer'
+  if (!lands) return `No payment on this job is measured yet, and none of ${who}’s. The due day is the best guess there is.`
+  if (record.of === 'job') return `${lands} That is this job’s own ${record.jobPayments} payments, not ${who}’s other jobs.`
+  return `${lands} That is ${who}’s record on ${record.jobPayments > 0 ? 'all their jobs' : 'other jobs'}. This job is scored on its own once it has ${JOB_RECORD_MIN_PAYMENTS} payments.`
 }
 
 /** The record in the fewest words, for a dates row with little room: "Usually lands about Dec 16". The day leads, since a narrow row cuts the tail. */
@@ -444,6 +523,8 @@ export type CalendarBillRead = {
   daysPastExpected: number
   /** ok until the expected day has passed · warn once it has · late once a whole pay run was missed. */
   tone: CalendarBillTone
+  /** The calendar the bill read, whether it is its job's own, and the record it was scored on (`billCalendarRead`); absent on a read built bare. */
+  of?: { calendar: PayCalendar; own: boolean; record: PayCalendarRecord }
 }
 
 /**
@@ -462,6 +543,51 @@ export function calendarBillRead(clockYmd: string | null | undefined, cal: PayCa
   return { dueYmd, expectedYmd, daysPastDue: Math.max(0, sinceDue), daysPastExpected, tone }
 }
 
+/**
+ * One open bill against the calendar it reads, scored on the record that calendar calls for
+ * (`recordFor`): a job on its own calendar on its own payments once it has two. The read carries
+ * the calendar and the record, so a payer's summary line can read its bills (`payerCalendarSummary`).
+ * Null with no calendar, or no usable day.
+ */
+export function billCalendarRead(read: PayCalendarRead, clockYmd: string | null | undefined, receipts: ReadonlyArray<PayCalendarReceipt> | null | undefined, todayYmd: string): CalendarBillRead | null {
+  const record = recordFor(receipts, read)
+  if (!read.calendar || !record) return null
+  const bill = calendarBillRead(clockYmd, read.calendar, record.lateness, todayYmd)
+  return bill ? { ...bill, of: { calendar: read.calendar, own: read.from === 'job', record } } : null
+}
+
+/** What a payer's summary line reads in Money waiting and Accounts Receivable (punch list #341, PR 3). */
+export type PayerCalendarSummary = {
+  /** The calendar the line reads: the one behind the bill furthest past its expected day, else the payer's own; null with neither. */
+  calendar: PayCalendar | null
+  /** That calendar is one job's own, not the payer's. */
+  own: boolean
+  /** The record that calendar was scored on. */
+  lateness: PayCalendarLateness | null
+  recordOf: PayCalendarRecordOf | null
+  /** The most days any bill is past its expected day; null when none is. */
+  pastExpectedDays: number | null
+}
+
+/**
+ * A payer's summary line, read from its bills. Before #341's PR 3 the line read the payer's own
+ * calendar alone, so a payer with none and one job on its own calendar read as a pace payer while
+ * that job's bill was judged by its due day. Now the bill furthest past its expected day lends the
+ * line its calendar and its record. With no bill past, the line reads the payer's own, as before.
+ */
+export function payerCalendarSummary(payer: { calendar: PayCalendar | null; lateness: PayCalendarLateness | null }, bills: ReadonlyArray<CalendarBillRead | null | undefined>): PayerCalendarSummary {
+  let worst: CalendarBillRead | null = null
+  for (const b of bills) if (b && b.daysPastExpected > 0 && (!worst || b.daysPastExpected > worst.daysPastExpected)) worst = b
+  if (worst) {
+    const of = worst.of
+    // A read built bare names no calendar of its own: it was the payer's.
+    if (!of) return payer.calendar ? { calendar: payer.calendar, own: false, lateness: payer.lateness, recordOf: 'payer', pastExpectedDays: worst.daysPastExpected } : { calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: null }
+    return { calendar: of.calendar, own: of.own, lateness: of.record.lateness, recordOf: of.record.of, pastExpectedDays: worst.daysPastExpected }
+  }
+  if (payer.calendar) return { calendar: payer.calendar, own: false, lateness: payer.lateness, recordOf: 'payer', pastExpectedDays: null }
+  return { calendar: null, own: false, lateness: null, recordOf: null, pastExpectedDays: null }
+}
+
 /** The read in a row's words: "due Dec 10" · "due Nov 10 · 5d past due" · "due Nov 10 · 12d past expected". */
 export function calendarBillWords(read: CalendarBillRead): string {
   const due = `due ${payCalendarMonthDay(read.dueYmd)}`
@@ -471,10 +597,18 @@ export function calendarBillWords(read: CalendarBillRead): string {
 }
 
 /** What a calendar payer's waits are measured against, in a list's small line: "pay calendar · lands ~6d after the pay day". */
-export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined): string {
-  if (!lateness) return 'pay calendar · no payment on record yet'
-  if (lateness.medianDays <= 0) return 'pay calendar · lands by the pay day'
-  return `pay calendar · lands ~${lateness.medianDays}d after the pay day`
+export function calendarBasisWords(lateness: PayCalendarLateness | null | undefined, own = false): string {
+  const whose = own ? 'a job’s own pay calendar' : 'pay calendar'
+  if (!lateness) return `${whose} · no payment on record yet`
+  if (lateness.medianDays <= 0) return `${whose} · lands by the pay day`
+  return `${whose} · lands ~${lateness.medianDays}d after the pay day`
+}
+
+/** A summary line's hover on a payer whose line reads a calendar: whose calendar it is, in one sentence before the calendar's own. */
+export function payerCalendarLead(name: string | null | undefined, own: boolean): string {
+  const who = (name ?? '').trim()
+  if (own) return who ? `One of ${who}’s jobs is on its own pay calendar.` : 'One of their jobs is on its own pay calendar.'
+  return who ? `${who} pays on a calendar.` : 'Pays on a calendar.'
 }
 
 /** The cutoff asks in amber once it is this close, the last week a bill can still make this month's run. */

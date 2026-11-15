@@ -21,7 +21,7 @@ describe('peopleTabGroups', () => {
     expect([...seen.keys()].sort()).toEqual([...PEOPLE_TABS].sort())
     expect([...seen.values()].every((n) => n === 1)).toBe(true)
     expect(Object.keys(PEOPLE_TAB_LABELS).sort()).toEqual([...PEOPLE_TABS].sort())
-    expect(PEOPLE_TABS.length).toBe(22)
+    expect(PEOPLE_TABS.length).toBe(23)
   })
 
   it('places the owner-picked views: Person under People, Feedback alone at the top level', () => {
@@ -37,15 +37,15 @@ describe('peopleTabGroups', () => {
     expect(PEOPLE_TAB_GROUPS.map((g) => g.label)).toEqual(['People', 'Pay', 'Paperwork', 'Fleet & Housing', 'Review', 'Feedback'])
   })
 
-  it('a dev sees six groups with all twenty-two views', () => {
+  it('a dev sees six groups with all twenty-three views', () => {
     const groups = visibleTabGroups(ALL_VISIBLE)
     expect(groups.map((g) => g.id)).toEqual(['people', 'pay', 'paperwork', 'fleet', 'review', 'feedback'])
-    expect(groups.flatMap((g) => g.views).length).toBe(22)
+    expect(groups.flatMap((g) => g.views).length).toBe(23)
   })
 
   it('the office sees four groups: a group with no visible view is dropped', () => {
     // Controller: everything but the dev-only views.
-    const controller = { ...ALL_VISIBLE, hr: false, review: false, scoreboard: false, feedback: false, activity: false }
+    const controller = { ...ALL_VISIBLE, hr: false, review: false, scoreboard: false, scores: false, feedback: false, activity: false }
     const groups = visibleTabGroups(controller)
     expect(groups.map((g) => g.id)).toEqual(['people', 'pay', 'paperwork', 'fleet'])
     expect(groups.find((g) => g.id === 'paperwork')?.views).toEqual(['contracts', 'licenses', 'writeups'])

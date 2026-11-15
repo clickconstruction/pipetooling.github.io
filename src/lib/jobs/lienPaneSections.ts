@@ -7,13 +7,15 @@
  * the months and the claim, the pages in the envelope. Pure: facts in, heads and offsets out.
  */
 
-/** The height of one head, the Notices list's `PILE_HEAD_H`. */
-export const LIEN_PANE_HEAD_H = 30
+import { LIEN_PILE_HEAD_H, LIEN_PILE_HEAD_H_PHONE } from './lienPhoneLists'
+
+/** The height of one head: the Notices list's title bar, one number for every bar on the desk (v2.7323). */
+export const LIEN_PANE_HEAD_H = LIEN_PILE_HEAD_H
 
 export type LienPaneSectionKey = 'path' | 'gates' | 'houses' | 'months' | 'envelope'
 
-export type LienPaneSection = {
-  key: LienPaneSectionKey
+export type LienPaneSection<K extends string = LienPaneSectionKey> = {
+  key: K
   /** The uppercase label at the left. */
   label: string
   /** The bold fact at the right. */
@@ -69,15 +71,15 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
   return out
 }
 
-/** Where a head sticks: under the strip and the heads passed, above the heads to come — the list's `top: i·30`, `bottom: (n−1−i)·30`. */
-export function lienPaneHeadOffsets(index: number, count: number, stripHeight: number, phone = false): { top: number; bottom: number | 'auto' } {
+/** Where a head sticks and how tall it is: under the strip and the heads passed, above the heads to come — the list's `top: i·H`, `bottom: (n−1−i)·H`. */
+export function lienPaneHeadOffsets(index: number, count: number, stripHeight: number, phone = false): { top: number; bottom: number | 'auto'; height: number } {
   // A phone pins one head, the section being read, under the strip (punch list #352, PR 6): five stacked heads were 150 px of a pane that had 58 to 285.
-  if (phone) return { top: Math.max(0, stripHeight), bottom: 'auto' }
-  return { top: Math.max(0, stripHeight) + index * LIEN_PANE_HEAD_H, bottom: Math.max(0, count - 1 - index) * LIEN_PANE_HEAD_H }
+  if (phone) return { top: Math.max(0, stripHeight), bottom: 'auto', height: LIEN_PANE_HEAD_H_PHONE }
+  return { top: Math.max(0, stripHeight) + index * LIEN_PANE_HEAD_H, bottom: Math.max(0, count - 1 - index) * LIEN_PANE_HEAD_H, height: LIEN_PANE_HEAD_H }
 }
 
-/** A phone's head is a thumb tall. */
-export const LIEN_PANE_HEAD_H_PHONE = 40
+/** A phone's head is a thumb tall, the list's. */
+export const LIEN_PANE_HEAD_H_PHONE = LIEN_PILE_HEAD_H_PHONE
 
 /** The height of the heads that sit over section `index` once it is scrolled to: its own and, on a computer, the ones before it. */
 function headsOver(index: number, phone: boolean): number {

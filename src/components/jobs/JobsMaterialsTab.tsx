@@ -26,11 +26,12 @@ import { missingWeekIsPartial, missingWeekNote } from '../../lib/materials/missi
 import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
-import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadJob } from '../../lib/materials/onSiteStore'
+import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
+import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retireContainer, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadDesk, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
+import { broughtBackWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
+import { RETIRE_ALL_TITLE, retireAllConfirmLabel, retireAllConfirmWords, retireAllOutcomeWords, retireAllPlan, retireAllUndoHeldWords, retireAllUndoneWords, retireAllWords } from '../../lib/materials/retireAll'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, landableLines, landedFromInvoice, linePrice, manifestComparison, readInvoiceText, SAMPLE_INVOICE_TEXT, type LoneFigureIs, type ParsedLine } from '../../lib/materials/manifest'
 import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHead, refusedLineWords, LONE_FIGURE_WORDS } from '../../lib/materials/deliveryWords'
@@ -38,6 +39,8 @@ import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
+import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { groupDeskBySite, sitePartRows, spellingsWords } from '../../lib/materials/siteRollup'
 import { tieCanon } from '../../lib/materials/partTies'
@@ -54,6 +57,8 @@ import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
 import PrintStickersModal, { type StickerRunToPrint } from '../materials/PrintStickersModal'
 import StickerRunsFold from '../materials/StickerRunsFold'
+import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
+import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
@@ -84,6 +89,9 @@ type Props = {
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
+/** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
+const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '0.2em', textAlign: 'left' }
+const quietPressDead: CSSProperties = { ...quietPress, color: 'var(--text-muted)', cursor: 'default', textDecoration: 'none' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
 /** A delivery line on the table with the id its Delivered row lands under (v2.7267). */
 type DeliveryLine = ParsedLine & { id: string }
@@ -159,7 +167,8 @@ function BookPricesLine() {
 }
 
 export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail, driveBackfill = true, rowDoors, role = null }: Props) {
-  const openJobRef = useRef<HTMLSelectElement>(null)
+  /** The Open a job pick's wrapper: the empty state's press puts the focus on its trigger. */
+  const openJobRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   useOnSiteStoreVersion()
   const { showToast } = useToastContext()
@@ -204,9 +213,14 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
   }, [jobs, extraJobs, withDataKey])
   /** The links the Drive-folders press wrote this visit, by job (v2.6054): the page's list is read once, so the desk and the job view patch their copy. */
   const [madeLinks, setMadeLinks] = useState<Record<string, JobDriveLinksPatch>>({})
+  /** The desk's whole-job move (v2.7305): opened from a site row that holds more than one job with boxes, the source picked from that site's jobs. */
+  const [deskMove, setDeskMove] = useState<{ sources: MoveJobChoice[] } | null>(null)
+  const canMove = canMoveOnSite(role)
   const onFoldersMade = (id: string, patch: JobDriveLinksPatch) => setMadeLinks((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   const withLinks = (j: MaterialsJob): MaterialsJob => (madeLinks[j.id] ? { ...j, ...madeLinks[j.id] } : j)
   const allJobs = [...jobs, ...extraJobs].map(withLinks)
+  /** Every job the page knows, named as the desk names it, for the move window's same-site list and search. */
+  const moveJobs: MoveJobChoice[] = allJobs.map((j) => ({ id: j.id, label: jobLabel(j, j.id) }))
 
   /** A job's page on this same mount, as a link: the tab stays, the site goes. */
   const jobHref = (id: string) => {
@@ -268,7 +282,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
             <thead><tr><th style={{ ...th, minWidth: 240 }}>Job</th><th style={{ ...th, ...num }}>Containers</th><th style={{ ...th, ...num }}>On site, lines</th><th style={{ ...th, ...num }}>Missing this week</th><th style={th}>Counts</th><th style={{ ...th, ...num }}>Credits due</th>{rowDoors ? <th style={th} aria-label="Doors"></th> : null}</tr></thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.focus() }} tail="below, then add its first container." /></td></tr>
+                <tr><td style={td} colSpan={cols}><EmptyState compact main="No job has a container yet." next={{ label: 'Open a job', onPress: () => openJobRef.current?.querySelector('button')?.focus() }} tail="below, then add its first container." /></td></tr>
               ) : groups.flatMap((g, gi) => {
                 const jobRow = (r: (typeof rows)[number], under: boolean) => r.failed ? (
                   <tr key={r.id} data-job-not-loaded={r.id} style={{ background: 'var(--bg-amber-100)' }}>
@@ -321,6 +335,12 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
                       <button type="button" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 800, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }} onClick={() => setSite(g.siteId)} title="Everything on this site on one screen, across its jobs">{g.name}</button>
                       <span style={muted}> · {members.length === 1 ? '1 job' : `${members.length} jobs`} · the whole site</span>
                       {notLoaded > 0 ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · {deskJobsNotLoadedWords(notLoaded)}</span> : null}
+                      {/* Two jobs hold this site's boxes (v2.7305): the office's press for moving everything one holds to the other, choosing both from the site's jobs. */}
+                      {(() => {
+                        const sources = members.filter((r) => !r.failed && r.sum.containers > 0).map((r) => ({ id: r.id, label: jobLabel(r.job, r.id) }))
+                        if (sources.length < 2) return null
+                        return <div><button type="button" style={canMove ? quietPress : quietPressDead} disabled={!canMove} aria-disabled={!canMove} title={canMove ? `Everything one of ${g.name}’s jobs holds on site moved to another of its jobs, every box keeping its code` : MOVE_JOB_WHO} aria-label={canMove ? undefined : `${MOVE_JOB_LABEL} ${MOVE_JOB_WHO}`} onClick={() => setDeskMove({ sources })} data-testid="materials-site-move-job">{MOVE_JOB_LABEL}</button>{canMove ? null : <span style={muted}> {MOVE_JOB_WHO}</span>}</div>
+                      })()}
                     </td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{boxes}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{lines}</td>
@@ -336,20 +356,33 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           </table>
         </div>
         {driveBackfill ? <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} /> : null}
+        {deskMove ? <OnSiteMoveJobModal sourceJobId={null} sourceChoices={deskMove.sources} jobs={moveJobs} siteOfJob={sites.siteOfJob} role={role} onClose={() => setDeskMove(null)} onMoved={(_from, _to, words) => { showToast(words, 'success'); void loadDesk({ force: true, quiet: true }) }} /> : null}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            Open a job
-            <select ref={openJobRef} aria-label="Open a job" defaultValue="" onChange={(e) => { if (e.target.value) setJob(e.target.value) }} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', padding: '0 0.5rem', maxWidth: 360 }}>
-              <option value="">Choose…</option>
-              {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j, j.id)}</option>)}
-            </select>
-          </label>
+          {/* v2.7310: a searchable list in place of the native select, which could only scroll; the jobs with a box first. */}
+          <span style={muted}>Open a job</span>
+          <div ref={openJobRef} data-testid="materials-open-job" style={{ minWidth: 0, width: 'min(100%, 420px)' }}>
+            <SearchableSelect
+              value=""
+              onChange={(v) => { if (v) setJob(v) }}
+              options={deskPickOptions(jobs, rows.map((r) => r.id))}
+              placeholder="Choose…"
+              listAriaLabel="Open a job"
+              searchPlaceholder={DESK_PICK_PLACEHOLDER}
+              listMaxHeightPx={360}
+              fillViewportHeight
+              listMinWidthPx={320}
+              listOptionPadding="0.4rem 0.6rem"
+              listOptionFontSize="0.85rem"
+              triggerMinHeightPx={36}
+              triggerStyle={{ font: 'inherit', padding: '0 0.5rem' }}
+            />
+          </div>
         </div>
       </div>
     )
   }
 
-  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} />
+  return <JobView jobId={jobId} siteId={sites.siteOfJob.get(jobId) ?? null} siteName={sites.siteNames.get(sites.siteOfJob.get(jobId) ?? '') ?? null} onOpenSite={setSite} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} role={role} moveJobs={moveJobs} siteOfJob={sites.siteOfJob} />
 }
 
 type ToastTone = 'success' | 'info' | 'warning' | 'error'
@@ -430,7 +463,7 @@ function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }
   )
 }
 
-function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null }) {
+function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast, role, moveJobs, siteOfJob }: { jobId: string; /** The job's site (punch list #330), when it is on one: By part reads the names joined there, and a line leads to the whole site. */ siteId: string | null; siteName: string | null; onOpenSite: (siteId: string) => void; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void; role: string | null; /** Every job the page knows and which site each is on (v2.7305), for the move window's same-site list and search. */ moveJobs: MoveJobChoice[]; siteOfJob: ReadonlyMap<string, string | null> }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -465,6 +498,51 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [loneIs, setLoneIs] = useState<LoneFigureIs | null>(null)
   const [landing, setLanding] = useState(false)
   const confirmDialog = useConfirmDialog()
+  const { showActionToast } = useToastContext()
+  /**
+   * Retire every box on this job (v2.7303, the owner's ask of 2026-11-14): the empty boxes go, each box with parts stays
+   * with its reason, the press keeps going past a box that fails, and the toast carries Undo for a minute as the phone's
+   * Retire does. The office's refusal of a write comes back through the store's own toast, as every press's does.
+   */
+  const retirePlan = retireAllPlan(containers, lines)
+  const retireWords = retireAllWords(retirePlan)
+  const onRetireAll = async () => {
+    const plan = retireAllPlan(listContainers(jobId), lines)
+    if (plan.go.length === 0) return
+    if (!(await confirmDialog({ title: RETIRE_ALL_TITLE, message: retireAllConfirmWords(plan), confirmLabel: retireAllConfirmLabel(plan) }))) return
+    const retired: Container[] = []
+    const failed: Array<{ box: Container; reason: string }> = []
+    for (const box of plan.go) {
+      try {
+        retireContainer(box.id)
+        retired.push(box)
+      } catch (e) {
+        failed.push({ box, reason: formatErrorMessage(e, 'It did not save.') })
+      }
+    }
+    const words = retireAllOutcomeWords({ retired, held: plan.held, failed })
+    if (retired.length === 0) {
+      showToast(words.line, words.tone)
+      return
+    }
+    showActionToast(words.line, {
+      label: undoRetireLabel,
+      onClick: () => {
+        const all = listContainers(jobId)
+        const back: Container[] = []
+        const refused: Array<{ box: Container; words: string }> = []
+        for (const box of retired) {
+          const v = unretireVerdict(all, box.id)
+          if (v.ok) {
+            unretireContainer(box.id)
+            back.push(box)
+          } else refused.push({ box, words: v.words })
+        }
+        if (back.length > 0) showToast(retireAllUndoneWords(back.length), 'success')
+        if (refused.length > 0) showToast(retireAllUndoHeldWords(refused), 'warning')
+      },
+    }, { durationMs: UNDO_RETIRE_MS, type: words.tone })
+  }
   const [pasteOpen, setPasteOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
   /** The job's Drive folder: where the invoice goes, as every job file does (#164). The app reads it from there. */
@@ -570,6 +648,9 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   /** Ticks when a run is minted here, so the Runs fold reads again. */
   const [runsKey, setRunsKey] = useState(0)
   const canMint = canMintStickers(role)
+  /** Move everything on site to another job (v2.7305): the window, for the roles that may combine two jobs. */
+  const [moveOpen, setMoveOpen] = useState(false)
+  const canMove = canMoveOnSite(role)
   const [labelParams, setLabelParams] = useSearchParams()
   useEffect(() => {
     const id = labelParams.get('label')
@@ -733,10 +814,24 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           </div>
         )
           )}
+          {/* Retire every box on this job (v2.7303): the empty ones go, the ones with parts are named beside the press and stay. The row is drawn only while the job has a live box. */}
+          {boxCount > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }} data-testid="retire-all-row">
+              <button type="button" style={{ ...btn, ...(retireWords.dead ? materialsPressDead : {}) }} disabled={retireWords.dead} aria-disabled={retireWords.dead} title="Retire every empty box on this job at once. A box with parts in it stays, with its reason." onClick={() => void onRetireAll()} data-testid="retire-all">{retireWords.button}</button>
+              {retireWords.foot ? <span style={muted} data-testid="retire-all-foot">{retireWords.foot}</span> : null}
+            </div>
+          ) : null}
           {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
           <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
           {/* Runs of blank stickers printed for this job (punch list #329, v2.7272): each with its range, its counts, who and when, and Reprint / Print the rest. */}
           <StickerRunsFold jobId={jobId} refreshKey={runsKey} openKey={runsOpenKey} onPrint={(run, stickers, title) => setStickersOpen({ run: { run, stickers, title } })} />
+          {/* A count recorded under the wrong job (v2.7305): everything this job holds on site moved to the right one, every box keeping its code, through the rule the whole-job combine uses. A quiet press, since it re-homes every printed box at once; dead with its reason for the roles that may not combine. */}
+          {containers.length > 0 || movements.length > 0 ? (
+            <p style={{ ...muted, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button type="button" style={canMove ? quietPress : quietPressDead} disabled={!canMove} aria-disabled={!canMove} title={canMove ? 'Everything this job holds on site moved to the job it belongs on, every box keeping its code and its history' : MOVE_JOB_WHO} aria-label={canMove ? undefined : `${MOVE_JOB_LABEL} ${MOVE_JOB_WHO}`} onClick={() => setMoveOpen(true)} data-testid="materials-move-job">{MOVE_JOB_LABEL}</button>
+              {canMove ? null : <span>{MOVE_JOB_WHO}</span>}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -1025,6 +1120,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
         </div>
       ) : null}
       {labelsOpen ? <LabelsPrintModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
+      {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} /> : null}
       {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}

@@ -1,0 +1,258 @@
+import { describe, expect, it } from 'vitest'
+import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunChecklistWords, lienRunFootWords, lienRunMailLink, lienRunNothingToClaim, lienRunPill, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
+import type { RunNotice, RunRecipient } from './lienDeskRun'
+import type { LienNoticeSignature } from './lienNoticeSignature'
+
+const owner = (tracking = ''): RunRecipient => ({ key: 'owner', label: 'Owner of record', name: 'Elwick Holdings LLC', address: '4 Example Way, Schertz, TX', email: '', method: 'certified_mail', tracking })
+const gc = (tracking = ''): RunRecipient => ({ key: 'original_contractor', label: 'Original contractor', name: 'Lowbeck Contracting', address: '2904 Corporate Cr', email: 'office@lowbeck.test', method: 'certified_mail', tracking })
+
+const typed: LienNoticeSignature = { mode: 'type', printedName: 'Robert Douglas', pngDataUrl: null, signedAtIso: '2026-10-09T19:14:00Z', recordId: 'L650-AAAA', signedWords: 'Signed October 9, 2026 at 2:14 PM CT', auditLine: '', onDeviceOf: null, pen: null }
+const pen: LienNoticeSignature = { ...typed, mode: 'pen', signedAtIso: '2026-10-10T17:00:00Z', pen: { recordedByName: 'Taunya', how: 'watched', confirmedAtIso: null } }
+
+function notice(partial: Partial<RunNotice> = {}): RunNotice {
+  return {
+    itemId: 'it1',
+    jobId: 'j650',
+    kind: 'notice_53_056',
+    label: '650 · AXO Schertz',
+    jobNumber: '650',
+    months: ['2026-06'],
+    amount: 33_500,
+    fields: { noticeDate: '2026-09-14', projectDescription: 'AXO Schertz', claimantName: 'Click', laborMaterialsType: 'Plumbing', originalContractorName: 'Lowbeck Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
+    extras: {},
+    coverLetter: null,
+    coverNote: null,
+    ownerUnconfirmed: false,
+    recipients: [owner(), gc()],
+    signature: typed,
+    leader: { userId: 'u-rob', name: 'Robert Douglas' },
+    ...partial,
+  }
+}
+
+describe('lienRunChecklistRows', () => {
+  it('reads the three ticks off the notice: the print stamp with who, the typed name, and every envelope’s number', () => {
+    const [r] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', printedBy: 'Taunya', recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] })] })
+    expect(r!.printed).toEqual({ at: '2026-10-08T16:00:00Z', by: 'Taunya' })
+    expect(r!.signed).toEqual({ how: 'typed', at: '2026-10-09T19:14:00Z', by: 'Robert Douglas' })
+    expect(r!.mailed).toEqual({ tracking: '9407 1118 9876 5432 1098 · 9407 1118 9876 5432 1111', sentOn: null })
+    expect(r!.waitsOn).toBeNull()
+    expect(r!.line).toBe('mailed · ready to record')
+    expect(r!.recipients.map((x) => [x.key, x.mailed, x.needsNumber])).toEqual([['owner', true, true], ['original_contractor', true, true]])
+    expect(r!.amount).toBe(33_500)
+    expect(r!.label).toBe('650 · AXO Schertz')
+  })
+
+  it('waits on the ticks in the owner’s order: print, then sign, then mail; one envelope’s number alone is not mailed', () => {
+    const unprinted = lienRunChecklistRows({ notices: [notice({ signature: null })] })[0]!
+    expect(unprinted.waitsOn).toBe('print')
+    expect(unprinted.line).toBe('not printed')
+    const unsigned = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', signature: null })] })[0]!
+    expect(unsigned.waitsOn).toBe('sign')
+    expect(unsigned.line).toBe('printed · not signed')
+    expect(unsigned.held).toBeNull()
+    const half = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', recipients: [owner('9407 1118 9876 5432 1098'), gc()] })] })[0]!
+    expect(half.mailed).toBeNull()
+    expect(half.waitsOn).toBe('mail')
+    expect(half.line).toBe('signed · not mailed')
+  })
+
+  it('a pen record reads as pen with the day and who wrote it; a builder that said nothing about signing needs no tick', () => {
+    const [p, none] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', signature: pen }), notice({ itemId: 'it2', printedAt: '2026-10-08T16:00:00Z', signature: undefined })] })
+    expect(p!.signed).toEqual({ how: 'pen', at: '2026-10-10T17:00:00Z', by: 'Taunya' })
+    expect(none!.signed).toBe('not_needed')
+    expect(none!.waitsOn).toBe('mail')
+    expect(none!.line).toBe('printed · not mailed')
+  })
+
+  it('a print in this sitting wins over the row’s stamp; by hand or by email needs no number; a hold is named apart from the ticks', () => {
+    const now = new Map([['it1', { at: '2026-11-15T20:00:00Z', by: 'Taunya' }]])
+    const [r] = lienRunChecklistRows({ notices: [notice({ printedAt: null })], printedNow: now })
+    expect(r!.printed).toEqual({ at: '2026-11-15T20:00:00Z', by: 'Taunya' })
+    const [hand] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', recipients: [{ ...owner(), method: 'hand' }, { ...gc(), method: 'hand' }] })] })
+    expect(hand!.mailed).toEqual({ tracking: 'by hand', sentOn: null })
+    const [email] = lienRunChecklistRows({ notices: [notice({ recipients: [{ ...owner(), method: 'email', email: 'o@x.test' }, { ...gc(), method: 'email' }] })] })
+    expect(email!.paperless).toBe(true)
+    expect(email!.waitsOn).toBeNull()
+    const noAddress = notice({ printedAt: null })
+    noAddress.recipients[0] = { ...noAddress.recipients[0]!, name: '', address: '' }
+    const [held] = lienRunChecklistRows({ notices: [noAddress] })
+    expect(held!.held).toMatch(/^Owner of record:/)
+    expect(held!.waitsOn).toBe('print')
+    expect(held!.nothingToClaim).toBe(false)
+  })
+
+  it('a job that owes nothing now holds its row (v2.7337): the words name what the paper says, and the hold comes before an address', () => {
+    // Printed with a claim, paid since: the run's amount is the open balance today, the fields are the paper.
+    const [paid] = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0, fields: { ...notice().fields, claimAmount: '6150.75' } })] })
+    expect(paid!.nothingToClaim).toBe(true)
+    expect(paid!.held).toBe('Nothing to claim: the job owes $0 now. The paper says $6,151.')
+    // The ticks stay facts: it printed, nobody signed it.
+    expect(paid!.printed).toEqual({ at: '2026-10-09T15:32:00Z', by: null })
+    expect(paid!.line).toBe('printed · not signed')
+    // Never printed, or a paper that said $0 itself: nothing to quote.
+    expect(lienRunNothingToClaim(notice({ amount: 0 }))).toBe('Nothing to claim: the job owes $0 now.')
+    expect(lienRunNothingToClaim(notice({ amount: 0, printedAt: '2026-10-09T15:32:00Z', fields: { ...notice().fields, claimAmount: '0.00' } }))).toBe('Nothing to claim: the job owes $0 now.')
+    expect(lienRunNothingToClaim(notice({ amount: 0.004 }))).not.toBeNull()
+    expect(lienRunNothingToClaim(notice())).toBeNull()
+    const both = notice({ amount: 0 })
+    both.recipients[0] = { ...both.recipients[0]!, name: '', address: '' }
+    expect(lienRunChecklistRows({ notices: [both] })[0]!.held).toBe('Nothing to claim: the job owes $0 now.')
+  })
+})
+
+describe('lienRunBatchPlans', () => {
+  const rows = () =>
+    lienRunChecklistRows({
+      notices: [
+        notice({ itemId: 'a', label: 'A', printedAt: null, signature: null }),
+        notice({ itemId: 'b', label: 'B', printedAt: '2026-10-08T16:00:00Z', signature: null }),
+        notice({ itemId: 'c', label: 'C', printedAt: '2026-10-08T16:00:00Z', recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] }),
+        notice({ itemId: 'd', label: 'D', printedAt: '2026-10-08T16:00:00Z' }),
+        notice({ itemId: 'e', label: 'E', printedAt: '2026-10-08T16:00:00Z', signature: null, leader: { userId: 'u-dale', name: 'Dale' } }),
+      ],
+    })
+
+  it('Mark N printed takes the unprinted rows the run does not hold', () => {
+    const noAddress = notice({ itemId: 'f', label: 'F', printedAt: null })
+    noAddress.recipients[0] = { ...noAddress.recipients[0]!, name: '', address: '' }
+    const plans = lienRunBatchPlans([...rows(), ...lienRunChecklistRows({ notices: [noAddress] })])
+    expect(plans.print.ready.map((r) => r.itemId)).toEqual(['a'])
+    expect(plans.print.held.map((h) => [h.itemId, h.why])).toEqual([['f', 'Owner of record: nobody to send to']])
+    expect(plans.print.words.button).toBe('Mark 1 printed · 1 held ▸')
+    expect(plans.print.words.dead).toBe(false)
+  })
+
+  it('Mark N signed takes the printed, unsigned rows of one leader and holds the rest with why', () => {
+    const plans = lienRunBatchPlans(rows())
+    expect(plans.sign.ready.map((r) => r.itemId)).toEqual(['b'])
+    expect(plans.sign.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['a', 'not printed yet'],
+      ['e', 'Dale’s, on the next press'],
+    ])
+    expect(plans.sign.words.button).toBe('Mark 1 signed · 2 wait ▸')
+  })
+
+  it('Record N mailings takes the printed rows whose every envelope has its number, and names what the rest owe', () => {
+    const plans = lienRunBatchPlans(rows())
+    expect(plans.mail.ready.map((r) => r.itemId)).toEqual(['c'])
+    expect(plans.mail.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['a', 'not printed yet'],
+      ['b', 'no tracking numbers yet'],
+      ['d', 'no tracking numbers yet'],
+      ['e', 'no tracking numbers yet'],
+    ])
+    expect(plans.mail.words.button).toBe('Record 1 mailing · 4 wait ▸')
+    expect(plans.mail.words.foot).toBe('4 are held. They stay here with the reason. The 1 ready one records now.')
+  })
+
+  it('a row with nothing to claim is held from every press and never picks the signer (v2.7337)', () => {
+    const paid = (itemId: string, extra: Partial<RunNotice> = {}) => notice({ itemId, label: itemId.toUpperCase(), amount: 0, signature: null, fields: { ...notice().fields, claimAmount: '2400.00' }, ...extra })
+    const plans = lienRunBatchPlans(
+      lienRunChecklistRows({
+        notices: [
+          // First in the run, printed, another leader's: it must not make Dale the signer.
+          paid('p1', { printedAt: '2026-10-09T15:32:00Z', leader: { userId: 'u-dale', name: 'Dale' } }),
+          notice({ itemId: 'b', label: 'B', printedAt: '2026-10-08T16:00:00Z', signature: null }),
+          // Numbered before the job was paid: it does not record either.
+          paid('p2', { printedAt: '2026-10-09T15:32:00Z', signature: typed, recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] }),
+          paid('p3', { printedAt: null }),
+        ],
+      }),
+    )
+    const why = 'Nothing to claim: the job owes $0 now. The paper says $2,400.'
+    expect(plans.sign.ready.map((r) => r.itemId)).toEqual(['b'])
+    expect(plans.sign.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['p1', why],
+      ['p3', 'Nothing to claim: the job owes $0 now.'],
+    ])
+    expect(plans.sign.words.button).toBe('Mark 1 signed · 2 wait ▸')
+    expect(plans.print.ready).toEqual([])
+    expect(plans.print.held.map((h) => h.itemId)).toEqual(['p3'])
+    expect(plans.mail.ready).toEqual([])
+    expect(plans.mail.held.map((h) => [h.itemId, h.why])).toEqual([
+      ['p1', why],
+      ['b', 'no tracking numbers yet'],
+      ['p2', why],
+      ['p3', 'Nothing to claim: the job owes $0 now.'],
+    ])
+  })
+
+  it('dead only when nothing is ready: bare verbs with nothing to do, a ▸ with only holds', () => {
+    const none = lienRunBatchPlans([])
+    expect(none.print.words).toEqual({ button: 'Mark printed', foot: null, dead: true })
+    expect(none.mail.words).toEqual({ button: 'Record mailings', foot: null, dead: true })
+    const owed = lienRunBatchPlans(lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z' })] }))
+    expect(owed.mail.words.dead).toBe(true)
+    expect(owed.mail.words.button).toBe('Record ▸')
+    expect(owed.print.words.dead).toBe(true)
+  })
+})
+
+describe('the words around the checklist', () => {
+  it('the heading counts the three ticks; the foot names what the run waits on most', () => {
+    const rs = lienRunChecklistRows({
+      notices: [notice({ itemId: 'a', printedAt: null, signature: null }), notice({ itemId: 'b', printedAt: '2026-10-08T16:00:00Z' }), notice({ itemId: 'c', printedAt: '2026-10-08T16:00:00Z', recipients: [owner('9407 1118 9876 5432 1098'), gc('9407 1118 9876 5432 1111')] })],
+    })
+    expect(lienRunChecklistWords(rs)).toBe('2 printed · 2 signed · 1 mailed of 3')
+    expect(lienRunChecklistWords([])).toBe('')
+    expect(lienRunFootWords(rs)).toEqual({ line1: '1 to print · 1 owes a number · 1 ready to record', line2: 'Print the packet, or tick Printed on a paper printed elsewhere.' })
+    expect(lienRunFootWords([]).line1).toBe('Nothing is in this run.')
+  })
+
+  it('the foot leaves a paid job out of its counts, and says so when nothing else is left (v2.7337)', () => {
+    const paid = (itemId: string) => notice({ itemId, printedAt: '2026-10-09T15:32:00Z', signature: null, amount: 0 })
+    const live = (itemId: string) => notice({ itemId, printedAt: '2026-10-08T16:00:00Z', signature: null })
+    // The desk of 2026-11-15: seven printed, five paid since.
+    const seven = lienRunChecklistRows({ notices: [live('a'), live('b'), paid('c'), paid('d'), paid('e'), paid('f'), paid('g')] })
+    expect(lienRunFootWords(seven)).toEqual({ line1: '2 to sign · 5 held', line2: 'Tick Signed when the leader has signed the paper, and say how you know.' })
+    expect(lienRunBatchPlans(seven).sign.words.button).toBe('Mark 2 signed · 5 wait ▸')
+    expect(lienRunFootWords(lienRunChecklistRows({ notices: [paid('c'), paid('d')] }))).toEqual({ line1: '2 held', line2: 'Nothing is owed on these jobs now, so nothing here goes out.' })
+  })
+
+  it('the pile row’s line names the tick it waits on', () => {
+    expect(lienRunRowLine(false, false, false)).toBe('not printed')
+    expect(lienRunRowLine(true, false, false)).toBe('printed · not signed')
+    expect(lienRunRowLine(true, true, false)).toBe('signed · not mailed')
+    expect(lienRunRowLine(true, 'not_needed', false)).toBe('printed · not mailed')
+    expect(lienRunRowLine(true, true, true)).toBe('mailed · ready to record')
+  })
+
+  it('the desk’s pill reads the run’s count with a meter', () => {
+    expect(lienRunPill({ toPrint: 0, printed: 4, mailed: 3 })).toEqual({ words: 'The run · 3 of 7 mailed', mailedPct: 43, printedPct: 57, total: 7 })
+    expect(lienRunPill({ toPrint: 7, printed: 0, mailed: 0 })).toEqual({ words: 'The run · 7 to print', mailedPct: 0, printedPct: 0, total: 7 })
+    expect(lienRunPill({ toPrint: 2, printed: 5, mailed: 0 }).words).toBe('The run · 0 of 7 mailed')
+    expect(lienRunPill({ toPrint: 0, printed: 0, mailed: 0 })).toEqual({ words: '', mailedPct: 0, printedPct: 0, total: 0 })
+  })
+
+  it('a tick’s day is short', () => {
+    expect(lienRunTickDay('2026-11-15T20:00:00Z')).toBe('Nov 15')
+    expect(lienRunTickDay(null)).toBe('')
+  })
+})
+
+describe('the sheet and its codes', () => {
+  it('the code’s address opens the desk with the run on that envelope’s Mailed box', () => {
+    expect(lienRunMailLink('it1')).toBe('https://clicktooling.com/lien-desk?run=it1&mail=1')
+    expect(lienRunMailLink('a b', 'http://localhost:5173')).toBe('http://localhost:5173/lien-desk?run=a%20b&mail=1')
+  })
+
+  it('one row per notice with its label, who, amount, three boxes drawn from the facts, and a code', () => {
+    const rs = lienRunChecklistRows({ notices: [notice({ printedAt: '2026-10-08T16:00:00Z', printedBy: 'Taunya' }), notice({ itemId: 'it2', label: '688 · Harlan Dental', printedAt: null, signature: null, amount: 1200 })] })
+    const html = lienRunSheetHtml({ rows: rs, todayYmd: '2026-11-15', dayWords: 'November 15, 2026', issuerName: 'Click Plumbing', codeFor: (id) => `<img alt="" data-code="${id}"/>` })
+    expect(html).toContain('data-run-checklist-sheet')
+    expect(html).toContain('The run <span>· 2 notices · November 15, 2026</span>')
+    expect(html).toContain('<strong>650 · AXO Schertz</strong><small>Owner: Elwick Holdings LLC · GC: Lowbeck Contracting</small>')
+    expect(html).toContain('$33,500')
+    expect(html).toContain('☑ Printed Oct 8 · Taunya')
+    expect(html).toContain('☑ Signed Oct 9 · typed')
+    expect(html).toContain('☐ Mailed')
+    expect(html).toContain('data-code="it1"')
+    expect(html).toContain('data-code="it2"')
+    expect(html).toContain('<strong>688 · Harlan Dental</strong>')
+    expect(html).toContain('☐ Printed</span>')
+    expect(html).toContain('☐ Signed</span>')
+    expect(html).not.toContain('<script')
+    expect(LIEN_RUN_SHEET_CSS).toContain('.runchecklist')
+  })
+})

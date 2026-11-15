@@ -7,11 +7,11 @@ summary: >
   A People view that reads the hours each person said they can work against the hours the clock
   recorded, by pay week, so the office knows when to add people and when to use the people it has
   more; and the person's side on My Time, where they draw the week they can work, Sunday to
-  Saturday, and read their last eight weeks against it. Everything is built and tested; what is
-  left is landing it in order.
+  Saturday, and read their last eight weeks against it. Everything is built, tested and on main; what
+  is left is the owner's look.
 next: The owner reads the walk below and the two fixes, then this folder goes (and the spike branch claude/people-utilization-tracking-745ad5 with it).
-size: S as what is left (the code is done; three PRs to land in order)
-blocker: The merge queue, one PR at a time; #7332 and #7333 wait for the PR ahead.
+size: S as what is left (the code is on main; the owner's look)
+blocker: The owner's look.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs
 ---
 

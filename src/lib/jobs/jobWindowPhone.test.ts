@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accountQuietWords, headerScrollState, jobAccountsLine, jobWindowMoneyLine, jobWindowSheetRows, SHEET_LABELS, type JobWindowSheetDoors } from './jobWindowPhone'
+import { accountQuietWords, headerScrollState, jobAccountsLine, jobWindowMoneyLine, jobWindowSheetRows, pressPad, SHEET_LABELS, type JobWindowSheetDoors } from './jobWindowPhone'
 import type { EditJobBillingBar } from './editJobBillingBar'
 
 describe('headerScrollState', () => {
@@ -18,6 +18,21 @@ describe('headerScrollState', () => {
   it('treats a move under 4 px as a touch settling and keeps the last state', () => {
     expect(headerScrollState({ top: 401, lastTop: 400, headBottom: 120, wasPinned: true }).stripPinned).toBe(true)
     expect(headerScrollState({ top: 399, lastTop: 400, headBottom: 120, wasPinned: false }).stripPinned).toBe(false)
+  })
+})
+
+describe('pressPad', () => {
+  it('grows a short press to 44 tall and a narrow one to 44 wide, half each side, rounded up', () => {
+    expect(pressPad({ width: 86, height: 20 })).toEqual({ x: 0, y: 12 })
+    expect(pressPad({ width: 23, height: 23 })).toEqual({ x: 11, y: 11 })
+    expect(pressPad({ width: 21, height: 40 })).toEqual({ x: 12, y: 0 })
+    expect(pressPad({ width: 344, height: 38 })).toEqual({ x: 0, y: 3 })
+  })
+
+  it('leaves a press that is 40 or more both ways, and one not drawn, alone', () => {
+    expect(pressPad({ width: 40, height: 40 })).toBeNull()
+    expect(pressPad({ width: 300, height: 44 })).toBeNull()
+    expect(pressPad({ width: 0, height: 0 })).toBeNull()
   })
 })
 

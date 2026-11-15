@@ -216,6 +216,15 @@ export default function LienDeskPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordsDoor])
   const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecords ? data : null), [ownerRecords, data])
+  // The run over the desk (v2.7328): `?run=<item id>&mail=1` is the sheet's code, scanned on a phone — consumed once, the same way.
+  const [runDoor, setRunDoor] = useState<{ itemId: string; mail: boolean; key: number } | null>(null)
+  const runAsked = address.run
+  useEffect(() => {
+    if (!runAsked) return
+    setRunDoor({ ...runAsked, key: Date.now() })
+    navigate(lienDeskHref({ kind: address.kind, job: address.job, pile: address.pile }), { replace: true, state: location.state })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runAsked])
 
   // A way back: the page behind when there is one, else the Pipeline, as `/accounts-receivable` does.
   const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
@@ -302,6 +311,7 @@ export default function LienDeskPage() {
         initialJobId={address.job}
         initialKind={address.kind ?? LIEN_DESK_DEFAULT_KIND}
         initialPile={address.pile}
+        openRun={runDoor}
         calendarRows={calendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind or a last day re-reads the clocks; the desk's own queue follows either.

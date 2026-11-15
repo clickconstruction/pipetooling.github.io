@@ -10,6 +10,8 @@ import { parseDifficultyCriteriaBody, type DifficultyPicks } from './difficultyC
 import { gcDifficultyStandings, type DifficultyVersionLite, type GcDifficultyRating, type GcDifficultyStanding } from './gcDifficultyRating'
 import { loadDifficultyPayingInputs } from './difficultyPayingIo'
 import type { DifficultyPayingInputs } from './difficultyPaying'
+import type { DifficultyPriceList } from './difficultyPrice'
+import { loadPublishedDifficultyPrice } from './difficultyPriceIo'
 
 export const GC_DIFFICULTY_CHANGED_EVENT = 'gc-difficulty-changed'
 
@@ -42,6 +44,8 @@ export interface GcDifficultyIo {
   saveRating(customerId: string, criteriaVersionId: string, picks: DifficultyPicks, note: string, reasons?: Record<string, string>): Promise<GcDifficultyRating>
   /** The numbers behind the Paying scale for this GC (PR 3). */
   loadPaying(customerId: string): Promise<DifficultyPayingInputs>
+  /** The published price list (PR 4): who may rate and the Paying rule. Absent or null reads as version 1's numbers. */
+  loadPrice?(): Promise<DifficultyPriceList | null>
 }
 
 type VersionRaw = { id: string; version: number; status: string; body: unknown }
@@ -62,6 +66,7 @@ export function supabaseGcDifficultyIo(): GcDifficultyIo {
       return (result.data ?? []).map(rowFrom)
     },
     loadPaying: loadDifficultyPayingInputs,
+    loadPrice: async () => (await loadPublishedDifficultyPrice())?.body ?? null,
     async saveRating(customerId, criteriaVersionId, picks, note, reasons = {}) {
       const row = { customer_id: customerId, criteria_version_id: criteriaVersionId, picks, pick_reasons: reasons, note } as never
       const result = (await supabase.from(TABLE).insert(row).select(COLS)) as unknown as Result

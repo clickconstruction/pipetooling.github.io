@@ -25,13 +25,13 @@ The card shows one scale at a time. Each scale has rungs. A rung is a number of 
 
 :::
 
-The office rates: a dev, a master, an assistant or the controller. An estimator reads the card and cannot save.
+Who may rate is set on the Bid Board's price list. See [set what difficulty costs](/help/set-what-difficulty-costs). The list starts with the office and the masters. An estimator reads the card and cannot save until the list names the estimators.
 
 **Paying** is not picked. The app reads it from the GC's bills. See the next section.
 
 ## Paying is read from the bills
 
-Under **Paying** the card says what it found. Paid in 52 days, the median of 7 bills. The GC pace here. How many bills in the last year went past their pay calendar. The rule sits under it. A point when the median is past 45 days, or two bills in a year are late. Fewer than three bills reads no point, and the line says so.
+Under **Paying** the card says what it found. Paid in 52 days, the median of 7 bills. The GC pace here. How many bills in the last year went past their pay calendar. The rule sits under it. A point when the median is past 45 days, or two bills in a year are late. Fewer than three bills reads no point, and the line says so. The numbers are the Bid Board's price list's.
 
 The point counts in the total. When you save, it goes into the rating with its words. When the bills later read a different point, an amber line says so and {{button:blue|Save 4 points}} wakes. Save again to read it in.
 
@@ -41,7 +41,7 @@ Press {{button:outline|Set by hand…}} when the bills do not tell it. Pick the 
 
 The points add up at the foot of the card. {{chip:yellow|Rated 3 points}} shows beside the GC's name on the Bid Board and on the Workbench. Hover the chip to read the sentences behind the points. Press it to open the card.
 
-What a point costs comes in a later part. The office will set it on the Bid Board. For now the rating is a record with reasons.
+What a point costs is the Bid Board's price list. When the Pricing tab first costs a bid to them, the points become cost lines on the Labor tab. See [set what difficulty costs](/help/set-what-difficulty-costs).
 
 ## Rate again
 

@@ -4270,6 +4270,8 @@ body.my-time-boundary-dragging {
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
 .lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
+/* The verdict band brought the footer up (v2.7321): a ring for a moment, the gate's own. */
+.lienDeskFooterSlot[data-lien-foot-lit] { animation: lienGateBringUp 1.6s ease-out both; --lien-gate-ring: var(--text-link); }
 /* Lien desk Share (v2.4311): the Which liens menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
 .lienShareItem { background: var(--surface); }
 .lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
@@ -4290,6 +4292,11 @@ body.my-time-boundary-dragging {
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
 .lienDeskKindTab { padding: 2px 10px; }
+/* On a computer the bar's lines sit 6 px apart by each item's 3 px block margins and not the row gap, which the bar sets to 0 (v2.7322, the owner's three boxes of 2026-11-15): a 0-height break on a line of its own took the row gap on each side, 14.4 px between the title line and the pile line. The breaks carry no margin, so a break between two lines is the same 6 px as a line that wraps by itself (the run under the title at the 768 px tablet). The half is `LIEN_DESK_TITLE_BAR_ROW_GAP_PX` in `lienDeskTitleBar.ts`. */
+@media (min-width: 641px) {
+  .lienDeskTitleBar > * { margin-block: 3px; }
+  .lienDeskTitleBar > [data-lien-desk-header-break], .lienDeskTitleBar > [data-lien-desk-pile-break] { margin-block: 0; }
+}
 @media (min-width: 641px) and (max-width: 1131px) {
   .lienDeskTitleBar { column-gap: 0.5rem; }
   .lienDeskKindTab { padding: 2px 7px; }
@@ -4333,14 +4340,27 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
 .lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
 /* The Notices list's pile titles (v2.4672): sticky siblings of the rows, each with its own top and bottom offset, so passed titles stack at the top and coming ones wait at the bottom; the pile the reader is in wears a blue bar. */
-/* The list's pile heads, the pane's section heads and its page labels: grey since v2.4787 (the owner's ask), so they read apart from the white rows and cards. */
-.lienPileHead { position: sticky; z-index: 3; height: 30px; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.9rem; background: var(--bg-muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+/* The list's pile heads, the pane's section heads and its page labels: grey since v2.4787 (the owner's ask), so they read apart from the white rows and cards.
+   24 px tall since v2.7323 (the owner's ask: closer together, the words as they are) — `LIEN_PILE_HEAD_H` in lienPhoneLists.ts is the one number, set inline on every bar; the height here is the base.
+   line-height 1.2: each bar holds one line that never wraps, so the body's 1.5 only padded the line box; at 1.2 the 0.78rem fact's box is 15 px and 24 leaves 4 px over and under it. */
+.lienPileHead { position: sticky; z-index: 3; height: 24px; line-height: 1.2; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.9rem; background: var(--bg-muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .lienPileHead[data-on="yes"] { color: var(--text-blue-700); box-shadow: inset 3px 0 0 var(--border-blue); }
 .lienPileHeadBtn { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0; font: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; text-align: left; }
 .lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
 .lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
+/* The list's find box as a quiet line (v2.7315): no pill — the ⌕ and the words on the list's own background with one hairline under them,
+   which turns blue while the box has the focus; the / key shows only while the column is hovered or the box has the focus, so the shortcut
+   stays findable without a badge on every list. A phone draws no key at all. */
+.lienFind { border-bottom: 1px solid var(--border); background: transparent; transition: border-color 120ms; }
+.lienFind:focus-within { border-bottom-color: var(--border-blue); }
+.lienFind:focus-within .lienFindGlyph { color: var(--text-strong) !important; }
+.lienFind input::placeholder { color: var(--text-muted); opacity: 1; }
+.lienFind input::-webkit-search-cancel-button { display: none; }
+.lienFindKey { opacity: 0; transition: opacity 120ms; }
+[data-lien-desk-find-column]:hover .lienFindKey, .lienFind:hover .lienFindKey, .lienFind:focus-within .lienFindKey { opacity: 1; }
+.lienFindClear:hover, .lienFindClear:focus-visible { background: var(--bg-subtle) !important; color: var(--text-strong) !important; outline: none; }
 /* A stop's title on the lien timeline as a door to its paper (v2.4793): the label's own type, a dotted underline, blue on hover. */
 .lienStopDoor { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline dotted var(--border-strong); text-underline-offset: 3px; }
 .lienStopDoor:hover, .lienStopDoor:focus-visible { color: var(--text-link) !important; text-decoration-color: var(--text-link); outline: none; }
@@ -4520,6 +4540,42 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunFootStatus span { font-size: 0.78rem; color: var(--text-muted); }
 .lienRunMore { flex-basis: 100%; display: flex; gap: 0.5rem 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
 .lienRunMore > div[data-testid='run-saved-copy'] { flex-basis: 100%; }
+/* Lien desk → the run as a checklist (v2.7328): one row per notice, three ticks across, each open tick a press; the rows stack on a phone. */
+.lienRunCheck { display: grid; gap: 0.45rem; padding: 0.4rem 0 0.3rem; }
+.lienRunCheck h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienRunCheck h3 span { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 0.5rem; }
+.lienRunCheckRow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr); gap: 0.5rem 0.9rem; align-items: start; border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; background: var(--surface); font-size: 0.8125rem; }
+.lienRunCheckRow[data-waits='none'] { border-color: var(--text-green-700); }
+.lienRunCheckRow[data-held='yes'] { border-color: var(--border-amber); background: var(--bg-amber-tint); }
+.lienRunCheckHead { display: grid; gap: 1px; min-width: 0; }
+.lienRunCheckHead b { color: var(--text-strong); }
+.lienRunCheckAmt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.lienRunCheckWho { color: var(--text-muted); font-size: 0.72rem; }
+.lienRunCheckLine { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckHeld { color: var(--text-red-600); font-size: 0.72rem; font-weight: 600; }
+.lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
+.lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
+.lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }
+.lienRunCheckTickName { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.lienRunCheckDone { color: var(--text-green-800); font-weight: 600; font-size: 0.78rem; overflow-wrap: anywhere; }
+.lienRunCheckWait { color: var(--text-muted); font-size: 0.75rem; }
+.lienRunCheckBoxes { display: grid; gap: 0.3rem; }
+.lienRunCheckBox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.2rem 0.35rem; align-items: center; }
+.lienRunCheckBox .lienRunCheckShape { grid-column: 2 / -1; }
+.lienRunCheckBoxWho { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; min-width: 2.6em; }
+.lienRunCheckShape { font-size: 0.68rem; color: var(--text-red-600); }
+.lienRunCheckShape[data-ok='yes'] { color: var(--text-green-700); }
+.lienRunCardsFold { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; width: 100%; text-align: left; margin: 0.5rem 0 0.1rem; padding: 0.3rem 0; border: none; border-top: 1px dashed var(--border); background: none; color: var(--text-700); font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.lienRunCardsFold span { font-weight: 500; color: var(--text-muted); font-size: 0.72rem; }
+.lienRunHeldList { flex-basis: 100%; margin: 0; padding: 0 0 0 1.1rem; font-size: 0.75rem; color: var(--text-muted); display: grid; gap: 1px; }
+.lienRunHeldList b { color: var(--text-700); font-weight: 600; }
+@media (max-width: 700px) {
+  .lienRunCheckRow { grid-template-columns: 1fr; }
+  .lienRunCheckTicks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; }
+  .lienRunCheckTick { padding: 0.35rem 0.4rem; }
+  .lienRunCheckTick[data-tick='mailed'] { grid-column: 1 / -1; }
+  .lienRunCheckBox { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
 /* Lien desk → the run's live checklist, lanes and the desk's door pill (Run-5, the run shown not told). */
 .lienRunChecklist { display: grid; gap: 0.4rem; padding: 0.4rem 0 0.2rem; }
 .lienRunChecklist h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
@@ -4537,6 +4593,7 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunDoorBar i { display: block; height: 100%; }
 .lienRunDoorSealed { background: var(--text-green-700); }
 .lienRunDoorWait { background: var(--border-amber); }
+.lienRunDoorPrinted { background: var(--text-link); }
 .lienRunDoorWords { display: inline-block; margin-left: 0.45rem; font-weight: 500; opacity: 0.85; }
 @media (max-width: 640px) { .lienRunDoorWords { display: none; } }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
@@ -4927,6 +4984,28 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 }
 .stagesStageSegTail > .stagesStageSeg {
   flex: 0 1 auto;
+}
+/* The Pipeline's own bar (v2.7336, Taunya's ask of 2026-11-15: Collections read "Collection" where the gavel began,
+   and the scales sat on the bar's right border). A stage is as wide as its words plus an even share of the spare
+   room, so no name is cut while the bar has room for them all, and the last stage's cell counts its desks' squares
+   in that width. The desks stand a stage's padding apart and the same from the bar's right edge. Only this bar:
+   the Messages, Settings and Development strips wear these classes over their own cells. */
+[data-stages-stage-bar] .stagesStageSeg,
+[data-stages-stage-bar] .stagesStageSegTail {
+  flex: 1 1 auto;
+}
+[data-stages-stage-bar] .stagesStageSegTail {
+  gap: 0.75rem;
+  padding-right: 0.75rem;
+}
+[data-stages-stage-bar] .stagesStageSegTail > .stagesStageSeg {
+  flex: 0 1 auto;
+}
+@container (max-width: 800px) {
+  [data-stages-stage-bar] .stagesStageSegTail {
+    gap: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 /* The stage bar's desk shortcuts (v2.4520 the Lien desk's gavel; v2.5750 the Legal desk's scales before it). */
 .stagesDeskShortcut {
@@ -6976,3 +7055,45 @@ button.developmentCountChip:focus-visible {
   -webkit-mask-image: none;
   mask-image: none;
 }
+
+/* The Lien desk's scrolled strip (v2.7318): every chip is a press, so it underlines on hover as a link does. The chip's
+   own look (fill, colour, size) rides inline from `chip()`. */
+.lienStripChip {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lienStripChip:hover,
+.lienStripChip:focus-visible {
+  text-decoration: underline;
+}
+
+/* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */
+.lienGateRow { display: flex; gap: 0.5rem; align-items: baseline; width: 100%; border: none; background: none; padding: 0.1rem 0; margin: 0; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+.lienGateRow:disabled { cursor: default; }
+.lienGateRow > span:first-child { flex: none; }
+.lienGateWords { flex: 1 1 auto; min-width: 0; }
+.lienGateRow:not(:disabled):hover .lienGateWords, .lienGateRow:focus-visible .lienGateWords { text-decoration: underline; text-underline-offset: 3px; }
+.lienGateRow:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienGateDoor { flex: none; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+.lienGateDoor[data-open='no'] { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-700); background: var(--surface); }
+@media (hover: hover) { .lienGateDoor[data-open='yes'] { opacity: 0.55; } .lienGateRow:hover .lienGateDoor[data-open='yes'], .lienGateRow:focus-visible .lienGateDoor[data-open='yes'] { opacity: 1; } }
+
+/* The Lien desk's Board (v2.7332, the owner's ask of 2026-11-15): two columns of bins at the top of To do, every job a chip in the bin of its stage. */
+.lienBoardBin { display: grid; gap: 6px; padding: 7px 9px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; }
+.lienBoardBin[data-beside='yes'] { border-style: dashed; }
+.lienBoardBinHead { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 0; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-700); text-align: left; min-width: 0; }
+button.lienBoardBinHead { cursor: pointer; border-radius: 5px; }
+button.lienBoardBinHead:hover > span:first-child, button.lienBoardBinHead:focus-visible > span:first-child { text-decoration: underline; text-underline-offset: 3px; }
+button.lienBoardBinHead:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienBoardBin[data-picked='yes'] { background: var(--bg-blue-tint); }
+.lienBoardChips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; align-items: center; }
+.lienBoardChip { display: inline-flex; align-items: center; padding: 1px 7px; border: 1px solid; border-radius: 6px; font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+button.lienBoardChip { cursor: pointer; }
+button.lienBoardChip:hover, button.lienBoardChip:focus-visible { filter: brightness(0.94); outline: none; box-shadow: 0 0 0 2px var(--border-blue); }
+.lienBoardChip[data-pair-lit='yes'] { box-shadow: 0 0 0 2px #2563eb; }
+.lienBoardTile { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); text-align: left; font: inherit; color: inherit; min-width: 0; }
+button.lienBoardTile { cursor: pointer; }
+button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #2563eb; outline: none; }
+.lienDeskTitleDoor { margin: 0; padding: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 4px; text-align: left; }
+.lienDeskTitleDoor:hover, .lienDeskTitleDoor:focus-visible { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; outline: none; }

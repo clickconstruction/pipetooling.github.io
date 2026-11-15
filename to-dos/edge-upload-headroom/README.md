@@ -2,7 +2,7 @@
 name: "Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom"
 number: 359
 group: ready
-status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · PR 6 (v2.7293) the copy inlines a row alias where a kernel names it, dev-mcp 3.40 MB and no slim types · next the four portal kernels written plain so the portals drop the slim file too
+status: building since 2026-11-14 (the owner asked for it ahead of the 4.3 MB trigger) · step 1 read · PR 1 (v2.7288, #8145) the copy's index trimmed to what is read through it, the portals 3.0 → 1.6 MB · PR 2 (v2.7289) customerLang off portalI18n, dev-mcp 4.03 → 3.91 MB · PR 3 (v2.7290) SendPurpose off quo/send, dev-mcp 3.82 MB · PR 4 (v2.7291) OverheadPartsDetailLine off the overhead reads, dev-mcp 3.75 MB · PR 5 (v2.7292) FormValues and the GC entity's name in files of their own, dev-mcp 3.70 MB · the five chain cuts merged and live 2026-11-15, dev-mcp 3.72 MB on main with the week's lien kernels · Taunya said yes to the slim-types design on 2026-11-15 · PR 6 (v2.7293) the copy inlines a row alias where a kernel names it, dev-mcp 3.42 MB and no slim types · next PR 7, the four portal kernels written as aliases, so the portals drop the slim file too
 summary: >
   v2.7256 took the whole database types file out of every edge upload: dev-mcp went from 5.02 MB,
   which the deploy refused, to 4.03 MB, and the eight portals from about 4.1 MB to about 3.0 MB.
@@ -15,7 +15,7 @@ summary: >
   translations (portalI18n, 125 KB) through customerLang for one constant, and
   devMcpAffidavitDraft reaches the slim types through lienProperty for a type. The fix is to cut
   those chains, not to re-export less.
-next: PR 7, the four portal kernels whose Database uses are not plain aliases (drawRows, changeOrderOfficeRows, legalRoute, customerContactDisplay) written as aliases, so the portals drop the slim file too (−315 KB each). Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.40 MB, under the 3.5 MB line.
+next: PR 7 (v2.7294, `claude/359-portal-aliases`), the four portal kernels whose Database uses are not plain aliases (drawRows, changeOrderOfficeRows, legalRoute, customerContactDisplay) written as aliases, so the portals drop the slim file too (−315 KB each), opened once PR 6 is merged and its functions redeployed. Step 3 (the descriptions and the catalog) is not due: dev-mcp is 3.42 MB, under the 3.5 MB line.
 size: S to read · S per cut, two or three cuts · M for the descriptions and the catalog if it comes to that
 blocker: none; it waits on dev-mcp's growth, so that a cut lands before the ceiling and not after a refused deploy
 opinion: cut the chains, never raise the ceiling, since the wall at 5 MB is Supabase's; the portals get the same cuts for free
@@ -24,7 +24,17 @@ mockup: not required — a refactor of imports and files with no screen
 
 # Edge functions: the kernel copy rides a function file by file, so dev-mcp keeps its headroom (#359)
 
-## Where it stands (2026-11-14, evening)
+## Where it stands (2026-11-15, morning)
+
+**The five chain cuts of step 2 are merged and live.** PR 1 (v2.7288, #8145) trimmed the copy's index, PR 2 (v2.7289, #8146) took `customerLang` off `portalI18n`, PR 3 (v2.7290, #8153) `textsSwitch` off `quo/send`, PR 4 (v2.7291, #8157) the overhead buckets off the overhead reads and PR 5 (v2.7292, #8160) `hoursStatementForm` off `formSchema` and `messagesEmail` off `gcCustomerEmails`; every function each one touched was redeployed from origin/main the same day and boots. Measured on main at v2.7310 (`node scripts/lib/edgeUploadGraph.mjs`):
+
+| Function | 2026-11-14 morning | 2026-11-15 |
+|---|---|---|
+| dev-mcp | 4.03 MB · 243 files | 3.72 MB · 229 files (3.70 MB after PR 5; the week's lien kernels added the rest) |
+| customer-portal and the other thirteen barrel readers | 2.94 to 3.01 MB | 1.33 to 1.65 MB |
+| bridge-weekly-sheet | 1.18 MB | 1.18 MB |
+
+dev-mcp has 0.78 MB to the CI ceiling, and a verb pair still costs about 0.15 MB (a `plan_*`/`apply_*` module plus the kernels it reaches), so five more pairs fit before the next cut is due; the slim types (−0.3 MB on dev-mcp and the portals) are built on two held branches and wait on the owner's word on the design below, and step 3 is not due while dev-mcp is under 3.5 MB only with them. The cost of a cut in `_shared`: PR 5 touched `portalCompany.ts`, which 91 functions import, and the redeploy after it was all 91.
 
 **Step 1 is read**, on main at v2.7278, with two scratch scripts over `edgeUploadGraph`: one scores every import edge in a function's upload by the bytes the upload loses when that edge alone is cut (a file reached two ways scores nothing on either), the other lists every function that uploads a file and the importers inside each upload. The full tables are in the session notes; what matters:
 
@@ -40,7 +50,9 @@ mockup: not required — a refactor of imports and files with no screen
 | 315 KB | **The slim `types/database.ts`.** Not one chain: nine files in dev-mcp import it, every one `import type { Database }` for a Row (lienProperty, costEstimateDirectCosts, overheadOfficePartsReads, lienDeadlines, lienDesk, submittalRevision, bidPricingEngineTypes, types/bids, laborRowHours), and five in the portals (boardRows for `Json`, drawRows, changeOrderOfficeRows, legalRoute, customerContactDisplay). Cutting lienProperty alone saves nothing. | dev-mcp and the portals, once every importer stops naming the whole file |
 | 377 KB + 463 KB | dev-mcp's own `catalog.ts` and the tool descriptions in `index.ts` | step 3 |
 
-The slim-types design put to the owner: a folder `src/types/rows/` of one-line alias files (`export type CustomerAddressRow = Database['public']['Tables']['customer_addresses']['Row']`), each importing `Database` in src, which the generator writes into the copy with the body inlined from the parts it already reads and refuses with any other line; the importers switch to them and re-export. Projected dev-mcp: about 3.70 MB after PRs 2–5, about 3.38 MB with the slim types gone.
+**The slim-types question for the owner (open since 2026-11-14).** Two designs take the 315 KB slim `types/database.ts` out of every function but the Bridge's email. The one built, on two held branches: the generator reads each kernel's database aliases (`type X = Database['public']['Tables']['t']['Row']`, one statement per row, insert, update, args or returns), writes the alias's body into the copy from the parts it already reads, and imports a 7 KB `types/databaseCore.ts` (every enum and helper, no table) where a body names an enum or the file uses `Json`; a body naming a table or a `Tables<'t'>` use is refused with a word to write it plain. Nothing in `src` moves, except that four portal kernels write their rows as one alias each. It is the first rule that rewrites a kernel's text in the copy beyond its import lines; `--check` regenerates, so the copy cannot drift from it. The alternative put to the owner first: a folder `src/types/rows/` of one-line alias files that every kernel imports from and re-exports, the generator inlining those files alone; it moves nine aliases in `src` for the same bytes and keeps the copy's rewriting to whole files. Either way: dev-mcp 3.72 → 3.40 MB, customer-portal 1.65 → 1.33 MB, the other barrel readers 1.02–1.32 MB.
+
+The held branches: `claude/359-row-files` (v2.7293, PR 6: the generator rule, nine kernels inlined, `edgeKernels.test.ts` planted cases) and `claude/359-portal-aliases` (v2.7294, PR 7: `drawRows`, `changeOrderOfficeRows`, `customerContactDisplay`, `legalRoute` write one alias per row). Before opening: rebase each onto fresh main in turn, regenerate the copy (`npm run gen:edge-kernels`) on any conflict in `supabase/functions/_shared/gcKernels/` rather than resolving it, run `edgeKernels.test.ts` and `edgeUploadGraph.test.ts`, open one, let it merge, redeploy what `check:edge-drift` names (PR 6: dev-mcp and the portals that read `boardRows`; PR 7: the fourteen barrel readers and messages-nudge-dispatch), then the next. A no means the branches are dropped and the alternative, or step 3, is built fresh when the headroom asks for it.
 
 A note from an earlier session said dev-mcp was at 4.71 MB and that the fix was to stop the kernel copy pulling in the 1.46 MB database types file. v2.7256 (#8101, merged 2026-11-14) did that: the copy carries a slim `types/database.ts` holding only what the copy names, `gen-types` rewrites it, and `check:edge-bundles` walks each function's upload as the CLI does and fails a PR past 4.5 MB of raw source. Measured on `main` at v2.7277 with `node scripts/lib/edgeUploadGraph.mjs`:
 

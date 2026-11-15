@@ -397,6 +397,21 @@ describe('buildBilledDatesLedger with a Pay calendar (punch list #323): Due on t
     expect(l.full).toBe('Billed Nov 3 · 9d ago · Due Dec 10 · in 28d')
   })
 
+  it("a job on its own calendar says whose record the line stands on (punch list #341, PR 3)", () => {
+    // No payment carries this job, so the record is Larkfield's on other jobs, and the line says so after the day.
+    const borrowed = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: lark, promise: null, runway: null, inCollections: false, calendar: { calendar: tenth, from: 'job', payerCalendar: null, jobId: 'j1431' } })
+    expect(money(borrowed)).toMatchObject({ label: 'Due', sub: 'Usually lands about Dec 16 · their record on other jobs' })
+    expect(money(borrowed).subTitle).toBe('Usually lands about 6d after. About Dec 16. That is Larkfield Construction’s record on other jobs. This job is scored on its own once it has 2 payments.')
+    // Two payments of its own: scored on those alone.
+    const own = { ...lark, receipts: { lark: lark.receipts.lark!.map((r, i) => (i < 2 ? { ...r, jobId: 'j1431' } : r)) } }
+    const scored = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: own, promise: null, runway: null, inCollections: false, calendar: { calendar: tenth, from: 'job', payerCalendar: null, jobId: 'j1431' } })
+    expect(money(scored)).toMatchObject({ sub: 'Usually lands about Dec 13 · this job’s record' })
+    expect(money(scored).subTitle).toBe('Usually lands about 3d after. About Dec 13. That is this job’s own 2 payments, not Larkfield Construction’s other jobs.')
+    // A job with no payment, under a payer with none either.
+    const none = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03', 'newco'), data: lark, promise: null, runway: null, inCollections: false, calendar: { calendar: tenth, from: 'job', payerCalendar: null, jobId: 'j1431' } })
+    expect(money(none)).toMatchObject({ sub: 'No payment on this job yet' })
+  })
+
   it('without the calendar the same bill reads Expected Dec 14, as before', () => {
     const l = buildBilledDatesLedger({ todayYmd: calToday, row: billed('2026-11-03'), data: lark, promise: null, runway: null, inCollections: false })
     expect(l.rows.map(line)).toEqual(['Billed Nov 3 9d ago', 'Expected Dec 14 in 32d'])

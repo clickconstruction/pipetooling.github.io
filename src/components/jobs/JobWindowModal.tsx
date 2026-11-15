@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { watchSmallPresses } from './jobWindowPressPad'
 import { JobWindowActionBar, JobWindowStatusSheet } from './JobWindowActionBar'
 import { JOB_THREAD_COMPOSE_EVENT } from '../JobThreadNotesPanel'
 import { pickJobNextChip, type JobNextStage } from '../../lib/jobs/jobNextLine'
@@ -257,6 +258,14 @@ export function JobWindowModal({
     pinnedRef.current = next.stripPinned
     setHeadState((prev) => (prev.headGone === next.headGone && prev.stripPinned === next.stripPinned ? prev : next))
   }, [])
+  // Punch list #355 (v2.7309): on a phone every press under 40 px in the body gets an unseen pad to a thumb's
+  // 44 px square, marked by `watchSmallPresses` and drawn by the stylesheet below; nothing moves.
+  useEffect(() => {
+    if (!phone) return
+    const body = bodyRef.current
+    if (!body) return
+    return watchSmallPresses(body)
+  }, [phone])
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
   // Who pays in kind (punch list #301): the chip beside the customer's name, and the strip on a job the deal does not pay yet.
   const inKindStandings = useInKindStandings(isOfficeRole(authRole))
@@ -420,6 +429,35 @@ export function JobWindowModal({
           }
           .job-window-body {
             padding: 0 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .job-window-body [data-press-pad] {
+            position: relative;
+          }
+          .job-window-body [data-press-pad]::after {
+            content: '';
+            position: absolute;
+            top: calc(-1 * var(--press-pad-y, 0px));
+            bottom: calc(-1 * var(--press-pad-y, 0px));
+            left: calc(-1 * var(--press-pad-x, 0px));
+            right: calc(-1 * var(--press-pad-x, 0px));
+          }
+        }
+        @media (min-width: 641px) {
+          /* The head's icons say their word on the desk (v2.7326): the glyph above, the word under it in muted small
+             caps, drawn from data-word so each press keeps its own markup. */
+          .job-window-body button[data-word] {
+            flex-direction: column;
+            gap: 3px;
+            padding: 0.25rem 0.4rem !important;
+          }
+          .job-window-body button[data-word]::after {
+            content: attr(data-word);
+            font-size: 0.6rem;
+            line-height: 1;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--text-muted);
+            white-space: nowrap;
           }
         }
       `}</style>
