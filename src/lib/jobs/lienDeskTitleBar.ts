@@ -31,6 +31,18 @@
  */
 export const LIEN_DESK_TITLE_LINE_PARTS = { back: 90, title: 100, views: 290, run: 463, door: 199, presses: 231, toolsGap: 9.6, tools: 440, gap: 14.4, chrome: 88 } as const
 
+/**
+ * The room between the bar's lines on a computer, in px (v2.7322, the owner's three boxes of 2026-11-15: the band under
+ * the app's nav, the band between the title line and the pile line and the band over the columns all took too much).
+ * The bar's own row gap is 0 and each of its items carries half of this as a block margin (`.lienDeskTitleBar > *` in
+ * `index.css`); the break spans — `data-lien-desk-header-break`, `data-lien-desk-pile-break` — carry none, so a break
+ * costs the same 6 px as a line that wraps by itself: a 0-height break on a line of its own under the old 7.2 px row
+ * gap took the gap twice (20.6 px from the views to the papers; 12.2 since). The pile span's own wrapped rows keep the
+ * same 6. The bar's padding is 1 px over and 3 under, so the way back sits 4 px under the page's own 8 and the pile
+ * line 6 px over the border; `chrome` is unchanged, since the side padding is still 20 px.
+ */
+export const LIEN_DESK_TITLE_BAR_ROW_GAP_PX = 6
+
 /** The window width the title line needs to hold these parts on one line. */
 export function lienDeskTitleLineNeeds(parts: { back: number; title: number; views: number; run: number; tools: number; gap: number; chrome: number }): number {
   const pieces = [parts.back, parts.title, parts.views, parts.run, parts.tools].filter((w) => w > 0)
