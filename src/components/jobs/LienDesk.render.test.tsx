@@ -2453,6 +2453,54 @@ describe('LienDesk footer hand-off (v2.3753)', () => {
   }
 })
 
+describe('LienDesk · the footer is the pane’s own bottom bar (the owner’s ask of 2026-11-15)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+  const withPaper = () => {
+    const d = data(J650, [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+    return d
+  }
+
+  for (const kind of ['notice', 'affidavit', 'retainage'] as const) {
+    it(`on a computer the ${kind} footer sits inside the pane column, not under the list, and the list has nothing below it`, async () => {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind={kind} initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector(`[data-lien-desk-footer="${kind}"]`)).not.toBeNull())
+      const strip = document.querySelector<HTMLElement>(`[data-lien-desk-footer="${kind}"]`)!
+      const column = strip.closest<HTMLElement>('[data-lien-desk-pane-column]')!
+      expect(column).not.toBeNull()
+      expect(column.style.gridTemplateRows).toBe('minmax(0, 1fr) auto')
+      // The pane scrolls above the footer, the footer is the column's last child.
+      expect(column.lastElementChild).toBe(strip)
+      expect(column.contains(document.querySelector('[data-lien-desk-find-column]'))).toBe(false)
+      expect(strip.closest('[data-lien-desk-find-column]')).toBeNull()
+      // The list column and the pane column are the grid's two children: nothing spans under both.
+      const grid = column.parentElement!
+      expect(grid.querySelector('[data-lien-desk-find-column]')).not.toBeNull()
+      expect(grid.parentElement!.querySelector(':scope > [data-lien-desk-footer]')).toBeNull()
+      expect(document.querySelector('[data-lien-desk-foot-fold]')).toBeNull()
+    })
+  }
+
+  it('a phone keeps the strip as the desk’s, right after the fold bar, with no column around the pane', async () => {
+    const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    const orig = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPaper()} initialKind="affidavit" initialJobId="j650" />)
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull())
+      const fold = document.querySelector<HTMLElement>('[data-lien-desk-foot-fold]')!
+      expect(fold.nextElementSibling?.getAttribute('data-lien-desk-footer')).toBe('affidavit')
+      expect(document.querySelector('[data-lien-desk-pane-column]')).toBeNull()
+    } finally {
+      window.matchMedia = orig
+    }
+  })
+})
+
 describe('LienDesk · the pay page in the pane (punch list #35, PR 3)', () => {
   it('is page 3 of 3 under the notice when the job has unpaid bills, with the count and the total, and the count moves with the cover note', async () => {
     payPageState.rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
