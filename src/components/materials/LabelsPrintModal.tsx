@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal, flushSync } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { boxChipWords } from '../../lib/materials/boxLine'
 import { boxKindWords } from '../../lib/materials/editBox'
 import { boxAddressWords, boxCodeWords, boxUrl, labelPrintName, labelPrintNames, labelRows, shortenedLabelsNote } from '../../lib/materials/labels'
 import { labelsCsvFileName, labelsCsvRows, labelsCsvText } from '../../lib/materials/labelsCsv'
@@ -305,7 +306,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label="Boxes to print">
                 {candidates.map((c) => {
                   const on = !left.has(c.id)
-                  return <button key={c.id} type="button" aria-pressed={on} style={chip(on)} onClick={() => toggle(c.id)} data-testid="labels-pick">{c.label}</button>
+                  return <button key={c.id} type="button" aria-pressed={on} style={{ ...chip(on), maxWidth: '100%' }} title={boxChipWords(c, lines)} onClick={() => toggle(c.id)} data-testid="labels-pick"><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{boxChipWords(c, lines)}</span></button>
                 })}
                 {/* As the manifest window has: one new cage's label without unticking the rest. */}
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.75rem' }}>

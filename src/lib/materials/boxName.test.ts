@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { compareLabels } from './onSite'
-import { addPressLabel, boxNameVerdict, isBoxName, movedWordsNote, nameTakenBy, nextFreeName, parseBoxName, readTypedName, sentenceWords, siteBoxesFor, siteLetters, whereWithWords, type SiteBox } from './boxName'
+import { addPressLabel, boxNameVerdict, isBoxName, nameTakenBy, nextFreeName, parseBoxName, readTypedName, sentenceWords, siteBoxesFor, siteLetters, type SiteBox } from './boxName'
 
 const box = (label: string, over: Partial<SiteBox> = {}): SiteBox => ({ id: label.toLowerCase(), label, kind: 'cage', retiredAt: null, createdAt: '2026-11-01T12:00:00Z', ...over })
 
@@ -124,11 +124,8 @@ describe('boxNameVerdict', () => {
     expect(boxNameVerdict('R', [])).toMatchObject({ ok: true, name: 'R1', say: 'R1 is the first R box on this site.' })
   })
 
-  it('says where the words go', () => {
-    expect(movedWordsNote('Toilets')).toBe('“Toilets” goes on the where line for now. Soon it will be the box’s own line.')
-    expect(whereWithWords('', 'Toilets')).toBe('Toilets')
-    expect(whereWithWords(' by the north  stair ', 'Toilets')).toBe('by the north stair · Toilets')
-    expect(whereWithWords(' by the stair ', '')).toBe('by the stair')
+  it('hands the words on with the verdict, for the box’s own line (boxLine.ts)', () => {
+    expect(boxNameVerdict('r76 toilets', [box('R75')])).toMatchObject({ ok: true, name: 'R76', words: 'Toilets' })
   })
 })
 

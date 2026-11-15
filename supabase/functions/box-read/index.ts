@@ -13,7 +13,7 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageEarlyAnswer, boxPageFind, bo
  * box-read (punch list #294, v2.6797): what a scanned cage or box label opens with no sign-in. The label's QR reads
  * `PRTS.CO/B/<eight hex>`; prts.co forwards it to the app's `/b/:code`, and signed out the page asks here.
  *
- *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, lines, gone, lastCountedOn, photo, stickerNumber? }, office }
+ *   GET ?code=<eight hex, a dash allowed>   → { ok, box: { code, stencil, kind, place, where, line, lines, gone, lastCountedOn, photo, stickerNumber? }, office }
  *                                             the live container by its code, its lines from `on_site_job_summary` (the
  *                                             database's own arithmetic, v2.6743) cut to the container, the newest photo.
  *                                             Since v2.6874 a line carries its Can't find presses since its count, `gone` is
@@ -43,6 +43,10 @@ import { BOX_PAGE_LOCKED_WORDS, boxPageCode, boxPageEarlyAnswer, boxPageFind, bo
  * number }` and nothing else, and counts no miss: it is a real code. A lost one answers 410 `{ error: 'sticker_lost',
  * number, lostOn }`. A sticker read that fails is logged and the code is read as a box's own, so a label printed before
  * stickers opens whatever happens to that read. A locked source is answered before the sticker is read.
+ *
+ * Since v2.7348 (punch list #351, PR 2) `box.line` is what is in the box on one line: a person's own words
+ * (`job_containers.description`), else the app's from the parts (`_shared/boxLine.ts`), '' for an empty box nobody
+ * described. A search's box carries its `line` too, and the words typed are matched against a person's words as well.
  */
 
 const corsHeaders = {
@@ -132,7 +136,7 @@ serve(async (req) => {
       return json(early.body, early.status)
     }
 
-    const boxQuery = admin.from('job_containers').select('id, job_id, label, kind, where_note, place_id, retired_at, code')
+    const boxQuery = admin.from('job_containers').select('id, job_id, label, kind, where_note, description, place_id, retired_at, code')
     const { data: rowRaw, error: rowErr } = await (sticker.kind === 'box' ? boxQuery.eq('id', sticker.containerId) : boxQuery.eq('code', code)).maybeSingle()
     if (rowErr) throw new Error(rowErr.message)
     const row = rowRaw as BoxPageContainerRow | null
@@ -190,7 +194,7 @@ serve(async (req) => {
     if (findRaw != null) {
       const words = boxPageFindWords(findRaw)
       const [boxesRes, placesRes, sumRes] = await Promise.all([
-        admin.from('job_containers').select('id, job_id, label, kind, where_note, place_id, retired_at, code').eq('job_id', row.job_id).is('retired_at', null),
+        admin.from('job_containers').select('id, job_id, label, kind, where_note, description, place_id, retired_at, code').eq('job_id', row.job_id).is('retired_at', null),
         admin.from('job_places').select('id, name').eq('job_id', row.job_id),
         admin.rpc('on_site_job_summary', { p_job_id: row.job_id }),
       ])

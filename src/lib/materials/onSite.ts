@@ -26,6 +26,11 @@ export type Container = {
   kind: ContainerKind
   /** A note on where exactly inside its place ("by the north stair"); empty when nobody said. */
   where: string
+  /**
+   * What is in it, in a person's own words (`job_containers.description`, punch list #351); empty or absent when
+   * nobody said, and the screens then write the line from the box's parts (`boxLine.ts`).
+   */
+  said?: string
   /** The place on site it stands in (`Place`), null until someone says. A big site has several. */
   locationId: string | null
   /** Its pin on the site map, set from the phone where the crew stands or by dragging; null until marked. */
@@ -368,11 +373,17 @@ export function groupByPlace(containers: ReadonlyArray<Container>, places: Reado
   return out
 }
 
-/** The containers whose stencil starts with what was typed, spaces and case ignored: "b 12" finds B12 and B120. */
+/**
+ * The containers whose stencil starts with what was typed, spaces and case ignored: "b 12" finds B12 and B120. Since
+ * punch list #351 also the ones a person described in words that hold every word typed: "toilet" finds the box that
+ * says *Kohler toilets*. A line the app wrote needs no match here: it is the parts, which `searchLines` finds.
+ */
 export function searchContainers(containers: ReadonlyArray<Container>, query: string): Container[] {
   const q = query.replace(/\s+/g, '').toLowerCase()
   if (!q) return []
-  return containers.filter((c) => !c.retiredAt && c.label.replace(/\s+/g, '').toLowerCase().startsWith(q)).sort((a, b) => compareLabels(a.label, b.label))
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const saidHolds = (c: Container) => { const said = (c.said ?? '').toLowerCase(); return said !== '' && words.every((w) => said.includes(w)) }
+  return containers.filter((c) => !c.retiredAt && (c.label.replace(/\s+/g, '').toLowerCase().startsWith(q) || saidHolds(c))).sort((a, b) => compareLabels(a.label, b.label))
 }
 
 /** "Level 2" · "no place yet" */

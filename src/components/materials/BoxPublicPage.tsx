@@ -176,6 +176,7 @@ export function BoxPublicPage({ code }: { code: string }) {
                           </b>
                           <span style={{ color: MUTED, fontSize: 13, textAlign: 'right' }}>{[b.place, b.where].filter(Boolean).join(' · ')}</span>
                         </div>
+                        {b.line ? <div style={{ padding: '0 12px 8px', fontSize: 14.5, fontWeight: 600, overflowWrap: 'anywhere' }} data-testid="box-page-find-line">{b.line}</div> : null}
                         {b.lines.map((l) => (
                           <div key={`${l.partName}|${l.manufacturer ?? ''}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderTop: `1px solid ${HAIR}` }}>
                             <span>
@@ -235,6 +236,8 @@ export function BoxPublicPage({ code }: { code: string }) {
                   </h1>
                   <span aria-hidden style={{ flex: '0 0 auto', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: plate.soft, border: `1px solid ${plate.hair}`, borderRadius: 999, padding: '3px 10px' }}>{boxPageNoun(payload.box.kind)}</span>
                 </div>
+                {/* What is in it (v2.7348, punch list #351): a person's own words, or the app's line from the parts. */}
+                {payload.box.line ? <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, overflowWrap: 'anywhere' }} data-testid="box-page-says">{payload.box.line}</div> : null}
                 {placeWords ? <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere' }} data-testid="box-page-place">{placeWords}</div> : null}
                 <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, letterSpacing: '0.04em', color: plate.soft }} data-testid="box-page-code">
                   {payload.box.stickerNumber ? <span data-testid="box-page-sticker">Sticker {stickerNumberWords(payload.box.stickerNumber)}, </span> : null}

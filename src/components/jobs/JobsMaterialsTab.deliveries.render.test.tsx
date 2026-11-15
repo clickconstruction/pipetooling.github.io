@@ -19,7 +19,7 @@ const data = vi.hoisted(() => ({
   deliveries: [] as Array<{ source: string; lines: SentLine[] }>,
   prices: [] as Array<[string, number]>,
   /** The boxes the Add row made (punch list #351). */
-  added: [] as Array<{ label: string; kind: string; where: string }>,
+  added: [] as Array<{ label: string; kind: string; where: string; said?: string | null }>,
 }))
 const unsorted = { id: 'un', jobId: 'ja', label: 'Unsorted', kind: 'unsorted', where: '', locationId: null, lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T00:00:00Z' }
 
@@ -37,8 +37,8 @@ vi.mock('../../lib/materials/onSiteStore', async (importOriginal) => ({
   loadBookPrices: async () => {},
   jobLoadState: () => ({ loaded: true, loading: false, error: null, raw: null }),
   rememberPrice: (key: string, price: number) => void data.prices.push([key, price]),
-  addContainer: (input: { label: string; kind: string; where: string }) => {
-    data.added.push({ label: input.label, kind: input.kind, where: input.where })
+  addContainer: (input: { label: string; kind: string; where: string; said?: string | null }) => {
+    data.added.push({ label: input.label, kind: input.kind, where: input.where, said: input.said })
     return { ...unsorted, id: 'new', label: input.label, kind: input.kind }
   },
   addDelivery: (input: { source: string; lines: SentLine[] }) => {
@@ -187,7 +187,7 @@ describe('a job’s Deliveries panel', () => {
 })
 
 describe('the office’s Add a container row (punch list #351)', () => {
-  it('opens on the next free name with How it sits remembered, splits words off onto the where line, and says so', () => {
+  it('opens on the next free name with How it sits remembered, moves words typed after the name to What is in it, and says so', () => {
     try { localStorage.setItem('pt.box.lastKind', 'box') } catch { /* no storage */ }
     renderWithProviders(<JobsMaterialsTab jobs={jobs} byUserId="u1" byName="Sam" onOpenJobDetail={() => {}} driveBackfill={false} />, { route: '/materials?tab=on-site&job=ja' })
     fireEvent.click(screen.getByTestId('materials-add-container'))
@@ -200,9 +200,10 @@ describe('the office’s Add a container row (punch list #351)', () => {
     fireEvent.change(name, { target: { value: 'r' } })
     expect(screen.getByTestId('materials-add-say').textContent).toBe('R1 is the first R box on this site.')
     fireEvent.change(name, { target: { value: 'R76 TOILETS' } })
-    expect(screen.getByTestId('materials-add-say').textContent).toBe('The name is R76. “Toilets” goes on the where line for now. Soon it will be the box’s own line.')
+    expect(screen.getByTestId('materials-add-say').textContent).toBe('The name is R76. “Toilets” moved to What is in it.')
+    expect((screen.getByTestId('materials-add-line') as HTMLInputElement).value).toBe('Toilets')
     fireEvent.change(screen.getByLabelText('Where exactly'), { target: { value: 'by the north stair' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add R76' }))
-    expect(data.added).toEqual([{ label: 'R76', kind: 'box', where: 'by the north stair · Toilets' }])
+    expect(data.added).toEqual([{ label: 'R76', kind: 'box', where: 'by the north stair', said: 'Toilets' }])
   })
 })
