@@ -1373,7 +1373,9 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('the property record to be completed')
     // The kind is not set: the timeline says residential dates are shown, the earlier ones (v2.5031).
     expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
-    expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
+    // The gate box's caption is the pane's grey head since v2.7320: the count of gates missing, each named short.
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
+    expect(document.querySelector('[data-lien-affidavit-window]')?.textContent).toBe('§ 53.052 · window from May 2026, the last month worked')
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
     fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
     expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
@@ -1392,7 +1394,8 @@ describe('LienDesk affidavits (v2.3412)', () => {
     }
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} workMonths={workMonths} initialKind="affidavit" />)
     const card = document.querySelector('[data-lien-affidavit-months]') as HTMLElement
-    expect(card.textContent).toContain('Months the affidavit claims')
+    // The section's title is its grey head since v2.7320, with the months the paper swears, the claim and the months worked with no notice.
+    expect(document.querySelector('[data-lien-pane-head="months"]')?.textContent).toBe('Months the affidavit claimsMay 2026 · $33,500 · 1 worked, not noticed')
     expect(card.textContent).toContain('Worked, not noticedMay 202620 approved hours · window closed Aug 17 with no notice — the lien does not cover itunsecured')
     expect(card.textContent).toContain("No month has a notice on record — the affidavit cannot claim this work. May 2026's share of the balance stays an ordinary receivable")
   })
@@ -2359,7 +2362,9 @@ describe('LienDesk retainage (v2.3753)', () => {
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
     expect(list.textContent).toContain('complete Sep 3')
     expect(list.textContent).toContain('not yet in a § 53.056 claim')
-    expect(screen.getByText(/Before this notice can go/)).toBeTruthy()
+    // The gate box's caption is the pane's grey head since v2.7320, its fact the verdict, the retainage and the contract's end.
+    expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe('Before it can go✓ all four clear · $1,760 · complete Sep 3')
+    expect(document.querySelector('[data-lien-retainage-window]')?.textContent).toBe('§ 53.057 · 30 days from the day our contract on the job ended · complete Sep 3')
     expect((document.querySelector('[data-lien-retainage-in-claim]') as HTMLElement).getAttribute('data-lien-retainage-in-claim')).toBe('no')
     expect(screen.getAllByText(/§ 53\.081\(c\)/).length).toBeGreaterThan(0)
     const paper = (document.querySelector('[data-lien-retainage-pane]') as HTMLElement).textContent ?? ''
@@ -3369,5 +3374,108 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
     expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi')
     expect(document.querySelector('[data-lien-sign-code-row]')).toBeNull()
+  })
+})
+
+describe('LienDesk · the affidavit and retainage panes under grey heads (v2.7320, the owner’s ask of 2026-11-15)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const affDesk = () => {
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    return d
+  }
+  const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+
+  it('the affidavit pane is sections under the notice pane’s stacked heads, in order with their facts; the boxes lost their captions; a lower head’s press lands on its body', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={affDesk()} initialKind="affidavit" />)
+    await settle()
+    const pane = document.querySelector<HTMLElement>('[data-lien-affidavit-pane]')!
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
+    expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this affidavit is', 'Before it can be generated', "The owner's answers", 'The paper'])
+    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing')
+    expect(heads[1]!.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
+    expect(heads[2]!.textContent).toBe("The owner's answersno call yet · bond unknown")
+    expect(heads[3]!.textContent).toBe('The papershort form · Robert Douglas, Master Plumber')
+    // Stacked like the notice pane: passed heads at the top, coming ones at the bottom, the first lit.
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '90px'], ['30px', '60px'], ['60px', '30px'], ['90px', '0px']])
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no', 'no'])
+    // Every head sits before its body, a sibling in the pane's grid, and the pane is the scrolling box.
+    for (const key of ['path', 'gates', 'owner', 'paper']) {
+      const head = pane.querySelector(`[data-lien-pane-head="${key}"]`)!
+      const body = pane.querySelector(`[data-lien-pane-body="${key}"]`)!
+      expect(head.parentElement).toBe(pane)
+      expect(body.parentElement).toBe(pane)
+      expect(head.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    expect(pane.style.overflow).toBe('auto')
+    // The boxes gave their captions to the heads; the gate caption's window words lead the gates body.
+    expect(screen.queryByText(/Before this affidavit can be generated/)).toBeNull()
+    expect(pane.querySelector('[data-lien-pane-body="gates"] [data-lien-affidavit-window]')!.textContent).toBe('§ 53.052 · window from May 2026, the last month worked')
+    expect(pane.querySelector('[data-lien-pane-body="owner"]')!.getAttribute('data-lien-affidavit-owner-answers')).not.toBeNull()
+    // The bodies keep their doors.
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="gates"]')!).getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="owner"]')!).getByRole('button', { name: 'Record it on the notice ›' })).toBeTruthy()
+    expect(pane.querySelector('[data-lien-pane-body="paper"] [data-lien-affidavit-paper="short"]')).not.toBeNull()
+    // Press a lower head: the pane scrolls its body up under the stacked heads (jsdom lays nothing out, so the body's offset is given), and the head lights.
+    const paperBody = pane.querySelector<HTMLElement>('[data-lien-pane-body="paper"]')!
+    Object.defineProperty(paperBody, 'offsetTop', { value: 900, configurable: true })
+    fireEvent.click(heads[3]!.querySelector('button')!)
+    expect(pane.scrollTop).toBe(900 - 4 * 30)
+    expect(heads[3]!.getAttribute('data-on')).toBe('yes')
+    expect(heads[0]!.getAttribute('data-on')).toBe('no')
+  })
+
+  it('on a phone the affidavit pane pins one head at a time, a thumb tall, in one column held to the screen', async () => {
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={affDesk()} layout="stacked" initialKind="affidavit" backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      // A phone shows the list first; the row opens its pane.
+      fireEvent.click(screen.getByRole('button', { name: /AXO Schertz/ }))
+      await waitFor(() => expect(document.querySelector('[data-lien-affidavit-pane]')).not.toBeNull())
+      const pane = document.querySelector<HTMLElement>('[data-lien-affidavit-pane]')!
+      expect(pane.getAttribute('data-lien-pane-phone')).toBe('yes')
+      expect(pane.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+      const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+      expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
+      for (const h of heads) {
+        expect(parseFloat(h.style.top)).toBe(0)
+        expect(h.style.bottom).toBe('auto')
+        expect(h.style.height).toBe('40px')
+      }
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
+  it('the retainage pane has its own three heads — the gates, the § 53.056 claim, the paper — and its boxes lost their captions', async () => {
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: false, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const d = data([], [], true)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="retainage" />)
+    await settle()
+    const pane = document.querySelector<HTMLElement>('[data-lien-retainage-pane]')!
+    const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
+    expect(heads.map((h) => h.textContent)).toEqual([
+      'Before it can go✗ 1 missing · owner of record missing',
+      'The § 53.056 claimnot yet inside one · the owner withholds once the affidavit is filed',
+      'The paper2 pages · cover letter + the form · § 53.057(a-2)',
+    ])
+    expect(heads.map((h) => [h.style.top, h.style.bottom])).toEqual([['0px', '60px'], ['30px', '30px'], ['60px', '0px']])
+    expect(screen.queryByText(/Before this notice can go/)).toBeNull()
+    expect(screen.queryByText(/Not yet inside a § 53\.056 claim/)).toBeNull()
+    expect(pane.querySelector('[data-lien-pane-body="gates"] [data-lien-retainage-window]')!.textContent).toBe('§ 53.057 · 30 days from the day our contract on the job ended · complete Sep 3')
+    expect(pane.querySelector('[data-lien-pane-body="claim"]')!.getAttribute('data-lien-retainage-in-claim')).toBe('no')
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="claim"]')!).getByRole('button', { name: 'The monthly notices on this job ›' })).toBeTruthy()
+    expect(within(pane.querySelector<HTMLElement>('[data-lien-pane-body="gates"]')!).getByRole('button', { name: 'Property record ›' })).toBeTruthy()
+    expect(pane.querySelectorAll('[data-lien-pane-body="paper"] [data-theme="light"]').length).toBe(2)
+    // The gates head is the one lit at the top; a press on the paper's head lights it.
+    expect(heads.map((h) => h.getAttribute('data-on'))).toEqual(['yes', 'no', 'no'])
+    fireEvent.click(heads[2]!.querySelector('button')!)
+    expect(heads[2]!.getAttribute('data-on')).toBe('yes')
   })
 })
